@@ -1,0 +1,17 @@
+.DS_Store
+.tmp/
+tmp/
+AGENTS.md
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+/cfmgr.conf
+/cfmgr.conf.*
+!/cfmgr.conf.example
+/secrets/
+/credentials/
+*.log
+*.log.*
