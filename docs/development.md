@@ -38,6 +38,11 @@ failure regressions. Reduce repeated acquisition and setup, not the assertions
 that establish those contracts. Avoid a complex fixture framework or new
 dependencies solely to save a few cases.
 
+Before implementing a plan package, update any outdated test or fixture
+instructions in that section to follow this strategy. Keep distinct acceptance
+requirements, but do not recreate superseded fixture layouts or historical test
+counts. Record the selected coverage and actual results in the plan.
+
 The branch is an active development checkout, not a router release; router
 runtime acceptance and stable promotion remain separate gates.
 
@@ -160,14 +165,40 @@ python tools/check.py --busybox /path/to/busybox
 ```
 
 Explicitly requesting a missing or invalid executable fails the run. Without
-one, the dedicated BusyBox test is visibly skipped and compatibility remains
-unverified. The initial Mac has no usable BusyBox executable or running Docker
-daemon; this is recorded as missing evidence, not a successful compatibility run.
+one, dedicated BusyBox tests are visibly skipped and compatibility remains
+unverified. An unavailable local Linux/BusyBox environment is missing evidence,
+not a successful compatibility run.
 
 Currently this option exercises BusyBox shell syntax and the dedicated
 shell/applet fixture. Ordinary `router` fixtures still use the host `/bin/sh`;
 it does **not** silently rerun the whole suite under BusyBox. A modern full
 BusyBox build also does not reproduce a router's stripped older build.
+
+### Isolated Linux kernel checks
+
+The explicit kernel lane requires a disposable Linux development runner, root,
+util-linux `unshare`, BusyBox, GCC/binutils and glibc development files. Its
+temporary source directory must reside on ext2/3/4. Run it separately from pytest:
+
+```sh
+sudo -n .venv/bin/python tools/check_kernel.py --busybox /usr/bin/busybox
+```
+
+The command never elevates itself. Missing prerequisites fail the requested
+check. It creates disposable mount/PID namespaces before mounting private RAM
+or exercising BusyBox bind/unmount/chroot operations. It uses no loop devices
+and never connects to a router. Normal host checks remain unprivileged.
+Namespaces and the C compiler contain and build the developer fixtures; they
+are not added router runtime dependencies.
+
+Three representative cases exercise the real lifecycle's successful cleanup,
+busy-mount retention and interruption handling. They enter at the preverified
+storage callback boundary using actual mount observations and a retained
+directory descriptor; block-device and UUID acquisition are outside this proof.
+A separate controlled executable fixture checks chroot and exact-mount busy
+behavior. Fixture compiler/library results do not establish Entware ABI or
+Merlin acceptance, and namespace disposal after a failed case does not count
+as successful runtime cleanup. Results and timings belong in the plan.
 
 ### Linux CI
 
@@ -177,7 +208,8 @@ tooling changes pushed to `develop` or proposed in pull requests targeting
 24.04, Python 3.14.0 in a virtualenv, the pinned Python requirements and the
 runner's packaged BusyBox/ShellCheck. It invokes the same check command with
 `--busybox /usr/bin/busybox`, so missing BusyBox is a failure rather than a skip.
-Tool versions are printed in the job log.
+The separately named kernel step runs the explicit namespace proof afterward.
+Tool versions and kernel-case timings are printed in the job log.
 
 The workflow has read-only repository permissions and no router or provider
 credentials. Linux/BusyBox results complement the Mac checks; they do not prove
@@ -221,11 +253,14 @@ command remains `cfmgr`.
 | `tests/test_io.py` | Private staging, stream bounds, producer status, signal cleanup and complete mount handoff |
 | `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
 | `tests/test_storage.py` | Held-descriptor observation, before/after identity checks and rejection without publication |
+| `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
+| `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
 
-Each fixture has its own `jffs`, `opt`, `ram`, `home`, `bin`, and working
+Ordinary router-harness fixtures have their own `jffs`, `opt`, `ram`, `home`, `bin`, and working
 directories. Subprocesses receive an explicit environment and fake-only `PATH`;
 inherited tokens, proxy settings, and shell startup overrides are absent. Tests
 must explicitly expose any real executable they need.

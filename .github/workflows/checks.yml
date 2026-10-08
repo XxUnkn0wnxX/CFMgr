@@ -59,7 +59,7 @@ jobs:
       - name: Install runner check tools
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes busybox shellcheck
+          sudo apt-get install --no-install-recommends --yes busybox shellcheck gcc libc6-dev binutils
 
       - name: Install development dependencies
         run: |
@@ -74,3 +74,6 @@ jobs:
 
       - name: Run checks
         run: .venv/bin/python tools/check.py --busybox /usr/bin/busybox
+
+      - name: Run isolated Linux kernel proof
+        run: sudo -n .venv/bin/python tools/check_kernel.py --busybox /usr/bin/busybox

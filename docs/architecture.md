@@ -39,7 +39,7 @@ flowchart LR
 | `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
-| `modules/isolation.sh` | Own a private RAM root, verify two exact bind mounts and remove them before deleting staging | Internal synchronous callback only; mount operations use test doubles in current validation, with no chroot or Entware execution |
+| `modules/isolation.sh` | Own a private RAM root, verify two exact bind mounts and remove them before deleting staging | Internal synchronous callback only; no runtime chroot or Entware execution |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -150,16 +150,19 @@ Only the expected Entware directory and `/dev/null` enter the private root.
 The outer native owner checks mount identity, supervises work and removes its
 exact mounts before deleting staging. Uncertain cleanup retains a guard and
 workspace for recovery. The initial native ownership and cleanup code is in
-`modules/isolation.sh`; actual namespace, executable and interruption proofs
-remain separate from its host fixtures. The
+`modules/isolation.sh`. Focused host fixtures cover its fault matrix; the separate
+[Linux kernel lane](development.md#isolated-linux-kernel-checks) exercises actual
+mounts, busy cleanup, interruption and controlled static/dynamic executable
+mapping behavior. Its namespaces and compiler are developer tools only. The
 [plan](../PLAN.md#mount-snapshot-parser-contract--current-package) records its
 proof gates and the distinction from hostile-root security isolation.
 
 For the restricted opkg/gzip path, the next cleanup proof uses normal unmount's
 busy check: admitted executable/library mappings retain the exact Opt bind.
 Native-launcher completion and a successful verified unmount are both required.
-This establishes a narrow execution boundary, not complete process reaping;
-the implementation and isolated lifecycle tests are still pending.
+This is a narrow execution boundary, with complete process reaping and admitted
+Entware executable/library closure requiring separate proof. Controlled host
+ELF tests do not expand the runtime callback's supported scope.
 
 </details>
 
