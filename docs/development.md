@@ -150,6 +150,7 @@ All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
 | `tests/test_io.py` | Private staging, stream bounds, producer status, signal cleanup and complete mount handoff |
+| `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -258,6 +259,25 @@ caller state and handles signals delivered to that owner; an external caller
 must forward signals or supervise it. There is no hard deadline for a hung
 native executable in this stage. The result is snapshot evidence, not authority
 to write through a mount path during hotplug.
+
+### Native storage observations
+
+`src/storageinfo.awk` parses bounded `fdinfo` or native `blkid` snapshots. It
+requires a stable private file, its independently checked byte count, `LC_ALL=C`
+and a literal mode. Inputs are at most 4 KiB; fdinfo has at most 64 records.
+Mount IDs remain exact decimal text, including values beyond numeric precision.
+
+For blkid, pass the expected device through `CFMGR_BLKID_DEVICE`, not an awk
+`-v` value that might interpret backslashes. The parser validates the entire
+native record, but withholds every LABEL-bearing result: the firmware's raw
+label formatting can imitate a UUID field. A label-free result contains
+byte-encoded UUID/optional filesystem type, never a storage authorization.
+
+Status 0 supplies a complete framed observation, 1 rejects malformed data,
+2 rejects invocation errors, and 3 means usable identity is unavailable.
+Consumers must check status and the complete terminal byte-count record. Native
+acquisition, persistent identity, writability and mount-loss handling remain
+separate work.
 
 ### Native health report
 

@@ -202,9 +202,15 @@ blanket firmware support declaration.
 Native `blkid` has a separate limitation: its output does not escape disk labels.
 A label containing quotes can imitate a UUID field. CFMgr must therefore reject
 label-bearing output as identity evidence, even if its text looks well formed.
-An independent read path for labelled ext volumes is under investigation;
-ordinary labelled drives are not declared unsupported by this parser finding.
 [Native display routine][blkid-display]
+
+For ext2/3/4, source review and harmless installed probes support an independent
+route: read the UUID bytes from the primary superblock through an already open
+block descriptor, using bounded native `hexdump`. Labels never enter that
+interpretation. Native numeric `ls` can report the held block device's number
+for comparison with the mount record. Integration, failure handling and other
+filesystem profiles remain pending; labelled ext drives are not excluded by
+the blkid limitation. [Superblock format][ext-superblock]
 
 <details>
 <summary>🚧 Remaining firmware-specific proofs</summary>
@@ -264,3 +270,4 @@ performed. Full boot/outage and feature acceptance require later testing.
 [fdinfo-added]: https://github.com/torvalds/linux/blob/v3.15/fs/proc/fd.c#L47
 [legacy-ef]: https://github.com/RMerl/asuswrt-merlin/blob/4a09301907eca9e55db992c5c0002a8688388255/release/src/router/busybox/coreutils/test.c#L540
 [blkid-display]: https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/util-linux/volume_id/get_devname.c
+[ext-superblock]: https://docs.kernel.org/filesystems/ext4/super.html
