@@ -507,6 +507,26 @@ class IsolationFixture:
                     + shlex.quote(str(router.path("work/umount-help")))
                     + " >&2; fi\n"
                 )
+            elif tool == "test":
+                # Preserve stateful null/FD checks in Python; run ordinary
+                # fixture filesystem predicates directly through native test.
+                tree_null = shlex.quote(str(self.guard / "root/dev/null"))
+                target = shlex.quote(str(self.storage.target))
+                bypass = (
+                    'if [ "$#" = 2 ] && [ "$1" = "-c" ] && [ "$2" = "/dev/null" ]; then\n'
+                    "    :\n"
+                    f'elif [ "$#" = 2 ] && [ "$1" = "-c" ] && [ "$2" = {tree_null} ]; then\n'
+                    "    :\n"
+                    'elif [ "$#" = 3 ] && [ "$1" = "/dev/null" ] && [ "$2" = "-ef" ] && \\\n'
+                    f'     [ "$3" = {tree_null} ]; then\n'
+                    "    :\n"
+                    'elif [ "$#" = 2 ] && [ "$1" = "-d" ] && [ "$2" = "/proc/self/fd/9" ]; then\n'
+                    "    :\n"
+                    f'elif [ "$#" = 3 ] && [ "$1" = {target} ] && [ "$2" = "-ef" ] && \\\n'
+                    '     [ "$3" = "/proc/self/fd/9" ]; then\n'
+                    "    :\n"
+                    'else exec /bin/test "$@"; fi\n'
+                )
             router.fake_tool(
                 tool,
                 bypass + f"exec {shlex.quote(sys.executable)} "
@@ -769,6 +789,20 @@ def test_owned_root_roundtrip_uses_retained_storage_and_exact_native_commands(
     ]
     assert observed["fd9_inode"] == isolation.storage.target.stat().st_ino
     tree = str(isolation.guard / "root")
+    delegated_tests = {tuple(item["args"]) for item in isolation.calls() if item["tool"] == "test"}
+    assert {
+        ("-c", "/dev/null"),
+        ("-c", tree + "/dev/null"),
+        ("/dev/null", "-ef", tree + "/dev/null"),
+        ("-d", "/proc/self/fd/9"),
+        (str(isolation.storage.target), "-ef", "/proc/self/fd/9"),
+    } <= delegated_tests
+    assert ("-d", str(isolation.storage.target)) not in delegated_tests
+    assert all(
+        "fd9" in item
+        for item in isolation.calls()
+        if item["tool"] == "test" and "/proc/self/fd/9" in item["args"]
+    )
     unmount_flags = ["-n"] if isolation.settings["umount_profile"] == "modern" else ["-D", "-n"]
     assert [item["args"] for item in isolation.mutations()] == [
         ["-n", "-i", "-o", "bind", "/dev/null", tree + "/dev/null"],
