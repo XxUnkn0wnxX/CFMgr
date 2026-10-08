@@ -341,8 +341,11 @@ def test_failed_slot_is_consumed_and_never_reused(io: IOFixture) -> None:
 
 
 def test_sixteen_slots_bound_capture_files(io: IOFixture) -> None:
-    # This case starts80+ instrumented host Python tools. The first measured run
-    # reached75 in14.82s under concurrent CI; retain a finite45s fixture budget.
+    # Use native no-fault wc/printf here to avoid 64 Python dispatcher launches.
+    io.router.path("bin/wc").unlink()
+    io.router.path("bin/wc").symlink_to("/usr/bin/wc")
+    io.router.path("bin/printf").unlink()
+    io.router.path("bin/printf").symlink_to("/usr/bin/printf")
     quiet(
         io.workspace(
             'i=0\nwhile [ "$i" -lt 16 ]; do\n'
