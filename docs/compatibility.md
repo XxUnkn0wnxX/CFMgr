@@ -116,6 +116,28 @@ packages and let opkg resolve their declared dependencies. It will not install
 Entware itself or upgrade unrelated packages.
 
 <details>
+<summary>📦 Verified package contents</summary>
+
+The current `jq`, `coreutils-timeout`, `coreutils-sha256sum` and `coreutils`
+archives were checked across the three maintained feeds, plus aarch64 `flock`
+and `bind-dig`: **14 packages**, each matched to its index size and SHA-256 before
+inspection. They use a gzip/tar outer archive and contain no maintainer scripts
+or conffiles. This finding covers those exact direct packages, not all libraries
+or future versions. [AArch64 index][feed-aarch64] ·
+[ARM index][feed-arm32] · [MIPS index][feed-mips]
+
+The checksum and timeout executables live under `/opt/libexec`; their public
+command links come from opkg alternatives metadata. `coreutils` itself is a
+small metadata dependency. ELF interpreters and library search paths still
+refer to `/opt`, so copying a verified executable to RAM does not make its
+loader and libraries independent of Entware.
+
+No inspected package was installed or executed. Dependency-closure checks,
+package-manager side effects and mount-loss containment remain separate gates.
+
+</details>
+
+<details>
 <summary>🔗 Libraries, ABI and kernel limits</summary>
 
 The three shared packages on maintained/ARM-2.6 feeds depend on `libc`, `libssp`,
@@ -158,7 +180,12 @@ SRV readiness will use a verified capable DNS tool; the current native `nslookup
 exposes host/server lookup only, and `bind-dig` remains untested on the router.
 The matched custom-DDNS callback takes a result
 without a request identity, so delayed background completion cannot yet be
-treated as safe. These gates are recorded in `PLAN.md` before dependent code.
+treated as safe. A short capped wait has been selected for eligible DDNS calls,
+but boot callers must return promptly. NTP/network readiness alone does not
+prove boot completion: the matched firmware can call DDNS during startup.
+Only a failed/timed-out firmware DDNS attempt schedules the additional CFMgr
+fallback, which stays pending until full readiness. Exact boot gating, overlap
+and retry behavior remain implementation gates in `PLAN.md`.
 
 All router work so far has been read-only. No CFMgr deployment, package install,
 service change, callback execution, provider mutation, or router pytest run was

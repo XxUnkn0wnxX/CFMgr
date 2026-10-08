@@ -17,6 +17,11 @@ Planned features:
 
 Project documentation and images will live in `docs/` and `.images/`.
 
+☁️ **Before setup:** create a Cloudflare account. For DDNS or public tunnel
+hostnames, add a domain whose DNS is managed by Cloudflare; it can be registered
+with Cloudflare or another registrar. The [user setup guide](docs/setup.md)
+walks through account, domain and DNS preparation.
+
 The implementation plan, build checklist, and handoff notes are maintained in [PLAN.md](PLAN.md).
 
 🛠️ Contributors: [Development setup and testing](docs/development.md) covers the local virtualenv, pinned requirements, lint tools, and isolated test harness.

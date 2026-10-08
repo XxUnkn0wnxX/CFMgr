@@ -1,6 +1,6 @@
 # 🛠️ Development
 
-[← README](../README.md) · [Compatibility](compatibility.md) · [Implementation plan](../PLAN.md) · [Test fixtures](../tests/fixtures/README.md)
+[← README](../README.md) · [User setup](setup.md) · [Compatibility](compatibility.md) · [Implementation plan](../PLAN.md) · [Test fixtures](../tests/fixtures/README.md)
 
 ![Python requirement](https://img.shields.io/badge/development-Python_3.11%2B-3776ab?logo=python&logoColor=white)
 ![Runtime target](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
@@ -124,6 +124,7 @@ BusyBox build also does not reproduce a router's stripped older build.
 | `tests/test_ip.py` | Strict IPv4/IPv6 host syntax and deterministic canonical formatting |
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
+| `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -180,6 +181,26 @@ address-equality checks alongside the independent standard-library oracle.
 The measured firmware resolves `printf`, `test` and `[` to BusyBox applet paths,
 not shell builtins. Native callers need a vetted firmware PATH even though host
 shell tests can run these helpers with no external tools exposed.
+
+### Mount snapshot parser
+
+`src/mountinfo.awk` selects the deepest mount covering a canonical target path
+and calculates the target's path within that filesystem, including bind-mount
+roots. It rejects ambiguous overmounts at any covering ancestor. Numeric IDs
+remain text, including values beyond the host's exact floating-point range.
+
+Its caller must supply `LC_ALL=C`, a private stable regular-file snapshot, its
+independently checked byte count, and `CFMGR_MOUNT_TARGET` through the environment.
+Limits are 64 KiB per snapshot, 1,024 records, 8,192 bytes per line including LF,
+and 4,096 bytes for the target. Standard mountinfo path escapes are decoded;
+other raw control characters are outside the supported input profile.
+
+The output is an internal ASCII record with byte-encoded paths and a terminal
+byte-count footer. Verify status, structure, count and exact EOF before using it.
+Hex encoding is not redaction: keep this metadata private. The parser reports
+mount facts, including read-only and pseudo-filesystem records; UUID checks,
+trusted acquisition, writability, supervision and protection against mount
+changes remain separate implementation work.
 
 ### Native health report
 
