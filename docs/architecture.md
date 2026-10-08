@@ -39,8 +39,8 @@ flowchart LR
 | `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
-| `modules/isolation.sh` | Own a private RAM root, verify two exact bind mounts and remove them before deleting staging | Internal synchronous callback only; no runtime chroot or Entware execution |
-| `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Unwired internal helper; requires admitted executable closure and explicit lifecycle completion gating |
+| `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
+| `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
 
 The parsing modules are tested foundations, not yet a complete operational call
@@ -87,8 +87,9 @@ unchanged arguments only after both mounts pass verification.
 Cleanup checks each recorded mount again, removes Opt before null, and proves
 both absent before deleting the guard. Busy, changed or uncertain mounts and
 interrupted operations leave the guard for recovery. Existing guards are never
-adopted or removed automatically. This stage does not launch a process inside
-the root or expose an operational CLI action.
+adopted or removed automatically. The native callback API does not launch a process inside the root. A separate
+internal fixed-probe entry connects image staging and supervision as described
+below; neither entry exposes an operational CLI action.
 
 This first profile covers dynamic-revision ext2/ext3/ext4 primary superblocks.
 Other filesystems, alternate `sb=` mounts and missing mount-ID support need
@@ -133,9 +134,9 @@ successful parser exit does not prove its output was written completely. A
 live process does not prove tunnel connectivity.
 
 The intended controller checks the evidence appropriate to each boundary and
-preserves unknown outcomes. Dependency installation, mount loss and command
-supervision still need implementation and fault-path validation; the current
-parsers do not establish those guarantees.
+preserves unknown outcomes. Dependency installation, operational mount-loss handling and general command
+supervision still need implementation and fault-path validation. The fixed-probe
+helpers have a narrower contract and do not establish those guarantees.
 
 </details>
 
@@ -144,13 +145,17 @@ parsers do not establish those guarantees.
 
 Entware's loader reads absolute `/opt` paths before a program starts. An
 explicit loader path alone therefore cannot contain execution when the public
-mount path changes. The selected next profile uses native bind mounts and chroot
+mount path changes. The fixed-probe profile uses native bind mounts and chroot
 to separate verified executable bytes from the mutable installation destination.
 A small private RAM image provides the admitted programs, loader and libraries
 at `/opt`, with a verified read-only bind and no preload file. Later restricted
 installation would expose the retained Entware directory separately at
-`/offline/opt`. Artifact admission and this new root profile remain implementation
-gates.
+`/offline/opt`. Version probes do not mount the mutable Entware directory
+inside their root. Artifact provenance and ELF-graph admission remain caller
+prerequisites; accepting supplied hashes does not establish trust. Before calling
+the internal probe entry, the owner must construct/acquire the approved manifest
+within 4096 original bytes in stable private RAM. Staging validates its length
+after reading through EOF, so that check is not a bounded acquisition primitive.
 
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its
@@ -170,15 +175,19 @@ Unknown capability stops the attempt before mounts; an actual cleanup failure
 never triggers a retry with different flags. Firmware version numbers alone
 do not select this behavior.
 
-For contained probes, the next cleanup proof uses ordinary unmount's busy check:
+For contained probes, cleanup uses ordinary unmount's busy check:
 admitted executable mappings retain the exact execution-image bind. Native
 launcher completion and successful verified unmount are both required before
 staging can be removed. A bounded polling helper records completion separately
 from exit status; a polling deadline leaves the launcher unproved and the guard
-retained. It never signals a saved numeric PID. The helper remains unconnected
-to the synchronous callback pending admission and explicit completion gating.
+retained. It never signals a saved numeric PID. The separate fixed-probe entry
+accepts only the timeout or gzip version probe. It clears the active launcher
+only when nothing started or the supervisor validated completion; a returned
+failure or deadline alone cannot authorize cleanup. Even a pre-bind staging
+failure requires a fresh unchanged/private RAM topology check before removal.
 This does not promise complete process reaping or a hard deadline for blocked
-kernel IO. Controlled host ELF tests do not expand the runtime callback's scope.
+kernel IO. Controlled host ELF tests do not expand the native callback's scope
+or prove Entware ABI or Merlin runtime acceptance.
 
 </details>
 

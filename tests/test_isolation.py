@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from tests.harness import RouterHarness, ShellResult
+from tests.test_closure import PROFILE_FILES, manifest_bytes, native_path
 from tests.test_mountinfo import Mount, snapshot
 from tests.test_storage import IO, STORAGE, StorageFixture
 
@@ -91,18 +92,38 @@ def snapshot_bytes():
 
 if tool == "mount":
     assert (guard / "active").is_file()
-    if args[:4] == ["-n", "-i", "-o", "bind"]:
+    if args[:4] in (
+        ["-n", "-i", "-o", "bind"],
+        ["-n", "-i", "-o", "bind,ro"],
+    ):
         source, destination = args[4:]
-        kind = "null" if source == "/dev/null" else "opt"
-        assert (guard / ("intent-" + kind)).read_text() == kind + "\n"
+        kind = (
+            "null"
+            if source == "/dev/null"
+            else "image"
+            if args[3] == "bind,ro"
+            else "opt"
+        )
+        intent = "opt" if kind == "image" else kind
+        assert (guard / ("intent-" + intent)).read_text() == intent + "\n"
         assert destination == str(tree / ("dev/null" if kind == "null" else "opt"))
         if kind == "opt":
             assert source == "/proc/self/fd/9" and "fd9" in record
             held, original = os.fstat(9), os.stat(settings["target"])
             assert (held.st_dev, held.st_ino) == (original.st_dev, original.st_ino)
+        if kind == "image":
+            assert source == settings["closure_source"]
+            assert Path(source).is_dir() and Path(source).parent == guard / "closure"
+            assert (guard / "intent-opt").read_text() == "opt\n"
         if fault == "bind-" + kind + "-error":
             sys.exit(7)
-        source_path = Path("/dev/null" if kind == "null" else settings["target"])
+        source_path = Path(
+            "/dev/null"
+            if kind == "null"
+            else settings["closure_source"]
+            if kind == "image"
+            else settings["target"]
+        )
         source_row = max(
             (
                 row
@@ -117,11 +138,11 @@ if tool == "mount":
         ) / source_path.relative_to(Path(os.fsdecode(bytes.fromhex(source_row["point"]))))
         row = dict(source_row)
         row.update(
-            identifier="61" if kind == "null" else "62",
+            identifier={"null": "61", "opt": "62", "image": "63"}[kind],
             parent="11",
             root=os.fsencode(filesystem_target).hex(),
             point=os.fsencode(destination).hex(),
-            optional=["shared:77"],
+            optional=[] if kind == "image" else ["shared:77"],
         )
         state["mounts"].append(row)
         save()
@@ -130,9 +151,32 @@ if tool == "mount":
         if fault == "signal-mount":
             os.kill(os.getppid(), signal.SIGTERM)
         sys.exit(0)
+    if args[:4] == ["-n", "-i", "-o", "remount,bind,ro,nosuid,nodev,exec"]:
+        source, destination = args[4:]
+        assert source == settings["closure_source"]
+        assert destination == str(tree / "opt")
+        row = next(
+            item
+            for item in state["mounts"]
+            if bytes.fromhex(item["point"]) == os.fsencode(destination)
+        )
+        if fault == "image-remount-identity":
+            row["identifier"] = "64"
+        elif fault == "image-remount-device":
+            row["device"] = "8:999"
+        elif fault == "image-remount-rw":
+            row["options"] = b"rw,nosuid,nodev,exec".hex()
+        elif fault == "image-remount-noexec":
+            row["options"] = b"ro,nosuid,nodev,noexec".hex()
+        else:
+            row["options"] = b"ro,nosuid,nodev,exec".hex()
+        save()
+        sys.exit(0)
     assert args[:4] == ["-n", "-i", "-o", "make-private"] and len(args) == 5
     destination = args[4]
-    if fault == "private-error":
+    if fault == "private-error" or (
+        destination == str(tree / "opt") and fault == "private-image-error"
+    ):
         sys.exit(7)
     row = next(
         item for item in state["mounts"] if bytes.fromhex(item["point"]) == os.fsencode(destination)
@@ -161,6 +205,19 @@ if tool == "umount":
             if bytes.fromhex(item["point"]) != os.fsencode(destination)
         ]
         save()
+        closure_source = settings.get("closure_source")
+        if closure_source and destination == str(tree / "opt"):
+            image_root = Path(closure_source)
+            for directory, children, files in os.walk(image_root, topdown=False):
+                for name in files:
+                    path = Path(directory) / name
+                    if not path.is_symlink():
+                        path.chmod(0o600)
+                for name in children:
+                    path = Path(directory) / name
+                    if not path.is_symlink():
+                        path.chmod(0o700)
+            image_root.chmod(0o700)
     sys.exit(0)
 if tool == "cat" and args == [settings["mount_input"]]:
     if fault == "signal-query" and guard.exists():
@@ -193,13 +250,30 @@ if tool == "cat" and args == [settings["mount_input"]]:
             state["mounts"].append(row)
             state["injected"] = True
             save()
+    if (
+        fault == "image-descendant"
+        and (guard / "closure/opt").is_dir()
+        and not state.get("injected")
+    ):
+        row = dict(next(item for item in state["mounts"] if item["identifier"] == "11"))
+        row.update(
+            identifier="98",
+            parent="11",
+            point=os.fsencode(guard / "closure/opt/child").hex(),
+        )
+        state["mounts"].append(row)
+        state["injected"] = True
+        save()
     if fault == "probe-error" and any(item["identifier"] == "61" for item in state["mounts"]):
         os.write(2, b"SECRET probe failure\n")
         sys.exit(7)
     os.write(1, snapshot_bytes())
     sys.exit(0)
-if tool == "readlink" and args == ["-f", settings["ram"]]:
-    print(settings["other"] if fault == "ram-symlink" else str(Path(settings["ram"]).resolve()))
+if tool == "readlink" and len(args) == 2 and args[0] == "-f":
+    if args[1] == settings["ram"] and fault == "ram-symlink":
+        print(settings["other"])
+    else:
+        print(str(Path(args[1]).resolve()))
     sys.exit(0)
 if tool == "test" and (
     args == ["-c", "/dev/null"]
@@ -207,6 +281,45 @@ if tool == "test" and (
     or args == ["/dev/null", "-ef", str(tree / "dev/null")]
 ):
     sys.exit(1 if fault == "null-type" else 0)
+if tool == "test" and args == ["-d", "/proc/self/fd/9"]:
+    sys.exit(0 if stat.S_ISDIR(os.fstat(9).st_mode) else 1)
+if tool == "test" and args == [settings["target"], "-ef", "/proc/self/fd/9"]:
+    current, held = os.stat(args[0]), os.fstat(9)
+    sys.exit(0 if (current.st_dev, current.st_ino) == (held.st_dev, held.st_ino) else 1)
+if tool == "test":
+    sys.exit(subprocess.call(["/bin/test", *args]))
+if tool == "chroot":
+    record["environment"] = dict(os.environ)
+    (log / (str(os.getpid()) + ".json")).write_text(json.dumps(record))
+    assert args and args[0] == str(tree)
+    assert (guard / "active").read_text().strip() == "probe-" + settings["probe_mode"]
+    assert os.readlink(tree / "bootstrap/timeout-coreutils") == "/opt/libexec/timeout-coreutils"
+    assert os.readlink(tree / "bootstrap/gzip-gnu") == "/opt/libexec/gzip-gnu"
+    assert not (tree / "offline/opt").exists()
+    image = next(item for item in state["mounts"] if item["identifier"] == "63")
+    record["image_mount"] = image
+    (log / (str(os.getpid()) + ".json")).write_text(json.dumps(record))
+    assert bytes.fromhex(image["options"]) == b"ro,nosuid,nodev,exec"
+    assert bytes.fromhex(image["super_options"]) == b"rw"
+    mode = settings["probe_mode"]
+    expected = (
+        [str(tree), "/bootstrap/timeout-coreutils", "--version"]
+        if mode == "timeout"
+        else [
+            str(tree),
+            "/bootstrap/timeout-coreutils",
+            "--foreground",
+            "--kill-after=1",
+            "3",
+            "/bootstrap/gzip-gnu",
+            "--version",
+        ]
+    )
+    assert args == expected
+    output_size = settings.get("probe_output_size", 16)
+    os.write(1, b"P" * output_size)
+    os.write(2, b"")
+    sys.exit(settings.get("probe_child_status", 0))
 if tool == "printf":
     if (
         fault == "metadata-short"
@@ -339,7 +452,8 @@ def encoded(mount: Mount) -> dict:
 
 
 class IsolationFixture:
-    def __init__(self, router: RouterHarness, shell: str):
+    def __init__(self, router: RouterHarness, shell: str, *, probe_busybox: Path | None = None):
+        self.probe_busybox = probe_busybox
         self.storage = StorageFixture(router, shell)
         self.router = router
         self.guard = router.path("ram/tmp/cfmgr-isolation")
@@ -414,6 +528,118 @@ class IsolationFixture:
             json.dumps({"mounts": [encoded(mount) for mount in self.mounts]})
         )
         self.router.path("work/state.json").chmod(0o600)
+
+    def prepare_probe(self, mode: str = "gzip") -> None:
+        """Prepare trusted synthetic closure inputs for the explicit probe API."""
+        assert mode in {"timeout", "gzip"}
+        profile = "armv7sf-k3.2"
+        inputs = self.router.path("work/probe-inputs")
+        inputs.mkdir(mode=0o700)
+        contents: dict[str, bytes] = {}
+        for index, relative in enumerate(PROFILE_FILES[profile], 1):
+            data = f"synthetic probe image member {index}\n".encode()
+            contents[relative] = data
+            if relative.startswith("libexec/"):
+                source = inputs / Path(relative).name
+            else:
+                source = self.storage.target / relative
+            source.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+            source.write_bytes(data)
+            source.chmod(0o600)
+        self.probe_manifest = self.router.path("work/probe-manifest.tsv")
+        self.probe_manifest.write_bytes(manifest_bytes(profile, contents))
+        self.probe_manifest.chmod(0o600)
+        self.probe_timeout = inputs / "timeout-coreutils"
+        self.probe_gzip = inputs / "gzip-gnu"
+        self.probe_mode = mode
+        self.settings.update(
+            closure_source=str(self.guard / "closure/opt"),
+            probe_mode=mode,
+            probe_child_status=0,
+            probe_output_size=16,
+        )
+        self.save()
+        for name in ("dd", "env", "openssl", "ln", "chmod", "hexdump"):
+            path = self.router.path("bin/" + name)
+            if path.exists() or path.is_symlink():
+                path.unlink()
+            path.symlink_to(native_path(name, self.probe_busybox or self.router.busybox))
+        self.router.fake_tool(
+            "chroot",
+            f"exec {shlex.quote(sys.executable)} "
+            f"{shlex.quote(str(self.router.path('work/isolation-dispatcher.py')))} "
+            f"{shlex.quote(str(ROOT))} {shlex.quote(str(self.storage.settings_path))} "
+            'chroot "$@"\n',
+        )
+        self.router.path("bin/sleep").symlink_to("/bin/sleep")
+
+    def restore_probe_fixture_permissions(self) -> None:
+        """Make only this synthetic image removable by the host fixture teardown."""
+        image = self.guard / "closure/opt"
+        if not image.is_dir() or image.is_symlink():
+            return
+        for directory, children, files in os.walk(image, topdown=False):
+            for name in files:
+                path = Path(directory) / name
+                if not path.is_symlink():
+                    path.chmod(0o600)
+            for name in children:
+                path = Path(directory) / name
+                if not path.is_symlink():
+                    path.chmod(0o700)
+        image.chmod(0o700)
+
+    def run_probe(
+        self,
+        *,
+        fault: str = "",
+        mode: str = "gzip",
+        bad_manifest: bool = False,
+    ) -> ShellResult:
+        self.prepare_probe(mode)
+        self.settings["isolation_fault"] = fault
+        self.save()
+        if bad_manifest:
+            manifest = bytearray(self.probe_manifest.read_bytes())
+            digest = manifest.index(b"\t") + 1
+            digest = manifest.index(b"\t", digest) + 1
+            manifest[digest] = ord("0") if manifest[digest] != ord("0") else ord("1")
+            self.probe_manifest.write_bytes(manifest)
+        printf = self.router.path("bin/printf")
+        if printf.is_symlink():
+            printf.unlink()
+        printf.symlink_to("/usr/bin/printf")
+        self.router.write(
+            "work/invoke-probe.sh",
+            f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
+            f". {shlex.quote(str(ROOT / 'modules/closure.sh'))}\n"
+            f". {shlex.quote(str(ROOT / 'modules/supervision.sh'))}\n"
+            f". {shlex.quote(str(SOURCE))}\n"
+            f"_fixture_volume={shlex.quote(self.storage.expected())}\n"
+            + FOCUSED_BOUNDARIES
+            + 'cfmgr_isolation_probe_test "$@"\n',
+        )
+        args = [
+            str(self.router.path("ram/tmp")),
+            str(self.router.path("bin")),
+            str(self.storage.target),
+            str(self.router.path("work/mountinfo")),
+            str(self.router.path("work/fdinfo")),
+            str(self.router.path("work/block")),
+            str(ROOT / "modules/mountinfo.awk"),
+            str(ROOT / "modules/storageinfo.awk"),
+            "armv7sf-k3.2",
+            str(self.probe_manifest),
+            str(self.probe_timeout),
+            str(self.probe_gzip),
+            mode,
+        ]
+        return self.router.run(
+            f'exec {shlex.quote(self.storage.shell)} "$@"\n',
+            [str(self.router.path("work/invoke-probe.sh")), *args],
+            timeout=30,
+            env={"IFS": "x"},
+        )
 
     def run(
         self,

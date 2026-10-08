@@ -1,13 +1,13 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Internal native timeout/gzip probes only; not connected to runtime lifecycle.
+# Internal native timeout/gzip probes for the separate fixed-probe lifecycle.
 # Sourcing defines functions only. This is not a root sandbox or general runner.
 # The caller is the trusted isolated owner: GUARD is fresh/exclusive outside IO
 # scratch, ROOT is exactly GUARD/root, active is set, and root/code/library/
 # preload have already been admitted. Native tools and RAM ancestors are trusted.
 # Caller tracing is off; no external descriptors beyond known FD3..9 are open.
-# Do not call from the current synchronous isolation callback until lifecycle
-# admission/completion integration is implemented. The caller owns all cleanup.
+# Only the fixed-probe lifecycle may call this helper after image admission;
+# synchronous native isolation callbacks do not authorize it. Caller owns cleanup.
 # Completion proves only that synchronous env/chroot returned; it proves neither
 # wrapper exit nor descendant exit. Incomplete started work retains GUARD pending
 # recovery. No mount, wait, signal, callback, arbitrary command, or tree removal.
