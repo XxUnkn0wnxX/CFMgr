@@ -8,7 +8,7 @@ Cloudflare Manager for Asuswrt-Merlin
 > version on a live router. Passing developer tests do not establish safe router
 > operation; installation instructions will follow validated implementation.
 
-CFMgr is in initial development. The implementation has tested parsing foundations and a partial native health report; there is no installable manager yet.
+CFMgr is in initial development. The implementation has tested parsing and read-only storage foundations, plus a partial native health report; there is no installable manager yet.
 
 Runtime source lives in **`cfmgr.sh`** and **`modules/`**. These shell and awk
 files run directly; there is no compilation step for the manager.
@@ -41,7 +41,7 @@ The implementation plan, build checklist, and handoff notes are maintained in [P
 
 🔎 [Health-report development](docs/development.md#native-health-report) explains the current `--diagnostic` / `--doctor` checks, exit codes and remaining coverage.
 
-🧭 [Firmware compatibility](docs/compatibility.md) records the measured target, older-release research, and remaining support gates. Completed stages are published to `develop` after their tests and review pass; this does not make development code a router release.
+🧭 [Firmware compatibility](docs/compatibility.md) records the measured target, older-release research, and remaining support gates. Tested commits are published to `develop` at major checkpoints after the full local suite passes, then verified by CI. This does not make development code a router release.
 
 The `main` branch is intended for stable releases. The `develop` branch is for ongoing work.
 
