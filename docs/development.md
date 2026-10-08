@@ -17,7 +17,8 @@ become available in a fresh clone when its code is published.
 
 > [!IMPORTANT]
 > Python and these dependencies run on developer machines only. The router
-> implementation targets firmware-native shell tools. Default tests use synthetic
+> implementation uses POSIX shell with verified native tools and any documented
+> Entware prerequisites. Default tests use synthetic
 > fixtures and do not connect to a router or Cloudflare.
 
 ## 🚀 Set up the environment
@@ -120,6 +121,7 @@ BusyBox build also does not reproduce a router's stripped older build.
 | `tests/test_harness.py` | Isolation, input/output, paths, deadlines, and child cleanup |
 | `tests/test_reporting.py` | Accurate test-evidence counts |
 | `tests/test_primitives.py` | Native decimal/version/digest parsing and caller-state preservation |
+| `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -151,6 +153,21 @@ must explicitly expose any real executable they need.
 
 </details>
 
+### JSON parser proof
+
+`src/json.awk` currently provides strict validation and a bounded token ledger;
+it is not yet connected to a config reader or provider client. Its caller must
+supply a private, stable regular file, a separately checked byte count, and
+`LC_ALL=C`. Input is limited to 64 KiB, 32 nested containers, 4,096 value nodes
+and 16 KiB per decoded string. Numbers retain their original text.
+
+Token output is limited to 128 KiB, including its terminal count footer. Native
+awk can report success despite a failed output write, so future consumers must
+check exit status, exact footer/newline/EOF, body byte count and sequential record
+count before using any token. File ownership, bounded transport and router
+performance remain separate integration requirements. See the frozen contract
+in [PLAN.md](../PLAN.md#native-json-parser-proof-contract--current-package).
+
 ## 🔎 Evidence and stage commits
 
 Mark meaningful tests with the corresponding validation IDs from `PLAN.md`:
@@ -179,26 +196,14 @@ remains separate.
 
 ## 📦 Module catalog and forks
 
-**Selected design; the catalog/downloader is not implemented yet.** Maintain
-CFMgr as separate, named source modules. A central `modules.txt` catalog will
-hold the source selection and module URLs, parsed strictly as data rather than
-sourced as shell code. Installation/reinstallation stages the required module
-set and verifies it before activation.
+**Selected design; config/catalog downloads are not implemented yet.** CFMgr
+will ship catalog defaults with its readable source modules. Setup stores the
+active catalog in **`/jffs/addons/CFMgr.d/config`**. The directory name is
+case-sensitive. Users edit the catalog settings manually for testing or forks;
+there is no menu setter and no separate remote-catalog URL setting.
 
-The catalog lives in the repository. Fresh setup will save the hard-coded
-default URL in the `catalog_url` field of `/jffs/addons/cfmgr.d/config`:
-
-```text
-https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/main/modules.txt
-```
-
-Change that field **only by manually editing the config** to select a fork's
-catalog. There will be no menu control. Setup/reinstall/update preserves an
-existing value; an invalid or unavailable override fails the affected action
-without silently falling back to the default. The URL locates the catalog;
-its `branch:` header selects the code snapshot.
-
-The selected format is a `branch:` header followed by named module URLs:
+The catalog consists of a source selector and named module URLs. Its logical
+contents look like this; the exact enclosing config schema is a P1 gate:
 
 ```text
 # main is the default; develop or a full 40-character commit hash is also valid.
@@ -206,49 +211,58 @@ branch: main
 common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/src/common.sh
 ```
 
-This is a format example with the existing helper, not a complete install
-inventory. `{commit}` is a literal catalog placeholder. The downloader replaces
-it only with the validated selected commit; it does not perform shell expansion.
+This is a format illustration with the existing helper, not a complete install
+inventory. `{commit}` is a literal placeholder replaced only with the validated
+selected commit. Catalog values are parsed as data, never sourced as shell code.
 
 | Selection | Meaning |
 | --- | --- |
 | `branch: main` | Resolve the stable branch once, then use that exact snapshot. |
-| `branch: develop` | Resolve the development branch once for explicit development testing. |
-| `branch: <full-commit-hash>` | Use that exact repository snapshot without following a moving branch. |
+| `branch: develop` | Resolve the development branch once for explicit testing. |
+| `branch: <full-commit-hash>` | Use that snapshot without following a moving branch. |
 
-A commit that changes only one module still contains the complete repository
-tree. Other modules retain their latest contents **as of that commit**. CFMgr
-will not search newer commits or silently substitute a current branch file for
-a missing historical module.
+A commit that changes one module still contains the complete repository tree.
+Other modules retain their latest contents **as of that commit**. Nothing newer
+is mixed in; missing historical files are not replaced from current main/develop.
+The selected manifest and every module use the same immutable commit.
+
+> [!NOTE]
+> The manual `developer` flag defaults to `false`. With it off, updates and
+> reinstalls may refresh the **catalog portion** from the selected package's
+> defaults. With `developer=true`, an existing catalog is preserved; a missing
+> catalog may still be initialized. A malformed existing catalog is reported
+> for repair, not overwritten. Credentials, feature state and other settings
+> are outside catalog replacement. The action keeps its original pinned source.
+
+The `developer` flag also suppresses normal manager update checks. An explicitly
+confirmed force reinstall preserves an existing catalog while the flag is true.
+Future developer capabilities can extend this flag.
 
 <details>
 <summary>🍴 Maintaining a fork and adding modules</summary>
 
-1. Keep `modules.txt` in your fork and change its module URLs to that repository.
-   Module URLs must belong to the same selected repository and use `{commit}`.
-   Manually set the installed config's `catalog_url` to your fork's catalog.
-2. Select `main`, `develop`, or a full commit hash in the header. A downloaded
-   catalog cannot change the selection partway through an action.
-3. Keep each helper in its own readable source file with a clear responsibility.
-   Add its named URL to the catalog and its identity/path/hash to the generated
-   release manifest together. The bootstrap contains the default catalog URL;
-   module URLs stay centralized in the catalog.
-4. Validate the complete package before publishing a fork release. Editing the
-   catalog alone does not make an arbitrary file a trusted installed module.
+1. Change the module URLs in the local config to your fork for testing. All
+   entries must belong to the same selected repository and use `{commit}`.
+2. Select `main`, `develop`, or a full commit hash. Invalid sources fail the
+   affected action without silently switching back to the default repository.
+3. For a distributable fork, update its shipped catalog defaults. Keep helpers
+   in separate named files; add new modules to both those defaults and the
+   generated manifest's identity/path/hash inventory.
+4. Test the complete package before publishing. A manually added URL is not
+   sufficient to bypass manifest, hash, version or schema checks.
 
 </details>
 
-The catalog, manifest and modules come from the **same immutable snapshot**.
-The trusted manifest binds the expected file inventory, hashes, version and
-schema. Reject duplicate destinations, unsupported URL forms, path traversal,
+Installation/reinstallation/repair stages the complete required set before
+activation. Reject duplicate destinations, unsupported URLs, path traversal,
 missing files, wrong hashes and incompatible versions before replacing working
-code. No downloaded catalog content is executed.
+code. Each running invocation uses one compatible installed generation.
 
 Ordinary startup, status and automatic hooks use installed modules. Missing
 helpers defer the affected operation; explicit install/reinstall/repair uses the
 verified download path. The complete activation/recovery protocol remains a
-P1 implementation gate in [PLAN.md](../PLAN.md). Existing downgrade restrictions
-remain in force, and choosing `develop` does not disable integrity checks.
+P1 gate in [PLAN.md](../PLAN.md). Existing downgrade restrictions remain in force;
+choosing `develop` does not disable integrity checks.
 
 ## 🧭 Compatibility and documentation
 
@@ -258,6 +272,14 @@ BusyBox configuration. The first measured target is GT-AX11000 on
 common applets. A 64-bit kernel does not establish 64-bit shell arithmetic.
 Use the [compatibility evidence](compatibility.md) and unresolved gates in
 [PLAN.md](../PLAN.md) before choosing runtime primitives.
+
+Minimal Entware dependencies are allowed when a native equivalent cannot meet
+the required contract reliably. Required tools are checked on each launch; an
+unavailable or unusable prerequisite keeps operational work stopped. Failed
+installation is retried on a later launch after checking again. Hook dispatch
+remains prompt, and package work is bounded and serialized. The final guides
+must list the exact selected packages, transitive requirements and supported
+kernel/ABI combinations; package presence alone does not prove compatibility.
 
 Router access for this stage is read-only. Bounded native syntax/capability probes
 are distinct from deploying code, changing services, installing packages,
