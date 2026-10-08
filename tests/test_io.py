@@ -19,6 +19,14 @@ PARSER = ROOT / "modules/mountinfo.awk"
 MOUNTS = [Mount("1"), Mount("2", point=b"/tmp/opt", root=b"/entware", device="8:1")]
 TARGET = "/tmp/opt/bin/jq"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
+SHELLS = [
+    pytest.param("/bin/sh", id="sh"),
+    pytest.param(
+        "/bin/dash",
+        id="dash",
+        marks=pytest.mark.skipif(not Path("/bin/dash").is_file(), reason="dash unavailable"),
+    ),
+]
 
 # Tools are explicit fixture wrappers. Only cat/awk/wc/printf and owned RAM
 # mkdir/rm operations are allowed; the Python dispatcher is HOST TEST CODE.
@@ -206,6 +214,32 @@ class IOFixture:
             ],
         )
 
+    def consumer(self, ledger: bytes, *, mode: str = "select") -> ShellResult:
+        """Validate captured bytes without repeating producer/workspace integration.
+
+        Only acquisition and its already-verified status are replaced. The real
+        consumer reads the staged files, checks fields/framing and uses real wc
+        through _cfmgr_io_size, including NUL-sensitive original byte counts.
+        """
+        self.router.path("work/0.out").write_bytes(snapshot(MOUNTS))
+        self.router.path("work/1.out").write_bytes(ledger)
+        return self.run(
+            "set -f\nLC_ALL=C; export LC_ALL\nIFS=' \t\n'\n"
+            "_io_tab='\t'; _io_lf='\n'\n"
+            "_io_stage=$1; _io_wc=/usr/bin/wc\n"
+            "cfmgr_io_capture() { return 0; }\n"
+            "_cfmgr_io_capture_status() { _io_producer=0; _io_err_bytes=0; }\n"
+            '_cfmgr_io_mount_capture "$2" "$3" "$4" 0 1 "$5" || exit "$?"\n'
+            'printf "%s" "$_mount_ledger"\n',
+            [
+                str(self.router.path("work")),
+                TARGET,
+                str(PARSER),
+                str(self.router.path("work/input")),
+                mode,
+            ],
+        )
+
     def calls(self) -> list[dict]:
         return [
             json.loads(path.read_text()) for path in self.router.path("work/calls").glob("*.json")
@@ -222,18 +256,9 @@ class IOFixture:
         assert self.router.read("ram/foreign") == "preserve foreign target"
 
 
-@pytest.fixture(
-    params=[
-        pytest.param("/bin/sh", id="sh"),
-        pytest.param(
-            "/bin/dash",
-            id="dash",
-            marks=pytest.mark.skipif(not Path("/bin/dash").is_file(), reason="dash unavailable"),
-        ),
-    ]
-)
+@pytest.fixture
 def io(router: RouterHarness, request: pytest.FixtureRequest) -> IOFixture:
-    return IOFixture(router, request.param)
+    return IOFixture(router, getattr(request, "param", "/bin/sh"))
 
 
 def quiet(result: ShellResult, status: int) -> None:
@@ -241,6 +266,7 @@ def quiet(result: ShellResult, status: int) -> None:
     assert result.stdout == result.stderr == ""
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_capture_binary_status_and_private_permissions(io: IOFixture) -> None:
     out, err = b"A\x00B\n", b"synthetic error\n"
     io.settings.update(stdout_hex=out.hex(), stderr_hex=err.hex(), producer_status=7)
@@ -298,6 +324,7 @@ def test_exact_stream_limits_and_conservative_rounding(
     io.clean()
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_failed_slot_is_consumed_and_never_reused(io: IOFixture) -> None:
     io.settings.update(stdout_hex=b"overflow".hex())
     io.save()
@@ -351,6 +378,7 @@ def test_collisions_are_bounded_and_foreign_paths_preserved(
             assert path.is_symlink() and path.read_text() == "preserve foreign target"
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_preexisting_capture_symlink_is_not_followed(io: IOFixture) -> None:
     quiet(
         io.workspace(
@@ -401,6 +429,7 @@ def test_ulimit_setup_failure_never_launches_producer(io: IOFixture) -> None:
     io.clean()
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_native_mount_parser_handoff_and_cleanup(io: IOFixture) -> None:
     result = io.mount()
     assert result.returncode == 0
@@ -479,13 +508,20 @@ BAD_LEDGERS = [
 ]
 
 
+def test_consumer_accepts_complete_mount_ledger(io: IOFixture) -> None:
+    expected = oracle(MOUNTS, TARGET).encode()
+    result = io.consumer(expected)
+    assert result.returncode == 0 and result.stdout.encode() == expected and result.stderr == ""
+    assert io.calls() == []
+    io.clean()
+
+
 @pytest.mark.parametrize("ledger", BAD_LEDGERS)
 def test_parser_zero_exit_requires_complete_exact_framing_and_fields(
     io: IOFixture, ledger: bytes
 ) -> None:
-    io.settings["awk_output_hex"] = ledger.hex()
-    io.save()
-    quiet(io.mount(), 1)
+    quiet(io.consumer(ledger), 1)
+    assert io.calls() == []
     io.clean()
 
 
@@ -525,6 +561,7 @@ def test_final_publication_failure_is_nonzero_and_remains_incomplete(io: IOFixtu
 
 
 @pytest.mark.parametrize("phase", ["mkdir", "cat"])
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_signal_to_workspace_owner_cleans_known_owned_data(io: IOFixture, phase: str) -> None:
     io.settings["modes"][phase] = "signal" if phase == "mkdir" else "signal-owner"
     io.save()
@@ -532,6 +569,7 @@ def test_signal_to_workspace_owner_cleans_known_owned_data(io: IOFixture, phase:
     io.clean()
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_source_and_call_preserve_external_caller_state(io: IOFixture) -> None:
     result = io.run(
         "cfmgr_fixture_callback() { return 0; }\n"
@@ -640,6 +678,7 @@ def test_optional_busybox_private_io(busybox_router: RouterHarness) -> None:
     fixture.clean()
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_native_topology_handoff_retains_all_facts_and_exact_arguments(io: IOFixture) -> None:
     mounts = [
         Mount("1"),
@@ -684,6 +723,31 @@ def framed_topology(line: bytes) -> bytes:
 
 
 @pytest.mark.parametrize(
+    "mode,ledger",
+    [
+        pytest.param("mount", BAD_LEDGERS[2], id="missing-final-lf"),
+        pytest.param("mount", BAD_LEDGERS[3], id="missing-footer"),
+        pytest.param("mount", BAD_LEDGERS[4], id="extra-record"),
+        pytest.param("mount", BAD_LEDGERS[5], id="nul-suffix-byte-count"),
+        pytest.param("mount", BAD_LEDGERS[6], id="nul-inside-record"),
+        pytest.param("mount", BAD_LEDGERS[7], id="footer-count-mismatch"),
+        pytest.param("mount", mutated_ledger(1, b"02"), id="mount-field"),
+        pytest.param(
+            "topology", framed_topology(b"topology\t-\t-\t-\t2\t0\t0"), id="topology-field"
+        ),
+    ],
+)
+def test_parser_rejections_are_wired_through_full_capture(
+    io: IOFixture, mode: str, ledger: bytes
+) -> None:
+    io.settings["awk_output_hex"] = ledger.hex()
+    io.save()
+    quiet(io.topology() if mode == "topology" else io.mount(), 1)
+    assert any(call["tool"] == "awk" for call in io.calls())
+    io.clean()
+
+
+@pytest.mark.parametrize(
     "line",
     [
         b"topology\t-\t-\t-\t0\t0\t0",
@@ -694,9 +758,7 @@ def test_topology_consumer_accepts_supported_facts_without_policy(
     io: IOFixture, line: bytes
 ) -> None:
     expected = framed_topology(line)
-    io.settings["awk_output_hex"] = expected.hex()
-    io.save()
-    result = io.topology()
+    result = io.consumer(expected, mode="topology")
     assert result.returncode == 0 and result.stdout.encode() == expected and result.stderr == ""
     io.clean()
 
@@ -724,9 +786,8 @@ def test_topology_consumer_accepts_supported_facts_without_policy(
     ],
 )
 def test_topology_field_errors_are_rejected_with_correct_footer(io: IOFixture, line: bytes) -> None:
-    io.settings["awk_output_hex"] = framed_topology(line).hex()
-    io.save()
-    quiet(io.topology(), 1)
+    quiet(io.consumer(framed_topology(line), mode="topology"), 1)
+    assert io.calls() == []
     io.clean()
 
 
@@ -741,9 +802,7 @@ def test_topology_requires_three_records_exact_footer_and_original_bytes(io: IOF
         lines[0] + lines[1] + lines[1] + lines[2],
         proper.replace(b"end\t", b"end\t0"),
     ):
-        io.settings["awk_output_hex"] = malformed.hex()
-        io.save()
-        quiet(io.topology(), 1)
+        quiet(io.consumer(malformed, mode="topology"), 1)
     io.clean()
 
 
@@ -771,6 +830,7 @@ def test_topology_cleanup_failure_prevents_publication(io: IOFixture) -> None:
     assert len(list(io.router.path("ram/tmp").glob("cfmgr-io.*"))) == 1
 
 
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_topology_public_entry_uses_fixed_proc_input_and_preserves_caller(io: IOFixture) -> None:
     expected = topology_oracle(MOUNTS, TARGET)
     result = io.run(
@@ -813,6 +873,7 @@ def test_topology_argument_and_internal_mode_contracts(io: IOFixture) -> None:
 
 
 @pytest.mark.parametrize("explicit_select", [False, True])
+@pytest.mark.parametrize("io", SHELLS, indirect=True)
 def test_internal_capture_resets_topology_state_for_default_and_select(
     io: IOFixture, explicit_select: bool
 ) -> None:

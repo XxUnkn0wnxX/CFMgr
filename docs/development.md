@@ -16,6 +16,28 @@ and fix failures until it passes before pushing the tested commits to `develop`.
 Wait for CI and resolve failures before beginning the next set of batches.
 Unvalidated work stays local.
 
+Keep the suite affordable as it grows. Review the latest pytest duration report
+before each `develop` push and after about three local implementation batches,
+whichever comes first. Normal runs report the slowest calls; record comparable
+full-suite times and coverage changes in [PLAN.md](../PLAN.md). Reuse existing
+measurements and time affected cases rather than running the full suite again
+just to gather timings.
+
+Investigate new ordinary tests taking over roughly two seconds, integration
+cases over five seconds, or a roughly 20% increase in comparable suite timings.
+These are review triggers, not automatic failures or reasons to increase
+timeouts. When costs grow, use a focused timing/duplication review and simplify
+before adding further coverage. Aim for a full local suite of a few minutes.
+
+Test data and policy permutations through the actual function or consumer;
+keep a small set of complete integration cases to prove the connections between
+layers. Run the primary shell's behavior matrix once, with selected secondary
+shell cases for compatibility-sensitive behavior and the required BusyBox
+checks. Preserve distinct signal, ownership, descriptor, byte-framing and
+failure regressions. Reduce repeated acquisition and setup, not the assertions
+that establish those contracts. Avoid a complex fixture framework or new
+dependencies solely to save a few cases.
+
 The branch is an active development checkout, not a router release; router
 runtime acceptance and stable promotion remain separate gates.
 

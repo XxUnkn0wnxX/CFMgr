@@ -198,8 +198,6 @@ if tool == "test" and (
     or args == ["/dev/null", "-ef", str(tree / "dev/null")]
 ):
     sys.exit(1 if fault == "null-type" else 0)
-if tool == "mkdir":
-    sys.exit(subprocess.call(["/bin/mkdir", *args]))
 if tool == "printf":
     if (
         fault == "metadata-short"
@@ -241,6 +239,52 @@ sys.exit(
         pass_fds=tuple(fd for fd in (8, 9) if "fd" + str(fd) in record),
     )
 )
+"""
+
+# Focused lifecycle evidence: keep the real outer/nested IO owners, retained
+# descriptors, stateful observations, parser, framing checks and mutation paths.
+# Storage acquisition and bounded captures have their own suites; the explicit
+# full-stack roundtrips and query-signal case below still exercise both here.
+FOCUSED_BOUNDARIES = r"""
+cfmgr_storage_with_test() {
+    cfmgr_io_test "$1" "$2" workspace fixture_storage_entry "$@"
+}
+fixture_storage_entry() {
+    _fixture_target=$4
+    _fixture_block=$7
+    shift 9
+    _fixture_begin=$1
+    shift
+    "$_fixture_begin" "$_fixture_target" "$_fixture_volume" "$@" \
+        9<"$_fixture_target" 8<"$_fixture_block"
+}
+_cfmgr_isolation_query_action() {
+    _fixture_cat=$(_cfmgr_io_find cat) || return 1
+    "$_fixture_cat" "$_isolation_input" >"$_io_stage/raw" 2>"$_io_stage/raw.err" || return 1
+    _fixture_error_size=$(_cfmgr_io_size "$_io_stage/raw.err") || return 1
+    [ "$_fixture_error_size" = 0 ] || return 1
+    _fixture_size=$(_cfmgr_io_size "$_io_stage/raw") || return 1
+    _fixture_awk=$(_cfmgr_io_find awk) || return 1
+    CFMGR_MOUNT_TARGET=$2
+    export CFMGR_MOUNT_TARGET
+    "$_fixture_awk" -v "cfmgr_mountinfo_size=$_fixture_size" \
+        -v cfmgr_mountinfo_mode=topology -f "$_isolation_parser" \
+        <"$_io_stage/raw" >"$_io_stage/parsed" 2>"$_io_stage/parsed.err" || return 1
+    _fixture_error_size=$(_cfmgr_io_size "$_io_stage/parsed.err") || return 1
+    [ "$_fixture_error_size" = 0 ] || return 1
+    _cfmgr_isolation_read "$_io_stage/parsed" || return 1
+    _mount_ledger=$_isolation_text
+    if [ "$4" = 1 ]; then
+        _fixture_readlink=$(_cfmgr_io_find readlink) || return 1
+        "$_fixture_readlink" -f "$_isolation_root" \
+            >"$_io_stage/2.out" 2>"$_io_stage/2.err" || return 1
+        _fixture_error_size=$(_cfmgr_io_size "$_io_stage/2.err") || return 1
+        [ "$_fixture_error_size" = 0 ] || return 1
+        _cfmgr_storage_line 2 || return 1
+        [ "$_storage_line" = "$_isolation_root" ] || return 1
+    fi
+    _cfmgr_isolation_write "$3" "$_mount_ledger"
+}
 """
 
 CALLBACK = r"""
@@ -323,9 +367,7 @@ class IsolationFixture:
             "cat",
             "ls",
             "hexdump",
-            "awk",
             "rm",
-            "mkdir",
             "printf",
         ):
             path = router.root / "bin" / tool
@@ -334,11 +376,6 @@ class IsolationFixture:
             bypass = ""
             if tool == "printf":
                 bypass = 'case $1 in "capture"* | "%b") exec /usr/bin/printf "$@" ;; esac\n'
-            elif tool == "mkdir":
-                bypass = (
-                    'if [ "$#" = 3 ]; then '
-                    'case $3 in */cfmgr-io.*) exec /bin/mkdir "$@" ;; esac; fi\n'
-                )
             router.fake_tool(
                 tool,
                 bypass + f"exec {shlex.quote(sys.executable)} "
@@ -346,6 +383,13 @@ class IsolationFixture:
                 f"{shlex.quote(str(ROOT))} {shlex.quote(str(self.storage.settings_path))} "
                 f'{tool} "$@"\n',
             )
+        # No lifecycle case faults these tools or asserts their invocation logs.
+        # Keep the actual parser and mkdir, avoiding Python pass-throughs.
+        for tool, executable in (("awk", "/usr/bin/awk"), ("mkdir", "/bin/mkdir")):
+            path = router.root / "bin" / tool
+            path.unlink()
+            path.symlink_to(executable)
+        router.path("bin/printf").rename(router.path("bin/printf-fault"))
 
     def save(self) -> None:
         self.storage.save()
@@ -363,11 +407,28 @@ class IsolationFixture:
         callback: str = "fixture_callback",
         overlap: bool = False,
         callback_exit: bool = False,
+        full_stack: bool = False,
     ) -> ShellResult:
+        # Only these two cases need the native-write fault double. All other
+        # cases still perform real metadata writes with the native printf.
+        printf = self.router.root / "bin/printf"
+        if printf.is_symlink():
+            printf.unlink()
+        printf.symlink_to(
+            self.router.path("bin/printf-fault")
+            if self.settings.get("isolation_fault") in {"metadata-short", "record-error"}
+            else "/usr/bin/printf"
+        )
         self.router.write(
             "work/invoke-isolation.sh",
             f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
+            + (
+                ""
+                if full_stack
+                else f"_fixture_volume={shlex.quote(self.storage.expected())}\n"
+                + FOCUSED_BOUNDARIES
+            )
             + prefix
             + "fixture_callback() {\n"
             + (self.overlap_body() if overlap else "")
@@ -455,7 +516,7 @@ def test_owned_root_roundtrip_uses_retained_storage_and_exact_native_commands(
     isolation: IsolationFixture,
 ) -> None:
     arguments = ("", "spaces\ttabs\nlines", "$(touch SECRET)")
-    isolation.quiet(isolation.run(arguments=arguments), 0)
+    isolation.quiet(isolation.run(arguments=arguments, full_stack=True), 0)
     observed = json.loads(isolation.router.path("work/callback.observation").read_text())
     assert observed["args"] == [
         str(isolation.guard / "root"),
@@ -609,7 +670,7 @@ def test_cleanup_refuses_unproved_or_busy_mounts_and_retains_guard(
     )
 
 
-@pytest.mark.parametrize("fault", ["signal-mount", "signal-callback", "signal-query"])
+@pytest.mark.parametrize("fault", ["signal-mount", "signal-callback"])
 def test_signal_during_active_operation_preserves_guard_and_skips_unmount(
     isolation: IsolationFixture, fault: str
 ) -> None:
@@ -617,8 +678,19 @@ def test_signal_during_active_operation_preserves_guard_and_skips_unmount(
     isolation.save()
     isolation.quiet(isolation.run(), 143)
     assert isolation.guard.is_dir()
-    assert (isolation.guard / "active").is_file() == (fault != "signal-query")
+    assert (isolation.guard / "active").is_file()
     assert not any(item["tool"] == "umount" for item in isolation.mutations())
+
+
+def test_signal_during_full_capture_query_preserves_guard_and_skips_unmount(
+    native: IsolationFixture,
+) -> None:
+    # The fake cat signals its capture owner via the actual capture subprocess.
+    native.settings["isolation_fault"] = "signal-query"
+    native.save()
+    native.quiet(native.run(full_stack=True), 143)
+    assert native.guard.is_dir() and not (native.guard / "active").exists()
+    assert not any(item["tool"] == "umount" for item in native.mutations())
 
 
 def test_callback_failure_is_preserved_after_verified_ordered_cleanup(

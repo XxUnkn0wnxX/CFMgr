@@ -21,6 +21,14 @@ MOUNT_PARSER = ROOT / "modules/mountinfo.awk"
 STORAGE_PARSER = ROOT / "modules/storageinfo.awk"
 UUID = "00112233-4455-6677-8899-aabbccddeeff"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
+SHELLS = [
+    pytest.param("/bin/sh", id="sh"),
+    pytest.param(
+        "/bin/dash",
+        id="dash",
+        marks=pytest.mark.skipif(not Path("/bin/dash").is_file(), reason="dash unavailable"),
+    ),
+]
 
 # Explicit host-only tools inspect actual inherited descriptors. Production code
 # never imports this dispatcher or selects its paths through the environment.
@@ -331,17 +339,9 @@ class StorageFixture:
         )
 
 
-@pytest.fixture(
-    params=[
-        "/bin/sh",
-        pytest.param(
-            "/bin/dash",
-            marks=pytest.mark.skipif(not Path("/bin/dash").is_file(), reason="dash unavailable"),
-        ),
-    ]
-)
+@pytest.fixture
 def storage(router: RouterHarness, request: pytest.FixtureRequest) -> StorageFixture:
-    return StorageFixture(router, request.param)
+    return StorageFixture(router, getattr(request, "param", "/bin/sh"))
 
 
 def quiet(result: ShellResult, status: int = 1) -> None:
@@ -349,6 +349,7 @@ def quiet(result: ShellResult, status: int = 1) -> None:
     assert result.stdout == result.stderr == ""
 
 
+@pytest.mark.parametrize("storage", SHELLS, indirect=True)
 def test_retained_observation_uses_all_slots_and_original_descriptors(
     storage: StorageFixture,
 ) -> None:
@@ -553,6 +554,7 @@ def test_cleanup_failure_suppresses_complete_staged_observation(storage: Storage
 
 
 @pytest.mark.parametrize("with_callback", [False, True])
+@pytest.mark.parametrize("storage", SHELLS, indirect=True)
 def test_caller_descriptors_traps_and_environment_are_preserved(
     storage: StorageFixture, with_callback: bool
 ) -> None:
@@ -630,6 +632,7 @@ def test_optional_busybox_retained_observation(busybox_router: RouterHarness) ->
 
 
 @pytest.mark.parametrize("replace_block", [False, True])
+@pytest.mark.parametrize("storage", SHELLS, indirect=True)
 def test_trusted_callback_receives_completed_observation_and_original_fds(
     storage: StorageFixture, replace_block: bool
 ) -> None:
@@ -673,13 +676,10 @@ def test_callback_is_never_invoked_after_unproved_observation(
     storage.clean()
 
 
-@pytest.mark.parametrize("status", [3, 7, 127])
-def test_callback_failure_status_is_preserved_and_output_discarded(
-    storage: StorageFixture, status: int
-) -> None:
-    storage.settings["callback_status"] = status
+def test_callback_failure_status_is_preserved_and_output_discarded(storage: StorageFixture) -> None:
+    storage.settings["callback_status"] = 7
     storage.save()
-    quiet(storage.run(prefix=storage.callback_prefix(), callback="fixture_callback"), status)
+    quiet(storage.run(prefix=storage.callback_prefix(), callback="fixture_callback"), 7)
     assert storage.callback_observation()["count"] == 1
     storage.clean()
 
@@ -692,6 +692,7 @@ def test_callback_success_cannot_override_owned_cleanup_failure(storage: Storage
     assert len(list(storage.router.path("ram/tmp").glob("cfmgr-io.*"))) == 1
 
 
+@pytest.mark.parametrize("storage", SHELLS, indirect=True)
 def test_callback_signal_cleans_workspace_and_preserves_signal_status(
     storage: StorageFixture,
 ) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shlex
+import shutil
 import sys
 from pathlib import Path
 
@@ -229,6 +230,31 @@ class DiagnosticFixture:
             },
         )
 
+    def run_context(self) -> ShellResult:
+        stage = self.router.path("ram/tmp/cfmgr-diagnostic.context")
+        assert not stage.exists()
+        stage.mkdir(mode=0o700)
+        script = (
+            f". {shlex.quote(str(SOURCE))}\n"
+            f"_diag_tools={shlex.quote(str(self.router.path('bin')))}\n"
+            f"_diag_stage={shlex.quote(str(stage))}\n"
+            "_diag_sequence=0\n_diag_status=0\n"
+            "IFS=' \t\n'; set -f\n"
+            "_cfmgr_diagnostic_context\n"
+        )
+        try:
+            return self.router.run(
+                script,
+                timeout=15,
+                env={
+                    "PROVIDER_TOKEN": "SECRET-provider-token",
+                    "OPENSSL_CONF": "/opt/SECRET-config",
+                    "OPENSSL_ENGINES": "/opt/SECRET-engine",
+                },
+            )
+        finally:
+            shutil.rmtree(stage)
+
     def calls(self) -> list[dict]:
         path = Path(self.settings["log"])
         return [json.loads(record.read_text()) for record in path.glob("*.json")]
@@ -242,11 +268,13 @@ def diagnostic(router: RouterHarness) -> DiagnosticFixture:
     return DiagnosticFixture(router)
 
 
-def rows(result: ShellResult) -> dict[str, list[str]]:
+def rows(result: ShellResult, *, header: bool = True) -> dict[str, list[str]]:
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert lines[0] == "CFMgr 0.1.0 development native diagnostics (partial health coverage)"
-    data = [line.split("\t") for line in lines[1:]]
+    if header:
+        assert lines[0] == "CFMgr 0.1.0 development native diagnostics (partial health coverage)"
+        lines = lines[1:]
+    data = [line.split("\t") for line in lines]
     assert all(len(row) == 5 and row[1] in {"PASS", "FAIL", "SKIP"} for row in data)
     assert len({row[0] for row in data}) == len(data)
     return {row[0]: row[1:] for row in data}
@@ -362,11 +390,7 @@ def test_missing_tool_has_distinct_prerequisite_skip(
     ("tool", "probe"),
     [
         ("sh", "SHELL.INT31"),
-        ("awk", "AWK.FRAMING"),
         ("wc", "WC.BYTES"),
-        ("openssl", "OPENSSL.SHA256"),
-        ("curl", "CURL.OPTIONS"),
-        ("readlink", "READLINK.CANONICAL"),
         ("printf", "PRINTF.FORMAT"),
         ("test", "TEST.INTEGER"),
         ("[", "BRACKET.INTEGER"),
@@ -388,6 +412,26 @@ def test_present_unusable_tool_fails_with_redacted_output(
     diagnostic.assert_clean()
 
 
+@pytest.mark.parametrize("behavior", ["invalid", "error"])
+def test_independent_unusable_tools_all_fail_in_one_report(
+    diagnostic: DiagnosticFixture, behavior: str
+) -> None:
+    probes = {
+        "awk": "AWK.FRAMING",
+        "openssl": "OPENSSL.SHA256",
+        "curl": "CURL.OPTIONS",
+        "readlink": "READLINK.CANONICAL",
+    }
+    diagnostic.settings["behaviors"].update(dict.fromkeys(probes, behavior))
+    diagnostic.save()
+    result = diagnostic.run()
+    assert result.returncode == 1
+    report = rows(result)
+    assert all(report[probe][0] == "FAIL" for probe in probes.values())
+    assert "SECRET" not in result.stdout + result.stderr
+    diagnostic.assert_clean()
+
+
 @pytest.mark.parametrize(
     "value", ["SECRET\tcredential", "SECRET\nserial", "A" * 49, "$(touch injected)", ""]
 )
@@ -396,11 +440,23 @@ def test_context_output_is_rejected_and_not_echoed(
 ) -> None:
     diagnostic.settings["context"] = {"productid": value}
     diagnostic.save()
+    result = diagnostic.run_context()
+    assert result.returncode == 0
+    assert rows(result, header=False)["CONTEXT.productid"][0] == "SKIP"
+    assert "SECRET" not in result.stdout + result.stderr
+    assert value not in result.stdout if value else True
+    diagnostic.assert_clean()
+
+
+def test_full_report_rejects_and_redacts_invalid_context_output(
+    diagnostic: DiagnosticFixture,
+) -> None:
+    diagnostic.settings["context"] = {"productid": "SECRET\tcredential"}
+    diagnostic.save()
     result = diagnostic.run()
     assert result.returncode == 3
     assert rows(result)["CONTEXT.productid"][0] == "SKIP"
     assert "SECRET" not in result.stdout + result.stderr
-    assert value not in result.stdout if value else True
     diagnostic.assert_clean()
 
 
