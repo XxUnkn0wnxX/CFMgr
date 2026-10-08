@@ -2,7 +2,7 @@
 
 [← README](../README.md) · [Development](development.md) · [Implementation plan](../PLAN.md)
 
-![Runtime](https://img.shields.io/badge/runtime-native_sh-4EAA25)
+![Runtime](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
 ![Evidence](https://img.shields.io/badge/evidence-source_%2B_read--only_probes-blue)
 ![Acceptance](https://img.shields.io/badge/runtime_acceptance-pending-orange)
 
@@ -50,8 +50,8 @@ behavior has not been tested. [MIPS toolchain][380-toolchain] ·
 
 | Feature | Required capability | Current boundary |
 | --- | --- | --- |
-| Core manager, DDNS, IP-Sync | Native shell/awk, verified HTTPS and CA trust, bounded parsing/IO, safe locking and JFFS/RAM state | Must work without Entware. Parser, transaction and complete native runtime acceptance remain pending. |
-| Integrity verification | Usable `sha256sum`, otherwise native OpenSSL SHA-256 | Both produced the same synthetic digest on the current router; updater implementation remains pending. |
+| Core manager, DDNS, IP-Sync | POSIX shell, verified HTTPS/CA trust, bounded IO/locking, JFFS/RAM state and usable shared Entware prerequisites | Native recovery diagnostics remain available when prerequisites fail. Complete runtime acceptance remains pending. |
+| Integrity verification | Required `coreutils-sha256sum`; native OpenSSL retained for bootstrap and edge fallback | Both produced the same synthetic digest on the current router. Fallback does not waive failed required-package installation. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
 | Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | A source capability check does not prove extraction, ownership, mount-loss or restore safety. |
@@ -77,16 +77,86 @@ Entware works. Native DDNS/IP-Sync eligibility is evaluated separately.
 - Bound streamed responses independently. Before curl 8.4.0,
   `--max-filesize` cannot enforce a limit for responses of unknown size.
   [curl size-limit behavior][curl-size]
-- Prefer a usable `sha256sum` on **each** verification, then fall back to native
-  OpenSSL. Explicit install/setup may make one bounded attempt to obtain the
-  exact Entware provider, currently `coreutils-sha256sum`. Updates and ordinary
-  launches do not install packages. Missing integrity capability fails closed.
+- Prefer a usable `sha256sum` on **each** verification, with native OpenSSL for
+  bootstrap and exceptional fallback. The selected Entware installation set
+  includes `coreutils-sha256sum`; failed required installation blocks operational
+  startup and can be retried on the next launch.
+
+## 📦 Entware coverage and selected packages
+
+These official feed snapshots were checked on **8 October 2026**. They establish
+availability, not CFMgr runtime acceptance. Version numbers are evidence from
+that date, not installer pins.
+
+| Feed | Entware status | `jq` | `coreutils-sha256sum` / `coreutils-timeout` | `bind-dig` |
+| --- | --- | --- | --- | --- |
+| [aarch64-k3.10][feed-aarch64] | Maintained | 1.8.1-2 | 9.9-2 | 9.20.18-2 |
+| [armv7sf-k3.2][feed-arm32] | Maintained | 1.8.1-2 | 9.9-2 | 9.20.18-2 |
+| [mipselsf-k3.4][feed-mips] | Maintained | 1.8.1-2 | 9.9-2 | 9.20.18-2 |
+| [armv7sf-k2.6][feed-arm26] | Support withdrawn | 1.6-2 | 9.3-1 | 9.18.16-1 |
+| [Archived MIPSEL][feed-mips-old] | Archived Entware-ng | 1.5-2a | 8.23-3 | 9.11.2-3 |
+
+The normal development target is maintained Entware feeds. ARM Linux 2.6.36.4
+and MIPS Linux 2.6.22.19 need separate legacy acceptance; archive availability
+does not establish support. In particular, `mipselsf-k3.4` is **not** the feed for
+an old 2.6.22 router. [Entware support matrix][entware-support] ·
+[withdrawn-feed announcement][entware-eos]
+
+| Selected package | Scope and purpose |
+| --- | --- |
+| `jq` | Shared JSON selection/serialization. Use the ordinary package's non-regex functionality; no `jq-full` requirement. |
+| `coreutils-timeout` | Shared bounded command/process-group supervision. Bootstrap must work safely before this command exists. |
+| `coreutils-sha256sum` | Required checksum command, present across every feed above. OpenSSL remains available for bootstrap/fallback. |
+| `bind-dig` | Tunnel DNS/SRV readiness when native DNS tools cannot satisfy the required queries. |
+| `flock` | Only if the native locking command cannot satisfy the tested contract. Present in all five inspected feeds. |
+
+This package selection is a design decision; installation and complete tool
+acceptance are not implemented yet. CFMgr will install only its selected
+packages and let opkg resolve their declared dependencies. It will not install
+Entware itself or upgrade unrelated packages.
+
+<details>
+<summary>🔗 Libraries, ABI and kernel limits</summary>
+
+The three shared packages on maintained/ARM-2.6 feeds depend on `libc`, `libssp`,
+`librt` and `libpthread`; the coreutils commands also use the small `coreutils`
+metadata package. This is not an installation of every coreutils command.
+The base library chain includes `libgcc`. Archived MIPSEL has a smaller declared
+dependency set; use its own metadata, never another feed's packages.
+
+`bind-dig` adds `bind-libs`. On the sampled current feed that adds OpenSSL, zlib,
+libatomic, libuv, liburcu and libnghttp2 alongside base libraries. This larger
+dependency chain stays tunnel-specific. Plain Entware `jq` omits regex functions
+such as `match`, `test` and `sub`; CFMgr filters must not depend on them.
+[jq recipe][jq-recipe] · [coreutils recipe][coreutils-recipe]
+
+Maintained feeds use glibc 2.27; its source minimum is Linux 3.2, or 3.7 for
+AArch64. The ARM 2.6 feed uses glibc 2.23 and specifically targets Linux 2.6.36.
+Those libc limits and feed names do not prove every package's syscall/CPU/ABI
+compatibility. [glibc minimum][glibc-min] · [AArch64 minimum][glibc-arm64-min] ·
+[Entware toolchain explanation][entware-readme]
+
+The live target is Linux 4.1.51. Current official Merlin source also contains
+4.19.183 and 4.19.294 kernel families. These are source observations, not an
+invented maximum supported kernel. The final README will state the lowest
+accepted profile and the highest tested/source-known families with their
+evidence level. [AX kernel][kernel-ax] · [BE kernel][kernel-be]
+
+</details>
+
+Required packages are checked on launch and during CFMgr install, update and
+reinstall. Missing or unusable requirements block operational work; failed
+installation can be retried on the next launch. A separate **Reinstall Entware
+dependencies** action will force-reinstall CFMgr's selected package set and
+verify it afterward. It preserves configuration/activation and does not perform
+the Cloudflared submenu's daemon, hook or worker reinstall.
 
 <details>
 <summary>🚧 Remaining firmware-specific proofs</summary>
 
-Native SRV readiness still needs a proved approach: the current `nslookup`
-exposes host/server lookup only. The matched custom-DDNS callback takes a result
+SRV readiness will use a verified capable DNS tool; the current native `nslookup`
+exposes host/server lookup only, and `bind-dig` remains untested on the router.
+The matched custom-DDNS callback takes a result
 without a request identity, so delayed background completion cannot yet be
 treated as safe. These gates are recorded in `PLAN.md` before dependent code.
 
@@ -114,3 +184,17 @@ performed. Full boot/outage and feature acceptance require later testing.
 [cf-go]: https://github.com/cloudflare/cloudflared/blob/18cdfe0a6fc7b72a0702d255a1f984e776ce0498/go.mod#L3
 [go-min]: https://go.dev/wiki/MinimumRequirements
 [curl-size]: https://curl.se/docs/manpage.html#--max-filesize
+[feed-aarch64]: https://bin.entware.net/aarch64-k3.10/Packages.gz
+[feed-arm32]: https://bin.entware.net/armv7sf-k3.2/Packages.gz
+[feed-mips]: https://bin.entware.net/mipselsf-k3.4/Packages.gz
+[feed-arm26]: https://bin.entware.net/armv7sf-k2.6/Packages.gz
+[feed-mips-old]: https://pkg.entware.net/binaries/mipsel/Packages.gz
+[entware-support]: https://github.com/Entware/Entware/wiki#the-entware-wiki
+[entware-eos]: https://github.com/Entware/Entware/discussions/1018
+[entware-readme]: https://bin.entware.net/Readme.txt
+[jq-recipe]: https://github.com/Entware/entware-packages/blob/b6a6f2962f62882b76dfe45f9f9e1238cd9b74fd/utils/jq/Makefile#L36
+[coreutils-recipe]: https://github.com/Entware/entware-packages/blob/b6a6f2962f62882b76dfe45f9f9e1238cd9b74fd/utils/coreutils/Makefile#L60
+[glibc-min]: https://github.com/bminor/glibc/blob/23158b08a0908f381459f273a984c6fd328363cb/sysdeps/unix/sysv/linux/configure.ac#L33
+[glibc-arm64-min]: https://github.com/bminor/glibc/blob/23158b08a0908f381459f273a984c6fd328363cb/sysdeps/unix/sysv/linux/aarch64/configure.ac#L4
+[kernel-ax]: https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7891a288a7/release/src-rt-5.04axhnd.675x/kernel/linux-4.19/Makefile#L2
+[kernel-be]: https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7891a288a7/release/src-rt-5.04behnd.4916/kernel/linux-4.19/Makefile#L2

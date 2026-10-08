@@ -121,6 +121,7 @@ BusyBox build also does not reproduce a router's stripped older build.
 | `tests/test_harness.py` | Isolation, input/output, paths, deadlines, and child cleanup |
 | `tests/test_reporting.py` | Accurate test-evidence counts |
 | `tests/test_primitives.py` | Native decimal/version/digest parsing and caller-state preservation |
+| `tests/test_ip.py` | Strict IPv4/IPv6 host syntax and deterministic canonical formatting |
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
@@ -167,6 +168,17 @@ check exit status, exact footer/newline/EOF, body byte count and sequential reco
 count before using any token. File ownership, bounded transport and router
 performance remain separate integration requirements. See the frozen contract
 in [PLAN.md](../PLAN.md#native-json-parser-proof-contract--current-package).
+
+`src/ip.sh` provides separate IPv4/IPv6 normalization functions. IPv6 uses lower
+case, shortest hextets and longest-leftmost zero compression, including hex
+output for dotted IPv4 tails. Valid syntax is not public-address eligibility;
+WAN selection, freshness and publish decisions remain separate. Python 3.14
+renders mapped addresses differently, so tests use explicit mapped vectors and
+address-equality checks alongside the independent standard-library oracle.
+
+The measured firmware resolves `printf`, `test` and `[` to BusyBox applet paths,
+not shell builtins. Native callers need a vetted firmware PATH even though host
+shell tests can run these helpers with no external tools exposed.
 
 ## 🔎 Evidence and stage commits
 
@@ -273,13 +285,17 @@ common applets. A 64-bit kernel does not establish 64-bit shell arithmetic.
 Use the [compatibility evidence](compatibility.md) and unresolved gates in
 [PLAN.md](../PLAN.md) before choosing runtime primitives.
 
-Minimal Entware dependencies are allowed when a native equivalent cannot meet
-the required contract reliably. Required tools are checked on each launch; an
-unavailable or unusable prerequisite keeps operational work stopped. Failed
-installation is retried on a later launch after checking again. Hook dispatch
-remains prompt, and package work is bounded and serialized. The final guides
-must list the exact selected packages, transitive requirements and supported
-kernel/ABI combinations; package presence alone does not prove compatibility.
+The selected shared Entware prerequisites are `jq`, `coreutils-timeout` and
+`coreutils-sha256sum`; the [compatibility matrix](compatibility.md) documents
+scoped additions and feed/library evidence. Required tools are checked on each
+launch and manager install/update/reinstall. An unavailable or unusable
+prerequisite keeps operational work stopped; a later launch checks and can retry
+installation. Advanced options will also provide **Reinstall Entware
+dependencies**, distinct from Cloudflared daemon/hook/worker reinstallation.
+These package flows remain unimplemented. Hook dispatch must stay prompt, with
+bounded serialized package work and a native recovery entry for broken tools.
+The final guides must state the accepted kernel/ABI combinations; package
+presence alone does not prove compatibility.
 
 Router access for this stage is read-only. Bounded native syntax/capability probes
 are distinct from deploying code, changing services, installing packages,
