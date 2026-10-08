@@ -40,6 +40,8 @@ flowchart LR
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
 | `modules/isolation.sh` | Own a private RAM root, verify two exact bind mounts and remove them before deleting staging | Internal synchronous callback only; no runtime chroot or Entware execution |
+| `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Unwired internal helper; requires admitted executable closure and explicit lifecycle completion gating |
+| `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must independently approve provenance and ELF graph before execution |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
