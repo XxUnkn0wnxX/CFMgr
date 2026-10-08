@@ -1,6 +1,6 @@
 # 🛠️ Development
 
-[← README](../README.md) · [User setup](setup.md) · [Compatibility](compatibility.md) · [Implementation plan](../PLAN.md) · [Test fixtures](../tests/fixtures/README.md)
+[← README](../README.md) · [User setup](setup.md) · [Architecture](architecture.md) · [Compatibility](compatibility.md) · [Implementation plan](../PLAN.md) · [Test fixtures](../tests/fixtures/README.md)
 
 ![Python requirement](https://img.shields.io/badge/development-Python_3.11%2B-3776ab?logo=python&logoColor=white)
 ![Runtime target](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
@@ -10,10 +10,10 @@ CFMgr is being implemented in checked stages. This guide describes the working
 developer tools; [PLAN.md](../PLAN.md) remains the design, acceptance checklist,
 and progress record. There is no installable manager yet.
 
-During initial review, `develop` receives documentation and requirements updates;
-implementation and test code remain local until user testing and publication
-approval. The check commands below describe that local development checkout and
-become available in a fresh clone when its code is published.
+Completed implementation, tests and documentation are published to `develop`
+after stage validation and review. Unvalidated work stays local. The branch is
+an active development checkout, not a router release; router runtime acceptance
+and stable promotion remain separate gates.
 
 > [!IMPORTANT]
 > Python and these dependencies run on developer machines only. The router
@@ -274,11 +274,11 @@ Develop on `develop`. For each coherent stage, review the affected contracts,
 implement and test normal/failure paths, run the relevant checks, and update the
 plan before committing. Explain changes to existing test expectations; preserve
 the behavior being tested. Do not mask safety failures with skips or `xfail`.
-Documentation and requirements may be published to `develop` during this work.
-Keep those changes separate from code commits: pushing a later documentation
-commit must never publish its unapproved code ancestors. Implementation and test
-code require completed user testing and publication approval; stable promotion
-remains separate.
+The user authorizes completed code, tests, documentation and requirements to be
+published to `develop` after stage checks and review pass. Keep the README's
+explicit active-development warning until router runtime acceptance is complete.
+Never include an unfinished worker's changes in a passing-stage commit. Stable
+promotion and live deployment still require separate authorization.
 
 ## 📦 Module catalog and forks
 
