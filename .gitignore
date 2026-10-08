@@ -1,17 +1,32 @@
+# macOS
 .DS_Store
+
+# Local workspace
 .tmp/
 tmp/
 AGENTS.md
+
+# Python environment and cache
 .venv/
+.pytest_cache/
+.ruff_cache/
 __pycache__/
 *.py[cod]
+
+# Private environment
 .env
 .env.*
 !.env.example
+
+# Router configuration
 /cfmgr.conf
 /cfmgr.conf.*
 !/cfmgr.conf.example
+
+# Credentials
 /secrets/
 /credentials/
+
+# Logs
 *.log
 *.log.*
