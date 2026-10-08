@@ -1,0 +1,10 @@
+# Development only. Python >=3.11; tested with Python 3.14.0.
+# Pin direct tools and pytest's runtime dependencies for repeatable recreation.
+pytest==9.1.1
+ruff==0.16.10
+# Retain shfmt 3.7.0, verified to execute on macOS Big Sur.
+shfmt-py==3.7.0.1
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.21.0
