@@ -3,9 +3,28 @@ name: Checks
 on:
   push:
     branches: [develop]
+    paths:
+      - cfmgr
+      - src/**
+      - tests/**
+      - tools/**
+      - requirements-dev.txt
+      - pytest.ini
+      - ruff.toml
+      - .github/workflows/checks.yml
+      - '!**/*.md'
   pull_request:
     branches: [develop]
-  workflow_dispatch:
+    paths:
+      - cfmgr
+      - src/**
+      - tests/**
+      - tools/**
+      - requirements-dev.txt
+      - pytest.ini
+      - ruff.toml
+      - .github/workflows/checks.yml
+      - '!**/*.md'
 
 permissions:
   contents: read

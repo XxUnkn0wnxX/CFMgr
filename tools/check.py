@@ -81,7 +81,7 @@ def main() -> int:
         print("No .sh/.sh.in source files yet; shell source checks have no inputs.", flush=True)
     pytest = [sys.executable, "-m", "pytest"]
     if busybox:
-        pytest.extend(["--busybox", busybox])
+        pytest.append(f"--busybox={busybox}")
     else:
         print("BusyBox unavailable/unselected: compatibility remains unverified.", flush=True)
     commands.append(pytest)

@@ -34,6 +34,8 @@ The implementation plan, build checklist, and handoff notes are maintained in [P
 
 🧩 [Architecture](docs/architecture.md) explains the implemented foundations, planned execution boundaries and storage responsibilities.
 
+🤝 [Contributing](CONTRIBUTING.md): all pull requests must target `develop`.
+
 🔎 [Health-report development](docs/development.md#native-health-report) explains the current `--diagnostic` / `--doctor` checks, exit codes and remaining coverage.
 
 🧭 [Firmware compatibility](docs/compatibility.md) records the measured target, older-release research, and remaining support gates. Completed stages are published to `develop` after their tests and review pass; this does not make development code a router release.

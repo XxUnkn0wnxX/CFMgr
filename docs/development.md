@@ -114,8 +114,9 @@ BusyBox build also does not reproduce a router's stripped older build.
 
 ### Linux CI
 
-The [Checks workflow](../.github/workflows/checks.yml) runs on pushes and pull
-requests targeting `develop`, with a manual trigger as well. It uses Ubuntu
+The [Checks workflow](../.github/workflows/checks.yml) runs on code, test and
+tooling changes pushed to `develop` or proposed in pull requests targeting
+`develop`. Documentation-only changes skip CI. It uses Ubuntu
 24.04, Python 3.14.0 in a virtualenv, the pinned Python requirements and the
 runner's packaged BusyBox/ShellCheck. It invokes the same check command with
 `--busybox /usr/bin/busybox`, so missing BusyBox is a failure rather than a skip.
@@ -123,8 +124,12 @@ Tool versions are printed in the job log.
 
 The workflow has read-only repository permissions and no router or provider
 credentials. Linux/BusyBox results complement the Mac checks; they do not prove
-Merlin firmware, 32-bit arithmetic or hardware acceptance. The first remote run
-is pending when this workflow is introduced; results are recorded in the plan.
+Merlin firmware, 32-bit arithmetic or hardware acceptance. Its first execution
+passed static checks and exposed a pytest custom-option discovery issue before
+test collection. The argument fix has a targeted regression; subsequent results
+are recorded in the plan.
+
+All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 🧱 Test structure
 
