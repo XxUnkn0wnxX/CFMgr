@@ -157,6 +157,13 @@ mapping behavior. Its namespaces and compiler are developer tools only. The
 [plan](../PLAN.md#mount-snapshot-parser-contract--current-package) records its
 proof gates and the distinction from hostile-root security isolation.
 
+Before any bind, the owner checks the native BusyBox unmount capability using
+bounded help output. It selects the older `-D -n` or newer `-n` command while
+preserving ordinary unmount and avoiding loop-device and mtab side effects.
+Unknown capability stops the attempt before mounts; an actual cleanup failure
+never triggers a retry with different flags. Firmware version numbers alone
+do not select this behavior.
+
 For the restricted opkg/gzip path, the next cleanup proof uses normal unmount's
 busy check: admitted executable/library mappings retain the exact Opt bind.
 Native-launcher completion and a successful verified unmount are both required.

@@ -59,7 +59,7 @@ _cfmgr_isolation_tool() (
 	fi
 )
 
-# All owned metadata is <=64KiB and <=3 LF records. Reconstruct exact bytes:
+# Owned mount/intent metadata is <=64KiB and <=3 LF records. Reconstruct exact bytes:
 # shell read can discard NUL, and native printf can report false write success.
 _cfmgr_isolation_read() {
 	_isolation_text=
@@ -85,6 +85,80 @@ _cfmgr_isolation_write() {
 	) || return 1
 	_cfmgr_isolation_read "$1" || return 1
 	[ "$_isolation_text" = "$2" ]
+}
+
+# BusyBox changed loop cleanup from default/-D to opt-in/-d. Admit only its
+# unambiguous full help advertisement, without assuming firmware/version or -n
+# help visibility (Merlin can hide -n with MTAB_SUPPORT disabled).
+_cfmgr_isolation_umount_admit() {
+	_isolation_umount_profile=
+	_isolation_umount_help=$_isolation_guard/umount-help
+	[ ! -e "$_isolation_umount_help" ] && [ ! -L "$_isolation_umount_help" ] || return 1
+	(
+		# POSIX file-limit units are 512 bytes; leave headroom above the 4KiB
+		# accepted output while bounding a faulty producer's staged file.
+		ulimit -f 16 || exit 1
+		set -C
+		"$_isolation_umount" --help >"$_isolation_umount_help" 2>&1
+	)
+	_isolation_help_status=$?
+	case $_isolation_help_status in 0) ;; 129 | 130 | 143) return "$_isolation_help_status" ;; *) return 1 ;; esac
+	_cfmgr_isolation_umount_classify "$_isolation_umount_help"
+}
+
+_cfmgr_isolation_umount_classify() {
+	_isolation_umount_profile=
+	_isolation_help_profile=
+	_isolation_help_size=$(_cfmgr_io_size "$1") || return 1
+	[ "$_isolation_help_size" -gt 0 ] && [ "$_isolation_help_size" -le 4096 ] || return 1
+	_isolation_help_text=
+	_isolation_help_line=
+	_isolation_help_lines=0
+	_isolation_help_usage=0
+	while IFS= read -r _isolation_help_line; do
+		_isolation_help_lines=$((_isolation_help_lines + 1))
+		[ "$_isolation_help_lines" -le 32 ] || return 1
+		case $_isolation_help_line in *[!\ -~"$_io_tab"]*) return 1 ;; esac
+		_isolation_help_text=$_isolation_help_text$_isolation_help_line$_io_lf
+		if [ "$_isolation_help_lines" -eq 1 ]; then
+			case $_isolation_help_line in "BusyBox v"[0123456789]*" multi-call binary.") ;; *) return 1 ;; esac
+		fi
+		case $_isolation_help_line in "Usage: umount" | "Usage: umount "*) _isolation_help_usage=$((_isolation_help_usage + 1)) ;; esac
+		_isolation_help_option=$_isolation_help_line
+		while :; do
+			case $_isolation_help_option in " "* | "$_io_tab"*) _isolation_help_option=${_isolation_help_option#?} ;; *) break ;; esac
+		done
+		case $_isolation_help_option in
+		-D* | -d*)
+			[ -z "$_isolation_help_profile" ] || return 1
+			_isolation_help_description=${_isolation_help_option#??}
+			case $_isolation_help_description in " "* | "$_io_tab"*) ;; *) return 1 ;; esac
+			while :; do
+				case $_isolation_help_description in " "* | "$_io_tab"*) _isolation_help_description=${_isolation_help_description#?} ;; *) break ;; esac
+			done
+			case $_isolation_help_option in
+			-D*)
+				[ "$_isolation_help_description" = "Don't free loop device even if it has been used" ] || return 1
+				_isolation_help_profile=legacy
+				;;
+			-d*)
+				[ "$_isolation_help_description" = "Free loop device if it has been used" ] || return 1
+				_isolation_help_profile=modern
+				;;
+			esac
+			;;
+		esac
+	done <"$1"
+	[ -z "$_isolation_help_line" ] && [ "${#_isolation_help_text}" -eq "$_isolation_help_size" ] && [ "$_isolation_help_usage" -eq 1 ] && [ -n "$_isolation_help_profile" ] || return 1
+	_isolation_umount_profile=$_isolation_help_profile
+}
+
+_cfmgr_isolation_unmount() {
+	case $_isolation_umount_profile in
+	legacy) _cfmgr_isolation_native_call "$1" "$_isolation_umount" -D -n "$2" ;;
+	modern) _cfmgr_isolation_native_call "$1" "$_isolation_umount" -n "$2" ;;
+	*) return 1 ;;
+	esac
 }
 
 # Each query uses a fresh two-capture IO owner, outside the mounted tree. Its
@@ -238,7 +312,7 @@ _cfmgr_isolation_remove() {
 	opt) [ "$_isolation_text" = "$_isolation_opt_ledger" ] || return 1 ;;
 	null) [ "$_isolation_text" = "$_isolation_null_ledger" ] || return 1 ;;
 	esac
-	_cfmgr_isolation_native_call "umount-$1" "$_isolation_umount" -D -n "$2" || return "$?"
+	_cfmgr_isolation_unmount "umount-$1" "$2" || return "$?"
 	_cfmgr_isolation_absent "$2" "$4"
 }
 
@@ -267,6 +341,7 @@ _cfmgr_isolation_cleanup() {
 }
 
 _cfmgr_isolation_run() {
+	_cfmgr_isolation_umount_admit || return "$?"
 	_cfmgr_isolation_query "$_isolation_root" 1 && _cfmgr_isolation_private || return 1
 	case $_isolation_fs in tmpfs | ramfs) ;; *) return 1 ;; esac
 	_cfmgr_isolation_options "$_isolation_options" "$_isolation_super" ram || return 1
@@ -309,6 +384,7 @@ _cfmgr_isolation_begin() {
 	_isolation_queries=0
 	_isolation_attempted=0
 	_isolation_interrupted=0
+	_isolation_umount_profile=
 	_isolation_null_recorded=0
 	_isolation_opt_recorded=0
 	_isolation_ram_body=

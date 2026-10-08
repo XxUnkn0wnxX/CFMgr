@@ -191,6 +191,15 @@ and never connects to a router. Normal host checks remain unprivileged.
 Namespaces and the C compiler contain and build the developer fixtures; they
 are not added router runtime dependencies.
 
+The lane exercises the runtime's native BusyBox capability selection directly.
+Before creating mounts, the owner reads bounded `umount --help` output and
+selects `-D -n PATH` for the older loop-release default or `-n PATH` for the
+newer opt-in behavior. Unknown or conflicting help fails before any bind.
+Both forms retain ordinary unmount without loop detach or mtab writes; a failed
+unmount has no alternate-flag retry. There is no test-only syntax adapter.
+The [compatibility guide](compatibility.md#busybox-unmount-capabilities) records
+the firmware evidence and upstream behavior change.
+
 Three representative cases exercise the real lifecycle's successful cleanup,
 busy-mount retention and interruption handling. They enter at the preverified
 storage callback boundary using actual mount observations and a retained

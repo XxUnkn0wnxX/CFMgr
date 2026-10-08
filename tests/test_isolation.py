@@ -18,6 +18,14 @@ from tests.test_storage import IO, STORAGE, StorageFixture
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "modules/isolation.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
+UMOUNT_HELP = {
+    "legacy": b"BusyBox v1.25.1 (fixture) multi-call binary.\n\n"
+    b"Usage: umount [OPTIONS] FILESYSTEM|DIRECTORY\n\n"
+    b"\t-D\tDon't free loop device even if it has been used\n",
+    "modern": b"BusyBox v1.36.1 (fixture) multi-call binary.\n\n"
+    b"Usage: umount [OPTIONS] FILESYSTEM|DIRECTORY\n\n"
+    b"\t-d\tFree loop device if it has been used\n",
+}
 
 # Delegates only existing read-only storage observations to their established
 # double. Neither mount nor umount can reach a host executable, even on faults.
@@ -137,9 +145,10 @@ if tool == "mount":
     save()
     sys.exit(0)
 if tool == "umount":
-    assert args[:2] == ["-D", "-n"] and len(args) == 3
+    flags = ["-D", "-n"] if settings["umount_profile"] == "legacy" else ["-n"]
+    assert args[:-1] == flags
     assert (guard / "active").is_file()
-    destination = args[2]
+    destination = args[-1]
     assert destination in (str(tree / "opt"), str(tree / "dev/null"))
     if fault == "umount-error" or (
         fault == "umount-null-error" and destination == str(tree / "dev/null")
@@ -357,7 +366,9 @@ class IsolationFixture:
             storage_dispatcher=str(router.path("work/dispatcher.py")),
             isolation_log=str(router.path("work/isolation-calls")),
             callback_log=str(router.path("work/callback.observation")),
+            umount_profile="modern" if shell == "/bin/dash" else "legacy",
         )
+        router.path("work/umount-help").write_bytes(UMOUNT_HELP[self.settings["umount_profile"]])
         self.save()
         for tool in (
             "mount",
@@ -376,6 +387,12 @@ class IsolationFixture:
             bypass = ""
             if tool == "printf":
                 bypass = 'case $1 in "capture"* | "%b") exec /usr/bin/printf "$@" ;; esac\n'
+            elif tool == "umount":
+                bypass = (
+                    'if [ "$#" = 1 ] && [ "$1" = --help ]; then exec /bin/cat '
+                    + shlex.quote(str(router.path("work/umount-help")))
+                    + " >&2; fi\n"
+                )
             router.fake_tool(
                 tool,
                 bypass + f"exec {shlex.quote(sys.executable)} "
@@ -459,6 +476,7 @@ class IsolationFixture:
                 "_isolation_tools": "/opt/SECRET",
                 "_isolation_null_recorded": "1",
                 "_isolation_callback": "false",
+                "_isolation_umount_profile": "modern",
                 "IFS": "x",
             },
         )
@@ -525,13 +543,14 @@ def test_owned_root_roundtrip_uses_retained_storage_and_exact_native_commands(
     ]
     assert observed["fd9_inode"] == isolation.storage.target.stat().st_ino
     tree = str(isolation.guard / "root")
+    unmount_flags = ["-n"] if isolation.settings["umount_profile"] == "modern" else ["-D", "-n"]
     assert [item["args"] for item in isolation.mutations()] == [
         ["-n", "-i", "-o", "bind", "/dev/null", tree + "/dev/null"],
         ["-n", "-i", "-o", "make-private", tree + "/dev/null"],
         ["-n", "-i", "-o", "bind", "/proc/self/fd/9", tree + "/opt"],
         ["-n", "-i", "-o", "make-private", tree + "/opt"],
-        ["-D", "-n", tree + "/opt"],
-        ["-D", "-n", tree + "/dev/null"],
+        [*unmount_flags, tree + "/opt"],
+        [*unmount_flags, tree + "/dev/null"],
     ]
     assert not isolation.guard.exists()
 
@@ -539,6 +558,110 @@ def test_owned_root_roundtrip_uses_retained_storage_and_exact_native_commands(
 @pytest.fixture
 def native(router: RouterHarness) -> IsolationFixture:
     return IsolationFixture(router, "/bin/sh")
+
+
+@pytest.mark.parametrize(
+    "help_bytes,producer_status,expected_status,profile",
+    [
+        pytest.param(UMOUNT_HELP["legacy"], 0, 0, "legacy", id="legacy-without-advertised-n"),
+        pytest.param(UMOUNT_HELP["modern"], 0, 0, "modern", id="modern-without-advertised-n"),
+        pytest.param(UMOUNT_HELP["modern"] + b"\n" * 27, 0, 0, "modern", id="32-lines"),
+        pytest.param(
+            UMOUNT_HELP["legacy"] + UMOUNT_HELP["modern"].splitlines(keepends=True)[-1],
+            0,
+            1,
+            "",
+            id="conflicting-loop-options",
+        ),
+        pytest.param(
+            UMOUNT_HELP["modern"] + UMOUNT_HELP["modern"].splitlines(keepends=True)[-1],
+            0,
+            1,
+            "",
+            id="duplicate-loop-option",
+        ),
+        pytest.param(
+            UMOUNT_HELP["legacy"].replace(b"-D", b"-a"), 0, 1, "", id="missing-loop-option"
+        ),
+        pytest.param(
+            UMOUNT_HELP["legacy"].replace(b"-D", b"-Dextra"), 0, 1, "", id="unknown-option"
+        ),
+        pytest.param(
+            UMOUNT_HELP["modern"].replace(b"Free loop", b"Detach loop"),
+            0,
+            1,
+            "",
+            id="unknown-description",
+        ),
+        pytest.param(
+            UMOUNT_HELP["modern"].replace(b"BusyBox", b"OtherTool"), 0, 1, "", id="not-busybox"
+        ),
+        pytest.param(
+            UMOUNT_HELP["modern"].replace(b"Usage: umount", b"Usage: mount"),
+            0,
+            1,
+            "",
+            id="wrong-usage",
+        ),
+        pytest.param(UMOUNT_HELP["modern"][:-1], 0, 1, "", id="missing-final-lf"),
+        pytest.param(
+            UMOUNT_HELP["modern"].replace(b"Free", b"Fr\0ee"), 0, 1, "", id="nul-reconstruction"
+        ),
+        pytest.param(UMOUNT_HELP["modern"] + b"\xff\n", 0, 1, "", id="non-ascii"),
+        pytest.param(UMOUNT_HELP["modern"] + b"\x01\n", 0, 1, "", id="control-byte"),
+        pytest.param(UMOUNT_HELP["modern"] + b"\n" * 28, 0, 1, "", id="33-lines"),
+        pytest.param(UMOUNT_HELP["modern"] + b"x" * 4096 + b"\n", 0, 1, "", id="over-4096-bytes"),
+        pytest.param(
+            UMOUNT_HELP["modern"] + b"x" * 16384 + b"\n", 0, 1, "", id="producer-file-limit"
+        ),
+        pytest.param(UMOUNT_HELP["modern"], 7, 1, "", id="producer-failure"),
+        pytest.param(UMOUNT_HELP["modern"], 129, 129, "", id="producer-hup"),
+        pytest.param(UMOUNT_HELP["modern"], 130, 130, "", id="producer-int"),
+        pytest.param(UMOUNT_HELP["modern"], 143, 143, "", id="producer-term"),
+    ],
+)
+def test_native_umount_help_admission_is_strict_and_bounded(
+    router: RouterHarness,
+    help_bytes: bytes,
+    producer_status: int,
+    expected_status: int,
+    profile: str,
+) -> None:
+    # No storage, captures or mount doubles: exercise actual admission/file
+    # framing with a tiny read-only help producer and native wc.
+    guard = router.path("work/profile")
+    guard.mkdir(mode=0o700)
+    help_file = router.path("work/native-help")
+    help_file.write_bytes(help_bytes)
+    executable = router.fake_tool(
+        "umount",
+        '[ "$#" = 1 ] && [ "$1" = --help ] || exit 2\n'
+        + f"/bin/cat {shlex.quote(str(help_file))} >&2\nexit {producer_status}\n",
+    )
+    result = router.run(
+        f". {shlex.quote(str(IO))}\n. {shlex.quote(str(SOURCE))}\n"
+        + f"_isolation_guard={shlex.quote(str(guard))}\n"
+        + f"_isolation_umount={shlex.quote(str(executable))}\n"
+        + "_io_wc=/usr/bin/wc\n_io_tab='\t'\n_io_lf='\n'\n"
+        # The actual IO owner silences callback stderr, including native shell
+        # diagnostics when the bounded producer reaches its file limit.
+        + "_cfmgr_isolation_umount_admit 2>/dev/null\nstatus=$?\n"
+        + 'printf "%s\\t%s\\n" "$status" "$_isolation_umount_profile"\n',
+        env={"_isolation_umount_profile": "inherited-untrusted"},
+    )
+    assert result.returncode == 0 and result.stderr == "", result
+    assert result.stdout == f"{expected_status}\t{profile}\n"
+    if len(help_bytes) > 16384:
+        assert (guard / "umount-help").stat().st_size <= 16384
+
+
+def test_unknown_umount_help_fails_before_queries_and_removes_only_fresh_guard(
+    native: IsolationFixture,
+) -> None:
+    native.router.path("work/umount-help").write_bytes(b"Unsupported native command\n")
+    native.quiet(native.run())
+    assert not native.guard.exists() and native.mutations() == []
+    assert not any(item["tool"] == "cat" for item in native.calls())
 
 
 @pytest.mark.parametrize(

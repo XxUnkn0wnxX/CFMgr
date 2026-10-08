@@ -9,11 +9,11 @@ fail() {
 	printf 'scenario=%s status=%s\n' "${scenario-unset}" "${status-unset}" >&2
 	# Failure-only evidence from fixed owned metadata, never root/Opt contents.
 	if [ -n "${ram-}" ] && [ -n "${bb-}" ]; then
-		diagnostic_guard=$ram/cfmgr-isolation
+		diagnostic_guard=${guard-$ram/cfmgr-isolation}
 		if [ -d "$diagnostic_guard" ] && [ ! -L "$diagnostic_guard" ]; then
 			printf 'guard=reserved\n' >&2
 			diagnostic_queries=0
-			for diagnostic_name in active intent-null intent-opt mounted-null mounted-opt \
+			for diagnostic_name in umount-help active intent-null intent-opt mounted-null mounted-opt \
 				query-0 query-1 query-2 query-3 query-4 query-5 query-6 query-7 \
 				query-8 query-9 query-10 query-11 query-12 query-13 query-14 query-15; do
 				diagnostic_file=$diagnostic_guard/$diagnostic_name
@@ -193,6 +193,25 @@ if [ "$scenario" != primitive ]; then
 fi
 
 # Direct primitive proof only: no runtime callback admits chroot or ELF here.
+guard=$ram/primitive-profile
+"$bb" mkdir -m 700 "$guard"
+# shellcheck disable=SC2317,SC2329
+fixture_primitive_profile() {
+	_isolation_guard=$guard
+	_isolation_umount=$tools/umount
+	_cfmgr_isolation_umount_admit || return "$?"
+	cfmgr_io_stage_report "$_isolation_umount_profile$_io_lf"
+}
+profile=$(cfmgr_io_test "$ram" "$tools" report fixture_primitive_profile) || fail 'primitive umount admission'
+case $profile in legacy | modern) ;; *) fail 'primitive unknown umount profile' ;; esac
+printf 'primitive native umount profile=%s\n' "$profile"
+primitive_umount() {
+	case $profile in
+	legacy) "$tools/umount" -D -n "$1" ;;
+	modern) "$tools/umount" -n "$1" ;;
+	*) return 1 ;;
+	esac
+}
 root=$ram/primitive
 "$bb" mkdir -m 700 "$root" "$root/opt" "$root/dev" "$root/bootstrap"
 : >"$root/dev/null"
@@ -222,13 +241,13 @@ for mode in static dynamic; do
 		"$bb" grep -F "$root/opt/loader" "/proc/$actor/maps" >/dev/null || fail 'Opt interpreter mapping'
 		"$bb" grep -F "$root/opt/libc.so.6" "/proc/$actor/maps" >/dev/null || fail 'Opt libc mapping'
 	fi
-	if "$bb" umount -D -n "$root/opt"; then fail 'mapped Opt unmount unexpectedly succeeded'; fi
+	if primitive_umount "$root/opt"; then fail 'mapped Opt unmount unexpectedly succeeded'; fi
 	check_binds "$root"
 	printf x >&7
 	exec 7>&-
 	wait "$actor" || fail 'exact mapped actor wait'
-	"$bb" umount -D -n "$root/opt"
-	"$bb" umount -D -n "$root/dev/null"
+	primitive_umount "$root/opt"
+	primitive_umount "$root/dev/null"
 	! "$bb" grep -F "$root/opt" /proc/self/mountinfo || fail 'Opt removal unproved'
 	! "$bb" grep -F "$root/dev/null" /proc/self/mountinfo || fail 'null removal unproved'
 	printf 'primitive %s passed\n' "$mode"

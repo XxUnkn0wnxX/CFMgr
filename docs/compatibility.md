@@ -46,6 +46,32 @@ behavior has not been tested. [MIPS toolchain][380-toolchain] ·
 
 </details>
 
+## BusyBox unmount capabilities
+
+The checked official `3006.102.9` release still selects BusyBox **1.25.1**.
+The current `3004.388`, `3006.102-wifi6` and `main` sources also select that
+shared version; the reviewed Wi-Fi 6 and Wi-Fi 7 router trees use the shared
+router directory. This is source/build evidence, not an installed measurement
+for every model. A firmware-family number alone does not identify its BusyBox
+capabilities. [3006 release version](https://github.com/RMerl/asuswrt-merlin.ng/blob/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/release/src/router/busybox/Makefile#L1)
+· [Build selection](https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7d57102260f/release/src-rt/Makefile#L145)
+· [Wi-Fi 6 branch version](https://github.com/RMerl/asuswrt-merlin.ng/blob/2df5b849fdf7af5e9f887703390cc5924c67def9/release/src/router/busybox/Makefile#L1).
+
+BusyBox changed its loop-device behavior between upstream 1.26.2 and 1.27.0.
+Older builds release loop devices by default and use `-D` to suppress that;
+newer builds require `-d` to request release and no longer accept `-D`.
+[Exact upstream change](https://github.com/mirror/busybox/commit/a98db793cffb77a8794c854443b8fe12bad98c0a).
+
+The isolated-root owner checks the actual native `umount --help` before creating
+mounts. It requires bounded, complete BusyBox help with one unambiguous supported
+loop-option description. Older capability selects `umount -D -n PATH`; newer
+capability selects `umount -n PATH`. Both use ordinary unmount, suppress mtab
+writes and avoid loop-device release. Unknown, conflicting or incomplete help
+fails before any bind; an unmount failure never triggers an alternate command.
+This supports the two recognized capability profiles without assuming all future
+firmware is compatible. Help-disabled builds and changed descriptions require
+review. Kernel, ABI, storage and full router acceptance remain separate gates.
+
 ## 🧩 Qualify each feature separately
 
 | Feature | Required capability | Current boundary |

@@ -14,6 +14,8 @@ profile is an observation, not proof that a runtime feature passes on that route
 
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit
 Linux namespace check. That lane uses actual BusyBox mounts and the real lifecycle,
-with a documented substitution at storage device/UUID acquisition. Its executable
+with a documented substitution at storage device/UUID acquisition. Native BusyBox
+unmount capability selection is exercised through the runtime implementation;
+there is no command-syntax adapter or simulated cleanup. Its executable
 fixtures establish host-kernel behavior only. They are never router dependencies
 or an authorization to run arbitrary programs through the runtime callback.
