@@ -146,6 +146,44 @@ else:
 """
 
 
+CALLBACK_PROBE = r"""
+import fcntl
+import json
+import os
+from pathlib import Path
+import signal
+import stat
+import sys
+
+settings = json.loads(Path(sys.argv[1]).read_text())
+log = Path(settings["log"])
+output = log / "callback.observation"
+record = {"args": sys.argv[2:], "count": 1}
+if output.exists():
+    record["count"] += json.loads(output.read_text())["count"]
+for fd in (8, 9):
+    held = os.fstat(fd)
+    assert fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_ACCMODE == os.O_RDONLY
+    record["fd" + str(fd)] = [held.st_dev, held.st_ino, stat.S_IFMT(held.st_mode)]
+assert stat.S_ISDIR(os.fstat(9).st_mode)
+os.lseek(8, 0, os.SEEK_SET)
+record["block_hex"] = os.read(8, 1152).hex()
+record["producer_order"] = [item["tool"] for item in sorted(
+    (json.loads(path.read_text()) for path in log.glob("*.json")),
+    key=lambda item: item["sequence"])]
+stages = list(Path(settings["ram"]).glob("cfmgr-io.*"))
+assert len(stages) == 1
+record["capture_files"] = len(list(stages[0].iterdir()))
+assert not (log / "cleanup.observation").exists()
+output.write_text(json.dumps(record))
+os.write(1, b"SECRET callback stdout\n")
+os.write(2, b"SECRET callback stderr\n")
+if settings.get("callback_signal"):
+    os.kill(os.getppid(), signal.SIGTERM)
+sys.exit(settings.get("callback_status", 0))
+"""
+
+
 class StorageFixture:
     def __init__(self, router: RouterHarness, shell: str = "/bin/sh", *, busybox: bool = False):
         self.router, self.shell = router, shell
@@ -193,6 +231,19 @@ class StorageFixture:
         self.settings_path.write_text(json.dumps(self.settings))
         self.settings_path.chmod(0o600)
 
+    def callback_prefix(self) -> str:
+        self.router.write("work/callback.py", CALLBACK_PROBE)
+        return (
+            "fixture_callback() {\n"
+            f"{shlex.quote(sys.executable)} "
+            f"{shlex.quote(str(self.router.path('work/callback.py')))} "
+            f'{shlex.quote(str(self.settings_path))} "$@"\n'
+            'return "$?"\n}\n'
+        )
+
+    def callback_observation(self) -> dict:
+        return json.loads(self.router.path("work/calls/callback.observation").read_text())
+
     def run(
         self,
         *,
@@ -200,8 +251,12 @@ class StorageFixture:
         suffix: str = "",
         block_mapping: bool = True,
         reserve_slot: bool = False,
+        callback: str | None = None,
+        callback_args: tuple[str, ...] = (),
     ) -> ShellResult:
-        if reserve_slot:
+        if callback is not None:
+            invocation = 'cfmgr_storage_with_test "$@"\n'
+        elif reserve_slot:
             prefix += 'fixture_reserved() { : >"$1/7.status"; _cfmgr_storage_begin "$@"; }\n'
             invocation = (
                 'cfmgr_io_test "$1" "$2" report fixture_reserved "$3" "$4" "$5" "$6" "$7" "$8"\n'
@@ -229,6 +284,8 @@ class StorageFixture:
             str(MOUNT_PARSER),
             str(STORAGE_PARSER),
         ]
+        if callback is not None:
+            args += [callback, *callback_args]
         script = '"$@"\n' if self.router.busybox else f'exec {shlex.quote(self.shell)} "$@"\n'
         if self.router.busybox:
             script = f'exec {shlex.quote(str(self.router.busybox))} sh "$@"\n'
@@ -236,7 +293,12 @@ class StorageFixture:
             script,
             [str(self.router.path("work/invoke.sh")), *args],
             timeout=45,
-            env={"_storage_block_fixture": str(self.router.path("work/block")), "IFS": "x"},
+            env={
+                "_storage_block_fixture": str(self.router.path("work/block")),
+                "_storage_mode": "with",
+                "_storage_callback": "stale_callback",
+                "IFS": "x",
+            },
         )
 
     def calls(self) -> list[dict]:
@@ -490,7 +552,10 @@ def test_cleanup_failure_suppresses_complete_staged_observation(storage: Storage
     assert len(list(storage.router.path("ram/tmp").glob("cfmgr-io.*"))) == 1
 
 
-def test_caller_descriptors_traps_and_environment_are_preserved(storage: StorageFixture) -> None:
+@pytest.mark.parametrize("with_callback", [False, True])
+def test_caller_descriptors_traps_and_environment_are_preserved(
+    storage: StorageFixture, with_callback: bool
+) -> None:
     storage.router.write("work/caller8", "original8\n")
     storage.router.write("work/caller9", "original9\n")
     prefix = (
@@ -505,8 +570,17 @@ def test_caller_descriptors_traps_and_environment_are_preserved(storage: Storage
         '[ "$IFS" = x ] && [ "$(trap)" = "$before" ] && '
         '[ "$(set +o)" = "$options" ] && [ "$(umask)" = 0027 ]\n'
     )
-    result = storage.run(prefix=prefix, suffix=suffix)
-    assert result.returncode == 0 and result.stdout == storage.expected() and result.stderr == ""
+    if with_callback:
+        prefix += storage.callback_prefix()
+    result = storage.run(
+        prefix=prefix,
+        suffix=suffix,
+        callback="fixture_callback" if with_callback else None,
+    )
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == ("" if with_callback else storage.expected())
+    if with_callback:
+        assert storage.callback_observation()["args"] == [str(storage.target), storage.expected()]
     storage.clean()
 
 
@@ -547,3 +621,146 @@ def test_optional_busybox_retained_observation(busybox_router: RouterHarness) ->
     result = fixture.run()
     assert result.returncode == 0 and result.stdout == fixture.expected() and result.stderr == ""
     fixture.clean()
+    # Reuse the dedicated BusyBox shell/awk path for the retained callback too.
+    fixture.router.path("work/calls/cleanup.observation").unlink()
+    result = fixture.run(prefix=fixture.callback_prefix(), callback="fixture_callback")
+    quiet(result, 0)
+    assert fixture.callback_observation()["args"] == [str(fixture.target), fixture.expected()]
+    fixture.clean()
+
+
+@pytest.mark.parametrize("replace_block", [False, True])
+def test_trusted_callback_receives_completed_observation_and_original_fds(
+    storage: StorageFixture, replace_block: bool
+) -> None:
+    if replace_block:
+        storage.settings["fault"] = "block-replace-before-read"
+        storage.save()
+    arguments = ("", "spaces and\ttabs\nnewlines", "$(touch SECRET)", "'; exit 7 #", "*")
+    quiet(
+        storage.run(
+            prefix=storage.callback_prefix(), callback="fixture_callback", callback_args=arguments
+        ),
+        0,
+    )
+    observed = storage.callback_observation()
+    assert observed["count"] == 1
+    assert observed["args"] == [str(storage.target), storage.expected(), *arguments]
+    assert observed["block_hex"] == ext_bytes().hex()
+    assert observed["capture_files"] == 48
+    calls = storage.calls()
+    assert observed["producer_order"] == [item["tool"] for item in calls[:-1]]
+    assert calls[-2]["tool"] == "awk" and calls[-1]["tool"] == "rm"
+    assert observed["fd8"] == next(item["fd8"] for item in calls if item["tool"] == "hexdump")
+    assert observed["fd9"] == next(item["fd9"] for item in calls if item["tool"] == "hexdump")
+    assert "fd8" not in calls[-1] and "fd9" not in calls[-1]
+    if replace_block:
+        assert observed["fd8"][1] != storage.router.path("work/block").stat().st_ino
+    assert not storage.router.path("work/SECRET").exists()
+    storage.clean()
+
+
+@pytest.mark.parametrize(
+    "fault", ["mount-change", "mnt-change", "rdev-change", "parser-truncated", "hex-short"]
+)
+def test_callback_is_never_invoked_after_unproved_observation(
+    storage: StorageFixture, fault: str
+) -> None:
+    storage.settings["fault"] = fault
+    storage.save()
+    quiet(storage.run(prefix=storage.callback_prefix(), callback="fixture_callback"))
+    assert not storage.router.path("work/calls/callback.observation").exists()
+    storage.clean()
+
+
+@pytest.mark.parametrize("status", [3, 7, 127])
+def test_callback_failure_status_is_preserved_and_output_discarded(
+    storage: StorageFixture, status: int
+) -> None:
+    storage.settings["callback_status"] = status
+    storage.save()
+    quiet(storage.run(prefix=storage.callback_prefix(), callback="fixture_callback"), status)
+    assert storage.callback_observation()["count"] == 1
+    storage.clean()
+
+
+def test_callback_success_cannot_override_owned_cleanup_failure(storage: StorageFixture) -> None:
+    storage.settings["fault"] = "rm-error"
+    storage.save()
+    quiet(storage.run(prefix=storage.callback_prefix(), callback="fixture_callback"))
+    assert storage.callback_observation()["count"] == 1
+    assert len(list(storage.router.path("ram/tmp").glob("cfmgr-io.*"))) == 1
+
+
+def test_callback_signal_cleans_workspace_and_preserves_signal_status(
+    storage: StorageFixture,
+) -> None:
+    storage.settings["callback_signal"] = True
+    storage.save()
+    quiet(storage.run(prefix=storage.callback_prefix(), callback="fixture_callback"), 143)
+    assert storage.callback_observation()["count"] == 1
+    storage.clean()
+
+
+def test_observe_ignores_inherited_callback_selector(storage: StorageFixture) -> None:
+    prefix = 'stale_callback() { printf "SECRET"; return 7; }\n'
+    result = storage.run(prefix=prefix)
+    assert result.returncode == 0 and result.stdout == storage.expected() and result.stderr == ""
+    storage.clean()
+
+
+@pytest.mark.parametrize("callback", ["", "9bad", "a-b", "a/b", "a;exit", "x\ny", "$(true)"])
+def test_bad_callback_name_is_rejected_before_observation(
+    storage: StorageFixture, callback: str
+) -> None:
+    quiet(storage.run(callback=callback), 2)
+    assert storage.calls() == []
+    storage.clean()
+
+
+def test_missing_callback_arguments_are_usage_errors(storage: StorageFixture) -> None:
+    result = storage.run(
+        prefix='cfmgr_storage_with "a" "b" "c"; [ "$?" = 2 ] || exit 1\n', callback=""
+    )
+    quiet(result, 2)
+    assert storage.calls() == []
+    storage.clean()
+
+
+def test_production_with_entry_uses_fixed_inputs_and_status_only_owner(
+    router: RouterHarness,
+) -> None:
+    router.write(
+        "work/invoke.sh",
+        f". {shlex.quote(str(STORAGE))}\n"
+        + r"""
+cfmgr_io_with_workspace() {
+    [ "$#" = 11 ] && [ "$2" = _cfmgr_storage_with_begin ] &&
+    [ "$3" = /opt ] && [ "$4" = /proc/self/mountinfo ] &&
+    [ "$5" = /proc/self/fdinfo/9 ] && [ -z "$6" ] &&
+    [ "$7" = /trusted/mount.awk ] && [ "$8" = /trusted/storage.awk ] &&
+    [ "$9" = fixture_callback ] && [ -z "${10}" ] && [ "${11}" = '$(false)' ]
+}
+IFS=x; set -f; umask 027; trap ':' TERM
+before=$(trap); options=$(set +o)
+cfmgr_storage_with /trusted/ram /trusted/mount.awk /trusted/storage.awk \
+    fixture_callback '' '$(false)'
+result=$?
+[ "$result" = 0 ] && [ "$IFS" = x ] && [ "$(trap)" = "$before" ] &&
+[ "$(set +o)" = "$options" ] && [ "$(umask)" = 0027 ]
+""",
+    )
+    quiet(router.run('/bin/sh "$1"\n', [str(router.path("work/invoke.sh"))]), 0)
+
+
+def test_unavailable_trusted_function_is_invoked_only_after_observation(
+    storage: StorageFixture,
+) -> None:
+    quiet(storage.run(callback="_missing_callback"), 127)
+    calls = storage.calls()
+    assert calls[-2]["tool"] == "awk" and calls[-1]["tool"] == "rm"
+    assert (
+        len(json.loads(storage.router.path("work/calls/cleanup.observation").read_text())["files"])
+        == 48
+    )
+    storage.clean()

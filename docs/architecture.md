@@ -38,7 +38,7 @@ flowchart LR
 | `modules/mountinfo.awk` | Select a covering mount; optionally report propagation and descendant counts | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
-| `modules/storage.sh` | Hold directory/device descriptors while comparing mount facts and reading an ext UUID | Read-only observation; no write permission, dependency execution or CLI integration |
+| `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -65,6 +65,15 @@ table, checks the block device number and reads the primary ext superblock throu
 the original open descriptor. It repeats the path/mount/device checks before
 staging its result. The descriptors remain open through observation and staging;
 the private workspace is cleaned before the result is published.
+
+The internal `cfmgr_storage_with` API instead runs a trusted callback after all
+checks, passing the resolved directory, complete volume ledger and caller
+arguments while both descriptors remain held. It returns status without
+publishing callback output. The callback owns any external transaction guard
+and cleanup; mounted trees and asynchronous users must stay outside IO scratch.
+Ordinary return restores the caller's descriptors before cleanup. A signal-driven
+exit may retain them until process exit, so interrupted setup must preserve its
+external guard.
 
 This first profile covers dynamic-revision ext2/ext3/ext4 primary superblocks.
 Other filesystems, alternate `sb=` mounts and missing mount-ID support need
@@ -130,6 +139,12 @@ exact mounts before deleting staging. Uncertain cleanup retains a guard and
 workspace for recovery. This lifecycle is not implemented yet; the
 [plan](../PLAN.md#mount-snapshot-parser-contract--current-package) records its
 proof gates and the distinction from hostile-root security isolation.
+
+For the restricted opkg/gzip path, the next cleanup proof uses normal unmount's
+busy check: admitted executable/library mappings retain the exact Opt bind.
+Native-launcher completion and a successful verified unmount are both required.
+This establishes a narrow execution boundary, not complete process reaping;
+the implementation and isolated lifecycle tests are still pending.
 
 </details>
 

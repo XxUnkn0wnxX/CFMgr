@@ -3,8 +3,10 @@
 # Requires the trusted io.sh definitions already loaded by the internal caller.
 # Sourcing defines functions only. Observation is read-only, not authorization
 # to write or run Opt code, and not an atomic device-generation lease.
-# FD9/FD8 remain held through all checks and staging inside the IO owner; guarded
-# function-call redirections restore them before private cleanup/publication.
+# FD9/FD8 remain held through checks, staging, and the trusted callback.
+# On ordinary function return, guarded call redirections restore them before
+# private IO cleanup/publication. Signal-driven EXIT cleanup may still inherit
+# them until process exit.
 # Caller tracing must be off, and signals must be routed to the IO owner.
 # Native blocked IO has no hard wall-clock deadline until supervision exists.
 # Shared IO-owner state is assigned by io.sh, never by sourcing this library.
@@ -21,6 +23,36 @@ cfmgr_storage_test() {
 	[ "$#" -eq 8 ] && [ -n "$2" ] && [ -n "$6" ] || return 2
 	cfmgr_io_test "$1" "$2" report _cfmgr_storage_begin "$3" "$4" "$5" "$6" "$7" "$8"
 }
+
+# Trusted internal callback only, not write authorization. It receives the
+# resolved target, complete volume ledger, then caller arguments, while both
+# original FDs are held. It must not mount below/use IO scratch for mounted trees
+# or leave asynchronous users of it. External guards/cleanup belong to callback.
+# This status-only API discards callback stdout/stderr and publishes no report.
+cfmgr_storage_with() (
+	[ "$#" -ge 4 ] || return 2
+	_cfmgr_storage_callback_name "$4" || return 2
+	_storage_with_root=$1
+	_storage_with_mount_parser=$2
+	_storage_with_parser=$3
+	shift 3
+	cfmgr_io_with_workspace "$_storage_with_root" _cfmgr_storage_with_begin /opt /proc/self/mountinfo /proc/self/fdinfo/9 '' "$_storage_with_mount_parser" "$_storage_with_parser" "$@"
+)
+
+# Fixture API: same first eight arguments as storage_test, then CALLBACK [ARGS].
+cfmgr_storage_with_test() (
+	[ "$#" -ge 9 ] && [ -n "$2" ] && [ -n "$6" ] || return 2
+	_cfmgr_storage_callback_name "$9" || return 2
+	_storage_with_root=$1
+	_storage_with_tools=$2
+	shift 2
+	cfmgr_io_test "$_storage_with_root" "$_storage_with_tools" workspace _cfmgr_storage_with_begin "$@"
+)
+
+_cfmgr_storage_callback_name() (
+	[ "$#" -eq 1 ] || return 2
+	case $1 in '' | [!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_]* | *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]*) return 2 ;; esac
+)
 
 _cfmgr_storage_ok() {
 	_cfmgr_io_capture_status "$1" || return 1
@@ -175,13 +207,30 @@ _cfmgr_storage_ls() {
 }
 
 _cfmgr_storage_begin() {
+	_storage_mode=observe
+	_storage_callback=
 	[ "$#" -eq 7 ] || return 2
+	_cfmgr_storage_acquire "$@"
+}
+
+_cfmgr_storage_with_begin() {
+	_storage_mode=with
+	_storage_callback=
+	[ "$#" -ge 8 ] || return 2
+	_cfmgr_storage_callback_name "$8" || return 2
+	_storage_callback=$8
+	_cfmgr_storage_acquire "$@"
+}
+
+_cfmgr_storage_acquire() {
 	_storage_target=$2
 	_storage_mount_input=$3
 	_storage_fdinfo=$4
 	_storage_block_fixture=$5
 	_storage_mount_parser=$6
 	_storage_parser=$7
+	shift 7
+	[ "$_storage_mode" != with ] || shift
 	for _storage_code in "$_storage_mount_parser" "$_storage_parser"; do
 		case $_storage_code in /*) ;; *) return 2 ;; esac
 		[ -f "$_storage_code" ] && [ ! -L "$_storage_code" ] && [ -r "$_storage_code" ] || return 2
@@ -193,11 +242,18 @@ _cfmgr_storage_begin() {
 	# Function-call redirections remain guardable without unavailable command/exec
 	# wrappers and retain descriptors in this owner through observation/staging.
 	_storage_directory_entered=0
-	_cfmgr_storage_directory 9<"$_storage_resolved"
+	_cfmgr_storage_directory "$@" 9<"$_storage_resolved"
 	_storage_open_status=$?
 	[ "$_storage_directory_entered" -eq 1 ] || return 1
 	return "$_storage_open_status"
 }
+
+_cfmgr_storage_mount_no_sb() (
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_mount_body
+	_cfmgr_storage_no_sb "$9" "${10}"
+)
 
 _cfmgr_storage_directory() {
 	_storage_directory_entered=1
@@ -205,12 +261,7 @@ _cfmgr_storage_directory() {
 	_cfmgr_io_mount_capture "$_storage_resolved" "$_storage_mount_parser" "$_storage_mount_input" 1 2 || return "$?"
 	_storage_initial_mount=$_mount_body
 	_cfmgr_storage_mount_fields || return "$?"
-	_storage_saved_ifs=$IFS
-	IFS=$_io_tab
-	# shellcheck disable=SC2086
-	set -- $_mount_body
-	IFS=$_storage_saved_ifs
-	_cfmgr_storage_no_sb "$9" "${10}" || return "$?"
+	_cfmgr_storage_mount_no_sb || return "$?"
 	_cfmgr_storage_fdinfo 3 4 || return "$?"
 	_cfmgr_storage_source "$_storage_source_hex" || return "$?"
 	if [ -n "$_storage_block_fixture" ]; then
@@ -221,7 +272,7 @@ _cfmgr_storage_directory() {
 		_storage_open_block=$_storage_source
 	fi
 	_storage_block_entered=0
-	_cfmgr_storage_block 8<"$_storage_open_block"
+	_cfmgr_storage_block "$@" 8<"$_storage_open_block"
 	_storage_open_status=$?
 	[ "$_storage_block_entered" -eq 1 ] || return 1
 	return "$_storage_open_status"
@@ -244,5 +295,9 @@ _cfmgr_storage_block() {
 	[ "$_storage_ls_line" = "$_storage_initial_ls" ] || return 1
 	_storage_report="volume$_io_tab$_storage_report_fields$_io_tab$_storage_uuid$_io_lf"
 	_storage_report="${_storage_report}end$_io_tab${#_storage_report}$_io_lf"
-	cfmgr_io_stage_report "$_storage_report"
+	case $_storage_mode in
+	observe) cfmgr_io_stage_report "$_storage_report" ;;
+	with) "$_storage_callback" "$_storage_resolved" "$_storage_report" "$@" ;;
+	*) return 2 ;;
+	esac
 }
