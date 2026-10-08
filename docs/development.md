@@ -123,6 +123,7 @@ BusyBox build also does not reproduce a router's stripped older build.
 | `tests/test_primitives.py` | Native decimal/version/digest parsing and caller-state preservation |
 | `tests/test_ip.py` | Strict IPv4/IPv6 host syntax and deterministic canonical formatting |
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
+| `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -179,6 +180,58 @@ address-equality checks alongside the independent standard-library oracle.
 The measured firmware resolves `printf`, `test` and `[` to BusyBox applet paths,
 not shell builtins. Native callers need a vetted firmware PATH even though host
 shell tests can run these helpers with no external tools exposed.
+
+### Native health report
+
+The local development entry supports `--help`, `--version`, `--diagnostic` and
+its identical alias `--doctor`. This first report tests native command
+capabilities; it is not an installable manager or a complete health check yet.
+Exercise it through the isolated host fixtures:
+
+```sh
+python -m pytest tests/test_diagnostic.py
+```
+
+The planned report extends choice **0) Check status** with platform information,
+dependency inventory and command checks. The current stage reports feature
+status and Entware checks as unavailable until their safe readers/preflight are
+implemented. It does not read config, execute Entware programs, contact providers,
+install packages or start services. Do not deploy this development entry to the
+live router during host validation.
+
+Each result has a stable check ID, `PASS`/`FAIL`/`SKIP`, requirement scope,
+evidence level and concise reason. Availability, accepted options and a working
+synthetic probe are different evidence. A skipped dependent check names its
+prerequisite; an unavailable Entware mount does not mean a package is missing.
+Raw command errors and sensitive identifiers are excluded from the report.
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Every required check was evaluated and passed. |
+| `1` | A required capability or owned-stage cleanup failed. |
+| `2` | Invalid command or arguments. |
+| `3` | Required checks are incomplete, with no observed required failure. |
+| `129`, `130`, `143` | Interrupted by HUP, INT or TERM respectively. |
+
+A healthy first-stage fixture returns **3** because mount/dependency checks are
+deferred. Optional failures, such as unsupported `command -v`, do not fail the
+whole report when CFMgr uses a different lookup method.
+
+<details>
+<summary>Probe isolation and current limits</summary>
+
+Synthetic probes use a newly created private RAM directory and bounded captured
+output. Cleanup only removes that owned directory, including on handled signals;
+colliding pre-existing paths are left alone. Native command paths and locale are
+fixed, and OpenSSL configuration/module overrides are isolated.
+
+There is no verified supervisor for a hung native executable yet. The report
+therefore tests finite local operations and leaves flock contention untested.
+The curl check verifies option parsing only; it makes no HTTPS request. Host
+fixtures and optional BusyBox-shell checks do not establish deployed-router
+acceptance. Future runtime changes must extend this inventory and its tests.
+
+</details>
 
 ## 🔎 Evidence and stage commits
 

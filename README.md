@@ -2,7 +2,7 @@
 
 Cloudflare Manager for Asuswrt-Merlin
 
-CFMgr is in the planning and initial development stage. This repository currently contains a project scaffold; there is no installable script yet.
+CFMgr is in initial development. The local implementation has tested parsing foundations and a partial native health report; there is no installable manager yet.
 
 Planned features:
 
@@ -11,7 +11,8 @@ Planned features:
 - Automate `cloudflared` updates, service lifecycle, and startup.
 - Optionally reconcile available public IPv4/IPv6 addresses with Cloudflare Zero Trust IP lists for Access policies; IPv6 support remains provisional pending validation.
 - Offer separate Cloudflared, DDNS, and IP-Sync file logs through configured Scribe/logrotate, with explicit logging setup and removal controls.
-- Keep core configuration and small credentials in JFFS; use mounted Entware for Cloudflared and optional custom file logging. Native DDNS/IP-Sync work independently of Entware.
+- Keep core configuration and small credentials in JFFS; use mounted Entware for the documented shared packages, Cloudflared and optional custom file logging.
+- Provide an extended health report through `--diagnostic` / `--doctor`, with platform information, dependency checks and safe command tests.
 - Back up and restore configuration and owned data, including available configured log history. Backups do not contain executable code.
 
 Project documentation and images will live in `docs/` and `.images/`.
@@ -19,6 +20,8 @@ Project documentation and images will live in `docs/` and `.images/`.
 The implementation plan, build checklist, and handoff notes are maintained in [PLAN.md](PLAN.md).
 
 🛠️ Contributors: [Development setup and testing](docs/development.md) covers the local virtualenv, pinned requirements, lint tools, and isolated test harness.
+
+🔎 [Health-report development](docs/development.md#native-health-report) explains the current `--diagnostic` / `--doctor` checks, exit codes and remaining coverage.
 
 🧭 [Firmware compatibility](docs/compatibility.md) records the measured target, older-release research, and remaining support gates. During initial testing, code remains local while documentation and requirements may be published to `develop`.
 
