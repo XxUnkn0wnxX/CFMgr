@@ -42,6 +42,7 @@ flowchart LR
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
+| `modules/bootstrap.sh` | Construct a fresh bounded manifest from reviewed manager-bundled member identities | Requires trusted closure helpers and private RAM; no automatic profile selection, package acquisition or operational launch |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -156,6 +157,23 @@ prerequisites; accepting supplied hashes does not establish trust. Before callin
 the internal probe entry, the owner must construct/acquire the approved manifest
 within 4096 original bytes in stable private RAM. Staging validates its length
 after reading through EOF, so that check is not a bounded acquisition primitive.
+
+The bootstrap manifest helper supplies one approved construction route. Its
+three fixed profiles contain the reviewed sizes and SHA256 identities of the
+loader, libraries, timeout and gzip. It writes only those compiled-in rows to a
+fresh private file, then checks the complete bytes through the existing manifest
+consumer. The [bootstrap catalogue](evidence/bootstrap-catalog.json) records
+which official index and archive supplied each member, together with its reviewed
+ELF dependencies and links. Staging must still hash each actual private copy;
+arbitrary caller-supplied digests do not acquire trust from the helper.
+
+These identities describe a reviewed bootstrap snapshot, not a package-manager
+version preference. Changed bytes require a reviewed catalogue/code update;
+unknown base libraries fail closed without a downgrade or automatic repair.
+Recorded HTTPS provenance and hashes do not claim signed-index verification,
+reproducible builds or hardware compatibility. Profile and expected-volume
+approval, bounded transport/archive handling and operational wiring remain
+separate requirements.
 
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its

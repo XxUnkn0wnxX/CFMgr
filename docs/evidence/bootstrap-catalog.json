@@ -1,0 +1,725 @@
+{
+  "schema": 1,
+  "reviewed_date": "2026-10-09",
+  "scope": "Reviewed bootstrap byte identities only; no signature, reproducible-build, hardware or operational acceptance claim. Existing fixed glibc2.27 profiles. New revisions require reviewed catalogue changes, never automatic base-library repair or a router package downgrade.",
+  "source_audit_sha256": "14bc3bcaeb664a7ce1240a35c0236981852601cc12c4efede1b8174991d26d99",
+  "profiles": {
+    "aarch64-k3.10": {
+      "index_url": "https://bin.entware.net/aarch64-k3.10/Packages",
+      "index_sha256": "0881742f1aaccd1c493428be70a3ed93186d5a3bfe6cabd30b94717e1683071e",
+      "packages": {
+        "libc": {
+          "version": "2.27-12",
+          "architecture": "aarch64-3.10",
+          "url": "https://bin.entware.net/aarch64-k3.10/libc_2.27-12_aarch64-3.10.ipk",
+          "size": 1367072,
+          "sha256": "4d7825a9ddf7a382a985a44ec85c4ab458f8ebe12c3e3b5fb25da814f71167bb"
+        },
+        "libpthread": {
+          "version": "2.27-12",
+          "architecture": "aarch64-3.10",
+          "url": "https://bin.entware.net/aarch64-k3.10/libpthread_2.27-12_aarch64-3.10.ipk",
+          "size": 44699,
+          "sha256": "a2af364e6e139069f8b37dd9e7f2accaf529efd35738c6d381d2e43e78b876d4"
+        },
+        "librt": {
+          "version": "2.27-12",
+          "architecture": "aarch64-3.10",
+          "url": "https://bin.entware.net/aarch64-k3.10/librt_2.27-12_aarch64-3.10.ipk",
+          "size": 13307,
+          "sha256": "86d4adc05b939793f4fb7d54ecc6c34b867a1fe9c449983393f708f245b72b43"
+        },
+        "coreutils-timeout": {
+          "version": "9.9-2",
+          "architecture": "aarch64-3.10",
+          "url": "https://bin.entware.net/aarch64-k3.10/coreutils-timeout_9.9-2_aarch64-3.10.ipk",
+          "size": 21046,
+          "sha256": "8fd7f1f3c291b8556ca5cc77a55f16f656630ebc0af42ba879f0b62b35584516"
+        },
+        "gzip": {
+          "version": "1.14-1",
+          "architecture": "aarch64-3.10",
+          "url": "https://bin.entware.net/aarch64-k3.10/gzip_1.14-1_aarch64-3.10.ipk",
+          "size": 55607,
+          "sha256": "2dc64aa9448b27d2d0b20cd78634e15d810525bd6a866094deba82878408c802"
+        }
+      },
+      "members": [
+        {
+          "path": "lib/ld-2.27.so",
+          "package": "libc",
+          "size": 136952,
+          "sha256": "9cf11983a8983de8f05aa0134ac0aafc6c34eb45138e8591cc397a6c09a3ab1c",
+          "elf": {
+            "class": "ELF64",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 183,
+            "flags_hex": "0x0",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "ld-linux-aarch64.so.1"
+            ],
+            "DT_NEEDED": [],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libc-2.27.so",
+          "package": "libc",
+          "size": 1427720,
+          "sha256": "9a2ba6fdce4bb9053f1b1078fc524cb9cc0cb3c4386d07470085a59ad9af42c4",
+          "elf": {
+            "class": "ELF64",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 183,
+            "flags_hex": "0x0",
+            "PT_INTERP": [
+              "/lib/ld-linux-aarch64.so.1"
+            ],
+            "DT_SONAME": [
+              "libc.so.6"
+            ],
+            "DT_NEEDED": [
+              "ld-linux-aarch64.so.1"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libpthread-2.27.so",
+          "package": "libpthread",
+          "size": 105168,
+          "sha256": "b86bb800b8440ea5f128fd9e574a8af1598eb8e16ee2c1e0cdb158689df72005",
+          "elf": {
+            "class": "ELF64",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 183,
+            "flags_hex": "0x0",
+            "PT_INTERP": [
+              "/lib/ld-linux-aarch64.so.1"
+            ],
+            "DT_SONAME": [
+              "libpthread.so.0"
+            ],
+            "DT_NEEDED": [
+              "libc.so.6",
+              "ld-linux-aarch64.so.1"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/librt-2.27.so",
+          "package": "librt",
+          "size": 31032,
+          "sha256": "65572d6fe758f0dbde3741d220c57741ed411989c100e23bc17e32eaedf64e5a",
+          "elf": {
+            "class": "ELF64",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 183,
+            "flags_hex": "0x0",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "librt.so.1"
+            ],
+            "DT_NEEDED": [
+              "libpthread.so.0",
+              "libc.so.6",
+              "ld-linux-aarch64.so.1"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "libexec/timeout-coreutils",
+          "package": "coreutils-timeout",
+          "size": 44112,
+          "sha256": "ba7a4ae4237c790b4c989bd87a125b911c808edbeab25c67e1777a748bd659d7",
+          "elf": {
+            "class": "ELF64",
+            "byte_order": "little",
+            "type": 2,
+            "machine_id": 183,
+            "flags_hex": "0x0",
+            "PT_INTERP": [
+              "/opt/lib/ld-linux-aarch64.so.1"
+            ],
+            "DT_SONAME": [],
+            "DT_NEEDED": [
+              "librt.so.1",
+              "libpthread.so.0",
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [
+              "/opt/lib"
+            ],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "libexec/gzip-gnu",
+          "package": "gzip",
+          "size": 93600,
+          "sha256": "500eb9ff2a7067159a581c8ccd7d4b85c2a011a3a919081981b00626846e97a7",
+          "elf": {
+            "class": "ELF64",
+            "byte_order": "little",
+            "type": 2,
+            "machine_id": 183,
+            "flags_hex": "0x0",
+            "PT_INTERP": [
+              "/opt/lib/ld-linux-aarch64.so.1"
+            ],
+            "DT_SONAME": [],
+            "DT_NEEDED": [
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [
+              "/opt/lib"
+            ],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        }
+      ],
+      "links": {
+        "lib/ld-linux-aarch64.so.1": "ld-2.27.so",
+        "lib/libc.so.6": "libc-2.27.so",
+        "lib/libpthread.so.0": "libpthread-2.27.so",
+        "lib/librt.so.1": "librt-2.27.so"
+      }
+    },
+    "armv7sf-k3.2": {
+      "index_url": "https://bin.entware.net/armv7sf-k3.2/Packages",
+      "index_sha256": "13af6706f0b1c9b9d7f5613c53ed082506956303d01b13d6cff30242397a7b59",
+      "packages": {
+        "libc": {
+          "version": "2.27-12",
+          "architecture": "armv7-3.2",
+          "url": "https://bin.entware.net/armv7sf-k3.2/libc_2.27-12_armv7-3.2.ipk",
+          "size": 1238164,
+          "sha256": "9804543763cac74b46ef12b667c346bb4639bb9db2f8a4946da848cc76d126ad"
+        },
+        "libpthread": {
+          "version": "2.27-12",
+          "architecture": "armv7-3.2",
+          "url": "https://bin.entware.net/armv7sf-k3.2/libpthread_2.27-12_armv7-3.2.ipk",
+          "size": 40215,
+          "sha256": "03192e5c3a9e91c37ce0c756343fdc1b4caa079a897f726ce5df151a606f5de1"
+        },
+        "librt": {
+          "version": "2.27-12",
+          "architecture": "armv7-3.2",
+          "url": "https://bin.entware.net/armv7sf-k3.2/librt_2.27-12_armv7-3.2.ipk",
+          "size": 12140,
+          "sha256": "84482e1946131949e28eddf17a75ac00053d0ebd6db098c31bb8858e8e58809e"
+        },
+        "libgcc": {
+          "version": "8.4.0-12",
+          "architecture": "armv7-3.2",
+          "url": "https://bin.entware.net/armv7sf-k3.2/libgcc_8.4.0-12_armv7-3.2.ipk",
+          "size": 21442,
+          "sha256": "7020bb4a3e39cf5ad590148504c3c7106c8736172725e3f34dff64168ddcf71f"
+        },
+        "coreutils-timeout": {
+          "version": "9.9-2",
+          "architecture": "armv7-3.2",
+          "url": "https://bin.entware.net/armv7sf-k3.2/coreutils-timeout_9.9-2_armv7-3.2.ipk",
+          "size": 18404,
+          "sha256": "26e52e7bba8dc7c8eee82be87ae1abd92fd924b5c86b1ac5f6ddaeb4e0d56157"
+        },
+        "gzip": {
+          "version": "1.14-1",
+          "architecture": "armv7-3.2",
+          "url": "https://bin.entware.net/armv7sf-k3.2/gzip_1.14-1_armv7-3.2.ipk",
+          "size": 49546,
+          "sha256": "a7325626497fc20ff860c9240442e31dcd41ff28890785d3971a030144953826"
+        }
+      },
+      "members": [
+        {
+          "path": "lib/ld-2.27.so",
+          "package": "libc",
+          "size": 134428,
+          "sha256": "fe412c44b24b7900eb390701d5a4cba3b348e3d67c1ac0116c8f6451f7d1cfb0",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "ld-linux.so.3"
+            ],
+            "DT_NEEDED": [],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libc-2.27.so",
+          "package": "libc",
+          "size": 1247408,
+          "sha256": "be552c80cf13cddc5fdca4c1ced2e681d3b5ca2b4f35f841dccd32b014634ad9",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [
+              "/lib/ld-linux.so.3"
+            ],
+            "DT_SONAME": [
+              "libc.so.6"
+            ],
+            "DT_NEEDED": [
+              "ld-linux.so.3"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libpthread-2.27.so",
+          "package": "libpthread",
+          "size": 92656,
+          "sha256": "1fcb89ce39c319210043a17adba1d0de43760c283643b503e16222033652d1ac",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [
+              "/lib/ld-linux.so.3"
+            ],
+            "DT_SONAME": [
+              "libpthread.so.0"
+            ],
+            "DT_NEEDED": [
+              "libc.so.6",
+              "ld-linux.so.3"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/librt-2.27.so",
+          "package": "librt",
+          "size": 26516,
+          "sha256": "6a770ea97ad8b31448b109ed882dedd5a121e13fa69cb99f70b32eac695d1c6f",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "librt.so.1"
+            ],
+            "DT_NEEDED": [
+              "libpthread.so.0",
+              "libc.so.6",
+              "ld-linux.so.3"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libgcc_s.so.1",
+          "package": "libgcc",
+          "size": 46752,
+          "sha256": "13834c4ccc78f14ace0fb2fd121a7d2dc51732075463afca791d2fd4df1d7c78",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "libgcc_s.so.1"
+            ],
+            "DT_NEEDED": [
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "libexec/timeout-coreutils",
+          "package": "coreutils-timeout",
+          "size": 39152,
+          "sha256": "1479674edc7fbf7ecb33ed668cb7114b33a2d7f805cd62ca94868495f915bd7f",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 2,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [
+              "/opt/lib/ld-linux.so.3"
+            ],
+            "DT_SONAME": [],
+            "DT_NEEDED": [
+              "librt.so.1",
+              "libpthread.so.0",
+              "libgcc_s.so.1",
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [
+              "/opt/lib"
+            ],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "libexec/gzip-gnu",
+          "package": "gzip",
+          "size": 80316,
+          "sha256": "43537cf1252858e3492d1825e0b60bd440d4badbe20103eeecaea2834285ea96",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 2,
+            "machine_id": 40,
+            "flags_hex": "0x5000200",
+            "PT_INTERP": [
+              "/opt/lib/ld-linux.so.3"
+            ],
+            "DT_SONAME": [],
+            "DT_NEEDED": [
+              "libgcc_s.so.1",
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [
+              "/opt/lib"
+            ],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        }
+      ],
+      "links": {
+        "lib/ld-linux.so.3": "ld-2.27.so",
+        "lib/libc.so.6": "libc-2.27.so",
+        "lib/libpthread.so.0": "libpthread-2.27.so",
+        "lib/librt.so.1": "librt-2.27.so"
+      }
+    },
+    "mipselsf-k3.4": {
+      "index_url": "https://bin.entware.net/mipselsf-k3.4/Packages",
+      "index_sha256": "dfc4ef4ee101f1ffd52095c183b6a4460740520ac2dcc5a2a0b4400092d6016c",
+      "packages": {
+        "libc": {
+          "version": "2.27-12",
+          "architecture": "mipsel-3.4",
+          "url": "https://bin.entware.net/mipselsf-k3.4/libc_2.27-12_mipsel-3.4.ipk",
+          "size": 1398643,
+          "sha256": "6b4040c416fa360772508faf01a4c06236a0efd8a3444ea4a2eda2e75b2c12a7"
+        },
+        "libpthread": {
+          "version": "2.27-12",
+          "architecture": "mipsel-3.4",
+          "url": "https://bin.entware.net/mipselsf-k3.4/libpthread_2.27-12_mipsel-3.4.ipk",
+          "size": 49317,
+          "sha256": "1e85b7ce7ef55f86d876774bab60bb274938d6247dc97e614834564184a93ef2"
+        },
+        "librt": {
+          "version": "2.27-12",
+          "architecture": "mipsel-3.4",
+          "url": "https://bin.entware.net/mipselsf-k3.4/librt_2.27-12_mipsel-3.4.ipk",
+          "size": 14833,
+          "sha256": "4f290a2d23e589f01714192f3eac7773af967c91a6bacba242efcbe7b47161b9"
+        },
+        "libgcc": {
+          "version": "8.4.0-12",
+          "architecture": "mipsel-3.4",
+          "url": "https://bin.entware.net/mipselsf-k3.4/libgcc_8.4.0-12_mipsel-3.4.ipk",
+          "size": 37185,
+          "sha256": "098b8c6f6c9f8195f91ece7bf0bb6a1f6350bbb5d2a4bf2208dfaaa7fe00a46b"
+        },
+        "coreutils-timeout": {
+          "version": "9.9-2",
+          "architecture": "mipsel-3.4",
+          "url": "https://bin.entware.net/mipselsf-k3.4/coreutils-timeout_9.9-2_mipsel-3.4.ipk",
+          "size": 20295,
+          "sha256": "add408df5340292347dfbc423b51c6cec7ad88b57f0f195318bf1ae276dc8e44"
+        },
+        "gzip": {
+          "version": "1.14-1",
+          "architecture": "mipsel-3.4",
+          "url": "https://bin.entware.net/mipselsf-k3.4/gzip_1.14-1_mipsel-3.4.ipk",
+          "size": 53693,
+          "sha256": "5cca33e44e0bd5f8c85ee996892a87dc8b963eb249fcdf6a165024728d1e8b42"
+        }
+      },
+      "members": [
+        {
+          "path": "lib/ld-2.27.so",
+          "package": "libc",
+          "size": 159016,
+          "sha256": "32fef6bdd8febc7f066910b63fccf5648280d17fb49dda97d4770fd1172eef0f",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 8,
+            "flags_hex": "0x70001007",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "ld.so.1"
+            ],
+            "DT_NEEDED": [],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libc-2.27.so",
+          "package": "libc",
+          "size": 1672960,
+          "sha256": "ab12e4d3d3b72a08c195bf6e91f96c3c5aaea3c311dc9e77dfa9a3cb2984c8d2",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 8,
+            "flags_hex": "0x70001005",
+            "PT_INTERP": [
+              "/lib/ld.so.1"
+            ],
+            "DT_SONAME": [
+              "libc.so.6"
+            ],
+            "DT_NEEDED": [
+              "ld.so.1"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libpthread-2.27.so",
+          "package": "libpthread",
+          "size": 123056,
+          "sha256": "f37ca66a709864de66755dfdc6306355de7bfb244b7e8901d696db90a3ee7eba",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 8,
+            "flags_hex": "0x70001005",
+            "PT_INTERP": [
+              "/lib/ld.so.1"
+            ],
+            "DT_SONAME": [
+              "libpthread.so.0"
+            ],
+            "DT_NEEDED": [
+              "libc.so.6",
+              "ld.so.1"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/librt-2.27.so",
+          "package": "librt",
+          "size": 33200,
+          "sha256": "da9d1b989f9023e046120aa8c994515dce05459880cb3283241a0e02462474a5",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 8,
+            "flags_hex": "0x70001005",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "librt.so.1"
+            ],
+            "DT_NEEDED": [
+              "libpthread.so.0",
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "lib/libgcc_s.so.1",
+          "package": "libgcc",
+          "size": 85924,
+          "sha256": "9672bd8dfb491b8d2bc895262e8d0f8b158efbfb3c1a754639fa2cdef9bfb76e",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 3,
+            "machine_id": 8,
+            "flags_hex": "0x70001007",
+            "PT_INTERP": [],
+            "DT_SONAME": [
+              "libgcc_s.so.1"
+            ],
+            "DT_NEEDED": [
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "libexec/timeout-coreutils",
+          "package": "coreutils-timeout",
+          "size": 45508,
+          "sha256": "4d7ff5e75dda873b23b6899acf647265dc831fe3780c6037809f77331c97ee6c",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 2,
+            "machine_id": 8,
+            "flags_hex": "0x70001005",
+            "PT_INTERP": [
+              "/opt/lib/ld.so.1"
+            ],
+            "DT_SONAME": [],
+            "DT_NEEDED": [
+              "librt.so.1",
+              "libpthread.so.0",
+              "libgcc_s.so.1",
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [
+              "/opt/lib"
+            ],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        },
+        {
+          "path": "libexec/gzip-gnu",
+          "package": "gzip",
+          "size": 93240,
+          "sha256": "d9ddde441fb1a06272384866cbaf63cf50b92ff4c29a63d99032057dfa63b5f0",
+          "elf": {
+            "class": "ELF32",
+            "byte_order": "little",
+            "type": 2,
+            "machine_id": 8,
+            "flags_hex": "0x70001005",
+            "PT_INTERP": [
+              "/opt/lib/ld.so.1"
+            ],
+            "DT_SONAME": [],
+            "DT_NEEDED": [
+              "libgcc_s.so.1",
+              "libc.so.6"
+            ],
+            "DT_RPATH": [],
+            "DT_RUNPATH": [
+              "/opt/lib"
+            ],
+            "DT_AUDIT": [],
+            "DT_DEPAUDIT": [],
+            "DT_AUXILIARY": [],
+            "DT_FILTER": []
+          }
+        }
+      ],
+      "links": {
+        "lib/ld.so.1": "ld-2.27.so",
+        "lib/libc.so.6": "libc-2.27.so",
+        "lib/libpthread.so.0": "libpthread-2.27.so",
+        "lib/librt.so.1": "librt-2.27.so"
+      }
+    }
+  }
+}
