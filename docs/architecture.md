@@ -44,6 +44,7 @@ flowchart LR
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
 | `modules/bootstrap.sh` | Select reviewed archive identities and construct a fresh bounded member manifest | Requires trusted helpers and private RAM; no automatic profile selection or operational launch |
 | `modules/fetch.sh` | Acquire one reviewed bootstrap archive through native HTTPS curl and verify its private bytes | Physical output caps, exact status/size/hash; no redirect, extraction, package execution or CLI wiring |
+| `modules/archive.sh` | Copy and verify a reviewed bootstrap archive, then extract its fixed member through bounded native stdout stages | Every parser input is an approved private copy; no archive path restoration, executable mode, package execution or generic archive support |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -173,8 +174,8 @@ version preference. Changed bytes require a reviewed catalogue/code update;
 unknown base libraries fail closed without a downgrade or automatic repair.
 Recorded HTTPS provenance and hashes do not claim signed-index verification,
 reproducible builds or hardware compatibility. Profile selection, saved-volume
-authority enrollment, archive handling and operational wiring remain separate
-requirements.
+authority enrollment, general archive handling and operational wiring remain
+separate requirements.
 
 `cfmgr_bootstrap_fetch` uses the same catalogue to select only the reviewed
 timeout or gzip archive for a fixed profile. Native curl receives an isolated
@@ -186,6 +187,17 @@ bounded headers and the complete three-byte HTTP status `200`. Nothing in this
 helper extracts or executes the acquired bytes. Its caller still owns signals,
 resource lifetime and the total action budget; curl timeouts do not establish a
 hard kernel or DNS deadline.
+
+`cfmgr_bootstrap_extract` first makes a bounded private copy of that archive
+and checks its reviewed size and hash. It then uses separate native gunzip and
+plain tar commands, verifying the complete intermediate bytes before the next
+parser runs. Tar writes only the fixed timeout or gzip member to stdout; it
+never restores archive paths, permissions or ownership. The resulting `program`
+is mode 0600 data, ready for the existing image-staging checks. Per-stage file
+limits keep even partial outputs below one MiB in aggregate. Failure retains
+those private files for the owning caller's cleanup decision. This route is
+limited to the reviewed archive bytes and layout; it does not validate arbitrary
+backups or install packages.
 
 The internal `cfmgr_isolation_bootstrap` entry connects that catalogue route to
 the retained storage owner. Its caller supplies an independently approved UUID

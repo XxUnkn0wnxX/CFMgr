@@ -34,14 +34,124 @@
           "architecture": "aarch64-3.10",
           "url": "https://bin.entware.net/aarch64-k3.10/coreutils-timeout_9.9-2_aarch64-3.10.ipk",
           "size": 21046,
-          "sha256": "8fd7f1f3c291b8556ca5cc77a55f16f656630ebc0af42ba879f0b62b35584516"
+          "sha256": "8fd7f1f3c291b8556ca5cc77a55f16f656630ebc0af42ba879f0b62b35584516",
+          "extraction": {
+            "outer_tar_size": 30720,
+            "outer_tar_sha256": "ff5605eb6f00139a32d08c686fb9163fea333836e7210e8bdadaab7e01cb6b47",
+            "data_gz_size": 20343,
+            "data_gz_sha256": "47e20503913f17e94768c45e5392529bb9bfca14d5a54c01ac41a9cbf29560c9",
+            "data_tar_size": 51200,
+            "data_tar_sha256": "d31d920bc83a7638af7a363fe9614d28f7bade3b99cff700a441581be1130bb6",
+            "selected_member": "./opt/libexec/timeout-coreutils",
+            "selected_size": 44112,
+            "selected_sha256": "ba7a4ae4237c790b4c989bd87a125b911c808edbeab25c67e1777a748bd659d7",
+            "outer_headers": [
+              {
+                "name": "./debian-binary",
+                "type": "0",
+                "size": 4
+              },
+              {
+                "name": "./data.tar.gz",
+                "type": "0",
+                "size": 20343
+              },
+              {
+                "name": "./control.tar.gz",
+                "type": "0",
+                "size": 498
+              }
+            ],
+            "data_headers": [
+              {
+                "name": "./",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/timeout-coreutils",
+                "type": "0",
+                "size": 44112
+              }
+            ]
+          }
         },
         "gzip": {
           "version": "1.14-1",
           "architecture": "aarch64-3.10",
           "url": "https://bin.entware.net/aarch64-k3.10/gzip_1.14-1_aarch64-3.10.ipk",
           "size": 55607,
-          "sha256": "2dc64aa9448b27d2d0b20cd78634e15d810525bd6a866094deba82878408c802"
+          "sha256": "2dc64aa9448b27d2d0b20cd78634e15d810525bd6a866094deba82878408c802",
+          "extraction": {
+            "outer_tar_size": 61440,
+            "outer_tar_sha256": "81be4b0df72d084c4cef7a1d8cbeb9a0300bcac23d37f9f7cb65e5803c54db29",
+            "data_gz_size": 54807,
+            "data_gz_sha256": "fade961bcf77cd05e838b06ce88aad8727c189c61f1ab7cd50e7b588a2726625",
+            "data_tar_size": 102400,
+            "data_tar_sha256": "5cd6784c45fe820f0ffe3fdf960df11851d6a58ade232e9039f17995d8ad89cb",
+            "selected_member": "./opt/libexec/gzip-gnu",
+            "selected_size": 93600,
+            "selected_sha256": "500eb9ff2a7067159a581c8ccd7d4b85c2a011a3a919081981b00626846e97a7",
+            "outer_headers": [
+              {
+                "name": "./debian-binary",
+                "type": "0",
+                "size": 4
+              },
+              {
+                "name": "./data.tar.gz",
+                "type": "0",
+                "size": 54807
+              },
+              {
+                "name": "./control.tar.gz",
+                "type": "0",
+                "size": 522
+              }
+            ],
+            "data_headers": [
+              {
+                "name": "./",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/gunzip-gnu",
+                "type": "0",
+                "size": 2266
+              },
+              {
+                "name": "./opt/libexec/gzip-gnu",
+                "type": "0",
+                "size": 93600
+              },
+              {
+                "name": "./opt/libexec/zcat-gnu",
+                "type": "0",
+                "size": 1904
+              }
+            ]
+          }
         }
       },
       "members": [
@@ -257,14 +367,124 @@
           "architecture": "armv7-3.2",
           "url": "https://bin.entware.net/armv7sf-k3.2/coreutils-timeout_9.9-2_armv7-3.2.ipk",
           "size": 18404,
-          "sha256": "26e52e7bba8dc7c8eee82be87ae1abd92fd924b5c86b1ac5f6ddaeb4e0d56157"
+          "sha256": "26e52e7bba8dc7c8eee82be87ae1abd92fd924b5c86b1ac5f6ddaeb4e0d56157",
+          "extraction": {
+            "outer_tar_size": 30720,
+            "outer_tar_sha256": "d3285024b60b3cdd0bba9ea9dd0370e730b66954e0888862ba7679ded7b71e16",
+            "data_gz_size": 17714,
+            "data_gz_sha256": "aabba1ce3d329b381f483f640dd0e52ed16f7cf0a793298291ba8d2d7de4ccc0",
+            "data_tar_size": 51200,
+            "data_tar_sha256": "679ff4e038cce25c5d0779d5c1c4e10790b6c5a33044802ac7e7ac2a6e274a7e",
+            "selected_member": "./opt/libexec/timeout-coreutils",
+            "selected_size": 39152,
+            "selected_sha256": "1479674edc7fbf7ecb33ed668cb7114b33a2d7f805cd62ca94868495f915bd7f",
+            "outer_headers": [
+              {
+                "name": "./debian-binary",
+                "type": "0",
+                "size": 4
+              },
+              {
+                "name": "./data.tar.gz",
+                "type": "0",
+                "size": 17714
+              },
+              {
+                "name": "./control.tar.gz",
+                "type": "0",
+                "size": 496
+              }
+            ],
+            "data_headers": [
+              {
+                "name": "./",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/timeout-coreutils",
+                "type": "0",
+                "size": 39152
+              }
+            ]
+          }
         },
         "gzip": {
           "version": "1.14-1",
           "architecture": "armv7-3.2",
           "url": "https://bin.entware.net/armv7sf-k3.2/gzip_1.14-1_armv7-3.2.ipk",
           "size": 49546,
-          "sha256": "a7325626497fc20ff860c9240442e31dcd41ff28890785d3971a030144953826"
+          "sha256": "a7325626497fc20ff860c9240442e31dcd41ff28890785d3971a030144953826",
+          "extraction": {
+            "outer_tar_size": 61440,
+            "outer_tar_sha256": "bbf9f9b87ea4a78ca1b0de2e8417f5cbcfdcb30edeed2f251d0c6b183738722e",
+            "data_gz_size": 48739,
+            "data_gz_sha256": "1c476970d94052eb41ec9885137fd74d63192276bd38fb5746718a99876c7959",
+            "data_tar_size": 92160,
+            "data_tar_sha256": "b654a2cc5f9e6f50bb8c4ac75933c181dbdba2037c75ec155bfc0403dbec6ff1",
+            "selected_member": "./opt/libexec/gzip-gnu",
+            "selected_size": 80316,
+            "selected_sha256": "43537cf1252858e3492d1825e0b60bd440d4badbe20103eeecaea2834285ea96",
+            "outer_headers": [
+              {
+                "name": "./debian-binary",
+                "type": "0",
+                "size": 4
+              },
+              {
+                "name": "./data.tar.gz",
+                "type": "0",
+                "size": 48739
+              },
+              {
+                "name": "./control.tar.gz",
+                "type": "0",
+                "size": 520
+              }
+            ],
+            "data_headers": [
+              {
+                "name": "./",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/gunzip-gnu",
+                "type": "0",
+                "size": 2266
+              },
+              {
+                "name": "./opt/libexec/gzip-gnu",
+                "type": "0",
+                "size": 80316
+              },
+              {
+                "name": "./opt/libexec/zcat-gnu",
+                "type": "0",
+                "size": 1904
+              }
+            ]
+          }
         }
       },
       "members": [
@@ -508,14 +728,124 @@
           "architecture": "mipsel-3.4",
           "url": "https://bin.entware.net/mipselsf-k3.4/coreutils-timeout_9.9-2_mipsel-3.4.ipk",
           "size": 20295,
-          "sha256": "add408df5340292347dfbc423b51c6cec7ad88b57f0f195318bf1ae276dc8e44"
+          "sha256": "add408df5340292347dfbc423b51c6cec7ad88b57f0f195318bf1ae276dc8e44",
+          "extraction": {
+            "outer_tar_size": 30720,
+            "outer_tar_sha256": "a9482edac720b79665783838a88a3fde2a14acb1f593e1bb9b62e519f3ce0b5a",
+            "data_gz_size": 19650,
+            "data_gz_sha256": "9956956b89ce8720f44ee9d6ab8f93f11ad691a73ceae548e9243fdb493e9c87",
+            "data_tar_size": 51200,
+            "data_tar_sha256": "51444b769d4733681db73098dbe7a873b50e105c9286d4189bdaaaf5bbd1bbbe",
+            "selected_member": "./opt/libexec/timeout-coreutils",
+            "selected_size": 45508,
+            "selected_sha256": "4d7ff5e75dda873b23b6899acf647265dc831fe3780c6037809f77331c97ee6c",
+            "outer_headers": [
+              {
+                "name": "./debian-binary",
+                "type": "0",
+                "size": 4
+              },
+              {
+                "name": "./data.tar.gz",
+                "type": "0",
+                "size": 19650
+              },
+              {
+                "name": "./control.tar.gz",
+                "type": "0",
+                "size": 497
+              }
+            ],
+            "data_headers": [
+              {
+                "name": "./",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/timeout-coreutils",
+                "type": "0",
+                "size": 45508
+              }
+            ]
+          }
         },
         "gzip": {
           "version": "1.14-1",
           "architecture": "mipsel-3.4",
           "url": "https://bin.entware.net/mipselsf-k3.4/gzip_1.14-1_mipsel-3.4.ipk",
           "size": 53693,
-          "sha256": "5cca33e44e0bd5f8c85ee996892a87dc8b963eb249fcdf6a165024728d1e8b42"
+          "sha256": "5cca33e44e0bd5f8c85ee996892a87dc8b963eb249fcdf6a165024728d1e8b42",
+          "extraction": {
+            "outer_tar_size": 61440,
+            "outer_tar_sha256": "6a0d79b88261f99e54fd60d17e10155d81ac1c7324e60a92e272a893c2b88134",
+            "data_gz_size": 52942,
+            "data_gz_sha256": "3004c9fd8125aae823c8ffd07e38f88e7226f5d9bb9cef92895b7c9060c97990",
+            "data_tar_size": 102400,
+            "data_tar_sha256": "3e40718c8675f385bc71c7094a3328891f251889388c980a7c389aa081b2b02d",
+            "selected_member": "./opt/libexec/gzip-gnu",
+            "selected_size": 93240,
+            "selected_sha256": "d9ddde441fb1a06272384866cbaf63cf50b92ff4c29a63d99032057dfa63b5f0",
+            "outer_headers": [
+              {
+                "name": "./debian-binary",
+                "type": "0",
+                "size": 4
+              },
+              {
+                "name": "./data.tar.gz",
+                "type": "0",
+                "size": 52942
+              },
+              {
+                "name": "./control.tar.gz",
+                "type": "0",
+                "size": 521
+              }
+            ],
+            "data_headers": [
+              {
+                "name": "./",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/",
+                "type": "5",
+                "size": 0
+              },
+              {
+                "name": "./opt/libexec/gunzip-gnu",
+                "type": "0",
+                "size": 2266
+              },
+              {
+                "name": "./opt/libexec/gzip-gnu",
+                "type": "0",
+                "size": 93240
+              },
+              {
+                "name": "./opt/libexec/zcat-gnu",
+                "type": "0",
+                "size": 1904
+              }
+            ]
+          }
         }
       },
       "members": [

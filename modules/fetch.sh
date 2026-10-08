@@ -104,7 +104,7 @@ _cfmgr_fetch_run() (
 ) >/dev/null 2>&1
 
 _cfmgr_fetch_find() {
-	case $1 in mkdir | curl | env | wc | openssl | hexdump) ;; *) return 1 ;; esac
+	case $1 in mkdir | curl | env | wc | openssl | hexdump | dd | gunzip | tar) ;; *) return 1 ;; esac
 	if [ -n "$_fetch_tools" ]; then
 		[ -x "$_fetch_tools/$1" ] && [ ! -d "$_fetch_tools/$1" ] || return 1
 		command printf '%s\n' "$_fetch_tools/$1"

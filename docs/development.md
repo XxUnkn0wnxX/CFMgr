@@ -128,16 +128,20 @@ disabled by default; repository or organization policy can also restrict them.
 `docs/evidence/bootstrap-catalog.json` records the source index/archive identities,
 member byte sizes and SHA256, and fixed ELF/link graph used by
 `modules/bootstrap.sh`. It is development evidence; the router helpers embed
-approved manifest rows and the six timeout/gzip archive URL/size/hash records.
-They never parse this JSON or adopt new provider metadata automatically.
+approved manifest rows and the six timeout/gzip archive URL/size/hash records,
+including exact intermediate extraction identities. They never parse this JSON
+or adopt new provider metadata automatically.
 
 To review a new snapshot, verify the selected official HTTPS index and exact
 archive size/hash, inspect members as inert bytes, and record each admitted
 member's hash and complete startup graph. Recheck interpreter, ABI, dynamic
 lookup paths, dependencies and links; archive validity or a new version string
-alone is insufficient. Keep private downloaded evidence outside Git. Update
+alone is insufficient. Inspect the raw archive headers and record outer tar,
+data archive and selected member sizes/hashes before admitting a new extraction
+layout; native stdout extraction must reproduce them without restoring paths.
+Keep private downloaded evidence outside Git. Update
 catalogue and embedded identities together only after review, then run focused
-bootstrap/fetch/closure checks and the normal combined validation gates. Existing
+bootstrap/fetch/archive/closure checks and the normal combined validation gates. Existing
 research scripts are audit helpers, not hostile-input runtime archive parsers.
 Never execute a downloaded package merely to regenerate these identities.
 

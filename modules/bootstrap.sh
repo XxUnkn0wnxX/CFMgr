@@ -25,6 +25,114 @@ cfmgr_bootstrap_fetch() (
 	_cfmgr_fetch_run '' "$3" "$_bootstrap_url" "$_bootstrap_size" "$_bootstrap_sha256"
 ) >/dev/null 2>&1
 
+# Fixed stdout-only extraction; trusted fetch.sh/archive.sh also required.
+# A successful program remains ordinary mode-600 data, never executed here.
+cfmgr_bootstrap_extract() (
+	trap - 0
+	set +x
+	set +e
+	set +u
+	set -f
+	umask 077
+	LC_ALL=C
+	export LC_ALL
+	IFS=' 	'
+	IFS="${IFS}
+"
+	[ "$#" -eq 4 ] || return 2
+	_cfmgr_bootstrap_archive "$1" "$2" || return 2
+	_cfmgr_bootstrap_payload "$1" "$2" || return 2
+	_cfmgr_archive_run '' "$4" "$3" "$_bootstrap_size" "$_bootstrap_sha256" \
+		"$_bootstrap_outer_size" "$_bootstrap_outer_sha256" \
+		"$_bootstrap_data_gz_size" "$_bootstrap_data_gz_sha256" \
+		"$_bootstrap_data_tar_size" "$_bootstrap_data_tar_sha256" \
+		"$_bootstrap_member" "$_bootstrap_member_size" "$_bootstrap_member_sha256"
+) >/dev/null 2>&1
+
+# These hashes bind the exact reviewed bytes before each native parser and the
+# final fixed member. No runtime catalogue parsing or archive-path extraction.
+_cfmgr_bootstrap_payload() {
+	_bootstrap_outer_size=
+	_bootstrap_outer_sha256=
+	_bootstrap_data_gz_size=
+	_bootstrap_data_gz_sha256=
+	_bootstrap_data_tar_size=
+	_bootstrap_data_tar_sha256=
+	_bootstrap_member=
+	_bootstrap_member_size=
+	_bootstrap_member_sha256=
+	[ "$#" -eq 2 ] || return 2
+	case $1:$2 in
+	aarch64-k3.10:coreutils-timeout)
+		_bootstrap_outer_size=30720
+		_bootstrap_outer_sha256=ff5605eb6f00139a32d08c686fb9163fea333836e7210e8bdadaab7e01cb6b47
+		_bootstrap_data_gz_size=20343
+		_bootstrap_data_gz_sha256=47e20503913f17e94768c45e5392529bb9bfca14d5a54c01ac41a9cbf29560c9
+		_bootstrap_data_tar_size=51200
+		_bootstrap_data_tar_sha256=d31d920bc83a7638af7a363fe9614d28f7bade3b99cff700a441581be1130bb6
+		_bootstrap_member=./opt/libexec/timeout-coreutils
+		_bootstrap_member_size=44112
+		_bootstrap_member_sha256=ba7a4ae4237c790b4c989bd87a125b911c808edbeab25c67e1777a748bd659d7
+		;;
+	aarch64-k3.10:gzip)
+		_bootstrap_outer_size=61440
+		_bootstrap_outer_sha256=81be4b0df72d084c4cef7a1d8cbeb9a0300bcac23d37f9f7cb65e5803c54db29
+		_bootstrap_data_gz_size=54807
+		_bootstrap_data_gz_sha256=fade961bcf77cd05e838b06ce88aad8727c189c61f1ab7cd50e7b588a2726625
+		_bootstrap_data_tar_size=102400
+		_bootstrap_data_tar_sha256=5cd6784c45fe820f0ffe3fdf960df11851d6a58ade232e9039f17995d8ad89cb
+		_bootstrap_member=./opt/libexec/gzip-gnu
+		_bootstrap_member_size=93600
+		_bootstrap_member_sha256=500eb9ff2a7067159a581c8ccd7d4b85c2a011a3a919081981b00626846e97a7
+		;;
+	armv7sf-k3.2:coreutils-timeout)
+		_bootstrap_outer_size=30720
+		_bootstrap_outer_sha256=d3285024b60b3cdd0bba9ea9dd0370e730b66954e0888862ba7679ded7b71e16
+		_bootstrap_data_gz_size=17714
+		_bootstrap_data_gz_sha256=aabba1ce3d329b381f483f640dd0e52ed16f7cf0a793298291ba8d2d7de4ccc0
+		_bootstrap_data_tar_size=51200
+		_bootstrap_data_tar_sha256=679ff4e038cce25c5d0779d5c1c4e10790b6c5a33044802ac7e7ac2a6e274a7e
+		_bootstrap_member=./opt/libexec/timeout-coreutils
+		_bootstrap_member_size=39152
+		_bootstrap_member_sha256=1479674edc7fbf7ecb33ed668cb7114b33a2d7f805cd62ca94868495f915bd7f
+		;;
+	armv7sf-k3.2:gzip)
+		_bootstrap_outer_size=61440
+		_bootstrap_outer_sha256=bbf9f9b87ea4a78ca1b0de2e8417f5cbcfdcb30edeed2f251d0c6b183738722e
+		_bootstrap_data_gz_size=48739
+		_bootstrap_data_gz_sha256=1c476970d94052eb41ec9885137fd74d63192276bd38fb5746718a99876c7959
+		_bootstrap_data_tar_size=92160
+		_bootstrap_data_tar_sha256=b654a2cc5f9e6f50bb8c4ac75933c181dbdba2037c75ec155bfc0403dbec6ff1
+		_bootstrap_member=./opt/libexec/gzip-gnu
+		_bootstrap_member_size=80316
+		_bootstrap_member_sha256=43537cf1252858e3492d1825e0b60bd440d4badbe20103eeecaea2834285ea96
+		;;
+	mipselsf-k3.4:coreutils-timeout)
+		_bootstrap_outer_size=30720
+		_bootstrap_outer_sha256=a9482edac720b79665783838a88a3fde2a14acb1f593e1bb9b62e519f3ce0b5a
+		_bootstrap_data_gz_size=19650
+		_bootstrap_data_gz_sha256=9956956b89ce8720f44ee9d6ab8f93f11ad691a73ceae548e9243fdb493e9c87
+		_bootstrap_data_tar_size=51200
+		_bootstrap_data_tar_sha256=51444b769d4733681db73098dbe7a873b50e105c9286d4189bdaaaf5bbd1bbbe
+		_bootstrap_member=./opt/libexec/timeout-coreutils
+		_bootstrap_member_size=45508
+		_bootstrap_member_sha256=4d7ff5e75dda873b23b6899acf647265dc831fe3780c6037809f77331c97ee6c
+		;;
+	mipselsf-k3.4:gzip)
+		_bootstrap_outer_size=61440
+		_bootstrap_outer_sha256=6a0d79b88261f99e54fd60d17e10155d81ac1c7324e60a92e272a893c2b88134
+		_bootstrap_data_gz_size=52942
+		_bootstrap_data_gz_sha256=3004c9fd8125aae823c8ffd07e38f88e7226f5d9bb9cef92895b7c9060c97990
+		_bootstrap_data_tar_size=102400
+		_bootstrap_data_tar_sha256=3e40718c8675f385bc71c7094a3328891f251889388c980a7c389aa081b2b02d
+		_bootstrap_member=./opt/libexec/gzip-gnu
+		_bootstrap_member_size=93240
+		_bootstrap_member_sha256=d9ddde441fb1a06272384866cbaf63cf50b92ff4c29a63d99032057dfa63b5f0
+		;;
+	*) return 2 ;;
+	esac
+}
+
 # Archive identities are a reviewed snapshot, never a runtime feed preference
 # or an environment-selected URL/digest. Unknown replacements require review.
 _cfmgr_bootstrap_archive() {
