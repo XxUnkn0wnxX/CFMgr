@@ -9,7 +9,8 @@
 
 BEGIN {
     if (ARGC != 1 || ENVIRON["LC_ALL"] != "C") fail(2)
-    if (cfmgr_storageinfo_mode != "fdinfo" && cfmgr_storageinfo_mode != "blkid") fail(2)
+    if (cfmgr_storageinfo_mode != "fdinfo" && cfmgr_storageinfo_mode != "blkid" &&
+        cfmgr_storageinfo_mode != "blockdev" && cfmgr_storageinfo_mode != "exthex") fail(2)
     if (cfmgr_storageinfo_size !~ /^(0|[1-9][0-9]*)$/ || length(cfmgr_storageinfo_size) > 4) fail(2)
     expected = cfmgr_storageinfo_size + 0
     if (expected > 4096) fail(2)
@@ -32,7 +33,9 @@ BEGIN {
     }
 
     if (cfmgr_storageinfo_mode == "fdinfo") body = fdinfo(document)
-    else body = blkid(document)
+    else if (cfmgr_storageinfo_mode == "blkid") body = blkid(document)
+    else if (cfmgr_storageinfo_mode == "blockdev") body = blockdev(document)
+    else body = exthex(document)
     footer = sprintf("end\t%d\n", length(body))
     if (length(body) + length(footer) > 4096) fail(1)
     printf "%s%s", body, footer
@@ -131,4 +134,46 @@ function hex(value,    result, position, key) {
         result = result sprintf("%02x", byte[key])
     }
     return result
+}
+
+# Selected LC_C BusyBox ls -dnL profile: mode, links, numeric owner/group,
+# major-comma, minor, English month, day, HH:MM or four-digit year, fixed FD path.
+# A matching ten-field non-block device record has unavailable identity (status3).
+# Other layouts, including nine-field regular files, are malformed (status1).
+function blockdev(document,    line, fields, count, major, minor, stamp, pair) {
+    if (document == "" || substr(document, length(document), 1) != "\n") fail(1)
+    line = substr(document, 1, length(document) - 1)
+    if (line ~ /[[:cntrl:]]/ || substr(line, 1, 1) == " " || substr(line, length(line), 1) == " ") fail(1)
+    count = split(line, fields, / +/)
+    if (count != 10 || fields[10] != "/proc/self/fd/8") fail(1)
+    if (fields[1] !~ /^[bcdlps-][r-][w-][xsS-][r-][w-][xsS-][r-][w-][xtT-]$/ ||
+        !decimal(fields[2], 1) || !decimal(fields[3], 0) || !decimal(fields[4], 0)) fail(1)
+    if (fields[5] !~ /^[0-9]+,$/) fail(1)
+    major = normalize(substr(fields[5], 1, length(fields[5]) - 1))
+    minor = normalize(fields[6])
+    if (fields[7] !~ /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/ ||
+        !decimal(fields[8], 1) || length(fields[8]) > 2 || fields[8] + 0 > 31) fail(1)
+    stamp = fields[9]
+    if (stamp ~ /^[0-9][0-9]:[0-9][0-9]$/) {
+        split(stamp, pair, ":")
+        if (pair[1] + 0 > 23 || pair[2] + 0 > 59) fail(1)
+    } else if (stamp !~ /^[0-9][0-9][0-9][0-9]$/ || stamp == "0000") fail(1)
+    if (substr(fields[1], 1, 1) != "b") fail(3)
+    return "blockdev\t" major ":" minor "\n"
+}
+
+function normalize(value) {
+    if (value !~ /^[0-9]+$/ || length(value) > 20) fail(1)
+    sub(/^0+/, "", value)
+    return (value == "" ? "0" : value)
+}
+
+# Exact first1152 device bytes, hex in original byte order. Unsupported magic,
+# non-dynamic revision or all-zero UUID returns3; malformed acquisition returns1.
+function exthex(document,    uuid) {
+    if (length(document) != 2304 || document !~ /^[0-9a-f]+$/) fail(1)
+    if ("m" substr(document, 2161, 4) != "m53ef" || "r" substr(document, 2201, 8) != "r01000000") fail(3)
+    uuid = substr(document, 2257, 32)
+    if ("u" uuid == "u00000000000000000000000000000000") fail(3)
+    return "exthex\t" substr(uuid, 1, 8) "-" substr(uuid, 9, 4) "-" substr(uuid, 13, 4) "-" substr(uuid, 17, 4) "-" substr(uuid, 21, 12) "\n"
 }

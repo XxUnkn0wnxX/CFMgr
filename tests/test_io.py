@@ -545,6 +545,35 @@ def test_production_workspace_uses_fixed_tools_and_forwards_arguments(io: IOFixt
     io.clean()
 
 
+@pytest.mark.parametrize(
+    ("callback", "status", "output"),
+    [
+        ("return 0", 1, ""),
+        ('cfmgr_io_stage_report "report\tok\nend\t10\n"', 0, "report\tok\nend\t10\n"),
+        ('cfmgr_io_stage_report "report\tok\nend\t10\n"; return 1', 1, ""),
+        ('cfmgr_io_stage_report "☃"', 2, ""),
+        ('cfmgr_io_stage_report ""', 2, ""),
+        ("cfmgr_io_stage_report first; cfmgr_io_stage_report second", 2, ""),
+        ("cfmgr_io_stage_report first; cfmgr_io_stage_report second; return 0", 0, "first"),
+    ],
+)
+def test_report_owner_requires_one_valid_staged_payload(
+    io: IOFixture, callback: str, status: int, output: str
+) -> None:
+    result = io.run(
+        "cfmgr_fixture_callback() {\n" + callback + "\n}\n"
+        'cfmgr_io_test "$1" "$2" report cfmgr_fixture_callback\n',
+        [str(io.router.path("ram/tmp")), str(io.router.path("bin"))],
+    )
+    assert result.returncode == status and result.stdout == output and result.stderr == ""
+    io.clean()
+
+
+def test_workspace_callback_cannot_stage_report(io: IOFixture) -> None:
+    quiet(io.workspace("cfmgr_io_stage_report forbidden"), 2)
+    io.clean()
+
+
 def test_sourcing_only_defines_functions(router: RouterHarness) -> None:
     result = router.run(
         "IFS=x; set -f; umask 027; trap ':' TERM\n"

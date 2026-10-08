@@ -51,6 +51,7 @@ behavior has not been tested. [MIPS toolchain][380-toolchain] ·
 | Feature | Required capability | Current boundary |
 | --- | --- | --- |
 | Core manager, DDNS, IP-Sync | POSIX shell, verified HTTPS/CA trust, bounded IO/locking, JFFS/RAM state and usable shared Entware prerequisites | Native recovery diagnostics remain available when prerequisites fail. Complete runtime acceptance remains pending. |
+| Current storage-observation profile | Inherited descriptor mount IDs, native numeric device listing and bounded hexdump; dynamic-revision ext2/ext3/ext4 primary superblock | Read-only foundation only. Other filesystem profiles, writability and storage-loss containment remain pending. |
 | Integrity verification | Required `coreutils-sha256sum`; native OpenSSL retained for bootstrap and edge fallback | Both produced the same synthetic digest on the current router. Fallback does not waive failed required-package installation. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
@@ -62,6 +63,13 @@ provides ARM/ARMHF/ARM64 and x86 builds, and has no MIPS asset. Go requires Linu
 2.6.36.4. Those samples cannot qualify for that modern binary merely because
 Entware works. Native DDNS/IP-Sync eligibility is evaluated separately.
 [Cloudflared packaging][cf-packages] · [Go version][cf-go] · [Go platform minimums][go-min]
+
+The current storage observer needs `mnt_id` in proc descriptor information.
+Mainline Linux added this in 3.15; older vendor kernels need a verified backport
+or a separate observation profile. An Entware feed name such as `k3.10` does not
+establish this capability. The measured router exposes it, and lightweight
+native hexdump/device-listing probes passed; assembled CFMgr runtime acceptance
+is still pending. [Linux 3.15 descriptor information](https://github.com/torvalds/linux/blob/v3.15/fs/proc/fd.c#L47).
 
 ## 🔧 Rules for native implementation
 

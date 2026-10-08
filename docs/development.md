@@ -10,10 +10,14 @@ CFMgr is being implemented in checked stages. This guide describes the working
 developer tools; [PLAN.md](../PLAN.md) remains the design, acceptance checklist,
 and progress record. There is no installable manager yet.
 
-Completed implementation, tests and documentation are published to `develop`
-after stage validation and review. Unvalidated work stays local. The branch is
-an active development checkout, not a router release; router runtime acceptance
-and stable promotion remain separate gates.
+Use focused tests and relevant lint/static checks for each small implementation
+batch, then review and commit. At a major checkpoint, run the full local suite
+and fix failures until it passes before pushing the tested commits to `develop`.
+Wait for CI and resolve failures before beginning the next set of batches.
+Unvalidated work stays local.
+
+The branch is an active development checkout, not a router release; router
+runtime acceptance and stable promotion remain separate gates.
 
 > [!IMPORTANT]
 > Python and these dependencies run on developer machines only. The router
@@ -38,6 +42,8 @@ python -m pip check
 
 For an existing checkout, start with the virtualenv steps. Reuse a healthy
 `.venv`; project packages do not belong in the system Python installation.
+For a fork, substitute your fork's clone URL and include its `develop` branch
+with the current source and `.github/workflows/checks.yml`.
 
 | Tool | Selected version | Purpose |
 | --- | --- | --- |
@@ -66,6 +72,29 @@ not router prerequisites. An alternative binary can be selected with
 
 </details>
 
+### GitHub CLI and fork setup
+
+Install [GitHub CLI](https://cli.github.com/) if you want to publish or manage
+pull requests and inspect Actions from the terminal. Authenticate once, then
+check the active account and repository routing:
+
+```sh
+gh auth login
+gh auth status
+git remote -v
+gh repo set-default --view
+```
+
+If `gh` has no default, or points to the upstream repository when you intend to
+inspect your fork, use `gh repo set-default OWNER/REPOSITORY` with your actual
+fork. This selects the repository for GitHub CLI operations; Git pushes still
+follow Git's remote configuration. Check both before publication. Local checks
+do not require `gh`, GitHub authentication or a configured remote.
+
+Enable Actions in the fork's **Actions** tab if needed. Workflows in forks are
+disabled by default; repository or organization policy can also restrict them.
+[GitHub's fork workflow documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflows-in-forked-repositories).
+
 ## 🧪 Run checks
 
 From the repository root with `.venv` active:
@@ -79,6 +108,12 @@ shell syntax, ShellCheck, `shfmt`, and pytest. It recognizes `.sh`, `.sh.in`, an
 extensionless shell entry points. Scratch, virtualenv, cache, and symlinked
 source paths are excluded. The first native source, `modules/common.sh`, provides
 pure parsing helpers; it does not install or start CFMgr.
+
+`tools/check.py` locates the checkout from its own file, so a fork can use a
+different owner, repository name or directory, including spaces. It has no
+hardcoded GitHub repository, remote or branch and does not commit, push or wait
+for CI. Its selected executable paths are configurable; the same runner is used
+by the checked-in workflow.
 
 | Task | Command |
 | --- | --- |
@@ -136,6 +171,13 @@ kernel compatibility matrix.
 
 All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+At a major checkpoint, pass the local runner first, then push eligible code
+changes to the fork's `develop` branch. That push starts Actions independently;
+GitHub does not wait for a local process. An already-pushed change may therefore
+have a CI run before the local checks finish. Documentation-only pushes do not
+start this workflow, and rerunning local checks without a push does not trigger
+Actions. Pull requests use the same code filters and must target `develop`.
+
 ## 🧱 Test structure
 
 The runtime entry point is `cfmgr.sh`, with directly used shell/awk helpers in
@@ -156,6 +198,7 @@ command remains `cfmgr`.
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
 | `tests/test_io.py` | Private staging, stream bounds, producer status, signal cleanup and complete mount handoff |
 | `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
+| `tests/test_storage.py` | Held-descriptor observation, before/after identity checks and rejection without publication |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -243,6 +286,8 @@ native tools and ignores inherited tool-path overrides.
 | Function | Contract |
 | --- | --- |
 | `cfmgr_io_with_workspace ROOT CALLBACK [ARGS...]` | Create an owned mode-700 directory with at most eight collision attempts, call the internal callback with that directory as its first argument, then clean it up. Callback output is suppressed. |
+| `cfmgr_io_with_report ROOT CALLBACK [ARGS...]` | The same private ownership, with exactly one explicitly staged report required for success. |
+| `cfmgr_io_stage_report PAYLOAD` | Within a report callback, stage a nonempty ASCII payload of at most 65,536 bytes. Publish only after callback success and owned cleanup. |
 | `cfmgr_io_capture SLOT OUT_LIMIT ERR_LIMIT TOOL [ARGS...]` | Within that callback, exclusively create private mode-600 stream/status files. Slots are 0–15 and consumed even after failure. Each accepted stream is at most 65,536 bytes. |
 | `cfmgr_io_mount_snapshot ROOT TARGET PARSER` | Acquire fixed `/proc/self/mountinfo`, run the trusted parser and verify its status, fields, complete framing and byte count. Emit the bounded ASCII result only after workspace cleanup succeeds. |
 
@@ -267,7 +312,8 @@ to write through a mount path during hotplug.
 
 ### Native storage observations
 
-`modules/storageinfo.awk` parses bounded `fdinfo` or native `blkid` snapshots. It
+`modules/storageinfo.awk` parses bounded `fdinfo`, native `blkid`, numeric
+block-device listings and primary-superblock hex observations. It
 requires a stable private file, its independently checked byte count, `LC_ALL=C`
 and a literal mode. Inputs are at most 4 KiB; fdinfo has at most 64 records.
 Mount IDs remain exact decimal text, including values beyond numeric precision.
@@ -280,9 +326,48 @@ byte-encoded UUID/optional filesystem type, never a storage authorization.
 
 Status 0 supplies a complete framed observation, 1 rejects malformed data,
 2 rejects invocation errors, and 3 means usable identity is unavailable.
-Consumers must check status and the complete terminal byte-count record. Native
-acquisition, persistent identity, writability and mount-loss handling remain
-separate work.
+Consumers must check status and the complete terminal byte-count record.
+Expected-volume approval, writability and mount-loss handling remain separate
+work.
+
+### Held-descriptor storage observation
+
+After loading trusted IO and storage modules, an internal caller can use
+`cfmgr_storage_observe ROOT MOUNT_PARSER STORAGE_PARSER`. The arguments identify
+the trusted RAM parent and absolute verified parser paths. Production uses fixed
+`/opt` and proc inputs; fixture overrides belong to an explicit test API.
+
+The observer holds a directory descriptor, joins its `mnt_id` to the selected
+mount and checks that the current target still refers to that directory. It
+then holds the selected block device, compares its numeric device number and
+reads the first 1,152 bytes through the original descriptor's stdin. It requires
+ext magic, dynamic revision and a nonzero UUID. Filesystem type and `sb=` options
+are checked before the block-data read. Disk labels do not enter this UUID path.
+
+Before staging, it repeats the target, mount, descriptor and device checks. The
+result contains the mount ID, device number, filesystem type, byte-encoded paths
+and options, and UUID, followed by an exact byte-count footer. Treat these facts
+as private: hex encoding does not redact paths. Consumers must check exit status
+and complete framing before using a report.
+
+<details>
+<summary>Scope and evidence limits</summary>
+
+- Descriptors remain held through observation and staging, then are restored
+  before workspace cleanup and publication. The report transfers no open handle
+  or permission to mutate storage.
+- This first profile supports dynamic-revision ext2/ext3/ext4 primary
+  superblocks. Unsupported formats or unavailable identity return 3; malformed,
+  changed or failed observations return 1; invalid API arguments return 2.
+- Matching checks before and after a read do not prove atomic continuity,
+  device-generation stability, expected configured identity, writability or
+  filesystem health.
+- The 16-slot capture limit bounds staging, not native process count or CPU
+  cost. Command deadlines and native performance remain separate work.
+- Host fault fixtures and unprivileged Linux descriptor tests do not establish
+  physical hotplug, hardware or router runtime acceptance.
+
+</details>
 
 ### Native health report
 
@@ -356,8 +441,9 @@ Develop on `develop`. For each coherent stage, review the affected contracts,
 implement and test normal/failure paths, run the relevant checks, and update the
 plan before committing. Explain changes to existing test expectations; preserve
 the behavior being tested. Do not mask safety failures with skips or `xfail`.
-The user authorizes completed code, tests, documentation and requirements to be
-published to `develop` after stage checks and review pass. Keep the README's
+Publish completed code, tests, documentation and requirements to `develop` at
+major checkpoints after the full local suite passes, then require green CI
+before the next set of batches. Keep the README's
 explicit active-development warning until router runtime acceptance is complete.
 Never include an unfinished worker's changes in a passing-stage commit. Stable
 promotion and live deployment still require separate authorization.
@@ -376,7 +462,7 @@ contents look like this; the exact enclosing config schema is a P1 gate:
 ```text
 # main is the default; develop or a full 40-character commit hash is also valid.
 branch: main
-common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/src/common.sh
+common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/modules/common.sh
 ```
 
 This is a format illustration with the existing helper, not a complete install

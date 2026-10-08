@@ -15,6 +15,21 @@ cfmgr_io_with_workspace() {
 	_cfmgr_io_owner '' "$1" workspace "$@"
 }
 
+# Controlled callback may stage one bounded ASCII report, published only after
+# status0 and successful owned cleanup. Workspace callbacks remain status-only.
+cfmgr_io_with_report() {
+	[ "$#" -ge 2 ] || return 2
+	_cfmgr_io_owner '' "$1" report "$@"
+}
+
+cfmgr_io_stage_report() {
+	[ "$#" -eq 1 ] && [ "${_io_active-}" = 1 ] && [ "${_io_report-}" = 1 ] || return 2
+	[ "$_io_publish" -eq 0 ] && [ -n "$1" ] && [ "${#1}" -le 65536 ] || return 2
+	case $1 in *[!\ -~"$_io_tab$_io_lf"]*) return 2 ;; esac
+	_io_result=$1
+	_io_publish=1
+}
+
 cfmgr_io_mount_snapshot() {
 	[ "$#" -eq 3 ] || return 2
 	_cfmgr_io_owner '' "$1" mount "$2" "$3" /proc/self/mountinfo
@@ -28,7 +43,7 @@ cfmgr_io_test() {
 }
 
 _cfmgr_io_find() (
-	case $1 in awk | cat | wc | printf | test | '[' | mkdir | rm) ;; *) return 2 ;; esac
+	case $1 in awk | cat | wc | printf | test | '[' | mkdir | rm | readlink | ls | hexdump) ;; *) return 2 ;; esac
 	if [ -n "$_io_tools" ]; then
 		[ -x "$_io_tools/$1" ] && [ ! -d "$_io_tools/$1" ] || return 1
 		printf '%s\n' "$_io_tools/$1"
@@ -142,7 +157,7 @@ cfmgr_io_capture() (
 	_cfmgr_io_limit "$2" && _cfmgr_io_limit "$3" || return 2
 	_cap_out_limit=$2
 	_cap_err_limit=$3
-	case $4 in cat | awk | wc | printf | test | '[') ;; *) return 2 ;; esac
+	case $4 in cat | awk | wc | printf | test | '[' | readlink | ls | hexdump) ;; *) return 2 ;; esac
 	_cap_command=$(_cfmgr_io_find "$4") || return 1
 	shift 4
 	_cap_ceiling=$_cap_out_limit
@@ -185,29 +200,39 @@ _cfmgr_io_capture_status() {
 
 _cfmgr_io_mount_action() {
 	[ "$#" -eq 4 ] || return 2
-	_mount_stage=$1
-	_mount_target=$2
-	_mount_parser=$3
-	_mount_input=$4
+	_cfmgr_io_mount_capture "$2" "$3" "$4" 0 1 || return "$?"
+	cfmgr_io_stage_report "$_mount_ledger"
+}
+
+# Internal checked mount capture. Explicit distinct slots allow other owned
+# observations to share the16-slot budget. Outputs: _mount_body/_mount_ledger.
+_cfmgr_io_mount_capture() {
+	[ "$#" -eq 5 ] || return 2
+	_mount_target=$1
+	_mount_parser=$2
+	_mount_input=$3
+	_mount_raw_slot=$4
+	_mount_result_slot=$5
+	[ "$_mount_raw_slot" != "$_mount_result_slot" ] || return 2
 	case $_mount_parser in /*) ;; *) return 2 ;; esac
 	[ -f "$_mount_parser" ] && [ ! -L "$_mount_parser" ] && [ -r "$_mount_parser" ] || return 2
 	[ -f "$_mount_input" ] && [ ! -L "$_mount_input" ] || return 1
-	cfmgr_io_capture 0 65536 4096 cat "$_mount_input" || return 1
-	_cfmgr_io_capture_status 0 || return 1
+	cfmgr_io_capture "$_mount_raw_slot" 65536 4096 cat "$_mount_input" || return 1
+	_cfmgr_io_capture_status "$_mount_raw_slot" || return 1
 	[ "$_io_producer" -eq 0 ] && [ "$_io_err_bytes" -eq 0 ] || return 1
-	_mount_size=$(_cfmgr_io_size "$_mount_stage/0.out") || return 1
+	_mount_size=$(_cfmgr_io_size "$_io_stage/$_mount_raw_slot.out") || return 1
 	[ "$_mount_size" -gt 0 ] || return 1
 	CFMGR_MOUNT_TARGET=$_mount_target
 	export CFMGR_MOUNT_TARGET
-	cfmgr_io_capture 1 65536 4096 awk -v "cfmgr_mountinfo_size=$_mount_size" -f "$_mount_parser" <"$_mount_stage/0.out" || return 1
-	_cfmgr_io_capture_status 1 || return 1
+	cfmgr_io_capture "$_mount_result_slot" 65536 4096 awk -v "cfmgr_mountinfo_size=$_mount_size" -f "$_mount_parser" <"$_io_stage/$_mount_raw_slot.out" || return 1
+	_cfmgr_io_capture_status "$_mount_result_slot" || return 1
 	case $_io_producer in 0) ;; 1 | 2 | 3) return "$_io_producer" ;; *) return 1 ;; esac
 	[ "$_io_err_bytes" -eq 0 ] || return 1
-	_mount_bytes=$(_cfmgr_io_size "$_mount_stage/1.out") || return 1
+	_mount_bytes=$(_cfmgr_io_size "$_io_stage/$_mount_result_slot.out") || return 1
 	_mount_body=
 	_mount_footer=
 	_mount_extra=
-	{ IFS= read -r _mount_body && IFS= read -r _mount_footer && ! IFS= read -r _mount_extra && [ -z "$_mount_extra" ]; } <"$_mount_stage/1.out" || return 1
+	{ IFS= read -r _mount_body && IFS= read -r _mount_footer && ! IFS= read -r _mount_extra && [ -z "$_mount_extra" ]; } <"$_io_stage/$_mount_result_slot.out" || return 1
 	_mount_saved_ifs=$IFS
 	IFS=$_io_tab
 	# shellcheck disable=SC2086
@@ -227,9 +252,8 @@ _cfmgr_io_mount_action() {
 	_mount_body_bytes=$((${#_mount_body} + 1))
 	[ "$_mount_footer" = "end$_io_tab$_mount_body_bytes" ] || return 1
 	[ "$_mount_bytes" -eq "$((_mount_body_bytes + ${#_mount_footer} + 1))" ] || return 1
-	_io_result=$_mount_body$_io_lf$_mount_footer$_io_lf
-	[ "${#_io_result}" -le 65536 ] || return 1
-	_io_publish=1
+	_mount_ledger=$_mount_body$_io_lf$_mount_footer$_io_lf
+	[ "${#_mount_ledger}" -le 65536 ]
 }
 
 _cfmgr_io_finish() {
@@ -271,6 +295,7 @@ _cfmgr_io_owner() (
 	_io_active=0
 	_io_stage=
 	_io_publish=0
+	_io_report=0
 	_io_result=
 	_io_signal=0
 	_io_tab='	'
@@ -283,20 +308,22 @@ _cfmgr_io_owner() (
 	if [ -n "$_io_tools" ]; then
 		[ "$#" -ge 3 ] || return 2
 		shift 3
-	elif [ "$_io_action" = workspace ]; then
+	elif [ "$_io_action" = workspace ] || [ "$_io_action" = report ]; then
 		[ "$#" -ge 1 ] || return 2
 		shift
 	fi
 	case $_io_action in
-	workspace)
+	workspace | report)
 		[ "$#" -ge 1 ] || return 2
 		case $1 in '' | [0123456789]* | *[!ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_]*) return 2 ;; esac
 		_io_callback=$1
+		[ "$_io_action" != report ] || _io_report=1
 		shift
 		;;
 	mount)
 		[ "$#" -eq 3 ] || return 2
 		_io_callback=_cfmgr_io_mount_action
+		_io_report=1
 		;;
 	*) return 2 ;;
 	esac
@@ -329,6 +356,9 @@ _cfmgr_io_owner() (
 	# Controlled callback output is never a publication channel.
 	"$_io_callback" "$_io_stage" "$@" >/dev/null 2>&1
 	_io_callback_status=$?
+	if [ "$_io_report" -eq 1 ] && [ "$_io_callback_status" -eq 0 ] && [ "$_io_publish" -ne 1 ]; then
+		_io_callback_status=1
+	fi
 	# The slot grammar and exclusive reservation bound attempts to16 slots.
 	_cfmgr_io_slots || _io_callback_status=1
 	exit "$_io_callback_status"

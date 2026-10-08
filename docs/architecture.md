@@ -36,8 +36,9 @@ flowchart LR
 | `modules/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
 | `modules/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
 | `modules/mountinfo.awk` | Validate a mount snapshot and select the covering mount | Does not establish persistent volume identity, writability or live mount stability |
-| `modules/io.sh` | Private bounded captures and validated mount-snapshot handoff | Internal library; retained-volume approval and command supervision remain separate |
-| `modules/storageinfo.awk` | Parse native mount-ID and unambiguous blkid observations | No acquisition or volume authorization; label-bearing blkid reports cannot establish UUID identity |
+| `modules/io.sh` | Private bounded captures, checked mount snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
+| `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
+| `modules/storage.sh` | Hold directory/device descriptors while comparing mount facts and reading an ext UUID | Read-only observation; no write permission, dependency execution or CLI integration |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -58,6 +59,18 @@ Persistent settings and recovery stay in JFFS; frequent observations and retry
 state stay in RAM. Missing storage must preserve saved intent and report waiting
 or incomplete work. A mount label, `/dev/sd` name, directory or executable alone
 cannot establish the expected volume.
+
+The storage observer joins the held directory's mount ID to the current mount
+table, checks the block device number and reads the primary ext superblock through
+the original open descriptor. It repeats the path/mount/device checks before
+staging its result. The descriptors remain open through observation and staging;
+the private workspace is cleaned before the result is published.
+
+This first profile covers dynamic-revision ext2/ext3/ext4 primary superblocks.
+Other filesystems, alternate `sb=` mounts and missing mount-ID support need
+separate profiles. A matching observation does not prove writability, filesystem
+health or uninterrupted device identity, and it cannot authorize a later write
+through a freshly resolved path.
 
 Backups contain configuration and inventoried data, including credentials; they
 do not restore executable code or live process/queue/transaction state. The

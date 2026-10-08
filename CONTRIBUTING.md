@@ -19,7 +19,9 @@ For larger changes, check the contracts and remaining acceptance work in
 ## 🧪 Validate the change
 
 1. Follow the [virtualenv setup](docs/development.md#-set-up-the-environment).
-2. Run the relevant tests while making changes, then `python tools/check.py`.
+2. Run focused tests and relevant lint while making small commits. At a major
+   checkpoint, pass `python tools/check.py` before pushing and require green CI
+   before starting the next set of changes.
 3. Include meaningful failure-path tests when changing runtime behaviour, and
    explain any changed test expectations.
 4. Record what was actually tested. Keep host, BusyBox and router evidence
@@ -29,6 +31,10 @@ GitHub Actions runs the same check command with BusyBox on Linux for code,
 tests and tooling changes targeting `develop`. Documentation-only changes do
 not trigger CI. Contributors should still check Markdown links, examples and
 formatting locally.
+
+Forks can use the same local runner without GitHub authentication. Include the
+`develop` branch and workflow, enable Actions in the fork, and configure `gh`
+only if using its publishing/PR/CI commands. See [GitHub CLI and fork setup](docs/development.md#github-cli-and-fork-setup).
 
 ## 🔒 Protect runtime boundaries
 

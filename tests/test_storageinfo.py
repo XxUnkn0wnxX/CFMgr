@@ -370,3 +370,105 @@ def test_optional_actual_busybox_storage_observations(busybox_router: RouterHarn
         invoke(busybox_router, blkid_record(("LABEL", b"ordinary"), ("UUID", b"AB-12")), "blkid"), 3
     )
     quiet(invoke(busybox_router, FDINFO + b"\x00"), 1)
+
+
+BLOCK_LINE = b"brw-rw----    1 0        0           008, 0001 Oct  9 12:34 /proc/self/fd/8\n"
+
+
+def ext_bytes() -> bytes:
+    data = bytearray(1152)
+    data[1080:1082] = bytes.fromhex("53ef")
+    data[1100:1104] = bytes.fromhex("01000000")
+    data[1128:1144] = bytes.fromhex("00112233445566778899aabbccddeeff")
+    return bytes(data)
+
+
+def test_blockdev_numeric_metadata_and_large_rdev(native_awk: RouterHarness) -> None:
+    success(invoke(native_awk, BLOCK_LINE, "blockdev"), ledger("blockdev", "8:1"))
+    data = BLOCK_LINE.replace(b"008, 0001", b"9007199254740993, 99999999999999999999")
+    success(
+        invoke(native_awk, data, "blockdev"),
+        ledger("blockdev", "9007199254740993:99999999999999999999"),
+    )
+    success(
+        invoke(native_awk, BLOCK_LINE.replace(b"12:34", b"2026"), "blockdev"),
+        ledger("blockdev", "8:1"),
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b"",
+        BLOCK_LINE[:-1],
+        BLOCK_LINE * 2,
+        BLOCK_LINE + b"junk",
+        BLOCK_LINE.replace(b"brw-rw----", b"br?-rw----"),
+        BLOCK_LINE.replace(b"008,", b"8"),
+        BLOCK_LINE.replace(b"0001", b"-1"),
+        BLOCK_LINE.replace(b"008,", b"9" * 21 + b","),
+        BLOCK_LINE.replace(b"Oct", b"Bad"),
+        BLOCK_LINE.replace(b" 9 ", b" 32 "),
+        BLOCK_LINE.replace(b"12:34", b"24:34"),
+        BLOCK_LINE.replace(b"12:34", b"12:60"),
+        BLOCK_LINE.replace(b"/proc/self/fd/8", b"/dev/synthetic"),
+        BLOCK_LINE.replace(b"0        0", b"user     0"),
+        BLOCK_LINE.replace(b"/proc/self/fd/8", b"/proc/self/fd/8\x00"),
+        BLOCK_LINE.replace(b"Oct", b"O\x1cct"),
+        b"-rw-r--r-- 1 0 0 1152 Oct 9 12:34 /proc/self/fd/8\n",
+    ],
+)
+def test_blockdev_rejects_malformed_or_nonblock_records(
+    native_awk: RouterHarness, data: bytes
+) -> None:
+    quiet(invoke(native_awk, data, "blockdev"), 1)
+
+
+def test_other_device_type_is_unavailable(native_awk: RouterHarness) -> None:
+    quiet(invoke(native_awk, BLOCK_LINE.replace(b"brw", b"crw"), "blockdev"), 3)
+
+
+def test_exthex_uuid_uses_original_byte_order(native_awk: RouterHarness) -> None:
+    import uuid
+
+    data = ext_bytes()
+    expected = str(uuid.UUID(bytes=data[1128:1144]))
+    success(invoke(native_awk, data.hex().encode(), "exthex"), ledger("exthex", expected))
+    data = bytearray(data)
+    numeric_looking_uuid = "0" * 27 + "e0000"
+    assert len(numeric_looking_uuid) == 32
+    data[1128:1144] = bytes.fromhex(numeric_looking_uuid)
+    assert len(data) == 1152
+    success(
+        invoke(native_awk, data.hex().encode(), "exthex"),
+        ledger("exthex", str(uuid.UUID(bytes=bytes(data[1128:1144])))),
+    )
+
+
+@pytest.mark.parametrize(
+    "offset,replacement",
+    [(1080, b"xx"), (1100, b"\0\0\0\0"), (1100, b"\2\0\0\0"), (1128, bytes(16))],
+)
+def test_exthex_unsupported_primary_identity_returns_unavailable(
+    native_awk: RouterHarness, offset: int, replacement: bytes
+) -> None:
+    data = bytearray(ext_bytes())
+    data[offset : offset + len(replacement)] = replacement
+    quiet(invoke(native_awk, data.hex().encode(), "exthex"), 3)
+
+
+@pytest.mark.parametrize(
+    "change", ["short", "extra", "newline", "uppercase", "nul", "separator", "nonhex"]
+)
+def test_exthex_requires_exact_lowercase_byte_hex(native_awk: RouterHarness, change: str) -> None:
+    data = ext_bytes().hex().encode()
+    changes = {
+        "short": data[:-2],
+        "extra": data + b"00",
+        "newline": data + b"\n",
+        "uppercase": data.upper(),
+        "nul": data + b"\0",
+        "separator": data[:8] + b"\x1c" + data[8:],
+        "nonhex": b"g" + data[1:],
+    }
+    quiet(invoke(native_awk, changes[change], "exthex"), 1)
