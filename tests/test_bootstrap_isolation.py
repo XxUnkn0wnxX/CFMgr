@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import shlex
-import sys
 from pathlib import Path
 
 import pytest
@@ -98,37 +97,6 @@ def run_bootstrap(
     else:
         invocation = f'exec {shlex.quote(isolation.storage.shell)} "$@"\n'
     return isolation.router.run(invocation, [str(subject), *args], timeout=30, env=env)
-
-
-def capture_stage_before_cleanup(isolation: IsolationFixture) -> tuple[Path, Path]:
-    """Observe only private fixture files just before the existing rm dispatcher."""
-    router = isolation.router
-    dispatcher = router.path("bin/rm")
-    preserved = router.path("bin/rm-dispatch")
-    dispatcher.rename(preserved)
-    capture = router.write(
-        "work/capture-bootstrap-stage.py",
-        "import shutil, sys\n"
-        "from pathlib import Path\n"
-        "guard, output = Path(sys.argv[1]), Path(sys.argv[2])\n"
-        "manifest = guard / 'bootstrap-manifest.tsv'\n"
-        "member = guard / 'closure/opt/lib/ld-2.27.so'\n"
-        "if manifest.is_file(): shutil.copyfile(manifest, output / 'manifest.tsv')\n"
-        "if member.is_file(): shutil.copyfile(member, output / 'first-member')\n",
-    )
-    snapshots = router.path("work/bootstrap-stage-snapshot")
-    snapshots.mkdir(mode=0o700)
-    router.write(
-        "bin/rm",
-        "#!/bin/sh\nset -eu\n"
-        'if [ "$#" = 2 ] && [ "$1" = -rf ] && [ -f "$2/bootstrap-manifest.tsv" ]; then\n'
-        f'\t{shlex.quote(sys.executable)} {shlex.quote(str(capture))} "$2" '
-        f"{shlex.quote(str(snapshots))}\n"
-        "fi\n"
-        f'exec /bin/sh {shlex.quote(str(preserved))} "$@"\n',
-        executable=True,
-    )
-    return snapshots / "manifest.tsv", snapshots / "first-member"
 
 
 def test_invalid_expected_authority_is_rejected_before_storage_owner(
@@ -234,6 +202,93 @@ def test_production_entry_validates_routes_resets_state_and_preserves_owner_stat
     assert marker.read_text() == ""
 
 
+def test_acquire_entries_validate_route_and_check_authority_before_guard(
+    router: RouterHarness,
+) -> None:
+    """Use the real approved-ledger comparison with cheap explicit owner boundaries."""
+    isolation = IsolationFixture(router, "/bin/sh")
+    expected_uuid, expected_fs_target = authority(isolation)
+    values = {
+        "ROOT": str(router.path("ram/tmp")),
+        "TOOLS": str(router.path("bin")),
+        "TARGET": str(isolation.storage.target),
+        "MOUNT": str(router.path("work/mountinfo")),
+        "FDINFO": str(router.path("work/fdinfo")),
+        "BLOCK": str(router.path("work/block")),
+        "MPARSER": str(MOUNT_PARSER),
+        "SPARSER": str(STORAGE_PARSER),
+        "UUID": expected_uuid,
+        "FS": expected_fs_target,
+        "LEDGER": isolation.storage.expected(),
+        "OWNER": str(router.path("work/acquire-owners")),
+        "ADMITTED": str(router.path("work/acquire-admitted")),
+    }
+    script = "\n".join(f". {shlex.quote(str(path))}" for path in (IO, CLOSURE, ISOLATION))
+    script += "\n" + "".join(f"{key}={shlex.quote(value)}\n" for key, value in values.items())
+    script += r"""
+_io_tab=$(command printf '\t'); _io_lf='
+'
+check_reset() {
+  [ "$_isolation_mode" = acquire ] && [ "$_isolation_probe_pending" = 0 ] &&
+    [ -z "$_isolation_probe_manifest$_isolation_probe_timeout$_isolation_probe_gzip" ]
+}
+cfmgr_storage_with() {
+  [ "$#" = 5 ] && [ "$1" = "$ROOT" ] && [ "$2" = "$MPARSER" ] &&
+    [ "$3" = "$SPARSER" ] && [ "$4" = _cfmgr_isolation_acquire_begin ] &&
+    [ "$5" = _cfmgr_isolation_probe_run ] && [ -z "$_isolation_tools" ] &&
+    check_reset || return 9
+  return 3
+}
+cfmgr_storage_with_test() {
+  [ "$#" = 10 ] && [ "$1" = "$ROOT" ] && [ "$2" = "$TOOLS" ] &&
+    [ "$3" = "$TARGET" ] && [ "$4" = "$MOUNT" ] && [ "$5" = "$FDINFO" ] &&
+    [ "$6" = "$BLOCK" ] && [ "$7" = "$MPARSER" ] && [ "$8" = "$SPARSER" ] &&
+    [ "$9" = _cfmgr_isolation_acquire_begin ] && [ "${10}" = _cfmgr_isolation_probe_run ] &&
+    check_reset || return 9
+  command printf x >>"$OWNER"
+  "$9" "$TARGET" "$LEDGER" "${10}"
+}
+_cfmgr_isolation_begin_args() {
+  check_reset && [ "$_isolation_callback" = _cfmgr_isolation_probe_run ] || return 9
+  command printf admitted >"$ADMITTED"
+  return 124
+}
+fixture() {
+  cfmgr_isolation_acquire_test "$ROOT" "$TOOLS" "$TARGET" "$MOUNT" "$FDINFO" "$BLOCK" \
+    "$MPARSER" "$SPARSER" "$@"
+}
+cfmgr_isolation_acquire "$ROOT" "$MPARSER" "$SPARSER" armv7sf-k3.2 "$UUID" "$FS" gzip
+[ "$?" = 3 ] || exit 10
+cfmgr_isolation_acquire "$ROOT" "$MPARSER" "$SPARSER" armv7sf-k3.2 "$UUID" "$FS"
+[ "$?" = 2 ] || exit 11
+fixture armv7sf-k3.2 "$UUID" "$FS" gzip extra; [ "$?" = 2 ] || exit 12
+fixture unknown-profile "$UUID" "$FS" gzip; [ "$?" = 2 ] || exit 13
+fixture armv7sf-k3.2 "$UUID" "$FS" unknown-mode; [ "$?" = 2 ] || exit 14
+fixture armv7sf-k3.2 00000000-0000-0000-0000-000000000000 "$FS" gzip
+[ "$?" = 2 ] && [ ! -e "$OWNER" ] && [ ! -e "$ADMITTED" ] || exit 15
+fixture armv7sf-k3.2 ffeeddcc-bbaa-9988-7766-554433221100 "$FS" gzip
+[ "$?" = 1 ] && [ "$(/bin/cat "$OWNER")" = x ] && [ ! -e "$ADMITTED" ] || exit 16
+fixture armv7sf-k3.2 "$UUID" 2f6f74686572 gzip
+[ "$?" = 1 ] && [ "$(/bin/cat "$OWNER")" = xx ] && [ ! -e "$ADMITTED" ] || exit 17
+fixture armv7sf-k3.2 "$UUID" "$FS" gzip
+[ "$?" = 124 ] && [ "$(/bin/cat "$OWNER")" = xxx ] && [ -f "$ADMITTED" ] || exit 18
+"""
+    result = router.run(
+        script,
+        env={
+            "_isolation_mode": "native",
+            "_isolation_probe_pending": "1",
+            "_isolation_probe_manifest": "/ambient/manifest",
+            "_isolation_probe_timeout": "/ambient/timeout",
+            "_isolation_probe_gzip": "/ambient/gzip",
+        },
+    )
+    assert result.returncode == 0, result
+    assert result.stdout == result.stderr == ""
+    assert not isolation.guard.exists()
+    assert isolation.calls() == []
+
+
 @pytest.mark.parametrize(
     ("mismatch", "expected_uuid", "expected_fs_target"),
     [
@@ -260,14 +315,13 @@ def test_storage_authority_mismatch_stops_before_guard_stage_or_mounts(
     assert not isolation.router.path("work/callback.observation").exists()
 
 
-def test_matching_authority_reaches_real_closure_and_cleans_failed_stage(
+def test_matching_authority_reaches_real_closure_and_retains_failed_stage(
     router: RouterHarness,
 ) -> None:
     isolation = IsolationFixture(router, "/bin/sh")
     isolation.prepare_probe("gzip")
     expected_uuid, expected_fs_target = authority(isolation)
     owner_marker = router.path("work/bootstrap-begin-entered")
-    manifest_snapshot, first_member_snapshot = capture_stage_before_cleanup(isolation)
 
     result = run_bootstrap(
         isolation,
@@ -279,9 +333,12 @@ def test_matching_authority_reaches_real_closure_and_cleans_failed_stage(
 
     isolation.quiet(result, 1)
     assert owner_marker.is_file()
-    assert not isolation.guard.exists()
-    assert manifest_snapshot.read_bytes() == approved_manifest(PROFILE)
-    assert first_member_snapshot.read_bytes() == b"synthetic probe image member 1\n"
+    assert (isolation.guard / "active").read_bytes() == b"prepare\n"
+    assert (isolation.guard / "bootstrap-manifest.tsv").read_bytes() == approved_manifest(PROFILE)
+    first_member = isolation.guard / "closure/opt/lib/ld-2.27.so"
+    assert first_member.read_bytes() == b"synthetic probe image member 1\n"
+    first_row = approved_manifest(PROFILE).splitlines()[0].split(b"\t")
+    assert first_member.stat().st_size != int(first_row[1]), "copied synthetic bytes must reject"
     assert isolation.mutations() == []
     assert not any(call["tool"] == "chroot" for call in isolation.calls())
     calls = isolation.calls()
@@ -290,7 +347,7 @@ def test_matching_authority_reaches_real_closure_and_cleans_failed_stage(
         for call in calls
         if call["tool"] == "rm" and call["args"] == ["-rf", str(isolation.guard)]
     ]
-    assert len(guard_removals) == 1, "failed stage must remove its private guard"
+    assert guard_removals == [], "failed preparation cannot prove producer completion"
 
 
 def test_manifest_construction_failure_marks_stage_attempted_without_closure_call(

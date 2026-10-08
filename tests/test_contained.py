@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from tests.harness import RouterHarness
-from tests.test_isolation import IsolationFixture
+from tests.test_isolation import FOCUSED_BOUNDARIES, IsolationFixture
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -85,14 +87,294 @@ def test_gzip_probe_binds_only_the_checked_image_and_cleans_in_order(
 
 @pytest.mark.integration
 @pytest.mark.matrix("V74", evidence="host")
-def test_stage_admission_failure_cleans_before_any_mount_or_launch(
+def test_stage_admission_failure_retains_before_any_mount_or_launch(
     contained: IsolationFixture,
 ) -> None:
     result = contained.run_probe(bad_manifest=True)
     contained.quiet(result, 1)
-    assert not contained.guard.exists()
+    assert (contained.guard / "active").read_bytes() == b"prepare\n"
+    first_member = contained.guard / "closure/opt/lib/ld-2.27.so"
+    source = contained.storage.target / "lib/ld-2.27.so"
+    assert first_member.read_bytes() == source.read_bytes()
+    supplied_digest = contained.probe_manifest.read_bytes().splitlines()[0].split(b"\t")[2]
+    assert hashlib.sha256(first_member.read_bytes()).hexdigest().encode() != supplied_digest
+    assert not any(
+        call["tool"] == "rm" and call["args"] == ["-rf", str(contained.guard)]
+        for call in contained.calls()
+    )
     assert not contained.mutations()
     assert not any(call["tool"] == "chroot" for call in contained.calls())
+
+
+def preparation_consumer(router: RouterHarness) -> str:
+    """Exercise actual preparation flow; admission and the next bind are boundaries."""
+    link = router.write(
+        "work/preparation-ln",
+        "#!/bin/sh\n"
+        "guard=${3%/root/bootstrap/*}\n"
+        'IFS= read -r active <"$guard/active"\n'
+        '[ "$active" = prepare ] || exit 7\n'
+        'if [ "$_fixture_failure" = links ] && [ "${3##*/}" = gzip-gnu ]; then exit 1; fi\n'
+        'exec /bin/ln "$@"\n',
+        executable=True,
+    )
+    return f"""
+. {shlex.quote(str(ROOT / "modules/isolation.sh"))}
+_io_lf='
+'
+_isolation_test=/usr/bin/true; _isolation_mkdir=/bin/mkdir; _isolation_rm=/bin/rm
+_isolation_ln={shlex.quote(str(link))}; _isolation_tools=''; _isolation_probe_profile=armv7sf-k3.2
+_isolation_root=$1; _isolation_resolved=$1/source; _isolation_volume_facts=facts
+shift
+_cfmgr_isolation_umount_admit() {{ :; }}
+_cfmgr_isolation_private() {{ :; }}
+_cfmgr_isolation_options() {{ :; }}
+_cfmgr_isolation_query() {{
+  _isolation_fs=tmpfs; [ "$1" != "$_isolation_resolved" ] || _isolation_fs=ext4
+  _isolation_id=11; _isolation_device=0:11; _isolation_fs_target=2f
+  _isolation_options=7277; _isolation_super=7277; _isolation_facts=facts; _isolation_body=ram
+}}
+_cfmgr_isolation_active() {{
+  [ "$1" = prepare ] || return 7
+  command printf '%s\\n' "$1" >"$_isolation_guard/active"
+}}
+_cfmgr_isolation_write() {{
+  [ "$1" = "$_isolation_tree/dev/null" ] || return 7
+  [ -f "$_isolation_guard/active" ] || return 7
+  [ "$_fixture_failure" != null ] || return 1
+  command printf '%s' "$2" >"$1"
+}}
+cfmgr_bootstrap_materialize() {{
+  [ "$#" = 2 ] && [ "$1" = armv7sf-k3.2 ] &&
+    [ "$2" = "$_isolation_guard/acquisition" ] && [ -f "$_isolation_guard/active" ] || return 7
+  /bin/mkdir -m 700 "$2" || return 1
+  command printf partial >"$2/partial"
+  [ "$_fixture_failure" != acquire ] || return 1
+  /bin/mkdir -m 700 "$2/timeout" "$2/gzip" || return 1
+  command printf timeout >"$2/timeout/program"
+  command printf gzip >"$2/gzip/program"
+}}
+cfmgr_bootstrap_materialize_test() {{
+  [ "$#" = 3 ] && [ "$3" = {shlex.quote(str(router.path("bin")))} ] || return 7
+  cfmgr_bootstrap_materialize "$1" "$2"
+}}
+_cfmgr_isolation_image_stage() {{
+  [ -f "$_isolation_guard/active" ] || return 7
+  if [ "$_isolation_mode" = acquire ]; then
+    [ "$_isolation_probe_timeout" = "$_isolation_guard/acquisition/timeout/program" ] &&
+      [ "$_isolation_probe_gzip" = "$_isolation_guard/acquisition/gzip/program" ] || return 7
+    [ -f "$_isolation_probe_timeout" ] && [ -f "$_isolation_probe_gzip" ] || return 7
+  fi
+  [ "$_fixture_failure" != stage ] || return 1
+}}
+_cfmgr_isolation_bind() {{
+  [ "$1" = null ] && [ ! -e "$_isolation_guard/active" ] || return 7
+  [ -f "$_isolation_tree/dev/null" ] || return 7
+  for directory in opt dev bootstrap tmp offline; do
+    [ -d "$_isolation_tree/$directory" ] || return 7
+  done
+  if [ "$_isolation_mode" != native ]; then
+    [ -L "$_isolation_tree/bootstrap/timeout-coreutils" ] &&
+      [ -L "$_isolation_tree/bootstrap/gzip-gnu" ] || return 7
+  fi
+  command printf bound >"$_isolation_guard/bind-entered"
+  [ "$_isolation_mode" != acquire ] || return 0
+  return 1
+}}
+_cfmgr_isolation_image_bind() {{
+  [ "$_isolation_mode" = acquire ] && [ -f "$_isolation_guard/bind-entered" ] &&
+    [ ! -e "$_isolation_guard/active" ]
+}}
+_cfmgr_isolation_probe_run() {{
+  [ "$_isolation_mode" = acquire ] || return 7
+  command printf probe >"$_isolation_guard/probe-entered"
+  return 1
+}}
+for scenario do
+  _isolation_mode=${{scenario%%:*}}; _fixture_failure=${{scenario#*:}}
+  _isolation_tools=''
+  [ "$_fixture_failure" != fixture ] || _isolation_tools={shlex.quote(str(router.path("bin")))}
+  export _fixture_failure
+  _isolation_guard=$_isolation_root/$scenario; _isolation_tree=$_isolation_guard/root
+  _isolation_attempted=0; _isolation_null_recorded=0; _isolation_opt_recorded=0
+  _isolation_stage_attempted=0
+  /bin/mkdir -m 700 "$_isolation_guard" || exit 10
+  _cfmgr_isolation_run; status=$?
+  [ "$status" = 1 ] || exit 11
+  if [ "$_fixture_failure" = ok ] || [ "$_fixture_failure" = fixture ]; then
+    [ -f "$_isolation_guard/bind-entered" ] && [ ! -e "$_isolation_guard/active" ] || exit 12
+    [ "$_isolation_mode" != acquire ] || [ -f "$_isolation_guard/probe-entered" ] || exit 21
+  else
+    [ ! -e "$_isolation_guard/bind-entered" ] || exit 13
+    IFS= read -r active <"$_isolation_guard/active"
+    [ "$active" = prepare ] || exit 14
+    _cfmgr_isolation_cleanup; [ "$?" = 1 ] || exit 15
+    [ -d "$_isolation_guard" ] || exit 16
+    case $_fixture_failure in
+      null) [ -d "$_isolation_tree/dev" ] && [ ! -e "$_isolation_tree/dev/null" ] || exit 17 ;;
+      links) [ -L "$_isolation_tree/bootstrap/timeout-coreutils" ] &&
+        [ ! -e "$_isolation_tree/bootstrap/gzip-gnu" ] &&
+        [ ! -L "$_isolation_tree/bootstrap/gzip-gnu" ] || exit 18 ;;
+      acquire) [ -f "$_isolation_guard/acquisition/partial" ] || exit 19 ;;
+      stage) [ ! -e "$_isolation_tree" ] || exit 20 ;;
+    esac
+  fi
+done
+"""
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_preparation_is_protected_for_all_modes_until_the_first_bind(router: RouterHarness) -> None:
+    cases = [
+        "native:ok",
+        "probe:ok",
+        "bootstrap:ok",
+        "acquire:ok",
+        "acquire:fixture",
+        "native:null",
+        "probe:stage",
+        "bootstrap:links",
+        "acquire:acquire",
+    ]
+    result = _run_shell(router, preparation_consumer(router), [str(router.path("ram/tmp")), *cases])
+    assert result.returncode == 0, result
+    assert result.stdout == result.stderr == ""
+
+
+@pytest.mark.busybox
+@pytest.mark.matrix("V74", evidence="busybox")
+def test_busybox_preparation_retains_metadata_failure_and_reaches_acquired_bind(
+    busybox_router: RouterHarness,
+) -> None:
+    result = _run_shell(
+        busybox_router,
+        preparation_consumer(busybox_router),
+        [str(busybox_router.path("ram/tmp")), "native:null", "acquire:ok"],
+    )
+    assert result.returncode == 0, result
+    assert result.stdout == result.stderr == ""
+
+
+@pytest.mark.integration
+@pytest.mark.matrix("V74", evidence="host")
+def test_interrupted_closure_intermediate_retains_guard_with_live_producer(
+    contained: IsolationFixture,
+) -> None:
+    """Kill the build shell while its dd fault double still holds the copied inode."""
+    contained.prepare_probe()
+    router = contained.router
+    build_pid = router.path("work/build-pid")
+    producer = router.path("work/producer.json")
+    verified = router.path("work/live-producer-verified")
+    release = router.path("work/release-producer")
+    os.mkfifo(release, 0o600)
+    probe_code = (
+        "import os; from pathlib import Path; "
+        f"Path({str(build_pid)!r}).write_text(str(os.getppid()))"
+    )
+    original = (ROOT / "modules/closure.sh").read_text()
+    header = "_cfmgr_closure_build() (\n"
+    assert original.count(header) == 1
+    instrumented = router.write(
+        "work/instrumented-closure.sh",
+        original.replace(
+            header, header + f"{shlex.quote(sys.executable)} -c {shlex.quote(probe_code)}\n"
+        ),
+    )
+    producer_code = router.write(
+        "work/held-producer.py",
+        "import json, os, signal, sys\nfrom pathlib import Path\n"
+        f"Path({str(producer)!r}).write_text(json.dumps({{'pid': os.getpid(), "
+        "'output_inode': os.fstat(1).st_ino, 'source_inode': os.fstat(9).st_ino}))\n"
+        "sys.stdout.buffer.write(sys.stdin.buffer.read(8)); sys.stdout.buffer.flush()\n"
+        f"os.kill(int(Path({str(build_pid)!r}).read_text()), signal.SIGTERM)\n"
+        f"with open({str(release)!r}, 'rb') as stream: stream.read(1)\n",
+    )
+    dd = router.root / "bin/dd"
+    dd.unlink()
+    router.write(
+        "bin/dd",
+        f"#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(producer_code))}\n",
+        executable=True,
+    )
+    printf = router.root / "bin/printf"
+    if printf.exists() or printf.is_symlink():
+        printf.unlink()
+    printf.symlink_to("/usr/bin/printf")
+    # Topology and native null/FD admission have complete integration coverage.
+    # This case keeps the owner and real copy, isolating interrupted preparation.
+    predicate = router.root / "bin/test"
+    predicate.unlink()
+    predicate.symlink_to("/usr/bin/true")
+    verification = (
+        "import json, os, time; from pathlib import Path\n"
+        f"record=json.loads(Path({str(producer)!r}).read_text())\n"
+        "os.kill(record['pid'], 0)\n"
+        f"guard=Path({str(contained.guard)!r})\n"
+        "assert (guard/'active').read_bytes()==b'prepare\\n'\n"
+        "copy=guard/'closure/opt/lib/ld-2.27.so'\n"
+        "assert copy.read_bytes()==b'syntheti' and copy.stat().st_ino==record['output_inode']\n"
+        f"assert record['source_inode']==os.stat({str(contained.storage.target)!r}).st_ino\n"
+        f"Path({str(verified)!r}).write_text('live producer, retained inode and storage FD')\n"
+        f"with open({str(release)!r}, 'wb') as stream: stream.write(b'x')\n"
+        "deadline=time.monotonic()+1\n"
+        "while True:\n"
+        "    try: os.kill(record['pid'], 0)\n"
+        "    except ProcessLookupError: break\n"
+        "    assert time.monotonic()<deadline, 'released fixture producer did not exit'\n"
+        "    time.sleep(0.005)\n"
+    )
+    sources = [
+        ROOT / "modules" / name
+        for name in ("io.sh", "storage.sh", "supervision.sh", "isolation.sh")
+    ]
+    script = (
+        "\n".join(f". {shlex.quote(str(source))}" for source in sources)
+        + f"\n. {shlex.quote(str(instrumented))}\n"
+        + f"_fixture_volume={shlex.quote(contained.storage.expected())}\n"
+        + FOCUSED_BOUNDARIES
+        + r"""
+_cfmgr_isolation_umount_admit() { :; }
+_cfmgr_isolation_private() { :; }
+_cfmgr_isolation_options() { :; }
+_cfmgr_isolation_query() {
+  _isolation_body=approved-ram
+  _isolation_facts=$_isolation_volume_facts
+  _isolation_fs=tmpfs; _isolation_id=11; _isolation_device=0:11
+  _isolation_fs_target=2f; _isolation_options=7277; _isolation_super=7277
+  case $1 in
+    "$_isolation_resolved") _isolation_fs=ext4; _isolation_id=42 ;;
+    /dev/null) _isolation_id=12 ;;
+  esac
+}
+"""
+        + 'cfmgr_isolation_probe_test "$@"\n[ "$?" = 1 ] || exit 21\n'
+        + f"{shlex.quote(sys.executable)} -c {shlex.quote(verification)}\n"
+    )
+    args = [
+        str(router.path("ram/tmp")),
+        str(router.path("bin")),
+        str(contained.storage.target),
+        str(router.path("work/mountinfo")),
+        str(router.path("work/fdinfo")),
+        str(router.path("work/block")),
+        str(ROOT / "modules/mountinfo.awk"),
+        str(ROOT / "modules/storageinfo.awk"),
+        "armv7sf-k3.2",
+        str(contained.probe_manifest),
+        str(contained.probe_timeout),
+        str(contained.probe_gzip),
+        "gzip",
+    ]
+    result = _run_shell(router, script, args)
+    contained.quiet(result, 0)
+    assert verified.read_text() == "live producer, retained inode and storage FD"
+    assert contained.mutations() == []
+    assert not any(call["tool"] == "chroot" for call in contained.calls())
+    assert not any(
+        call["tool"] == "rm" and call["args"] == ["-rf", str(contained.guard)]
+        for call in contained.calls()
+    )
 
 
 @pytest.mark.integration

@@ -6,6 +6,78 @@
 # tracing and no other writers. This helper does not approve mounts or runtime
 # compatibility. The caller owns signals/cleanup; failures retain partial output.
 
+# Internal callers own the all-success preparation gate. Nonzero cannot prove
+# that an interrupted intermediate left no producer; retain every private file.
+cfmgr_bootstrap_materialize() {
+	[ "$#" -eq 2 ] || return 2
+	_cfmgr_bootstrap_materialize_run '' "$1" "$2"
+} >/dev/null 2>&1
+
+# Explicit fixture only: PROFILE DIRECTORY TOOLS, never an environment hook.
+cfmgr_bootstrap_materialize_test() {
+	[ "$#" -eq 3 ] && [ -n "$3" ] || return 2
+	_cfmgr_bootstrap_materialize_run "$3" "$1" "$2"
+} >/dev/null 2>&1
+
+# Trusted synchronous native helpers must not leave background descendants.
+# Each failure stops this sequence; success requires both verified programs.
+_cfmgr_bootstrap_materialize_run() (
+	trap - 0
+	set +x
+	set +e
+	set +u
+	set -f
+	umask 077
+	LC_ALL=C
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	export LC_ALL PATH
+	IFS=' 	'
+	IFS="${IFS}
+"
+	[ "$#" -eq 3 ] || return 2
+	_materialize_tools=$1
+	_materialize_profile=$2
+	_materialize_directory=$3
+	if [ -n "$_materialize_tools" ]; then
+		_cfmgr_closure_path "$_materialize_tools" || return 2
+		[ -d "$_materialize_tools" ] && [ ! -L "$_materialize_tools" ] || return 2
+	fi
+	_cfmgr_closure_path "$_materialize_directory" || return 2
+	for _materialize_package in coreutils-timeout gzip; do
+		_cfmgr_bootstrap_archive "$_materialize_profile" "$_materialize_package" &&
+			_cfmgr_bootstrap_payload "$_materialize_profile" "$_materialize_package" || return 2
+	done
+	[ ! -e "$_materialize_directory" ] && [ ! -L "$_materialize_directory" ] || return 1
+	# Descendants cannot retain the storage owner's descriptors or working tree.
+	cd / || return 1
+	exec 0</dev/null
+	exec 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
+	unset ENV BASH_ENV CDPATH TZ GZIP TAR_OPTIONS
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
+	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
+	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
+	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
+	unset OPENSSL_CONF OPENSSL_CONF_INCLUDE OPENSSL_ENGINES OPENSSL_MODULES
+	_fetch_tools=$_materialize_tools
+	_materialize_mkdir=$(_cfmgr_fetch_find mkdir) || return 1
+	"$_materialize_mkdir" -m 700 "$_materialize_directory" || return 1
+	[ -d "$_materialize_directory" ] && [ ! -L "$_materialize_directory" ] || return 1
+	for _materialize_package in coreutils-timeout gzip; do
+		case $_materialize_package in coreutils-timeout) _materialize_name=timeout ;; gzip) _materialize_name=gzip ;; esac
+		_cfmgr_bootstrap_archive "$_materialize_profile" "$_materialize_package" &&
+			_cfmgr_bootstrap_payload "$_materialize_profile" "$_materialize_package" || return 1
+		_materialize_download=$_materialize_directory/$_materialize_name-download
+		_cfmgr_fetch_run "$_materialize_tools" "$_materialize_download" \
+			"$_bootstrap_url" "$_bootstrap_size" "$_bootstrap_sha256" || return 1
+		_cfmgr_archive_run "$_materialize_tools" "$_materialize_directory/$_materialize_name" \
+			"$_materialize_download/artifact.ipk" "$_bootstrap_size" "$_bootstrap_sha256" \
+			"$_bootstrap_outer_size" "$_bootstrap_outer_sha256" \
+			"$_bootstrap_data_gz_size" "$_bootstrap_data_gz_sha256" \
+			"$_bootstrap_data_tar_size" "$_bootstrap_data_tar_sha256" \
+			"$_bootstrap_member" "$_bootstrap_member_size" "$_bootstrap_member_sha256" || return 1
+	done
+) >/dev/null 2>&1
+
 # Reviewed archive acquisition only; trusted fetch.sh must also be sourced.
 # Neither archive extraction nor package execution is authorized by success.
 cfmgr_bootstrap_fetch() (

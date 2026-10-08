@@ -42,7 +42,7 @@ flowchart LR
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
-| `modules/bootstrap.sh` | Select reviewed archive identities and construct a fresh bounded member manifest | Requires trusted helpers and private RAM; no automatic profile selection or operational launch |
+| `modules/bootstrap.sh` | Select reviewed identities, construct a bounded member manifest and materialize both fixed bootstrap tools | Requires trusted helpers and private RAM; no automatic profile selection or operational launch |
 | `modules/fetch.sh` | Acquire one reviewed bootstrap archive through native HTTPS curl and verify its private bytes | Physical output caps, exact status/size/hash; no redirect, extraction, package execution or CLI wiring |
 | `modules/archive.sh` | Copy and verify a reviewed bootstrap archive, then extract its fixed member through bounded native stdout stages | Every parser input is an approved private copy; no archive path restoration, executable mode, package execution or generic archive support |
 
@@ -199,6 +199,13 @@ those private files for the owning caller's cleanup decision. This route is
 limited to the reviewed archive bytes and layout; it does not validate arbitrary
 backups or install packages.
 
+`cfmgr_bootstrap_materialize` joins those two consumers for the fixed timeout
+and gzip packages. It creates fresh download/extraction subdirectories and stops
+at the first failure. The isolated native preparation process uses cwd `/`,
+stdin `/dev/null` and closed FD3–9, keeping retained storage descriptors out of
+the downloader and extractor. Successful outputs remain private data until
+image staging verifies and assigns their executable modes.
+
 The internal `cfmgr_isolation_bootstrap` entry connects that catalogue route to
 the retained storage owner. Its caller supplies an independently approved UUID
 and filesystem-relative Entware subtree, encoded as the storage ledger's byte
@@ -206,12 +213,23 @@ hex. Both must match the freshly validated ledger before a guard is reserved.
 This prevents a different subtree on the same volume from acquiring approval
 merely because its UUID matches. The owner then admits its private RAM topology,
 constructs `bootstrap-manifest.tsv` inside its new guard and stages against those
-fixed hashes before any bind or probe. Failed construction or staging uses the
-existing checked cleanup path; uncertain topology retains the guard.
+fixed hashes before any bind or probe. The separate `cfmgr_isolation_acquire`
+entry takes the same authority and profile but obtains both program files through
+the fixed materialization route instead of accepting supplied program paths.
+
+Every isolation mode marks private preparation active before creating the tree
+and its metadata. Probe modes also cover acquisition, manifest construction,
+image copying and source-topology verification with that marker. Only complete
+success clears it immediately before the first bind. A failure retains the
+guard and partial files: a generic nonzero shell status or unchanged mount
+topology cannot prove that an interrupted inner shell left no producer alive.
+This deliberately conservative internal path has no automatic failed-attempt
+cleanup or retry; operational recovery and aggregate worker deadlines remain
+unfinished requirements.
 
 This entry accepts no caller manifest or hash. The lower-level supplied-manifest
 probe remains available to already trusted internal callers and explicit fixture
-proofs under its original admission preconditions. Neither API selects a profile
+proofs under its original admission preconditions. These APIs do not select a profile
 from firmware/kernel strings, approves a volume from its own current observation,
 or grants a general storage write lease. Saved-authority enrollment and actual
 Entware execution remain separate acceptance work.

@@ -141,9 +141,19 @@ data archive and selected member sizes/hashes before admitting a new extraction
 layout; native stdout extraction must reproduce them without restoring paths.
 Keep private downloaded evidence outside Git. Update
 catalogue and embedded identities together only after review, then run focused
-bootstrap/fetch/archive/closure checks and the normal combined validation gates. Existing
-research scripts are audit helpers, not hostile-input runtime archive parsers.
+bootstrap/fetch/archive/acquisition/closure checks and the normal combined
+validation gates. Existing research scripts are audit helpers, not hostile-input
+runtime archive parsers.
 Never execute a downloaded package merely to regenerate these identities.
+
+Acquisition integration tests must distinguish completed preparation from an
+unproved interrupted producer. Keep one real-process interruption regression
+that demonstrates the producer is still alive while the guard is retained;
+use focused consumers for authority, ordering and ordinary failure cases.
+Failed staging now retains its guard even when its mount topology is unchanged.
+Preserve the manifest, copied-byte and no-mount assertions when adapting older
+fixtures to this stronger cleanup contract. General retryable recovery is still
+pending; do not add automatic fixture cleanup to the runtime to satisfy a test.
 
 ## 🧪 Run checks
 
