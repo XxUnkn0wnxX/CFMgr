@@ -76,8 +76,8 @@ python tools/check.py
 This checks installed dependencies, Python lint/formatting/compilation, discovered
 shell syntax, ShellCheck, `shfmt`, and pytest. It recognizes `.sh`, `.sh.in`, and
 extensionless shell entry points. Scratch, virtualenv, cache, and symlinked
-source paths are excluded. Until runtime shell files exist, shell tools are
-version-checked and their lack of source inputs is reported explicitly.
+source paths are excluded. The first native source, `src/common.sh`, provides
+pure parsing helpers; it does not install or start CFMgr.
 
 | Task | Command |
 | --- | --- |
@@ -119,6 +119,7 @@ BusyBox build also does not reproduce a router's stripped older build.
 | `tests/conftest.py` | Fixtures, BusyBox selection, validation-matrix evidence reporting |
 | `tests/test_harness.py` | Isolation, input/output, paths, deadlines, and child cleanup |
 | `tests/test_reporting.py` | Accurate test-evidence counts |
+| `tests/test_primitives.py` | Native decimal/version/digest parsing and caller-state preservation |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -175,6 +176,79 @@ Keep those changes separate from code commits: pushing a later documentation
 commit must never publish its unapproved code ancestors. Implementation and test
 code require completed user testing and publication approval; stable promotion
 remains separate.
+
+## 📦 Module catalog and forks
+
+**Selected design; the catalog/downloader is not implemented yet.** Maintain
+CFMgr as separate, named source modules. A central `modules.txt` catalog will
+hold the source selection and module URLs, parsed strictly as data rather than
+sourced as shell code. Installation/reinstallation stages the required module
+set and verifies it before activation.
+
+The catalog lives in the repository. Fresh setup will save the hard-coded
+default URL in the `catalog_url` field of `/jffs/addons/cfmgr.d/config`:
+
+```text
+https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/main/modules.txt
+```
+
+Change that field **only by manually editing the config** to select a fork's
+catalog. There will be no menu control. Setup/reinstall/update preserves an
+existing value; an invalid or unavailable override fails the affected action
+without silently falling back to the default. The URL locates the catalog;
+its `branch:` header selects the code snapshot.
+
+The selected format is a `branch:` header followed by named module URLs:
+
+```text
+# main is the default; develop or a full 40-character commit hash is also valid.
+branch: main
+common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/src/common.sh
+```
+
+This is a format example with the existing helper, not a complete install
+inventory. `{commit}` is a literal catalog placeholder. The downloader replaces
+it only with the validated selected commit; it does not perform shell expansion.
+
+| Selection | Meaning |
+| --- | --- |
+| `branch: main` | Resolve the stable branch once, then use that exact snapshot. |
+| `branch: develop` | Resolve the development branch once for explicit development testing. |
+| `branch: <full-commit-hash>` | Use that exact repository snapshot without following a moving branch. |
+
+A commit that changes only one module still contains the complete repository
+tree. Other modules retain their latest contents **as of that commit**. CFMgr
+will not search newer commits or silently substitute a current branch file for
+a missing historical module.
+
+<details>
+<summary>🍴 Maintaining a fork and adding modules</summary>
+
+1. Keep `modules.txt` in your fork and change its module URLs to that repository.
+   Module URLs must belong to the same selected repository and use `{commit}`.
+   Manually set the installed config's `catalog_url` to your fork's catalog.
+2. Select `main`, `develop`, or a full commit hash in the header. A downloaded
+   catalog cannot change the selection partway through an action.
+3. Keep each helper in its own readable source file with a clear responsibility.
+   Add its named URL to the catalog and its identity/path/hash to the generated
+   release manifest together. The bootstrap contains the default catalog URL;
+   module URLs stay centralized in the catalog.
+4. Validate the complete package before publishing a fork release. Editing the
+   catalog alone does not make an arbitrary file a trusted installed module.
+
+</details>
+
+The catalog, manifest and modules come from the **same immutable snapshot**.
+The trusted manifest binds the expected file inventory, hashes, version and
+schema. Reject duplicate destinations, unsupported URL forms, path traversal,
+missing files, wrong hashes and incompatible versions before replacing working
+code. No downloaded catalog content is executed.
+
+Ordinary startup, status and automatic hooks use installed modules. Missing
+helpers defer the affected operation; explicit install/reinstall/repair uses the
+verified download path. The complete activation/recovery protocol remains a
+P1 implementation gate in [PLAN.md](../PLAN.md). Existing downgrade restrictions
+remain in force, and choosing `develop` does not disable integrity checks.
 
 ## 🧭 Compatibility and documentation
 
