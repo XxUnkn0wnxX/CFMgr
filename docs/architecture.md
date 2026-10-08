@@ -142,12 +142,16 @@ parsers do not establish those guarantees.
 
 Entware's loader reads absolute `/opt` paths before a program starts. An
 explicit loader path alone therefore cannot contain execution when the public
-mount path changes. The planned installer uses native bind mounts and chroot
-to establish a private view of the verified drive before launching staged
-timeout/gzip tools and restricted opkg work.
+mount path changes. The selected next profile uses native bind mounts and chroot
+to separate verified executable bytes from the mutable installation destination.
+A small private RAM image provides the admitted programs, loader and libraries
+at `/opt`, with a verified read-only bind and no preload file. Later restricted
+installation would expose the retained Entware directory separately at
+`/offline/opt`. Artifact admission and this new root profile remain implementation
+gates.
 
-Only the expected Entware directory and `/dev/null` enter the private root.
-The outer native owner checks mount identity, supervises work and removes its
+The existing native profile binds the expected Entware directory and `/dev/null`.
+The outer native owner checks mount identity and removes its
 exact mounts before deleting staging. Uncertain cleanup retains a guard and
 workspace for recovery. The initial native ownership and cleanup code is in
 `modules/isolation.sh`. Focused host fixtures cover its fault matrix; the separate
@@ -164,12 +168,15 @@ Unknown capability stops the attempt before mounts; an actual cleanup failure
 never triggers a retry with different flags. Firmware version numbers alone
 do not select this behavior.
 
-For the restricted opkg/gzip path, the next cleanup proof uses normal unmount's
-busy check: admitted executable/library mappings retain the exact Opt bind.
-Native-launcher completion and a successful verified unmount are both required.
-This is a narrow execution boundary, with complete process reaping and admitted
-Entware executable/library closure requiring separate proof. Controlled host
-ELF tests do not expand the runtime callback's supported scope.
+For contained probes, the next cleanup proof uses ordinary unmount's busy check:
+admitted executable mappings retain the exact execution-image bind. Native
+launcher completion and successful verified unmount are both required before
+staging can be removed. A bounded polling helper records completion separately
+from exit status; a polling deadline leaves the launcher unproved and the guard
+retained. It never signals a saved numeric PID. The helper remains unconnected
+to the synchronous callback pending admission and explicit completion gating.
+This does not promise complete process reaping or a hard deadline for blocked
+kernel IO. Controlled host ELF tests do not expand the runtime callback's scope.
 
 </details>
 
