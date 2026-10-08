@@ -35,7 +35,7 @@ flowchart LR
 | `modules/common.sh` | Decimal/range/version/SHA-256 text validation | No filesystem, service or network work |
 | `modules/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
 | `modules/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
-| `modules/mountinfo.awk` | Validate a mount snapshot and select the covering mount | Does not establish persistent volume identity, writability or live mount stability |
+| `modules/mountinfo.awk` | Select a covering mount; optionally report propagation and descendant counts | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/io.sh` | Private bounded captures, checked mount snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Hold directory/device descriptors while comparing mount facts and reading an ext UUID | Read-only observation; no write permission, dependency execution or CLI integration |
@@ -112,6 +112,24 @@ The intended controller checks the evidence appropriate to each boundary and
 preserves unknown outcomes. Dependency installation, mount loss and command
 supervision still need implementation and fault-path validation; the current
 parsers do not establish those guarantees.
+
+</details>
+
+<details>
+<summary>🔒 Dependency execution: selected implementation direction</summary>
+
+Entware's loader reads absolute `/opt` paths before a program starts. An
+explicit loader path alone therefore cannot contain execution when the public
+mount path changes. The planned installer uses native bind mounts and chroot
+to establish a private view of the verified drive before launching staged
+timeout/gzip tools and restricted opkg work.
+
+Only the expected Entware directory and `/dev/null` enter the private root.
+The outer native owner checks mount identity, supervises work and removes its
+exact mounts before deleting staging. Uncertain cleanup retains a guard and
+workspace for recovery. This lifecycle is not implemented yet; the
+[plan](../PLAN.md#mount-snapshot-parser-contract--current-package) records its
+proof gates and the distinction from hostile-root security isolation.
 
 </details>
 

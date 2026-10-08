@@ -141,6 +141,15 @@ small metadata dependency. ELF interpreters and library search paths still
 refer to `/opt`, so copying a verified executable to RAM does not make its
 loader and libraries independent of Entware.
 
+The loader audit also found that explicit `ld.so --library-path` execution
+still reads `/opt/etc/ld.so.preload` before the program starts. Disabling its
+cache does not suppress this lookup. A verified dynamic `unshare` binary has
+the same bootstrap problem, so neither approach currently establishes safe
+execution during `/opt` changes. The next proof uses native bind mounts and
+chroot to establish the verified `/opt` view before Entware startup. The native
+command paths/help are confirmed on the current router; the lifecycle has not
+been executed there. [Entware loader patch](https://github.com/Entware/Entware/blob/969c703e6fd8b2ad84d82affaeb14b48d1fcb105/toolchain/glibc/patches/2.27/9999-ldconfig.patch#L34-L44)
+
 No inspected package was installed or executed. Dependency-closure checks,
 package-manager side effects and mount-loss containment remain separate gates.
 

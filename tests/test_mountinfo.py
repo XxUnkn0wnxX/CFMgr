@@ -116,6 +116,7 @@ def invoke(
     size: str | None = None,
     locale: str = "C",
     operands: tuple[str, ...] = (),
+    mode: str | None = None,
 ) -> ShellResult:
     assert len(data) <= router.FILE_LIMIT
     path = router.path("ram/mountinfo")
@@ -124,6 +125,8 @@ def invoke(
     args = []
     if size != "MISSING":
         args.extend(["-v", "cfmgr_mountinfo_size=" + (str(len(data)) if size is None else size)])
+    if mode is not None:
+        args.extend(["-v", "cfmgr_mountinfo_mode=" + mode])
     args.extend(["-f", str(router.path("work/mountinfo.awk")), *operands])
     environment = {"LC_ALL": locale}
     if target is not None:
@@ -508,3 +511,172 @@ def test_optional_actual_busybox_mountinfo(busybox_router: RouterHarness) -> Non
     busybox_router.write("work/mountinfo.awk", SOURCE.read_text())
     selected(busybox_router, BASE, "/tmp/opt/bin/jq")
     rejected(invoke(busybox_router, snapshot([*BASE, Mount("99")])))
+    assert_topology(
+        busybox_router,
+        [Mount("1", optional=("shared:9007199254740993",)), Mount("2", point=b"/child")],
+        "/",
+    )
+
+
+def topology_oracle(mounts: list[Mount], target: str) -> str:
+    """Choose/count component tuples, independently of the parser's prefix scan."""
+    target_parts = components(target.encode())
+    selected_mount = max(
+        (
+            mount
+            for mount in mounts
+            if target_parts[: len(components(mount.point))] == components(mount.point)
+        ),
+        key=lambda mount: len(components(mount.point)),
+    )
+    tags = dict(item.partition(":")[::2] for item in selected_mount.optional)
+    descendants = sum(
+        len(components(mount.point)) > len(target_parts)
+        and components(mount.point)[: len(target_parts)] == target_parts
+        for mount in mounts
+    )
+    facts = [
+        "topology",
+        tags.get("shared", "-"),
+        tags.get("master", "-"),
+        tags.get("propagate_from", "-"),
+        "1" if "unbindable" in tags else "0",
+        str(len(tags.keys() - {"shared", "master", "propagate_from", "unbindable"})),
+        str(descendants),
+    ]
+    body = oracle(mounts, target).splitlines(keepends=True)[0] + "\t".join(facts) + "\n"
+    return body + f"end\t{len(body.encode('ascii'))}\n"
+
+
+def assert_topology(router: RouterHarness, mounts: list[Mount], target: str) -> ShellResult:
+    result = invoke(router, snapshot(mounts), target, mode="topology")
+    assert result.returncode == 0 and result.stderr == "", result
+    assert result.stdout == topology_oracle(mounts, target)
+    lines = result.stdout.encode("ascii").splitlines(keepends=True)
+    assert len(lines) == 3 and all(line.endswith(b"\n") for line in lines)
+    assert lines[-1] == b"end\t" + str(len(b"".join(lines[:-1]))).encode() + b"\n"
+    assert lines[0] == oracle(mounts, target).encode().splitlines(keepends=True)[0]
+    return result
+
+
+def test_missing_empty_select_modes_preserve_existing_bytes_and_status(
+    native_awk: RouterHarness,
+) -> None:
+    for mode in (None, "", "select"):
+        result = invoke(native_awk, snapshot(BASE), "/tmp/opt/bin/jq", mode=mode)
+        assert (
+            result.returncode == 0
+            and result.stdout == oracle(BASE, "/tmp/opt/bin/jq")
+            and result.stderr == ""
+        )
+        rejected(invoke(native_awk, snapshot([*BASE, Mount("99")]), mode=mode))
+        rejected(invoke(native_awk, snapshot([Mount("1", point=b"/other")]), mode=mode), 3)
+
+
+@pytest.mark.parametrize("mode", ["unknown", "Topology", " select", "topology ", "0"])
+def test_unknown_query_mode_is_usage_error_before_input(
+    native_awk: RouterHarness, mode: str
+) -> None:
+    rejected(invoke(native_awk, b"invalid\x00", size="1", mode=mode), 2)
+
+
+def test_topology_preserves_full_propagation_ids_and_empty_facts(native_awk: RouterHarness) -> None:
+    mount = Mount(
+        "1",
+        optional=(
+            "shared:9007199254740992",
+            "master:9007199254740993",
+            "propagate_from:" + "9" * 20,
+            "unbindable",
+            "future:value",
+            "future_bare",
+        ),
+    )
+    result = assert_topology(native_awk, [mount], "/")
+    assert (
+        result.stdout.splitlines()[1]
+        == "topology\t9007199254740992\t9007199254740993\t99999999999999999999\t1\t2\t0"
+    )
+    result = assert_topology(native_awk, [Mount("1")], "/")
+    assert result.stdout.splitlines()[1] == "topology\t-\t-\t-\t0\t0\t0"
+
+
+def test_topology_uses_only_selected_deepest_fields_order_independently(
+    native_awk: RouterHarness,
+) -> None:
+    mounts = [
+        Mount("1", optional=("shared:1", "old_a", "old_b")),
+        Mount("2", point=b"/tmp", optional=("master:2", "middle_a")),
+        Mount("3", point=b"/tmp/opt", optional=("propagate_from:3", "chosen")),
+        Mount("4", point=b"/other", optional=("shared:4", "unrelated_a", "unrelated_b")),
+    ]
+    expected = None
+    for ordered in (mounts, mounts[::-1], [mounts[2], mounts[0], mounts[3], mounts[1]]):
+        result = assert_topology(native_awk, ordered, "/tmp/opt/child")
+        assert result.stdout.splitlines()[1] == "topology\t-\t-\t3\t0\t1\t0"
+        if expected is not None:
+            assert result.stdout == expected
+        expected = result.stdout
+
+
+def test_topology_counts_decoded_strict_descendant_records_including_hidden_duplicates(
+    native_awk: RouterHarness,
+) -> None:
+    target = "/private space/\\literal"
+    base = target.encode()
+    mounts = [
+        Mount("1"),
+        Mount("2", point=base),
+        Mount("3", point=base + b"/child"),
+        Mount("4", point=base + b"/child"),
+        Mount("5", point=base + b"/child/deeper\t\n"),
+        Mount("6", point=base + b"suffix/sibling"),
+        Mount("7", point=b"/unrelated/child"),
+    ]
+    for ordered in (mounts, mounts[::-1]):
+        result = assert_topology(native_awk, ordered, target)
+        assert result.stdout.splitlines()[1].endswith("\t3")
+    result = assert_topology(native_awk, mounts, "/")
+    assert result.stdout.splitlines()[1].endswith("\t6")
+
+
+def test_topology_retains_ambiguous_covering_ancestor_rejection(native_awk: RouterHarness) -> None:
+    rejected(invoke(native_awk, snapshot([*BASE, Mount("99")]), "/tmp/opt", mode="topology"))
+
+
+def test_optional_validation_is_identical_in_every_supported_mode(
+    native_awk: RouterHarness,
+) -> None:
+    for mode in (None, "", "select", "topology"):
+        for optional in (("shared:0",), ("unbindable:1",), ("future", "future:x"), ("master:01",)):
+            # Invalid unrelated records also invalidate the entire snapshot.
+            mounts = [Mount("1"), Mount("2", point=b"/unrelated", optional=optional)]
+            rejected(invoke(native_awk, snapshot(mounts), mode=mode))
+
+
+def test_topology_byte_framing_and_no_covering_status(native_awk: RouterHarness) -> None:
+    data = snapshot([Mount("1")])
+    for corrupted in (data[:-1], data + b"\x00", data + b"\x1c", data + b"\n"):
+        rejected(invoke(native_awk, corrupted, mode="topology"))
+    rejected(invoke(native_awk, data, size=str(len(data) + 1), mode="topology"))
+    rejected(invoke(native_awk, snapshot([Mount("1", point=b"/other")]), mode="topology"), 3)
+
+
+def test_topology_record_count_and_full_snapshot_bounds(native_awk: RouterHarness) -> None:
+    mounts = [
+        Mount("1"),
+        *[Mount(str(index + 2), point=f"/child{index}".encode()) for index in range(1023)],
+    ]
+    result = assert_topology(native_awk, mounts, "/")
+    assert result.stdout.splitlines()[1] == "topology\t-\t-\t-\t0\t0\t1023"
+    rejected(
+        invoke(
+            native_awk, snapshot([*mounts, Mount("1025", point=b"/extra")]), "/", mode="topology"
+        )
+    )
+    large = [
+        padded(Mount(str(index + 1), point=b"/" if index == 0 else f"/child{index}".encode()), 8192)
+        for index in range(8)
+    ]
+    assert len(snapshot(large)) == 65536
+    assert_topology(native_awk, large, "/")

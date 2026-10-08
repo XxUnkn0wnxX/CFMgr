@@ -4,11 +4,15 @@
 # its independently verified original byte count, and an already canonical target
 # in ENVIRON["CFMGR_MOUNT_TARGET"]. No operands or input-derived -v assignments.
 # Acquisition, supervision, file ownership and mount races belong to the caller.
+# Missing/empty/select mode preserves selection output. Literal topology mode
+# additionally reports selected propagation fields and a strict descendant record count;
+# unknown optional tags remain facts, not a policy or authorization decision.
 # Before consuming output, verify status, exact body byte count, terminal footer
 # and exact EOF. Native awk can report success even when an output write fails.
 
 BEGIN {
     if (ARGC != 1 || ENVIRON["LC_ALL"] != "C") fail(2)
+    if (cfmgr_mountinfo_mode != "" && cfmgr_mountinfo_mode != "select" && cfmgr_mountinfo_mode != "topology") fail(2)
     if (cfmgr_mountinfo_size !~ /^[1-9][0-9]*$/ || length(cfmgr_mountinfo_size) > 5) fail(2)
     expected = cfmgr_mountinfo_size + 0
     if (expected > 65536) fail(2)
@@ -29,6 +33,7 @@ BEGIN {
 
     start = 1
     count = 0
+    descendants = 0
     best_length = -1
     while (start <= length(document)) {
         remaining = substr(document, start)
@@ -41,6 +46,9 @@ BEGIN {
     relative = (best_point == "/" ? (target == "/" ? "" : target) : substr(target, length(best_point) + 1))
     filesystem_target = (best_root == "/" ? (relative == "" ? "/" : relative) : best_root relative)
     body = "mount\t" best_id "\t" best_parent "\t" best_device "\t" hex(best_root) "\t" hex(best_point) "\t" best_type "\t" hex(best_source) "\t" hex(best_options) "\t" hex(best_super) "\t" hex(filesystem_target) "\n"
+    if (cfmgr_mountinfo_mode == "topology") {
+        body = body "topology\t" best_shared "\t" best_master "\t" best_propagate_from "\t" best_unbindable "\t" best_unknown "\t" descendants "\n"
+    }
     footer = sprintf("end\t%d\n", length(body))
     if (length(body) + length(footer) > 65536) fail(1)
     printf "%s%s", body, footer
@@ -107,7 +115,11 @@ function optional(value,    colon, tag, payload) {
     optional_seen["t" tag] = 1
     if (tag == "shared" || tag == "master" || tag == "propagate_from") {
         if (!colon || !decimal(payload, 1)) fail(1)
-    } else if (tag == "unbindable" && colon) fail(1)
+        optional_value["t" tag] = payload
+    } else if (tag == "unbindable") {
+        if (colon) fail(1)
+        current_unbindable = 1
+    } else current_unknown++
 }
 
 function covers(point) {
@@ -131,6 +143,11 @@ function parse_line(line,    fields, total, position, separator, pair, root, poi
     if (!canonical(root) || !canonical(point)) fail(1)
     options(fields[6])
     for (key in optional_seen) delete optional_seen[key]
+    optional_value["tshared"] = "-"
+    optional_value["tmaster"] = "-"
+    optional_value["tpropagate_from"] = "-"
+    current_unbindable = 0
+    current_unknown = 0
     separator = 0
     for (position = 7; position <= total; position++) {
         if (fields[position] == "-") { separator = position; break }
@@ -140,6 +157,9 @@ function parse_line(line,    fields, total, position, separator, pair, root, poi
     if (fields[separator + 1] !~ /^[A-Za-z0-9_][A-Za-z0-9_.+-]*$/) fail(1)
     source = decode(fields[separator + 2])
     options(fields[separator + 3])
+    # Count validated records, not visible mountpoints: hidden/duplicate strict
+    # descendants still matter. Equal points and prefix-collision siblings do not.
+    if ("p" point != "p" target && (target == "/" || substr(point, 1, length(target) + 1) == target "/")) descendants++
     if (covers(point)) {
         key = "m" hex(point)
         # Even a unique deeper child can be hidden by a duplicate ancestor mount.
@@ -156,6 +176,11 @@ function parse_line(line,    fields, total, position, separator, pair, root, poi
             best_source = source
             best_options = fields[6]
             best_super = fields[separator + 3]
+            best_shared = optional_value["tshared"]
+            best_master = optional_value["tmaster"]
+            best_propagate_from = optional_value["tpropagate_from"]
+            best_unbindable = current_unbindable
+            best_unknown = current_unknown
         }
     }
 }
