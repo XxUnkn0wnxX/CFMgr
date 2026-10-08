@@ -1,0 +1,53 @@
+name: Checks
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Ubuntu 24.04 with BusyBox
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.14.0
+        # actions/setup-python v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: 3.14.0
+
+      - name: Install runner check tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes busybox shellcheck
+
+      - name: Install development dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
+
+      - name: Report tool versions
+        run: |
+          .venv/bin/python --version
+          /usr/bin/busybox 2>&1 | sed -n '1p'
+          shellcheck --version
+
+      - name: Run checks
+        run: .venv/bin/python tools/check.py --busybox /usr/bin/busybox
