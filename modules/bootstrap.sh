@@ -6,6 +6,67 @@
 # tracing and no other writers. This helper does not approve mounts or runtime
 # compatibility. The caller owns signals/cleanup; failures retain partial output.
 
+# Reviewed archive acquisition only; trusted fetch.sh must also be sourced.
+# Neither archive extraction nor package execution is authorized by success.
+cfmgr_bootstrap_fetch() (
+	trap - 0
+	set +x
+	set +e
+	set +u
+	set -f
+	umask 077
+	LC_ALL=C
+	export LC_ALL
+	IFS=' 	'
+	IFS="${IFS}
+"
+	[ "$#" -eq 3 ] || return 2
+	_cfmgr_bootstrap_archive "$1" "$2" || return 2
+	_cfmgr_fetch_run '' "$3" "$_bootstrap_url" "$_bootstrap_size" "$_bootstrap_sha256"
+) >/dev/null 2>&1
+
+# Archive identities are a reviewed snapshot, never a runtime feed preference
+# or an environment-selected URL/digest. Unknown replacements require review.
+_cfmgr_bootstrap_archive() {
+	_bootstrap_url=
+	_bootstrap_size=
+	_bootstrap_sha256=
+	[ "$#" -eq 2 ] || return 2
+	case $1:$2 in
+	aarch64-k3.10:coreutils-timeout)
+		_bootstrap_url=https://bin.entware.net/aarch64-k3.10/coreutils-timeout_9.9-2_aarch64-3.10.ipk
+		_bootstrap_size=21046
+		_bootstrap_sha256=8fd7f1f3c291b8556ca5cc77a55f16f656630ebc0af42ba879f0b62b35584516
+		;;
+	aarch64-k3.10:gzip)
+		_bootstrap_url=https://bin.entware.net/aarch64-k3.10/gzip_1.14-1_aarch64-3.10.ipk
+		_bootstrap_size=55607
+		_bootstrap_sha256=2dc64aa9448b27d2d0b20cd78634e15d810525bd6a866094deba82878408c802
+		;;
+	armv7sf-k3.2:coreutils-timeout)
+		_bootstrap_url=https://bin.entware.net/armv7sf-k3.2/coreutils-timeout_9.9-2_armv7-3.2.ipk
+		_bootstrap_size=18404
+		_bootstrap_sha256=26e52e7bba8dc7c8eee82be87ae1abd92fd924b5c86b1ac5f6ddaeb4e0d56157
+		;;
+	armv7sf-k3.2:gzip)
+		_bootstrap_url=https://bin.entware.net/armv7sf-k3.2/gzip_1.14-1_armv7-3.2.ipk
+		_bootstrap_size=49546
+		_bootstrap_sha256=a7325626497fc20ff860c9240442e31dcd41ff28890785d3971a030144953826
+		;;
+	mipselsf-k3.4:coreutils-timeout)
+		_bootstrap_url=https://bin.entware.net/mipselsf-k3.4/coreutils-timeout_9.9-2_mipsel-3.4.ipk
+		_bootstrap_size=20295
+		_bootstrap_sha256=add408df5340292347dfbc423b51c6cec7ad88b57f0f195318bf1ae276dc8e44
+		;;
+	mipselsf-k3.4:gzip)
+		_bootstrap_url=https://bin.entware.net/mipselsf-k3.4/gzip_1.14-1_mipsel-3.4.ipk
+		_bootstrap_size=53693
+		_bootstrap_sha256=5cca33e44e0bd5f8c85ee996892a87dc8b963eb249fcdf6a165024728d1e8b42
+		;;
+	*) return 2 ;;
+	esac
+}
+
 # Return 0 for complete fresh output, 1 for IO/existing-output failure, or 2 for
 # invalid arguments/profile/path. No output escapes to the caller's streams.
 cfmgr_bootstrap_manifest() (

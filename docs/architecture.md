@@ -42,7 +42,8 @@ flowchart LR
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
-| `modules/bootstrap.sh` | Construct a fresh bounded manifest from reviewed manager-bundled member identities | Requires trusted closure helpers and private RAM; no automatic profile selection, package acquisition or operational launch |
+| `modules/bootstrap.sh` | Select reviewed archive identities and construct a fresh bounded member manifest | Requires trusted helpers and private RAM; no automatic profile selection or operational launch |
+| `modules/fetch.sh` | Acquire one reviewed bootstrap archive through native HTTPS curl and verify its private bytes | Physical output caps, exact status/size/hash; no redirect, extraction, package execution or CLI wiring |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -171,9 +172,20 @@ These identities describe a reviewed bootstrap snapshot, not a package-manager
 version preference. Changed bytes require a reviewed catalogue/code update;
 unknown base libraries fail closed without a downgrade or automatic repair.
 Recorded HTTPS provenance and hashes do not claim signed-index verification,
-reproducible builds or hardware compatibility. Profile and expected-volume
-approval, bounded transport/archive handling and operational wiring remain
-separate requirements.
+reproducible builds or hardware compatibility. Profile selection, saved-volume
+authority enrollment, archive handling and operational wiring remain separate
+requirements.
+
+`cfmgr_bootstrap_fetch` uses the same catalogue to select only the reviewed
+timeout or gzip archive for a fixed profile. Native curl receives an isolated
+configuration/environment and one HTTPS URL, with no redirects or retries.
+The fresh private RAM directory retains partial results on failure. Shell file
+limits bound the body, headers and status files independently of server size
+claims; acceptance then requires the exact reviewed body size and SHA256,
+bounded headers and the complete three-byte HTTP status `200`. Nothing in this
+helper extracts or executes the acquired bytes. Its caller still owns signals,
+resource lifetime and the total action budget; curl timeouts do not establish a
+hard kernel or DNS deadline.
 
 The internal `cfmgr_isolation_bootstrap` entry connects that catalogue route to
 the retained storage owner. Its caller supplies an independently approved UUID
