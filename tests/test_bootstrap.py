@@ -1,11 +1,10 @@
-"""Trusted bootstrap manifest construction from reviewed member identities."""
+"""Installed Entware opkg capability selection and probing."""
 
 from __future__ import annotations
 
 import json
-import os
 import shlex
-import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,228 +13,444 @@ from tests.harness import RouterHarness, ShellResult
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOTSTRAP = ROOT / "modules/bootstrap.sh"
-CLOSURE = ROOT / "modules/closure.sh"
-CATALOG = ROOT / "docs/evidence/bootstrap-catalog.json"
-PROFILE_SIZES = {
-    "aarch64-k3.10": 546,
-    "armv7sf-k3.2": 634,
-    "mipselsf-k3.4": 635,
+COMMON = ("jq", "coreutils-timeout", "coreutils-sha256sum")
+PACKAGE_TO_TOOL = {
+    "jq": "jq",
+    "coreutils-timeout": "timeout",
+    "coreutils-sha256sum": "sha256sum",
+    "bind-dig": "dig",
+    "flock": "flock",
 }
 pytestmark = pytest.mark.integration
 
+DISPATCHER = r"""
+import hashlib
+import json
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
 
-def expected_manifest(profile: str) -> bytes:
-    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
-    members = catalog["profiles"][profile]["members"]
-    return b"".join(
-        f"{member['path']}\t{member['size']}\t{member['sha256']}\n".encode("ascii")
-        for member in members
+mode, settings_name, *args = sys.argv[1:]
+settings_path = Path(settings_name)
+settings = json.loads(settings_path.read_text())
+
+def record(path, value):
+    with Path(path).open("a") as stream:
+        stream.write(json.dumps(value) + "\n")
+
+if mode == "opkg":
+    record(settings["opkg_log"], args)
+    record(
+        settings["environment_log"],
+        {
+            name: os.environ.get(name)
+            for name in (
+                "OPKG_CONF_DIR",
+                "OPKG_OFFLINE_ROOT",
+                "IPKG_CONF_DIR",
+                "http_proxy",
+                "HTTPS_PROXY",
+                "LD_LIBRARY_PATH",
+                "OPENSSL_CONF",
+                "WGETRC",
+            )
+        },
     )
+    if args == ["update"]:
+        marker = Path(settings["update_once_marker"])
+        if settings.get("fail_update") or (
+            settings.get("fail_update_once") and not marker.exists()
+        ):
+            marker.write_text("failed\n")
+            sys.exit(7)
+        sys.exit(0)
+    if not args or args[0] != "install":
+        sys.exit(40)
+    if settings.get("fail_install"):
+        sys.exit(8)
+    for package in args[1:]:
+        tool = settings["packages"].get(package)
+        if tool is None:
+            sys.exit(41)
+        if package in settings.get("skip_install", []):
+            continue
+        target = Path(settings["bin"]) / tool
+        target.write_text(
+            "#!/bin/sh\nexec "
+            + " ".join(
+                shlex.quote(value)
+                for value in (
+                    sys.executable,
+                    settings["dispatcher"],
+                    "capability",
+                    str(settings_path),
+                    tool,
+                )
+            )
+            + ' "$@"\n'
+        )
+        target.chmod(0o700)
+    sys.exit(0)
+
+if mode != "capability":
+    sys.exit(42)
+tool = settings.get("capability_name", args.pop(0) if args else "")
+record(settings["probe_log"], [tool, args])
+behavior = settings.get("bad_capabilities", {}).get(tool, "good")
+if behavior == "fail":
+    sys.exit(9)
+if behavior == "fail_once":
+    marker = Path(settings["update_once_marker"] + "-" + tool)
+    if not marker.exists():
+        marker.write_text("failed\n")
+        sys.exit(9)
+    behavior = "good"
+if behavior == "uncertain":
+    sys.exit(129)
+if tool == "jq":
+    data = sys.stdin.buffer.read()
+    if args != ["-M", "-r", ".cfmgr"] or data != b'{"cfmgr":"ready"}\n':
+        sys.exit(10)
+    print("wrong" if behavior == "mismatch" else "ready")
+elif tool == "sha256sum":
+    data = sys.stdin.buffer.read()
+    if args or data != b"abc":
+        sys.exit(11)
+    digest = hashlib.sha256(data).hexdigest()
+    if behavior == "mismatch":
+        digest = "0" * 64
+    print(digest + "  -")
+elif tool == "timeout":
+    if args != ["1", "/bin/sh", "-c", "exit 0"]:
+        sys.exit(12)
+    sys.exit(subprocess.run(args[1:], check=False).returncode)
+elif tool == "dig":
+    if args != ["-v"]:
+        sys.exit(13)
+    print("DiG fixture")
+elif tool == "flock":
+    if args != ["--version"]:
+        sys.exit(14)
+    print("flock fixture")
+else:
+    sys.exit(15)
+"""
 
 
-def invocation(
-    router: RouterHarness, args: tuple[str, ...], *, shell: str | None = None
-) -> ShellResult:
-    script = (
-        f". {shlex.quote(str(CLOSURE))}\n"
-        f". {shlex.quote(str(BOOTSTRAP))}\n"
-        'cfmgr_bootstrap_manifest "$@"\n'
-        "_bootstrap_rc=$?\n"
-        'printf "RESULT\\t%s\\n" "$_bootstrap_rc"\n'
-    )
-    subject = router.write("work/bootstrap-invoke.sh", script)
-    if shell:
-        runner = f'exec {shlex.quote(shell)} "$@"\n'
-        return router.run(runner, [str(subject), *args])
-    return router.run(
-        f'exec {shlex.quote(str(router.busybox))} sh "$@"\n'
-        if router.busybox
-        else 'exec /bin/sh "$@"\n',
-        [str(subject), *args],
-    )
+class OpkgFixture:
+    def __init__(
+        self, router: RouterHarness, *, busybox: Path | None = None, name: str = ""
+    ) -> None:
+        self.router = router
+        suffix = f" {name}" if name else ""
+        self.root = router.path(f"ram/tmp/Entware root{suffix}")
+        self.root.mkdir(mode=0o700)
+        self.bin = self.root / "bin"
+        self.bin.mkdir(mode=0o700)
+        stem = f"work/opkg-{name or 'default'}"
+        self.opkg_log = router.path(f"{stem}-calls.jsonl")
+        self.environment_log = router.path(f"{stem}-environment.jsonl")
+        self.probe_log = router.path(f"{stem}-probes.jsonl")
+        self.settings_path = router.path(f"{stem}-settings.json")
+        self.dispatcher = router.write(f"{stem}-dispatch.py", DISPATCHER)
+        self.settings: dict[str, object] = {
+            "bin": str(self.bin),
+            "dispatcher": str(self.dispatcher),
+            "opkg_log": str(self.opkg_log),
+            "environment_log": str(self.environment_log),
+            "probe_log": str(self.probe_log),
+            "update_once_marker": str(router.path(f"{stem}-update-failed-once")),
+            "packages": PACKAGE_TO_TOOL,
+            "bad_capabilities": {},
+            "skip_install": [],
+        }
+        self.save()
+        self._write_executable(self.bin / "opkg", "opkg")
+        self.busybox = busybox
+
+    def _write_executable(self, path: Path, mode: str, *fixed_args: str) -> None:
+        command = (
+            sys.executable,
+            str(self.dispatcher),
+            mode,
+            str(self.settings_path),
+            *fixed_args,
+        )
+        script = "#!/bin/sh\nexec " + " ".join(map(shlex.quote, command)) + ' "$@"\n'
+        path.write_text(script, encoding="utf-8")
+        path.chmod(0o700)
+
+    def seed(self, *tools: str) -> None:
+        for tool in tools:
+            path = self.bin / tool
+            self._write_executable(path, "capability", tool)
+
+    def save(self) -> None:
+        self.settings_path.write_text(json.dumps(self.settings), encoding="utf-8")
+        self.settings_path.chmod(0o600)
+
+    def opkg_calls(self) -> list[list[str]]:
+        if not self.opkg_log.exists():
+            return []
+        return [json.loads(line) for line in self.opkg_log.read_text().splitlines()]
+
+    def probe_calls(self) -> list[list[str]]:
+        if not self.probe_log.exists():
+            return []
+        return [json.loads(line) for line in self.probe_log.read_text().splitlines()]
+
+    def opkg_environments(self) -> list[dict[str, str | None]]:
+        if not self.environment_log.exists():
+            return []
+        return [json.loads(line) for line in self.environment_log.read_text().splitlines()]
+
+    def invoke(self, body: str, *, shell: str | None = None) -> ShellResult:
+        script = f". {shlex.quote(str(BOOTSTRAP))}\n" + body
+        if shell is not None:
+            runner = f"exec {shlex.quote(str(shell))} sh -c {shlex.quote(script)}"
+            return self.router.run(runner, timeout=3)
+        return self.router.run(script, timeout=3)
+
+    def call(
+        self, scope: str = "shared", lock_provider: str = "native", *, shell: str | None = None
+    ):
+        body = (
+            f"cfmgr_bootstrap_dependencies_test {shlex.quote(str(self.root))} "
+            f"{shlex.quote(scope)} {shlex.quote(lock_provider)}; status=$?\n"
+            'printf "RESULT\\t%s\\n" "$status"\n'
+        )
+        return self.invoke(body, shell=shell)
 
 
 def assert_result(result: ShellResult, code: int) -> None:
-    assert result.returncode == 0
+    assert result.returncode == 0, result
     assert result.stdout == f"RESULT\t{code}\n"
     assert result.stderr == ""
 
 
 @pytest.mark.matrix("V74", evidence="host")
-@pytest.mark.parametrize("profile", PROFILE_SIZES)
-def test_manifest_matches_reviewed_catalog_and_real_closure_consumer(
-    router: RouterHarness, profile: str
-) -> None:
-    output = router.path(f"ram/tmp/{profile}.manifest")
-    expected = expected_manifest(profile)
-    assert len(expected) == PROFILE_SIZES[profile] <= 4096
-
-    result = invocation(router, (profile, str(output)))
-
-    assert_result(result, 0)
-    assert output.read_bytes() == expected
-    assert output.stat().st_mode & 0o777 == 0o600
-
-    # Exercise the production closure parser against the generated original bytes.
-    members = json.loads(CATALOG.read_text(encoding="utf-8"))["profiles"][profile]["members"]
-    total_size = sum(member["size"] for member in members)
-    wc = shutil.which("wc", path="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin")
-    assert wc is not None, "native wc must be preinstalled for closure acceptance"
-    consumer = router.write(
-        "work/closure-consumer.sh",
-        f". {shlex.quote(str(CLOSURE))}\n"
-        '_cfmgr_closure_manifest "$1" "$2" "$3"\n'
-        "_consumer_rc=$?\n"
-        'printf "CONSUMER\\t%s\\t%s\\t%s\\n" "$_consumer_rc" '
-        '"${_closure_manifest_bytes:-unset}" "${_closure_manifest_total:-unset}"\n',
-    )
-    consumed = router.run(
-        f'exec {shlex.quote(str(router.busybox))} sh "$@"\n'
-        if router.busybox
-        else 'exec /bin/sh "$@"\n',
-        [str(consumer), profile, str(output), os.path.realpath(wc)],
-    )
-    assert consumed.returncode == 0
-    assert consumed.stderr == ""
-    assert consumed.stdout == f"CONSUMER\t0\t{len(expected)}\t{total_size}\n"
-
-
-@pytest.mark.matrix("V74", evidence="host")
-def test_invalid_api_profiles_and_noncanonical_paths_are_rejected(
+def test_healthy_capabilities_are_a_noop_and_scope_only_probes_selected_tools(
     router: RouterHarness,
 ) -> None:
-    valid = "armv7sf-k3.2"
-    invalid_calls = [
-        ((), "missing arguments"),
-        ((valid,), "one argument"),
-        ((valid, "/tmp/output", "extra"), "extra argument"),
-        (("unknown-profile", "/tmp/output"), "unknown profile"),
-    ]
-    for args, label in invalid_calls:
-        result = invocation(router, args)
-        try:
-            assert_result(result, 2)
-        except AssertionError as error:
-            raise AssertionError(f"{label}: {error}") from error
+    fixture = OpkgFixture(router)
+    fixture.seed("jq", "timeout", "sha256sum", "dig", "flock")
 
-    local = router.path("ram/tmp/invalid")
-    invalid_paths = [
-        ("relative/output", router.path("work/relative/output")),
-        ("/", None),
-        (f"{local}/output/", local / "output"),
-        (f"{local}//output", local / "output"),
-        (f"{local}/./output", local / "output"),
-        (f"{local}/../output", local.parent / "output"),
-        (f"{local}/out\nput", local / "out\nput"),
-        ("/" + "x" * 4096, None),
+    assert_result(fixture.call("shared", "native"), 0)
+    assert [row[0] for row in fixture.probe_calls()] == ["jq", "timeout", "sha256sum"]
+    assert fixture.opkg_calls() == []
+
+    fixture.settings["bad_capabilities"] = {"dig": "fail", "flock": "fail"}
+    fixture.save()
+    assert_result(fixture.call("shared", "native"), 0)
+    assert [row[0] for row in fixture.probe_calls()] == [
+        "jq",
+        "timeout",
+        "sha256sum",
+        "jq",
+        "timeout",
+        "sha256sum",
     ]
-    for index, (path, candidate) in enumerate(invalid_paths):
-        result = invocation(router, (valid, path))
-        try:
-            assert_result(result, 2)
-        except AssertionError as error:
-            raise AssertionError(f"invalid path case {index} ({path!r}): {error}") from error
-        if candidate is not None:
-            assert not candidate.exists(), f"invalid path case {index} created output"
+    assert fixture.opkg_calls() == []
+
+    fixture.settings["bad_capabilities"] = {}
+    fixture.save()
+    assert_result(fixture.call("tunnel", "entware"), 0)
+    assert [row[0] for row in fixture.probe_calls()][-5:] == [
+        "jq",
+        "timeout",
+        "sha256sum",
+        "dig",
+        "flock",
+    ]
+    assert fixture.opkg_calls() == []
 
 
 @pytest.mark.matrix("V74", evidence="host")
-def test_existing_output_nodes_are_never_opened_or_replaced(router: RouterHarness) -> None:
-    base = router.path("ram/tmp/existing")
-    base.mkdir(mode=0o700)
-    regular = base / "regular"
-    regular.write_bytes(b"preserve me")
-    directory = base / "directory"
-    directory.mkdir(mode=0o700)
-    target = base / "target"
-    target.write_bytes(b"symlink target")
-    symlink = base / "symlink"
-    symlink.symlink_to(target)
-    dangling = base / "dangling"
-    dangling.symlink_to(base / "missing")
-    fifo = base / "fifo"
-    os.mkfifo(fifo, 0o600)
-
-    for node in (regular, directory, symlink, dangling, fifo):
-        result = invocation(router, ("armv7sf-k3.2", str(node)))
-        try:
-            assert_result(result, 1)
-        except AssertionError as error:
-            raise AssertionError(f"existing {node.name} node must fail closed: {error}") from error
-
-    assert regular.read_bytes() == b"preserve me"
-    assert directory.is_dir()
-    assert symlink.is_symlink() and os.readlink(symlink) == str(target)
-    assert dangling.is_symlink() and not (base / "missing").exists()
-    assert fifo.is_fifo()
-
-
-@pytest.mark.matrix("V74", evidence="host")
-def test_call_preserves_caller_shell_state_and_runs_with_poisoned_closure_tools(
+def test_missing_capabilities_install_only_scoped_packages_in_fixed_order(
     router: RouterHarness,
 ) -> None:
-    output = router.path("ram/tmp/state.manifest")
-    trap_marker = router.path("ram/tmp/exit-trap")
-    shell = shutil.which("dash", path="/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin") or "/bin/sh"
-    script = (
-        f". {shlex.quote(str(CLOSURE))}\n"
-        f". {shlex.quote(str(BOOTSTRAP))}\n"
-        "set +f\n"
-        "set -- first second\n"
-        "IFS=:\n"
-        "LC_ALL=POSIX\n"
-        "umask 027\n"
-        "_closure_tools=/poisoned/tools\n"
-        f"_bootstrap_trap_marker={shlex.quote(str(trap_marker))}\n"
-        "trap 'printf fired >> \"$_bootstrap_trap_marker\"' 0\n"
-        f"cfmgr_bootstrap_manifest armv7sf-k3.2 {shlex.quote(str(output))}\n"
-        "_state_rc=$?\n"
-        "case $- in *f*) _noglob=yes ;; *) _noglob=no ;; esac\n"
-        'printf "STATE\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" "$_state_rc" '
-        '"$_noglob" "$#" "$1" "$2" "$IFS" "$LC_ALL" "$_closure_tools"\n'
+    fixture = OpkgFixture(router)
+
+    assert_result(fixture.call("tunnel", "entware"), 0)
+    assert fixture.opkg_calls() == [
+        ["update"],
+        ["install", "jq", "coreutils-timeout", "coreutils-sha256sum", "bind-dig", "flock"],
+    ]
+    assert [row[0] for row in fixture.probe_calls()] == [
+        "jq",
+        "timeout",
+        "sha256sum",
+        "dig",
+        "flock",
+    ]
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_usable_jq_full_is_kept_while_only_an_unusable_selected_tool_is_reinstalled(
+    router: RouterHarness,
+) -> None:
+    fixture = OpkgFixture(router)
+    fixture.seed("jq", "timeout", "sha256sum", "dig", "flock")
+    fixture.settings["bad_capabilities"] = {"timeout": "fail_once"}
+    fixture.save()
+
+    assert_result(fixture.call("shared", "native"), 0)
+    assert fixture.opkg_calls() == [["update"], ["install", "coreutils-timeout"]]
+    assert (fixture.bin / "jq").exists()
+    assert [row[0] for row in fixture.probe_calls()].count("jq") == 2
+    assert [row[0] for row in fixture.probe_calls()].count("timeout") == 2
+    assert [row[0] for row in fixture.probe_calls()].count("sha256sum") == 2
+    assert not any(row[0] in {"dig", "flock"} for row in fixture.probe_calls())
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_update_failure_stops_and_a_later_call_rechecks_and_retries(router: RouterHarness) -> None:
+    fixture = OpkgFixture(router)
+    fixture.settings["fail_update_once"] = True
+    fixture.save()
+    body = (
+        "export OPKG_CONF_DIR=/poison OPKG_OFFLINE_ROOT=/poison IPKG_CONF_DIR=/poison\n"
+        "export http_proxy=http://invalid HTTPS_PROXY=http://invalid\n"
+        "export LD_LIBRARY_PATH=/poison OPENSSL_CONF=/poison WGETRC=/poison\n"
+        "cfmgr_bootstrap_dependencies_test "
+        f"{shlex.quote(str(fixture.root))} shared native; first=$?\n"
+        "cfmgr_bootstrap_dependencies_test "
+        f"{shlex.quote(str(fixture.root))} shared native; second=$?\n"
+        'printf "RESULT\\t%s\\t%s\\n" "$first" "$second"\n'
+    )
+
+    result = fixture.invoke(body)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "RESULT\t1\t0\n"
+    assert fixture.opkg_calls() == [
+        ["update"],
+        ["update"],
+        ["install", *COMMON],
+    ]
+    assert len(fixture.opkg_environments()) == 3
+    assert all(value is None for row in fixture.opkg_environments() for value in row.values())
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_install_failure_stops_and_post_install_probe_failure_is_not_success(
+    router: RouterHarness,
+) -> None:
+    install_failure = OpkgFixture(router)
+    install_failure.settings["fail_install"] = True
+    install_failure.save()
+    assert_result(install_failure.call(), 1)
+    assert install_failure.opkg_calls() == [["update"], ["install", *COMMON]]
+    assert install_failure.probe_calls() == []
+
+    post_probe = OpkgFixture(router, name="post-probe")
+    post_probe.settings["skip_install"] = ["coreutils-sha256sum"]
+    post_probe.save()
+    assert_result(post_probe.call(), 1)
+    assert post_probe.opkg_calls() == [["update"], ["install", *COMMON]]
+    assert [row[0] for row in post_probe.probe_calls()] == ["jq", "timeout"]
+    assert not (post_probe.bin / "sha256sum").exists()
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_native_probe_uncertainty_returns_129_without_package_mutation(
+    router: RouterHarness,
+) -> None:
+    fixture = OpkgFixture(router)
+    fixture.seed("jq", "timeout", "sha256sum")
+    fixture.settings["bad_capabilities"] = {"jq": "uncertain"}
+    fixture.save()
+    result = fixture.call()
+    assert_result(result, 129)
+    assert fixture.opkg_calls() == []
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_invalid_api_tokens_and_root_admission_fail_before_opkg(router: RouterHarness) -> None:
+    fixture = OpkgFixture(router)
+    body = (
+        "cfmgr_bootstrap_dependencies_test "
+        f"{shlex.quote(str(fixture.root))} shared; a=$?\n"
+        "cfmgr_bootstrap_dependencies_test "
+        f"{shlex.quote(str(fixture.root))} shared native extra; b=$?\n"
+        f"cfmgr_bootstrap_dependencies_test {shlex.quote(str(fixture.root))} invalid native; c=$?\n"
+        f"cfmgr_bootstrap_dependencies_test {shlex.quote(str(fixture.root))} tunnel invalid; d=$?\n"
+        f"cfmgr_bootstrap_dependencies_test relative/root shared native; e=$?\n"
+        "cfmgr_bootstrap_dependencies_test "
+        f"{shlex.quote(str(fixture.root.parent / '..' / 'bad'))} shared native; f=$?\n"
+        'printf "RESULT\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" "$a" "$b" "$c" "$d" "$e" "$f"\n'
+    )
+    result = fixture.invoke(body)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "RESULT\t2\t2\t2\t2\t2\t2\n"
+    assert fixture.opkg_calls() == []
+    assert fixture.probe_calls() == []
+
+    missing = router.path("ram/tmp/missing-entware")
+    body = (
+        f"cfmgr_bootstrap_dependencies_test {shlex.quote(str(missing))} shared native; a=$?\n"
+        f"cfmgr_bootstrap_dependencies_test {shlex.quote(str(fixture.root))} shared native; b=$?\n"
+        'printf "RESULT\\t%s\\t%s\\n" "$a" "$b"\n'
+    )
+    fixture.bin.joinpath("opkg").unlink()
+    missing_result = fixture.invoke(body)
+    assert missing_result.returncode == 0 and missing_result.stderr == ""
+    assert missing_result.stdout == "RESULT\t1\t1\n"
+    assert fixture.opkg_calls() == []
+    assert fixture.probe_calls() == []
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_production_route_uses_literal_opt_and_ignores_ambient_policy(
+    router: RouterHarness,
+) -> None:
+    fixture = OpkgFixture(router)
+    body = (
+        "cfmgr_bootstrap_dependencies; noargs=$?\n"
+        "cfmgr_bootstrap_dependencies shared native extra; extra=$?\n"
+        "_bootstrap_scope=poison; _bootstrap_lock_provider=poison; _bootstrap_root=/ambient\n"
+        "_cfmgr_bootstrap_dependencies_run() { "
+        'printf "CALL\\t%s\\t%s\\t%s\\n" "$1" "$2" "$3"; }\n'
+        "cfmgr_bootstrap_dependencies shared native; status=$?\n"
+        'printf "RESULT\\t%s\\t%s\\t%s\\n" "$noargs" "$extra" "$status"\n'
+    )
+    result = fixture.invoke(body)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "CALL\t/opt\tshared\tnative\nRESULT\t2\t2\t0\n"
+    assert fixture.opkg_calls() == []
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_backend_preserves_caller_shell_state(router: RouterHarness) -> None:
+    fixture = OpkgFixture(router)
+    fixture.seed("jq", "timeout", "sha256sum")
+    marker = router.path("work/opkg-exit-trap")
+    body = (
+        "set +f\nset -- alpha beta\nIFS=:\nLC_ALL=POSIX\numask 027\n"
+        "_bootstrap_probe='ambient poison'; _bootstrap_packages='ambient packages'\n"
+        f"trap 'printf fired >>{shlex.quote(str(marker))}' 0\n"
+        "cfmgr_bootstrap_dependencies_test "
+        f"{shlex.quote(str(fixture.root))} shared native; status=$?\n"
+        "case $- in *f*) noglob=yes ;; *) noglob=no ;; esac\n"
+        'printf "STATE\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" "$status" "$noglob" '
+        '"$#" "$1" "$2" "$IFS"\n'
         "umask\n"
     )
-    subject = router.write("work/bootstrap-state.sh", script)
-    result = router.run(f'exec {shlex.quote(shell)} "$@"\n', [str(subject)])
-
-    assert result.returncode == 0
-    assert result.stderr == ""
-    assert result.stdout == ("STATE\t0\tno\t2\tfirst\tsecond\t:\tPOSIX\t/poisoned/tools\n0027\n")
-    assert trap_marker.read_bytes() == b"fired"
-    assert output.read_bytes() == expected_manifest("armv7sf-k3.2")
-
-
-@pytest.mark.matrix("V74", evidence="host")
-def test_bounded_write_failure_returns_io_error_and_retains_partial_file(
-    router: RouterHarness,
-) -> None:
-    output = router.path("ram/tmp/limited.manifest")
-    subject = router.write(
-        "work/bootstrap-limited.sh",
-        f". {shlex.quote(str(CLOSURE))}\n"
-        f". {shlex.quote(str(BOOTSTRAP))}\n"
-        "ulimit -f 0\n"
-        "trap ':' XFSZ\n"
-        'cfmgr_bootstrap_manifest armv7sf-k3.2 "$1"\n'
-        "_write_rc=$?\n"
-        'printf "RESULT\\t%s\\n" "$_write_rc"\n',
-    )
-    result = router.run('exec /bin/sh "$@"\n', [str(subject), str(output)])
-
-    assert_result(result, 1)
-    assert output.is_file()
-    assert output.stat().st_size == 0
-    assert output.read_bytes() != expected_manifest("armv7sf-k3.2")
+    result = fixture.invoke(body)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "STATE\t0\tno\t2\talpha\tbeta\t:\n0027\n"
+    assert marker.read_bytes() == b"fired"
 
 
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_actual_busybox_shell_builds_and_consumes_representative_manifest(
+def test_actual_busybox_shell_installs_only_shared_native_dependencies(
     busybox_router: RouterHarness,
 ) -> None:
-    output = busybox_router.path("ram/tmp/busybox.manifest")
-    result = invocation(busybox_router, ("mipselsf-k3.4", str(output)))
+    assert busybox_router.busybox is not None
+    fixture = OpkgFixture(busybox_router, busybox=busybox_router.busybox)
 
-    assert_result(result, 0)
-    assert output.read_bytes() == expected_manifest("mipselsf-k3.4")
-    assert output.stat().st_mode & 0o777 == 0o600
+    assert_result(fixture.call("shared", "native", shell=busybox_router.busybox), 0)
+    assert fixture.opkg_calls() == [["update"], ["install", *COMMON]]
+    assert [row[0] for row in fixture.probe_calls()] == ["jq", "timeout", "sha256sum"]

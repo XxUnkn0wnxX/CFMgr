@@ -370,6 +370,55 @@ def test_terminal_reader_checks_exact_framing_and_resets_helper_state(
     assert all(row[1:] == ["1", "1", "0", "unset"] for row in observations[2:])
 
 
+def test_uncertain_terminal_record_or_capture_size_resets_completion(
+    router: RouterHarness,
+) -> None:
+    probe = router.path("ram/tmp/uncertain terminal")
+    probe.mkdir(mode=0o700)
+    record = probe / "status"
+    record.write_bytes(b"done\t0\nend\t7\n")
+    (probe / "stdout").write_bytes(b"")
+    (probe / "stderr").write_bytes(b"")
+    record_bytes = len(record.read_bytes())
+    counter = router.path("work/wc-count")
+
+    for label, wc_body in (
+        ("record", f"printf '{record_bytes}\\n'\nexit 129\n"),
+        (
+            "capture",
+            "if [ -r "
+            + shlex.quote(str(counter))
+            + " ]; then IFS= read -r _count <"
+            + shlex.quote(str(counter))
+            + "; else _count=0; fi\n"
+            + '_count=$((_count + 1)); printf "%s\\n" "$_count" >'
+            + shlex.quote(str(counter))
+            + "\ncase $_count in\n"
+            + f"1) printf '{record_bytes}\\n' ;;\n"
+            + "2) printf '0\\n'; exit 129 ;;\n"
+            + "*) printf '0\\n' ;;\nesac\n",
+        ),
+    ):
+        wc = router.write(
+            f"work/uncertain-wc-{label}",
+            "#!/bin/sh\n" + wc_body,
+            executable=True,
+        )
+        counter.unlink(missing_ok=True)
+        script = (
+            f". {shlex.quote(str(SOURCE))}\n"
+            f"_cfmgr_supervision_terminal {shlex.quote(str(probe))} {shlex.quote(str(wc))}\n"
+            "_rc=$?\n"
+            'printf "RESULT\\t%s\\t%s\\t%s\\t%s\\n" "$_rc" '
+            '"$_supervision_complete" "$_supervision_status" '
+            '"$_supervision_stdout_bytes$_supervision_stderr_bytes"\n'
+        )
+        result = router.run(script)
+        assert result.returncode == 0 and result.stderr == "", f"{label}: {result}"
+        expected_fields = "0\t" if label == "capture" else "\t"
+        assert result.stdout == f"RESULT\t129\t0\t{expected_fields}\n", f"{label}: {result}"
+
+
 @pytest.mark.parametrize(
     "invalid",
     [

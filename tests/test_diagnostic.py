@@ -324,15 +324,21 @@ def test_aliases_identical_and_no_operational_actions(diagnostic: DiagnosticFixt
 def test_entware_inventory_never_executes_unverified_packages(
     diagnostic: DiagnosticFixture,
 ) -> None:
-    for package in ["jq", "timeout", "sha256sum", "dig"]:
+    marker = diagnostic.router.path("work/entware-executed")
+    for package in ["opkg", "jq", "timeout", "sha256sum", "dig", "flock"]:
         diagnostic.router.write(
-            f"opt/bin/{package}", "#!/bin/sh\nprintf 'SECRET-opt-executed'\n", executable=True
+            f"opt/bin/{package}",
+            f"#!/bin/sh\nprintf 'unexpected Entware execution' >{shlex.quote(str(marker))}\n",
+            executable=True,
         )
-    report = rows(diagnostic.run())
+    result = diagnostic.run("--doctor")
+    assert result.returncode == 3
+    report = rows(result)
     assert report["OPT.STORAGE"][0] == "SKIP"
     for package in ["jq", "coreutils-timeout", "coreutils-sha256sum", "bind-dig", "flock"]:
         row = report[f"PACKAGE.{package}"]
         assert row[0] == "SKIP" and "status unknown" in row[-1] and "OPT.STORAGE" in row[-1]
+    assert not marker.exists(), "doctor must not run opkg or unverified Entware tools"
     diagnostic.assert_clean()
 
 

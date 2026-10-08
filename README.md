@@ -10,6 +10,12 @@ Cloudflare Manager for Asuswrt-Merlin
 
 CFMgr is in initial development. The implementation has tested parsing and read-only storage foundations, plus a partial native health report; there is no installable manager yet.
 
+Normal operation will require working Entware. Its installed `opkg` manages
+CFMgr's dependencies and their libraries; CFMgr manages Cloudflared release
+binaries separately for supported kernel and userspace architectures.
+`--doctor` / `--diagnostic` remain native diagnostics and work without Entware
+or usable dependencies, without attempting package installation.
+
 Runtime source lives in **`cfmgr.sh`** and **`modules/`**. These shell and awk
 files run directly; there is no compilation step for the manager.
 

@@ -107,7 +107,7 @@ def test_stage_admission_failure_retains_before_any_mount_or_launch(
 
 
 def preparation_consumer(router: RouterHarness) -> str:
-    """Exercise actual preparation flow; admission and the next bind are boundaries."""
+    """Exercise native/probe preparation; admission and the next bind are boundaries."""
     link = router.write(
         "work/preparation-ln",
         "#!/bin/sh\n"
@@ -144,54 +144,40 @@ _cfmgr_isolation_write() {{
   [ "$_fixture_failure" != null ] || return 1
   command printf '%s' "$2" >"$1"
 }}
-cfmgr_bootstrap_materialize() {{
-  [ "$#" = 2 ] && [ "$1" = armv7sf-k3.2 ] &&
-    [ "$2" = "$_isolation_guard/acquisition" ] && [ -f "$_isolation_guard/active" ] || return 7
-  /bin/mkdir -m 700 "$2" || return 1
-  command printf partial >"$2/partial"
-  [ "$_fixture_failure" != acquire ] || return 1
-  /bin/mkdir -m 700 "$2/timeout" "$2/gzip" || return 1
-  command printf timeout >"$2/timeout/program"
-  command printf gzip >"$2/gzip/program"
-}}
-_cfmgr_bootstrap_materialize_owned() {{
-  [ "$#" = 3 ] && [ "$_materialize_complete" = 0 ] || return 7
-  [ -z "$1" ] || [ "$1" = {shlex.quote(str(router.path("bin")))} ] || return 7
-  cfmgr_bootstrap_materialize "$2" "$3" || return 129
-  _materialize_complete=1
-}}
 _cfmgr_isolation_image_stage() {{
   [ -f "$_isolation_guard/active" ] || return 7
-  if [ "$_isolation_mode" = acquire ]; then
-    [ "$_isolation_probe_timeout" = "$_isolation_guard/acquisition/timeout/program" ] &&
-      [ "$_isolation_probe_gzip" = "$_isolation_guard/acquisition/gzip/program" ] || return 7
-    [ -f "$_isolation_probe_timeout" ] && [ -f "$_isolation_probe_gzip" ] || return 7
-  fi
+  [ "$_isolation_mode" = probe ] || return 7
+  _isolation_stage_attempted=1
   [ "$_fixture_failure" != stage ] || return 1
 }}
 _cfmgr_isolation_bind() {{
-  [ "$1" = null ] && [ ! -e "$_isolation_guard/active" ] || return 7
-  [ -f "$_isolation_tree/dev/null" ] || return 7
-  for directory in opt dev bootstrap tmp offline; do
-    [ -d "$_isolation_tree/$directory" ] || return 7
-  done
-  if [ "$_isolation_mode" != native ]; then
-    [ -L "$_isolation_tree/bootstrap/timeout-coreutils" ] &&
-      [ -L "$_isolation_tree/bootstrap/gzip-gnu" ] || return 7
+  if [ "$1" = null ]; then
+    [ ! -e "$_isolation_guard/active" ] || return 7
+    [ -f "$_isolation_tree/dev/null" ] || return 7
+    for directory in opt dev bootstrap tmp offline; do
+      [ -d "$_isolation_tree/$directory" ] || return 7
+    done
+    if [ "$_isolation_mode" = probe ]; then
+      [ -L "$_isolation_tree/bootstrap/timeout-coreutils" ] &&
+        [ -L "$_isolation_tree/bootstrap/gzip-gnu" ] || return 7
+    fi
+    command printf null-bound >"$_isolation_guard/bind-entered"
+    return 0
   fi
-  command printf bound >"$_isolation_guard/bind-entered"
-  [ "$_isolation_mode" != acquire ] || return 0
-  return 1
+  [ "$_isolation_mode" = native ] && [ "$1" = opt ] || return 7
+  command printf opt-bound >>"$_isolation_guard/bind-entered"
+  return 0
 }}
 _cfmgr_isolation_image_bind() {{
-  [ "$_isolation_mode" = acquire ] && [ -f "$_isolation_guard/bind-entered" ] &&
+  [ "$_isolation_mode" = probe ] && [ -f "$_isolation_guard/bind-entered" ] &&
     [ ! -e "$_isolation_guard/active" ]
 }}
 _cfmgr_isolation_probe_run() {{
-  [ "$_isolation_mode" = acquire ] || return 7
+  [ "$_isolation_mode" = probe ] || return 7
   command printf probe >"$_isolation_guard/probe-entered"
   return 1
 }}
+_isolation_callback() {{ return 1; }}
 for scenario do
   _isolation_mode=${{scenario%%:*}}; _fixture_failure=${{scenario#*:}}
   _isolation_tools=''
@@ -204,8 +190,16 @@ for scenario do
   _cfmgr_isolation_run; status=$?
   [ "$status" = 1 ] || exit 11
   if [ "$_fixture_failure" = ok ] || [ "$_fixture_failure" = fixture ]; then
-    [ -f "$_isolation_guard/bind-entered" ] && [ ! -e "$_isolation_guard/active" ] || exit 12
-    [ "$_isolation_mode" != acquire ] || [ -f "$_isolation_guard/probe-entered" ] || exit 21
+    [ -f "$_isolation_guard/bind-entered" ] || exit 12
+    IFS= read -r bind <"$_isolation_guard/bind-entered"
+    if [ "$_isolation_mode" = native ]; then
+      [ "$bind" = null-boundopt-bound ] &&
+        [ ! -e "$_isolation_guard/active" ] || exit 21
+    else
+      [ "$bind" = null-bound ] &&
+        [ -f "$_isolation_guard/probe-entered" ] &&
+        [ ! -e "$_isolation_guard/active" ] || exit 21
+    fi
   else
     [ ! -e "$_isolation_guard/bind-entered" ] || exit 13
     IFS= read -r active <"$_isolation_guard/active"
@@ -217,7 +211,6 @@ for scenario do
       links) [ -L "$_isolation_tree/bootstrap/timeout-coreutils" ] &&
         [ ! -e "$_isolation_tree/bootstrap/gzip-gnu" ] &&
         [ ! -L "$_isolation_tree/bootstrap/gzip-gnu" ] || exit 18 ;;
-      acquire) [ -f "$_isolation_guard/acquisition/partial" ] || exit 19 ;;
       stage) [ ! -e "$_isolation_tree" ] || exit 20 ;;
     esac
   fi
@@ -230,13 +223,11 @@ def test_preparation_is_protected_for_all_modes_until_the_first_bind(router: Rou
     cases = [
         "native:ok",
         "probe:ok",
-        "bootstrap:ok",
-        "acquire:ok",
-        "acquire:fixture",
+        "native:fixture",
+        "probe:fixture",
         "native:null",
         "probe:stage",
-        "bootstrap:links",
-        "acquire:acquire",
+        "probe:links",
     ]
     result = _run_shell(router, preparation_consumer(router), [str(router.path("ram/tmp")), *cases])
     assert result.returncode == 0, result
@@ -245,13 +236,13 @@ def test_preparation_is_protected_for_all_modes_until_the_first_bind(router: Rou
 
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_busybox_preparation_retains_metadata_failure_and_reaches_acquired_bind(
+def test_busybox_preparation_retains_metadata_failure_and_reaches_probe_bind(
     busybox_router: RouterHarness,
 ) -> None:
     result = _run_shell(
         busybox_router,
         preparation_consumer(busybox_router),
-        [str(busybox_router.path("ram/tmp")), "native:null", "acquire:ok"],
+        [str(busybox_router.path("ram/tmp")), "native:null", "probe:ok"],
     )
     assert result.returncode == 0, result
     assert result.stdout == result.stderr == ""

@@ -42,9 +42,7 @@ flowchart LR
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
-| `modules/bootstrap.sh` | Select reviewed identities, construct a bounded member manifest and materialize both fixed bootstrap tools | Requires trusted helpers and private RAM; no automatic profile selection or operational launch |
-| `modules/fetch.sh` | Acquire one reviewed bootstrap archive through native HTTPS curl and verify its private bytes | Physical output caps, exact status/size/hash; no redirect, extraction, package execution or CLI wiring |
-| `modules/archive.sh` | Copy and verify a reviewed bootstrap archive, then extract its fixed member through bounded native stdout stages | Every parser input is an approved private copy; no archive path restoration, executable mode, package execution or generic archive support |
+| `modules/bootstrap.sh` | Check selected capabilities, install missing dependencies through existing Entware opkg and verify the result | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -144,15 +142,25 @@ helpers have a narrower contract and do not establish those guarantees.
 </details>
 
 <details>
-<summary>🔒 Dependency execution: selected implementation direction</summary>
+<summary>🔒 Internal dependency execution proofs</summary>
+
+Operational dependencies are to be installed by the existing Entware `opkg`
+using its configured repositories and normal package/library resolution. CFMgr
+checks required capabilities and verifies the result. Cloudflared is handled
+directly through release binaries matched to supported kernel and userspace
+architecture/ABI combinations; the kernel architecture alone is insufficient. The direct-IPK bootstrap and isolated-image work below
+are internal proofs, currently unselected for operational installation. They
+have no operational CLI wiring. The next design pass must simplify dependency
+setup around opkg and decide which helpers remain useful; these proofs do not
+establish an installer or require a replacement package-resolution mechanism.
 
 Entware's loader reads absolute `/opt` paths before a program starts. An
 explicit loader path alone therefore cannot contain execution when the public
 mount path changes. The fixed-probe profile uses native bind mounts and chroot
 to separate verified executable bytes from the mutable installation destination.
 A small private RAM image provides the admitted programs, loader and libraries
-at `/opt`, with a verified read-only bind and no preload file. Later restricted
-installation would expose the retained Entware directory separately at
+at `/opt`, with a verified read-only bind and no preload file. The earlier restricted
+installation proposal would expose the retained Entware directory separately at
 `/offline/opt`. Version probes do not mount the mutable Entware directory
 inside their root. Artifact provenance and ELF-graph admission remain caller
 prerequisites; accepting supplied hashes does not establish trust. Before calling
@@ -160,90 +168,29 @@ the internal probe entry, the owner must construct/acquire the approved manifest
 within 4096 original bytes in stable private RAM. Staging validates its length
 after reading through EOF, so that check is not a bounded acquisition primitive.
 
-The bootstrap manifest helper supplies one approved construction route. Its
-three fixed profiles contain the reviewed sizes and SHA256 identities of the
-loader, libraries, timeout and gzip. It writes only those compiled-in rows to a
-fresh private file, then checks the complete bytes through the existing manifest
-consumer. The [bootstrap catalogue](evidence/bootstrap-catalog.json) records
-which official index and archive supplied each member, together with its reviewed
-ELF dependencies and links. Staging must still hash each actual private copy;
-arbitrary caller-supplied digests do not acquire trust from the helper.
+The earlier direct-IPK catalogue, native fetch/extraction and acquisition
+lifecycle have been retired. Their development history remains in Git and the
+plan, but operational dependency setup does not use those APIs or choose package
+versions/libraries itself. The supplied-manifest closure and fixed-probe helpers
+remain independent internal proofs; they do not constrain opkg's dependency
+resolution or constitute the normal package installer.
 
-These identities describe a reviewed bootstrap snapshot, not a package-manager
-version preference. Changed bytes require a reviewed catalogue/code update;
-unknown base libraries fail closed without a downgrade or automatic repair.
-Recorded HTTPS provenance and hashes do not claim signed-index verification,
-reproducible builds or hardware compatibility. Profile selection, saved-volume
-authority enrollment, general archive handling and operational wiring remain
-separate requirements.
+`cfmgr_bootstrap_dependencies` selects the shared jq, timeout and SHA256
+capabilities, optionally adding tunnel DNS or Entware locking. Its production
+paths are fixed under `/opt`; the explicit test entry selects a fixture root.
+If all selected capabilities are usable, it runs no package command. Otherwise
+it performs one ordinary opkg update and installs only missing/unusable direct
+packages, then checks every selected capability again. A usable jq supplied by
+an alternative package needs no replacement. Failed package work or failed
+post-checks return failure; a later invocation rechecks rather than trusting a
+success cache. Force-reinstall remains separate unfinished work.
 
-`cfmgr_bootstrap_fetch` uses the same catalogue to select only the reviewed
-timeout or gzip archive for a fixed profile. Native curl receives an isolated
-configuration/environment and one HTTPS URL, with no redirects or retries.
-The fresh private RAM directory retains partial results on failure. Shell file
-limits bound the body, headers and status files independently of server size
-claims; acceptance then requires the exact reviewed body size and SHA256,
-bounded headers and the complete three-byte HTTP status `200`. Nothing in this
-helper extracts or executes the acquired bytes. Its caller still owns signals,
-resource lifetime and the total action budget; curl timeouts do not establish a
-hard kernel or DNS deadline.
-
-`cfmgr_bootstrap_extract` first makes a bounded private copy of that archive
-and checks its reviewed size and hash. It then uses separate native gunzip and
-plain tar commands, verifying the complete intermediate bytes before the next
-parser runs. Tar writes only the fixed timeout or gzip member to stdout; it
-never restores archive paths, permissions or ownership. The resulting `program`
-is mode 0600 data, ready for the existing image-staging checks. Per-stage file
-limits keep even partial outputs below one MiB in aggregate. Failure retains
-those private files for the owning caller's cleanup decision. This route is
-limited to the reviewed archive bytes and layout; it does not validate arbitrary
-backups or install packages.
-
-`cfmgr_bootstrap_materialize` joins those two consumers for the fixed timeout
-and gzip packages. It creates fresh download/extraction subdirectories and stops
-at the first failure. The isolated native preparation process uses cwd `/`,
-stdin `/dev/null` and closed FD3–9, keeping retained storage descriptors out of
-the downloader and extractor. Successful outputs remain private data until
-image staging verifies and assigns their executable modes.
-
-The internal `cfmgr_isolation_bootstrap` entry connects that catalogue route to
-the retained storage owner. Its caller supplies an independently approved UUID
-and filesystem-relative Entware subtree, encoded as the storage ledger's byte
-hex. Both must match the freshly validated ledger before a guard is reserved.
-This prevents a different subtree on the same volume from acquiring approval
-merely because its UUID matches. The owner then admits its private RAM topology,
-constructs `bootstrap-manifest.tsv` inside its new guard and stages against those
-fixed hashes before any bind or probe. The separate `cfmgr_isolation_acquire`
-entry takes the same authority and profile but obtains both program files through
-the fixed materialization route instead of accepting supplied program paths.
-
-Every isolation mode marks private preparation active before creating the tree
-and its metadata. Probe modes also cover acquisition, manifest construction,
-image copying and source-topology verification with that marker. Complete
-preparation clears it immediately before the first bind.
-
-Acquisition has a separate internal completion result. Its native commands run
-sequentially, and every nested helper must distinguish a deliberately completed
-failure from an interruption or unexpected shell exit. Only that internal proof
-allows an acquisition failure to clear the marker. Existing cleanup then checks
-the private RAM directory and its unchanged mount identity before removing
-partial downloads, allowing a fresh attempt. Public helper failure codes do not
-provide this proof. Successful acquisition keeps preparation protected while
-image staging continues.
-
-Uncertain acquisition and failures during later image/root preparation retain
-the guard and partial files. A generic nonzero shell status or unchanged mount
-topology cannot prove that an interrupted inner shell left no producer alive.
-This completion contract depends on the reviewed native tools running
-synchronously without background descendants. Recovery of uncertain retained
-attempts and aggregate worker deadlines remain unfinished requirements.
-
-This entry accepts no caller manifest or hash. The lower-level supplied-manifest
-probe remains available to already trusted internal callers and explicit fixture
-proofs under its original admission preconditions. These APIs do not select a profile
-from firmware/kernel strings, approve a volume from its own current observation,
-or grant a general storage write lease. Saved-authority enrollment and actual
-Entware execution remain separate acceptance work.
+Entware is required for operational features. This synchronous backend must be
+called by an admitted, serialized dependency worker after verifying the expected
+mounted storage; file existence alone is not that proof. It does not provide an
+aggregate deadline or mount-loss containment, and the worker/feature launch
+integration remains unfinished. `--doctor` and `--diagnostic` use only native
+helpers and never invoke this backend, opkg or unverified Entware executables.
 
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its

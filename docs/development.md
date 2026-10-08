@@ -123,45 +123,29 @@ Enable Actions in the fork's **Actions** tab if needed. Workflows in forks are
 disabled by default; repository or organization policy can also restrict them.
 [GitHub's fork workflow documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflows-in-forked-repositories).
 
-## Reviewed bootstrap identities
+## Entware dependency backend tests
 
-`docs/evidence/bootstrap-catalog.json` records the source index/archive identities,
-member byte sizes and SHA256, and fixed ELF/link graph used by
-`modules/bootstrap.sh`. It is development evidence; the router helpers embed
-approved manifest rows and the six timeout/gzip archive URL/size/hash records,
-including exact intermediate extraction identities. They never parse this JSON
-or adopt new provider metadata automatically.
+`modules/bootstrap.sh` delegates selected dependency installation to the existing
+Entware opkg. Test it with inert executable doubles under an explicit fixture
+root; never invoke host/router opkg, fetch feeds or install packages in tests.
+Assert exact update/install arguments, selected-only packages, healthy no-op,
+usable alternative providers, failure and post-check handling, and a later
+invocation's retry. Keep one actual BusyBox representative. No direct-IPK,
+archive-layout, pinned package-version or synthetic library-closure matrix is
+needed for this backend.
 
-To review a new snapshot, verify the selected official HTTPS index and exact
-archive size/hash, inspect members as inert bytes, and record each admitted
-member's hash and complete startup graph. Recheck interpreter, ABI, dynamic
-lookup paths, dependencies and links; archive validity or a new version string
-alone is insufficient. Inspect the raw archive headers and record outer tar,
-data archive and selected member sizes/hashes before admitting a new extraction
-layout; native stdout extraction must reproduce them without restoring paths.
-Keep private downloaded evidence outside Git. Update
-catalogue and embedded identities together only after review, then run focused
-bootstrap/fetch/archive/acquisition/closure checks and the normal combined
-validation gates. Existing research scripts are audit helpers, not hostile-input
-runtime archive parsers.
-Never execute a downloaded package merely to regenerate these identities.
+The backend requires an already admitted, serialized caller with usable mounted
+Entware and suitable scheduling. Mount/authority/ownership and aggregate worker
+behavior remain separate integration acceptance gates. Its fixture root proves
+command policy and capability handling, not storage or router acceptance.
+`--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
+must prove that neither opkg nor unverified package executables are called.
 
-Acquisition tests must distinguish a deliberately completed failure from an
-unproved interrupted producer. Use small real consumers for ordinary native
-failure, status propagation and valid-looking output from a failed helper. A
-completed acquisition failure may clean up only after the existing private RAM
-identity check; test that a changed identity still prevents removal and that
-successful acquisition keeps later preparation protected.
-
-Keep one live-producer interruption regression for acquisition and the existing
-closure-copy regression: they cover different intermediate owners and descriptor
-lifetimes. Use FIFO readiness/release rather than sleeps, and prove the output
-inode remains owned while the producer is alive. Preserve the manifest,
-copied-byte and no-mount assertions when adapting older fixtures. Public
-materialize/fetch/archive status remains 0/1/2; only the internal owner receives
-completion authority. Later staging failure and uncertain acquisition still
-retain their guards. General retained-attempt recovery remains pending; never
-add runtime cleanup merely to satisfy a fixture.
+Preserve independent supplied-manifest closure, fixed-probe, live-producer
+interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
+are obsolete with their implementation; their counts are not coverage targets.
+Reuse strict terminal framing and interrupted-reader cases for retained probe
+code, distinguishing ordinary capture rejection from uncertain completion.
 
 ## 🧪 Run checks
 
@@ -663,8 +647,10 @@ launch and manager install/update/reinstall. An unavailable or unusable
 prerequisite keeps operational work stopped; a later launch checks and can retry
 installation. Advanced options will also provide **Reinstall Entware
 dependencies**, distinct from Cloudflared daemon/hook/worker reinstallation.
-These package flows remain unimplemented. Hook dispatch must stay prompt, with
-bounded serialized package work and a native recovery entry for broken tools.
+The installed-opkg backend is implemented; operational launch scheduling,
+serialization, mount admission and force-reinstall integration remain pending.
+Hook dispatch must stay prompt, and native doctor must remain available without
+Entware or working packages.
 The final guides must state the accepted kernel/ABI combinations; package
 presence alone does not prove compatibility.
 

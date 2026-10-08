@@ -75,7 +75,10 @@ _cfmgr_supervision_run() {
 	while :; do
 		if _cfmgr_supervision_terminal "$_supervision_probe" "$_supervision_wc"; then
 			return "$_supervision_status"
+		else
+			_supervision_terminal_status=$?
 		fi
+		[ "$_supervision_terminal_status" -ne 129 ] || return 129
 		[ "$_supervision_complete" -eq 0 ] || return 1
 		[ "$_supervision_elapsed" -lt "$_supervision_limit" ] || return 124
 		"$_supervision_sleep" 1 || return 1
@@ -190,20 +193,58 @@ _cfmgr_supervision_terminal() {
 	_supervision_read_probe=$1
 	_supervision_read_wc=$2
 	[ -d "$_supervision_read_probe" ] && [ ! -L "$_supervision_read_probe" ] || return 1
-	_supervision_record=$_supervision_read_probe/status
-	[ -f "$_supervision_record" ] && [ ! -L "$_supervision_record" ] || return 1
-	_supervision_record_bytes=$(_cfmgr_supervision_size "$_supervision_read_wc" "$_supervision_record") || return 1
+	if _cfmgr_supervision_record "$_supervision_read_probe/status" "$_supervision_read_wc"; then
+		_supervision_status=$_supervision_record_status
+	else
+		_supervision_terminal_read_status=$?
+		case $_supervision_terminal_read_status in 1) return 1 ;; *) return 129 ;; esac
+	fi
+	_supervision_complete=1
+	_supervision_stdout=$_supervision_read_probe/stdout
+	_supervision_stderr=$_supervision_read_probe/stderr
+	[ -f "$_supervision_stdout" ] && [ ! -L "$_supervision_stdout" ] || return 1
+	[ -f "$_supervision_stderr" ] && [ ! -L "$_supervision_stderr" ] || return 1
+	if _supervision_stdout_bytes=$(_cfmgr_supervision_size "$_supervision_read_wc" "$_supervision_stdout"); then :; else
+		_supervision_terminal_read_status=$?
+		[ "$_supervision_terminal_read_status" -eq 1 ] && return 1
+		_supervision_complete=0
+		return 129
+	fi
+	if _supervision_stderr_bytes=$(_cfmgr_supervision_size "$_supervision_read_wc" "$_supervision_stderr"); then :; else
+		_supervision_terminal_read_status=$?
+		[ "$_supervision_terminal_read_status" -eq 1 ] && return 1
+		_supervision_complete=0
+		return 129
+	fi
+	[ "$_supervision_stdout_bytes" -le 4096 ] && [ "$_supervision_stderr_bytes" -le 4096 ]
+}
+
+# Strict shared frame reader. Parsing never establishes caller completion.
+_cfmgr_supervision_record() {
+	_supervision_record_status=
+	[ "$#" -eq 2 ] || return 1
+	_supervision_record_file=$1
+	[ -f "$_supervision_record_file" ] && [ ! -L "$_supervision_record_file" ] || return 1
+	if _supervision_record_bytes=$(_cfmgr_supervision_size "$2" "$_supervision_record_file"); then :; else
+		_supervision_record_read_status=$?
+		case $_supervision_record_read_status in 1) return 1 ;; *) return 129 ;; esac
+	fi
 	[ "$_supervision_record_bytes" -le 32 ] || return 1
 	_supervision_first=
 	_supervision_second=
 	_supervision_extra=
-	{
-		IFS= read -r _supervision_first &&
-			IFS= read -r _supervision_second &&
-			! IFS= read -r _supervision_extra &&
-			[ -z "$_supervision_extra" ]
-	} <"$_supervision_record" || return 1
-	_supervision_tab=$(printf '\t')
+	if {
+		if IFS= read -r _supervision_first; then _supervision_record_read_status=0; else _supervision_record_read_status=$?; fi
+		case $_supervision_record_read_status in 0) ;; 1) return 1 ;; *) return 129 ;; esac
+		if IFS= read -r _supervision_second; then _supervision_record_read_status=0; else _supervision_record_read_status=$?; fi
+		case $_supervision_record_read_status in 0) ;; 1) return 1 ;; *) return 129 ;; esac
+		if IFS= read -r _supervision_extra; then _supervision_record_read_status=0; else _supervision_record_read_status=$?; fi
+		case $_supervision_record_read_status in 1) ;; 0) return 1 ;; *) return 129 ;; esac
+		[ -z "$_supervision_extra" ] || return 1
+	} <"$_supervision_record_file"; then :; else
+		return 1
+	fi
+	_supervision_tab='	'
 	case $_supervision_first in done"$_supervision_tab"*) ;; *) return 1 ;; esac
 	_supervision_parsed_status=${_supervision_first#done"$_supervision_tab"}
 	case $_supervision_parsed_status in
@@ -218,21 +259,28 @@ _cfmgr_supervision_terminal() {
 	[ "$_supervision_first" = "$_supervision_expected_first" ] || return 1
 	[ "$_supervision_second" = "$_supervision_expected_second" ] || return 1
 	[ "$_supervision_record_bytes" -eq "$((${#_supervision_expected_first} + ${#_supervision_expected_second} + 2))" ] || return 1
-	_supervision_status=$_supervision_parsed_status
-	_supervision_complete=1
-	_supervision_stdout=$_supervision_read_probe/stdout
-	_supervision_stderr=$_supervision_read_probe/stderr
-	[ -f "$_supervision_stdout" ] && [ ! -L "$_supervision_stdout" ] || return 1
-	[ -f "$_supervision_stderr" ] && [ ! -L "$_supervision_stderr" ] || return 1
-	_supervision_stdout_bytes=$(_cfmgr_supervision_size "$_supervision_read_wc" "$_supervision_stdout") || return 1
-	_supervision_stderr_bytes=$(_cfmgr_supervision_size "$_supervision_read_wc" "$_supervision_stderr") || return 1
-	[ "$_supervision_stdout_bytes" -le 4096 ] && [ "$_supervision_stderr_bytes" -le 4096 ]
+	_supervision_record_status=$_supervision_parsed_status
 }
 
-_cfmgr_supervision_size() {
+_cfmgr_supervision_size() (
+	trap - 0 HUP INT TERM
+	set +x
+	set +e
+	set +u
+	set -f
+	LC_ALL=C
+	export LC_ALL
 	[ "$#" -eq 2 ] || return 1
 	[ -f "$2" ] && [ ! -L "$2" ] || return 1
-	_supervision_size=$("$1" -c <"$2") || return 1
+	_supervision_size=$(
+		command exec <"$2" || exit 1
+		exec "$1" -c
+	)
+	_supervision_size_status=$?
+	if [ "$_supervision_size_status" -ne 0 ]; then
+		[ "$_supervision_size_status" -le 128 ] && return 1
+		return 129
+	fi
 	while :; do
 		case $_supervision_size in ' '* | '	'*) _supervision_size=${_supervision_size#?} ;; *) break ;; esac
 	done
@@ -241,5 +289,9 @@ _cfmgr_supervision_size() {
 	0 | [1-9] | [1-9][0-9] | [1-9][0-9][0-9] | [1-3][0-9][0-9][0-9] | 40[0-8][0-9] | 409[0-6]) ;;
 	*) return 1 ;;
 	esac
-	printf '%s\n' "$_supervision_size"
-} 2>/dev/null
+	command printf '%s\n' "$_supervision_size"
+	_supervision_size_status=$?
+	[ "$_supervision_size_status" -eq 0 ] && return 0
+	[ "$_supervision_size_status" -le 128 ] && return 1
+	return 129
+) 2>/dev/null

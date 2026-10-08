@@ -144,11 +144,15 @@ an old 2.6.22 router. [Entware support matrix][entware-support] ·
 | `bind-dig` | Tunnel DNS/SRV readiness when native DNS tools cannot satisfy the required queries. |
 | `flock` | Only if the native locking command cannot satisfy the tested contract. Present in all five inspected feeds. |
 
-This package selection is a design decision; installation and complete tool
-acceptance are not implemented yet. CFMgr will install only its selected
-packages and the necessary verified dependency set. The installer must constrain
-opkg's candidate selection and side effects before allowing changes. It will not
-install Entware itself or upgrade unrelated packages or base libraries.
+The installed Entware opkg manages versions, package selection and transitive
+libraries using its configured repositories. CFMgr's backend requests only its
+missing/unusable direct dependencies and checks their capabilities afterward;
+it does not manually acquire IPKs, choose library versions or change feeds.
+Operational worker/startup integration and router acceptance remain unfinished.
+CFMgr does not install Entware or request a whole-system upgrade. Native
+`--doctor`/`--diagnostic` remain available without Entware and never install
+packages. Cloudflared release binaries are managed separately for supported
+kernel and userspace architecture/ABI combinations.
 
 <details>
 <summary>📦 Verified package contents</summary>
@@ -171,10 +175,10 @@ The loader audit also found that explicit `ld.so --library-path` execution
 still reads `/opt/etc/ld.so.preload` before the program starts. Disabling its
 cache does not suppress this lookup. A verified dynamic `unshare` binary has
 the same bootstrap problem, so neither approach currently establishes safe
-execution during `/opt` changes. The next proof uses native bind mounts and
-chroot to establish the verified `/opt` view before Entware startup. The native
-command paths/help are confirmed on the current router; the lifecycle has not
-been executed there. [Entware loader patch](https://github.com/Entware/Entware/blob/969c703e6fd8b2ad84d82affaeb14b48d1fcb105/toolchain/glibc/patches/2.27/9999-ldconfig.patch#L34-L44)
+execution during `/opt` changes. Independent internal proofs use native bind
+mounts and chroot for admitted fixed probes. They do not replace normal opkg
+dependency resolution. The native command paths/help are confirmed on the
+sampled router; that lifecycle has not been executed there. [Entware loader patch](https://github.com/Entware/Entware/blob/969c703e6fd8b2ad84d82affaeb14b48d1fcb105/toolchain/glibc/patches/2.27/9999-ldconfig.patch#L34-L44)
 
 No inspected package was installed or executed. Dependency-closure checks,
 package-manager side effects and mount-loss containment remain separate gates.
@@ -210,8 +214,8 @@ evidence level. [AX kernel][kernel-ax] · [BE kernel][kernel-be]
 
 </details>
 
-Required packages are checked on launch and during CFMgr install, update and
-reinstall. Missing or unusable requirements block operational work; failed
+The planned operational integration checks required packages on launch and
+during CFMgr install, update and reinstall. Missing or unusable requirements block operational work; failed
 installation can be retried on the next launch. A separate **Reinstall Entware
 dependencies** action will force-reinstall CFMgr's selected package set and
 verify it afterward. It preserves configuration/activation and does not perform

@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # First native diagnostic stage, not operational startup or complete health proof.
 # Native firmware paths are trusted; /opt and configuration are never consulted.
-# Without the future timeout bootstrap, a hung native executable cannot be given
-# a proved deadline. Probes are finite synthetic leaf operations, not network I/O.
+# Diagnostics remain native even without Entware or usable packages. A hung
+# native executable has no proved deadline; probes are finite, not network I/O.
 
 cfmgr_diagnostic_main() {
 	[ "$#" -eq 0 ] || return 2
@@ -189,7 +189,7 @@ _cfmgr_diagnostic_run() {
 	for _diag_package in bind-dig flock; do
 		_cfmgr_diagnostic_row "PACKAGE.$_diag_package" SKIP scoped inventory "$_diag_package status unknown; prerequisite OPT.STORAGE"
 	done
-	_cfmgr_diagnostic_row BOUND.DEADLINE SKIP info supervision 'native timeout bootstrap not implemented; hung-tool deadline unproved'
+	_cfmgr_diagnostic_row BOUND.DEADLINE SKIP info supervision 'dependency-independent native deadline unproved; no Entware execution'
 	_cfmgr_diagnostic_row NETWORK.HTTPS SKIP info network 'no network request; HTTPS/provider reachability not tested'
 
 	_diag_mkdir=
