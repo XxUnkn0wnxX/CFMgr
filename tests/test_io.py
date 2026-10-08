@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.harness import RouterHarness, ShellResult
-from tests.test_mountinfo import Mount, oracle, snapshot
+from tests.test_mountinfo import Mount, oracle, snapshot, topology_oracle
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "modules/io.sh"
@@ -102,7 +102,8 @@ if tool == "cat" and args == ["produce"]:
     sys.exit(settings.get("producer_status", 0))
 if tool == "awk" and "awk_output_hex" in settings:
     assert args[0] == "-v" and args[1].startswith("cfmgr_mountinfo_size=")
-    assert args[2] == "-f" and args[3] == settings["parser"]
+    assert args[-2:] == ["-f", settings["parser"]]
+    assert args[2:-2] in ([], ["-v", "cfmgr_mountinfo_mode=topology"])
     os.write(1, bytes.fromhex(settings["awk_output_hex"]))
     os.write(2, bytes.fromhex(settings.get("awk_stderr_hex", "")))
     sys.exit(settings.get("awk_status", 0))
@@ -160,7 +161,13 @@ class IOFixture:
             f'exec {shlex.quote(self.shell)} "$CFMGR_TEST_ROOT/work/invoke.sh" "$@"\n',
             args,
             timeout=timeout,
-            env={"_io_tools": "/opt/SECRET", "_io_stage": "/opt/SECRET-stage", "IFS": "x"},
+            env={
+                "_io_tools": "/opt/SECRET",
+                "_io_stage": "/opt/SECRET-stage",
+                "IFS": "x",
+                "_mount_mode": "topology",
+                "_mount_topology": "invalid inherited topology",
+            },
         )
 
     def workspace(
@@ -182,6 +189,19 @@ class IOFixture:
                 "mount",
                 target,
                 str(parser),
+                str(self.router.path("work/input")),
+            ],
+        )
+
+    def topology(self, target: str = TARGET) -> ShellResult:
+        return self.run(
+            'cfmgr_io_test "$@"\n',
+            [
+                str(self.router.path("ram/tmp")),
+                str(self.router.path("bin")),
+                "topology",
+                target,
+                str(PARSER),
                 str(self.router.path("work/input")),
             ],
         )
@@ -600,3 +620,220 @@ def test_optional_busybox_private_io(busybox_router: RouterHarness) -> None:
     )
     quiet(result, 0)
     fixture.clean()
+    result = busybox_router.run(
+        f'. {shlex.quote(str(SOURCE))}\ncfmgr_io_test "$@"\n',
+        [
+            str(busybox_router.path("ram/tmp")),
+            str(busybox_router.path("bin")),
+            "topology",
+            TARGET,
+            str(PARSER),
+            str(busybox_router.path("work/input")),
+        ],
+        timeout=15,
+    )
+    assert (
+        result.returncode == 0
+        and result.stdout == topology_oracle(MOUNTS, TARGET)
+        and result.stderr == ""
+    )
+    fixture.clean()
+
+
+def test_native_topology_handoff_retains_all_facts_and_exact_arguments(io: IOFixture) -> None:
+    mounts = [
+        Mount("1"),
+        Mount(
+            "2",
+            point=b"/tmp/opt",
+            root=b"/entware",
+            device="8:1",
+            optional=(
+                "shared:9007199254740993",
+                "master:" + "9" * 20,
+                "unbindable",
+                "future:value",
+            ),
+        ),
+        Mount("3", point=TARGET.encode() + b"/child"),
+    ]
+    io.router.path("work/input").write_bytes(snapshot(mounts))
+    result = io.topology()
+    assert (
+        result.returncode == 0
+        and result.stdout == topology_oracle(mounts, TARGET)
+        and result.stderr == ""
+    )
+    calls = io.calls()
+    assert [call["args"] for call in calls if call["tool"] == "awk"] == [
+        [
+            "-v",
+            f"cfmgr_mountinfo_size={len(snapshot(mounts))}",
+            "-v",
+            "cfmgr_mountinfo_mode=topology",
+            "-f",
+            str(PARSER),
+        ]
+    ]
+    io.clean()
+
+
+def framed_topology(line: bytes) -> bytes:
+    body = oracle(MOUNTS, TARGET).encode().split(b"\n")[0] + b"\n" + line + b"\n"
+    return body + b"end\t" + str(len(body)).encode() + b"\n"
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        b"topology\t-\t-\t-\t0\t0\t0",
+        b"topology\t9007199254740993\t1\t99999999999999999999\t1\t4096\t1023",
+    ],
+)
+def test_topology_consumer_accepts_supported_facts_without_policy(
+    io: IOFixture, line: bytes
+) -> None:
+    expected = framed_topology(line)
+    io.settings["awk_output_hex"] = expected.hex()
+    io.save()
+    result = io.topology()
+    assert result.returncode == 0 and result.stdout.encode() == expected and result.stderr == ""
+    io.clean()
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        b"topology\t0\t-\t-\t0\t0\t0",
+        b"topology\t01\t-\t-\t0\t0\t0",
+        b"topology\t" + b"9" * 21 + b"\t-\t-\t0\t0\t0",
+        b"topology\t-\t+1\t-\t0\t0\t0",
+        b"topology\t-\t-\t\t0\t0\t0",
+        b"topology\t-\t-\t-\t2\t0\t0",
+        b"topology\t-\t-\t-\t00\t0\t0",
+        b"topology\t-\t-\t-\t0\t4097\t0",
+        b"topology\t-\t-\t-\t0\t0\t1024",
+        b"topology\t-\t-\t-\t0\t01\t0",
+        b"topology\t-\t-\t-\t0\t0\t-1",
+        b"topology\t-\t-\t-\t0\t" + b"9" * 20 + b"\t0",
+        b"topology\t-\t-\t-\t0\t0\t0\t0",
+        b"topology\t\t-\t-\t-\t0\t0\t0",
+        b"topology\t-\t-\t-\t0\t0\t0\t",
+        b"topology\t-\t-\t-\t0\t0\t0\r",
+        b"topology\x00\t-\t-\t-\t0\t0\t0",
+    ],
+)
+def test_topology_field_errors_are_rejected_with_correct_footer(io: IOFixture, line: bytes) -> None:
+    io.settings["awk_output_hex"] = framed_topology(line).hex()
+    io.save()
+    quiet(io.topology(), 1)
+    io.clean()
+
+
+def test_topology_requires_three_records_exact_footer_and_original_bytes(io: IOFixture) -> None:
+    proper = topology_oracle(MOUNTS, TARGET).encode()
+    lines = proper.splitlines(keepends=True)
+    for malformed in (
+        proper[:-1],
+        proper + b"\n",
+        proper + b"\0",
+        lines[0] + lines[2],
+        lines[0] + lines[1] + lines[1] + lines[2],
+        proper.replace(b"end\t", b"end\t0"),
+    ):
+        io.settings["awk_output_hex"] = malformed.hex()
+        io.save()
+        quiet(io.topology(), 1)
+    io.clean()
+
+
+@pytest.mark.parametrize(
+    "producer_status,stderr,status",
+    [(1, b"", 1), (2, b"", 2), (3, b"", 3), (7, b"", 1), (0, b"SECRET", 1)],
+)
+def test_topology_producer_and_stderr_failures_are_quiet(
+    io: IOFixture, producer_status: int, stderr: bytes, status: int
+) -> None:
+    io.settings.update(
+        awk_output_hex=topology_oracle(MOUNTS, TARGET).encode().hex(),
+        awk_status=producer_status,
+        awk_stderr_hex=stderr.hex(),
+    )
+    io.save()
+    quiet(io.topology(), status)
+    io.clean()
+
+
+def test_topology_cleanup_failure_prevents_publication(io: IOFixture) -> None:
+    io.settings["modes"]["rm"] = "error"
+    io.save()
+    quiet(io.topology(), 1)
+    assert len(list(io.router.path("ram/tmp").glob("cfmgr-io.*"))) == 1
+
+
+def test_topology_public_entry_uses_fixed_proc_input_and_preserves_caller(io: IOFixture) -> None:
+    expected = topology_oracle(MOUNTS, TARGET)
+    result = io.run(
+        "_cfmgr_io_mount_capture() {\n"
+        '[ "$#" = 6 ] && [ "$3" = /proc/self/mountinfo ] && '
+        '[ "$4" = 0 ] && [ "$5" = 1 ] && [ "$6" = topology ] || return 1\n'
+        f"_mount_ledger={shlex.quote(expected)}\n}}\n"
+        'IFS=x; set -f; umask 027; trap ":" TERM\nbefore=$(trap); options=$(set +o)\n'
+        'cfmgr_io_topology_snapshot "$1" "$2" "$3"; code=$?\n'
+        '[ "$code" = 0 ] && [ "$IFS" = x ] && [ "$(trap)" = "$before" ] && '
+        '[ "$(set +o)" = "$options" ] && [ "$(umask)" = 0027 ]\n',
+        [str(io.router.path("ram/tmp")), TARGET, str(PARSER)],
+    )
+    assert result.returncode == 0 and result.stdout == expected and result.stderr == ""
+    assert io.calls() == []
+    io.clean()
+
+
+def test_topology_argument_and_internal_mode_contracts(io: IOFixture) -> None:
+    quiet(io.run('cfmgr_io_topology_snapshot "$@"\n', []), 2)
+    quiet(io.run('cfmgr_io_topology_snapshot "$@"\n', ["a", "b", "c", "d"]), 2)
+    for mode in ("", "unknown"):
+        quiet(
+            io.run(
+                'fixture_capture() { _cfmgr_io_mount_capture "$2" "$3" "$4" 0 1 "$5"; }\n'
+                'cfmgr_io_test "$1" "$2" workspace fixture_capture "$3" "$4" "$5" "$6"\n',
+                [
+                    str(io.router.path("ram/tmp")),
+                    str(io.router.path("bin")),
+                    TARGET,
+                    str(PARSER),
+                    str(io.router.path("work/input")),
+                    mode,
+                ],
+            ),
+            2,
+        )
+    assert not any(call["tool"] in {"cat", "awk"} for call in io.calls())
+    io.clean()
+
+
+@pytest.mark.parametrize("explicit_select", [False, True])
+def test_internal_capture_resets_topology_state_for_default_and_select(
+    io: IOFixture, explicit_select: bool
+) -> None:
+    final_capture = '_cfmgr_io_mount_capture "$2" "$3" "$4" 2 3' + (
+        " select" if explicit_select else ""
+    )
+    result = io.run(
+        'fixture_capture() {\n_cfmgr_io_mount_capture "$2" "$3" "$4" 0 1 topology || return 1\n'
+        + final_capture
+        + '\n[ "$?" = 0 ] && [ "$_mount_mode" = select ] && '
+        '[ -z "$_mount_topology" ] || return 1\ncfmgr_io_stage_report "$_mount_ledger"\n}\n'
+        'cfmgr_io_test "$1" "$2" report fixture_capture "$3" "$4" "$5"\n',
+        [
+            str(io.router.path("ram/tmp")),
+            str(io.router.path("bin")),
+            TARGET,
+            str(PARSER),
+            str(io.router.path("work/input")),
+        ],
+    )
+    assert (
+        result.returncode == 0 and result.stdout == oracle(MOUNTS, TARGET) and result.stderr == ""
+    )
+    io.clean()

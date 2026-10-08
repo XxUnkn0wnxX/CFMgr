@@ -36,7 +36,7 @@ flowchart LR
 | `modules/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
 | `modules/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
 | `modules/mountinfo.awk` | Select a covering mount; optionally report propagation and descendant counts | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
-| `modules/io.sh` | Private bounded captures, checked mount snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
+| `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Hold directory/device descriptors while comparing mount facts and reading an ext UUID | Read-only observation; no write permission, dependency execution or CLI integration |
 

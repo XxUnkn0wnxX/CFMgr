@@ -35,8 +35,14 @@ cfmgr_io_mount_snapshot() {
 	_cfmgr_io_owner '' "$1" mount "$2" "$3" /proc/self/mountinfo
 }
 
+cfmgr_io_topology_snapshot() {
+	[ "$#" -eq 3 ] || return 2
+	_cfmgr_io_owner '' "$1" topology "$2" "$3" /proc/self/mountinfo
+}
+
 # Explicit trusted test API, never exposed through the production CLI.
 # ROOT TOOLS workspace CALLBACK [ARGS] | ROOT TOOLS mount TARGET PARSER INPUT
+# ROOT TOOLS topology TARGET PARSER INPUT
 cfmgr_io_test() {
 	[ "$#" -ge 4 ] || return 2
 	_cfmgr_io_owner "$2" "$1" "$3" "$@"
@@ -204,10 +210,44 @@ _cfmgr_io_mount_action() {
 	cfmgr_io_stage_report "$_mount_ledger"
 }
 
+_cfmgr_io_topology_action() {
+	[ "$#" -eq 4 ] || return 2
+	_cfmgr_io_mount_capture "$2" "$3" "$4" 0 1 topology || return "$?"
+	cfmgr_io_stage_report "$_mount_ledger"
+}
+
+_cfmgr_io_topology_fields() {
+	_topology_saved_ifs=$IFS
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_mount_topology
+	IFS=$_topology_saved_ifs
+	[ "$#" -eq 7 ] && [ "$1" = topology ] || return 1
+	_topology_rebuilt="$1$_io_tab$2$_io_tab$3$_io_tab$4$_io_tab$5$_io_tab$6$_io_tab$7"
+	[ "$_topology_rebuilt" = "$_mount_topology" ] || return 1
+	for _topology_id in "$2" "$3" "$4"; do
+		[ "$_topology_id" = - ] || _cfmgr_io_decimal "$_topology_id" positive || return 1
+	done
+	case $5 in 0 | 1) ;; *) return 1 ;; esac
+	# Validate bounded canonical decimal before numeric comparisons. IDs above
+	# remain lexical; only the two small counts enter shell integer operations.
+	_cfmgr_io_limit "$6" && _cfmgr_io_limit "$7" || return 1
+	[ "$6" -le 4096 ] && [ "$7" -le 1023 ]
+}
+
 # Internal checked mount capture. Explicit distinct slots allow other owned
-# observations to share the16-slot budget. Outputs: _mount_body/_mount_ledger.
+# observations to share the16-slot budget. Optional sixth argument is literal
+# select/topology; five-argument callers retain selection behavior. Outputs:
+# _mount_body, _mount_topology (empty in select), and complete _mount_ledger.
 _cfmgr_io_mount_capture() {
-	[ "$#" -eq 5 ] || return 2
+	_mount_mode=select
+	_mount_topology=
+	_mount_body=
+	_mount_ledger=
+	[ "$#" -eq 5 ] || [ "$#" -eq 6 ] || return 2
+	if [ "$#" -eq 6 ]; then
+		case $6 in select | topology) _mount_mode=$6 ;; *) return 2 ;; esac
+	fi
 	_mount_target=$1
 	_mount_parser=$2
 	_mount_input=$3
@@ -224,7 +264,11 @@ _cfmgr_io_mount_capture() {
 	[ "$_mount_size" -gt 0 ] || return 1
 	CFMGR_MOUNT_TARGET=$_mount_target
 	export CFMGR_MOUNT_TARGET
-	cfmgr_io_capture "$_mount_result_slot" 65536 4096 awk -v "cfmgr_mountinfo_size=$_mount_size" -f "$_mount_parser" <"$_io_stage/$_mount_raw_slot.out" || return 1
+	if [ "$_mount_mode" = topology ]; then
+		cfmgr_io_capture "$_mount_result_slot" 65536 4096 awk -v "cfmgr_mountinfo_size=$_mount_size" -v cfmgr_mountinfo_mode=topology -f "$_mount_parser" <"$_io_stage/$_mount_raw_slot.out" || return 1
+	else
+		cfmgr_io_capture "$_mount_result_slot" 65536 4096 awk -v "cfmgr_mountinfo_size=$_mount_size" -f "$_mount_parser" <"$_io_stage/$_mount_raw_slot.out" || return 1
+	fi
 	_cfmgr_io_capture_status "$_mount_result_slot" || return 1
 	case $_io_producer in 0) ;; 1 | 2 | 3) return "$_io_producer" ;; *) return 1 ;; esac
 	[ "$_io_err_bytes" -eq 0 ] || return 1
@@ -232,7 +276,11 @@ _cfmgr_io_mount_capture() {
 	_mount_body=
 	_mount_footer=
 	_mount_extra=
-	{ IFS= read -r _mount_body && IFS= read -r _mount_footer && ! IFS= read -r _mount_extra && [ -z "$_mount_extra" ]; } <"$_io_stage/$_mount_result_slot.out" || return 1
+	if [ "$_mount_mode" = topology ]; then
+		{ IFS= read -r _mount_body && IFS= read -r _mount_topology && IFS= read -r _mount_footer && ! IFS= read -r _mount_extra && [ -z "$_mount_extra" ]; } <"$_io_stage/$_mount_result_slot.out" || return 1
+	else
+		{ IFS= read -r _mount_body && IFS= read -r _mount_footer && ! IFS= read -r _mount_extra && [ -z "$_mount_extra" ]; } <"$_io_stage/$_mount_result_slot.out" || return 1
+	fi
 	_mount_saved_ifs=$IFS
 	IFS=$_io_tab
 	# shellcheck disable=SC2086
@@ -250,9 +298,15 @@ _cfmgr_io_mount_capture() {
 	esac
 	for _mount_hex in "$8" "$9" "${10}"; do _cfmgr_io_hex "$_mount_hex" || return 1; done
 	_mount_body_bytes=$((${#_mount_body} + 1))
+	_mount_ledger=$_mount_body$_io_lf
+	if [ "$_mount_mode" = topology ]; then
+		_cfmgr_io_topology_fields || return 1
+		_mount_body_bytes=$((_mount_body_bytes + ${#_mount_topology} + 1))
+		_mount_ledger=$_mount_ledger$_mount_topology$_io_lf
+	fi
 	[ "$_mount_footer" = "end$_io_tab$_mount_body_bytes" ] || return 1
 	[ "$_mount_bytes" -eq "$((_mount_body_bytes + ${#_mount_footer} + 1))" ] || return 1
-	_mount_ledger=$_mount_body$_io_lf$_mount_footer$_io_lf
+	_mount_ledger=$_mount_ledger$_mount_footer$_io_lf
 	[ "${#_mount_ledger}" -le 65536 ]
 }
 
@@ -323,6 +377,11 @@ _cfmgr_io_owner() (
 	mount)
 		[ "$#" -eq 3 ] || return 2
 		_io_callback=_cfmgr_io_mount_action
+		_io_report=1
+		;;
+	topology)
+		[ "$#" -eq 3 ] || return 2
+		_io_callback=_cfmgr_io_topology_action
 		_io_report=1
 		;;
 	*) return 2 ;;
