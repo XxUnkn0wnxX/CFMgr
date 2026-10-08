@@ -6,6 +6,54 @@ set -eu
 repo=$1 work=$2 bb=$3 parent_mount=$4 parent_pid=$5 scenario=$6
 fail() {
 	printf 'kernel fixture failed: %s\n' "$*" >&2
+	printf 'scenario=%s status=%s\n' "${scenario-unset}" "${status-unset}" >&2
+	# Failure-only evidence from fixed owned metadata, never root/Opt contents.
+	if [ -n "${ram-}" ] && [ -n "${bb-}" ]; then
+		diagnostic_guard=$ram/cfmgr-isolation
+		if [ -d "$diagnostic_guard" ] && [ ! -L "$diagnostic_guard" ]; then
+			printf 'guard=reserved\n' >&2
+			diagnostic_queries=0
+			for diagnostic_name in active intent-null intent-opt mounted-null mounted-opt \
+				query-0 query-1 query-2 query-3 query-4 query-5 query-6 query-7 \
+				query-8 query-9 query-10 query-11 query-12 query-13 query-14 query-15; do
+				diagnostic_file=$diagnostic_guard/$diagnostic_name
+				if [ -f "$diagnostic_file" ] && [ ! -L "$diagnostic_file" ]; then
+					printf '%s (at most 4096 bytes):\n' "$diagnostic_name" >&2
+					# shellcheck disable=SC2016
+					"$bb" awk 'BEGIN { left = 4096 }
+						{ line = $0 "\n"; if (length(line) > left) {
+							printf "%s\n[truncated]\n", substr(line, 1, left); exit
+						} printf "%s", line; left -= length(line); if (!left) exit }' \
+						"$diagnostic_file" >&2 || printf 'metadata read failed\n' >&2
+					case $diagnostic_name in query-*) diagnostic_queries=$((diagnostic_queries + 1)) ;; esac
+				else
+					printf '%s=absent-or-not-regular\n' "$diagnostic_name" >&2
+				fi
+			done
+			printf 'query files present=%s\n' "$diagnostic_queries" >&2
+		else
+			printf 'guard=absent-or-not-owned-directory\n' >&2
+		fi
+	fi
+	if [ -n "${work-}" ] && [ -n "${bb-}" ]; then
+		printf 'mountinfo scoped to fixture work path (at most 32 rows):\n' >&2
+		# shellcheck disable=SC2016
+		CFMGR_KERNEL_WORK=$work "$bb" awk '
+			BEGIN {
+				path = ENVIRON["CFMGR_KERNEL_WORK"]; escaped = ""
+				for (i = 1; i <= length(path); i++) {
+					char = substr(path, i, 1)
+					if (char == " ") char = "\\040"
+					else if (char == "\t") char = "\\011"
+					else if (char == "\n") char = "\\012"
+					else if (char == "\\") char = "\\134"
+					escaped = escaped char
+				}
+			}
+			$5 == escaped || index($5, escaped "/") == 1 {
+				print substr($0, 1, 8192); if (++rows == 32) exit
+			}' /proc/self/mountinfo >&2 || printf 'mountinfo read failed\n' >&2
+	fi
 	exit 1
 }
 [ "$$" -eq 1 ] || fail 'fixture is not namespace init'
