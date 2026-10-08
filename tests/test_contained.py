@@ -154,9 +154,11 @@ cfmgr_bootstrap_materialize() {{
   command printf timeout >"$2/timeout/program"
   command printf gzip >"$2/gzip/program"
 }}
-cfmgr_bootstrap_materialize_test() {{
-  [ "$#" = 3 ] && [ "$3" = {shlex.quote(str(router.path("bin")))} ] || return 7
-  cfmgr_bootstrap_materialize "$1" "$2"
+_cfmgr_bootstrap_materialize_owned() {{
+  [ "$#" = 3 ] && [ "$_materialize_complete" = 0 ] || return 7
+  [ -z "$1" ] || [ "$1" = {shlex.quote(str(router.path("bin")))} ] || return 7
+  cfmgr_bootstrap_materialize "$2" "$3" || return 129
+  _materialize_complete=1
 }}
 _cfmgr_isolation_image_stage() {{
   [ -f "$_isolation_guard/active" ] || return 7

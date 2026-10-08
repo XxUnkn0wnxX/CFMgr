@@ -99,7 +99,7 @@ class AcquisitionFixture:
         self.fetch_env = router.path("work/fetch-environment")
         self._install_curl()
 
-    def _install_curl(self, *, fail_url: str | None = None) -> None:
+    def _install_curl(self, *, fail_url: str | None = None, fail_status: int = 9) -> None:
         cases = "\n".join(
             (
                 f"  {shlex.quote(str(package['url']))}) "
@@ -133,7 +133,7 @@ class AcquisitionFixture:
             'printf "HTTP/1.1 200 OK\\r\\nContent-Length: %s\\r\\n\\r\\n" "$_size" >"$_headers"\n'
             '"/bin/cp" "$_source" "$_out" || exit 11\n'
             + (
-                f'[ "$_url" != {shlex.quote(fail_url)} ] || exit 9\n'
+                f'[ "$_url" != {shlex.quote(fail_url)} ] || exit {fail_status}\n'
                 if fail_url is not None
                 else ""
             )
@@ -145,18 +145,20 @@ class AcquisitionFixture:
         curl.write_text(script, encoding="utf-8")
         curl.chmod(0o700)
 
-    def override_selectors(self) -> str:
+    def override_selectors(self, *, bad_outer_sha: str | None = None) -> str:
         archive_cases = []
         payload_cases = []
         for key, package in self.packages.items():
             data = package["archive"]
+            archive_sha = digest(data)
+            outer_sha = "0" * 64 if bad_outer_sha == key else digest(package["outer"])
             archive_cases.append(
                 f"{key}) _bootstrap_url={shlex.quote(str(package['url']))}; "
-                f"_bootstrap_size={len(data)}; _bootstrap_sha256={digest(data)} ;;"
+                f"_bootstrap_size={len(data)}; _bootstrap_sha256={archive_sha} ;;"
             )
             payload_cases.append(
                 f"{key}) _bootstrap_outer_size={len(package['outer'])}; "
-                f"_bootstrap_outer_sha256={digest(package['outer'])}; "
+                f"_bootstrap_outer_sha256={outer_sha}; "
                 f"_bootstrap_data_gz_size={len(package['data_gz'])}; "
                 f"_bootstrap_data_gz_sha256={digest(package['data_gz'])}; "
                 f"_bootstrap_data_tar_size={len(package['data_tar'])}; "
@@ -207,10 +209,12 @@ def test_production_entry_passes_literal_empty_tools_and_rejects_bad_calls(
     captured = router.path("work/materialize-route")
     directory = router.path("ram/tmp/route")
     script = (
+        f". {shlex.quote(str(FETCH))}\n"
         f". {shlex.quote(str(BOOTSTRAP))}\n"
         "_cfmgr_bootstrap_materialize_run() {\n"
-        '  [ "$#" -eq 3 ] && [ "$2" = aarch64-k3.10 ] || return 8\n'
+        '  [ "$#" -eq 3 ] && [ "$2" = aarch64-k3.10 ] || return 2\n'
         f'  printf "%s\\t%s\\t%s\\n" "$1" "$2" "$3" > {shlex.quote(str(captured))}\n'
+        "  return 10\n"
         "}\n"
         f"cfmgr_bootstrap_materialize aarch64-k3.10 {shlex.quote(str(directory))}; _good=$?\n"
         f"cfmgr_bootstrap_materialize unknown {shlex.quote(str(directory))}; _unknown=$?\n"
@@ -227,7 +231,7 @@ def test_production_entry_passes_literal_empty_tools_and_rejects_bad_calls(
         },
     )
     assert result.returncode == 0 and result.stderr == ""
-    assert result.stdout == "RESULT\t0\t8\t2\n"
+    assert result.stdout == "RESULT\t1\t2\t2\n"
     assert captured.read_text().splitlines() == [f"\taarch64-k3.10\t{directory}"]
 
 
@@ -374,10 +378,11 @@ def test_busybox_shell_and_native_applets_materialize_synthetic_packages(
     fixture = AcquisitionFixture(busybox_router, busybox=busybox_router.busybox)
     result = fixture.invoke(
         fixture.override_selectors()
-        + materialize_call("aarch64-k3.10", fixture.directory, fixture.tools)
-        + '_status=$?\nprintf "RESULT\\t%s\\n" "$_status"\n'
+        + f"_cfmgr_bootstrap_materialize_owned {shlex.quote(str(fixture.tools))} "
+        + f"aarch64-k3.10 {shlex.quote(str(fixture.directory))}\n"
+        + '_status=$?\nprintf "RESULT\\t%s\\t%s\\n" "$_status" "$_materialize_complete"\n'
     )
     assert result.returncode == 0 and result.stderr == ""
-    assert result.stdout == "RESULT\t0\n"
+    assert result.stdout == "RESULT\t0\t1\n"
     for name in ("timeout", "gzip"):
         assert (fixture.directory / name / "program").is_file()

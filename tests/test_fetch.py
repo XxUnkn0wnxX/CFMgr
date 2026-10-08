@@ -192,7 +192,7 @@ def test_production_fetch_uses_selected_native_identity_and_rejects_bad_route(
         "_cfmgr_fetch_run() {\n"
         '  [ "$#" -eq 5 ] && [ -z "$1" ] || return 9\n'
         f'  printf "%s\\t%s\\t%s\\t%s\\n" "$2" "$3" "$4" "$5" >{shlex.quote(str(captured))}\n'
-        "  return 0\n"
+        "  return 10\n"
         "}\n"
         'cfmgr_bootstrap_fetch armv7sf-k3.2 gzip "$DIRECTORY"\n'
         "_good=$?\n"
@@ -216,7 +216,7 @@ def test_production_fetch_uses_selected_native_identity_and_rejects_bad_route(
     )
 
     assert result.returncode == 0, result
-    assert result.stdout == "RESULT\t0\t2\t2\t2\n" and result.stderr == ""
+    assert result.stdout == "RESULT\t1\t2\t2\t2\n" and result.stderr == ""
     expected = json.loads(CATALOG.read_text(encoding="utf-8"))["profiles"]["armv7sf-k3.2"][
         "packages"
     ]["gzip"]

@@ -261,7 +261,7 @@ def test_production_extract_uses_compiled_identity_empty_tools_and_rejects_bad_r
         f'  printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" '
         '"$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}" "${14}" '
         f"> {shlex.quote(str(captured))}\n"
-        "  return 0\n"
+        "  return 10\n"
         "}\n"
         f"SOURCE={shlex.quote(str(fixture.source))}\n"
         f"DIRECTORY={shlex.quote(str(fixture.directory))}\n"
@@ -286,7 +286,7 @@ def test_production_extract_uses_compiled_identity_empty_tools_and_rejects_bad_r
     )
 
     assert result.returncode == 0, result
-    assert result.stdout == "RESULT\t0\t2\t2\t2\n" and result.stderr == ""
+    assert result.stdout == "RESULT\t1\t2\t2\t2\n" and result.stderr == ""
     expected = json.loads(CATALOG.read_text(encoding="utf-8"))["profiles"]["armv7sf-k3.2"]
     package = expected["packages"]["gzip"]
     extraction = package["extraction"]

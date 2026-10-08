@@ -13,7 +13,7 @@
 
 # Explicit trusted fixture API; production always supplies literal empty TOOLS.
 cfmgr_archive_test() (
-	trap - 0
+	trap - 0 HUP INT TERM
 	set +x
 	set +e
 	set +u
@@ -26,12 +26,13 @@ cfmgr_archive_test() (
 "
 	[ "$#" -eq 14 ] && [ -n "$1" ] || return 2
 	_cfmgr_archive_run "$@"
+	_cfmgr_fetch_public_status "$?"
 ) >/dev/null 2>&1
 
 # TOOLS DIRECTORY SOURCE followed by reviewed archive/outer/data-gz/data-tar
 # size/hash pairs, fixed MEMBER and its size/hash. No original-source EOF scan.
 _cfmgr_archive_run() (
-	trap - 0
+	trap - 0 HUP INT TERM
 	set +x
 	set +e
 	set +u
@@ -59,15 +60,21 @@ _cfmgr_archive_run() (
 	_archive_member_size=${13}
 	_archive_member_sha256=${14}
 	if [ -n "$_fetch_tools" ]; then
-		_cfmgr_closure_path "$_fetch_tools" || return 2
+		_cfmgr_fetch_path "$_fetch_tools"
+		_cfmgr_fetch_protocol_status "$?" || return "$?"
 		[ -d "$_fetch_tools" ] && [ ! -L "$_fetch_tools" ] || return 2
 	fi
-	_cfmgr_closure_path "$_archive_directory" && _cfmgr_closure_path "$_archive_source" || return 2
+	_cfmgr_fetch_path "$_archive_directory"
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_cfmgr_fetch_path "$_archive_source"
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
 	for _archive_limit_value in "$_archive_size" "$_archive_outer_size" "$_archive_data_gz_size"; do
-		_cfmgr_archive_size "$_archive_limit_value" 65536 || return 2
+		_cfmgr_archive_size "$_archive_limit_value" 65536
+		_cfmgr_fetch_protocol_status "$?" || return "$?"
 	done
 	for _archive_limit_value in "$_archive_data_tar_size" "$_archive_member_size"; do
-		_cfmgr_archive_size "$_archive_limit_value" 131072 || return 2
+		_cfmgr_archive_size "$_archive_limit_value" 131072
+		_cfmgr_fetch_protocol_status "$?" || return "$?"
 	done
 	for _archive_hash_value in "$_archive_sha256" "$_archive_outer_sha256" \
 		"$_archive_data_gz_sha256" "$_archive_data_tar_sha256" "$_archive_member_sha256"; do
@@ -75,8 +82,8 @@ _cfmgr_archive_run() (
 		case $_archive_hash_value in *[!0123456789abcdef]*) return 2 ;; esac
 	done
 	case $_archive_member in ./opt/libexec/timeout-coreutils | ./opt/libexec/gzip-gnu) ;; *) return 2 ;; esac
-	_cfmgr_closure_file "$_archive_source" || return 1
-	[ ! -e "$_archive_directory" ] && [ ! -L "$_archive_directory" ] || return 1
+	_cfmgr_closure_file "$_archive_source" || return 10
+	[ ! -e "$_archive_directory" ] && [ ! -L "$_archive_directory" ] || return 10
 	# Clear injection controls before the first external executable, including
 	# env itself. Every dd/gunzip/tar/hash producer receives only fixed env.
 	unset ENV BASH_ENV CDPATH TZ GZIP TAR_OPTIONS
@@ -85,16 +92,25 @@ _cfmgr_archive_run() (
 	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
 	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
 	unset OPENSSL_CONF OPENSSL_CONF_INCLUDE OPENSSL_ENGINES OPENSSL_MODULES
-	_archive_mkdir=$(_cfmgr_fetch_find mkdir) || return 1
-	_archive_dd=$(_cfmgr_fetch_find dd) || return 1
-	_archive_gunzip=$(_cfmgr_fetch_find gunzip) || return 1
-	_archive_tar=$(_cfmgr_fetch_find tar) || return 1
-	_fetch_env=$(_cfmgr_fetch_find env) || return 1
-	_fetch_wc=$(_cfmgr_fetch_find wc) || return 1
-	_fetch_openssl=$(_cfmgr_fetch_find openssl) || return 1
-	_fetch_hexdump=$(_cfmgr_fetch_find hexdump) || return 1
-	"$_archive_mkdir" -m 700 "$_archive_directory" || return 1
-	[ -d "$_archive_directory" ] && [ ! -L "$_archive_directory" ] || return 1
+	_archive_mkdir=$(_cfmgr_fetch_find mkdir)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_archive_dd=$(_cfmgr_fetch_find dd)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_archive_gunzip=$(_cfmgr_fetch_find gunzip)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_archive_tar=$(_cfmgr_fetch_find tar)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_fetch_env=$(_cfmgr_fetch_find env)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_fetch_wc=$(_cfmgr_fetch_find wc)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_fetch_openssl=$(_cfmgr_fetch_find openssl)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	_fetch_hexdump=$(_cfmgr_fetch_find hexdump)
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	"$_archive_mkdir" -m 700 "$_archive_directory"
+	_cfmgr_fetch_native_status "$?" || return "$?"
+	[ -d "$_archive_directory" ] && [ ! -L "$_archive_directory" ] || return 10
 	_archive_copy=$_archive_directory/archive.ipk
 	_archive_outer=$_archive_directory/outer.tar
 	_archive_data_gz=$_archive_directory/data.tar.gz
@@ -102,50 +118,74 @@ _cfmgr_archive_run() (
 	_archive_program=$_archive_directory/program
 	# The only read of the unapproved SOURCE is capped independently of EOF.
 	(
-		set -C
-		"$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-			"$_archive_dd" bs=65536 count=2 <"$_archive_source" >"$_archive_copy" 2>/dev/null
-	) || return 1
-	_cfmgr_archive_verify "$_archive_copy" "$_archive_size" "$_archive_sha256" archive || return 1
+		trap - 0 HUP INT TERM
+		set -C || exit 10
+		command exec <"$_archive_source" >"$_archive_copy" 2>/dev/null || exit 10
+		exec "$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
+			"$_archive_dd" bs=65536 count=2
+	)
+	_cfmgr_fetch_native_status "$?" || return "$?"
+	_cfmgr_archive_verify "$_archive_copy" "$_archive_size" "$_archive_sha256" archive
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
 	# Each physical output cap allows overflow evidence before exact acceptance.
 	# These are separate synchronous commands, never tar-z or shell pipelines.
 	(
-		ulimit -f "$(((_archive_outer_size + 512) / 512))" || exit 1
-		set -C
-		"$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-			"$_archive_gunzip" -c <"$_archive_copy" >"$_archive_outer" 2>/dev/null
-	) || return 1
-	_cfmgr_archive_verify "$_archive_outer" "$_archive_outer_size" "$_archive_outer_sha256" outer || return 1
+		trap - 0 HUP INT TERM
+		ulimit -f "$(((_archive_outer_size + 512) / 512))" || exit 10
+		set -C || exit 10
+		command exec <"$_archive_copy" >"$_archive_outer" 2>/dev/null || exit 10
+		exec "$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
+			"$_archive_gunzip" -c
+	)
+	_cfmgr_fetch_native_status "$?" || return "$?"
+	_cfmgr_archive_verify "$_archive_outer" "$_archive_outer_size" "$_archive_outer_sha256" outer
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
 	(
-		ulimit -f "$(((_archive_data_gz_size + 512) / 512))" || exit 1
-		set -C
-		"$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-			"$_archive_tar" -xOf - ./data.tar.gz <"$_archive_outer" >"$_archive_data_gz" 2>/dev/null
-	) || return 1
-	_cfmgr_archive_verify "$_archive_data_gz" "$_archive_data_gz_size" "$_archive_data_gz_sha256" data-gz || return 1
+		trap - 0 HUP INT TERM
+		ulimit -f "$(((_archive_data_gz_size + 512) / 512))" || exit 10
+		set -C || exit 10
+		command exec <"$_archive_outer" >"$_archive_data_gz" 2>/dev/null || exit 10
+		exec "$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
+			"$_archive_tar" -xOf - ./data.tar.gz
+	)
+	_cfmgr_fetch_native_status "$?" || return "$?"
+	_cfmgr_archive_verify "$_archive_data_gz" "$_archive_data_gz_size" "$_archive_data_gz_sha256" data-gz
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
 	(
-		ulimit -f "$(((_archive_data_tar_size + 512) / 512))" || exit 1
-		set -C
-		"$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-			"$_archive_gunzip" -c <"$_archive_data_gz" >"$_archive_data_tar" 2>/dev/null
-	) || return 1
-	_cfmgr_archive_verify "$_archive_data_tar" "$_archive_data_tar_size" "$_archive_data_tar_sha256" data-tar || return 1
+		trap - 0 HUP INT TERM
+		ulimit -f "$(((_archive_data_tar_size + 512) / 512))" || exit 10
+		set -C || exit 10
+		command exec <"$_archive_data_gz" >"$_archive_data_tar" 2>/dev/null || exit 10
+		exec "$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
+			"$_archive_gunzip" -c
+	)
+	_cfmgr_fetch_native_status "$?" || return "$?"
+	_cfmgr_archive_verify "$_archive_data_tar" "$_archive_data_tar_size" "$_archive_data_tar_sha256" data-tar
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
 	(
-		ulimit -f "$(((_archive_member_size + 512) / 512))" || exit 1
-		set -C
-		"$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-			"$_archive_tar" -xOf - "$_archive_member" <"$_archive_data_tar" >"$_archive_program" 2>/dev/null
-	) || return 1
-	_cfmgr_archive_verify "$_archive_program" "$_archive_member_size" "$_archive_member_sha256" program || return 1
+		trap - 0 HUP INT TERM
+		ulimit -f "$(((_archive_member_size + 512) / 512))" || exit 10
+		set -C || exit 10
+		command exec <"$_archive_data_tar" >"$_archive_program" 2>/dev/null || exit 10
+		exec "$_fetch_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
+			"$_archive_tar" -xOf - "$_archive_member"
+	)
+	_cfmgr_fetch_native_status "$?" || return "$?"
+	_cfmgr_archive_verify "$_archive_program" "$_archive_member_size" "$_archive_member_sha256" program
+	_cfmgr_fetch_protocol_status "$?"
 ) >/dev/null 2>&1
 
 _cfmgr_archive_size() {
-	case $1 in '' | 0* | *[!0123456789]*) return 1 ;; esac
-	[ "${#1}" -le 6 ] && [ "$1" -le "$2" ]
+	[ "$#" -eq 2 ] || return 2
+	case $1 in '' | 0* | *[!0123456789]*) return 2 ;; esac
+	[ "${#1}" -le 6 ] && [ "$1" -le "$2" ] || return 2
 }
 
 # Stage labels and output paths are fixed by the trusted caller above.
 _cfmgr_archive_verify() {
-	[ "$(_cfmgr_closure_size "$_fetch_wc" "$1")" = "$2" ] || return 1
+	_archive_actual_size=$(_cfmgr_closure_size_owned "$_fetch_wc" "$1")
+	_cfmgr_fetch_protocol_status "$?" || return "$?"
+	[ "$_archive_actual_size" = "$2" ] || return 10
 	_cfmgr_fetch_hash "$1" "$3" "$_archive_directory/$4.digest" "$_archive_directory/$4.hex"
+	_cfmgr_fetch_protocol_status "$?"
 }

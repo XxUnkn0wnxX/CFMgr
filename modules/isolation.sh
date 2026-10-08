@@ -713,14 +713,24 @@ _cfmgr_isolation_run() {
 	_isolation_null_fs=$_isolation_fs
 	"$_isolation_test" -c /dev/null && "$_isolation_test" -d /proc/self/fd/9 && "$_isolation_test" "$_isolation_resolved" -ef /proc/self/fd/9 || return 1
 	# Protect every private producer, including nested shells that can normalize
-	# interruption to ordinary failure. Only all-success clears preparation.
+	# interruption to ordinary failure. Clear only on full preparation success
+	# or positively completed acquisition failure; later failures stay protected.
 	_cfmgr_isolation_active prepare || return 1
 	if [ "$_isolation_mode" = acquire ]; then
+		_isolation_stage_attempted=1
 		_isolation_materialized=$_isolation_guard/acquisition
+		_materialize_complete=0
 		if [ -n "$_isolation_tools" ]; then
-			cfmgr_bootstrap_materialize_test "$_isolation_probe_profile" "$_isolation_materialized" "$_isolation_tools" || return 1
+			_cfmgr_bootstrap_materialize_owned "$_isolation_tools" "$_isolation_probe_profile" "$_isolation_materialized"
 		else
-			cfmgr_bootstrap_materialize "$_isolation_probe_profile" "$_isolation_materialized" || return 1
+			_cfmgr_bootstrap_materialize_owned '' "$_isolation_probe_profile" "$_isolation_materialized"
+		fi
+		_isolation_materialize_status=$?
+		if [ "$_isolation_materialize_status" -ne 0 ] || [ "$_materialize_complete" != 1 ]; then
+			if [ "$_isolation_materialize_status" -eq 1 ] && [ "$_materialize_complete" = 1 ]; then
+				_cfmgr_isolation_clear || return 1
+			fi
+			return 1
 		fi
 		_isolation_probe_timeout=$_isolation_materialized/timeout/program
 		_isolation_probe_gzip=$_isolation_materialized/gzip/program

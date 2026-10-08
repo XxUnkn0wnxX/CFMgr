@@ -219,19 +219,30 @@ the fixed materialization route instead of accepting supplied program paths.
 
 Every isolation mode marks private preparation active before creating the tree
 and its metadata. Probe modes also cover acquisition, manifest construction,
-image copying and source-topology verification with that marker. Only complete
-success clears it immediately before the first bind. A failure retains the
-guard and partial files: a generic nonzero shell status or unchanged mount
+image copying and source-topology verification with that marker. Complete
+preparation clears it immediately before the first bind.
+
+Acquisition has a separate internal completion result. Its native commands run
+sequentially, and every nested helper must distinguish a deliberately completed
+failure from an interruption or unexpected shell exit. Only that internal proof
+allows an acquisition failure to clear the marker. Existing cleanup then checks
+the private RAM directory and its unchanged mount identity before removing
+partial downloads, allowing a fresh attempt. Public helper failure codes do not
+provide this proof. Successful acquisition keeps preparation protected while
+image staging continues.
+
+Uncertain acquisition and failures during later image/root preparation retain
+the guard and partial files. A generic nonzero shell status or unchanged mount
 topology cannot prove that an interrupted inner shell left no producer alive.
-This deliberately conservative internal path has no automatic failed-attempt
-cleanup or retry; operational recovery and aggregate worker deadlines remain
-unfinished requirements.
+This completion contract depends on the reviewed native tools running
+synchronously without background descendants. Recovery of uncertain retained
+attempts and aggregate worker deadlines remain unfinished requirements.
 
 This entry accepts no caller manifest or hash. The lower-level supplied-manifest
 probe remains available to already trusted internal callers and explicit fixture
 proofs under its original admission preconditions. These APIs do not select a profile
-from firmware/kernel strings, approves a volume from its own current observation,
-or grants a general storage write lease. Saved-authority enrollment and actual
+from firmware/kernel strings, approve a volume from its own current observation,
+or grant a general storage write lease. Saved-authority enrollment and actual
 Entware execution remain separate acceptance work.
 
 The existing native profile binds the expected Entware directory and `/dev/null`.

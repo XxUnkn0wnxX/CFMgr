@@ -146,14 +146,22 @@ validation gates. Existing research scripts are audit helpers, not hostile-input
 runtime archive parsers.
 Never execute a downloaded package merely to regenerate these identities.
 
-Acquisition integration tests must distinguish completed preparation from an
-unproved interrupted producer. Keep one real-process interruption regression
-that demonstrates the producer is still alive while the guard is retained;
-use focused consumers for authority, ordering and ordinary failure cases.
-Failed staging now retains its guard even when its mount topology is unchanged.
-Preserve the manifest, copied-byte and no-mount assertions when adapting older
-fixtures to this stronger cleanup contract. General retryable recovery is still
-pending; do not add automatic fixture cleanup to the runtime to satisfy a test.
+Acquisition tests must distinguish a deliberately completed failure from an
+unproved interrupted producer. Use small real consumers for ordinary native
+failure, status propagation and valid-looking output from a failed helper. A
+completed acquisition failure may clean up only after the existing private RAM
+identity check; test that a changed identity still prevents removal and that
+successful acquisition keeps later preparation protected.
+
+Keep one live-producer interruption regression for acquisition and the existing
+closure-copy regression: they cover different intermediate owners and descriptor
+lifetimes. Use FIFO readiness/release rather than sleeps, and prove the output
+inode remains owned while the producer is alive. Preserve the manifest,
+copied-byte and no-mount assertions when adapting older fixtures. Public
+materialize/fetch/archive status remains 0/1/2; only the internal owner receives
+completion authority. Later staging failure and uncertain acquisition still
+retain their guards. General retained-attempt recovery remains pending; never
+add runtime cleanup merely to satisfy a fixture.
 
 ## 🧪 Run checks
 

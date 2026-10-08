@@ -171,15 +171,44 @@ _cfmgr_closure_manifest_read() {
 	_closure_manifest_total=$_closure_parse_total
 }
 
-_cfmgr_closure_size() (
-	[ "$#" -eq 2 ] && _cfmgr_closure_file "$2" || return 1
-	_closure_count=$("$1" -c <"$2") || return 1
+_cfmgr_closure_size() {
+	if _cfmgr_closure_size_owned "$@"; then return 0; else return 1; fi
+}
+
+# Audited acquisition size: 0 success, 10 completed rejection, 2 invalid API,
+# 129 uncertainty. Older closure callers intentionally retain their 0/1 API.
+_cfmgr_closure_size_owned() (
+	trap - 0 HUP INT TERM
+	set +x
+	set +e
+	set +u
+	set -f
+	LC_ALL=C
+	export LC_ALL
+	[ "$#" -eq 2 ] && [ -n "$1" ] || return 2
+	_cfmgr_closure_file "$2" || return 10
+	_closure_count=$(
+		command exec <"$2" || exit 10
+		exec "$1" -c
+	)
+	_closure_count_status=$?
+	case $_closure_count_status in
+	0) ;;
+	*)
+		[ "$_closure_count_status" -le 128 ] && return 10
+		return 129
+		;;
+	esac
 	while :; do
 		case $_closure_count in ' '* | '	'*) _closure_count=${_closure_count#?} ;; *) break ;; esac
 	done
-	case $_closure_count in '' | *[!0123456789]* | 0[0123456789]*) return 1 ;; esac
-	[ "${#_closure_count}" -le 8 ] || return 1
-	printf '%s\n' "$_closure_count"
+	case $_closure_count in '' | *[!0123456789]* | 0[0123456789]*) return 10 ;; esac
+	[ "${#_closure_count}" -le 8 ] || return 10
+	command printf '%s\n' "$_closure_count"
+	_closure_count_status=$?
+	[ "$_closure_count_status" -eq 0 ] && return 0
+	[ "$_closure_count_status" -le 128 ] && return 10
+	return 129
 ) 2>/dev/null
 
 _cfmgr_closure_build() (
