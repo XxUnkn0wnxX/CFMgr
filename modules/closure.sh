@@ -5,6 +5,9 @@
 # supplies approved identities, stable private inputs, retained BASE and fresh
 # private RAM GUARD outside IO scratch. Trusted ancestors/native tools and no
 # other writers are preconditions, not atomic path or hostile-root guarantees.
+# The caller must first construct/acquire MANIFEST within 4096 original bytes in
+# private RAM. Its wc check is defensive acceptance validation, not a bounded
+# acquisition primitive: native wc reads the supplied file through EOF.
 # Caller owns signals/cleanup. Failure retains partial staging; nothing is removed.
 
 _cfmgr_closure_stage() {
@@ -108,7 +111,8 @@ _cfmgr_closure_find() {
 	return 1
 }
 
-# Caller locale is C. Exact fixed rows reconstruct every original byte, including
+# Caller locale is C; input is a stable, already bounded private RAM manifest.
+# Exact fixed rows reconstruct every original byte, including
 # each terminal LF; shell normalization/NUL removal therefore cannot be accepted.
 _cfmgr_closure_manifest() {
 	_closure_manifest_text=
