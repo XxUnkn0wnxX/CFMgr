@@ -112,8 +112,9 @@ an old 2.6.22 router. [Entware support matrix][entware-support] ·
 
 This package selection is a design decision; installation and complete tool
 acceptance are not implemented yet. CFMgr will install only its selected
-packages and let opkg resolve their declared dependencies. It will not install
-Entware itself or upgrade unrelated packages.
+packages and the necessary verified dependency set. The installer must constrain
+opkg's candidate selection and side effects before allowing changes. It will not
+install Entware itself or upgrade unrelated packages or base libraries.
 
 <details>
 <summary>📦 Verified package contents</summary>
@@ -173,6 +174,38 @@ dependencies** action will force-reinstall CFMgr's selected package set and
 verify it afterward. It preserves configuration/activation and does not perform
 the Cloudflared submenu's daemon, hook or worker reinstall.
 
+## 💾 Retained-volume identity
+
+The storage design retains an open directory descriptor so later work can stay
+attached to the verified Entware directory. A pathname or filesystem label alone
+is insufficient when a drive is removed or `/opt` is retargeted.
+
+On the measured GT-AX11000, read-only probes confirmed an inherited directory
+descriptor exposes `mnt_id` in `/proc/self/fdinfo`, and native `test -ef` can
+compare that descriptor with `/opt`. The matching kernel source links `mnt_id`
+to the open descriptor's mount instance. It must also match a current mount
+record; a descriptor can survive after its mount leaves the namespace.
+[Descriptor metadata][fdinfo] · [Mount detachment][mount-detach]
+
+This field entered mainline Linux in **3.15**. Older vendor kernels need a
+demonstrated backport or a separately validated alternative. Entware feed names
+such as `k3.2`, `k3.4` and `k3.10` describe package baselines; they do not prove
+this storage capability. Native `test -ef` exists in the sampled older BusyBox,
+but compares device/inode and cannot distinguish bind mounts of the same inode.
+[Linux 3.14][fdinfo-before] · [Linux 3.15][fdinfo-added] ·
+[Legacy comparison][legacy-ef]
+
+These observations do not yet qualify volume acquisition, UUID binding,
+writability, mount-loss handling or package installation. There is no new
+blanket firmware support declaration.
+
+Native `blkid` has a separate limitation: its output does not escape disk labels.
+A label containing quotes can imitate a UUID field. CFMgr must therefore reject
+label-bearing output as identity evidence, even if its text looks well formed.
+An independent read path for labelled ext volumes is under investigation;
+ordinary labelled drives are not declared unsupported by this parser finding.
+[Native display routine][blkid-display]
+
 <details>
 <summary>🚧 Remaining firmware-specific proofs</summary>
 
@@ -225,3 +258,9 @@ performed. Full boot/outage and feature acceptance require later testing.
 [glibc-arm64-min]: https://github.com/bminor/glibc/blob/23158b08a0908f381459f273a984c6fd328363cb/sysdeps/unix/sysv/linux/aarch64/configure.ac#L4
 [kernel-ax]: https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7891a288a7/release/src-rt-5.04axhnd.675x/kernel/linux-4.19/Makefile#L2
 [kernel-be]: https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7891a288a7/release/src-rt-5.04behnd.4916/kernel/linux-4.19/Makefile#L2
+[fdinfo]: https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src-rt-5.02axhnd/kernel/linux-4.1/fs/proc/fd.c#L19
+[mount-detach]: https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src-rt-5.02axhnd/kernel/linux-4.1/fs/namespace.c#L1443
+[fdinfo-before]: https://github.com/torvalds/linux/blob/v3.14/fs/proc/fd.c#L46
+[fdinfo-added]: https://github.com/torvalds/linux/blob/v3.15/fs/proc/fd.c#L47
+[legacy-ef]: https://github.com/RMerl/asuswrt-merlin/blob/4a09301907eca9e55db992c5c0002a8688388255/release/src/router/busybox/coreutils/test.c#L540
+[blkid-display]: https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/util-linux/volume_id/get_devname.c
