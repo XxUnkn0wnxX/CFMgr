@@ -77,7 +77,7 @@ python tools/check.py
 This checks installed dependencies, Python lint/formatting/compilation, discovered
 shell syntax, ShellCheck, `shfmt`, and pytest. It recognizes `.sh`, `.sh.in`, and
 extensionless shell entry points. Scratch, virtualenv, cache, and symlinked
-source paths are excluded. The first native source, `src/common.sh`, provides
+source paths are excluded. The first native source, `modules/common.sh`, provides
 pure parsing helpers; it does not install or start CFMgr.
 
 | Task | Command |
@@ -138,6 +138,11 @@ All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## 🧱 Test structure
 
+The runtime entry point is `cfmgr.sh`, with directly used shell/awk helpers in
+`modules/`. These files are not compiled into a main executable. The Python
+compilation check validates developer tooling only. The planned installed
+command remains `cfmgr`.
+
 | Path | Responsibility |
 | --- | --- |
 | `tests/harness.py` | Private fixture tree, explicit fake commands, bounded shell execution |
@@ -184,7 +189,7 @@ must explicitly expose any real executable they need.
 
 ### JSON parser proof
 
-`src/json.awk` currently provides strict validation and a bounded token ledger;
+`modules/json.awk` currently provides strict validation and a bounded token ledger;
 it is not yet connected to a config reader or provider client. Its caller must
 supply a private, stable regular file, a separately checked byte count, and
 `LC_ALL=C`. Input is limited to 64 KiB, 32 nested containers, 4,096 value nodes
@@ -197,7 +202,7 @@ count before using any token. File ownership, bounded transport and router
 performance remain separate integration requirements. See the frozen contract
 in [PLAN.md](../PLAN.md#native-json-parser-proof-contract--current-package).
 
-`src/ip.sh` provides separate IPv4/IPv6 normalization functions. IPv6 uses lower
+`modules/ip.sh` provides separate IPv4/IPv6 normalization functions. IPv6 uses lower
 case, shortest hextets and longest-leftmost zero compression, including hex
 output for dotted IPv4 tails. Valid syntax is not public-address eligibility;
 WAN selection, freshness and publish decisions remain separate. Python 3.14
@@ -210,7 +215,7 @@ shell tests can run these helpers with no external tools exposed.
 
 ### Mount snapshot parser
 
-`src/mountinfo.awk` selects the deepest mount covering a canonical target path
+`modules/mountinfo.awk` selects the deepest mount covering a canonical target path
 and calculates the target's path within that filesystem, including bind-mount
 roots. It rejects ambiguous overmounts at any covering ancestor. Numeric IDs
 remain text, including values beyond the host's exact floating-point range.
@@ -230,7 +235,7 @@ and protection against mount changes remain separate implementation work.
 
 ### Private IO and snapshot handoff
 
-`src/io.sh` is an internal library, separate from CLI feature dispatch. Its caller
+`modules/io.sh` is an internal library, separate from CLI feature dispatch. Its caller
 supplies an already trusted RAM parent, controlled callback and verified parser
 path. Sourcing it has no side effects; production resolves a small fixed set of
 native tools and ignores inherited tool-path overrides.
@@ -262,7 +267,7 @@ to write through a mount path during hotplug.
 
 ### Native storage observations
 
-`src/storageinfo.awk` parses bounded `fdinfo` or native `blkid` snapshots. It
+`modules/storageinfo.awk` parses bounded `fdinfo` or native `blkid` snapshots. It
 requires a stable private file, its independently checked byte count, `LC_ALL=C`
 and a literal mode. Inputs are at most 4 KiB; fdinfo has at most 64 records.
 Mount IDs remain exact decimal text, including values beyond numeric precision.

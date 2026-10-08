@@ -12,7 +12,7 @@ import pytest
 from tests.harness import RouterHarness, ShellResult
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src/diagnostic.sh"
+SOURCE = ROOT / "modules/diagnostic.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V75", evidence="host")]
 
 # Each command is explicitly exposed and instrumented. Only owned fixture paths
@@ -194,11 +194,11 @@ class DiagnosticFixture:
                 f'{shlex.quote(str(self.settings_path))} {shlex.quote(tool)} "$@"\n',
             )
         self.checkout = router.path("work/checkout with spaces")
-        (self.checkout / "src").mkdir(parents=True)
+        (self.checkout / "modules").mkdir(parents=True)
         router.write(
-            "work/checkout with spaces/cfmgr", (ROOT / "cfmgr").read_text(), executable=True
+            "work/checkout with spaces/cfmgr", (ROOT / "cfmgr.sh").read_text(), executable=True
         )
-        self.wrapper = self.checkout / "src/diagnostic.sh"
+        self.wrapper = self.checkout / "modules/diagnostic.sh"
         self.wrapper.write_text(
             f". {shlex.quote(str(SOURCE))}\n"
             "cfmgr_diagnostic_main() {\n"

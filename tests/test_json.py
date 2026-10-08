@@ -11,7 +11,7 @@ import pytest
 
 from tests.harness import RouterHarness, ShellResult
 
-SOURCE = Path(__file__).resolve().parents[1] / "src/json.awk"
+SOURCE = Path(__file__).resolve().parents[1] / "modules/json.awk"
 HOST_AWKS = sorted(
     {
         str(Path(path).resolve())

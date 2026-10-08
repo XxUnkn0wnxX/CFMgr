@@ -10,7 +10,7 @@ import pytest
 
 from tests.harness import RouterHarness, ShellResult
 
-COMMON = Path(__file__).resolve().parents[1] / "src/common.sh"
+COMMON = Path(__file__).resolve().parents[1] / "modules/common.sh"
 NativeShell = tuple[RouterHarness, str]
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V43", evidence="harness")]
 

@@ -58,15 +58,15 @@ while [ -L "$_cfmgr_entry" ]; do
 	_cfmgr_hops=$((_cfmgr_hops + 1))
 done
 _cfmgr_directory=$(CDPATH='' cd -P "${_cfmgr_entry%/*}" 2>/dev/null && pwd -P) || exit 1
-if [ -f "$_cfmgr_directory/src/diagnostic.sh" ] && [ ! -L "$_cfmgr_directory/src/diagnostic.sh" ]; then
-	_cfmgr_module=$_cfmgr_directory/src/diagnostic.sh
+if [ -f "$_cfmgr_directory/modules/diagnostic.sh" ] && [ ! -L "$_cfmgr_directory/modules/diagnostic.sh" ]; then
+	_cfmgr_module=$_cfmgr_directory/modules/diagnostic.sh
 elif [ -f /jffs/addons/CFMgr.d/diagnostic.sh ] && [ ! -L /jffs/addons/CFMgr.d/diagnostic.sh ]; then
 	_cfmgr_module=/jffs/addons/CFMgr.d/diagnostic.sh
 else
 	printf '%s\n' 'CFMgr: diagnostic module unavailable.' >&2
 	exit 1
 fi
-# shellcheck source=src/diagnostic.sh
+# shellcheck source=modules/diagnostic.sh
 . "$_cfmgr_module"
 # The command has already been dispatched; the library takes no CLI args.
 # shellcheck disable=SC2119

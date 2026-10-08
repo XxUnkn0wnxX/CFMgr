@@ -12,12 +12,17 @@ follows implementation and validation.
 
 ## 🧱 Current implementation
 
+The repository entry point is `cfmgr.sh`; its runtime helpers live in `modules/`.
+POSIX shell sources the shell helpers and invokes the awk parsers directly.
+There is no generated or compiled main script. The planned installed command
+remains `cfmgr`.
+
 The development entry supports help, version and the two equivalent health
 commands. It does not install CFMgr or start a feature.
 
 ```mermaid
 flowchart LR
-    CLI[cfmgr] --> Help[Help / version]
+    CLI[cfmgr.sh] --> Help[Help / version]
     CLI --> Doctor[--diagnostic / --doctor]
     Doctor --> Native[Native platform and synthetic command checks]
     Native --> Report[PASS / FAIL / SKIP report]
@@ -25,14 +30,14 @@ flowchart LR
 
 | Module | Implemented responsibility | Boundary |
 | --- | --- | --- |
-| `cfmgr` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
-| `src/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
-| `src/common.sh` | Decimal/range/version/SHA-256 text validation | No filesystem, service or network work |
-| `src/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
-| `src/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
-| `src/mountinfo.awk` | Validate a mount snapshot and select the covering mount | Does not establish persistent volume identity, writability or live mount stability |
-| `src/io.sh` | Private bounded captures and validated mount-snapshot handoff | Internal library; retained-volume approval and command supervision remain separate |
-| `src/storageinfo.awk` | Parse native mount-ID and unambiguous blkid observations | No acquisition or volume authorization; label-bearing blkid reports cannot establish UUID identity |
+| `cfmgr.sh` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
+| `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
+| `modules/common.sh` | Decimal/range/version/SHA-256 text validation | No filesystem, service or network work |
+| `modules/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
+| `modules/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
+| `modules/mountinfo.awk` | Validate a mount snapshot and select the covering mount | Does not establish persistent volume identity, writability or live mount stability |
+| `modules/io.sh` | Private bounded captures and validated mount-snapshot handoff | Internal library; retained-volume approval and command supervision remain separate |
+| `modules/storageinfo.awk` | Parse native mount-ID and unambiguous blkid observations | No acquisition or volume authorization; label-bearing blkid reports cannot establish UUID identity |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host

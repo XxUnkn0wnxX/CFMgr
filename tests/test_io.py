@@ -14,8 +14,8 @@ from tests.harness import RouterHarness, ShellResult
 from tests.test_mountinfo import Mount, oracle, snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src/io.sh"
-PARSER = ROOT / "src/mountinfo.awk"
+SOURCE = ROOT / "modules/io.sh"
+PARSER = ROOT / "modules/mountinfo.awk"
 MOUNTS = [Mount("1"), Mount("2", point=b"/tmp/opt", root=b"/entware", device="8:1")]
 TARGET = "/tmp/opt/bin/jq"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]

@@ -8,7 +8,10 @@ Cloudflare Manager for Asuswrt-Merlin
 > version on a live router. Passing developer tests do not establish safe router
 > operation; installation instructions will follow validated implementation.
 
-CFMgr is in initial development. The local implementation has tested parsing foundations and a partial native health report; there is no installable manager yet.
+CFMgr is in initial development. The implementation has tested parsing foundations and a partial native health report; there is no installable manager yet.
+
+Runtime source lives in **`cfmgr.sh`** and **`modules/`**. These shell and awk
+files run directly; there is no compilation step for the manager.
 
 Planned features:
 

@@ -5,6 +5,8 @@ on:
     branches: [develop]
     paths:
       - cfmgr
+      - cfmgr.sh
+      - modules/**
       - src/**
       - tests/**
       - tools/**
@@ -17,6 +19,8 @@ on:
     branches: [develop]
     paths:
       - cfmgr
+      - cfmgr.sh
+      - modules/**
       - src/**
       - tests/**
       - tools/**
