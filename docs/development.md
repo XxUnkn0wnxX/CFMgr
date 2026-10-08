@@ -75,6 +75,7 @@ with the current source and `.github/workflows/checks.yml`.
 | Tool | Selected version | Purpose |
 | --- | --- | --- |
 | pytest | 9.1.1 | Tests and fixture lifecycle |
+| pytest-xdist / execnet | 3.8.0 / 2.1.2 | Optional bounded local pytest workers |
 | Ruff | 0.16.10 | Python lint and formatting |
 | shfmt | 3.7.0, through `shfmt-py==3.7.0.1` | POSIX shell formatting; verified on Big Sur |
 | ShellCheck | 0.11.0 on the initial host | Shell static analysis; separate host executable |
@@ -142,9 +143,18 @@ hardcoded GitHub repository, remote or branch and does not commit, push or wait
 for CI. Its selected executable paths are configurable; the same runner is used
 by the checked-in workflow.
 
+The runner also accepts `--jobs 2` for two local pytest workers, using standard
+[pytest-xdist distribution](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
+Worker crashes fail the run without automatic restart. `--jobs 1` remains the
+default, and direct focused pytest commands remain serial unless explicitly
+given parallel options. The paired representative trial and any later default
+decision are recorded in the plan; neither mode skips tests or changes their
+per-invocation deadlines.
+
 | Task | Command |
 | --- | --- |
 | Full host test suite | `python -m pytest` |
+| Full checks with two pytest workers | `python tools/check.py --jobs 2` |
 | Focused subprocess regressions | `python -m pytest tests/test_harness.py` |
 | Filter tests by behavior | `python -m pytest -k cleanup` |
 | Python lint | `python -m ruff check tests tools` |

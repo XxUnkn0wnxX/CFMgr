@@ -94,3 +94,70 @@ def test_runner_uses_relocated_fork_root(
     pytest_command = next(command for command, _ in calls if command[1:3] == ["-m", "pytest"])
     assert pytest_command[:3] == [sys.executable, "-m", "pytest"]
     assert not any(command[0] in {"git", "gh"} for command, _ in calls)
+
+
+@pytest.mark.parametrize(
+    ("jobs", "pytest_options"),
+    [
+        ("1", []),
+        ("2", ["-n", "2", "--dist=load", "--max-worker-restart=0"]),
+    ],
+)
+def test_jobs_builds_explicit_pytest_command(
+    jobs: str,
+    pytest_options: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[list[str]] = []
+
+    def run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["check", f"--jobs={jobs}", "--shellcheck=/usr/bin/true", "--shfmt=/usr/bin/true"],
+    )
+    monkeypatch.setattr(check, "shell_sources", lambda _root: [])
+    monkeypatch.setattr(subprocess, "run", run)
+
+    assert check.main() == 0
+    pytest_command = next(command for command in calls if command[1:3] == ["-m", "pytest"])
+    assert pytest_command == [sys.executable, "-m", "pytest", *pytest_options]
+
+
+def test_invalid_jobs_fails_before_running_checks(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["check", "--jobs=3"])
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("checks must not run for invalid jobs"),
+    )
+
+    with pytest.raises(SystemExit, match="2"):
+        check.main()
+
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_pytest_failure_exit_code_is_preserved(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=23 if command[1:3] == ["-m", "pytest"] else 0)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["check", "--shellcheck=/usr/bin/true", "--shfmt=/usr/bin/true"],
+    )
+    monkeypatch.setattr(check, "shell_sources", lambda _root: [])
+    monkeypatch.setattr(subprocess, "run", run)
+
+    assert check.main() == 23
+    assert calls[-1][1:3] == ["-m", "pytest"]

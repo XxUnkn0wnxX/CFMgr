@@ -48,6 +48,7 @@ def main() -> int:
     parser.add_argument("--busybox", help="require actual BusyBox shell/applet checks at PATH")
     parser.add_argument("--shellcheck", default="shellcheck")
     parser.add_argument("--shfmt", default=str(Path(sys.executable).parent / "shfmt"))
+    parser.add_argument("--jobs", type=int, choices=(1, 2), default=1)
     args = parser.parse_args()
     if sys.version_info < (3, 11) or sys.prefix == sys.base_prefix:
         parser.error("run with Python >=3.11 from the development virtualenv")
@@ -80,6 +81,8 @@ def main() -> int:
     else:
         print("No .sh/.sh.in source files yet; shell source checks have no inputs.", flush=True)
     pytest = [sys.executable, "-m", "pytest"]
+    if args.jobs == 2:
+        pytest.extend(["-n", "2", "--dist=load", "--max-worker-restart=0"])
     if busybox:
         pytest.append(f"--busybox={busybox}")
     else:
