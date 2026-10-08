@@ -31,6 +31,7 @@ flowchart LR
 | `src/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
 | `src/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
 | `src/mountinfo.awk` | Validate a mount snapshot and select the covering mount | Does not establish persistent volume identity, writability or live mount stability |
+| `src/io.sh` | Private bounded captures and validated mount-snapshot handoff | Internal library; retained-volume approval and command supervision remain separate |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host

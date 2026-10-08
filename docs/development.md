@@ -124,10 +124,15 @@ Tool versions are printed in the job log.
 
 The workflow has read-only repository permissions and no router or provider
 credentials. Linux/BusyBox results complement the Mac checks; they do not prove
-Merlin firmware, 32-bit arithmetic or hardware acceptance. Its first execution
-passed static checks and exposed a pytest custom-option discovery issue before
-test collection. The argument fix has a targeted regression; subsequent results
-are recorded in the plan.
+Merlin firmware, 32-bit arithmetic or hardware acceptance. The first passing
+baseline ran **786 tests**, including its six dedicated BusyBox cases,
+with BusyBox 1.36.1 and ShellCheck 0.9.0. Its matching Mac baseline passed 780
+tests with six missing-BusyBox skips. Later stage results are recorded in the plan.
+
+The initial CI scope is one Linux/BusyBox job. Matching Merlin's patched kernels
+or exercising older ARM/32-bit environments would need additional dedicated
+infrastructure and acceptance cases; a hosted runner's kernel is not a router
+kernel compatibility matrix.
 
 All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
@@ -144,6 +149,7 @@ All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
+| `tests/test_io.py` | Private staging, stream bounds, producer status, signal cleanup and complete mount handoff |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `pytest.ini`, `ruff.toml` | Discovery, markers, and Python style |
@@ -217,9 +223,41 @@ other raw control characters are outside the supported input profile.
 The output is an internal ASCII record with byte-encoded paths and a terminal
 byte-count footer. Verify status, structure, count and exact EOF before using it.
 Hex encoding is not redaction: keep this metadata private. The parser reports
-mount facts, including read-only and pseudo-filesystem records; UUID checks,
-trusted acquisition, writability, supervision and protection against mount
-changes remain separate implementation work.
+mount facts, including read-only and pseudo-filesystem records. The private IO
+module below handles acquisition/framing; UUID checks, writability, supervision
+and protection against mount changes remain separate implementation work.
+
+### Private IO and snapshot handoff
+
+`src/io.sh` is an internal library, separate from CLI feature dispatch. Its caller
+supplies an already trusted RAM parent, controlled callback and verified parser
+path. Sourcing it has no side effects; production resolves a small fixed set of
+native tools and ignores inherited tool-path overrides.
+
+| Function | Contract |
+| --- | --- |
+| `cfmgr_io_with_workspace ROOT CALLBACK [ARGS...]` | Create an owned mode-700 directory with at most eight collision attempts, call the internal callback with that directory as its first argument, then clean it up. Callback output is suppressed. |
+| `cfmgr_io_capture SLOT OUT_LIMIT ERR_LIMIT TOOL [ARGS...]` | Within that callback, exclusively create private mode-600 stream/status files. Slots are 0–15 and consumed even after failure. Each accepted stream is at most 65,536 bytes. |
+| `cfmgr_io_mount_snapshot ROOT TARGET PARSER` | Acquire fixed `/proc/self/mountinfo`, run the trusted parser and verify its status, fields, complete framing and byte count. Emit the bounded ASCII result only after workspace cleanup succeeds. |
+
+**Capture status 0 means capture completed, not that the producer succeeded.**
+The callback must read the producer status from the complete `.status` record
+before using either stream. IO/limit/cleanup failures return 1, invalid usage
+returns 2, and mount selection preserves 3 for no covering mount. Workspace
+callbacks otherwise retain their own status; interrupted owners preserve
+129/130/143. Failures do not produce a valid mount result.
+
+File-size limits allow one overflow byte before exact acceptance checks. Because
+supported shells use 512- or 1,024-byte units, the conservative physical ceiling
+is 132,096 bytes per stream, or 4,227,072 bytes across 16 captures plus small
+status files. Accepted stream payload totals at most 2,097,152 bytes. A failed
+capture's partial files stay private until owned cleanup.
+
+Disable tracing before passing arguments. The isolated workspace owner preserves
+caller state and handles signals delivered to that owner; an external caller
+must forward signals or supervise it. There is no hard deadline for a hung
+native executable in this stage. The result is snapshot evidence, not authority
+to write through a mount path during hotplug.
 
 ### Native health report
 
