@@ -48,7 +48,7 @@ def main() -> int:
     parser.add_argument("--busybox", help="require actual BusyBox shell/applet checks at PATH")
     parser.add_argument("--shellcheck", default="shellcheck")
     parser.add_argument("--shfmt", default=str(Path(sys.executable).parent / "shfmt"))
-    parser.add_argument("--jobs", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--jobs", type=int, choices=(1, 2), default=2)
     args = parser.parse_args()
     if sys.version_info < (3, 11) or sys.prefix == sys.base_prefix:
         parser.error("run with Python >=3.11 from the development virtualenv")

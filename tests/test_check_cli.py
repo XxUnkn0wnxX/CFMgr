@@ -92,7 +92,15 @@ def test_runner_uses_relocated_fork_root(
     assert [tool, "--shell=sh", str(shell_source)] in [command for command, _ in calls]
     assert [tool, "-ln", "posix", "-d", str(shell_source)] in [command for command, _ in calls]
     pytest_command = next(command for command, _ in calls if command[1:3] == ["-m", "pytest"])
-    assert pytest_command[:3] == [sys.executable, "-m", "pytest"]
+    assert pytest_command == [
+        sys.executable,
+        "-m",
+        "pytest",
+        "-n",
+        "2",
+        "--dist=load",
+        "--max-worker-restart=0",
+    ]
     assert not any(command[0] in {"git", "gh"} for command, _ in calls)
 
 

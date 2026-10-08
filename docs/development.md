@@ -143,12 +143,12 @@ hardcoded GitHub repository, remote or branch and does not commit, push or wait
 for CI. Its selected executable paths are configurable; the same runner is used
 by the checked-in workflow.
 
-The runner also accepts `--jobs 2` for two local pytest workers, using standard
+The runner defaults to two local pytest workers (`--jobs 2`), using standard
 [pytest-xdist distribution](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
-Worker crashes fail the run without automatic restart. `--jobs 1` remains the
-default, and direct focused pytest commands remain serial unless explicitly
-given parallel options. The paired representative trial and any later default
-decision are recorded in the plan; neither mode skips tests or changes their
+Worker crashes fail the run without automatic restart. Use `--jobs 1` for a
+serial full check; direct focused pytest commands remain serial unless explicitly
+given parallel options. The paired representative trial and full-suite acceptance
+are recorded in the plan; neither mode skips tests or changes their
 per-invocation deadlines.
 
 | Task | Command |
