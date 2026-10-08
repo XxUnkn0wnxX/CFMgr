@@ -73,7 +73,9 @@ int main(int argc, char **argv) {
             if (length != (ssize_t)strlen(targets[i]) ||
                 memcmp(target, targets[i], strlen(targets[i]))) fail("fixed bootstrap link");
         }
-        const char *writes[] = {"/opt/new-file", "/opt/libexec/timeout-coreutils", "/opt/lib/libc-2.27.so"};
+        /* Use the unexecuted copy: Linux may reject writes to running text
+         * with ETXTBSY before checking the mount's read-only state. */
+        const char *writes[] = {"/opt/new-file", "/opt/libexec/gzip-gnu", "/opt/lib/libc-2.27.so"};
         for (size_t i = 0; i < sizeof(writes) / sizeof(writes[0]); i++) {
             errno = 0;
             int writable = open(writes[i], O_WRONLY | (i == 0 ? O_CREAT | O_EXCL : 0), 0600);
