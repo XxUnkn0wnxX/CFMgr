@@ -69,7 +69,8 @@ if [ "$scenario" != primitive ]; then
 	_isolation_parser=$repo/modules/mountinfo.awk
 	_isolation_input=/proc/self/mountinfo
 	guard=$ram/cfmgr-isolation
-	# shellcheck disable=SC2329
+	# Callbacks below are invoked indirectly by the isolation owner.
+	# shellcheck disable=SC2317,SC2329
 	fixture_enter() {
 		_cfmgr_io_mount_capture "$source" "$_isolation_parser" /proc/self/mountinfo 0 1 || return 1
 		saved_ifs=$IFS
@@ -84,7 +85,7 @@ if [ "$scenario" != primitive ]; then
 		# shellcheck disable=SC2094
 		_cfmgr_isolation_begin "$source" "$volume" fixture_callback 9<"$source" 8<"$source/sentinel"
 	}
-	# shellcheck disable=SC2329
+	# shellcheck disable=SC2317,SC2329
 	fixture_callback() {
 		"$bb" test "$source" -ef /proc/self/fd/9 || return 1
 		"$bb" test "$source/sentinel" -ef /proc/self/fd/8 || return 1
@@ -113,15 +114,21 @@ if [ "$scenario" != primitive ]; then
 	cfmgr_io_test "$ram" "$tools" workspace fixture_enter || status=$?
 	case $scenario in
 	success)
-		[ "$status" -eq 0 ] && [ ! -e "$guard" ] || fail 'product success/guard cleanup'
+		if [ "$status" -ne 0 ] || [ -e "$guard" ]; then
+			fail 'product success/guard cleanup'
+		fi
 		# Namespace discard must not conceal a mount left by product cleanup.
 		! "$bb" grep -F "$guard/" /proc/self/mountinfo || fail 'success left a bind'
 		;;
 	busy | signal)
 		if [ "$scenario" = busy ]; then
-			[ "$status" -eq 1 ] && [ ! -e "$guard/active" ] || fail 'busy result'
+			if [ "$status" -ne 1 ] || [ -e "$guard/active" ]; then
+				fail 'busy result'
+			fi
 		else
-			[ "$status" -eq 143 ] && [ "$("$bb" cat "$guard/active")" = callback ] || fail 'interrupted active result'
+			if [ "$status" -ne 143 ] || [ "$("$bb" cat "$guard/active")" != callback ]; then
+				fail 'interrupted active result'
+			fi
 		fi
 		[ -d "$guard" ] || fail 'failure guard missing'
 		check_binds "$guard/root"
