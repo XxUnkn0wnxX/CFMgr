@@ -205,7 +205,13 @@ busy-mount retention and interruption handling. They enter at the preverified
 storage callback boundary using actual mount observations and a retained
 directory descriptor; block-device and UUID acquisition are outside this proof.
 A separate controlled executable fixture checks chroot and exact-mount busy
-behavior. Fixture compiler/library results do not establish Entware ABI or
+behavior. One additional image scenario binds a private RAM executable/library
+image read-only with nosuid/nodev and execution allowed. It verifies unchanged
+mount identity, root-run EROFS for create and write, a still-writable outside
+alias, mapped-image busy refusal, and ordinary removal after exact actor release.
+The retained source is mounted separately for a read-and-close sentinel check.
+All five namespace scenarios retain their individual 15-second outer bounds.
+Fixture compiler/library results do not establish Entware ABI or
 Merlin acceptance, and namespace disposal after a failed case does not count
 as successful runtime cleanup. Results and timings belong in the plan.
 

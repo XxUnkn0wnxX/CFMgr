@@ -162,7 +162,7 @@ def prove(args: argparse.Namespace) -> None:
         if needed != ["libc.so.6"]:
             raise ValueError(f"unsupported fixture library closure: {needed}")
         lane_start = time.monotonic()
-        for scenario in ("success", "busy", "signal", "primitive"):
+        for scenario in ("success", "busy", "signal", "primitive", "image"):
             print(f"Kernel proof: {scenario}", flush=True)
             started = time.monotonic()
             cleanup = False

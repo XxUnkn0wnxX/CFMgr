@@ -41,7 +41,8 @@ int main(int argc, char **argv) {
         if (close(held) || fclose(control)) fail("holder close");
         return 0;
     }
-    if (argc != 2 || (strcmp(argv[1], "check") && strcmp(argv[1], "wait"))) return 2;
+    if (argc != 2 || (strcmp(argv[1], "check") && strcmp(argv[1], "wait") &&
+                     strcmp(argv[1], "image-wait"))) return 2;
     char cwd[PATH_MAX];
     if (!getcwd(cwd, sizeof(cwd)) || strcmp(cwd, "/")) fail("chroot cwd");
     for (int fd = 8; fd <= 9; fd++) {
@@ -59,7 +60,22 @@ int main(int argc, char **argv) {
     if (null < 0 || write(null, "x", 1) != 1 || read(null, &byte, 1) != 0 || close(null)) {
         fail("native null");
     }
-    if (!strcmp(argv[1], "wait")) {
+    if (!strcmp(argv[1], "image-wait")) {
+        if (geteuid() != 0) fail("image actor must be root");
+        const char *writes[] = {"/opt/write-test", "/opt/sentinel"};
+        for (size_t i = 0; i < sizeof(writes) / sizeof(writes[0]); i++) {
+            errno = 0;
+            int writable = open(writes[i], O_WRONLY | (i == 0 ? O_CREAT | O_EXCL : 0), 0600);
+            if (writable != -1 || errno != EROFS) fail("image write must fail EROFS");
+        }
+        const char expected[] = "controlled fixture\n";
+        char retained[sizeof(expected)];
+        int offline = open("/offline/opt/sentinel", O_RDONLY);
+        if (offline < 0 || read(offline, retained, sizeof(expected) - 1) != (ssize_t)(sizeof(expected) - 1) ||
+            memcmp(retained, expected, sizeof(expected) - 1) || read(offline, &byte, 1) != 0 ||
+            close(offline)) fail("retained offline sentinel");
+    }
+    if (!strcmp(argv[1], "wait") || !strcmp(argv[1], "image-wait")) {
         if (write(STDOUT_FILENO, "ready\n", 6) != 6) fail("mapping readiness");
         if (read(STDIN_FILENO, &byte, 1) != 1 || byte != 'x') fail("mapping release");
     }

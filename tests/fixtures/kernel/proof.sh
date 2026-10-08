@@ -111,7 +111,7 @@ check_binds() {
 	cfmgr_io_test "$ram" "$tools" workspace verify_null "$1" || fail 'null binding/topology'
 }
 
-if [ "$scenario" != primitive ]; then
+if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 	_isolation_root=$ram
 	_isolation_tools=$tools
 	_isolation_parser=$repo/modules/mountinfo.awk
@@ -192,26 +192,121 @@ if [ "$scenario" != primitive ]; then
 	exit 0
 fi
 
-# Direct primitive proof only: no runtime callback admits chroot or ELF here.
-guard=$ram/primitive-profile
+# Direct fixture proofs only: no runtime callback admits chroot or ELF here.
+guard=$ram/$scenario-profile
 "$bb" mkdir -m 700 "$guard"
 # shellcheck disable=SC2317,SC2329
-fixture_primitive_profile() {
+fixture_native_profile() {
 	_isolation_guard=$guard
 	_isolation_umount=$tools/umount
 	_cfmgr_isolation_umount_admit || return "$?"
 	cfmgr_io_stage_report "$_isolation_umount_profile$_io_lf"
 }
-profile=$(cfmgr_io_test "$ram" "$tools" report fixture_primitive_profile) || fail 'primitive umount admission'
-case $profile in legacy | modern) ;; *) fail 'primitive unknown umount profile' ;; esac
-printf 'primitive native umount profile=%s\n' "$profile"
-primitive_umount() {
+profile=$(cfmgr_io_test "$ram" "$tools" report fixture_native_profile) || fail 'native umount admission'
+case $profile in legacy | modern) ;; *) fail 'unknown native umount profile' ;; esac
+printf '%s native umount profile=%s\n' "$scenario" "$profile"
+native_umount() {
 	case $profile in
 	legacy) "$tools/umount" -D -n "$1" ;;
 	modern) "$tools/umount" -n "$1" ;;
 	*) return 1 ;;
 	esac
 }
+
+if [ "$scenario" = image ]; then
+	root=$ram/image-root image=$ram/image
+	"$bb" mkdir -m 700 "$image" "$root" "$root/opt" "$root/offline" "$root/offline/opt" "$root/dev"
+	umask 077
+	: >"$root/dev/null"
+	printf 'writable alias\n' >"$image/sentinel"
+	"$bb" cp "$work/dynamic" "$image/dynamic-probe"
+	"$bb" cp "$source/loader" "$source/libc.so.6" "$image/"
+	exec 9<"$source" 8<"$source/sentinel"
+	"$bb" test "$source" -ef /proc/self/fd/9 || fail 'image original source descriptor'
+	"$bb" test "$source/sentinel" -ef /proc/self/fd/8 || fail 'image original sentinel descriptor'
+	# IO parses actual mountinfo. Identity excludes mutable per-mount options;
+	# it retains ID/parent/device/root/target/filesystem across every operation.
+	# shellcheck disable=SC2317,SC2329
+	fixture_image_record() {
+		record_point=$2 record_expected=$3 record_alias=$4 record_profile=$5
+		_cfmgr_io_mount_capture "$record_point" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+		[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
+		record_hex=$(hex "$record_expected") || return 1
+		saved_ifs=$IFS
+		IFS=$_io_tab
+		# shellcheck disable=SC2086
+		set -- $_mount_body
+		IFS=$saved_ifs
+		[ "$6" = "$record_hex" ] && "$bb" test "$record_alias" -ef "$record_expected" || return 1
+		case $record_profile in ram | image) [ "$7" = tmpfs ] || return 1 ;; esac
+		if [ "$record_profile" = image ]; then
+			# Field9 is per-mount options; field10 superblock options are separate.
+			record_options=2c${9}2c
+			for required_option in 726f 6e6f73756964 6e6f646576; do
+				case $record_options in *"2c${required_option}2c"*) ;; *) return 1 ;; esac
+			done
+			case $record_options in *2c6e6f657865632c*) return 1 ;; esac
+		fi
+		cfmgr_io_stage_report "$2$_io_tab$3$_io_tab$4$_io_tab$5$_io_tab$6$_io_tab$7$_io_lf"
+	}
+	image_record() { cfmgr_io_test "$ram" "$tools" report fixture_image_record "$@"; }
+	ram_identity=$(image_record "$root/opt" "$ram" "$ram" ram) || fail 'image containing RAM topology'
+	image_tab=$(printf '\t')
+	ram_id=${ram_identity%%"$image_tab"*}
+	"$bb" mount -n -i -o bind /dev/null "$root/dev/null"
+	"$bb" mount -n -i -o make-private "$root/dev/null"
+	null_identity=$(image_record "$root/dev/null" "$root/dev/null" /dev/null bind) || fail 'image null bind'
+	"$bb" mount -n -i -o bind /proc/self/fd/9 "$root/offline/opt"
+	"$bb" mount -n -i -o make-private "$root/offline/opt"
+	offline_identity=$(image_record "$root/offline/opt" "$root/offline/opt" /proc/self/fd/9 bind) || fail 'image retained source bind'
+	[ "$(image_record "$root/opt" "$ram" "$ram" ram)" = "$ram_identity" ] || fail 'image destination parent changed'
+	"$bb" mount -n -i -o bind,ro "$image" "$root/opt"
+	image_identity=$(image_record "$root/opt" "$root/opt" "$image" bind) || fail 'image initial bind'
+	[ "${image_identity%%"$image_tab"*}" != "$ram_id" ] || fail 'image bind has no new mount ID'
+	image_parent=${image_identity#*"$image_tab"}
+	[ "${image_parent%%"$image_tab"*}" = "$ram_id" ] || fail 'image bind attached to wrong parent'
+	"$bb" mount -n -i -o make-private "$root/opt"
+	[ "$(image_record "$root/opt" "$root/opt" "$image" bind)" = "$image_identity" ] || fail 'image private identity changed'
+	"$bb" mount -n -i -o remount,bind,ro,nosuid,nodev,exec "$image" "$root/opt"
+	[ "$(image_record "$root/opt" "$root/opt" "$image" image)" = "$image_identity" ] || fail 'image remount profile/identity'
+	# This ordinary non-executable file proves the outside alias stayed writable.
+	# Executable/library bytes remain frozen by trusted-owner convention.
+	printf 'outside alias still writable\n' >"$image/sentinel"
+	"$bb" mkfifo "$ram/image-control"
+	"$bb" chroot "$root" /opt/dynamic-probe image-wait <"$ram/image-control" >"$ram/image-ready" 8<&- 9<&- &
+	actor=$!
+	exec 7>"$ram/image-control"
+	wait_ready "$ram/image-ready"
+	[ "$("$bb" readlink "/proc/$actor/cwd")" = "$root" ] || fail 'image actor cwd'
+	for mapped in dynamic-probe loader libc.so.6; do
+		"$bb" grep -F "$root/opt/$mapped" "/proc/$actor/maps" >/dev/null || fail 'owned image mapping'
+	done
+	for fd in /proc/"$actor"/fd/*; do
+		link=$("$bb" readlink "$fd") || fail 'image actor descriptor inspection'
+		case $fd in */8 | */9) fail 'image actor inherited outside descriptor' ;; esac
+		case $link in "$root/opt" | "$root/opt/"* | "$image" | "$image/"*) fail 'extra open image holder' ;; esac
+	done
+	if native_umount "$root/opt"; then fail 'mapped image unmount unexpectedly succeeded'; fi
+	[ "$(image_record "$root/opt" "$root/opt" "$image" image)" = "$image_identity" ] || fail 'busy image identity changed'
+	[ "$(image_record "$root/offline/opt" "$root/offline/opt" /proc/self/fd/9 bind)" = "$offline_identity" ] || fail 'busy offline identity changed'
+	[ "$(image_record "$root/dev/null" "$root/dev/null" /dev/null bind)" = "$null_identity" ] || fail 'busy null identity changed'
+	printf x >&7
+	exec 7>&-
+	wait "$actor" || fail 'exact image actor wait'
+	[ "$(image_record "$root/opt" "$root/opt" "$image" image)" = "$image_identity" ] || fail 'image removal identity changed'
+	native_umount "$root/opt" || fail 'image removal'
+	[ "$(image_record "$root/opt" "$ram" "$ram" ram)" = "$ram_identity" ] || fail 'image removal unproved'
+	[ "$(image_record "$root/offline/opt" "$root/offline/opt" /proc/self/fd/9 bind)" = "$offline_identity" ] || fail 'offline removal identity changed'
+	native_umount "$root/offline/opt" || fail 'offline removal'
+	[ "$(image_record "$root/offline/opt" "$ram" "$ram" ram)" = "$ram_identity" ] || fail 'offline removal unproved'
+	[ "$(image_record "$root/dev/null" "$root/dev/null" /dev/null bind)" = "$null_identity" ] || fail 'null removal identity changed'
+	native_umount "$root/dev/null" || fail 'null removal'
+	[ "$(image_record "$root/dev/null" "$ram" "$ram" ram)" = "$ram_identity" ] || fail 'null removal unproved'
+	exec 8<&- 9<&-
+	printf 'image dynamic read-only bind passed\n'
+	exit 0
+fi
+
 root=$ram/primitive
 "$bb" mkdir -m 700 "$root" "$root/opt" "$root/dev" "$root/bootstrap"
 : >"$root/dev/null"
@@ -241,13 +336,13 @@ for mode in static dynamic; do
 		"$bb" grep -F "$root/opt/loader" "/proc/$actor/maps" >/dev/null || fail 'Opt interpreter mapping'
 		"$bb" grep -F "$root/opt/libc.so.6" "/proc/$actor/maps" >/dev/null || fail 'Opt libc mapping'
 	fi
-	if primitive_umount "$root/opt"; then fail 'mapped Opt unmount unexpectedly succeeded'; fi
+	if native_umount "$root/opt"; then fail 'mapped Opt unmount unexpectedly succeeded'; fi
 	check_binds "$root"
 	printf x >&7
 	exec 7>&-
 	wait "$actor" || fail 'exact mapped actor wait'
-	primitive_umount "$root/opt"
-	primitive_umount "$root/dev/null"
+	native_umount "$root/opt"
+	native_umount "$root/dev/null"
 	! "$bb" grep -F "$root/opt" /proc/self/mountinfo || fail 'Opt removal unproved'
 	! "$bb" grep -F "$root/dev/null" /proc/self/mountinfo || fail 'null removal unproved'
 	printf 'primitive %s passed\n' "$mode"
