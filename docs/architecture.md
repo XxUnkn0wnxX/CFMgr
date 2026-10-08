@@ -39,6 +39,7 @@ flowchart LR
 | `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
+| `modules/isolation.sh` | Own a private RAM root, verify two exact bind mounts and remove them before deleting staging | Internal synchronous callback only; mount operations use test doubles in current validation, with no chroot or Entware execution |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -74,6 +75,18 @@ and cleanup; mounted trees and asynchronous users must stay outside IO scratch.
 Ordinary return restores the caller's descriptors before cleanup. A signal-driven
 exit may retain them until process exit, so interrupted setup must preserve its
 external guard.
+
+The internal `cfmgr_isolation_with` API builds on that retained callback. It
+reserves a private guard outside IO scratch, checks the RAM/source topology,
+then binds `/dev/null` and the held Entware directory into its own root. A
+trusted synchronous callback receives the root, complete volume ledger and
+unchanged arguments only after both mounts pass verification.
+
+Cleanup checks each recorded mount again, removes Opt before null, and proves
+both absent before deleting the guard. Busy, changed or uncertain mounts and
+interrupted operations leave the guard for recovery. Existing guards are never
+adopted or removed automatically. This stage does not launch a process inside
+the root or expose an operational CLI action.
 
 This first profile covers dynamic-revision ext2/ext3/ext4 primary superblocks.
 Other filesystems, alternate `sb=` mounts and missing mount-ID support need
@@ -136,7 +149,9 @@ timeout/gzip tools and restricted opkg work.
 Only the expected Entware directory and `/dev/null` enter the private root.
 The outer native owner checks mount identity, supervises work and removes its
 exact mounts before deleting staging. Uncertain cleanup retains a guard and
-workspace for recovery. This lifecycle is not implemented yet; the
+workspace for recovery. The initial native ownership and cleanup code is in
+`modules/isolation.sh`; actual namespace, executable and interruption proofs
+remain separate from its host fixtures. The
 [plan](../PLAN.md#mount-snapshot-parser-contract--current-package) records its
 proof gates and the distinction from hostile-root security isolation.
 
