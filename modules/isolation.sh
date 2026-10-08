@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Internal owned-root lifecycle; trusted io.sh/storage.sh definitions required.
 # Fixed probes additionally require trusted closure.sh/supervision.sh definitions.
+# Catalogue bootstrap probes also require trusted bootstrap.sh definitions.
 # Sourcing defines functions only; no CLI or general Opt execution approval.
 # ROOT/native firmware/parser code are trusted. Native callback APIs admit only
 # synchronous native work: no mounts, asynchronous users, Entware, or owner
@@ -93,6 +94,87 @@ cfmgr_isolation_probe_test() (
 	cfmgr_storage_with_test "$_isolation_root" "$_isolation_tools" "$_isolation_target" \
 		"$_isolation_input" "$_isolation_fdinfo" "$_isolation_block" "$_isolation_parser" \
 		"$_isolation_storage_parser" _cfmgr_isolation_probe_begin _cfmgr_isolation_probe_run
+)
+
+# Independently approved storage identity and profile select reviewed bundled
+# member identities. Current observations must never self-approve this authority.
+cfmgr_isolation_bootstrap() (
+	_isolation_mode=bootstrap
+	_isolation_probe_pending=0
+	_isolation_probe_manifest=
+	[ "$#" -eq 9 ] || return 2
+	_isolation_root=$1
+	_isolation_parser=$2
+	_isolation_storage_parser=$3
+	_isolation_probe_profile=$4
+	_isolation_expected_uuid=$5
+	_isolation_expected_fs_target=$6
+	_isolation_probe_timeout=$7
+	_isolation_probe_gzip=$8
+	_isolation_probe_mode=$9
+	_isolation_tools=
+	_isolation_input=/proc/self/mountinfo
+	_cfmgr_isolation_bootstrap_args || return 2
+	cfmgr_storage_with "$_isolation_root" "$_isolation_parser" "$_isolation_storage_parser" \
+		_cfmgr_isolation_bootstrap_begin _cfmgr_isolation_probe_run
+)
+
+# Storage fixture fields, then PROFILE UUID FS_TARGET_HEX TIMEOUT_FILE GZIP_FILE MODE.
+cfmgr_isolation_bootstrap_test() (
+	_isolation_mode=bootstrap
+	_isolation_probe_pending=0
+	_isolation_probe_manifest=
+	[ "$#" -eq 14 ] && [ -n "$2" ] && [ -n "$6" ] || return 2
+	_isolation_root=$1
+	_isolation_tools=$2
+	_isolation_target=$3
+	_isolation_input=$4
+	_isolation_fdinfo=$5
+	_isolation_block=$6
+	_isolation_parser=$7
+	_isolation_storage_parser=$8
+	_isolation_probe_profile=$9
+	_isolation_expected_uuid=${10}
+	_isolation_expected_fs_target=${11}
+	_isolation_probe_timeout=${12}
+	_isolation_probe_gzip=${13}
+	_isolation_probe_mode=${14}
+	_cfmgr_isolation_bootstrap_args || return 2
+	for _isolation_path in "$_isolation_tools" "$_isolation_target" "$_isolation_input" "$_isolation_fdinfo" "$_isolation_block"; do
+		_cfmgr_closure_path "$_isolation_path" || return 2
+	done
+	cfmgr_storage_with_test "$_isolation_root" "$_isolation_tools" "$_isolation_target" \
+		"$_isolation_input" "$_isolation_fdinfo" "$_isolation_block" "$_isolation_parser" \
+		"$_isolation_storage_parser" _cfmgr_isolation_bootstrap_begin _cfmgr_isolation_probe_run
+)
+
+_cfmgr_isolation_bootstrap_args() (
+	LC_ALL=C
+	export LC_ALL
+	case $_isolation_probe_profile in aarch64-k3.10 | armv7sf-k3.2 | mipselsf-k3.4) ;; *) return 2 ;; esac
+	case $_isolation_probe_mode in timeout | gzip) ;; *) return 2 ;; esac
+	_cfmgr_isolation_path "$_isolation_root" || return 2
+	for _isolation_path in "$_isolation_parser" "$_isolation_storage_parser" \
+		"$_isolation_probe_timeout" "$_isolation_probe_gzip"; do
+		_cfmgr_closure_path "$_isolation_path" || return 2
+	done
+	# Bound authority before either byte-hex traversal or storage acquisition.
+	[ "${#_isolation_expected_uuid}" -eq 36 ] &&
+		[ "${#_isolation_expected_fs_target}" -le 8192 ] || return 2
+	_isolation_uuid_rest=$_isolation_expected_uuid
+	_isolation_uuid_hex=
+	for _isolation_width in 8 4 4 4 12; do
+		_isolation_piece=${_isolation_uuid_rest%%-*}
+		[ "${#_isolation_piece}" -eq "$_isolation_width" ] || return 2
+		case $_isolation_piece in *[!0123456789abcdef]*) return 2 ;; esac
+		_isolation_uuid_hex=$_isolation_uuid_hex$_isolation_piece
+		_isolation_uuid_rest=${_isolation_uuid_rest#"$_isolation_piece"}
+		if [ "$_isolation_width" -ne 12 ]; then
+			case $_isolation_uuid_rest in -*) _isolation_uuid_rest=${_isolation_uuid_rest#-} ;; *) return 2 ;; esac
+		fi
+	done
+	[ -z "$_isolation_uuid_rest" ] && [ "$_isolation_uuid_hex" != 00000000000000000000000000000000 ] || return 2
+	_cfmgr_io_hex_path "$_isolation_expected_fs_target" || return 2
 )
 
 _cfmgr_isolation_probe_args() {
@@ -402,6 +484,10 @@ _cfmgr_isolation_image_stage() {
 	_closure_complete=0
 	_closure_opt=
 	_closure_total=
+	if [ "$_isolation_mode" = bootstrap ]; then
+		_isolation_probe_manifest=$_isolation_guard/bootstrap-manifest.tsv
+		cfmgr_bootstrap_manifest "$_isolation_probe_profile" "$_isolation_probe_manifest" || return 1
+	fi
 	if [ -n "$_isolation_tools" ]; then
 		cfmgr_closure_test "$_isolation_guard" "$_isolation_probe_profile" "$_isolation_probe_manifest" \
 			"$_isolation_probe_timeout" "$_isolation_probe_gzip" "$_isolation_target" "$_isolation_tools" || return 1
@@ -569,13 +655,13 @@ _cfmgr_isolation_run() {
 	_isolation_null_root=$_isolation_fs_target
 	_isolation_null_fs=$_isolation_fs
 	"$_isolation_test" -c /dev/null && "$_isolation_test" -d /proc/self/fd/9 && "$_isolation_test" "$_isolation_resolved" -ef /proc/self/fd/9 || return 1
-	if [ "$_isolation_mode" = probe ]; then
+	if [ "$_isolation_mode" = probe ] || [ "$_isolation_mode" = bootstrap ]; then
 		_cfmgr_isolation_image_stage || return 1
 	fi
 	"$_isolation_mkdir" -m 700 "$_isolation_tree" "$_isolation_tree/opt" "$_isolation_tree/dev" "$_isolation_tree/bootstrap" "$_isolation_tree/tmp" "$_isolation_tree/offline" || return 1
 	_cfmgr_isolation_write "$_isolation_tree/dev/null" "$_io_lf" || return 1
 	_cfmgr_isolation_bind null /dev/null "$_isolation_tree/dev/null" "$_isolation_null_device" "$_isolation_null_root" "$_isolation_null_fs" || return "$?"
-	if [ "$_isolation_mode" = probe ]; then
+	if [ "$_isolation_mode" = probe ] || [ "$_isolation_mode" = bootstrap ]; then
 		"$_isolation_ln" -s /opt/libexec/timeout-coreutils "$_isolation_tree/bootstrap/timeout-coreutils" &&
 			"$_isolation_ln" -s /opt/libexec/gzip-gnu "$_isolation_tree/bootstrap/gzip-gnu" || return 1
 		_cfmgr_isolation_image_bind || return "$?"
@@ -601,6 +687,11 @@ _cfmgr_isolation_probe_begin() {
 	_cfmgr_isolation_begin_common "$@"
 }
 
+_cfmgr_isolation_bootstrap_begin() {
+	_isolation_mode=bootstrap
+	_cfmgr_isolation_begin_common "$@"
+}
+
 _cfmgr_isolation_begin_common() {
 	_isolation_resolved=$1
 	_isolation_volume=$2
@@ -622,6 +713,10 @@ _cfmgr_isolation_begin_common() {
 	_isolation_null_ledger=
 	_isolation_opt_ledger=
 	_cfmgr_isolation_volume_fields || return 1
+	if [ "$_isolation_mode" = bootstrap ]; then
+		[ "$_isolation_volume_uuid" = "$_isolation_expected_uuid" ] &&
+			[ "$_isolation_volume_fs_target" = "$_isolation_expected_fs_target" ] || return 1
+	fi
 	_cfmgr_isolation_begin_args "$@"
 }
 
@@ -635,6 +730,8 @@ _cfmgr_isolation_volume_fields() {
 	# The volume ledger was fully verified by storage; use its first eight facts.
 	[ "$#" -eq 10 ] && [ "$1" = volume ] || return 1
 	_isolation_volume_facts="$2$_io_tab$3$_io_tab$4$_io_tab$5$_io_tab$6$_io_tab$7$_io_tab$8$_io_tab$9"
+	_isolation_volume_fs_target=$7
+	_isolation_volume_uuid=${10}
 }
 
 # Installed only in the dedicated storage IO owner. EXIT never guesses mount
@@ -657,7 +754,7 @@ _cfmgr_isolation_begin_args() {
 	_isolation_rm=$(_cfmgr_isolation_tool rm) || return 1
 	_isolation_printf=$(_cfmgr_isolation_tool printf) || return 1
 	_isolation_test=$(_cfmgr_isolation_tool test) || return 1
-	if [ "$_isolation_mode" = probe ]; then
+	if [ "$_isolation_mode" = probe ] || [ "$_isolation_mode" = bootstrap ]; then
 		_isolation_ln=$(_cfmgr_isolation_tool ln) || return 1
 	fi
 	[ ! -e "$_isolation_guard" ] && [ ! -L "$_isolation_guard" ] || return 1

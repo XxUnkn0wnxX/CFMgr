@@ -175,6 +175,23 @@ reproducible builds or hardware compatibility. Profile and expected-volume
 approval, bounded transport/archive handling and operational wiring remain
 separate requirements.
 
+The internal `cfmgr_isolation_bootstrap` entry connects that catalogue route to
+the retained storage owner. Its caller supplies an independently approved UUID
+and filesystem-relative Entware subtree, encoded as the storage ledger's byte
+hex. Both must match the freshly validated ledger before a guard is reserved.
+This prevents a different subtree on the same volume from acquiring approval
+merely because its UUID matches. The owner then admits its private RAM topology,
+constructs `bootstrap-manifest.tsv` inside its new guard and stages against those
+fixed hashes before any bind or probe. Failed construction or staging uses the
+existing checked cleanup path; uncertain topology retains the guard.
+
+This entry accepts no caller manifest or hash. The lower-level supplied-manifest
+probe remains available to already trusted internal callers and explicit fixture
+proofs under its original admission preconditions. Neither API selects a profile
+from firmware/kernel strings, approves a volume from its own current observation,
+or grants a general storage write lease. Saved-authority enrollment and actual
+Entware execution remain separate acceptance work.
+
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its
 exact mounts before deleting staging. Uncertain cleanup retains a guard and
