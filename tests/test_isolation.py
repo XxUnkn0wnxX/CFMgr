@@ -572,6 +572,8 @@ def test_admission_failure_prevents_every_mount_and_removes_only_fresh_guard(
     if change:
         index, fields = change
         native.mounts[index] = replace(native.mounts[index], **fields)
+        if index == 3:
+            native.storage.mounts[0] = native.mounts[index]
     else:
         parent = native.router.path("ram/tmp") if profile == "ram-child" else native.storage.target
         native.mounts.append(Mount("50", point=os.fsencode(parent / "child")))
