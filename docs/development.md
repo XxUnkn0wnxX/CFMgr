@@ -187,7 +187,7 @@ BusyBox build also does not reproduce a router's stripped older build.
 ### Isolated Linux kernel checks
 
 The explicit kernel lane requires a disposable Linux development runner, root,
-util-linux `unshare`, BusyBox, GCC/binutils and glibc development files. Its
+util-linux `unshare`, BusyBox, OpenSSL, GCC/binutils and glibc development files. Its
 temporary source directory must reside on ext2/3/4. Run it separately from pytest:
 
 ```sh
@@ -220,7 +220,14 @@ image read-only with nosuid/nodev and execution allowed. It verifies unchanged
 mount identity, root-run EROFS for create and write, a still-writable outside
 alias, mapped-image busy refusal, and ordinary removal after exact actor release.
 The retained source is mounted separately for a read-and-close sentinel check.
-All five namespace scenarios retain their individual 15-second outer bounds.
+A sixth contained scenario assembles real image staging/hash verification, the
+read-only bind, fixed-probe supervision and ordinary checked cleanup. It uses
+controlled host ELF bytes under the six-row profile layout, with the host loader
+behind the profile alias. Its actor checks closed external descriptors, fixed
+bootstrap links, null, EROFS and absence of proc, shell and mutable offline Opt.
+Success requires the product guard and its mounts to be gone before namespace
+disposal, with the original source mount identity unchanged.
+All six namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
 Merlin acceptance, and namespace disposal after a failed case does not count
 as successful runtime cleanup. Results and timings belong in the plan.

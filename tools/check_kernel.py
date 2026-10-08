@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import re
 import shutil
@@ -63,6 +64,32 @@ def owned_cleanup(work: Path, parent: Path, identity: tuple[int, int]) -> None:
     shutil.rmtree(work)
 
 
+def contained_manifest(source: Path, executable: Path) -> bytes:
+    """Hash only controlled fixture bytes, within the real closure's admission bounds."""
+    entries = [
+        (f"lib/{name}", source / "lib" / name)
+        for name in ("ld-2.27.so", "libc-2.27.so", "libpthread-2.27.so", "librt-2.27.so")
+    ]
+    entries.extend((f"libexec/{name}", executable) for name in ("timeout-coreutils", "gzip-gnu"))
+    rows = []
+    total = 0
+    for relative, path in entries:
+        size = path.stat().st_size
+        if not 0 < size <= 4194304:
+            raise ValueError(f"contained fixture member exceeds closure bounds: {relative}")
+        total += size
+        if total > 8388608:
+            raise ValueError("contained fixture total exceeds closure bounds")
+        data = path.read_bytes()
+        if len(data) != size:
+            raise ValueError("controlled fixture changed while constructing manifest")
+        rows.append(f"{relative}\t{size}\t{hashlib.sha256(data).hexdigest()}\n")
+    manifest = "".join(rows).encode("ascii")
+    if len(manifest) > 4096:
+        raise ValueError("contained fixture manifest exceeds closure bounds")
+    return manifest
+
+
 def prove(args: argparse.Namespace) -> None:
     if sys.platform != "linux":
         raise ValueError("kernel proof requires Linux; host doubles are separate evidence")
@@ -74,7 +101,9 @@ def prove(args: argparse.Namespace) -> None:
     busybox = busybox.resolve()
     if "BusyBox" not in command([str(busybox), "--help"]):
         raise ValueError("selected executable is not BusyBox")
-    unshare, compiler, readelf, filesystem = map(native, ("unshare", "gcc", "readelf", "stat"))
+    unshare, compiler, readelf, filesystem, openssl = map(
+        native, ("unshare", "gcc", "readelf", "stat", "openssl")
+    )
     if "util-linux" not in command([unshare, "--version"]):
         raise ValueError("kernel proof requires util-linux unshare")
     applets = set(command([str(busybox), "--list"]).splitlines())
@@ -97,6 +126,10 @@ def prove(args: argparse.Namespace) -> None:
         "grep",
         "cp",
         "hexdump",
+        "dd",
+        "env",
+        "ln",
+        "chmod",
     }
     if required - applets:
         raise ValueError(f"missing BusyBox applets: {', '.join(sorted(required - applets))}")
@@ -128,8 +161,16 @@ def prove(args: argparse.Namespace) -> None:
             "readlink",
             "mount",
             "umount",
+            "dd",
+            "env",
+            "ln",
+            "chmod",
+            "sleep",
+            "chroot",
+            "hexdump",
         ):
             (tools / applet).symlink_to(busybox)
+        (tools / "openssl").symlink_to(openssl)
         common = [compiler, "-O2", "-Wall", "-Wextra", "-Werror", str(FIXTURES / "probe.c")]
         command([*common, "-static", "-o", str(source / "probe")])
         # Discover the compiler's actual glibc closure before selecting an Opt
@@ -161,8 +202,30 @@ def prove(args: argparse.Namespace) -> None:
         needed = re.findall(r"\(NEEDED\).*\[([^\]]+)\]", command([readelf, "-d", str(dynamic)]))
         if needed != ["libc.so.6"]:
             raise ValueError(f"unsupported fixture library closure: {needed}")
+        # Fixed profile names are aliases for host-native bytes, not evidence of
+        # Entware provenance, glibc2.27 or AArch64/ARM ABI compatibility.
+        (source / "lib").mkdir(mode=0o700)
+        shutil.copyfile(loader, source / "lib/ld-2.27.so")
+        shutil.copyfile(libc, source / "lib/libc-2.27.so")
+        for name in ("libpthread-2.27.so", "librt-2.27.so"):
+            (source / "lib" / name).write_bytes(b"controlled unused library fixture\n")
+        contained = work / "contained"
+        command(
+            [
+                *common,
+                "-Wl,--dynamic-linker=/opt/lib/ld-linux-aarch64.so.1",
+                "-Wl,-rpath,/opt/lib",
+                "-Wl,--disable-new-dtags",
+                "-o",
+                str(contained),
+            ]
+        )
+        needed = re.findall(r"\(NEEDED\).*\[([^\]]+)\]", command([readelf, "-d", str(contained)]))
+        if needed != ["libc.so.6"]:
+            raise ValueError(f"unsupported contained fixture library closure: {needed}")
+        (work / "contained-manifest").write_bytes(contained_manifest(source, contained))
         lane_start = time.monotonic()
-        for scenario in ("success", "busy", "signal", "primitive", "image"):
+        for scenario in ("success", "busy", "signal", "primitive", "image", "contained"):
             print(f"Kernel proof: {scenario}", flush=True)
             started = time.monotonic()
             cleanup = False
@@ -201,7 +264,10 @@ def prove(args: argparse.Namespace) -> None:
             # Parent death/kill waiting alone cannot prove synchronous namespace
             # teardown. Never recursively delete a possibly still mounted tree.
             print(f"Retaining fixture tree after namespace failure: {work}", file=sys.stderr)
-    print("Linux kernel fixtures passed; storage UUID/block and Merlin acceptance remain unproved.")
+    print(
+        "Linux kernel fixtures passed; host profile aliases do not prove Entware/ARM ABI, "
+        "storage UUID/block or Merlin acceptance."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -41,11 +41,12 @@ int main(int argc, char **argv) {
         if (close(held) || fclose(control)) fail("holder close");
         return 0;
     }
-    if (argc != 2 || (strcmp(argv[1], "check") && strcmp(argv[1], "wait") &&
+    if (argc != 2 || (strcmp(argv[1], "--version") && strcmp(argv[1], "check") && strcmp(argv[1], "wait") &&
                      strcmp(argv[1], "image-wait"))) return 2;
+    int contained = !strcmp(argv[1], "--version");
     char cwd[PATH_MAX];
     if (!getcwd(cwd, sizeof(cwd)) || strcmp(cwd, "/")) fail("chroot cwd");
-    for (int fd = 8; fd <= 9; fd++) {
+    for (int fd = contained ? 3 : 8; fd <= 9; fd++) {
         errno = 0;
         if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) fail("external descriptor retained");
     }
@@ -59,6 +60,29 @@ int main(int argc, char **argv) {
     char byte;
     if (null < 0 || write(null, "x", 1) != 1 || read(null, &byte, 1) != 0 || close(null)) {
         fail("native null");
+    }
+    if (contained) {
+        if (geteuid() != 0) fail("contained actor must be root");
+        errno = 0;
+        if (!lstat("/offline/opt", &metadata) || errno != ENOENT) fail("mutable offline source exposed");
+        const char *links[] = {"/bootstrap/timeout-coreutils", "/bootstrap/gzip-gnu"};
+        const char *targets[] = {"/opt/libexec/timeout-coreutils", "/opt/libexec/gzip-gnu"};
+        for (size_t i = 0; i < sizeof(links) / sizeof(links[0]); i++) {
+            char target[PATH_MAX];
+            ssize_t length = readlink(links[i], target, sizeof(target));
+            if (length != (ssize_t)strlen(targets[i]) ||
+                memcmp(target, targets[i], strlen(targets[i]))) fail("fixed bootstrap link");
+        }
+        const char *writes[] = {"/opt/new-file", "/opt/libexec/timeout-coreutils", "/opt/lib/libc-2.27.so"};
+        for (size_t i = 0; i < sizeof(writes) / sizeof(writes[0]); i++) {
+            errno = 0;
+            int writable = open(writes[i], O_WRONLY | (i == 0 ? O_CREAT | O_EXCL : 0), 0600);
+            if (writable != -1 || errno != EROFS) fail("contained write must fail EROFS");
+        }
+        const char message[] = "controlled host fixture version 1\n";
+        if (write(STDOUT_FILENO, message, sizeof(message) - 1) != (ssize_t)(sizeof(message) - 1)) {
+            fail("contained version output");
+        }
     }
     if (!strcmp(argv[1], "image-wait")) {
         if (geteuid() != 0) fail("image actor must be root");

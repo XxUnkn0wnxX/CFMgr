@@ -68,6 +68,10 @@ ram=$work/ram source=$work/source tools=$work/tools
 # shellcheck source=/dev/null
 . "$repo/modules/storage.sh"
 # shellcheck source=/dev/null
+. "$repo/modules/closure.sh"
+# shellcheck source=/dev/null
+. "$repo/modules/supervision.sh"
+# shellcheck source=/dev/null
 . "$repo/modules/isolation.sh"
 
 wait_ready() {
@@ -117,6 +121,24 @@ if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 	_isolation_parser=$repo/modules/mountinfo.awk
 	_isolation_input=/proc/self/mountinfo
 	guard=$ram/cfmgr-isolation
+	if [ "$scenario" = contained ]; then
+		# Already bounded and hashed controlled bytes, transferred exactly into
+		# private RAM before product entry. Product does the real staging/hash.
+		"$bb" cp "$work/contained-manifest" "$ram/contained-manifest"
+		_isolation_target=$source
+		_isolation_probe_profile=aarch64-k3.10
+		_isolation_probe_manifest=$ram/contained-manifest
+		_isolation_probe_timeout=$work/contained
+		_isolation_probe_gzip=$work/contained
+		_isolation_probe_mode=timeout
+		# shellcheck disable=SC2317,SC2329
+		fixture_source_record() {
+			_cfmgr_io_mount_capture "$source" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+			[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
+			cfmgr_io_stage_report "$_mount_body$_io_lf"
+		}
+		source_identity=$(cfmgr_io_test "$ram" "$tools" report fixture_source_record) || fail 'contained source identity'
+	fi
 	# Callbacks below are invoked indirectly by the isolation owner.
 	# shellcheck disable=SC2317,SC2329
 	fixture_enter() {
@@ -131,7 +153,15 @@ if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 		volume="${volume}end$_io_tab${#volume}$_io_lf"
 		# Read-only retained inputs; neither redirection is an output target.
 		# shellcheck disable=SC2094
-		_cfmgr_isolation_begin "$source" "$volume" fixture_callback 9<"$source" 8<"$source/sentinel"
+		if [ "$scenario" = contained ]; then
+			# These are all known outside inputs: the fixed supervisor must close
+			# FD3..9 before launching the contained ELF. No native ELF callback.
+			_cfmgr_isolation_probe_begin "$source" "$volume" _cfmgr_isolation_probe_run \
+				3<"$source/sentinel" 4<"$source/sentinel" 5<"$source/sentinel" \
+				6<"$source/sentinel" 7<"$source/sentinel" 8<"$source/sentinel" 9<"$source"
+		else
+			_cfmgr_isolation_begin "$source" "$volume" fixture_callback 9<"$source" 8<"$source/sentinel"
+		fi
 	}
 	# shellcheck disable=SC2317,SC2329
 	fixture_callback() {
@@ -161,12 +191,24 @@ if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 	status=0
 	cfmgr_io_test "$ram" "$tools" workspace fixture_enter || status=$?
 	case $scenario in
-	success)
-		if [ "$status" -ne 0 ] || [ -e "$guard" ]; then
+	success | contained)
+		if [ "$status" -ne 0 ] || [ -e "$guard" ] || [ -L "$guard" ]; then
 			fail 'product success/guard cleanup'
 		fi
 		# Namespace discard must not conceal a mount left by product cleanup.
 		! "$bb" grep -F "$guard/" /proc/self/mountinfo || fail 'success left a bind'
+		if [ "$scenario" = contained ]; then
+			[ "$(cfmgr_io_test "$ram" "$tools" report fixture_source_record)" = "$source_identity" ] || fail 'contained source identity changed'
+			# The real parser checks all descendants, even escaped mount paths.
+			# Namespace discard cannot substitute for product ordinary cleanup.
+			# shellcheck disable=SC2317,SC2329
+			fixture_contained_clean() {
+				_cfmgr_io_mount_capture "$ram" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+				[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ]
+			}
+			cfmgr_io_test "$ram" "$tools" workspace fixture_contained_clean || fail 'contained guard mounts retained'
+			printf 'contained host ELF staging/hash/supervisor/cleanup passed (profile aliases only)\n'
+		fi
 		;;
 	busy | signal)
 		if [ "$scenario" = busy ]; then
