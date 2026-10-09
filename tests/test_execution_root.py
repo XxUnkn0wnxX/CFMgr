@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from tests.harness import RouterHarness, ShellResult
+from tests.isolation_helpers import FOCUSED_ISOLATION_QUERY
 from tests.test_mountinfo import Mount, snapshot
 from tests.test_storage import IO, STORAGE
 
@@ -303,6 +304,7 @@ class ExecutionRootFixture:
         malformed: bool = False,
         callback_exits: bool = False,
         fdinfo_mount_id: str = ROOT_MOUNT_ID,
+        focused_query: bool = False,
     ) -> ShellResult:
         self.prepare()
         self.fdinfo_input.write_text(
@@ -315,6 +317,7 @@ class ExecutionRootFixture:
         prefix = (
             f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
+            + (FOCUSED_ISOLATION_QUERY if focused_query else "")
             + CALLBACK
             + 'exec 7<"$CFMGR_TEST_ROOT/work/fd-seven" '
             + '8<"$CFMGR_TEST_ROOT/work/fd-eight" 9<"$CFMGR_TEST_ROOT/work/fd-nine"\n'
@@ -392,7 +395,7 @@ def test_execution_root_uncertainty_retains_guard_at_cleanup_boundary(
     router: RouterHarness, fault: str, complete: bool
 ) -> None:
     fixture = ExecutionRootFixture(router, fault)
-    result = fixture.run(callback_status=7)
+    result = fixture.run(callback_status=7, focused_query=True)
     assert result.returncode == 0, result
     assert result.stderr == ""
     assert result.stdout.splitlines()[0] == "RESULT\t129"
@@ -603,11 +606,61 @@ def test_root_image_mount_flags_are_checked_as_tokens(
     assert result.stdout == f"RESULT\t{expected}\n"
 
 
+@pytest.mark.unit
+@pytest.mark.matrix("V74", evidence="host")
+@pytest.mark.parametrize(
+    ("outcome", "expected_status", "active_after"),
+    [
+        ("status0", 0, False),
+        ("status1", 129, True),
+        ("status143", 129, True),
+        ("interrupted-success", 129, True),
+    ],
+)
+def test_root_native_call_clears_active_only_after_uninterrupted_success(
+    router: RouterHarness, outcome: str, expected_status: int, active_after: bool
+) -> None:
+    ramroot = router.path("ram/tmp")
+    guard = ramroot / "native-call-guard"
+    guard.mkdir(mode=0o700)
+    work = router.path("work/native-call")
+    work.mkdir()
+    script = (
+        f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
+        f". {shlex.quote(str(SOURCE))}\n"
+        "_isolation_guard=$1; _isolation_printf=/usr/bin/printf; _isolation_rm=/bin/rm\n"
+        "_io_wc=/usr/bin/wc; _io_lf='\n'; _isolation_interrupted=0\n"
+        "native_action() {\n"
+        '  IFS= read -r active <"$_isolation_guard/active" || return 90\n'
+        '  printf \'%s\\n\' "$active" >"$2/native-active"\n'
+        "  case $1 in\n"
+        "    status0) return 0 ;;\n"
+        "    status1) return 1 ;;\n"
+        "    status143) return 143 ;;\n"
+        "    interrupted-success) _isolation_interrupted=1; return 0 ;;\n"
+        "  esac\n"
+        "}\n"
+        'if _cfmgr_isolation_root_call native native_action "$3" "$2"; '
+        "then status=0; else status=$?; fi\n"
+        'if [ -e "$_isolation_guard/active" ]; then active=1; else active=0; fi\n'
+        'printf "RESULT\\t%s\\t%s\\n" "$status" "$active"\n'
+    )
+    result = router.run(script, [str(guard), str(work), outcome], timeout=3)
+    assert result.returncode == 0, result
+    active_value = int(active_after)
+    assert result.stdout == f"RESULT\t{expected_status}\t{active_value}\n"
+    assert (work / "native-active").read_text() == "native\n"
+    if active_after:
+        assert (guard / "active").read_text() == "native\n"
+    else:
+        assert not (guard / "active").exists()
+
+
 @pytest.mark.integration
 @pytest.mark.matrix("V74", evidence="host")
 def test_execution_root_early_callback_exit_zero_is_uncertain(router: RouterHarness) -> None:
     fixture = ExecutionRootFixture(router)
-    result = fixture.run(callback_exits=True)
+    result = fixture.run(callback_exits=True, focused_query=True)
     assert result.returncode == 0, result
     assert result.stdout.splitlines()[0] == "RESULT\t129"
     assert router.path("work/callback-entered").is_file()
@@ -621,7 +674,7 @@ def test_execution_root_early_callback_exit_zero_is_uncertain(router: RouterHarn
 @pytest.mark.matrix("V74", evidence="host")
 def test_execution_root_term_signal_keeps_mounted_root_uncertain(router: RouterHarness) -> None:
     fixture = ExecutionRootFixture(router)
-    result = fixture.run(callback_args=("signal-term",))
+    result = fixture.run(callback_args=("signal-term",), focused_query=True)
     assert result.returncode == 0, result
     assert result.stdout.splitlines()[0] == "RESULT\t129"
     assert router.path("work/callback-entered").is_file()
@@ -639,7 +692,7 @@ def test_execution_root_term_signal_keeps_mounted_root_uncertain(router: RouterH
 def test_execution_root_rejects_fdinfo_mount_id_mismatch_before_callback(
     execution_root: ExecutionRootFixture,
 ) -> None:
-    result = execution_root.run(fdinfo_mount_id="901")
+    result = execution_root.run(fdinfo_mount_id="901", focused_query=True)
     assert result.returncode == 0, result
     assert result.stderr == ""
     assert result.stdout.startswith("RESULT\t129\n")
@@ -654,7 +707,7 @@ def test_execution_root_rejects_fdinfo_mount_id_mismatch_before_callback(
 def test_execution_root_callback_137_is_uncertain_and_retains_mount(
     execution_root: ExecutionRootFixture,
 ) -> None:
-    result = execution_root.run(callback_status=137)
+    result = execution_root.run(callback_status=137, focused_query=True)
     assert result.returncode == 0, result
     assert result.stderr == ""
     assert result.stdout.startswith("RESULT\t129\n")

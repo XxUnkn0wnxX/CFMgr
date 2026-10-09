@@ -163,11 +163,13 @@ polling and termination budgets are integration costs, not parser-test targets.
 
 The separate readonly-root entry in `modules/isolation.sh` shares checked IO and
 mount parsing without broadening the earlier callbacks. Its host consumers use
-inert mount tools and actual inherited file descriptors. Keep ordinary callback
-failure separate from incomplete root teardown or failed IO cleanup: only the
-fully completed transaction may return that callback status. The Linux consumer
-provides actual mount/readonly/descriptor evidence; neither layer establishes an
-operational Entware worker.
+inert mount tools and actual inherited file descriptors. Complete success cases
+retain every bounded capture; focused fault cases share the established query
+fixture while preserving real IO ownership, mount parsing and descriptor checks.
+Keep ordinary callback failure separate from incomplete root teardown or failed
+IO cleanup: only the fully completed transaction may return that callback status.
+The Linux consumer provides actual mount/readonly/descriptor evidence; neither
+layer establishes an operational Entware worker.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
