@@ -78,7 +78,9 @@ if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8 && IFS= 
 fi
 [ "$fd6:$fd7:$fd8:$fd9" = six:seven:eight:nine ] || fail 'restored caller descriptors'
 exec 6<&- 7<&- 8<&- 9<&-
-[ -d "$guard/execution/complete" ] && [ ! -L "$guard/execution/complete" ] || fail 'retained completion'
+if [ -d "$guard/execution/complete" ] && [ ! -L "$guard/execution/complete" ]; then :; else
+	fail 'retained completion'
+fi
 for fallback in opt tmp; do
 	[ ! -e "$guard/execution/image/$fallback/late" ] || fail 'backing fallback changed'
 done
