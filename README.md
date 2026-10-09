@@ -29,9 +29,10 @@ and validation; it does not replace keeping the docs current during the build.
 CFMgr is in development. Implemented foundations include parsing, retained-storage
 checks, guarded process deadlines, internal execution-root lifecycles and bounded
 native configuration staging and fixed native-device views, plus a partial
-native health report. The fixed-device addition passes host validation and
-awaits Linux CI. An internal helper attaches already-admitted Entware storage to its
-managed workspace. Routine Entware upgrades remain user-managed; the dependency
+native health report. The fixed-device addition passes full local and Linux CI
+validation; router acceptance remains pending. An internal helper attaches
+already-admitted Entware storage to its managed workspace. Routine Entware
+upgrades remain user-managed; the dependency
 backend installs only missing or unusable requirements, while operational
 worker and feature integration remain incomplete. There is no installable
 manager yet.

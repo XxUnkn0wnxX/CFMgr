@@ -299,10 +299,15 @@ and one host lifecycle case, passing in 35.04 seconds. The actual BusyBox
 representative and existing ninth kernel scenario are upgraded in place. The kernel wrapper
 opens FD5 on each node so unmount is witnessed busy, closes it to permit
 cleanup, then proves new opens fail through the `nodev` fallback. Host busy-fault
-tests separately prove runtime guard retention. The full Mac suite passes
-1,593 tests with 29 explicit platform skips in 487.36 seconds. Linux/BusyBox and
-kernel validation remain pending; neither synthetic metadata nor host fixtures
-prove a continuous inode lease or router acceptance.
+tests separately prove runtime guard retention. The full Mac suite passes 1,593
+tests with 29 explicit platform skips in 487.36 seconds. The
+[38% Linux/BusyBox Actions run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37939185984)
+passes 1,622 tests with no skips in 138.30 seconds, six stripped-ash checks in
+7.42 seconds and all nine kernel scenarios. The upgraded native-root kernel
+scenario took 7.78 seconds; the namespace check took 13.52 seconds (15.07
+seconds including the full kernel check). The Linux job completed in 3 minutes
+39 seconds. Neither synthetic metadata nor these tests prove a continuous inode
+lease or router acceptance.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
@@ -460,8 +465,8 @@ their read-only child mounts, then hold a real BusyBox FD5 to witness a busy
 unmount. Closing it allows checked teardown; the nodev base fallback then
 refuses new opens. The earlier native data/FD6 checks, readonly-write refusal,
 executable tmpfs, 64-KiB/eight-inode limits, private empty home and unchanged
-observer `HOME` remain covered. The quota/Opt-only version passed the 37% CI
-gate; the fixed-device upgrade passes the host suite and awaits Linux CI. Host
+observer `HOME` remain covered. The quota/Opt-only version was accepted at 37%;
+the fixed-device upgrade now passes full local and Linux CI validation. Host
 mirrors do not prove mount-enforced behavior or descriptor semantics.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.

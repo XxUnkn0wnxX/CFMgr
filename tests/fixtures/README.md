@@ -35,9 +35,10 @@ holds a real BusyBox FD5 to witness that unmount is busy, closes it to permit
 cleanup, then checks that the `nodev` fallback refuses new opens. This does not
 claim that an existing descriptor is revoked or that inode checks provide a
 continuous lease; the source image must remain frozen. The Opt-only version
-passed the earlier 37% CI gate; validation of the fixed-device upgrade is
-pending. Host mirrors alone do not prove mount-enforced permissions, quota
-enforcement or descriptor semantics.
+passed the earlier 37% CI gate. The fixed-device upgrade passed all nine kernel
+scenarios in the [38% Linux/BusyBox Actions run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37939185984).
+Host mirrors alone do not prove mount-enforced permissions, quota enforcement
+or descriptor semantics.
 The worker-lifetime fixture separately proves descriptor/root references and
 writable-child revocation with controlled descendants. Native BusyBox
 unmount capability selection is exercised through the runtime implementation;
@@ -53,9 +54,9 @@ or exec behavior. `tests/test_entware_root.py` covers retained-Opt success,
 busy-Opt cleanup refusal and malformed API rejection;
 `tests/test_entware_root_admission.py` covers the storage-admission boundary.
 `tests/test_native_devices.py` covers fixed node metadata, inode rechecks and
-host busy-unmount guard retention. The upgraded BusyBox and kernel consumers
-provide separate integration evidence; their current results are pending CI.
-Host fixtures do not prove mount-enforced readonly behavior.
+host busy-unmount guard retention. Its upgraded actual BusyBox representative
+and the ninth namespace scenario provide separate integration evidence in the
+38% CI run. Host fixtures do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete
 capture evidence. Other host fault tests may share the focused query fixture in

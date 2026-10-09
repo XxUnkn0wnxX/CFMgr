@@ -127,10 +127,13 @@ unmount, but does not revoke already-open descriptors; before/after inode
 checks are not a continuous FD lease, so the private source image must remain
 frozen. The same ninth kernel scenario now witnesses a real BusyBox FD5 making
 unmount busy, closes it to allow cleanup, and checks new-open refusal. Host busy
-faults separately cover runtime guard retention. The full Mac suite passes
-1,593 tests with 29 explicit platform skips in 487.36 seconds. The updated
-BusyBox and kernel cases await Linux CI; do not infer their result from the
-earlier 37% gate.
+faults separately cover runtime guard retention. The 38% code snapshot passes
+the full Mac suite (1,593 tests, 29 explicit platform skips, 487.36 seconds)
+and [Linux/BusyBox Actions](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37939185984)
+(1,622 tests, no skips, 138.30 seconds), six stripped-ash checks and all nine
+kernel scenarios. The full evidence record is in [PLAN.md](../PLAN.md). The
+fixed-device update is covered by this result; the earlier 37% CI result remains
+historical.
 
 Neither host nor Linux namespace evidence establishes router acceptance. The
 views and data still lack complete native configuration, loader/helper/ELF,
