@@ -16,7 +16,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Core foundations | Complete | Parsing, storage checks and managed workspaces |
 | Worker safety foundations | Complete | Process deadlines and read-only workspaces |
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
-| Dependency setup | In progress | Repair/reinstall backend; worker integration next |
+| Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring next |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -31,16 +31,18 @@ checks, guarded process deadlines, internal workspaces and a partial native
 health report. Fixed probes cover one native shell launch and the installed
 Entware `opkg --version` response. The source-only
 `cfmgr_native_dependencies` handoff can call the bundled repair or selected
-reinstall backend inside an already admitted native root; it does not create an
-operational worker, menu or installer. The focused O10a consumers passed 72
-tests with three local BusyBox skips. The 44% checkpoint now passes the full
-local and Linux/BusyBox checks, including all ten kernel scenarios. See
-[PLAN.md](PLAN.md) for exact results and the current handoff. These synthetic
-host/Linux checks do not establish installed-opkg provenance or Merlin
-acceptance. Live router acceptance and operational feature integration remain
-pending, and there is no installable
-manager yet. Routine Entware upgrades remain user-managed; normal repair
-installs only missing or unusable requirements.
+reinstall backend inside an already admitted native root; it is not wired to an
+operational CLI, menu or installer. The accepted 44% checkpoint passes the
+full local and Linux/BusyBox checks, including all ten then-current kernel
+scenarios. A new source-only serialized dependency worker and an eleventh kernel
+fixture are in the 45% candidate; full and Linux validation for that candidate
+are pending. The worker is not wired to a CLI, scheduler, installer or readiness
+flow. See [PLAN.md](PLAN.md) for exact results and current progress. These
+synthetic host/Linux checks do not establish installed-opkg provenance or
+Merlin acceptance. Live router acceptance and operational feature integration
+remain pending, and there is no installable manager yet. Routine Entware
+upgrades remain user-managed; normal repair installs only missing or unusable
+requirements.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
 DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)

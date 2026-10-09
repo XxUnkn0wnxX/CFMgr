@@ -217,6 +217,30 @@ This is a developer-test dependency, not a router requirement. Synthetic
 stand-ins do not run Entware opkg or prove package provenance, firmware ABI or
 router acceptance.
 
+### Source-only serialized dependency worker
+
+The 45% candidate adds `modules/helpers/dependencies.sh` with a finite
+fourteen-argument internal API. It admits only the actual original shell's
+dedicated process group, detaches standard streams and application descriptors,
+then takes the existing stable CFMgr dependency lock before its armed deadline.
+An exact persistent active-owner marker prevents another CFMgr attempt after
+uncertain owner death even if that lock is free. The worker composes the existing
+retained-storage, native-config-root and dependency-backend paths, accepts only
+matching exact backend evidence plus checked root/storage cleanup and watchdog
+acknowledgement/reap, then releases only its own marker while still holding the
+lock. The existing opkg scratch and package-configuration policy is unchanged.
+The IO resolver adds a finite `rmdir` tool lookup; its capture allowlist is
+unchanged. See the [architecture contract](architecture.md#source-only-serialized-dependency-worker)
+for argument, status and recovery details.
+
+The candidate also adds an eleventh genuine Linux fixture composition for the
+lock, deadline, retained-Opt/root and synthetic normal-opkg path. Its assertions
+cover the watchdog's own descriptors (including FD7/high aliases),
+completion/reap before owned-marker release, and the stable lock. This new
+scenario has not yet run in Linux; the 45% candidate's full local and exact
+Linux/BusyBox gates remain pending. The ten-scenario 44% checkpoint above
+remains the accepted validation.
+
 The worker fixture set distinguishes cheap process-record checks from the
 Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group
 coverage in the focused worker tests; architecture documents the runtime

@@ -41,16 +41,17 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
-| `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
+| `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes the finite `rmdir` prerequisite | Internal callbacks; no operational package execution or CLI integration; capture allowlist is unchanged |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; an extended API adds fixed NSS, wget, OpenSSL config and CA files | Data copies only; no syntax, trust, readiness, execution or broader closure approval; legacy root entries remain two-file |
 | `modules/lib/native_config_root.sh` | Select the fixed extended-config composition over the retained-Opt/device root lifecycle | Source-only native observer API; six files staged before bind; no arbitrary payload or package-install wiring |
 | `modules/lib/native_exec.sh` | Probe one fixed native shell/BusyBox command or the installed `opkg --version` inside an already checked native-config root | Explicit synchronous callback exceptions; fixed commands only; caller owns the deadline and root authority; no general executable or DNS/TLS admission |
 | `modules/helpers/native_probe.sh` | Compose the fixed native shell probe with the existing deadline, retained-storage and checked native-config-root owners | Source-only ten-argument internal API; no CLI, cron installation, operational worker, package installation or network action |
+| `modules/helpers/dependencies.sh` | Compose original-shell process-group admission, stable CFMgr locking, aggregate deadline, retained storage, native-config root, fixed dependency backend and checked release | Source-only fourteen-argument API; no CLI, cron installation, readiness/retry flow or router acceptance |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
-| `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal native callback only; operational scheduling and package/feature launch remain separate |
+| `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal compositions only; operational scheduling and package/feature launch remain separate |
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
 The parsing modules are tested foundations, not yet a complete operational call
@@ -475,6 +476,60 @@ checks the bounded handoff and descriptor boundary while using synthetic
 storage metadata and package executables. This does not establish real opkg
 provenance, router execution or firmware ABI; see [PLAN.md](../PLAN.md) for
 exact validation results.
+
+### Source-only serialized dependency worker
+
+`modules/helpers/dependencies.sh` adds the internal API
+`cfmgr_worker_dependencies RAMROOT GUARD TOTAL GRACE TMP_KIB TMP_INODES
+MOUNT_PARSER STORAGE_PARSER EXPECTED_UUID EXPECTED_FS_TARGET_HEX
+BOOTSTRAP_SOURCE ACTION SCOPE LOCK_PROVIDER`. Its fourteen arguments and
+selectors are finite; trusted code, storage authority and a dedicated cron
+process group remain caller prerequisites. `GUARD` is a fresh private direct
+child of trusted stable `RAMROOT`, and no application descriptor above FD9 may
+be inherited. Admission checks the actual original shell's PID and
+process group before entering the isolated owner. That owner sanitizes its
+environment, permanently detaches stdin/stdout/stderr, closes application
+descriptors 3–9, then takes the existing `cfmgr_dependency_lock_with` lock on
+stable `RAMROOT` FD7. The lock remains held through resource cleanup and marker
+release.
+
+Only after the aggregate deadline is armed does the worker reserve the private
+`RAMROOT/dependencies.active` directory and write
+`CFMGR_DEPENDENCIES_OWNER_V1` plus LF and the exact `GUARD` path plus LF to its
+regular owner file. This marker persists across owner death and blocks a later
+CFMgr attempt even if the lock has become available. Existing files, links or
+partial/foreign marker directories cause refusal; the worker never infers stale
+ownership from a PID, deletes another marker or replaces the stable lock. This
+coordinates CFMgr workers only and leaves normal opkg feeds, dependency
+resolution, locking, configured scratch selection and configure-unpacked
+behavior unchanged.
+
+The fixed path runs retained-storage admission, the native-config-root
+lifecycle and the existing dependency backend. A completed backend result must
+have matching direct status 0/1, exact
+`CFMGR_WORKER_DEPENDENCIES_V1 STATUS` callback bytes, the matching helper
+status ledger, and an empty `execution/dependencies/complete` directory. The
+worker then requires exact-zero deadline, root and storage completion evidence,
+including execution completion, `root-returned`, `storage-returned`,
+done/acknowledgement and exact watchdog reap. While FD7 is still held, it
+validates that the active directory contains only its exact owner record,
+removes that record and uses the resolved `rmdir` to release the directory.
+That `rmdir` is the release point; no filesystem read follows it. The IO
+resolver adds only this finite `rmdir` prerequisite and leaves its capture
+allowlist unchanged.
+
+Completed backend outcomes map to public 0/1; invalid API maps to 2, safe
+pre-effect/native-lock refusal maps to 1, and a stale marker or uncertainty
+before successful release maps to 129 with available recovery evidence retained.
+Interruption after successful `rmdir` can lose result delivery with the marker
+already absent; at that release point, resources are complete and no later launch
+remains. There is no PID-based cleanup, rollback, arbitrary descendant-reaping
+guarantee, readiness or retry orchestration, scheduler/CLI wiring, installer or
+router operation.
+The eleventh Linux fixture is designed to exercise the full composition with
+synthetic package executables and storage metadata, but has not yet run in
+Linux. The 45% candidate awaits its full local and exact Linux/BusyBox gate;
+the accepted 44% results above remain the latest validated checkpoint.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

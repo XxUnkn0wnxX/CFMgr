@@ -49,7 +49,7 @@ cfmgr_io_test() {
 }
 
 _cfmgr_io_find() (
-	case $1 in awk | cat | wc | printf | test | '[' | mkdir | rm | readlink | ls | hexdump) ;; *) return 2 ;; esac
+	case $1 in awk | cat | wc | printf | test | '[' | mkdir | rmdir | rm | readlink | ls | hexdump) ;; *) return 2 ;; esac
 	if [ -n "$_io_tools" ]; then
 		[ -x "$_io_tools/$1" ] && [ ! -d "$_io_tools/$1" ] || return 1
 		printf '%s\n' "$_io_tools/$1"

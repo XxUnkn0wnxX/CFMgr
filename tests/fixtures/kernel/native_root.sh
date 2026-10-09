@@ -21,10 +21,7 @@ fail() {
 . "$repo/tests/fixtures/kernel/native_setup.sh"
 native_fixture_prepare native-root
 # Trusted static stand-in only in this scenario; no installed opkg is executed.
-"$bb" mkdir -m 700 "$opt_source/bin"
-"$bb" cp "$work/opkg-probe" "$opt_source/bin/opkg"
-"$bb" ln -s opkg "$opt_source/bin/timeout"
-"$bb" ln -s opkg "$opt_source/bin/sha256sum"
+native_fixture_opkg
 opkg_version='80503d94e356476250adaf1f669ee955ec26de76 (2025-11-05)'
 
 observe_native_data() {
@@ -177,39 +174,7 @@ printf 'eight\n' >"$guard/fd8"
 # file; only its block metadata observation is synthetic. This does not prove
 # an ext filesystem, real UUID approval or real block-device acquisition.
 exec 3<"$guard/fd3" 4<"$guard/fd4" 5<"$guard/fd5" 6<"$guard/fd6" 7<"$guard/fd7" 8<"$guard/fd8" 9<"$opt_source"
-fixture_volume() {
-	_cfmgr_io_mount_capture "$2" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
-	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
-	fixture_saved_ifs=$IFS
-	IFS=$_io_tab
-	# shellcheck disable=SC2086
-	set -- $_mount_body
-	IFS=$fixture_saved_ifs
-	fixture_body="volume$_io_tab$2$_io_tab$4$_io_tab$7$_io_tab$5$_io_tab$6$_io_tab${11}$_io_tab$9$_io_tab${10}$_io_tab"'11111111-1111-1111-1111-111111111111'
-	cfmgr_io_stage_report "$fixture_body${_io_lf}end$_io_tab$((${#fixture_body} + 1))$_io_lf"
-}
-volume=$(cfmgr_io_test "$ram" "$tools" report fixture_volume "$opt_source" && "$bb" printf '.') || fail 'Opt source volume'
-volume=${volume%.}
-volume_body=${volume%%'
-'*}
-saved_ifs=$IFS
-IFS='	'
-# shellcheck disable=SC2086
-set -- $volume_body
-IFS=$saved_ifs
-fixture_device=$3
-# This exact, bounded ls double reports the controlled source major/minor.
-# The runtime still parses it through the real blockdev parser and checks FD9.
-"$bb" cat >"$tools/ls" <<'BLOCK_LS'
-#!/bin/sh
-if [ "$#" -eq 2 ] && [ "$1" = -dni ]; then
-	case $2 in null | urandom) exec "$CFMGR_KERNEL_BUSYBOX" ls "$@" ;; esac
-fi
-if [ "$#" -ne 2 ] || [ "$1" != -dnL ] || [ "$2" != /proc/self/fd/8 ]; then exit 2; fi
-BLOCK_LS
-"$bb" printf 'exec "%s" "brw------- 1 0 0 %s, %s Jan 1 00:00 /proc/self/fd/8\\n"\n' \
-	"$tools/printf" "${fixture_device%%:*}" "${fixture_device#*:}" >>"$tools/ls"
-"$bb" chmod 700 "$tools/ls"
+native_fixture_storage_metadata || fail 'Opt source volume'
 # Replace the fixture symlink itself, never write through it into BusyBox.
 # This wrapper delegates every real unmount and witnesses the live RO fallback
 # before permitting tmp removal. All inputs are fixed by this namespace fixture.

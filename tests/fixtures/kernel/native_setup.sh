@@ -12,6 +12,9 @@ native_fixture_context() {
 	native-probe)
 		tools=$work/native-probe-tools native_source=$work/probe-native-source opt_source=$work/probe-opt-source
 		;;
+	native-dependencies)
+		tools=$work/native-dependencies-tools native_source=$work/dependencies-native-source opt_source=$work/dependencies-opt-source
+		;;
 	*) return 2 ;;
 	esac
 }
@@ -74,4 +77,49 @@ native_fixture_load() {
 	. "$repo/modules/lib/native_exec.sh"
 	# shellcheck source=/dev/null
 	. "$repo/modules/lib/native_dependencies.sh"
+}
+
+native_fixture_opkg() {
+	# Shared static synthetic commands; never execute an installed opkg.
+	"$bb" mkdir -m 700 "$opt_source/bin"
+	"$bb" cp "$work/opkg-probe" "$opt_source/bin/opkg"
+	"$bb" ln -s opkg "$opt_source/bin/timeout"
+	"$bb" ln -s opkg "$opt_source/bin/sha256sum"
+}
+
+native_fixture_volume() {
+	_cfmgr_io_mount_capture "$2" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
+	fixture_saved_ifs=$IFS
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_mount_body
+	IFS=$fixture_saved_ifs
+	fixture_body="volume$_io_tab$2$_io_tab$4$_io_tab$7$_io_tab$5$_io_tab$6$_io_tab${11}$_io_tab$9$_io_tab${10}$_io_tab"'11111111-1111-1111-1111-111111111111'
+	cfmgr_io_stage_report "$fixture_body${_io_lf}end$_io_tab$((${#fixture_body} + 1))$_io_lf"
+}
+
+native_fixture_storage_metadata() {
+	volume=$(cfmgr_io_test "$ram" "$tools" report native_fixture_volume "$opt_source" && "$bb" printf '.') || return 1
+	volume=${volume%.}
+	volume_body=${volume%%'
+'*}
+	saved_ifs=$IFS
+	IFS='	'
+	# shellcheck disable=SC2086
+	set -- $volume_body
+	IFS=$saved_ifs
+	fixture_device=$3
+	# Replace only FD8's regular-file class by exact synthetic block metadata.
+	# The real blockdev parser and retained FD9 observation remain active.
+	"$bb" cat >"$tools/ls" <<'BLOCK_LS' || return 1
+#!/bin/sh
+if [ "$#" -eq 2 ] && [ "$1" = -dni ]; then
+	case $2 in null | urandom) exec "$CFMGR_KERNEL_BUSYBOX" ls "$@" ;; esac
+fi
+if [ "$#" -ne 2 ] || [ "$1" != -dnL ] || [ "$2" != /proc/self/fd/8 ]; then exit 2; fi
+BLOCK_LS
+	"$bb" printf 'exec "%s" "brw------- 1 0 0 %s, %s Jan 1 00:00 /proc/self/fd/8\\n"\n' \
+		"$tools/printf" "${fixture_device%%:*}" "${fixture_device#*:}" >>"$tools/ls" || return 1
+	"$bb" chmod 700 "$tools/ls"
 }

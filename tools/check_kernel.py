@@ -300,6 +300,7 @@ def prove(args: argparse.Namespace) -> None:
         "printf",
         "test",
         "mkdir",
+        "rmdir",
         "rm",
         "readlink",
         "mount",
@@ -430,6 +431,7 @@ def prove(args: argparse.Namespace) -> None:
         # The native-root scenario instruments its tools; the composed proof
         # needs fresh immutable tool links rather than that previous state.
         shutil.copytree(tools, work / "native-probe-tools", symlinks=True)
+        shutil.copytree(tools, work / "native-dependencies-tools", symlinks=True)
         lane_start = time.monotonic()
         for scenario in (
             "success",
@@ -442,6 +444,7 @@ def prove(args: argparse.Namespace) -> None:
             "execution-root",
             "native-root",
             "native-probe",
+            "native-dependencies",
         ):
             print(f"Kernel proof: {scenario}", flush=True)
             started = time.monotonic()
@@ -466,6 +469,7 @@ def prove(args: argparse.Namespace) -> None:
                                 "execution-root": "execution_root.sh",
                                 "native-root": "native_root.sh",
                                 "native-probe": "native_probe.sh",
+                                "native-dependencies": "native_dependencies.sh",
                             }.get(scenario, "proof.sh")
                         ),
                         str(ROOT),

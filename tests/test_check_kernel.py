@@ -399,3 +399,99 @@ def test_opkg_fixture_rejects_interpreter_or_dependency(
     monkeypatch.setattr(check_kernel, "command", host_command)
     with pytest.raises(ValueError, match="fully static"):
         check_kernel.opkg_fixture(tmp_path, "gcc", "readelf")
+
+
+def test_runner_keeps_ten_existing_lanes_and_adds_independent_dependency_composition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exercise orchestration with inert compiler/tool doubles, never namespaces."""
+    busybox = tmp_path / "busybox"
+    busybox.write_bytes(b"inert BusyBox fixture")
+    busybox.chmod(0o700)
+    loader = tmp_path / "loader"
+    loader.write_bytes(b"inert loader")
+    libc = tmp_path / "libc.so.6"
+    libc.write_bytes(b"inert libc")
+    applets = (
+        "sh awk cat wc printf test mkdir rmdir rm readlink mount umount chroot mkfifo "
+        "sleep kill grep cp hexdump dd cmp env ln chmod setsid"
+    )
+
+    def host_command(argv: list[str], **_: object) -> str:
+        if argv == [str(busybox), "--help"]:
+            return "BusyBox inert fixture"
+        if argv == [str(busybox), "--list"]:
+            return applets.replace(" ", "\n")
+        if argv == ["unshare", "--version"]:
+            return "unshare from util-linux"
+        if argv[:2] == ["stat", "-f"]:
+            return "ext4"
+        if argv == ["gcc", "-print-file-name=libc.so.6"]:
+            return str(libc)
+        if argv[:2] == ["readelf", "-l"]:
+            return f"[Requesting program interpreter: {loader}]\n"
+        if argv[:2] == ["readelf", "-d"]:
+            return "(NEEDED) Shared library: [libc.so.6]\n"
+        assert argv[0] == "gcc" and "-o" in argv, argv
+        Path(argv[argv.index("-o") + 1]).write_bytes(b"inert compiled fixture")
+        return ""
+
+    launches = []
+
+    def namespace(argv: list[str]) -> None:
+        launches.append(argv)
+        work = Path(argv[argv.index(str(check_kernel.ROOT)) + 1])
+        if argv[-1] == "native-root":
+            # The real lane instruments original tools; subsequent compositions
+            # must already have independent immutable links for their own setup.
+            (work / "tools/chroot").unlink()
+            (work / "tools/chroot").write_bytes(b"inert instrumentation")
+        if argv[-1] in {"native-probe", "native-dependencies"}:
+            assert (work / f"{argv[-1]}-tools/chroot").is_symlink()
+
+    cleanup = Mock()
+    readlink = check_kernel.os.readlink
+
+    def namespace_identity(path: str | bytes | Path, **kwargs: object) -> str:
+        if str(path) in {"/proc/self/ns/mnt", "/proc/self/ns/pid"}:
+            return "inert parent namespace"
+        return readlink(path, **kwargs)
+
+    monkeypatch.setattr(check_kernel.sys, "platform", "linux")
+    monkeypatch.setattr(check_kernel.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(check_kernel.os, "readlink", namespace_identity)
+    monkeypatch.setattr(check_kernel, "native", lambda name: name)
+    monkeypatch.setattr(check_kernel, "command", host_command)
+    monkeypatch.setattr(check_kernel, "native_fixture", Mock())
+    monkeypatch.setattr(check_kernel, "opkg_fixture", Mock())
+    monkeypatch.setattr(check_kernel, "namespace", namespace)
+    monkeypatch.setattr(check_kernel, "owned_cleanup", cleanup)
+    check_kernel.prove(SimpleNamespace(busybox=str(busybox), work_parent=str(tmp_path)))
+    scenarios = [
+        "success",
+        "busy",
+        "signal",
+        "primitive",
+        "image",
+        "contained",
+        "worker-lifetime",
+        "execution-root",
+        "native-root",
+        "native-probe",
+        "native-dependencies",
+    ]
+    assert [argv[-1] for argv in launches] == scenarios
+    for argv, scenario in zip(launches, scenarios, strict=True):
+        assert argv[1:8] == [
+            "--mount",
+            "--pid",
+            "--fork",
+            "--kill-child=KILL",
+            "--mount-proc",
+            "--propagation",
+            "private",
+        ]
+        driver = next(arg for arg in argv if arg.endswith(".sh"))
+        expected = scenario.replace("-", "_") if scenario in scenarios[6:] else "proof"
+        assert driver == str(check_kernel.FIXTURES / f"{expected}.sh")
+    cleanup.assert_called_once()

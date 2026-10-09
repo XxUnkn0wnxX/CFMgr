@@ -264,9 +264,20 @@ passes the full local check (1,734 tests, 33 explicit platform skips) and
 Linux/BusyBox (1,767 tests, no skips); all ten kernel scenarios pass, including
 native-root in 7.55s. The ninth scenario's opkg and capability programs and its
 storage metadata are synthetic. These checks do not establish real opkg
-provenance, router execution or firmware ABI. No operational worker, menu,
-installer or router-side package operation is added. Exact results are in
-[PLAN.md](../PLAN.md).
+provenance, router execution or firmware ABI. This 44% snapshot added no menu,
+installer or router-side package operation. Exact results are in [PLAN.md](../PLAN.md).
+
+The 45% candidate adds a source-only bounded dependency worker. It requires
+native process-group and lock/deadline behavior, a trusted fixed runtime bundle,
+and caller-supplied retained-storage authority. The new lifecycle also resolves
+native `rmdir` through the finite IO tool map; this host-only candidate has not
+verified that applet on Merlin. It preserves normal configured opkg scratch and
+package-configuration behavior. The eleventh Linux fixture combines the worker
+with host locking, deadline, retained-Opt/root cleanup and synthetic opkg repair,
+but has not yet run in Linux. The accepted 44% checkpoint remains the latest
+Linux compatibility evidence; even a passing host/Linux fixture would not
+establish Merlin router, ARM32 ABI, installed opkg provenance or firmware
+acceptance.
 
 ## 🧩 Qualify each feature separately
 
@@ -275,6 +286,7 @@ installer or router-side package operation is added. Exact results are in
 | Core manager, DDNS, IP-Sync | POSIX shell, verified HTTPS/CA trust, bounded IO/locking, JFFS/RAM state and usable shared Entware prerequisites | Native recovery diagnostics remain available when prerequisites fail. Complete runtime acceptance remains pending. |
 | Current storage-observation profile | Inherited descriptor mount IDs, native numeric device listing and bounded hexdump; dynamic-revision ext2/ext3/ext4 primary superblock | Read-only foundation only. Other filesystem profiles, writability and storage-loss containment remain pending. |
 | Integrity verification | Required `coreutils-sha256sum`; native OpenSSL retained for bootstrap and edge fallback | Both produced the same synthetic digest on the current router. Fallback does not waive failed required-package installation. |
+| Source-only dependency worker | Native process-group and lock/deadline behavior, retained storage/root and fixed `rmdir` lookup | 45% candidate only; the eleventh Linux fixture is pending and no Merlin compatibility is claimed. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
 | Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |
