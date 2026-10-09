@@ -26,12 +26,16 @@ and malformed spacing/NUL refusal. The development guide's manifest example is
 fictional and uses placeholder hashes. The combined manifest/catalog focused
 gate passes 39 tests with two explicit missing-BusyBox skips in 5.78s. The
 full local gate passes 1,819 tests with 37 explicit platform skips in
-1,159.49s; cost review is complete and exact CI remains pending. These parser checks
+1,159.49s. Exact
+[47% Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
+passes all 1,856 tests with zero skips, six stripped-ash checks and all eleven
+kernel scenarios. Cost review is complete; the user-requested 47% pause is
+active. These parser checks
 do not download or authenticate a manifest, compare declared hashes with file
 bytes, establish inventory completeness, or exercise a config reader or
-writer. The catalog and config-header BusyBox cases passed in the accepted 46%
-Linux suite (1,848 tests, no skips); the Mac run explicitly skips them when
-BusyBox is unavailable.
+writer. The manifest, catalog and config-header BusyBox cases pass in the
+accepted 47% Linux suite; the Mac run explicitly skips them when BusyBox is
+unavailable.
 
 ## Kernel fixtures
 

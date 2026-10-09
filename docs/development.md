@@ -812,14 +812,24 @@ step must bind the manifest to a single already-resolved immutable revision.
 There is currently no generated root catalog, published manifest, downloader,
 hashing workflow or installed-package mapper.
 
-The D2 manifest/catalog focused gate passes 39 tests with two explicit
-missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s. The full
-serial Mac check passes 1,819 tests with 37 explicit platform skips in
-1,159.49s. Cost review is complete; exact Linux/BusyBox CI remains pending
-before 47% acceptance. An unchanged integration hit its 60s deadline in the
-timing follow-up, then passed its isolated retry in 53.69s under the same
-bound. Elevated host load and the retained failure are recorded in PLAN.md;
-no assertions, timeouts or source changed.
+The accepted 47% D2 manifest/catalog focused gate passes 39 tests with two
+explicit missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s.
+Source `68fa3ed` passes the full serial Mac check: 1,819 tests with 37 explicit
+platform skips in 1,159.49s. Exact head
+`76fd14677ec925d6dfba495f828fb09a46867200` passes
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996):
+1,856 tests with zero skips in 116.52s, six stripped-ash checks in 7.07s and
+all eleven kernel scenarios. Native-root, native-probe and native-dependencies
+take 6.33s, 8.88s and 9.52s; namespace execution totals 29.53s. The user-requested
+pause is active at 47%.
+
+Cost review is complete. An unchanged integration hit its 60s deadline in a
+Mac timing follow-up, then passed its isolated retry in 53.69s under the same
+bound; CI passes it in 6.86s. Elevated Mac host load, the retained failure and
+the Linux suite's 20.4% timing increase are recorded in PLAN.md. New manifest
+cases are absent from both full runs' slowest-20 lists. No assertions,
+timeouts or source changed, and no second exhaustive run was made solely
+for timing.
 
 The following complete manifest is fictional and uses placeholder hashes; file
 sizes and digests do not describe real repository files:
@@ -833,7 +843,7 @@ cfmgr.sh: 123 0000000000000000000000000000000000000000000000000000000000000000 0
 modules/lib/common.sh: 456 1111111111111111111111111111111111111111111111111111111111111111 0644
 ```
 
-The accepted 46% checkpoint's focused parser checks pass 54 tests with two
+The preceding 46% checkpoint's focused parser checks pass 54 tests with two
 explicit missing-BusyBox skips in 6.38s; the slowest case took 1.77s. Source
 `4fd962d` passes the full serial local gate: 1,812 tests with 36 explicit platform
 skips in 688.43s. Exact commit `4a3ae58708d77a484906becac12de2a99150b879` passes

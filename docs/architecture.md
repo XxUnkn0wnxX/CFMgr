@@ -539,20 +539,22 @@ marker release and the still-held lock. The full local check and all 1,792
 Linux/BusyBox tests pass; this remains host evidence, with router acceptance
 and operational entry paths still pending.
 
-The accepted 46% checkpoint adds the standalone `config_header.awk` and
+The preceding 46% checkpoint added the standalone `config_header.awk` and
 `catalog.awk` parsers with [data-format contracts](development.md#-module-catalog-and-forks).
 The full local gate passes 1,812 tests with 36 explicit platform skips in 688.43s;
 exact Linux/BusyBox CI passes all 1,848 tests and all eleven unchanged kernel
 scenarios. This validates the parsers and preserves the worker composition;
 no integrated config reader, manifest trust or catalog acquisition path is implemented.
 
-The current 47% D2 candidate extracts shared safe-path functions and adds a
+The accepted 47% D2 checkpoint extracts shared safe-path functions and adds a
 bounded manifest parser. Combined manifest/catalog focused checks pass 39
 tests with two explicit missing-BusyBox skips in 5.78s. The full local gate
-passes 1,819 tests with 37 explicit platform skips in 1,159.49s. Cost review
-is complete; exact CI remains pending before acceptance. Matching Merlin awk behavior, full config
-validity, trusted manifest acquisition and an integrated config/catalog runtime
-path remain unproved.
+passes 1,819 tests with 37 explicit platform skips in 1,159.49s; exact
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
+passes 1,856 tests with zero skips and all eleven kernel scenarios at
+`76fd146`. Cost review is complete and work is paused at 47%. Matching Merlin
+awk behavior, full config validity, trusted manifest acquisition and an
+integrated config/catalog runtime path remain unproved.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
