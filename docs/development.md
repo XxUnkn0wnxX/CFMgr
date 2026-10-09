@@ -237,9 +237,19 @@ The candidate also adds an eleventh genuine Linux fixture composition for the
 lock, deadline, retained-Opt/root and synthetic normal-opkg path. Its assertions
 cover the watchdog's own descriptors (including FD7/high aliases),
 completion/reap before owned-marker release, and the stable lock. This new
-scenario has not yet run in Linux; the 45% candidate's full local and exact
-Linux/BusyBox gates remain pending. The ten-scenario 44% checkpoint above
-remains the accepted validation.
+scenario has not yet run in Linux. The 45% candidate's full serial local check
+passes 1,758 tests with 34 explicit platform skips in 836.10s; all static checks
+pass. That is 5.7% above the prior local run, with no new case among the slowest
+20. The exact Linux/BusyBox gate remains pending, and the ten-scenario 44%
+checkpoint above remains the accepted validation.
+
+The focused worker contract suite passes 23 host cases with one explicit local
+BusyBox skip in 4.05s. It distinguishes completed backend outcomes from unproved
+cleanup and premature exits, and checks retained foreign/partial markers. One
+real process-group death case proves that a live child can outlast the owner
+while the marker blocks a fresh attempt after actual lock reacquisition.
+Storage, root and deadline boundaries are otherwise narrow synthetic seams;
+their complete Linux composition remains the separate kernel gate.
 
 The worker fixture set distinguishes cheap process-record checks from the
 Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group
@@ -397,9 +407,10 @@ unmount has no alternate-flag retry. There is no test-only syntax adapter.
 The [compatibility guide](compatibility.md#busybox-unmount-capabilities) records
 the firmware evidence and upstream behavior change.
 
-The kernel lane now contains ten bounded namespace scenarios. The original nine
+The kernel lane contains ten accepted bounded namespace scenarios and the
+candidate eleventh dependency-worker composition described above. The original nine
 cover actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`,
-the quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
+the quota tmpfs, retained Opt and device-node cleanup. The native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
 128 KiB, with native BusyBox `dd` and `cmp`. The tenth composes the fixed native
 probe with the real deadline and root/chroot cleanup. The O9b baseline passed all

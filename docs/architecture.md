@@ -528,8 +528,9 @@ guarantee, readiness or retry orchestration, scheduler/CLI wiring, installer or
 router operation.
 The eleventh Linux fixture is designed to exercise the full composition with
 synthetic package executables and storage metadata, but has not yet run in
-Linux. The 45% candidate awaits its full local and exact Linux/BusyBox gate;
-the accepted 44% results above remain the latest validated checkpoint.
+Linux. The 45% candidate passes its full local check and awaits the exact
+Linux/BusyBox gate; the accepted 44% results above remain the latest validated
+checkpoint.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

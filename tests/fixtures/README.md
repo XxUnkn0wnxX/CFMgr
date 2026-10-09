@@ -152,6 +152,16 @@ source/result framing, writer failures, descriptor closure and package writes
 above the old probe cap. Its focused combined run passed 72 tests with three
 local BusyBox skips. The 44% full local and Linux/BusyBox results and the
 repaired ninth-scenario proof are recorded above and in [PLAN.md](../../PLAN.md).
+`tests/test_dependencies.py` checks the serialized worker through narrow
+deadline/storage/root seams and real host file locking. Its 23 passing host
+cases cover completed 0/1 outcomes, premature exits, exact completion records,
+cleanup refusal, and foreign or partial active markers; one BusyBox case is
+explicitly skipped locally. A real owner-group death leaves a controlled
+FD7-closed child alive: fresh nonce replies prove liveness, and a second attempt
+uses a fresh guard to reacquire the lock before the retained marker refuses it.
+Both owned process groups are cleaned unconditionally and checked absent.
+macOS substitutes only the unavailable Linux process-group snapshot; the
+eleventh kernel scenario owns the genuine full Linux composition proof.
 `tests/test_native_probe.py` checks the fixed worker's argument/authority
 routing, watchdog and cleanup ordering, 0/1 outcomes, caller state, stale markers
 and uncertain completion with fresh lower-level seams. Its early-exit case

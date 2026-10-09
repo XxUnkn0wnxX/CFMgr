@@ -35,9 +35,9 @@ reinstall backend inside an already admitted native root; it is not wired to an
 operational CLI, menu or installer. The accepted 44% checkpoint passes the
 full local and Linux/BusyBox checks, including all ten then-current kernel
 scenarios. A new source-only serialized dependency worker and an eleventh kernel
-fixture are in the 45% candidate; full and Linux validation for that candidate
-are pending. The worker is not wired to a CLI, scheduler, installer or readiness
-flow. See [PLAN.md](PLAN.md) for exact results and current progress. These
+fixture are in the 45% candidate. Its full local check passes; exact-commit
+Linux validation is pending. The worker is not wired to a CLI, scheduler,
+installer or readiness flow. See [PLAN.md](PLAN.md) for exact results and current progress. These
 synthetic host/Linux checks do not establish installed-opkg provenance or
 Merlin acceptance. Live router acceptance and operational feature integration
 remain pending, and there is no installable manager yet. Routine Entware
