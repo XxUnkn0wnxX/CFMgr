@@ -47,17 +47,55 @@ HOST_MOUNT_ID = "1"
 VIEW_IDS = {name: str(901 + index) for index, name in enumerate(VIEWS)}
 DEVICE_IDS = {"null": "907", "urandom": "908"}
 NATIVE_DISPATCHER = r"""
-import json
 import os
-import shutil
 import stat
 import sys
+
+tool, args = sys.argv[3], sys.argv[4:]
+if tool == "test":
+    if args == ["-d", "/proc/self/fd/6"]:
+        try:
+            sys.exit(0 if stat.S_ISDIR(os.fstat(6).st_mode) else 1)
+        except OSError:
+            sys.exit(1)
+    if len(args) == 3 and args[1:] == ["-ef", "/proc/self/fd/6"]:
+        try:
+            path_stat = os.stat(args[0])
+            fd_stat = os.fstat(6)
+        except OSError:
+            sys.exit(1)
+        same_inode = (path_stat.st_dev, path_stat.st_ino) == (fd_stat.st_dev, fd_stat.st_ino)
+        sys.exit(0 if same_inode else 1)
+    if args == ["-d", "/proc/self/fd/9"]:
+        try:
+            sys.exit(0 if stat.S_ISDIR(os.fstat(9).st_mode) else 1)
+        except OSError:
+            sys.exit(1)
+    if len(args) == 3 and args[1:] in (
+        ["-ef", "/proc/self/fd/8"],
+        ["-ef", "/proc/self/fd/9"],
+    ):
+        fd = 8 if args[2].endswith("/8") else 9
+        try:
+            path_stat = os.stat(args[0])
+            fd_stat = os.fstat(fd)
+        except OSError:
+            sys.exit(1)
+        same_inode = (path_stat.st_dev, path_stat.st_ino) == (fd_stat.st_dev, fd_stat.st_ino)
+        sys.exit(0 if same_inode else 1)
+if tool == "readlink" and len(args) == 2 and args[0] == "-f":
+    print(os.path.realpath(args[1]))
+    sys.exit(0)
+
+import json
 from pathlib import Path
 
 settings = json.loads(Path(sys.argv[2]).read_text())
 state_path = Path(settings["state"])
 state = json.loads(state_path.read_text())
-tool, args = sys.argv[3], sys.argv[4:]
+if tool in ("mount", "umount"):
+    import shutil
+
 device_ids = {"null": "907", "urandom": "908"}
 log = Path(settings["tool_log"])
 if tool == "ls":
@@ -307,42 +345,12 @@ if tool == "umount":
     sys.exit(0)
 
 if tool == "test":
-    if args == ["-d", "/proc/self/fd/6"]:
-        try:
-            sys.exit(0 if stat.S_ISDIR(os.fstat(6).st_mode) else 1)
-        except OSError:
-            sys.exit(1)
-    if len(args) == 3 and args[1:] == ["-ef", "/proc/self/fd/6"]:
-        try:
-            path_stat = os.stat(args[0])
-            fd_stat = os.fstat(6)
-        except OSError:
-            sys.exit(1)
-        same_inode = (path_stat.st_dev, path_stat.st_ino) == (fd_stat.st_dev, fd_stat.st_ino)
-        sys.exit(0 if same_inode else 1)
-    if args == ["-d", "/proc/self/fd/9"]:
-        try:
-            sys.exit(0 if stat.S_ISDIR(os.fstat(9).st_mode) else 1)
-        except OSError:
-            sys.exit(1)
     if len(args) == 2 and args[0] == "-c":
         device = Path(args[1])
         allowed = {"null": "1,3", "urandom": "1,9"}
         if settings.get("native_devices") and device.name in allowed and device.is_file():
             sys.exit(0)
         sys.exit(1)
-    if len(args) == 3 and args[1:] in (
-        ["-ef", "/proc/self/fd/8"],
-        ["-ef", "/proc/self/fd/9"],
-    ):
-        fd = 8 if args[2].endswith("/8") else 9
-        try:
-            path_stat = os.stat(args[0])
-            fd_stat = os.fstat(fd)
-        except OSError:
-            sys.exit(1)
-        same_inode = (path_stat.st_dev, path_stat.st_ino) == (fd_stat.st_dev, fd_stat.st_ino)
-        sys.exit(0 if same_inode else 1)
     negate = args[:1] == ["!"]
     if negate:
         args = args[1:]
@@ -412,10 +420,6 @@ if tool == "mknod":
         "inode": node.stat().st_ino,
     }
     state_path.write_text(json.dumps(state))
-    sys.exit(0)
-
-if tool == "readlink" and len(args) == 2 and args[0] == "-f":
-    print(os.path.realpath(args[1]))
     sys.exit(0)
 
 raise AssertionError((tool, args))
@@ -543,7 +547,7 @@ class NativeRootFixture(ExecutionRootFixture):
         return (
             "#!/bin/sh\nexec "
             + shlex.quote(sys.executable)
-            + " "
+            + " -S "
             + shlex.quote(str(self.router.path("work/native-dispatch.py")))
             + " "
             + shlex.quote(str(ROOT))
@@ -555,7 +559,7 @@ class NativeRootFixture(ExecutionRootFixture):
         )
 
     def _native_test_wrapper(self) -> str:
-        python = shlex.quote(sys.executable)
+        python = shlex.quote(sys.executable) + " -S"
         dispatcher = shlex.quote(str(self.router.path("work/native-dispatch.py")))
         root = shlex.quote(str(ROOT))
         settings = shlex.quote(str(self.router.path("work/root-settings.json")))

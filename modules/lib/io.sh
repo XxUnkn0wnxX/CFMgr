@@ -81,6 +81,9 @@ _cfmgr_io_hex() (
 	[ -n "$1" ] || return 1
 	case $1 in *[!0123456789abcdef]*) return 1 ;; esac
 	[ "$((${#1} % 2))" -eq 0 ] || return 1
+	# An aligned NUL always contains 00. Absence proves acceptance; unaligned
+	# occurrences stay with the exact byte walker below.
+	case $1 in *00*) ;; *) return 0 ;; esac
 	_hex=$1
 	while :; do
 		case $_hex in '') return 0 ;; 00*) return 1 ;; *) _hex=${_hex#??} ;; esac
@@ -90,6 +93,12 @@ _cfmgr_io_hex() (
 _cfmgr_io_hex_path() (
 	_cfmgr_io_hex "$1" || return 1
 	case $1 in 2f) return 0 ;; 2f*) ;; *) return 1 ;; esac
+	# Every invalid empty, . or .. component has one of these encodings.
+	# Unaligned matches are only false positives for the strict fallback.
+	case $1 in
+	*2f2f* | *2f2e2f* | *2f2e2e2f* | *2f | *2f2e | *2f2e2e) ;;
+	*) return 0 ;;
+	esac
 	_path=${1#??}
 	_component=
 	while :; do

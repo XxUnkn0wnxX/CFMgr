@@ -24,7 +24,6 @@ RAM_MOUNT_ID = "77"
 DISPATCHER = r"""
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -117,6 +116,8 @@ if tool == "test":
         except OSError:
             sys.exit(1)
         sys.exit(0 if (path.st_dev, path.st_ino) == (fd.st_dev, fd.st_ino) else 1)
+    import subprocess
+
     sys.exit(subprocess.call(["/usr/bin/test", *args]))
 
 if tool == "readlink":
@@ -269,7 +270,7 @@ class ExecutionRootFixture:
         return (
             "#!/bin/sh\nexec "
             + shlex.quote(sys.executable)
-            + " "
+            + " -S "
             + shlex.quote(str(self.router.path("work/root-dispatch.py")))
             + " "
             + shlex.quote(str(ROOT))
