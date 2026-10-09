@@ -158,6 +158,15 @@ packages, then checks their capabilities. Its tests also prove that healthy
 tools do not bypass an explicit reinstall and that failed update/install steps
 stop the sequence. Opkg owns dependency resolution and package conflicts.
 
+Routine Entware upgrades remain user-managed through amtm/opkg. The normal
+backend never runs a blanket upgrade or force-reinstalls healthy dependencies:
+it probes mapped requirements, returns immediately when they are usable, and
+refreshes package lists only when installation is needed. The selected install
+lets opkg resolve required transitive dependencies. The internal explicit
+dependency-reinstall backend is separate and force-reinstalls the selected
+direct requirements; its advanced menu wiring remains planned. Cloudflared
+binary updates and its service/watchdog lifecycle are managed independently.
+
 The backend requires an already admitted, serialized caller with usable mounted
 Entware and suitable scheduling. Mount/authority/ownership and aggregate worker
 behavior remain separate integration acceptance gates. Its fixture root proves
@@ -264,6 +273,36 @@ and enclosing IO cleanup succeed. It does not install packages or establish
 physical filesystem identity, device nodes, complete native loader/helper/TLS/
 NSS closure, or router acceptance. The separate native-data and older root APIs
 are unchanged.
+
+`cfmgr_isolation_native_devices_root_with` keeps the same production arguments
+as the retained-Opt API. It creates exactly two owned character nodes in the
+private root image: `/dev/null` (1:3) and `/dev/urandom` (1:9), both mode `0600`
+and UID/GID 0. It does not copy host `/dev`. Each source inode is observed and
+rechecked through the storage parser, retaining large inode values as text;
+there are 12 metadata observations, each read only after its IO cleanup has
+succeeded. The private image must remain frozen while the root is active,
+because the observations before bind and after unmount are not a continuous FD
+lease.
+
+Each node gets an individual read-only, `nosuid`, `noexec`, device-enabled bind.
+After that mount is removed, the base root's `nodev` fallback refuses new opens.
+An already-open descriptor is not revoked by the fallback or by unmount. The
+full layout has eight children and uses 106 unique query slots. Teardown removes
+Opt, urandom, null, tmp, then `/usr`, `/lib`, `/sbin`, `/bin`, and the base root.
+Uncertain cleanup returns 129 and retains the guard; ordinary callback status
+is available only after complete root and IO cleanup. The callback remains a
+trusted synchronous native observer with no payload, chroot, async users,
+retained descriptors or `HOME` replacement.
+
+`tests/test_native_devices.py` adds 25 focused unit cases, passing in 4.74 seconds,
+and one host lifecycle case, passing in 35.04 seconds. The actual BusyBox
+representative and existing ninth kernel scenario are upgraded in place. The kernel wrapper
+opens FD5 on each node so unmount is witnessed busy, closes it to permit
+cleanup, then proves new opens fail through the `nodev` fallback. Host busy-fault
+tests separately prove runtime guard retention. The full Mac suite passes
+1,593 tests with 29 explicit platform skips in 487.36 seconds. Linux/BusyBox and
+kernel validation remain pending; neither synthetic metadata nor host fixtures
+prove a continuous inode lease or router acceptance.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
@@ -407,19 +446,23 @@ failed writes through both readonly fallbacks, preserved caller descriptors,
 ordinary callback failure after successful teardown, and retained completion
 metadata. It requires the root mount to be absent before removing fixture RAM;
 namespace disposal cannot conceal an incomplete successful path.
-The ninth scenario now composes the native-tmp root with a retained Opt root.
+The ninth scenario now composes the native-tmp root with a retained Opt root and
+the fixed native devices.
 Alongside four readonly native views, staged hosts/resolver files and the
 quota-limited tmpfs, it mounts a controlled writable source through actual FD9,
 performs a bounded anchored write and confirms the source received it. FD8 is a
 regular fixture file whose metadata is observed synthetically; its real offset
 is preserved, so this does not prove physical block-device or UUID admission.
 The case also verifies that Opt is unmounted first and becomes the exact empty
-readonly fallback before tmpfs removal. It retains the earlier FD6/native and
-staged-data checks, readonly-write refusal, executable tmpfs, the 64-KiB/eight-inode
-fixture limits, private empty home and unchanged observer `HOME`, all 78 query
-slots and complete cleanup before fixture disposal. The retained-Opt upgrade
-passed the 37% Linux CI gate. Host mirrors do not prove mount-enforced
-permissions, quota behavior or readonly fallback.
+readonly fallback before tmpfs removal. The added device checks require the
+eight-child ledger and 106 query slots, verify the owned character nodes and
+their read-only child mounts, then hold a real BusyBox FD5 to witness a busy
+unmount. Closing it allows checked teardown; the nodev base fallback then
+refuses new opens. The earlier native data/FD6 checks, readonly-write refusal,
+executable tmpfs, 64-KiB/eight-inode limits, private empty home and unchanged
+observer `HOME` remain covered. The quota/Opt-only version passed the 37% CI
+gate; the fixed-device upgrade passes the host suite and awaits Linux CI. Host
+mirrors do not prove mount-enforced behavior or descriptor semantics.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
@@ -498,12 +541,13 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
 | `tests/test_native_config.py` | Exact fixed-file staging, byte limits, NUL rejection, partial failures and cleanup ownership |
-| `tests/test_native_root.py` | Four fixed readonly views, staged native data, child identity, cleanup and the actual BusyBox retained-Opt representative |
+| `tests/test_native_root.py` | Four fixed readonly views, staged data, child identity, cleanup and the actual BusyBox retained-Opt/native-device representative |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
 | `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |
 | `tests/test_entware_root.py` | Retained Opt-root success, busy-Opt cleanup refusal and malformed API rejection |
 | `tests/test_entware_root_admission.py` | Cheap framing and storage-admission boundary cases |
-| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including retained Opt, quota-limited native tmpfs and private HOME |
+| `tests/test_native_devices.py` | Fixed node metadata, inode retention, mount lifecycle and busy cleanup faults |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including retained Opt, fixed native devices, quota-limited native tmpfs and private HOME |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |

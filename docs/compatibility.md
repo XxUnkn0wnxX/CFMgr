@@ -105,26 +105,38 @@ requested size/inode ceilings; it creates an empty mode-`0700`
 `/tmp/cfmgr-home` while leaving the observer's `HOME` unchanged. These ceilings
 limit tmpfs use but do not reserve RAM or establish available memory headroom.
 
-The 37% snapshot passes the full local suite (1,567 tests, 29 explicit platform
-skips), Linux/BusyBox CI (1,596 tests, zero skips), six supplemental stripped-ash
-checks and all nine kernel scenarios. Exact results and the fixture setup repair
-are recorded in [PLAN.md](../PLAN.md).
+The earlier accepted 37% snapshot passed the full local suite (1,567 tests, 29
+explicit platform skips), Linux/BusyBox CI (1,596 tests, zero skips), six
+supplemental stripped-ash checks and its nine kernel scenarios. Exact results
+and the fixture setup repair are recorded in [PLAN.md](../PLAN.md). Those
+results predate the fixed native-device extension below.
 
-The retained-Opt composition uses the ninth scenario. Its host tests
-cover success, busy-Opt cleanup refusal and malformed API rejection, plus cheap
-storage-admission boundary cases; the upgraded full-capture BusyBox consumer
-remains distinct from host mirrors. The kernel proof now checks a real writable
-source mounted through FD9, a bounded anchored write reaching that source, and
+The retained-Opt composition uses the ninth scenario. Its host tests cover
+success, busy-Opt cleanup refusal and malformed API rejection, plus cheap
+storage-admission boundary cases; the upgraded full-capture BusyBox consumer is
+distinct from host mirrors. The kernel proof checks a real writable source
+mounted through FD9, a bounded anchored write reaching that source, and
 Opt-first teardown followed by an exact empty readonly fallback before tmpfs
 removal. FD8 is a regular fixture file with synthetic metadata observation, so
-the scenario does not prove physical block-device or UUID approval. The actual
-BusyBox consumer and upgraded kernel scenario passed the same 37% CI gate.
+the scenario does not prove physical block-device or UUID approval.
+
+The fixed native-device layer adds only private-image `/dev/null` (1:3) and
+`/dev/urandom` (1:9), mounted as separate read-only, `nosuid`, `noexec`
+device-enabled children. The base-root `nodev` fallback refuses new opens after
+unmount, but does not revoke already-open descriptors; before/after inode
+checks are not a continuous FD lease, so the private source image must remain
+frozen. The same ninth kernel scenario now witnesses a real BusyBox FD5 making
+unmount busy, closes it to allow cleanup, and checks new-open refusal. Host busy
+faults separately cover runtime guard retention. The full Mac suite passes
+1,593 tests with 29 explicit platform skips in 487.36 seconds. The updated
+BusyBox and kernel cases await Linux CI; do not infer their result from the
+earlier 37% gate.
 
 Neither host nor Linux namespace evidence establishes router acceptance. The
 views and data still lack complete native configuration, loader/helper/ELF,
-TLS or NSS closure, device nodes and ordinary opkg execution. The native
-observer does not set `HOME` or launch a payload, and this is not an operational
-worker. No mount or chroot was executed on the router for these checks.
+TLS or NSS closure and ordinary opkg execution. The native observer does not
+set `HOME` or launch a payload, and this is not an operational worker. No mount
+or chroot was executed on the router for these checks.
 
 ## 🧩 Qualify each feature separately
 

@@ -45,6 +45,7 @@ flowchart LR
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf` bytes into the caller-owned private image outside IO scratch | Fixed files only; no syntax/readiness checks, execution, or broader native configuration closure |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
+| `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
 | `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal native callback only; operational scheduling and package/feature launch remain separate |
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
@@ -72,9 +73,11 @@ and supporting workers, updaters, or dependency setup belong in `helpers/`.
 Firmware-hook and cron entry scripts belong in `hooks/` and should stay thin.
 The hooks directory is currently only a placeholder. Feature logic should use
 small explicit interfaces and shared libraries rather than copied helpers.
-The entry point resolves and sources the diagnostics module explicitly; there is
-no automatic loading of arbitrary files or directories. Menu, setup, and
-dispatch connections will be added as their features are implemented.
+The entry point resolves and sources the diagnostics module explicitly; the
+native configuration, retained-Opt and fixed-device helpers are source-only
+internal APIs. There is no automatic loading of arbitrary files or directories.
+Menu, setup, and dispatch connections will be added as their features are
+implemented.
 
 ### Adding a feature
 
@@ -291,11 +294,38 @@ root and IO cleanup succeeds. The layout uses exactly 78 unique queries within
 its fixed 78-query ceiling. Older root and native-data APIs retain their
 existing contracts.
 
+`cfmgr_isolation_native_devices_root_with` accepts the same production
+arguments as the retained-Opt entry and adds a device-view layer to that root.
+It creates only `/dev/null` (character device 1:3) and `/dev/urandom` (1:9) in
+the private image, with mode `0600` and UID/GID 0; it never imports host `/dev`.
+Their source directory is private and must remain frozen for the root's
+lifetime. The owner records and rechecks exact parser output, including large
+inode numbers as text, and performs 12 metadata observations only after each
+enclosing IO cleanup succeeds.
+
+Each node is mounted as its own checked read-only, `nosuid`, `noexec`,
+device-enabled child. The underlying base-root fallback remains `nodev`, so it
+refuses new opens after child unmount. It does not revoke already-open
+descriptors. The before/after inode observations are not a continuous descriptor
+lease; the private-image no-write precondition is part of this lifecycle's safety boundary.
+The resulting root has eight children and uses 106 unique mount queries. After
+the callback it removes Opt first, then urandom, null, tmp, and native views in
+reverse order before the base root. An unproved busy-device unmount or any other
+uncertain post-reservation cleanup returns 129 and retains the guard. This
+remains a synchronous native observer: no payload, chroot, asynchronous users,
+retained descriptors or `HOME` replacement.
+
+The upgraded Linux kernel scenario opens FD5 on each node in its BusyBox wrapper to
+show ordinary unmount is busy, closes FD5 so cleanup succeeds, then confirms
+the nodev fallback refuses new opens. Host busy-fault tests separately prove
+that uncertain cleanup retains the runtime guard. Neither proof establishes a
+continuous inode lease, existing-descriptor revocation or router acceptance.
+
 The execution guard remains on every outcome. A completion marker describes
 verified filesystem teardown; the enclosing IO transaction must also clean up
 successfully before the observer's ordinary status can return. Any incomplete
-step after reservation reports uncertainty. These root entries do not yet provide
-writable Entware storage, package execution or scheduling.
+step after reservation reports uncertainty. These internal observer APIs do not
+provide package execution or scheduling.
 Existing native and fixed-probe APIs retain their separate cleanup contracts.
 
 The retained-storage profile covers dynamic-revision ext2/ext3/ext4 primary
