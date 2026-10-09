@@ -219,7 +219,7 @@ router acceptance.
 
 ### Source-only serialized dependency worker
 
-The 45% candidate adds `modules/helpers/dependencies.sh` with a finite
+The accepted 45% checkpoint adds `modules/helpers/dependencies.sh` with a finite
 fourteen-argument internal API. It admits only the actual original shell's
 dedicated process group, detaches standard streams and application descriptors,
 then takes the existing stable CFMgr dependency lock before its armed deadline.
@@ -233,15 +233,19 @@ The IO resolver adds a finite `rmdir` tool lookup; its capture allowlist is
 unchanged. See the [architecture contract](architecture.md#source-only-serialized-dependency-worker)
 for argument, status and recovery details.
 
-The candidate also adds an eleventh genuine Linux fixture composition for the
+The checkpoint also adds an eleventh genuine Linux fixture composition for the
 lock, deadline, retained-Opt/root and synthetic normal-opkg path. Its assertions
 cover the watchdog's own descriptors (including FD7/high aliases),
 completion/reap before owned-marker release, and the stable lock. This new
-scenario has not yet run in Linux. The 45% candidate's full serial local check
+scenario passes in 8.86s. The 45% checkpoint's full serial local check
 passes 1,758 tests with 34 explicit platform skips in 836.10s; all static checks
 pass. That is 5.7% above the prior local run, with no new case among the slowest
-20. The exact Linux/BusyBox gate remains pending, and the ten-scenario 44%
-checkpoint above remains the accepted validation.
+20. Exact commit `4c59937503f7e984268cdb5c75c8b144f8cc7309` passes
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37994019737):
+1,792 tests with no skips in 102.36s, six stripped-ash cases in 6.89s, and all
+eleven kernel scenarios. Native-root takes 5.84s, native-probe 8.14s, and total
+namespace execution 27.30s. The job takes 3m15s. CI's ShellCheck 0.9.0 and the
+local 0.11.0 both accept the explicit fixture assertions.
 
 The focused worker contract suite passes 23 host cases with one explicit local
 BusyBox skip in 4.05s. It distinguishes completed backend outcomes from unproved
@@ -249,7 +253,7 @@ cleanup and premature exits, and checks retained foreign/partial markers. One
 real process-group death case proves that a live child can outlast the owner
 while the marker blocks a fresh attempt after actual lock reacquisition.
 Storage, root and deadline boundaries are otherwise narrow synthetic seams;
-their complete Linux composition remains the separate kernel gate.
+their complete Linux composition is established by the separate kernel gate.
 
 The worker fixture set distinguishes cheap process-record checks from the
 Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group
@@ -407,8 +411,8 @@ unmount has no alternate-flag retry. There is no test-only syntax adapter.
 The [compatibility guide](compatibility.md#busybox-unmount-capabilities) records
 the firmware evidence and upstream behavior change.
 
-The kernel lane contains ten accepted bounded namespace scenarios and the
-candidate eleventh dependency-worker composition described above. The original nine
+The kernel lane contains eleven accepted bounded namespace scenarios,
+including the dependency-worker composition described above. The original nine
 cover actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`,
 the quota tmpfs, retained Opt and device-node cleanup. The native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than

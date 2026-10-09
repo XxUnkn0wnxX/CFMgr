@@ -526,11 +526,12 @@ already absent; at that release point, resources are complete and no later launc
 remains. There is no PID-based cleanup, rollback, arbitrary descendant-reaping
 guarantee, readiness or retry orchestration, scheduler/CLI wiring, installer or
 router operation.
-The eleventh Linux fixture is designed to exercise the full composition with
-synthetic package executables and storage metadata, but has not yet run in
-Linux. The 45% candidate passes its full local check and awaits the exact
-Linux/BusyBox gate; the accepted 44% results above remain the latest validated
-checkpoint.
+The eleventh Linux fixture exercises the full composition with synthetic
+package executables and storage metadata. It passed in 8.86s at the accepted
+45% checkpoint, including the watchdog's own descriptors, exact reap before
+marker release and the still-held lock. The full local check and all 1,792
+Linux/BusyBox tests pass; this remains host evidence, with router acceptance
+and operational entry paths still pending.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

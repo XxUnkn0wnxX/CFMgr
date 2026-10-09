@@ -15,11 +15,10 @@ profile is an observation, not proof that a runtime feature passes on that route
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit
 Linux namespace check. It uses actual BusyBox mounts and the runtime lifecycle,
 but substitutes synthetic storage metadata for block-device/UUID admission.
-The ten scenarios from the accepted 44% checkpoint retain their individual
-15-second bounds. The 45% candidate adds an eleventh scenario with the same
-bound; that new Linux scenario has not run yet.
+All eleven scenarios pass at the accepted 45% checkpoint and retain their
+individual 15-second bounds.
 
-| Scenario | Established evidence or planned check | Limit |
+| Scenario | Evidence established | Limit |
 | --- | --- | --- |
 | 1 (success) | Successful retained-storage callback and checked cleanup with real mount observations and a held directory descriptor | Storage-device and UUID approval are substituted |
 | 2 (busy) | Busy mount prevents teardown and retains the guard | Does not model physical hotplug |
@@ -31,7 +30,7 @@ bound; that new Linux scenario has not run yet.
 | 8 (execution-root) | Actual readonly-root owner checks mount identity, fallback write refusal, restored caller descriptors and completed teardown before RAM removal | Not an operational worker or router acceptance |
 | 9 (native-root) | O9c fixed probes use the checked lifecycle; O10a adds the source-only dependency handoff, synthetic backend and package write; passes the accepted 44% Linux gate in 7.55s | FD8 and package executables remain synthetic; does not prove block-device/UUID admission or real opkg |
 | 10 (native-probe) | Real aggregate deadline and native-config-root/chroot cleanup around the fixed probe; the fixture inspects the watchdog's descriptors while FD6/8/9 are held and verifies a known FD0 witness | Storage acquisition is a synthetic seam; does not prove outer storage IO acquisition, physical block-device/UUID admission or router execution |
-| 11 (native-dependencies; candidate) | Planned composition of the actual stable lock, deadline, retained-Opt/root and source-only worker with a synthetic normal-opkg repair and 32-KiB write; fixture assertions cover watchdog descriptors and marker release after acknowledgement/reap while the lock is held | Added fixture has not run in Linux; storage metadata and package executables are synthetic, so no router, physical block-device/UUID or real-opkg proof |
+| 11 (native-dependencies) | Actual stable lock, deadline, retained-Opt/root and source-only worker with a synthetic normal-opkg repair and 32-KiB write; watchdog descriptors and marker release after acknowledgement/reap while the lock is held; passes in 8.86s | Storage metadata and package executables are synthetic, so no router, physical block-device/UUID or real-opkg proof |
 
 The ninth scenario composes the quota-limited native-tmp root, retained
 Opt root, fixed native devices and native-config-root entry. It stages all six
@@ -45,7 +44,7 @@ empty readonly fallback before tmpfs removal. FD8 is a regular fixture file
 with synthetic metadata, so this does not prove physical block identity or UUID
 approval. This ninth scenario passed the earlier
 [41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595)
-and remains part of the accepted 44% ten-scenario gate; the candidate eleventh
+and remains part of the accepted 45% eleven-scenario gate; the eleventh
 scenario reuses the existing root and synthetic-opkg setup.
 
 The fixed shell-probe extension uses genuine trusted host BusyBox and its
@@ -102,7 +101,7 @@ admission. At 43%, all ten scenarios passed; the unchanged tenth scenario took
 counts and timings are in the [development guide](../../docs/development.md#-run-checks).
 These host/Linux results do not establish router acceptance.
 
-The candidate eleventh scenario is designed to exercise the new source-only
+The eleventh scenario exercises the source-only
 serialized dependency worker. It uses a dedicated process group, the actual
 stable CFMgr lock, armed deadline, retained storage/root lifecycle and the
 existing backend with synthetic opkg and capability programs. Its assertions
@@ -110,8 +109,8 @@ inspect the real watchdog shell's descriptors, including FD7 and high aliases,
 and require the done marker, acknowledgement and exact child reap before the
 owned active marker is removed; the stable lock must still be held at that
 release point. The scenario retains
-the same 15-second bound as the other kernel cases. It has not yet run in Linux,
-so none of this composition's kernel behavior is accepted evidence. It cannot
+the same 15-second bound as the other kernel cases. It passes the exact 45%
+Linux gate at `4c59937` in 8.86s. It cannot
 prove physical storage admission, real opkg provenance, ARM32/Merlin behavior or
 router acceptance.
 
