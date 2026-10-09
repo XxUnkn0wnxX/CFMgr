@@ -316,7 +316,7 @@ actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`, the
 quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
 128 KiB, with native BusyBox `dd` and `cmp`. All nine scenarios pass the
-[40% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858). It substitutes a synthetic FD8 storage observation and a controlled
+[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595). It substitutes a synthetic FD8 storage observation and a controlled
 FD9 source, so it does not prove router storage admission or acceptance. The
 current scenario also invokes the fixed shell probe through genuine host
 BusyBox/loader bytes. Only a private fixture copy's interpreter path is adapted

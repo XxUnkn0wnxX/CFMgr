@@ -39,7 +39,8 @@ metadata observations, and an FD9-backed controlled writable source with an
 anchored write reaching it. Opt is unmounted first and must expose the exact
 empty readonly fallback before tmpfs removal. FD8 is a regular fixture file
 with synthetic metadata, so this does not prove physical block identity or UUID
-approval. The upgraded scenario passes the 40% kernel checkpoint.
+approval. The composition and fixed shell probe pass the
+[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595).
 
 The fixed shell-probe extension uses genuine trusted host BusyBox and its
 loader/dependencies. The runner changes only the private BusyBox copy's existing

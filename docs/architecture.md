@@ -340,7 +340,7 @@ The callback remains a trusted synchronous native observer, with the explicit
 fixed shell-probe exception below. It cannot select arbitrary payloads, launch
 opkg, retain asynchronous users/descriptors or replace its own `HOME`. It adds
 no operational worker, menu, startup or package-install wiring, nor complete
-native execution closure. The [40% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858)
+native execution closure. The [41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595)
 passes the complete composition; host mirrors alone do not prove mount-enforced
 read-only behavior.
 
