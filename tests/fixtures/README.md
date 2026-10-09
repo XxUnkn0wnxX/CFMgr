@@ -19,13 +19,19 @@ storage scenarios. The execution-root consumer uses actual proc mount and
 descriptor identities, readonly fallback checks and ordinary root teardown.
 The native-root consumers add four fixed readonly views from an explicitly
 readonly synthetic source, check each child identity and exercise reverse
-cleanup. The ninth kernel scenario now uses the quota-limited native-tmp API: it
-stages opaque hosts/resolver bytes before the first bind, then checks readonly
-`/etc`, writable tmpfs scratch, executable permission, the configured byte and
-inode ceilings, and an empty private `tmp/cfmgr-home`. It also checks that the
-observer's `HOME` is unchanged, all 64 query slots, tmpfs-first teardown and
-reverse native-view cleanup. The upgraded scenario passed the 36% CI gate; host
-fixture mirrors alone do not prove mount-enforced behavior or quota enforcement.
+cleanup. The ninth kernel scenario now composes the quota-limited native-tmp
+root with a retained Opt root. It stages opaque hosts/resolver bytes before the
+first bind, checks readonly `/etc`, writable tmpfs scratch, executable
+permission, configured byte and inode ceilings, and an empty private
+`tmp/cfmgr-home`. It also checks unchanged observer `HOME`, all 78 query slots,
+a controlled writable source mounted through actual FD9, a bounded anchored
+write reaching that source, and Opt-first teardown followed by an exact empty
+readonly fallback before tmpfs removal. FD8 uses a regular fixture file with
+synthetic metadata observation, so this scenario does not prove physical block
+identity or UUID approval. The earlier quota-only version passed the 36% CI
+gate; validation of the retained-Opt upgrade is pending. Host fixture mirrors
+alone do not prove mount-enforced behavior, quota enforcement or readonly
+fallback.
 The worker-lifetime fixture separately proves descriptor/root references and
 writable-child revocation with controlled descendants. Native BusyBox
 unmount capability selection is exercised through the runtime implementation;
@@ -37,9 +43,11 @@ or an authorization to run arbitrary programs through the runtime callback.
 limit, NUL rejection, failure retention and the enclosing IO cleanup result.
 `tests/test_native_tmp_root.py` checks quota validation and lifecycle metadata
 with host fixtures; these mock mount tools and do not prove actual quota, write
-or exec behavior. The native-root BusyBox representative and upgraded kernel
-scenario passed the 36% CI gate. Host fixtures do not prove mount-enforced readonly
-behavior.
+or exec behavior. `tests/test_entware_root.py` covers retained-Opt success,
+busy-Opt cleanup refusal and malformed API rejection; `tests/test_entware_root_admission.py`
+covers the storage-admission boundary. The upgraded BusyBox and kernel consumers
+provide separate integration evidence, with the current kernel result pending
+CI. Host fixtures do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete
 capture evidence. Other host fault tests may share the focused query fixture in

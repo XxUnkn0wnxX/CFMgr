@@ -105,17 +105,28 @@ requested size/inode ceilings; it creates an empty mode-`0700`
 `/tmp/cfmgr-home` while leaving the observer's `HOME` unchanged. These ceilings
 limit tmpfs use but do not reserve RAM or establish available memory headroom.
 
-The 36% snapshot passes the full local suite (1,526 tests, 29 explicit platform
-skips), Linux/BusyBox CI (1,555 tests, zero skips), the supplemental stripped-ash
-checks and all nine kernel scenarios. The upgraded ninth scenario proves actual
-tmpfs byte/inode limits, execute permission, private HOME and checked teardown;
-exact results are recorded in [PLAN.md](../PLAN.md).
-Neither host nor Linux namespace evidence establishes router
-acceptance. The views and data still lack complete native configuration,
-loader/helper/ELF, writable Opt, TLS or NSS closure, and ordinary opkg execution.
-The native observer does not set `HOME` or launch a payload, and this is not an
-operational worker. No mount or chroot was executed on the router for these
-checks.
+The 36% snapshot passed the full local suite (1,526 tests, 29 explicit platform
+skips), Linux/BusyBox CI (1,555 tests, zero skips), supplemental stripped-ash
+checks and all nine kernel scenarios. At that snapshot, the ninth scenario
+proved actual tmpfs byte/inode limits, execute permission, private HOME and
+checked teardown; exact results are recorded in [PLAN.md](../PLAN.md).
+
+The later retained-Opt composition uses the same ninth scenario. Its host tests
+cover success, busy-Opt cleanup refusal and malformed API rejection, plus cheap
+storage-admission boundary cases; the upgraded full-capture BusyBox consumer
+remains distinct from host mirrors. The kernel proof now checks a real writable
+source mounted through FD9, a bounded anchored write reaching that source, and
+Opt-first teardown followed by an exact empty readonly fallback before tmpfs
+removal. FD8 is a regular fixture file with synthetic metadata observation, so
+the scenario does not prove physical block-device or UUID approval. Results for
+this newer code revision are pending local/CI validation; do not infer them from
+the earlier 36% gate.
+
+Neither host nor Linux namespace evidence establishes router acceptance. The
+views and data still lack complete native configuration, loader/helper/ELF,
+TLS or NSS closure, device nodes and ordinary opkg execution. The native
+observer does not set `HOME` or launch a payload, and this is not an operational
+worker. No mount or chroot was executed on the router for these checks.
 
 ## 🧩 Qualify each feature separately
 

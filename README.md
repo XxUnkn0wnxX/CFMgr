@@ -13,7 +13,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 
 | Feature / milestone | Status | At a glance |
 | --- | --- | --- |
-| Core foundations | Complete | Parsing, storage, native config and capped private `/tmp` |
+| Core foundations | Complete | Parsing, storage checks and managed workspaces |
 | Worker safety foundations | Complete | Process deadlines and read-only workspaces |
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Install/reinstall backend done; worker integration next |
@@ -28,9 +28,10 @@ and validation; it does not replace keeping the docs current during the build.
 
 CFMgr is in development. Implemented foundations include parsing, retained-storage
 checks, guarded process deadlines, internal execution-root lifecycles and bounded
-native configuration staging, plus a partial native health report. The dependency
-backend uses installed Entware opkg; operational worker and feature integration
-remain incomplete. There is no installable manager yet.
+native configuration staging, plus a partial native health report. An internal
+helper now attaches verified Entware storage to its managed workspace. The dependency backend uses installed Entware opkg, while
+operational worker and feature integration remain incomplete. There is no
+installable manager yet.
 
 Normal operation will require working Entware. Its installed `opkg` manages
 CFMgr's dependencies and their libraries; CFMgr manages Cloudflared release

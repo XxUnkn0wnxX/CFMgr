@@ -238,9 +238,32 @@ available RAM headroom. After the observer returns, CFMgr checks the saved tmpfs
 ledger, ordinarily unmounts `/tmp`, then removes the four native views in reverse
 order and tears down the base root. The native-tmp layout uses 64 unique query
 slots within the fixed 64-query ceiling. The native-data API and older root APIs
-retain their existing contracts. This is still not a payload, chroot, opkg,
-readiness or operational worker path; writable Opt and complete native
-loader/ELF/TLS/NSS support remain unimplemented.
+retain their existing contracts. This native-tmp entry is still not a payload,
+chroot, opkg, readiness or operational worker path; the separate retained-Opt
+composition is documented below. Complete native loader/ELF/TLS/NSS support
+remains unimplemented.
+
+`cfmgr_isolation_entware_root_with RESOLVED VOLUME RAMROOT GUARD LIMIT_KIB
+INODE_LIMIT MOUNT_PARSER STORAGE_PARSER CALLBACK [ARGS...]` composes the checked
+native views, private quota tmpfs and an already-admitted Entware Opt directory.
+Call it only from the independent Entware admission callback while the original
+FD8 block and FD9 directory remain held. A canonical volume report or UUID
+format does not grant storage authority. The wrapper rechecks source facts,
+topology and descriptor identities, then binds only `/proc/self/fd/9` at
+`root/opt` with `rw,nosuid,nodev,exec`.
+
+The observer receives the six-child root path and full root ledger, the original
+volume report and unchanged optional arguments. It remains a synchronous trusted
+native observer: no payload, chroot, asynchronous users, retained descriptors or
+HOME replacement. Opt is ordinarily unmounted first; before tmpfs removal, the
+owner verifies the exact empty readonly Opt fallback. It then removes tmpfs,
+native views in reverse order and the base root. The composition uses 78 unique
+mount queries within its fixed 78-query ceiling. Uncertain teardown retains the
+guard and returns 129; an ordinary callback status is returned only after root
+and enclosing IO cleanup succeed. It does not install packages or establish
+physical filesystem identity, device nodes, complete native loader/helper/TLS/
+NSS closure, or router acceptance. The separate native-data and older root APIs
+are unchanged.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
@@ -384,15 +407,19 @@ failed writes through both readonly fallbacks, preserved caller descriptors,
 ordinary callback failure after successful teardown, and retained completion
 metadata. It requires the root mount to be absent before removing fixture RAM;
 namespace disposal cannot conceal an incomplete successful path.
-The ninth scenario now exercises the native-tmp root entry with four fixed views
-from a readonly synthetic source filesystem, staged hosts/resolver files, and
-the quota-limited private tmpfs. It checks actual FD6 mount identity, exact
-staged bytes, refusal of readonly-path writes, writable `/tmp` scratch, execute permission,
-the 64-KiB/eight-inode fixture limits, the private empty home directory and
-unchanged observer `HOME`, all 64 query slots, tmpfs-first teardown and reverse
-native-view cleanup. It verifies that no execution mounts remain before fixture
-cleanup. The upgraded case passed the 36% Linux CI gate; host fixture mirrors alone do
-not prove mount-enforced permissions or quota behavior.
+The ninth scenario now composes the native-tmp root with a retained Opt root.
+Alongside four readonly native views, staged hosts/resolver files and the
+quota-limited tmpfs, it mounts a controlled writable source through actual FD9,
+performs a bounded anchored write and confirms the source received it. FD8 is a
+regular fixture file whose metadata is observed synthetically; its real offset
+is preserved, so this does not prove physical block-device or UUID admission.
+The case also verifies that Opt is unmounted first and becomes the exact empty
+readonly fallback before tmpfs removal. It retains the earlier FD6/native and
+staged-data checks, readonly-write refusal, executable tmpfs, the 64-KiB/eight-inode
+fixture limits, private empty home and unchanged observer `HOME`, all 78 query slots and complete cleanup before fixture
+disposal. The earlier quota-only version passed the 36% Linux CI gate; execution
+of the retained-Opt upgrade is pending CI. Host mirrors do not prove
+mount-enforced permissions, quota behavior or readonly fallback.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
@@ -470,10 +497,12 @@ command remains `cfmgr`.
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
 | `tests/test_native_config.py` | Exact fixed-file staging, byte limits, NUL rejection, partial failures and cleanup ownership |
-| `tests/test_native_root.py` | Four fixed readonly views, staged native data, child identity, cleanup and the actual BusyBox tmp-root representative |
+| `tests/test_native_root.py` | Four fixed readonly views, staged native data, child identity, cleanup and the actual BusyBox retained-Opt representative |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
 | `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |
-| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including quota-limited native tmpfs and private HOME |
+| `tests/test_entware_root.py` | Retained Opt-root success, busy-Opt cleanup refusal and malformed API rejection |
+| `tests/test_entware_root_admission.py` | Cheap framing and storage-admission boundary cases |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including retained Opt, quota-limited native tmpfs and private HOME |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |

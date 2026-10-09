@@ -37,8 +37,9 @@ flowchart LR
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
-| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root and quota-limited native-tmp-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
+| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf` bytes into the caller-owned private image outside IO scratch | Fixed files only; no syntax/readiness checks, execution, or broader native configuration closure |
+| `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
 | `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal native callback only; operational scheduling and package/feature launch remain separate |
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
@@ -231,8 +232,40 @@ probe, or operational worker. Teardown uses ordinary unmount on the tmpfs first,
 then removes native views in reverse order and finally the base root. It uses
 64 unique mount-query slots, exactly the configured ceiling.
 
-The private temporary area is not an Entware environment. Writable Opt and the
-complete native loader, ELF, resolver, TLS and NSS closure remain separate work.
+The private temporary area is not an Entware environment. The separate retained-
+Opt composition below adds a writable Entware child only for storage already
+admitted by its caller; it does not supply complete native loader, ELF, resolver,
+TLS or NSS closure or operational package execution.
+
+`cfmgr_isolation_entware_root_with` composes the existing native-data and
+native-tmp layout with an already-admitted Entware directory. Its production
+arguments are `RESOLVED`, the complete `VOLUME` report, `RAMROOT`, `GUARD`,
+`LIMIT_KIB`, `INODE_LIMIT`, the mount and storage parsers, a synchronous native
+observer, and optional observer arguments. Call it only inside the callback of
+an independent Entware storage-admission owner, with the original block
+descriptor FD8 and directory descriptor FD9 still held. A valid report frame or
+canonical UUID string is not storage approval; the report must come from that
+independent admission and its configured identity decision.
+
+The wrapper rechecks the saved source facts and topology and observes the real
+FD8/FD9 identities five times. It binds only `/proc/self/fd/9` at `root/opt`,
+then verifies the exact child identity and effective `rw,nosuid,nodev,exec`
+flags. The six-child root contains `/bin`, `/sbin`, `/lib`, `/usr`, `/tmp`, and
+`/opt`; its complete root ledger and the original volume report are passed to
+the observer before its unchanged arguments. The observer cannot run a payload,
+chroot, start asynchronous users or retain descriptors, and `HOME` is not
+replaced.
+
+This composition does not install Entware, invoke opkg, add device nodes, or
+provide complete loader/helper, TLS or NSS closure. It does not prove physical
+filesystem identity or router acceptance. After callback return, the owner
+rechecks the full layout and ordinarily unmounts Opt first. It verifies the
+exact empty readonly Opt fallback before removing `/tmp`, then removes native
+views in reverse order and the base root. Busy or uncertain teardown returns
+129 and retains the guard; an ordinary callback status returns only after all
+root and IO cleanup succeeds. The layout uses exactly 78 unique queries within
+its fixed 78-query ceiling. Older root and native-data APIs retain their
+existing contracts.
 
 The execution guard remains on every outcome. A completion marker describes
 verified filesystem teardown; the enclosing IO transaction must also clean up
