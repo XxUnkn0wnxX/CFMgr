@@ -12,7 +12,7 @@ import pytest
 
 from tests.harness import RouterHarness, ShellResult
 
-SOURCE = Path(__file__).resolve().parents[1] / "modules/mountinfo.awk"
+SOURCE = Path(__file__).resolve().parents[1] / "modules/lib/mountinfo.awk"
 HOST_AWKS = sorted(
     {
         str(Path(path).resolve())

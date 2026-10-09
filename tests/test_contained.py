@@ -119,7 +119,7 @@ def preparation_consumer(router: RouterHarness) -> str:
         executable=True,
     )
     return f"""
-. {shlex.quote(str(ROOT / "modules/isolation.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/isolation.sh"))}
 _io_lf='
 '
 _isolation_test=/usr/bin/true; _isolation_mkdir=/bin/mkdir; _isolation_rm=/bin/rm
@@ -265,7 +265,7 @@ def test_interrupted_closure_intermediate_retains_guard_with_live_producer(
         "import os; from pathlib import Path; "
         f"Path({str(build_pid)!r}).write_text(str(os.getppid()))"
     )
-    original = (ROOT / "modules/closure.sh").read_text()
+    original = (ROOT / "modules/lib/closure.sh").read_text()
     header = "_cfmgr_closure_build() (\n"
     assert original.count(header) == 1
     instrumented = router.write(
@@ -318,7 +318,7 @@ def test_interrupted_closure_intermediate_retains_guard_with_live_producer(
         "    time.sleep(0.005)\n"
     )
     sources = [
-        ROOT / "modules" / name
+        ROOT / "modules/lib" / name
         for name in ("io.sh", "storage.sh", "supervision.sh", "isolation.sh")
     ]
     script = (
@@ -351,8 +351,8 @@ _cfmgr_isolation_query() {
         str(router.path("work/mountinfo")),
         str(router.path("work/fdinfo")),
         str(router.path("work/block")),
-        str(ROOT / "modules/mountinfo.awk"),
-        str(ROOT / "modules/storageinfo.awk"),
+        str(ROOT / "modules/lib/mountinfo.awk"),
+        str(ROOT / "modules/lib/storageinfo.awk"),
         "armv7sf-k3.2",
         str(contained.probe_manifest),
         str(contained.probe_timeout),
@@ -389,8 +389,8 @@ def test_image_source_descendant_retains_staged_guard_before_launch(
 
 
 IMAGE_CONSUMER = f"""
-. {shlex.quote(str(ROOT / "modules/io.sh"))}
-. {shlex.quote(str(ROOT / "modules/isolation.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/io.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/isolation.sh"))}
 _io_tab=$(printf '\\t')
 good=726f2c6e6f737569642c6e6f6465762c65786563; ram=72772c65786563
 _cfmgr_isolation_image_options "$good" "$ram" || exit 10
@@ -464,7 +464,7 @@ def test_image_flag_consumer_runs_under_busybox(busybox_router: RouterHarness) -
 def test_probe_completion_gate_clears_only_after_no_start_or_verified_completion(
     router: RouterHarness,
 ) -> None:
-    source = shlex.quote(str(ROOT / "modules/isolation.sh"))
+    source = shlex.quote(str(ROOT / "modules/lib/isolation.sh"))
     script = f"""
 . {source}
 _cfmgr_isolation_active() {{ printf '%s\\n' "$1" >"$_isolation_guard/active"; }}
@@ -518,7 +518,7 @@ def test_begin_args_preserves_incomplete_124_without_cleanup(router: RouterHarne
         (tools / name).symlink_to(executable)
     guard = base / "root/cfmgr-isolation"
     cleanup_record = base / "cleanup-called"
-    source = shlex.quote(str(ROOT / "modules/isolation.sh"))
+    source = shlex.quote(str(ROOT / "modules/lib/isolation.sh"))
     script = f"""
 . {source}
 _cfmgr_isolation_exit() {{ :; }}
@@ -545,7 +545,7 @@ def test_probe_entry_validates_profile_mode_and_replaces_inherited_entry_state(
     router: RouterHarness,
 ) -> None:
     source = "\n".join(
-        f". {shlex.quote(str(ROOT / 'modules' / name))}"
+        f". {shlex.quote(str(ROOT / 'modules/lib' / name))}"
         for name in ("io.sh", "storage.sh", "closure.sh", "supervision.sh", "isolation.sh")
     )
     called = router.path("work/storage-called")
@@ -603,7 +603,7 @@ cfmgr_isolation_probe_test; [ "$?" = 2 ] || exit 52
 @pytest.mark.integration
 @pytest.mark.matrix("V74", evidence="host")
 def test_busy_image_consumer_stops_before_null_and_ram_cleanup(router: RouterHarness) -> None:
-    source = shlex.quote(str(ROOT / "modules/isolation.sh"))
+    source = shlex.quote(str(ROOT / "modules/lib/isolation.sh"))
     script = f"""
 . {source}
 _isolation_guard=$1; _isolation_tree=$_isolation_guard/root

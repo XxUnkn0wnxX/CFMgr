@@ -31,11 +31,11 @@ done
 guard=$ram/native-root
 "$bb" mkdir -m 700 "$guard"
 # shellcheck source=/dev/null
-. "$repo/modules/io.sh"
+. "$repo/modules/lib/io.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/storage.sh"
+. "$repo/modules/lib/storage.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/isolation.sh"
+. "$repo/modules/lib/isolation.sh"
 
 observe_native_root() {
 	observer_root=$1 observer_ledger=$2
@@ -85,7 +85,7 @@ printf 'nine\n' >"$guard/fd9"
 exec 6<"$guard/fd6" 7<"$guard/fd7" 8<"$guard/fd8" 9<"$guard/fd9"
 status=0
 cfmgr_isolation_native_root_test "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 \
-	"$native_source" "$repo/modules/mountinfo.awk" "$repo/modules/storageinfo.awk" observe_native_root forwarded || status=$?
+	"$native_source" "$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_native_root forwarded || status=$?
 [ "$status" -eq 7 ] || fail "ordinary callback status/teardown ($status)"
 if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8 && IFS= read -r fd9 <&9; then :; else
 	fail 'caller descriptors'
@@ -116,7 +116,7 @@ done
 # Assert no surviving execution-root or native child mounts before cleanup;
 # namespace destruction alone is never accepted as successful teardown.
 tree_clean() {
-	_cfmgr_io_mount_capture "$2" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	_cfmgr_io_mount_capture "$2" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ]
 }
 cfmgr_io_test "$ram" "$tools" workspace tree_clean "$ram" || fail 'retained execution mount'

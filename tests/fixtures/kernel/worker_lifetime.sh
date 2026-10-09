@@ -24,10 +24,10 @@ opt=$guard/writable-opt
 "$bb" mount -n -i -o make-private "$root"
 "$bb" mount -n -i -o remount,bind,ro,nosuid,nodev "$image" "$root"
 # shellcheck source=/dev/null
-. "$repo/modules/io.sh"
+. "$repo/modules/lib/io.sh"
 # shellcheck disable=SC2317,SC2329
 root_record() {
-	_cfmgr_io_mount_capture "$root" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	_cfmgr_io_mount_capture "$root" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
 	expected_hex=$(printf '%s' "$root" | "$bb" hexdump -v -e '1/1 "%02x"') || return 1
 	IFS=$_io_tab
@@ -43,7 +43,7 @@ root_mount_id=$(cfmgr_io_test "$ram" "$tools" report root_record) || fail 'actua
 # No namespace discard may hide retained fixture mounts on a successful path.
 # shellcheck disable=SC2317,SC2329
 ram_clean() {
-	_cfmgr_io_mount_capture "$ram" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	_cfmgr_io_mount_capture "$ram" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ]
 }
 cfmgr_io_test "$ram" "$tools" workspace ram_clean || fail 'retained fixture mount'

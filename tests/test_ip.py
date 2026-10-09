@@ -11,7 +11,7 @@ import pytest
 
 from tests.harness import RouterHarness, ShellResult
 
-SOURCE = Path(__file__).resolve().parents[1] / "modules/ip.sh"
+SOURCE = Path(__file__).resolve().parents[1] / "modules/lib/ip.sh"
 NativeShell = tuple[RouterHarness, str]
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V66", evidence="host")]
 

@@ -13,7 +13,7 @@ import pytest
 from tests.harness import RouterHarness, ShellResult
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "modules/closure.sh"
+SOURCE = ROOT / "modules/lib/closure.sh"
 PROFILE_FILES = {
     "aarch64-k3.10": (
         "lib/ld-2.27.so",

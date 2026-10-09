@@ -18,7 +18,7 @@ from tests.conftest import busybox_flock_executable
 from tests.harness import RouterHarness, ShellResult
 from tools import check
 
-SOURCE = Path(__file__).resolve().parents[1] / "modules/dependency_lock.sh"
+SOURCE = Path(__file__).resolve().parents[1] / "modules/lib/dependency_lock.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
 FLOCK_TOOL = r"""

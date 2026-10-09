@@ -15,9 +15,9 @@ from tests.test_mountinfo import Mount, snapshot
 from tests.test_storage import IO, STORAGE
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "modules/isolation.sh"
-MOUNT_PARSER = ROOT / "modules/mountinfo.awk"
-STORAGE_PARSER = ROOT / "modules/storageinfo.awk"
+SOURCE = ROOT / "modules/lib/isolation.sh"
+MOUNT_PARSER = ROOT / "modules/lib/mountinfo.awk"
+STORAGE_PARSER = ROOT / "modules/lib/storageinfo.awk"
 ROOT_MOUNT_ID = "900"
 RAM_MOUNT_ID = "77"
 

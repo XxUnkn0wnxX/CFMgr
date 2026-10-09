@@ -15,10 +15,10 @@ from tests.test_mountinfo import Mount, snapshot
 from tests.test_storageinfo import BLOCK_LINE, ext_bytes, ledger
 
 ROOT = Path(__file__).resolve().parents[1]
-IO = ROOT / "modules/io.sh"
-STORAGE = ROOT / "modules/storage.sh"
-MOUNT_PARSER = ROOT / "modules/mountinfo.awk"
-STORAGE_PARSER = ROOT / "modules/storageinfo.awk"
+IO = ROOT / "modules/lib/io.sh"
+STORAGE = ROOT / "modules/lib/storage.sh"
+MOUNT_PARSER = ROOT / "modules/lib/mountinfo.awk"
+STORAGE_PARSER = ROOT / "modules/lib/storageinfo.awk"
 UUID = "00112233-4455-6677-8899-aabbccddeeff"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 SHELLS = [

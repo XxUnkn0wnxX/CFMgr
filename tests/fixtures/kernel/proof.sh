@@ -64,15 +64,15 @@ fail() {
 ram=$work/ram source=$work/source tools=$work/tools
 "$bb" mount -t tmpfs -o mode=700,nosuid tmpfs "$ram"
 # shellcheck source=/dev/null
-. "$repo/modules/io.sh"
+. "$repo/modules/lib/io.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/storage.sh"
+. "$repo/modules/lib/storage.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/closure.sh"
+. "$repo/modules/lib/closure.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/supervision.sh"
+. "$repo/modules/lib/supervision.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/isolation.sh"
+. "$repo/modules/lib/isolation.sh"
 
 wait_ready() {
 	attempt=0
@@ -88,7 +88,7 @@ verify_mounts() {
 	# Actual checked mount parser, followed by exact bindpoint/private assertions.
 	verify_root=$2
 	point=$verify_root/opt
-	_cfmgr_io_mount_capture "$point" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	_cfmgr_io_mount_capture "$point" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
 	point_hex=$(hex "$point") || return 1
 	saved_ifs=$IFS
@@ -100,7 +100,7 @@ verify_mounts() {
 }
 verify_null() {
 	verify_root=$2
-	_cfmgr_io_mount_capture "$2/dev/null" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	_cfmgr_io_mount_capture "$2/dev/null" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
 	point_hex=$(hex "$2/dev/null") || return 1
 	saved_ifs=$IFS
@@ -118,7 +118,7 @@ check_binds() {
 if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 	_isolation_root=$ram
 	_isolation_tools=$tools
-	_isolation_parser=$repo/modules/mountinfo.awk
+	_isolation_parser=$repo/modules/lib/mountinfo.awk
 	_isolation_input=/proc/self/mountinfo
 	guard=$ram/cfmgr-isolation
 	if [ "$scenario" = contained ]; then
@@ -133,7 +133,7 @@ if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 		_isolation_probe_mode=timeout
 		# shellcheck disable=SC2317,SC2329
 		fixture_source_record() {
-			_cfmgr_io_mount_capture "$source" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+			_cfmgr_io_mount_capture "$source" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 			[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
 			cfmgr_io_stage_report "$_mount_body$_io_lf"
 		}
@@ -203,7 +203,7 @@ if [ "$scenario" != primitive ] && [ "$scenario" != image ]; then
 			# Namespace discard cannot substitute for product ordinary cleanup.
 			# shellcheck disable=SC2317,SC2329
 			fixture_contained_clean() {
-				_cfmgr_io_mount_capture "$ram" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+				_cfmgr_io_mount_capture "$ram" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 				[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ]
 			}
 			cfmgr_io_test "$ram" "$tools" workspace fixture_contained_clean || fail 'contained guard mounts retained'
@@ -271,7 +271,7 @@ if [ "$scenario" = image ]; then
 	# shellcheck disable=SC2317,SC2329
 	fixture_image_record() {
 		record_point=$2 record_expected=$3 record_alias=$4 record_profile=$5
-		_cfmgr_io_mount_capture "$record_point" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+		_cfmgr_io_mount_capture "$record_point" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 		[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
 		record_hex=$(hex "$record_expected") || return 1
 		saved_ifs=$IFS

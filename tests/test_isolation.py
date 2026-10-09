@@ -18,7 +18,7 @@ from tests.test_mountinfo import Mount, snapshot
 from tests.test_storage import IO, STORAGE, StorageFixture
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "modules/isolation.sh"
+SOURCE = ROOT / "modules/lib/isolation.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 UMOUNT_HELP = {
     "legacy": b"BusyBox v1.25.1 (fixture) multi-call binary.\n\n"
@@ -609,8 +609,8 @@ class IsolationFixture:
         self.router.write(
             "work/invoke-probe.sh",
             f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
-            f". {shlex.quote(str(ROOT / 'modules/closure.sh'))}\n"
-            f". {shlex.quote(str(ROOT / 'modules/supervision.sh'))}\n"
+            f". {shlex.quote(str(ROOT / 'modules/lib/closure.sh'))}\n"
+            f". {shlex.quote(str(ROOT / 'modules/lib/supervision.sh'))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
             f"_fixture_volume={shlex.quote(self.storage.expected())}\n"
             + FOCUSED_BOUNDARIES
@@ -623,8 +623,8 @@ class IsolationFixture:
             str(self.router.path("work/mountinfo")),
             str(self.router.path("work/fdinfo")),
             str(self.router.path("work/block")),
-            str(ROOT / "modules/mountinfo.awk"),
-            str(ROOT / "modules/storageinfo.awk"),
+            str(ROOT / "modules/lib/mountinfo.awk"),
+            str(ROOT / "modules/lib/storageinfo.awk"),
             "armv7sf-k3.2",
             str(self.probe_manifest),
             str(self.probe_timeout),
@@ -686,8 +686,8 @@ class IsolationFixture:
             str(self.router.path("work/mountinfo")),
             str(self.router.path("work/fdinfo")),
             str(self.router.path("work/block")),
-            str(ROOT / "modules/mountinfo.awk"),
-            str(ROOT / "modules/storageinfo.awk"),
+            str(ROOT / "modules/lib/mountinfo.awk"),
+            str(ROOT / "modules/lib/storageinfo.awk"),
             callback,
             *arguments,
         ]
@@ -712,8 +712,8 @@ class IsolationFixture:
             str(self.router.path("work/mountinfo")),
             str(self.router.path("work/fdinfo")),
             str(self.router.path("work/block")),
-            str(ROOT / "modules/mountinfo.awk"),
-            str(ROOT / "modules/storageinfo.awk"),
+            str(ROOT / "modules/lib/mountinfo.awk"),
+            str(ROOT / "modules/lib/storageinfo.awk"),
             "unused_callback",
         ]
         return (

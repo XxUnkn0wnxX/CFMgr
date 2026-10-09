@@ -20,11 +20,11 @@ ram=$work/ram tools=$work/tools
 guard=$ram/execution-root
 "$bb" mkdir -m 700 "$guard"
 # shellcheck source=/dev/null
-. "$repo/modules/io.sh"
+. "$repo/modules/lib/io.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/storage.sh"
+. "$repo/modules/lib/storage.sh"
 # shellcheck source=/dev/null
-. "$repo/modules/isolation.sh"
+. "$repo/modules/lib/isolation.sh"
 
 # Native observation only, with proof-only failed writes on the checked RO bind.
 # No callback mount/unmount, children, alias writes or retained descriptors.
@@ -71,7 +71,7 @@ printf 'nine\n' >"$guard/fd9"
 exec 6<"$guard/fd6" 7<"$guard/fd7" 8<"$guard/fd8" 9<"$guard/fd9"
 status=0
 cfmgr_isolation_root_test "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 \
-	"$repo/modules/mountinfo.awk" "$repo/modules/storageinfo.awk" observe_root forwarded || status=$?
+	"$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_root forwarded || status=$?
 [ "$status" -eq 7 ] || fail "ordinary callback status/teardown ($status)"
 if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8 && IFS= read -r fd9 <&9; then :; else
 	fail 'caller descriptors'
@@ -86,7 +86,7 @@ for fallback in opt tmp; do
 done
 # A successful scenario cannot rely on namespace destruction to hide a mount.
 ram_clean() {
-	_cfmgr_io_mount_capture "$ram" "$repo/modules/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
+	_cfmgr_io_mount_capture "$ram" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ]
 }
 cfmgr_io_test "$ram" "$tools" workspace ram_clean || fail 'retained root mount'

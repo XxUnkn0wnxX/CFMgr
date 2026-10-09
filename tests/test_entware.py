@@ -15,10 +15,10 @@ from tests.test_storage import IO, STORAGE, UUID, StorageFixture, quiet
 from tests.test_storageinfo import ledger
 
 ROOT = Path(__file__).resolve().parents[1]
-ENTWARE = ROOT / "modules/entware.sh"
-DEPENDENCY_LOCK = ROOT / "modules/dependency_lock.sh"
-MOUNT_PARSER = ROOT / "modules/mountinfo.awk"
-STORAGE_PARSER = ROOT / "modules/storageinfo.awk"
+ENTWARE = ROOT / "modules/lib/entware.sh"
+DEPENDENCY_LOCK = ROOT / "modules/lib/dependency_lock.sh"
+MOUNT_PARSER = ROOT / "modules/lib/mountinfo.awk"
+STORAGE_PARSER = ROOT / "modules/lib/storageinfo.awk"
 TARGET = "/opt"
 TARGET_HEX = TARGET.encode().hex()
 OTHER_UUID = "11112233-4455-6677-8899-aabbccddeeff"

@@ -13,7 +13,7 @@ import pytest
 from tests.harness import RouterHarness, ShellResult
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "modules/supervision.sh"
+SOURCE = ROOT / "modules/lib/supervision.sh"
 DASH = shutil.which("dash")
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
