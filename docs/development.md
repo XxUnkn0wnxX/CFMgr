@@ -745,12 +745,19 @@ cfmgr.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/cf
 modules/lib/common.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/modules/lib/common.sh
 ```
 
-The focused D1 parser checks passed 54 tests with two explicit missing-BusyBox
-skips in 6.38s; the slowest case took 1.77s. Source `4fd962d` also passes the full
-serial local gate: 1,812 tests with 36 explicit platform skips in 688.43s. Its
-exact Linux/BusyBox gate remains pending, so 45% remains the accepted checkpoint. Future developer-mode
-branch/commit changes must preserve existing router catalog bytes; default
-catalog acquisition remains limited to a genuinely missing file. See the
+The accepted 46% checkpoint's focused parser checks pass 54 tests with two
+explicit missing-BusyBox skips in 6.38s; the slowest case took 1.77s. Source
+`4fd962d` passes the full serial local gate: 1,812 tests with 36 explicit platform
+skips in 688.43s. Exact commit `4a3ae58708d77a484906becac12de2a99150b879` passes
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37997220279):
+all 1,848 tests with zero skips in 96.81s, six stripped-ash checks in 6.86s and
+all eleven kernel scenarios. The two new actual-BusyBox parser cases run in CI.
+Native-root, native-probe and native-dependencies take 5.59s, 8.02s and 8.57s;
+namespace execution totals 26.47s, with unchanged 15-second scenario bounds.
+These are host checks, separate from Merlin acceptance.
+
+Future developer-mode branch/commit changes must preserve existing router
+catalog bytes; default catalog acquisition remains limited to a genuinely missing file. See the
 [architecture contract](architecture.md#-modules-and-forks) and [PLAN.md](../PLAN.md).
 
 ## 🧭 Compatibility and documentation

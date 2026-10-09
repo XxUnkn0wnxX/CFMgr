@@ -536,11 +536,12 @@ marker release and the still-held lock. The full local check and all 1,792
 Linux/BusyBox tests pass; this remains host evidence, with router acceptance
 and operational entry paths still pending.
 
-The 46% candidate adds the standalone `config_header.awk` and `catalog.awk`
-parsers with [data-format contracts](development.md#-module-catalog-and-forks).
-Their focused checks and full local gate pass: 1,812 tests with 36 explicit
-platform skips in 688.43s. Exact Linux/BusyBox validation remains pending; no
-integrated config reader, manifest trust or catalog acquisition path is implemented.
+The accepted 46% checkpoint adds the standalone `config_header.awk` and
+`catalog.awk` parsers with [data-format contracts](development.md#-module-catalog-and-forks).
+The full local gate passes 1,812 tests with 36 explicit platform skips in 688.43s;
+exact Linux/BusyBox CI passes all 1,848 tests and all eleven unchanged kernel
+scenarios. This validates the parsers and preserves the worker composition;
+no integrated config reader, manifest trust or catalog acquisition path is implemented.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

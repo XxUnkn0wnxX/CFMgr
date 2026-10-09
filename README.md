@@ -33,13 +33,11 @@ health report. Fixed probes cover one native shell launch and the installed
 Entware `opkg --version` response. The source-only
 `cfmgr_native_dependencies` handoff can call the bundled repair or selected
 reinstall backend inside an already admitted native root; it is not wired to an
-operational CLI, menu or installer. The accepted 45% checkpoint includes a
-source-only serialized dependency worker and passes the full local and
-Linux/BusyBox checks, including all eleven kernel scenarios. Source-only
-configuration-header and catalog parsers are in the 46% candidate; full local
-checks pass and exact Linux/BusyBox validation is pending. These parsers do not provide an integrated
-config reader, catalog trust or package-download workflow, and no catalog is
-shipped. See [PLAN.md](PLAN.md) for exact results and progress. Synthetic
+operational CLI, menu or installer. The accepted 46% checkpoint includes the
+source-only serialized dependency worker and configuration-header/catalog
+parsers. Full local and Linux/BusyBox checks pass, including all eleven kernel
+scenarios. The parsers do not provide an integrated config reader, manifest
+trust or package-download workflow, and no catalog is shipped. See [PLAN.md](PLAN.md) for exact results and progress. Synthetic
 host/Linux checks do not establish installed-opkg provenance or Merlin
 acceptance. Live router acceptance and operational feature integration remain
 pending, and there is no installable manager yet. Routine Entware upgrades

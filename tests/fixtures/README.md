@@ -19,7 +19,9 @@ then checks the source-only header projection and deliberately corrupted ledgers
 credential values in parser output. `tests/test_catalog.py` uses complete
 synthetic catalog text with illustrative owners, repositories and URLs. Neither
 suite downloads a manifest, validates package trust or exercises a config reader
-or writer. Their ledger assertions establish parser behavior only.
+or writer. Their ledger assertions establish parser behavior only. Both actual
+BusyBox parser cases pass in the accepted 46% Linux suite (1,848 tests, no skips);
+the Mac run explicitly skips them when BusyBox is unavailable.
 
 ## Kernel fixtures
 
