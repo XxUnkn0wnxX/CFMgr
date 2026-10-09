@@ -19,6 +19,17 @@ cfmgr_native_config_test() {
 	_cfmgr_native_config_run fixture "$1" "$2" >/dev/null 2>&1
 }
 
+# Extended opaque data only: source generations must remain stable through cmp.
+cfmgr_native_config_extended_stage() {
+	case $# in 1) ;; *) return 2 ;; esac
+	_cfmgr_native_config_extended_run production "$1" / >/dev/null 2>&1
+}
+
+cfmgr_native_config_extended_test() {
+	case $# in 2) ;; *) return 2 ;; esac
+	_cfmgr_native_config_extended_run fixture "$1" "$2" >/dev/null 2>&1
+}
+
 _cfmgr_native_config_path() {
 	[ "${#1}" -le 4096 ] || return 1
 	case $1 in /) return 0 ;; /*) ;; *) return 1 ;; esac
@@ -126,3 +137,148 @@ _cfmgr_native_config_verify() {
 	_cfmgr_native_config_capture "$1" "$2" || return 1
 	[ "$_native_text" = "$3" ]
 }
+
+# dd/cmp are fixed native additions, not general IO capture commands.
+_cfmgr_native_config_extra_find() (
+	case $1 in dd | cmp) ;; *) return 2 ;; esac
+	if [ -n "$_io_tools" ]; then
+		[ -x "$_io_tools/$1" ] && [ ! -d "$_io_tools/$1" ] || return 1
+		printf '%s\n' "$_io_tools/$1"
+		return
+	fi
+	for _native_find_dir in /sbin /bin /usr/sbin /usr/bin; do
+		if [ -x "$_native_find_dir/$1" ] && [ ! -d "$_native_find_dir/$1" ]; then
+			printf '%s\n' "$_native_find_dir/$1"
+			return
+		fi
+	done
+	return 1
+)
+
+_cfmgr_native_config_extra_paths() {
+	case $1 in
+	0) _native_extra_relative=nsswitch.conf ;;
+	1) _native_extra_relative=wgetrc ;;
+	2) _native_extra_relative=openssl.cnf ;;
+	3) _native_extra_relative=ssl/certs/ca-certificates.crt ;;
+	*) return 2 ;;
+	esac
+	_native_extra_cap=65536
+	_native_extra_blocks=16
+	if [ "$1" = 3 ]; then
+		_native_extra_cap=1048576
+		_native_extra_blocks=256
+	fi
+	_native_extra_source=${_native_source%/}/etc/$_native_extra_relative
+	_native_extra_target=$_native_etc/$_native_extra_relative
+	_native_extra_probe=$_io_stage/native-config-extra-$1.eof
+}
+
+# Separate finite-file parser: generic IO's65536-byte ceiling stays unchanged.
+_cfmgr_native_config_extra_size() (
+	[ "$#" -eq 2 ] || return 1
+	case $2 in 65536 | 1048576) ;; *) return 1 ;; esac
+	[ -f "$1" ] && [ ! -L "$1" ] || return 1
+	_native_extra_count=$("$_io_wc" -c <"$1") || return 1
+	# Fixed IFS/noglob are provided by the isolated extended owner.
+	# shellcheck disable=SC2086
+	set -- $_native_extra_count "$2"
+	[ "$#" -eq 2 ] || return 1
+	case $1 in '' | *[!0123456789]* | 0[0123456789]*) return 1 ;; esac
+	[ "${#1}" -le 7 ] && [ "$1" -le "$2" ] || return 1
+	printf '%s\n' "$1"
+) 2>/dev/null
+
+_cfmgr_native_config_extra_copy() (
+	[ "$#" -eq 5 ] || return 1
+	case $4:$5 in 65536:16 | 1048576:256) ;; *) return 1 ;; esac
+	umask 077
+	set -C
+	[ -f "$1" ] && [ -r "$1" ] || return 1
+	[ ! -e "$2" ] && [ ! -L "$2" ] && [ ! -e "$3" ] && [ ! -L "$3" ] || return 1
+	# Both reads inherit the same open-file description. Scoped FD6 redirection
+	# restores caller descriptors and does not read their retained offsets.
+	{
+		(
+			#512/1024-byte units allow the cap, with physical ceiling<=2*cap.
+			ulimit -f "$(($4 / 512))" || return 1
+			"$_native_dd" bs=4096 count="$5" <&6 >"$2" 2>/dev/null
+		) || return 1
+		(
+			ulimit -f 1 || return 1
+			"$_native_dd" bs=1 count=1 <&6 >"$3" 2>/dev/null
+		) || return 1
+	} 6<"$1" || return 1
+	_native_extra_bytes=$(_cfmgr_native_config_extra_size "$3" 65536) || return 1
+	[ "$_native_extra_bytes" -eq 0 ] || return 1
+	_cfmgr_native_config_extra_size "$2" "$4" >/dev/null || return 1
+	# Reopen only under the caller's stable source-generation precondition.
+	"$_native_cmp" -s "$1" "$2" || return 1
+)
+
+_cfmgr_native_config_extended_run() (
+	set +x
+	set +e
+	set +u
+	set -f
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	LC_ALL=C
+	export PATH LC_ALL
+	unset ENV BASH_ENV CDPATH TZ
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
+	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
+	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
+	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
+	IFS=' 	'
+	IFS="${IFS}
+"
+	umask 077
+	[ "$#" -eq 3 ] && [ "${_io_active-}" = 1 ] || return 2
+	_native_image=$2
+	case $1 in production) _native_source=/ ;; fixture) _native_source=$3 ;; *) return 2 ;; esac
+	_native_mode=$1
+	_native_etc=$_native_image/etc
+	for _native_path in "${_io_root-}" "${_io_stage-}" "$_native_image" "$_native_source" \
+		"$_native_etc" "$_native_etc/ssl" "$_native_etc/ssl/certs"; do
+		_cfmgr_native_config_path "$_native_path" || return 2
+	done
+	for _native_directory in "$_io_root" "$_io_stage" "$_native_image" "$_native_source"; do
+		_cfmgr_native_config_directory "$_native_directory" || return 2
+	done
+	[ "$_native_image" != "$_io_root" ] && [ "$_io_stage" != "$_io_root" ] || return 2
+	case $_native_image in "${_io_root%/}/"*) ;; *) return 2 ;; esac
+	case $_io_stage in "${_io_root%/}/"*) ;; *) return 2 ;; esac
+	case $_native_image in "$_io_stage" | "$_io_stage"/*) return 2 ;; esac
+	case ${_io_tools+x} in x) ;; *) return 2 ;; esac
+	for _native_tool in "${_io_mkdir-}" "${_io_wc-}"; do
+		_cfmgr_native_config_path "$_native_tool" && [ -x "$_native_tool" ] && [ ! -d "$_native_tool" ] || return 2
+	done
+	_native_dd=$(_cfmgr_native_config_extra_find dd) || return 1
+	_native_cmp=$(_cfmgr_native_config_extra_find cmp) || return 1
+	for _native_tool in "$_native_dd" "$_native_cmp"; do
+		_cfmgr_native_config_path "$_native_tool" || return 2
+	done
+	# New sources, targets and metadata are all validated before the old stager.
+	for _native_directory in "$_native_etc" "$_native_etc/ssl" "$_native_etc/ssl/certs"; do
+		[ ! -e "$_native_directory" ] && [ ! -L "$_native_directory" ] || return 1
+	done
+	for _native_extra_index in 0 1 2 3; do
+		_cfmgr_native_config_extra_paths "$_native_extra_index" || return 2
+		for _native_path in "$_native_extra_source" "$_native_extra_target" "$_native_extra_probe"; do
+			_cfmgr_native_config_path "$_native_path" || return 2
+		done
+		[ -f "$_native_extra_source" ] && [ -r "$_native_extra_source" ] || return 1
+		[ ! -e "$_native_extra_target" ] && [ ! -L "$_native_extra_target" ] &&
+			[ ! -e "$_native_extra_probe" ] && [ ! -L "$_native_extra_probe" ] || return 1
+	done
+	_cfmgr_native_config_run "$_native_mode" "$_native_image" "$_native_source" || return "$?"
+	"$_io_mkdir" -m 700 "$_native_etc/ssl" || return 1
+	_cfmgr_native_config_directory "$_native_etc/ssl" || return 1
+	"$_io_mkdir" -m 700 "$_native_etc/ssl/certs" || return 1
+	_cfmgr_native_config_directory "$_native_etc/ssl/certs" || return 1
+	for _native_extra_index in 0 1 2 3; do
+		_cfmgr_native_config_extra_paths "$_native_extra_index" || return 1
+		_cfmgr_native_config_extra_copy "$_native_extra_source" "$_native_extra_target" \
+			"$_native_extra_probe" "$_native_extra_cap" "$_native_extra_blocks" || return 1
+	done
+)

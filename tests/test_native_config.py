@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shlex
+import shutil
 from pathlib import Path
 
 import pytest
@@ -18,9 +19,18 @@ pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host"
 class NativeConfigFixture:
     """Use real host tools; wrappers inject only the named failure under test."""
 
-    def __init__(self, router: RouterHarness, *, busybox: bool = False):
+    def __init__(
+        self,
+        router: RouterHarness,
+        *,
+        busybox: bool = False,
+        extended: bool = False,
+        preserve_fd6: bool = False,
+    ):
         self.router = router
         self.busybox = busybox
+        self.extended = extended
+        self.preserve_fd6 = preserve_fd6
         self.image = router.path("ram/tmp/image")
         self.image.mkdir(mode=0o700)
         self.source_root = router.path("work/source")
@@ -31,17 +41,57 @@ class NativeConfigFixture:
         self.hosts.write_bytes(b"127.0.0.1\tlocalhost\\x\n\n")
         self.resolver_target.write_bytes(b"")
         self.resolver.symlink_to("resolv.data")
+        self.extra_sources = {
+            "nsswitch.conf": self.source_root / "etc/nsswitch.conf",
+            "wgetrc": self.source_root / "etc/wgetrc",
+            "openssl.cnf": self.source_root / "etc/openssl.cnf",
+            "ca-certificates.crt": self.source_root / "etc/ssl/certs/ca-certificates.crt",
+        }
+        self.extra_payloads = {
+            "nsswitch.conf": b"passwd: files\nhosts: files dns\n",
+            "wgetrc": b"",
+            "openssl.cnf": b"[default]\n",
+            "ca-certificates.crt": b"fixture-cert-bundle\x00\n",
+        }
+        if extended:
+            (self.source_root / "etc/ssl/certs").mkdir(parents=True, mode=0o700)
+            for name, source in self.extra_sources.items():
+                source.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                source.write_bytes(self.extra_payloads[name])
+        if preserve_fd6:
+            router.write("work/fd-six", "before-helper\nafter-helper\n")
         if busybox:
-            router.busybox_applets("cat", "wc", "printf", "mkdir", "rm", "[", "test")
+            applets = ["cat", "wc", "printf", "mkdir", "rm", "[", "test"]
+            if extended:
+                applets.extend(["dd", "cmp"])
+            router.busybox_applets(*applets)
         else:
-            for name, path in {
+            tools = {
                 "cat": "/bin/cat",
                 "wc": "/usr/bin/wc",
                 "printf": "/usr/bin/printf",
                 "mkdir": "/bin/mkdir",
-            }.items():
+            }
+            if extended:
+                tools.update({"dd": shutil.which("dd"), "cmp": shutil.which("cmp")})
+            for name, path in tools.items():
+                assert path is not None
                 router.path(f"bin/{name}").symlink_to(path)
             router.fake_tool("test", 'exec /bin/sh -c \'test "$@"\' test "$@"\n')
+        stage_call = (
+            '  cfmgr_native_config_extended_test "$1" "$2"; stage_status=$?\n'
+            if extended
+            else '  cfmgr_native_config_test "$1" "$2"; stage_status=$?\n'
+        )
+        fd6_before = "  IFS= read -r fd6_before <&6\n" if preserve_fd6 else ""
+        fd6_after = "  IFS= read -r fd6_after <&6\n" if preserve_fd6 else ""
+        fd6_check = (
+            '  [ "$fd6_before:$fd6_after" = before-helper:after-helper ] && '
+            ': >"$CFMGR_TEST_ROOT/work/fd-state-preserved" || stage_status=1\n'
+            if preserve_fd6
+            else ""
+        )
+        fd6_open = 'exec 6<"$CFMGR_TEST_ROOT/work/fd-six"\n' if preserve_fd6 else ""
         self.script = (
             f". {shlex.quote(str(IO_SOURCE))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
@@ -52,17 +102,21 @@ class NativeConfigFixture:
             "  fi\n"
             "  before_ifs=$IFS; before_options=$(set +o); before_pwd=$PWD\n"
             "  before_umask=$(umask); before_trap=$(trap)\n"
-            '  cfmgr_native_config_test "$1" "$2"; stage_status=$?\n'
-            '  if [ "$IFS" = "$before_ifs" ] && [ "$(set +o)" = "$before_options" ] &&\n'
-            '    [ "$PWD" = "$before_pwd" ] && [ "$(umask)" = "$before_umask" ] &&\n'
-            '    [ "$(trap)" = "$before_trap" ]; then\n'
-            '    : >"$CFMGR_TEST_ROOT/work/helper-state-preserved"\n'
-            '  else : >"$CFMGR_TEST_ROOT/work/helper-state-changed"; stage_status=1; fi\n'
-            '  printf "%s\\n" "$stage_status" >"$CFMGR_TEST_ROOT/work/stage-status"\n'
-            '  [ "${3-}" = fail-cleanup ] && : >"$CFMGR_TEST_ROOT/work/fail-cleanup"\n'
-            '  return "$stage_status"\n'
-            "}\n"
-            'cfmgr_io_test "$1" "$2" workspace cfmgr_fixture_callback "$3" "$4" "${5-}"\n'
+            + fd6_before
+            + stage_call
+            + fd6_after
+            + fd6_check
+            + '  if [ "$IFS" = "$before_ifs" ] && [ "$(set +o)" = "$before_options" ] &&\n'
+            + '    [ "$PWD" = "$before_pwd" ] && [ "$(umask)" = "$before_umask" ] &&\n'
+            + '    [ "$(trap)" = "$before_trap" ]; then\n'
+            + '    : >"$CFMGR_TEST_ROOT/work/helper-state-preserved"\n'
+            + '  else : >"$CFMGR_TEST_ROOT/work/helper-state-changed"; stage_status=1; fi\n'
+            + '  printf "%s\\n" "$stage_status" >"$CFMGR_TEST_ROOT/work/stage-status"\n'
+            + '  [ "${3-}" = fail-cleanup ] && : >"$CFMGR_TEST_ROOT/work/fail-cleanup"\n'
+            + '  return "$stage_status"\n'
+            + "}\n"
+            + fd6_open
+            + 'cfmgr_io_test "$1" "$2" workspace cfmgr_fixture_callback "$3" "$4" "${5-}"\n'
         )
         if not busybox:
             router.fake_tool(
@@ -324,7 +378,7 @@ def test_outer_io_cleanup_failure_overrides_successful_stage(router: RouterHarne
 @pytest.mark.matrix("V74", evidence="busybox")
 def test_actual_busybox_stages_exact_configuration_bytes(busybox_router: RouterHarness) -> None:
     assert busybox_router.busybox is not None
-    fixture = NativeConfigFixture(busybox_router, busybox=True)
+    fixture = NativeConfigFixture(busybox_router, busybox=True, extended=True)
 
     result = busybox_router.run(
         f"exec {shlex.quote(str(busybox_router.busybox))} sh "
@@ -342,3 +396,12 @@ def test_actual_busybox_stages_exact_configuration_bytes(busybox_router: RouterH
     assert fixture.stage_status() == 0
     assert (fixture.etc() / "hosts").read_bytes() == b"127.0.0.1\tlocalhost\\x\n\n"
     assert (fixture.etc() / "resolv.conf").read_bytes() == b""
+    for name, payload in fixture.extra_payloads.items():
+        destination = (
+            fixture.etc() / "ssl/certs/ca-certificates.crt"
+            if name == "ca-certificates.crt"
+            else fixture.etc() / name
+        )
+        assert destination.read_bytes() == payload
+        assert destination.stat().st_mode & 0o777 == 0o600
+    assert (fixture.etc() / "ssl/certs").stat().st_mode & 0o777 == 0o700
