@@ -98,7 +98,9 @@ def run_native_opt(
     focused_query: bool = True,
 ) -> tuple[NativeRootFixture, StorageFixture, ShellResult]:
     """Run the native-opt fixture while retaining real host FDs 8 and 9."""
-    storage = StorageFixture(router)
+    # Storage contributes retained data; its tool doubles must not replace the
+    # execution harness applets, particularly the real BusyBox consumer.
+    storage = StorageFixture(RouterHarness(router.path("work/retained-storage")))
     fixture = NativeRootFixture(router, fault)
     fixture.tmp_enabled = True
     volume_mount = replace(storage.mounts[0], parent=HOST_MOUNT_ID)
@@ -180,7 +182,7 @@ def run_native_opt(
         timeout=60,
         env={
             "CFMGR_VOLUME_ROOT": str(storage.target),
-            "CFMGR_BLOCK_FILE": str(router.path("work/block")),
+            "CFMGR_BLOCK_FILE": str(storage.router.path("work/block")),
             "PYTHON": sys.executable,
         },
     )
