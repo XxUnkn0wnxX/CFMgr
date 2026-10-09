@@ -95,7 +95,7 @@ _cfmgr_storage_ledger() {
 	[ "$_storage_footer" = "end$_io_tab$_storage_body_bytes" ] || return 1
 	[ "$_storage_bytes" -eq "$((_storage_body_bytes + ${#_storage_footer} + 1))" ] || return 1
 	case $2 in
-	fdinfo) _cfmgr_io_decimal "$_storage_value" positive || return 1 ;;
+	fdinfo | charnull | charurandom) _cfmgr_io_decimal "$_storage_value" positive || return 1 ;;
 	blockdev)
 		case $_storage_value in *:*) ;; *) return 1 ;; esac
 		_cfmgr_io_decimal "${_storage_value%%:*}" nonnegative && _cfmgr_io_decimal "${_storage_value#*:}" nonnegative || return 1

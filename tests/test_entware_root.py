@@ -58,7 +58,16 @@ assert stat.S_ISREG(fd8.st_mode)
 assert (fd8.st_dev, fd8.st_ino) == (block_stat.st_dev, block_stat.st_ino)
 assert args[:2] == ["arg with spaces", "*"]
 assert args[-2:] == [sys.argv[-2], sys.argv[-1]]
-assert root_ledger.splitlines()[1].split("\t")[6] == "6"
+expected_children = "8" if os.environ.get("CFMGR_NATIVE_DEVICES") == "1" else "6"
+assert root_ledger.splitlines()[1].split("\t")[6] == expected_children
+device_nodes = {}
+if expected_children == "8":
+    for name in ("null", "urandom"):
+        node = root / "dev" / name
+        source_node = Path(os.environ["CFMGR_TEST_IMAGE"]) / "dev" / name
+        assert node.is_file() and node.stat().st_mode & 0o777 == 0o600
+        assert source_node.is_file() and source_node.stat().st_mode & 0o777 == 0o600
+        device_nodes[name] = [node.stat().st_dev, node.stat().st_ino, source_node.stat().st_ino]
 observation = {
     "root": str(root),
     "root_ledger": root_ledger,
@@ -68,6 +77,7 @@ observation = {
     "fd8": [fd8.st_dev, fd8.st_ino],
     "fd9": [fd9.st_dev, fd9.st_ino],
     "home": os.environ["HOME"],
+    "device_nodes": device_nodes,
 }
 Path(os.environ["CFMGR_TEST_ROOT"], "work/entware-callback.json").write_text(
     json.dumps(observation)
@@ -96,6 +106,7 @@ def run_native_opt(
     callback_status: int = 7,
     callback_args: tuple[str, ...] = ("arg with spaces", "*"),
     focused_query: bool = True,
+    devices_root: bool = False,
 ) -> tuple[NativeRootFixture, StorageFixture, ShellResult]:
     """Run the native-opt fixture while retaining real host FDs 8 and 9."""
     # Storage contributes retained data; its tool doubles must not replace the
@@ -105,6 +116,7 @@ def run_native_opt(
     fixture.tmp_enabled = True
     volume_mount = replace(storage.mounts[0], parent=HOST_MOUNT_ID)
     fixture.opt_enabled = True
+    fixture.devices_enabled = devices_root
     fixture.opt_volume_mount_object = volume_mount
     fixture.opt_volume_mount = {
         "identifier": volume_mount.identifier,
@@ -133,6 +145,11 @@ def run_native_opt(
         f". {shlex.quote(str(NATIVE_CONFIG))}\n"
         f". {shlex.quote(str(ISOLATION))}\n"
         f". {shlex.quote(str(ENTWARE_ROOT))}\n"
+        + (
+            f". {shlex.quote(str(ROOT / 'modules/lib/native_devices.sh'))}\n"
+            if devices_root
+            else ""
+        )
         + (FOCUSED_ISOLATION_QUERY if focused_query else "")
         + "fixture_callback() {\n"
         f'  {shlex.quote(sys.executable)} {shlex.quote(str(callback))} "$@"\n'
@@ -142,8 +159,12 @@ def run_native_opt(
         f"8<{shlex.quote(str(storage.router.path('work/block')))} "
         f"9<{shlex.quote(str(storage.target))} "
         '6<"$CFMGR_TEST_ROOT/work/fd-six"\n'
-        'cfmgr_isolation_entware_root_test "$@"; status=$?\n'
-        'printf "RESULT\\t%s\\n" "$status"\n'
+        + (
+            'cfmgr_isolation_native_devices_root_test "$@"; status=$?\n'
+            if devices_root
+            else 'cfmgr_isolation_entware_root_test "$@"; status=$?\n'
+        )
+        + 'printf "RESULT\\t%s\\n" "$status"\n'
         "IFS= read -r seven <&7; IFS= read -r six <&6\n"
         f"{shlex.quote(sys.executable)} {shlex.quote(str(post_callback))} "
         f"{shlex.quote(str(router.path('work/entware-callback.json')))}\n"
@@ -184,6 +205,8 @@ def run_native_opt(
             "CFMGR_VOLUME_ROOT": str(storage.target),
             "CFMGR_BLOCK_FILE": str(storage.router.path("work/block")),
             "PYTHON": sys.executable,
+            "CFMGR_NATIVE_DEVICES": "1" if devices_root else "0",
+            "CFMGR_TEST_IMAGE": str(fixture.guard / "execution/image"),
         },
     )
     return fixture, storage, result

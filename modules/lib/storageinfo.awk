@@ -10,7 +10,8 @@
 BEGIN {
     if (ARGC != 1 || ENVIRON["LC_ALL"] != "C") fail(2)
     if (cfmgr_storageinfo_mode != "fdinfo" && cfmgr_storageinfo_mode != "blkid" &&
-        cfmgr_storageinfo_mode != "blockdev" && cfmgr_storageinfo_mode != "exthex") fail(2)
+        cfmgr_storageinfo_mode != "blockdev" && cfmgr_storageinfo_mode != "exthex" &&
+        cfmgr_storageinfo_mode != "charnull" && cfmgr_storageinfo_mode != "charurandom") fail(2)
     if (cfmgr_storageinfo_size !~ /^(0|[1-9][0-9]*)$/ || length(cfmgr_storageinfo_size) > 4) fail(2)
     expected = cfmgr_storageinfo_size + 0
     if (expected > 4096) fail(2)
@@ -35,6 +36,8 @@ BEGIN {
     if (cfmgr_storageinfo_mode == "fdinfo") body = fdinfo(document)
     else if (cfmgr_storageinfo_mode == "blkid") body = blkid(document)
     else if (cfmgr_storageinfo_mode == "blockdev") body = blockdev(document)
+    else if (cfmgr_storageinfo_mode == "charnull" || cfmgr_storageinfo_mode == "charurandom")
+        body = chardev(document, cfmgr_storageinfo_mode)
     else body = exthex(document)
     footer = sprintf("end\t%d\n", length(body))
     if (length(body) + length(footer) > 4096) fail(1)
@@ -176,4 +179,27 @@ function exthex(document,    uuid) {
     uuid = substr(document, 2257, 32)
     if ("u" uuid == "u00000000000000000000000000000000") fail(3)
     return "exthex\t" substr(uuid, 1, 8) "-" substr(uuid, 9, 4) "-" substr(uuid, 13, 4) "-" substr(uuid, 17, 4) "-" substr(uuid, 21, 12) "\n"
+}
+
+# Fixed owned-device ls -dni profile, from a private image/dev cwd. Preserve
+# inode text exactly; floating-point conversion cannot identify a 20-digit inode.
+function chardev(document, mode,    line, fields, count, stamp, pair, name, minor) {
+    if (document == "" || substr(document, length(document), 1) != "\n") fail(1)
+    line = substr(document, 1, length(document) - 1)
+    if (line ~ /[[:cntrl:]]/ || substr(line, length(line), 1) == " ") fail(1)
+    sub(/^ +/, "", line)
+    count = split(line, fields, / +/)
+    name = (mode == "charnull" ? "null" : "urandom")
+    minor = (mode == "charnull" ? "3" : "9")
+    if (count != 11 || !decimal(fields[1], 1) || fields[2] != "crw-------" ||
+        fields[3] != "1" || fields[4] != "0" || fields[5] != "0" ||
+        fields[6] != "1," || fields[7] != minor || fields[11] != name) fail(1)
+    if (fields[8] !~ /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/ ||
+        !decimal(fields[9], 1) || length(fields[9]) > 2 || fields[9] + 0 > 31) fail(1)
+    stamp = fields[10]
+    if (stamp ~ /^[0-9][0-9]:[0-9][0-9]$/) {
+        split(stamp, pair, ":")
+        if (pair[1] + 0 > 23 || pair[2] + 0 > 59) fail(1)
+    } else if (stamp !~ /^[0-9][0-9][0-9][0-9]$/ || stamp == "0000") fail(1)
+    return mode "\t" fields[1] "\n"
 }

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Namespace-only native RO views/data, private tmp/HOME and retained Opt.
+# Namespace-only native RO views/data, private tmp/HOME, Opt and fixed devices.
 # No installed payload, chroot or router execution; fixed exec proof only.
 # IO supplies checked ledger/framing state inside its isolated callbacks.
 # shellcheck disable=SC2154
@@ -20,6 +20,7 @@ fail() {
 # propagation and bounds/reaps this exact namespace init externally.
 ram=$work/ram tools=$work/tools native_source=$work/native-source opt_source=$work/opt-source
 "$bb" mkdir -m 700 "$native_source" "$opt_source"
+"$bb" ln -s "$bb" "$tools/mknod"
 "$bb" mount -t tmpfs -o mode=700,nosuid tmpfs "$ram"
 "$bb" mount -t tmpfs -o mode=700,nosuid tmpfs "$native_source"
 "$bb" mount -t tmpfs -o mode=700,nosuid tmpfs "$opt_source"
@@ -51,6 +52,8 @@ guard=$ram/native-root
 . "$repo/modules/lib/entware.sh"
 # shellcheck source=/dev/null
 . "$repo/modules/lib/entware_root.sh"
+# shellcheck source=/dev/null
+. "$repo/modules/lib/native_devices.sh"
 
 observe_native_data() {
 	"$bb" test -d "$1/etc" && "$bb" test ! -L "$1/etc" || return 129
@@ -107,6 +110,25 @@ observe_native_tmp() {
 	_cfmgr_isolation_root_empty "$observer_tmp/cfmgr-home"
 }
 
+observe_native_devices() {
+	observer_dev=$1/dev
+	"$bb" test -d "$observer_dev" && "$bb" test ! -L "$observer_dev" || return 129
+	for observer_device in null urandom; do
+		"$bb" test -c "$observer_dev/$observer_device" && "$bb" test ! -L "$observer_dev/$observer_device" &&
+			"$bb" test "$guard/execution/image/dev/$observer_device" -ef "$observer_dev/$observer_device" || return 129
+	done
+	# Character IO remains possible despite the readonly bind. Both operations
+	# are fixed and bounded; runtime metadata observation never opens the nodes.
+	printf 'null-proof\n' >"$observer_dev/null" || return 129
+	"$bb" dd if="$observer_dev/null" of="$guard/null-read" bs=1 count=1 2>/dev/null || return 129
+	[ "$("$bb" wc -c <"$guard/null-read")" -eq 0 ] || return 129
+	"$bb" dd if="$observer_dev/urandom" of="$1/tmp/random-proof" bs=32 count=1 2>/dev/null || return 129
+	[ "$("$bb" wc -c <"$1/tmp/random-proof")" -eq 32 ] || return 129
+	"$bb" rm "$1/tmp/random-proof" || return 129
+	if (printf 'forbidden\n' >"$observer_dev/late") 2>/dev/null; then return 129; fi
+	[ ! -e "$observer_dev/late" ]
+}
+
 observe_native_root() {
 	observer_root=$1 observer_ledger=$2
 	[ "$#" -eq 4 ] && [ "$3" = "$volume" ] && [ "$4" = forwarded ] || return 129
@@ -135,9 +157,10 @@ observe_native_root() {
 	[ "$#" -eq 1 ] && [ "$1" = "$observer_id" ] || return 129
 	observer_topology=${observer_ledger#*"$_io_lf"}
 	observer_topology=${observer_topology%%"$_io_lf"*}
-	[ "$observer_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'6' ] || return 129
+	[ "$observer_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'8' ] || return 129
 	observe_native_data "$observer_root" || return 129
 	observe_native_tmp "$observer_root" || return 129
+	observe_native_devices "$observer_root" || return 129
 	# Proof-only attempted writes demonstrate the admitted RO views/fallbacks;
 	# no mount commands, descendants or descriptors are retained by this observer.
 	for observer_name in bin sbin lib usr; do
@@ -187,6 +210,9 @@ fixture_device=$3
 # The runtime still parses it through the real blockdev parser and checks FD9.
 "$bb" cat >"$tools/ls" <<'BLOCK_LS'
 #!/bin/sh
+if [ "$#" -eq 2 ] && [ "$1" = -dni ]; then
+	case $2 in null | urandom) exec "$CFMGR_KERNEL_BUSYBOX" ls "$@" ;; esac
+fi
 if [ "$#" -ne 2 ] || [ "$1" != -dnL ] || [ "$2" != /proc/self/fd/8 ]; then exit 2; fi
 BLOCK_LS
 "$bb" printf 'exec "%s" "brw------- 1 0 0 %s, %s Jan 1 00:00 /proc/self/fd/8\\n"\n' \
@@ -198,21 +224,47 @@ BLOCK_LS
 CFMGR_KERNEL_BUSYBOX=$bb
 CFMGR_KERNEL_OPT_FALLBACK=$guard/execution/root/opt
 CFMGR_KERNEL_TMP=$guard/execution/root/tmp
+CFMGR_KERNEL_DEV=$guard/execution/root/dev
+CFMGR_KERNEL_DEVICE_WITNESS=$guard/device-fallback
 CFMGR_KERNEL_OPT_WITNESS=$guard/opt-fallback-checked
 export CFMGR_KERNEL_BUSYBOX CFMGR_KERNEL_OPT_FALLBACK CFMGR_KERNEL_TMP CFMGR_KERNEL_OPT_WITNESS
+export CFMGR_KERNEL_DEV CFMGR_KERNEL_DEVICE_WITNESS
 "$bb" rm "$tools/umount"
 "$bb" cat >"$tools/umount" <<'REAL_UMOUNT'
 #!/bin/sh
 set -eu
 bb=$CFMGR_KERNEL_BUSYBOX opt=$CFMGR_KERNEL_OPT_FALLBACK
 scratch=$CFMGR_KERNEL_TMP witness=$CFMGR_KERNEL_OPT_WITNESS
+dev=$CFMGR_KERNEL_DEV device_witness=$CFMGR_KERNEL_DEVICE_WITNESS
 if [ "$#" -eq 1 ] && [ "$1" = --help ]; then exec "$bb" umount --help; fi
 target=''
 for target do :; done
 if [ "$target" = "$scratch" ]; then
 	"$bb" test -d "$witness" && "$bb" test ! -L "$witness" || exit 129
+	"$bb" test -d "$device_witness-null" && "$bb" test -d "$device_witness-urandom" || exit 129
 fi
+case $target in
+"$dev/null" | "$dev/urandom")
+	"$bb" test -d "$witness" || exit 129
+	if [ "$target" = "$dev/null" ]; then "$bb" test -d "$device_witness-urandom" || exit 129; fi
+	# Fixture-only exact child reference: ordinary unmount must fail while FD5
+	# pins this mount. Close only our own FD, then delegate the requested unmount.
+	exec 5<"$target"
+	if "$bb" umount "$@" 2>/dev/null; then exit 129; fi
+	exec 5<&-
+	;;
+esac
 "$bb" umount "$@" || exit 129
+case $target in
+"$dev/null" | "$dev/urandom")
+	# Revocation blocks new opens through the original nodev fallback. Existing
+	# open descriptors are a separate lifetime concern, witnessed above.
+	"$bb" test -c "$target" && "$bb" test ! -L "$target" || exit 129
+	if (exec 5<"$target") 2>/dev/null; then exit 129; fi
+	if (exec 5>"$target") 2>/dev/null; then exit 129; fi
+	"$bb" mkdir -m 700 "$device_witness-${target##*/}" || exit 129
+	;;
+esac
 if [ "$target" = "$opt" ]; then
 	"$bb" test -d "$opt" && "$bb" test ! -L "$opt" || exit 129
 	if ("$bb" printf 'forbidden\n' >"$opt/late") 2>/dev/null; then exit 129; fi
@@ -224,7 +276,7 @@ REAL_UMOUNT
 "$bb" chmod 700 "$tools/umount"
 status=0
 outside_home=${HOME-}
-cfmgr_isolation_entware_root_test "$opt_source" "$volume" "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 /proc/self/fdinfo/9 \
+cfmgr_isolation_native_devices_root_test "$opt_source" "$volume" "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 /proc/self/fdinfo/9 \
 	"$native_source" "$data_source" 64 8 "$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_native_root forwarded || status=$?
 [ "$status" -eq 7 ] || fail "ordinary callback status/teardown ($status)"
 _cfmgr_isolation_root_empty "$guard/opt-fallback-checked" || fail 'missing immediate RO Opt fallback/order witness'
@@ -255,11 +307,24 @@ if [ "$image_hosts" = "${data_hosts}." ] && [ ! -s "$guard/execution/image/etc/r
 	fail 'staged data changed'
 fi
 query=0
-while [ "$query" -lt 78 ]; do
+while [ "$query" -lt 106 ]; do
 	[ -f "$guard/execution/query-$query" ] || fail 'missing unique query'
 	query=$((query + 1))
 done
-[ ! -e "$guard/execution/query-78" ] || fail 'unexpected query count'
+[ ! -e "$guard/execution/query-106" ] || fail 'unexpected query count'
+for device in null urandom; do
+	_cfmgr_isolation_root_empty "$guard/device-fallback-$device" || fail 'missing device busy/revocation witness'
+	"$bb" test -c "$guard/execution/image/dev/$device" || fail 'retained owned device'
+	for evidence in metadata source fallback intent mounted; do
+		[ -f "$guard/execution/$evidence-$device" ] || fail 'missing device evidence'
+	done
+done
+observation=0
+while [ "$observation" -lt 12 ]; do
+	[ -f "$guard/execution/device-observation-$observation" ] || fail 'missing unique device observation'
+	observation=$((observation + 1))
+done
+[ ! -e "$guard/execution/device-observation-12" ] || fail 'unexpected device observation count'
 _cfmgr_isolation_root_empty "$guard/execution/image/opt" || fail 'Opt fallback changed'
 [ "$("$bb" cat "$opt_source/anchored")" = anchored ] || fail 'anchored source write'
 for evidence in source fallback intent mounted; do
@@ -282,4 +347,4 @@ cfmgr_io_test "$ram" "$tools" workspace tree_clean "$opt_source" || fail 'retain
 "$bb" umount -n "$opt_source" || fail 'Opt source mount cleanup'
 "$bb" umount -n "$native_source" || fail 'source mount cleanup'
 "$bb" umount -n "$ram" || fail 'RAM mount cleanup'
-printf 'native RO views/data, private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and Opt-first reverse teardown passed\n'
+printf 'native RO views/data, private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, busy references, nodev revocation and Opt-first reverse teardown passed\n'

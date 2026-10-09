@@ -4,6 +4,7 @@
 # Fixed probes additionally require trusted closure.sh/supervision.sh definitions.
 # Native-data/tmp/Opt roots also require native_config.sh definitions.
 # Native Opt additionally requires explicitly loaded entware_root.sh helpers.
+# The fixed-device profile also requires native_devices.sh definitions.
 # Failed preparation retains its guard because normalized failure does not
 # prove that an interrupted intermediate left no producer.
 # Sourcing defines functions only; no CLI or general Opt execution approval.
@@ -116,17 +117,17 @@ _cfmgr_isolation_path() (
 )
 
 _cfmgr_isolation_tool() (
-	case $1 in mount | umount | mkdir | rm | printf | test | ln) ;; *) return 2 ;; esac
+	case $1 in mount | umount | mkdir | rm | printf | test | ln | mknod) ;; *) return 2 ;; esac
 	if [ -n "$_isolation_tools" ]; then
 		[ -x "$_isolation_tools/$1" ] && [ ! -d "$_isolation_tools/$1" ] || return 1
 		printf '%s\n' "$_isolation_tools/$1"
 	elif [ "$1" = mount ] || [ "$1" = umount ]; then
 		[ -x "/bin/$1" ] && [ ! -d "/bin/$1" ] || return 1
 		printf '/bin/%s\n' "$1"
-	elif [ "$1" = ln ]; then
+	elif [ "$1" = ln ] || [ "$1" = mknod ]; then
 		for _isolation_dir in /sbin /bin /usr/sbin /usr/bin; do
-			if [ -x "$_isolation_dir/ln" ] && [ ! -d "$_isolation_dir/ln" ]; then
-				printf '%s/ln\n' "$_isolation_dir"
+			if [ -x "$_isolation_dir/$1" ] && [ ! -d "$_isolation_dir/$1" ]; then
+				printf '%s/%s\n' "$_isolation_dir" "$1"
 				return
 			fi
 		done
@@ -240,7 +241,7 @@ _cfmgr_isolation_unmount() {
 
 # Each query uses a fresh two-capture IO owner, outside the mounted tree. Its
 # checked ledger is written exclusively, then checked again after IO cleanup.
-# Old/bare entries use 16 queries; native layouts use 64, native-opt 78. No slot reuse
+# Old/bare use 16 queries; native profiles use 64/78/106. No slot reuse
 # or unbounded retries. Native/native-data use 56 observations; native-tmp uses 64.
 # A complete probe uses14: three admission, source recheck, null bind, image
 # parent, three image steps, two checks per unmount, and final RAM cleanup.
@@ -258,6 +259,7 @@ _cfmgr_isolation_query_action() {
 _cfmgr_isolation_query() {
 	# Only literal owner/layouts select ceilings; no ambient limit is read.
 	case ${_isolation_mode-}:${_execution_layout-} in
+	root:native-devices) [ "$_isolation_queries" -lt 106 ] || return 1 ;;
 	root:native-opt) [ "$_isolation_queries" -lt 78 ] || return 1 ;;
 	root:native | root:native-data | root:native-tmp) [ "$_isolation_queries" -lt 64 ] || return 1 ;;
 	*) [ "$_isolation_queries" -lt 16 ] || return 1 ;;
@@ -765,17 +767,20 @@ _cfmgr_isolation_root_owner() (
 	trap 'exit 129' HUP INT QUIT TERM
 	_execution_layout=$1 _execution_kind=$2
 	shift 2
-	case $_execution_layout in bare | native | native-data | native-tmp | native-opt) ;; *) return 2 ;; esac
+	case $_execution_layout in bare | native | native-data | native-tmp | native-opt | native-devices) ;; *) return 2 ;; esac
 	_execution_native_source_root=/
 	_execution_data_source_root=/
 	_execution_tmp_kib='' _execution_tmp_inodes='' _execution_tmp_ready=0
 	_execution_tmp_fallback_ledger='' _execution_tmp_mounted_ledger='' _execution_tmp_first_ledger=''
 	_execution_tmp_home=''
+	if [ "$_execution_layout" = native-devices ]; then
+		_cfmgr_native_devices_reset || return 2
+	fi
 	case $_execution_kind in
 	production)
 		[ "$#" -ge 5 ] || return 2
 		_isolation_root=$1 _execution_guard=$2
-		if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+		if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 			[ "$#" -ge 7 ] || return 2
 			_execution_tmp_kib=$3 _execution_tmp_inodes=$4
 			shift 2
@@ -800,7 +805,7 @@ _cfmgr_isolation_root_owner() (
 			_execution_native_source_root=$6 _execution_data_source_root=$7
 			shift 2
 			;;
-		native-tmp | native-opt)
+		native-tmp | native-opt | native-devices)
 			[ "$#" -ge 12 ] || return 2
 			_execution_native_source_root=$6 _execution_data_source_root=$7
 			_execution_tmp_kib=$8 _execution_tmp_inodes=$9
@@ -833,16 +838,22 @@ _cfmgr_isolation_root_owner() (
 				_cfmgr_isolation_path "$_execution_image/$_execution_view" || return 2
 		done
 	fi
-	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		for _execution_path in "$_execution_data_source_root" \
 			"${_execution_data_source_root%/}/etc/hosts" "${_execution_data_source_root%/}/etc/resolv.conf" \
 			"$_execution_image/etc" "$_execution_image/etc/hosts" "$_execution_image/etc/resolv.conf"; do
 			_cfmgr_isolation_path "$_execution_path" || return 2
 		done
 	fi
-	if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		_cfmgr_isolation_tmp_limits "$_execution_tmp_kib" "$_execution_tmp_inodes" || return 2
 		_cfmgr_isolation_path "$_isolation_tree/tmp/cfmgr-home" || return 2
+	fi
+	if [ "$_execution_layout" = native-devices ]; then
+		for _execution_path in "$_execution_image/dev" "$_execution_image/dev/null" "$_execution_image/dev/urandom" \
+			"$_isolation_tree/dev/null" "$_isolation_tree/dev/urandom"; do
+			_cfmgr_isolation_path "$_execution_path" || return 2
+		done
 	fi
 	[ "${_execution_guard%/*}" = "$_isolation_root" ] || return 2
 	_cfmgr_storage_callback_name "$_isolation_callback" || return 2
@@ -858,6 +869,9 @@ _cfmgr_isolation_root_owner() (
 	_isolation_printf=$(_cfmgr_isolation_tool printf) || return 1
 	_isolation_test=$(_cfmgr_isolation_tool test) || return 1
 	_io_wc=$(_cfmgr_io_find wc) || return 1
+	if [ "$_execution_layout" = native-devices ]; then
+		_native_devices_mknod=$(_cfmgr_isolation_tool mknod) || return 1
+	fi
 	_io_tab='	'
 	_io_lf='
 '
@@ -962,7 +976,7 @@ _cfmgr_isolation_root_lease() {
 		[ "$_isolation_ledger" = "$_execution_root_ledger" ] || return 129
 	fi
 	_cfmgr_isolation_active callback || return 129
-	if [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		"$_isolation_callback" "$_isolation_tree" "$_execution_root_ledger" "$_entware_root_volume" "$@"
 	else
 		"$_isolation_callback" "$_isolation_tree" "$_execution_root_ledger" "$@"
@@ -1010,7 +1024,7 @@ _cfmgr_isolation_root_io() {
 	_execution_source_root=$_isolation_fs_target
 	_cfmgr_isolation_root_ram_path "$_isolation_tree" || return 129
 	_execution_prior_body=$_isolation_body
-	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		# This outer workspace has no captures yet: queries used nested owners.
 		# The checked data subtree becomes RO through the base root bind itself.
 		case $_execution_kind in
@@ -1018,8 +1032,11 @@ _cfmgr_isolation_root_io() {
 		fixture) cfmgr_native_config_test "$_execution_image" "$_execution_data_source_root" || return 129 ;;
 		esac
 	fi
-	if [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		_cfmgr_entware_root_source || return 129
+	fi
+	if [ "$_execution_layout" = native-devices ]; then
+		_cfmgr_native_devices_prepare || return 129
 	fi
 	_cfmgr_isolation_clear || return 129
 	_cfmgr_isolation_write "$_isolation_guard/intent-root" "root$_io_lf" || return 129
@@ -1051,11 +1068,14 @@ _cfmgr_isolation_root_io() {
 		for _execution_view in bin sbin lib usr; do
 			_cfmgr_isolation_native_build "$_execution_view" || return 129
 		done
-		if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+		if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 			_cfmgr_isolation_tmp_build || return 129
 		fi
-		if [ "$_execution_layout" = native-opt ]; then
+		if [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 			_cfmgr_entware_root_build || return 129
+		fi
+		if [ "$_execution_layout" = native-devices ]; then
+			_cfmgr_native_devices_build null && _cfmgr_native_devices_build urandom || return 129
 		fi
 		_cfmgr_isolation_native_layout_check || return 129
 		_execution_root_ledger=$_execution_checked_root_ledger
@@ -1070,10 +1090,14 @@ _cfmgr_isolation_root_io() {
 		[ "$_execution_checked_root_ledger" = "$_execution_root_ledger" ] || return 129
 		_cfmgr_isolation_read "$_isolation_guard/populated-root" || return 129
 		[ "$_isolation_text" = "$_execution_root_ledger" ] || return 129
-		if [ "$_execution_layout" = native-opt ]; then
+		if [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 			_cfmgr_entware_root_remove || return 129
 		fi
-		if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+		if [ "$_execution_layout" = native-devices ]; then
+			_cfmgr_native_devices_remove urandom && _cfmgr_native_devices_remove null || return 129
+			[ "$_native_devices_count" -eq 0 ] && [ "$_native_devices_observations" -eq 12 ] || return 129
+		fi
+		if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 			_cfmgr_isolation_tmp_remove || return 129
 		fi
 		for _execution_view in usr lib sbin bin; do
@@ -1282,6 +1306,7 @@ _cfmgr_isolation_native_layout_check() {
 	case $_execution_layout in
 	native-tmp) _execution_expected_children=5 ;;
 	native-opt) _execution_expected_children=6 ;;
+	native-devices) _execution_expected_children=8 ;;
 	esac
 	_cfmgr_isolation_query "$_isolation_tree" 0 || return 1
 	[ "$_isolation_body" = "$_execution_base_body" ] &&
@@ -1293,14 +1318,17 @@ _cfmgr_isolation_native_layout_check() {
 			_cfmgr_isolation_native_view_options "$_isolation_options" "$_isolation_super" || return 1
 		[ "$_isolation_ledger" = "$_execution_view_mounted_ledger" ] || return 1
 	done
-	if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		[ "$_execution_tmp_ready" -eq 1 ] && _cfmgr_isolation_tmp_saved || return 1
 		_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_check || return 1
 		[ "$_isolation_ledger" = "$_execution_tmp_mounted_ledger" ] || return 1
 		[ -d "$_execution_tmp_home" ] && [ ! -L "$_execution_tmp_home" ] || return 1
 	fi
-	if [ "$_execution_layout" = native-opt ]; then
+	if [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		_cfmgr_entware_root_layout_check || return 1
+	fi
+	if [ "$_execution_layout" = native-devices ]; then
+		_cfmgr_native_devices_layout_check || return 1
 	fi
 }
 
@@ -1472,3 +1500,6 @@ _cfmgr_isolation_tmp_remove() {
 
 # Native Opt adds initial source 1, build 5, three whole-layout additions 6,
 # and teardown 2 to native-tmp 64: exactly 78 distinct mount queries.
+
+# Fixed devices add initial source 2, build 10, whole-layout additions 12 and
+# teardown 4 to retained Opt 78: exactly 106 mount queries, metadata separate.

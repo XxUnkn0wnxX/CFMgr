@@ -8,11 +8,11 @@
 # shellcheck disable=SC2030,SC2031,SC2154
 
 cfmgr_isolation_entware_root_with() {
-	_cfmgr_entware_root_owner production "$@" >/dev/null 2>&1
+	_cfmgr_entware_root_owner native-opt production "$@" >/dev/null 2>&1
 }
 
 cfmgr_isolation_entware_root_test() {
-	_cfmgr_entware_root_owner fixture "$@" >/dev/null 2>&1
+	_cfmgr_entware_root_owner native-opt fixture "$@" >/dev/null 2>&1
 }
 
 _cfmgr_entware_root_owner() (
@@ -34,8 +34,9 @@ _cfmgr_entware_root_owner() (
 	IFS=' 	'
 	IFS="${IFS}
 "
-	_entware_root_kind=$1
-	shift
+	_entware_root_layout=$1 _entware_root_kind=$2
+	shift 2
+	case $_entware_root_layout in native-opt | native-devices) ;; *) return 2 ;; esac
 	_entware_root_resolved='' _entware_root_volume='' _entware_root_fdinfo=''
 	_entware_root_facts='' _entware_root_uuid='' _entware_root_source_ledger=''
 	_entware_root_fallback_ledger='' _entware_root_mounted_ledger=''
@@ -55,14 +56,14 @@ _cfmgr_entware_root_owner() (
 	case $_entware_root_kind in
 	production)
 		_entware_root_fdinfo=/proc/self/fdinfo/9
-		_cfmgr_isolation_root_owner native-opt production "$@"
+		_cfmgr_isolation_root_owner "$_entware_root_layout" production "$@"
 		;;
 	fixture)
 		_entware_root_ram=$1 _entware_root_guard=$2 _entware_root_tools=$3
 		_entware_root_input=$4 _entware_root_root_fdinfo=$5 _entware_root_fdinfo=$6
 		_cfmgr_isolation_path "$_entware_root_fdinfo" && [ "$_entware_root_fdinfo" != / ] || return 2
 		shift 6
-		_cfmgr_isolation_root_owner native-opt fixture "$_entware_root_ram" "$_entware_root_guard" \
+		_cfmgr_isolation_root_owner "$_entware_root_layout" fixture "$_entware_root_ram" "$_entware_root_guard" \
 			"$_entware_root_tools" "$_entware_root_input" "$_entware_root_root_fdinfo" "$@"
 		;;
 	esac

@@ -38,6 +38,7 @@ VIEWS = ("bin", "sbin", "lib", "usr")
 SOURCE_MOUNT_ID = "88"
 HOST_MOUNT_ID = "1"
 VIEW_IDS = {name: str(901 + index) for index, name in enumerate(VIEWS)}
+DEVICE_IDS = {"null": "907", "urandom": "908"}
 NATIVE_DISPATCHER = r"""
 import json
 import os
@@ -50,6 +51,7 @@ settings = json.loads(Path(sys.argv[2]).read_text())
 state_path = Path(settings["state"])
 state = json.loads(state_path.read_text())
 tool, args = sys.argv[3], sys.argv[4:]
+device_ids = {"null": "907", "urandom": "908"}
 log = Path(settings["tool_log"])
 if tool == "ls":
     # Captured commands inherit a file-size ceiling. Keep each observation's
@@ -143,6 +145,12 @@ if tool == "mount":
                 (Path(target) / "tmp").mkdir(mode=0o700, exist_ok=True)
             if settings.get("native_opt"):
                 (Path(target) / "opt").mkdir(mode=0o700, exist_ok=True)
+            if settings.get("native_devices"):
+                source_dev = Path(source) / "dev"
+                target_dev = Path(target) / "dev"
+                target_dev.mkdir(mode=0o700, exist_ok=True)
+                for name in ("null", "urandom"):
+                    os.link(source_dev / name, target_dev / name)
             row = dict(state["ram_mount"])
             row.update(
                 identifier=settings["root_mount_id"],
@@ -164,6 +172,31 @@ if tool == "mount":
                 optional=[],
             )
             state["opt_mounted"] = True
+        elif settings.get("native_devices") and target in {
+            str(Path(root_target) / "dev/null"),
+            str(Path(root_target) / "dev/urandom"),
+        }:
+            name = Path(target).name
+            expected_source = str(Path(settings["image_target"]) / "dev" / name)
+            if source != expected_source:
+                raise AssertionError((tool, args))
+            if os.stat(source).st_ino != os.stat(target).st_ino:
+                raise AssertionError(("device bind inode mismatch", source, target))
+            row = dict(state["ram_mount"])
+            row.update(
+                identifier=device_ids[name],
+                parent=settings["root_mount_id"],
+                root=(
+                    b"/"
+                    + os.fsencode(Path(settings["image_target"]).relative_to(settings["ramroot"]))
+                    + b"/dev/"
+                    + name.encode()
+                ).hex(),
+                point=os.fsencode(target).hex(),
+                options=bytes.fromhex(state["ram_mount"]["options"]).hex(),
+                optional=[],
+            )
+            state.setdefault("device_mounted", {})[name] = True
         else:
             name = Path(target).name
             if name not in state["view_ids"] or target != str(Path(root_target) / name):
@@ -207,6 +240,15 @@ if tool == "mount":
         row["options"] = b"rw,nosuid,nodev,relatime,exec".hex()
         publish()
         sys.exit(0)
+    if options == "remount,bind,ro,nosuid,noexec,dev" and settings.get("native_devices"):
+        row = find_at(target)
+        name = Path(target).name
+        if target != str(Path(root_target) / "dev" / name):
+            raise AssertionError((tool, args))
+        row["options"] = b"ro,nosuid,noexec,relatime".hex()
+        state.setdefault("device_mounted", {})[name] = True
+        publish()
+        sys.exit(0)
     if options == "remount,bind,ro,nosuid,nodev,exec":
         row = find_at(target)
         row["options"] = b"ro,nosuid,nodev,relatime".hex()
@@ -247,6 +289,8 @@ if tool == "umount":
         state["tmp_mounted"] = False
     if target == str(Path(settings["root_target"]) / "opt") and state.get("opt_mounted"):
         state["opt_mounted"] = False
+    if settings.get("native_devices") and Path(target).name in device_ids:
+        state.setdefault("device_mounted", {})[Path(target).name] = False
     if fault == "fallback-change:" + Path(target).name:
         fallback = next(
             row for row in state["mounts"] if row["identifier"] == settings["root_mount_id"]
@@ -274,6 +318,12 @@ if tool == "test":
             sys.exit(0 if stat.S_ISDIR(os.fstat(9).st_mode) else 1)
         except OSError:
             sys.exit(1)
+    if len(args) == 2 and args[0] == "-c":
+        device = Path(args[1])
+        allowed = {"null": "1,3", "urandom": "1,9"}
+        if settings.get("native_devices") and device.name in allowed and device.is_file():
+            sys.exit(0)
+        sys.exit(1)
     if len(args) == 3 and args[1:] in (
         ["-ef", "/proc/self/fd/8"],
         ["-ef", "/proc/self/fd/9"],
@@ -313,6 +363,50 @@ if tool == "ls" and args == ["-dnL", "/proc/self/fd/8"]:
     sys.stdout.write(settings["block_line"])
     sys.exit(0)
 
+if tool == "ls" and len(args) == 2 and args[0] == "-dni" and args[1] in ("null", "urandom"):
+    if not settings.get("native_devices"):
+        sys.exit(1)
+    name = args[1]
+    source = Path.cwd() / name
+    if not source.is_file():
+        sys.exit(1)
+    inode = source.stat().st_ino
+    if state["fault"] == "metadata-change":
+        metadata_calls = sum(
+            json.loads(record.read_text())[1][:1] == ["-dni"]
+            for record in log.parent.glob("native-ls-*.json")
+        )
+        if metadata_calls >= 2:
+            inode += 1
+    minor = "3" if name == "null" else "9"
+    sys.stdout.write(f"{inode} crw------- 1 0 0 1, {minor} Jan 1 00:00 {name}\n")
+    sys.exit(0)
+
+if tool == "mknod":
+    if len(args) != 6 or args[:2] != ["-m", "600"] or args[3] != "c":
+        raise AssertionError((tool, args))
+    path, major, minor = args[2], args[4], args[5]
+    name = Path(path).name
+    expected = {"null": ("1", "3"), "urandom": ("1", "9")}
+    if (
+        not settings.get("native_devices")
+        or name not in expected
+        or (major, minor) != expected[name]
+    ):
+        raise AssertionError((tool, args))
+    node = Path(path)
+    if not node.is_absolute():
+        node = Path.cwd() / node
+    node.touch(exist_ok=False)
+    node.chmod(0o600)
+    state.setdefault("device_nodes", {})[name] = {
+        "major": major,
+        "minor": minor,
+        "inode": node.stat().st_ino,
+    }
+    state_path.write_text(json.dumps(state))
+    sys.exit(0)
+
 if tool == "readlink" and len(args) == 2 and args[0] == "-f":
     print(os.path.realpath(args[1]))
     sys.exit(0)
@@ -334,6 +428,7 @@ class NativeRootFixture(ExecutionRootFixture):
         self.opt_volume_mount: dict[str, object] = {}
         self.opt_volume_mount_object: Mount | None = None
         self.opt_volume_root: Path | None = None
+        self.devices_enabled = False
         self.block_line = BLOCK_LINE.decode("ascii")
         self.source_root = router.path("work/native-source")
         self.source_root.mkdir(mode=0o700)
@@ -413,6 +508,7 @@ class NativeRootFixture(ExecutionRootFixture):
         self._tool("test", self._native_test_wrapper())
         self._tool("ls", self._native_wrapper("ls"))
         self._tool("readlink", self._native_wrapper("readlink"))
+        self._tool("mknod", self._native_wrapper("mknod"))
 
     def _native_wrapper(self, tool: str) -> str:
         return (
@@ -441,6 +537,9 @@ class NativeRootFixture(ExecutionRootFixture):
             f'        exec {python} {dispatcher} {root} {settings} test "$@"\n'
             "    esac\n"
             "fi\n"
+            'if [ "$#" -eq 2 ] && [ "$1" = -c ]; then\n'
+            f'    exec {python} {dispatcher} {root} {settings} test "$@"\n'
+            "fi\n"
             'if [ "$#" -eq 3 ] && [ "$2" = -ef ]; then\n'
             '    case "$3" in /proc/self/fd/6|/proc/self/fd/8|/proc/self/fd/9)\n'
             f'    exec {python} {dispatcher} {root} {settings} test "$@"\n'
@@ -465,6 +564,7 @@ class NativeRootFixture(ExecutionRootFixture):
             data_source_root=str(self.data_source_root),
             native_tmp=self.tmp_enabled,
             native_opt=self.opt_enabled,
+            native_devices=self.devices_enabled,
             limit_kib=self.tmp_limit_kib,
             inode_limit=self.tmp_inode_limit,
             tmp_mount_id=TMP_MOUNT_ID,
@@ -474,6 +574,7 @@ class NativeRootFixture(ExecutionRootFixture):
             volume_root=str(self.opt_volume_root or ""),
             block_line=self.block_line,
             root_target=str(self.guard / "execution/root"),
+            image_target=str(self.guard / "execution/image"),
             view_ids=VIEW_IDS,
         )
         settings_path.write_text(json.dumps(settings), encoding="utf-8")
@@ -488,12 +589,14 @@ class NativeRootFixture(ExecutionRootFixture):
         data_root: bool = False,
         data_source_root: Path | None = None,
         tmp_root: bool = False,
+        devices_root: bool = False,
         limit_kib: int = TMP_LIMIT_KIB,
         inode_limit: int = TMP_INODE_LIMIT,
         focused_query: bool = True,
     ) -> ShellResult:
         with_data = data_root or tmp_root
         self.tmp_enabled = tmp_root
+        self.devices_enabled = devices_root
         self.tmp_limit_kib = limit_kib
         self.tmp_inode_limit = inode_limit
         self.prepare()
@@ -650,7 +753,7 @@ def test_native_root_completes_fixed_four_views_and_unmounts_in_reverse_order(
 @pytest.mark.integration
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_actual_busybox_native_opt_stages_data_and_exposes_private_home(
+def test_actual_busybox_native_devices_keep_entware_data_and_home_observable(
     busybox_router: RouterHarness,
 ) -> None:
     assert busybox_router.busybox is not None
@@ -662,6 +765,7 @@ def test_actual_busybox_native_opt_stages_data_and_exposes_private_home(
         callback_status=0,
         callback_args=("arg with spaces", "*"),
         focused_query=False,
+        devices_root=True,
     )
     assert result.returncode == 0, result
     assert result.stderr == ""
@@ -669,13 +773,17 @@ def test_actual_busybox_native_opt_stages_data_and_exposes_private_home(
     observation = json.loads(fixture.router.read("work/entware-callback.json"))
     ledger = observation["root_ledger"].splitlines()
     assert ledger[0].startswith("mount\t900\t")
-    assert ledger[1].split("\t")[6] == "6"
+    assert ledger[1].split("\t")[6] == "8"
     assert observation["args"][:2] == [
         "arg with spaces",
         "*",
     ]
     assert (fixture.guard / "execution/image/etc/hosts").read_bytes() == DATA_HOSTS
     assert (fixture.guard / "execution/image/etc/resolv.conf").read_bytes() == DATA_RESOLVER
+    assert set(observation["device_nodes"]) == {"null", "urandom"}
+    for name, node in observation["device_nodes"].items():
+        assert node[1] == node[2]
+        assert (fixture.guard / f"execution/mounted-{name}").is_file()
     assert (
         (fixture.guard / "execution/mounted-tmp")
         .read_text()
