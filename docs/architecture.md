@@ -399,11 +399,13 @@ acknowledge completion. No marker by itself authorizes cleanup.
 
 This composition is still an internal fixed probe, not operational dependency
 execution: it installs no cron entry, invokes no opkg or network operation, and
-does not add arbitrary callback or executable authority. The new tenth Linux
-kernel scenario exercises the real deadline, root/chroot and cleanup path with
+does not add arbitrary callback or executable authority. The tenth Linux kernel
+scenario exercises the real deadline, root/chroot and cleanup path with
 synthetic storage acquisition; it does not establish outer storage IO
-acquisition, block-device/UUID admission or router execution. The exact-head
-Linux gate for this snapshot remains pending; see [PLAN.md](../PLAN.md).
+acquisition, block-device/UUID admission or router execution. All ten scenarios
+passed the exact-head 42%
+[Linux/BusyBox gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
+at `ffc3782`; full local and CI results are in [PLAN.md](../PLAN.md).
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

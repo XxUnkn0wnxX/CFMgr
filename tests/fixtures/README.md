@@ -40,8 +40,9 @@ metadata observations, and an FD9-backed controlled writable source with an
 anchored write reaching it. Opt is unmounted first and must expose the exact
 empty readonly fallback before tmpfs removal. FD8 is a regular fixture file
 with synthetic metadata, so this does not prove physical block identity or UUID
-approval. The composition and fixed shell probe pass the
-[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595).
+approval. This ninth scenario passed the earlier
+[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595)
+and remains part of the current ten-scenario gate.
 
 The fixed shell-probe extension uses genuine trusted host BusyBox and its
 loader/dependencies. The runner changes only the private BusyBox copy's existing
@@ -66,8 +67,11 @@ witness before confirming no root/storage aliases appeared. The test storage
 seam keeps FD8 regular with synthetic metadata and
 uses a controlled FD9 source, but compares the supplied Entware authority. It
 does not exercise outer storage IO acquisition or physical block-device/UUID
-admission. This scenario is in the frozen 42% snapshot; its exact-head
-Linux/BusyBox gate is pending and it does not establish router acceptance.
+admission. All ten scenarios passed the exact-head 42%
+[Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
+at `ffc3782`; the tenth scenario took 8.40s. The full local suite passed 1,691
+tests with 31 platform skips, and CI passed 1,722 tests with no skips. This
+does not establish router acceptance.
 
 The device layer adds only privately generated `/dev/null` (1:3) and
 `/dev/urandom` (1:9), with the expected root ownership and mode. Its wrapper
@@ -116,8 +120,7 @@ busy-Opt cleanup refusal and malformed API rejection;
 `tests/test_native_devices.py` covers fixed node metadata, inode rechecks and
 host busy-unmount guard retention. The actual BusyBox representative and ninth
 namespace scenario provide separate integration evidence for the accepted 41%
-checkpoint. The tenth native-probe scenario awaits its exact-head Linux/BusyBox
-gate.
+checkpoint; the tenth native-probe scenario passed in the current 42% gate.
 Host fixtures do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete

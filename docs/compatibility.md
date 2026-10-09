@@ -210,9 +210,13 @@ source-only helper does not install cron, launch opkg or establish an operationa
 dependency worker. Its tenth Linux scenario uses a synthetic storage-acquisition
 boundary while exercising real deadline, root/chroot and cleanup behavior; it
 does not prove physical storage or UUID admission, actual outer storage IO
-acquisition, ARM32 firmware execution or router acceptance. The 41% CI evidence
-above covers the prior nine-scenario snapshot. The exact-head Linux/BusyBox gate
-for the tenth scenario remains pending; see the
+acquisition, ARM32 firmware execution or router acceptance. All ten Linux
+scenarios passed the exact-head 42%
+[Linux/BusyBox gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
+at `ffc3782`. The full local suite passed 1,691 tests with 31 platform skips;
+CI passed 1,722 tests with no skips. Six stripped-ash checks also passed.
+Synthetic storage acquisition still leaves physical block-device/UUID admission
+and outer storage IO acquisition unproved. See the
 [fixture guide](../tests/fixtures/README.md) and [PLAN.md](../PLAN.md).
 
 ## 🧩 Qualify each feature separately

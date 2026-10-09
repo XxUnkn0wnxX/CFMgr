@@ -323,8 +323,10 @@ The kernel lane now contains ten bounded namespace scenarios. The original nine
 cover actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`,
 the quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
-128 KiB, with native BusyBox `dd` and `cmp`. All nine passed the
-[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595).
+128 KiB, with native BusyBox `dd` and `cmp`. The tenth composes the fixed native
+probe with the real deadline and root/chroot cleanup. All ten passed the 42%
+[Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
+at `ffc3782`.
 The kernel fixture substitutes a synthetic FD8 storage observation and a
 controlled FD9 source, so it does not prove router storage admission or
 acceptance. The accepted 41% scenario also invokes the fixed shell probe
@@ -336,8 +338,12 @@ No firmware executable is copied or run. The tenth scenario adds the source-only
 worker's real deadline and checked root/probe cleanup, observes the watchdog's
 own descriptors, and uses synthetic storage acquisition; it does not prove
 outer storage IO acquisition or physical block-device/UUID admission. The
-ten-scenario 42% Linux gate is pending. Current results are recorded in
-[PLAN.md](../PLAN.md). See the
+42% full local run passed 1,691 tests with 31 BusyBox/platform skips in 861.98s;
+Linux/BusyBox CI passed 1,722 tests with no skips in 98.57s. Six stripped-ash
+checks passed in 6.98s. The ten kernel scenarios all passed; `native-root` took
+5.71s and `native-probe` 8.40s; namespace execution totaled 18.43s and the
+whole kernel command 19.40s. The kernel suite remains developer-host evidence only. See [PLAN.md](../PLAN.md)
+for the full checkpoint record and the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
 and limits.
 
@@ -406,6 +412,7 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
 | `tests/test_io.py` | Private staging, stream bounds, producer status, signal cleanup and complete mount handoff |
 | `tests/test_io_hex.py` | Independent byte-grammar oracle for hex/path validation, including misleading matches between byte boundaries |
+| `tests/test_bootstrap.py` | Healthy no-op, missing requirements, post-probes and explicit Entware reinstall through inert executables |
 | `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
 | `tests/test_storage.py` | Held-descriptor observation, before/after identity checks and rejection without publication |
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
