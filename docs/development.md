@@ -150,12 +150,24 @@ command policy and capability handling, not storage or router acceptance.
 `--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
 must prove that neither opkg nor unverified package executables are called.
 
-`modules/worker.sh` currently supplies only a native process-group admission
-check. It reads the calling shell's actual proc record and requires its PID,
+`modules/worker.sh` supplies native process-group admission and a separate
+guarded aggregate-deadline controller. The admission check reads the calling
+shell's actual proc record and requires its PID,
 process group and shell `$$` to agree; session leadership is unnecessary.
 This rejects a nested shell whose `$$` still identifies its parent. The check
 does not establish exclusive group ownership, authorize signals or launch work.
 Its actual Linux and BusyBox cases are separate from cheap metadata fixtures.
+Deadline cases additionally exercise arm-before-callback, cooperative completion,
+exact watchdog wait and real current-group cancellation. Their short, intentional
+polling and termination budgets are integration costs, not parser-test targets.
+
+The separate readonly-root entry in `modules/isolation.sh` shares checked IO and
+mount parsing without broadening the earlier callbacks. Its host consumers use
+inert mount tools and actual inherited file descriptors. Keep ordinary callback
+failure separate from incomplete root teardown or failed IO cleanup: only the
+fully completed transaction may return that callback status. The Linux consumer
+provides actual mount/readonly/descriptor evidence; neither layer establishes an
+operational Entware worker.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
@@ -293,7 +305,14 @@ and the detached child still prevents ordinary root removal. Final removal
 succeeds after controlled child exit. Fixture guard markers illustrate the
 required uncertainty state; they do not implement an operational worker guard
 or prove arbitrary descendant reaping or Entware package compatibility.
-All seven namespace scenarios retain their individual 15-second outer bounds.
+An eighth scenario calls the actual readonly-root runtime entry with native
+BusyBox tools and proc metadata. It checks the root descriptor's mount identity,
+failed writes through both readonly fallbacks, preserved caller descriptors,
+ordinary callback failure after successful teardown, and retained completion
+metadata. It requires the root mount to be absent before removing fixture RAM;
+namespace disposal cannot conceal an incomplete successful path.
+
+All eight namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
 Merlin acceptance, and namespace disposal after a failed case does not count
 as successful runtime cleanup. Results and timings belong in the plan.
@@ -362,6 +381,7 @@ command remains `cfmgr`.
 | `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
 | `tests/test_storage.py` | Held-descriptor observation, before/after identity checks and rejection without publication |
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
+| `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
 | `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |

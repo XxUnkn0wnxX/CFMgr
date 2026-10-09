@@ -42,7 +42,7 @@ flowchart LR
 | `modules/entware.sh` | Admit a retained storage observation against independently approved UUID/subtree and writable/executable mount flags | Synchronous native callback only; no atomic write lease, package execution or operational startup |
 | `modules/dependency_lock.sh` | Nonblocking native lock around a trusted callback, retaining a stable RAM lock file and inherited FD7 | Cooperative exclusion only; worker launch, deadlines and arbitrary descendant completion remain separate |
 | `modules/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision for a dedicated trusted cron group | Internal native callback only; operational scheduling, Entware/root launch and filesystem cleanup remain separate |
-| `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
+| `modules/isolation.sh` | Checked native/fixed-probe mounts and a separate readonly RAM root with an actual mount descriptor lease | Distinct internal lifecycles; the readonly-root guard is retained, and no entry exposes an operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
 | `modules/bootstrap.sh` | Check selected capabilities, install missing dependencies or explicitly reinstall the selected direct packages through existing Entware opkg, then verify the result | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
@@ -133,6 +133,21 @@ interrupted operations leave the guard for recovery. Existing guards are never
 adopted or removed automatically. The native callback API does not launch a process inside the root. A separate
 internal fixed-probe entry connects image staging and supervision as described
 below; neither entry exposes an operational CLI action.
+
+A separate `cfmgr_isolation_root_with` entry prepares the readonly root foundation
+without acquiring Entware or launching a payload. It reserves a fresh execution
+guard, stages empty `/opt` and `/tmp` fallbacks, and verifies a private root bind
+with readonly, nodev and nosuid flags. A trusted synchronous native observer
+receives the complete root ledger while FD6 holds that exact mount; fdinfo mount
+identity and directory identity must both agree. The scoped descriptor closes
+before checked ordinary unmount and exact absence verification.
+
+The execution guard remains on every outcome. A completion marker describes
+verified filesystem teardown; the enclosing IO transaction must also clean up
+successfully before the observer's ordinary status can return. Any incomplete
+step after reservation reports uncertainty. The entry does not yet provide
+native executable views, writable children, package execution or scheduling.
+Existing native and fixed-probe APIs retain their separate cleanup contracts.
 
 This first profile covers dynamic-revision ext2/ext3/ext4 primary superblocks.
 Other filesystems, alternate `sb=` mounts and missing mount-ID support need

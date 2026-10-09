@@ -357,6 +357,11 @@ _cfmgr_isolation_clear() {
 }
 
 _cfmgr_isolation_native_call() {
+	case ${_isolation_mode-} in root)
+		_cfmgr_isolation_root_call "$@"
+		return "$?"
+		;;
+	esac
 	_cfmgr_isolation_active "$1" || return 1
 	shift
 	"$@"
@@ -683,4 +688,263 @@ _cfmgr_isolation_begin_args() {
 	[ "$_isolation_cleanup_status" -eq 0 ] || return 1
 	_isolation_complete=1
 	return "$_isolation_result"
+}
+
+# Separate readonly root foundation. GUARD is an exclusive existing direct RAM
+# child; callback is synchronous native observation only, without mount/Entware,
+# asynchronous users, trap/metadata/FD6 changes or retained descriptors. FD7..9
+# are preserved. No application FD above9 is supported. Caller owns deadlines.
+cfmgr_isolation_root_with() {
+	_cfmgr_isolation_root_owner production "$@" >/dev/null 2>&1
+}
+
+# Explicit inert host inputs/tools only, never selected from ambient controls.
+cfmgr_isolation_root_test() {
+	_cfmgr_isolation_root_owner fixture "$@" >/dev/null 2>&1
+}
+
+_cfmgr_isolation_root_owner() (
+	set +x
+	set +e
+	set +u
+	set -f
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	LC_ALL=C
+	export PATH LC_ALL
+	unset ENV BASH_ENV CDPATH TZ
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
+	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
+	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
+	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
+	IFS=' 	'
+	IFS="${IFS}
+"
+	umask 077
+	_execution_reserved=0
+	_execution_complete=0
+	trap '_cfmgr_isolation_root_owner_exit "$?"' 0
+	trap 'exit 129' HUP INT QUIT TERM
+	_execution_kind=$1
+	shift
+	case $_execution_kind in
+	production)
+		[ "$#" -ge 5 ] || return 2
+		_isolation_root=$1 _execution_guard=$2
+		_isolation_parser=$3 _isolation_storage_parser=$4 _isolation_callback=$5
+		_isolation_tools=
+		_isolation_input=/proc/self/mountinfo
+		_execution_fdinfo=/proc/self/fdinfo/6
+		shift 5
+		;;
+	fixture)
+		[ "$#" -ge 8 ] || return 2
+		_isolation_root=$1 _execution_guard=$2 _isolation_tools=$3
+		_isolation_input=$4 _execution_fdinfo=$5
+		_isolation_parser=$6 _isolation_storage_parser=$7 _isolation_callback=$8
+		[ -n "$_isolation_tools" ] || return 2
+		shift 8
+		;;
+	*) return 2 ;;
+	esac
+	_isolation_mode=root
+	_isolation_guard=$_execution_guard/execution
+	_execution_image=$_isolation_guard/image
+	_isolation_tree=$_isolation_guard/root
+	for _execution_path in "$_isolation_root" "$_execution_guard" "$_isolation_parser" \
+		"$_isolation_storage_parser" "$_isolation_guard" "$_execution_image/opt" "$_isolation_tree" \
+		"$_isolation_input" "$_execution_fdinfo"; do
+		_cfmgr_isolation_path "$_execution_path" && [ "$_execution_path" != / ] || return 2
+	done
+	[ -z "$_isolation_tools" ] || _cfmgr_isolation_path "$_isolation_tools" || return 2
+	[ "${_execution_guard%/*}" = "$_isolation_root" ] || return 2
+	_cfmgr_storage_callback_name "$_isolation_callback" || return 2
+	cd / || return 1
+	[ -d "$_isolation_root" ] && [ ! -L "$_isolation_root" ] &&
+		[ -d "$_execution_guard" ] && [ ! -L "$_execution_guard" ] || return 1
+	[ ! -e "$_isolation_guard" ] && [ ! -L "$_isolation_guard" ] || return 1
+	_io_tools=$_isolation_tools
+	_isolation_mount=$(_cfmgr_isolation_tool mount) || return 1
+	_isolation_umount=$(_cfmgr_isolation_tool umount) || return 1
+	_isolation_mkdir=$(_cfmgr_isolation_tool mkdir) || return 1
+	_isolation_rm=$(_cfmgr_isolation_tool rm) || return 1
+	_isolation_printf=$(_cfmgr_isolation_tool printf) || return 1
+	_isolation_test=$(_cfmgr_isolation_tool test) || return 1
+	_io_wc=$(_cfmgr_io_find wc) || return 1
+	_io_tab='	'
+	_io_lf='
+'
+	# Reservation is authoritative outside IO: even IO's own scratch-cleanup
+	# failure must remain uncertainty after the filesystem operation completed.
+	_execution_reserved=1
+	"$_isolation_mkdir" -m 700 "$_isolation_guard" || return 129
+	[ -d "$_isolation_guard" ] && [ ! -L "$_isolation_guard" ] || return 129
+	if [ -n "$_isolation_tools" ]; then
+		cfmgr_io_test "$_isolation_root" "$_isolation_tools" workspace _cfmgr_isolation_root_io "$@" || return 129
+	else
+		cfmgr_io_with_workspace "$_isolation_root" _cfmgr_isolation_root_io "$@" || return 129
+	fi
+	_cfmgr_isolation_root_empty "$_isolation_guard/complete" || return 129
+	_cfmgr_isolation_read "$_isolation_guard/result" || return 129
+	_execution_result=${_isolation_text%%"$_io_lf"*}
+	_execution_status=${_execution_result#"callback$_io_tab"}
+	case $_execution_status in 0 | [1-9] | [1-9][0-9] | 1[01][0-9] | 12[0-8]) ;; *) return 129 ;; esac
+	_execution_expected="callback$_io_tab$_execution_status$_io_lf"
+	_execution_expected="${_execution_expected}end$_io_tab${#_execution_expected}$_io_lf"
+	[ "$_isolation_text" = "$_execution_expected" ] || return 129
+	_execution_complete=1
+	return "$_execution_status"
+)
+
+_cfmgr_isolation_root_owner_exit() {
+	_execution_exit=$1
+	trap - 0
+	if [ "$_execution_reserved" -eq 1 ] && { [ "$_execution_complete" -ne 1 ] || [ "$_execution_exit" -gt 128 ]; }; then
+		_execution_exit=129
+	fi
+	exit "$_execution_exit"
+}
+
+_cfmgr_isolation_root_empty() (
+	[ -d "$1" ] && [ ! -L "$1" ] || return 1
+	set +f
+	for _execution_entry in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+		[ ! -e "$_execution_entry" ] && [ ! -L "$_execution_entry" ] || return 1
+	done
+)
+
+_cfmgr_isolation_root_io_exit() {
+	_execution_exit=$1
+	[ "$_execution_io_complete" -eq 1 ] && [ "$_execution_exit" -eq 0 ] || _execution_exit=129
+	_cfmgr_io_finish "$_execution_exit"
+}
+
+# Unlike older lifecycle callers, any nonzero native result keeps active intent.
+# Normalized failure may never authorize teardown in this separate owner.
+_cfmgr_isolation_root_call() {
+	_cfmgr_isolation_active "$1" || return 129
+	shift
+	"$@" || return 129
+	[ "$_isolation_interrupted" -eq 0 ] || return 129
+	_cfmgr_isolation_clear || return 129
+}
+
+_cfmgr_isolation_root_ram_path() {
+	_cfmgr_isolation_query "$1" 0 && _cfmgr_isolation_private || return 1
+	[ "${_isolation_body%"$_io_tab"*}" = "${_execution_ram_body%"$_io_tab"*}" ]
+}
+
+_cfmgr_isolation_root_mount_check() {
+	_cfmgr_isolation_private || return 1
+	[ "$_isolation_id" != "$_isolation_ram_id" ] && [ "$_isolation_parent" = "$_isolation_ram_id" ] || return 1
+	[ "$_isolation_device" = "$_execution_device" ] && [ "$_isolation_fs" = "$_execution_fs" ] &&
+		[ "$_isolation_super" = "$_execution_super" ] || return 1
+	[ "$_isolation_mount_root" = "$_execution_source_root" ] &&
+		[ "$_isolation_fs_target" = "$_execution_source_root" ] || return 1
+	_execution_saved_ifs=$IFS
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_isolation_body
+	IFS=$_execution_saved_ifs
+	[ "$8" = "$_execution_source" ] || return 1
+	_execution_identity="$2$_io_tab$3$_io_tab$4$_io_tab$5$_io_tab$6$_io_tab$7$_io_tab$8$_io_tab${11}"
+}
+
+# This fresh IO transaction consumes only cat+awk and observes inherited FD6.
+_cfmgr_isolation_root_fd_action() {
+	cfmgr_io_capture 0 4096 4096 cat "$_execution_fdinfo" || return 1
+	_cfmgr_storage_ok 0 || return 1
+	_storage_parser=$_isolation_storage_parser
+	_cfmgr_storage_parse 0 1 fdinfo || return 1
+	[ "$_storage_value" = "$_execution_mount_id" ] || return 1
+	"$_isolation_test" -d /proc/self/fd/6 &&
+		"$_isolation_test" "$_isolation_tree" -ef /proc/self/fd/6
+}
+
+_cfmgr_isolation_root_lease() {
+	if [ -n "$_isolation_tools" ]; then
+		cfmgr_io_test "$_isolation_root" "$_isolation_tools" workspace _cfmgr_isolation_root_fd_action || return 129
+	else
+		cfmgr_io_with_workspace "$_isolation_root" _cfmgr_isolation_root_fd_action || return 129
+	fi
+	_cfmgr_isolation_query "$_isolation_tree" 0 && _cfmgr_isolation_private || return 129
+	[ "$_isolation_ledger" = "$_execution_root_ledger" ] || return 129
+	_cfmgr_isolation_active callback || return 129
+	"$_isolation_callback" "$_isolation_tree" "$_execution_root_ledger" "$@"
+	_execution_callback_status=$?
+	[ "$_execution_callback_status" -le 128 ] && [ "$_isolation_interrupted" -eq 0 ] || return 129
+	"$_isolation_test" "$_isolation_tree" -ef /proc/self/fd/6 || return 129
+	_cfmgr_isolation_clear || return 129
+}
+
+_cfmgr_isolation_root_io() {
+	shift
+	_execution_io_complete=0
+	_isolation_interrupted=0
+	_isolation_queries=0
+	trap '_cfmgr_isolation_root_io_exit "$?"' 0
+	trap '_isolation_interrupted=129; exit 129' HUP INT QUIT TERM
+	_cfmgr_isolation_umount_admit || return 129
+	_cfmgr_isolation_active prepare || return 129
+	"$_isolation_mkdir" -m 700 "$_execution_image" "$_execution_image/opt" "$_execution_image/tmp" "$_isolation_tree" || return 129
+	[ -d "$_execution_image" ] && [ ! -L "$_execution_image" ] || return 129
+	for _execution_directory in "$_execution_image/opt" "$_execution_image/tmp" "$_isolation_tree"; do
+		_cfmgr_isolation_root_empty "$_execution_directory" || return 129
+	done
+	_cfmgr_isolation_query "$_isolation_root" 1 && _cfmgr_isolation_private || return 129
+	case $_isolation_fs in tmpfs | ramfs) ;; *) return 129 ;; esac
+	_cfmgr_isolation_options "$_isolation_options" "$_isolation_super" ram || return 129
+	_execution_ram_body=$_isolation_body
+	_isolation_ram_id=$_isolation_id
+	_execution_device=$_isolation_device _execution_fs=$_isolation_fs _execution_super=$_isolation_super
+	_execution_saved_ifs=$IFS
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_isolation_body "$@"
+	IFS=$_execution_saved_ifs
+	_execution_source=$8
+	shift 11
+	_cfmgr_isolation_root_ram_path "$_execution_image" || return 129
+	_execution_source_root=$_isolation_fs_target
+	_cfmgr_isolation_root_ram_path "$_isolation_tree" || return 129
+	_execution_prior_body=$_isolation_body
+	_cfmgr_isolation_clear || return 129
+	_cfmgr_isolation_write "$_isolation_guard/intent-root" "root$_io_lf" || return 129
+	_cfmgr_isolation_native_call bind-root "$_isolation_mount" -n -i -o bind "$_execution_image" "$_isolation_tree" || return 129
+	_cfmgr_isolation_query "$_isolation_tree" 0 && _cfmgr_isolation_root_mount_check &&
+		_cfmgr_isolation_options "$_isolation_options" "$_isolation_super" ram || return 129
+	_execution_first_identity=$_execution_identity
+	_execution_first_body=$_isolation_body
+	_cfmgr_isolation_native_call private-root "$_isolation_mount" -n -i -o make-private "$_isolation_tree" || return 129
+	_cfmgr_isolation_query "$_isolation_tree" 0 && _cfmgr_isolation_root_mount_check || return 129
+	[ "$_execution_identity" = "$_execution_first_identity" ] && [ "$_isolation_body" = "$_execution_first_body" ] || return 129
+	_cfmgr_isolation_native_call remount-root "$_isolation_mount" -n -i -o remount,bind,ro,nosuid,nodev,exec \
+		"$_execution_image" "$_isolation_tree" || return 129
+	_cfmgr_isolation_query "$_isolation_tree" 0 && _cfmgr_isolation_root_mount_check &&
+		_cfmgr_isolation_image_options "$_isolation_options" "$_isolation_super" || return 129
+	[ "$_execution_identity" = "$_execution_first_identity" ] || return 129
+	_execution_mount_id=$_isolation_id
+	_execution_root_ledger=$_isolation_ledger
+	_cfmgr_isolation_write "$_isolation_guard/mounted-root" "$_execution_root_ledger" || return 129
+	_cfmgr_isolation_root_lease "$@" 6<"$_isolation_tree" || return 129
+	# Scoped redirection has closed the root lease and restored caller FD6.
+	cd / || return 129
+	[ ! -e "$_isolation_guard/active" ] && [ ! -L "$_isolation_guard/active" ] || return 129
+	_cfmgr_isolation_query "$_isolation_tree" 0 && _cfmgr_isolation_private || return 129
+	[ "$_isolation_ledger" = "$_execution_root_ledger" ] || return 129
+	_cfmgr_isolation_read "$_isolation_guard/intent-root" || return 129
+	[ "$_isolation_text" = "root$_io_lf" ] || return 129
+	_cfmgr_isolation_read "$_isolation_guard/mounted-root" || return 129
+	[ "$_isolation_text" = "$_execution_root_ledger" ] || return 129
+	_cfmgr_isolation_unmount umount-root "$_isolation_tree" || return 129
+	_cfmgr_isolation_query "$_isolation_tree" 0 && _cfmgr_isolation_private || return 129
+	[ "$_isolation_body" = "$_execution_prior_body" ] || return 129
+	_cfmgr_isolation_query "$_isolation_root" 0 && _cfmgr_isolation_private || return 129
+	[ "$_isolation_body" = "$_execution_ram_body" ] || return 129
+	_execution_result="callback$_io_tab$_execution_callback_status$_io_lf"
+	_execution_result="${_execution_result}end$_io_tab${#_execution_result}$_io_lf"
+	_cfmgr_isolation_write "$_isolation_guard/result" "$_execution_result" || return 129
+	"$_isolation_mkdir" -m 700 "$_isolation_guard/complete" || return 129
+	_cfmgr_isolation_root_empty "$_isolation_guard/complete" || return 129
+	_execution_io_complete=1
+	return 0
 }
