@@ -207,6 +207,17 @@ focused launch/runner checks; these unprivileged tests do not perform chroot or
 prove router execution. The kernel scenario described below supplies that
 separate host execution evidence.
 
+`tests/test_native_opkg.py` checks the fixed `opkg --version` comparison with
+independent expected response bytes, printable-version boundaries, literal
+metacharacters, separate evidence, and pre-effect refusal and completed-negative
+outcomes. It proves the child receives only `--version`, not the expected value,
+and that the opkg probe does not invoke `/bin/busybox`. Its single actual-BusyBox case
+batches invalid values and one successful 128-byte version. Run
+`python -m pytest tests/test_native_opkg.py` for these host checks. The focused
+O9c consumer run passed 71 tests with two local BusyBox skips; the kernel runner
+selection passed 26 cases. These host tests do not establish opkg provenance or
+package execution.
+
 `tests/test_native_probe.py` checks the source-only worker composition with
 fresh markers and narrow storage/root/deadline seams. It verifies fixed
 ten-argument routing, arm/acquire/probe/cleanup/acknowledgement order, clean
@@ -330,7 +341,10 @@ at `ffc3782`.
 The kernel fixture substitutes a synthetic FD8 storage observation and a
 controlled FD9 source, so it does not prove router storage admission or
 acceptance. The accepted 41% scenario also invokes the fixed shell probe
-through genuine host BusyBox/loader bytes. Only a private fixture copy's
+through genuine host BusyBox/loader bytes. The O9c extension adds a trusted
+synthetic static opkg stand-in to the ninth scenario; it witnesses fixed argv,
+clean environment and cwd, closed inherited descriptors, and reading the
+retained Opt marker. It does not run Entware opkg. Only a private fixture copy's
 interpreter path is adapted to the existing `/lib` view, with structural and
 `readelf` verification; static
 fixture wrappers inspect descriptors before forwarding to real chroot/applets.
@@ -342,7 +356,9 @@ outer storage IO acquisition or physical block-device/UUID admission. The
 Linux/BusyBox CI passed 1,722 tests with no skips in 98.57s. Six stripped-ash
 checks passed in 6.98s. The ten kernel scenarios all passed; `native-root` took
 5.71s and `native-probe` 8.40s; namespace execution totaled 18.43s and the
-whole kernel command 19.40s. The kernel suite remains developer-host evidence only. See [PLAN.md](../PLAN.md)
+whole kernel command 19.40s. These are the accepted 42% results; the O9c 43%
+Linux extension gate is pending. The kernel suite remains developer-host
+evidence only. See [PLAN.md](../PLAN.md)
 for the full checkpoint record and the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
 and limits.
@@ -422,6 +438,7 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_native_config_extended.py` | Opaque byte limits, same-descriptor EOF checks, producer/cmp failures, partial retention and IO cleanup admission |
 | `tests/test_native_shell.py` | Fixed shell admission, clean environment, descriptors, byte framing and retained uncertainty through the root lease |
 | `tests/test_native_probe.py` | Fixed worker ordering, authority routing, cleanup gates, caller-state preservation and uncertainty markers |
+| `tests/test_native_opkg.py` | Fixed installed-opkg version comparison, API boundaries, separate evidence and completed-negative outcomes |
 | `tests/test_native_root.py` | Native root identity/cleanup and the actual BusyBox six-file retained-Opt/device composition |
 | `tests/test_native_observation.py` | Real descriptor metadata, inode relationships, symlink failures and retained descriptor usability in host fixture tools |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |

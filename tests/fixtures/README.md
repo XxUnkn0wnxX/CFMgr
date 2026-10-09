@@ -27,7 +27,7 @@ The ten scenarios retain individual 15-second bounds:
 | 6 (contained) | Controlled ELF/profile image verifies staging/hash and fixed-probe supervision; the host loader sits behind the profile alias. The actor checks closed external descriptors, bootstrap links, null, EROFS and absent proc/shell/writable Opt before guard cleanup | The ELF and profile are synthetic, not a router runtime |
 | 7 (worker-lifetime) | An inherited root descriptor blocks teardown; after chroot/setsid the child drops it but retains root/cwd and proof pipes. Removing Opt exposes readonly empty fallbacks until the detached child exits | Filesystem quiescence is not proof of arbitrary descendant reaping |
 | 8 (execution-root) | Actual readonly-root owner checks mount identity, fallback write refusal, restored caller descriptors and completed teardown before RAM removal | Not an operational worker or router acceptance |
-| 9 (native-root) | Native views, six staged files, quota tmpfs, retained Opt, fixed devices and a fixed native shell probe use the checked lifecycle | FD8 remains synthetic; host executable fixtures do not prove firmware ABI; see below |
+| 9 (native-root) | Native views, six staged files, quota tmpfs, retained Opt, fixed devices, the native shell probe and a synthetic static opkg-version stand-in use the checked lifecycle | FD8 remains synthetic; the stand-in is not Entware opkg or firmware ABI evidence; see below |
 | 10 (native-probe) | Real aggregate deadline and native-config-root/chroot cleanup around the fixed probe; the fixture inspects the watchdog's descriptors while FD6/8/9 are held and verifies a known FD0 witness | Storage acquisition is a synthetic seam; does not prove outer storage IO acquisition, physical block-device/UUID admission or router execution |
 
 The ninth scenario composes the quota-limited native-tmp root, retained
@@ -57,6 +57,13 @@ see [PLAN.md](../../PLAN.md) for the checkpoint results.
 These host-native bytes and the interpreter adaptation do not establish ARM32,
 Merlin loader/NSS/TLS behavior or package execution. Firmware cache files are
 never inputs to this executable fixture.
+
+The O9c extension to scenario 9 also invokes a trusted synthetic static opkg
+stand-in through the fixed `/opt/bin/opkg --version` path. It witnesses exact
+child argv, clean environment and working directory, closure of inherited
+descriptors, and reading the retained Opt marker. It does not run Entware opkg
+or establish the installed executable's provenance. The O9c 43% Linux gate is
+pending; the 42% ten-scenario run remains the last accepted kernel result.
 
 Scenario 10 composes the source-only native-probe worker with the real deadline
 owner, fixed chrooted probe, native-config-root teardown and completion handoff.
@@ -99,6 +106,10 @@ uncertainty propagation. It checks real open descriptors with `fstat` on macOS;
 the explicit BusyBox case proves ash behavior, and the namespace scenario
 separately proves actual dynamic launch and mount cleanup. No host mock is
 reported as a privileged chroot or router test.
+`tests/test_native_opkg.py` checks the separate fixed version probe with
+independent response bytes, boundary and metacharacter versions, separate
+evidence, and no-launch/error outcomes. Its opkg fixture never executes real
+Entware opkg or installs a package; its BusyBox case is a batched representative.
 `tests/test_native_probe.py` checks the fixed worker's argument/authority
 routing, watchdog and cleanup ordering, 0/1 outcomes, caller state, stale markers
 and uncertain completion with fresh lower-level seams. Its early-exit case

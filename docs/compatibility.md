@@ -219,6 +219,26 @@ Synthetic storage acquisition still leaves physical block-device/UUID admission
 and outer storage IO acquisition unproved. See the
 [fixture guide](../tests/fixtures/README.md) and [PLAN.md](../PLAN.md).
 
+The O9c extension adds `cfmgr_native_opkg_probe ROOT EXPECTED_VERSION` beside
+the unchanged fixed shell probe. It checks an independently approved 1–128 byte
+printable-ASCII version against the exact `opkg --version` response; the version
+is comparison data only and is never passed to the child. The new
+`execution/opkg-version` captures and ledger are separate from the shell-probe
+evidence. A successful string check does not establish opkg provenance: the
+caller must already trust the stable installed static code/profile and exclude
+conflicting writers. The source-only worker composition still invokes only its
+fixed shell probe; no operational dependency worker or package installation was
+added.
+
+The ninth Linux kernel scenario now also invokes a trusted synthetic static
+opkg stand-in to witness the fixed command, clean environment and working
+directory, closed inherited descriptors, and retained Opt marker read. It does
+not run Entware opkg or prove ARM, router, NSS or TLS behavior. The ten-scenario
+42% gate remains the last accepted full Linux result; the O9c 43% extension gate
+is pending. The focused host tests include `tests/test_native_opkg.py`; local
+BusyBox-specific coverage is explicitly skipped when no BusyBox executable is
+available.
+
 ## 🧩 Qualify each feature separately
 
 | Feature | Required capability | Current boundary |

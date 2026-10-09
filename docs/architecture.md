@@ -44,9 +44,9 @@ flowchart LR
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; an extended API adds fixed NSS, wget, OpenSSL config and CA files | Data copies only; no syntax, trust, readiness, execution or broader closure approval; legacy root entries remain two-file |
-| `modules/lib/native_config_root.sh` | Select the fixed extended-config composition over the retained-Opt/device root lifecycle | Source-only native observer API; six files staged before bind; no payload/opkg or operational lifecycle wiring |
-| `modules/lib/native_shell.sh` | Probe one fixed native shell/BusyBox command inside an already checked native-config root | Explicit synchronous callback exception; caller owns the deadline and root authority; no general executable, DNS/TLS or opkg admission |
-| `modules/helpers/native_probe.sh` | Compose the fixed native shell probe with the existing deadline, retained-storage and checked native-config-root owners | Source-only ten-argument internal API; no CLI, cron installation, operational worker, package or network action |
+| `modules/lib/native_config_root.sh` | Select the fixed extended-config composition over the retained-Opt/device root lifecycle | Source-only native observer API; six files staged before bind; no arbitrary payload or package-install wiring |
+| `modules/lib/native_exec.sh` | Probe one fixed native shell/BusyBox command or the installed `opkg --version` inside an already checked native-config root | Explicit synchronous callback exceptions; fixed commands only; caller owns the deadline and root authority; no general executable or DNS/TLS admission |
+| `modules/helpers/native_probe.sh` | Compose the fixed native shell probe with the existing deadline, retained-storage and checked native-config-root owners | Source-only ten-argument internal API; no CLI, cron installation, operational worker, package installation or network action |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
@@ -344,10 +344,11 @@ This composition keeps the eight-child layout, 106 unique mount-query slots
 and 12 device metadata observations of the fixed-device root. Staging happens
 before the first bind.
 The callback remains a trusted synchronous native observer, with the explicit
-fixed shell-probe exception below. It cannot select arbitrary payloads, launch
-opkg, retain asynchronous users/descriptors or replace its own `HOME`. It adds
-no operational worker, menu, startup or package-install wiring, nor complete
-native execution closure. The [41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595)
+fixed shell and opkg-version probe exceptions below. It cannot select arbitrary
+payloads, perform ordinary package operations, retain asynchronous
+users/descriptors or replace its own `HOME`. It adds no operational worker,
+menu, startup or package-install wiring, nor complete native execution closure.
+The [41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595)
 passes the complete composition; host mirrors alone do not prove mount-enforced
 read-only behavior.
 
@@ -378,9 +379,23 @@ the probe does not establish filesystem quiescence by itself. It neither
 accepts caller-selected command arguments nor authorizes ordinary opkg, NSS,
 TLS, network activity or a general executable closure.
 
+`cfmgr_native_opkg_probe ROOT EXPECTED_VERSION` is a separate fixed admission
+check in `modules/lib/native_exec.sh`. It accepts a validated 1–128 byte
+printable-ASCII version only as comparison data. The child always closes FD6
+first and runs exactly `/opt/bin/opkg --version`; the expected version is never
+placed in its script, argv or environment. A matching exact response with empty
+stderr and checked completion returns 0; a completed mismatch or ordinary
+failure returns 1; malformed API returns 2 before effects; incomplete or
+uncertain post-reservation work returns 129. Its fresh captures and completion
+marker are separate at `GUARD/execution/opkg-version`, with a distinct status
+ledger. The existing shell probe and its `native-shell` evidence remain
+unchanged. This check assumes the caller already trusts the stable installed
+opkg code/profile and has independently excluded conflicting package writers;
+checking a version string does not establish executable provenance.
+
 `cfmgr_worker_native_probe RAMROOT GUARD TOTAL GRACE TMP_KIB TMP_INODES
 MOUNT_PARSER STORAGE_PARSER EXPECTED_UUID EXPECTED_FS_TARGET_HEX` is the fixed
-source-only composition around that probe. It validates its ten arguments and
+source-only composition around `cfmgr_native_shell_probe`. It validates its ten arguments and
 fresh guard before entering the existing deadline API in the caller's original
 shell, so process-group admission precedes the armed watchdog. Only then does
 the fixed callback enter the retained-storage owner and native-config-root
@@ -398,8 +413,10 @@ admission, cleanup, publication or marker uncertainty returns 129 and does not
 acknowledge completion. No marker by itself authorizes cleanup.
 
 This composition is still an internal fixed probe, not operational dependency
-execution: it installs no cron entry, invokes no opkg or network operation, and
-does not add arbitrary callback or executable authority. The tenth Linux kernel
+execution: the worker invokes only the fixed shell probe, installs no cron entry,
+and performs no package or network operation. The separate opkg version probe
+does not install packages. Neither path adds arbitrary callback or executable
+authority. The tenth Linux kernel
 scenario exercises the real deadline, root/chroot and cleanup path with
 synthetic storage acquisition; it does not establish outer storage IO
 acquisition, block-device/UUID admission or router execution. All ten scenarios
@@ -614,6 +631,16 @@ configuration and exclusion of conflicting writers across admission and package
 work remain unresolved operational prerequisites. The source-derived lock-file
 unlink race and exact source references are recorded in the plan; no runtime
 contention proof or custom opkg replacement is claimed.
+
+For ordinary Entware operations, pinned Entware 540 source sets the compiled
+default opkg temporary directory to `/opt/tmp`. The effective order is an
+explicit configuration or command-line `tmp_dir`, then `TMPDIR`, then that
+compiled default. CFMgr's existing backend unsets `TMPDIR` and preserves opkg
+configuration, so a configured `tmp_dir` can still direct package scratch writes
+outside a private tmpfs quota. The version-only `--version` command exits before
+loading configuration or creating temporary files, so this does not change the
+fixed version probe above. See the pinned
+[Entware default-temp patch](https://github.com/Entware/Entware/blob/969c703e6fd8b2ad84d82affaeb14b48d1fcb105/package/system/opkg/patches/540-DEFAULT_TMP_DIR.patch).
 
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its
