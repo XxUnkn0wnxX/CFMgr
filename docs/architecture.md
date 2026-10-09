@@ -43,7 +43,8 @@ flowchart LR
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
-| `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; a separate extended API adds fixed NSS, wget, OpenSSL config and CA files | Source-only staging; no syntax, trust, readiness, execution or broader closure approval; roots still use the legacy two-file stager |
+| `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; an extended API adds fixed NSS, wget, OpenSSL config and CA files | Data copies only; no syntax, trust, readiness, execution or broader closure approval; legacy root entries remain two-file |
+| `modules/lib/native_config_root.sh` | Select the fixed extended-config composition over the retained-Opt/device root lifecycle | Source-only native observer API; six files staged before bind; no payload/opkg or operational lifecycle wiring |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
@@ -133,10 +134,70 @@ successful wipe. Reset retains the verified manager package and regenerates
 passive defaults instead of deleting the entire package directory.
 
 The storage observer joins the held directory's mount ID to the current mount
-table, checks the block device number and reads the primary ext superblock through
-the original open descriptor. It repeats the path/mount/device checks before
-staging its result. The descriptors remain open through observation and staging;
-the private workspace is cleaned before the result is published.
+table, checks the block device number and reads the first 1,152 bytes of the
+primary ext superblock through the original open descriptor. It repeats the
+path/mount/device checks before staging its result. The descriptors remain open
+through observation and staging; the private workspace is cleaned before the
+result is published.
+
+### Bounded parser and IO contracts
+
+`modules/lib/json.awk` accepts a stable private input up to 64 KiB with a
+separately checked byte count, nesting limited to 32 containers, 4,096 value
+nodes and 16 KiB per decoded string. Its token ledger is capped at 128 KiB
+including the terminal count footer; numeric text is preserved. Consumers set
+`LC_ALL=C` and check parser status, exact framing, byte count and sequential
+records; this does not establish configuration semantics or authorize a provider
+request. `modules/lib/ip.sh`
+normalizes IPv4/IPv6 text, including lower-case shortest IPv6 with longest-leftmost
+zero compression. Valid syntax alone does not establish public-address
+eligibility, WAN selection or freshness.
+
+`modules/lib/mountinfo.awk` chooses the deepest mount covering a canonical path
+and rejects ambiguous covering ancestors. It consumes a stable snapshot capped
+at 64 KiB, 1,024 records, 8,192 bytes per line and a 4,096-byte target. It
+calculates the target's path inside the selected filesystem, including bind
+mount roots. Standard mountinfo path escapes are decoded; the internal byte-encoded result has a
+terminal byte-count footer. Its caller provides `LC_ALL=C`, the independently
+checked snapshot byte count and `CFMGR_MOUNT_TARGET` in the environment. Numeric
+mount IDs remain exact text. These facts are observations, not persistent
+identity or write authority.
+
+`modules/lib/storageinfo.awk` parses stable private native observations with
+independently checked byte counts, `LC_ALL=C` and a literal mode. Inputs are at
+most 4 KiB (fdinfo up to 64 records), preserving large numeric IDs as text. It
+rejects label-bearing `blkid` records because firmware label formatting can
+imitate a UUID field. Status `0` is a complete framed result, `1` malformed or
+rejected input, `2` invocation error, and `3` unavailable identity. A framed UUID
+still requires independent expected-volume approval. The storage parser receives
+its expected device through `CFMGR_BLKID_DEVICE`; avoid awk `-v` for this value
+because it could interpret backslashes.
+
+`modules/lib/io.sh` has no source-time side effects. The caller supplies a
+trusted RAM parent, callback and verified parser path; production tool paths are
+fixed and inherited path overrides are ignored. Disable tracing before passing
+arguments. It provides private callback workspaces and capture slots 0–15;
+each accepted stdout/stderr stream is at most 65,536 bytes, and accepted stream
+data totals at most 2 MiB. Its interfaces are:
+
+| Function | Caller contract |
+| --- | --- |
+| `cfmgr_io_with_workspace ROOT CALLBACK [ARGS...]` | Try up to eight private mode-0700 workspace names; suppress callback output and clean up before returning its ordinary status. |
+| `cfmgr_io_with_report ROOT CALLBACK [ARGS...]` | Same ownership, requiring exactly one explicitly staged report before success. |
+| `cfmgr_io_stage_report PAYLOAD` | Stage a nonempty ASCII report up to 65,536 bytes inside its owner callback. |
+| `cfmgr_io_capture SLOT OUT_LIMIT ERR_LIMIT TOOL [ARGS...]` | Capture bounded producer output and status into private files; slots are consumed even on failure. |
+| `cfmgr_io_mount_snapshot ROOT TARGET PARSER` | Acquire and parse mountinfo; emit a framed result only after workspace cleanup. |
+
+Capture status `0` means transport completed, not that the producer succeeded;
+the caller must read the complete `.status` record before using output. An
+overflow byte is captured for exact limit checks; supported shells yield a
+132,096-byte physical ceiling per stream, while accepted stream data totals at
+most 2 MiB. IO, limit or cleanup failures return `1`, invalid usage returns `2`,
+and no covering mount remains `3`. Callback status otherwise passes through
+after owned cleanup; handled HUP/INT/TERM exits remain `129`/`130`/`143`. The
+owner preserves caller state; external callers must forward signals or supervise
+it. IO has no deadline for a hung native executable. Failed partial captures stay
+private until owner cleanup.
 
 The internal `cfmgr_storage_with` API instead runs a trusted callback after all
 checks, passing the resolved directory, complete volume ledger and caller
@@ -214,11 +275,13 @@ source, mount identity, readonly flags and topology, then presents the populated
 root ledger to the same narrowly scoped native observer. Production sources must
 be on the approved readonly UBIFS or squashfs firmware root; the explicit host
 fixture also admits a readonly tmpfs source to prove real mount behavior. This is
-a tested internal construction primitive, not an Entware environment: native
-configuration and executable/loader/resolver/TLS/NSS closure, approved writable
-children, ordinary opkg execution and operational worker/menu/startup wiring
-remain unfinished. Host fixtures exercise the lifecycle, and a ninth Linux
-namespace consumer is included for actual mount/descriptor validation. Its
+a tested internal construction primitive, not an Entware environment: this
+entry does not add the writable `/tmp` and Opt children supplied by later
+compositions, and no entry provides complete native configuration semantics or
+executable/loader/resolver/TLS/NSS closure. Ordinary opkg execution and
+operational worker/menu/startup wiring also remain unfinished. Host fixtures
+exercise the lifecycle, and a ninth Linux namespace consumer is included for
+actual mount/descriptor validation. Its
 checkpoint result is tracked in PLAN.md; neither establishes router acceptance.
 
 `cfmgr_isolation_native_data_root_with` composes the fixed native views with
@@ -239,22 +302,44 @@ native-data callback remains synchronous native observation only; chroot,
 payload/opkg execution, `HOME`, private writable `/tmp`, and complete ELF,
 resolver, TLS or NSS closure are not provided.
 
-The source-only `cfmgr_native_config_extended_stage IMAGE` helper (and explicit
-fixture form `cfmgr_native_config_extended_test IMAGE SOURCE_ROOT`) adds four
-fixed opaque files: `/etc/nsswitch.conf`, `/etc/wgetrc`, `/etc/openssl.cnf` and
-`/etc/ssl/certs/ca-certificates.crt`. The first three are capped at 65,536 bytes
-each and the CA bundle at 1 MiB. The added bytes may contain binary/NUL data;
-the helper copies and verifies them without parsing policy, checking TLS trust
-or proving NSS/loader readiness. It creates private `0700` certificate
-directories and `0600` files, retaining partial image data if a later step
-fails. A successful helper result is usable only after its enclosing IO cleanup
-also succeeds.
+`cfmgr_isolation_native_config_root_with RESOLVED VOLUME RAMROOT GUARD LIMIT_KIB
+INODE_LIMIT MOUNT_PARSER STORAGE_PARSER CALLBACK [ARGS...]` and the explicit
+fixture API `cfmgr_isolation_native_config_root_test` select the same retained-
+Opt and native-device lifecycle as the existing fixed-device entry. The fixture
+API adds explicit tools, mount/fdinfo inputs and native/data source roots. The
+literal entry selects extended staging and
+resets that internal selector on every invocation; older root APIs continue to
+use only the legacy hosts/resolver stager. Before any bind, it stages six fixed
+files:
+`/etc/hosts`, `/etc/resolv.conf`, `/etc/nsswitch.conf`, `/etc/wgetrc`,
+`/etc/openssl.cnf` and `/etc/ssl/certs/ca-certificates.crt`. The five small
+files are capped at 65,536 bytes each, and the CA bundle at 1 MiB. Only the four
+extended files accept opaque binary/NUL bytes and compare them with native
+`dd`/`cmp`; the original hosts/resolver files retain their 65,536-byte caps and
+reject NUL bytes.
+No config is parsed and no TLS trust, NSS behavior or loader readiness is
+established.
+The image directories are private mode `0700`, and staged files are mode `0600`.
+The image is a canonical caller-owned private-RAM path outside IO scratch; the
+active IO transaction uses trusted definitions, and source files plus ancestors
+must be trusted and stable. The extended stager uses a bounded `dd` read and
+same-descriptor EOF probe, a finite `wc -c` cap check and `cmp -s`. Four fresh
+EOF artifacts stay in IO scratch; generic capture limits remain unchanged.
+The standalone `cfmgr_native_config_extended_stage IMAGE` and explicit fixture
+form `cfmgr_native_config_extended_test IMAGE SOURCE_ROOT` return `2` for invalid
+API/context and `1` for completed acquisition failure. A `0` is usable only
+after enclosing IO cleanup succeeds; partial image data remains on failure.
+The root maps any pre-bind staging failure after reservation to `129` and
+retains its guard.
 
-The existing native-data, native-tmp, retained-Opt and native-device root
-composers still invoke only the original hosts/resolver stager. No current root
-composer stages these four files through the extended helper, and no operational
-consumer uses them yet; root integration remains a later stage. Existing staging and IO
-capture limits and APIs are unchanged.
+This composition keeps the eight-child layout, 106 unique mount-query slots
+and 12 device metadata observations of the fixed-device root. Staging happens
+before the first bind.
+The callback remains a trusted synchronous native observer: no payload, chroot,
+opkg, asynchronous users, retained descriptors or `HOME` replacement. It adds
+no operational worker, menu, startup or package-install wiring, nor complete
+native execution closure. The 40% kernel validation is pending; host mirrors do
+not prove mount-enforced read-only behavior.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

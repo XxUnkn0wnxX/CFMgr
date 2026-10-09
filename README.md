@@ -26,18 +26,14 @@ These descriptions and their usage guides are updated after each finalized
 milestone. A final consistency and polish pass follows complete implementation
 and validation; it does not replace keeping the docs current during the build.
 
-CFMgr is in development. Implemented foundations include parsing, retained-storage
-checks, guarded process deadlines, internal execution-root lifecycles and bounded
-native configuration staging and fixed native-device views, plus a partial
-native health report. The fixed-device addition passes full local and Linux CI
-validation; router acceptance remains pending. An internal helper attaches
-already-admitted Entware storage to its managed workspace. Routine Entware
-upgrades remain user-managed; the dependency
-backend installs only missing or unusable requirements, while operational
-worker and feature integration remain incomplete. There is no installable
-manager yet. Extended NSS/wget/OpenSSL/CA staging is a source-only internal
-helper, not wired into a root. Its full local and Linux/BusyBox CI validation
-passes; operational integration remains incomplete.
+CFMgr is in development. Implemented foundations include parsing, storage
+checks, guarded process deadlines, internal workspaces and a partial native
+health report. The latest workspace also stages the native configuration and
+certificate data needed for later dependency work. Full local checks pass;
+Linux/BusyBox validation for this checkpoint is pending. Operational setup and
+feature integration remain incomplete, and there is no installable manager yet.
+Routine Entware upgrades remain user-managed; the internal dependency backend
+installs only missing or unusable requirements.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
 DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)

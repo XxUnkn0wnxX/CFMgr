@@ -174,183 +174,29 @@ command policy and capability handling, not storage or router acceptance.
 `--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
 must prove that neither opkg nor unverified package executables are called.
 
-`modules/helpers/worker.sh` supplies native process-group admission and a separate
-guarded aggregate-deadline controller. The admission check reads the calling
-shell's actual proc record and requires its PID,
-process group and shell `$$` to agree; session leadership is unnecessary.
-This rejects a nested shell whose `$$` still identifies its parent. The check
-does not establish exclusive group ownership, authorize signals or launch work.
-Its actual Linux and BusyBox cases are separate from cheap metadata fixtures.
-Deadline cases additionally exercise arm-before-callback, cooperative completion,
-exact watchdog wait and real current-group cancellation. Their short, intentional
-polling and termination budgets are integration costs, not parser-test targets.
+The worker fixture set distinguishes cheap process-record checks from the
+Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group
+coverage in the focused worker tests; architecture documents the runtime
+contract, and the fixture guide describes kernel evidence.
 
-The separate readonly-root entry in `modules/lib/isolation.sh` shares checked IO and
-mount parsing without broadening the earlier callbacks. Its host consumers use
-inert mount tools and actual inherited file descriptors. Complete success cases
-retain every bounded capture; focused fault cases share the established query
-fixture while preserving real IO ownership, mount parsing and descriptor checks.
-Keep ordinary callback failure separate from incomplete root teardown or failed
-IO cleanup: only the fully completed transaction may return that callback status.
-The Linux consumer provides actual mount/readonly/descriptor evidence; neither
-layer establishes an operational Entware worker.
+### Root lifecycle test coverage
 
-The fixed native-view entry is
-`cfmgr_isolation_native_root_with RAMROOT GUARD MOUNT_PARSER STORAGE_PARSER CALLBACK [ARGS...]`.
-Its explicit fixture counterpart additionally takes tools, mount/fdinfo inputs
-and a synthetic source root; production uses only `/bin`, `/sbin`, `/lib` and
-`/usr`. Source directories must share a private readonly executable UBIFS or
-squashfs filesystem; the fixture also permits a readonly tmpfs source. Exact
-child ledgers and topology are checked before, during and after the scoped FD6
-lease. The observer receives the root path, populated-root ledger and arguments;
-it cannot launch payloads, chroot, leave asynchronous users or retain descriptors.
-Children are removed in reverse order before checked base-root teardown.
+The root lifecycles and their current boundaries are documented in
+[architecture](architecture.md#-current-implementation). The host fixtures exercise
+ownership, exact child ledgers, checked teardown, IO cleanup and retained-guard
+failure. The Linux kernel lane supplies mount-enforced evidence; see the
+[test-fixture guide](../tests/fixtures/README.md) for scenario coverage and its
+limits. Neither proves router acceptance or supplies an operational worker.
 
-The complete native-view transaction uses 56 unique query slots within a fixed
-64-query limit; older entries retain their 16-query limit. Its host lifecycle
-uses the focused query fixture to avoid duplicating every external capture.
-The actual BusyBox and kernel consumers retain full captures, as does the
-existing bare-root success case. Cheap direct cases cover source/options/child
-identity and prove that a count of four descendants cannot substitute for four
-matching child ledgers. Interrupted or incomplete teardown returns uncertainty
-with its guard retained; a callback status is ordinary only after complete
-child/root and IO cleanup.
-
-The internal `modules/lib/native_config.sh` helper runs inside an active IO
-callback and copies only the fixed `/etc/hosts` and `/etc/resolv.conf` inputs
-into the caller-owned private image outside IO scratch. Each file is captured
-through the existing IO owner with a 65,536-byte limit, checked for
-complete exact-byte publication, and written without interpreting its content.
-NUL bytes, truncation, unsafe paths and a pre-existing `/etc` staging path are
-rejected. `cfmgr_isolation_native_data_root_with` takes `RAMROOT`, `GUARD`, the
-mount and storage parsers, a synchronous native observer, then optional observer
-arguments. It stages these files before its first bind and reuses the four
-checked readonly native views. The helper does not check resolver syntax or
-readiness, execute the copies, or supply a complete native configuration or
-payload environment. A successful helper call still requires successful
-enclosing IO cleanup; partial staging remains under the retained execution guard
-on failure. Existing isolation APIs are unchanged.
-
-The same source-only helper also exposes
-`cfmgr_native_config_extended_stage IMAGE` and the explicit fixture form
-`cfmgr_native_config_extended_test IMAGE SOURCE_ROOT`. These extend staging
-with `/etc/nsswitch.conf`, `/etc/wgetrc`, `/etc/openssl.cnf` (each capped at
-65,536 bytes) and `/etc/ssl/certs/ca-certificates.crt` (1 MiB). The extra files
-are copied as opaque binary data, including NUL and terminal LF bytes; this
-does not parse NSS rules, wget/OpenSSL configuration or certificate contents,
-establish TLS trust, or approve any file for execution. The original
-hosts/resolver staging rules and limits are unchanged.
-
-The extended API requires trusted `io.sh` definitions, an active caller-owned IO
-transaction and a canonical private image outside IO scratch. It creates fresh
-`0700` certificate directories and `0600` files. For each extra file, bounded
-native `dd` reads the source and probes EOF on the same opened descriptor; a
-finite native `wc -c` count enforces its cap, then native `cmp -s` checks the
-copied bytes under the stable-source-generation precondition. It uses four
-distinct fresh IO-stage EOF artifacts; it does not widen generic capture limits
-or APIs. Firmware source links may be followed only under the trusted stable
-source and ancestor precondition. Failure retains partial image staging; helper
-status `0` is sufficient only when the enclosing IO cleanup also returns `0`.
-Malformed API/context returns `2`; a completed source/acquisition failure
-returns `1`.
-
-The existing native-data and Entware-root composers still call only the legacy
-hosts/resolver stager. This extended stage is not yet wired into a root or an
-operational consumer; that composition remains a later implementation stage.
-The upgraded actual BusyBox config consumer retains its prior hosts/resolver
-assertions while exercising the extended source-only entry. The focused set
-passes 42 tests with one explicit local BusyBox-unavailable skip in 9.68 seconds;
-each case takes under one second, and the shell/Python static checks pass. The
-39% full local checkpoint passes 1,613 tests with 29 explicit platform skips
-in 769.14 seconds using the documented single-worker mode. Exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37946870895)
-passes all 1,642 cases, six stripped-ash checks and nine kernel scenarios.
-This serial timing is separate from the
-earlier two-worker baseline; coverage and per-test deadlines are unchanged.
-
-`cfmgr_isolation_native_tmp_root_with` extends the native-data lifecycle with a
-private writable tmpfs at `root/tmp`. Its production arguments add `LIMIT_KIB`
-and `INODE_LIMIT` before the parser paths. Size must be a canonical decimal
-multiple of 64 from 64 through 65,536 KiB; inode count must be a canonical
-decimal from 8 through 8,192. The owner verifies the exact tmpfs source, flags,
-mode, size and inode options, and a new distinct child identity under the base
-root. The fixture entry also requires explicit tools, mount/fdinfo inputs and
-native/data source roots. It creates an empty mode-`0700` `tmp/cfmgr-home`; the
-native observer's `HOME` variable remains unchanged. A future launcher may set
-its logical `HOME` to that path.
-
-The limits cap tmpfs usage; they do not reserve physical memory or establish
-available RAM headroom. After the observer returns, CFMgr checks the saved tmpfs
-ledger, ordinarily unmounts `/tmp`, then removes the four native views in reverse
-order and tears down the base root. The native-tmp layout uses 64 unique query
-slots within the fixed 64-query ceiling. The native-data API and older root APIs
-retain their existing contracts. This native-tmp entry is still not a payload,
-chroot, opkg, readiness or operational worker path; the separate retained-Opt
-composition is documented below. Complete native loader/ELF/TLS/NSS support
-remains unimplemented.
-
-`cfmgr_isolation_entware_root_with RESOLVED VOLUME RAMROOT GUARD LIMIT_KIB
-INODE_LIMIT MOUNT_PARSER STORAGE_PARSER CALLBACK [ARGS...]` composes the checked
-native views, private quota tmpfs and an already-admitted Entware Opt directory.
-Call it only from the independent Entware admission callback while the original
-FD8 block and FD9 directory remain held. A canonical volume report or UUID
-format does not grant storage authority. The wrapper rechecks source facts,
-topology and descriptor identities, then binds only `/proc/self/fd/9` at
-`root/opt` with `rw,nosuid,nodev,exec`.
-
-The observer receives the six-child root path and full root ledger, the original
-volume report and unchanged optional arguments. It remains a synchronous trusted
-native observer: no payload, chroot, asynchronous users, retained descriptors or
-HOME replacement. Opt is ordinarily unmounted first; before tmpfs removal, the
-owner verifies the exact empty readonly Opt fallback. It then removes tmpfs,
-native views in reverse order and the base root. The composition uses 78 unique
-mount queries within its fixed 78-query ceiling. Uncertain teardown retains the
-guard and returns 129; an ordinary callback status is returned only after root
-and enclosing IO cleanup succeed. It does not install packages or establish
-physical filesystem identity, device nodes, complete native loader/helper/TLS/
-NSS closure, or router acceptance. The separate native-data and older root APIs
-are unchanged.
-
-`cfmgr_isolation_native_devices_root_with` keeps the same production arguments
-as the retained-Opt API. It creates exactly two owned character nodes in the
-private root image: `/dev/null` (1:3) and `/dev/urandom` (1:9), both mode `0600`
-and UID/GID 0. It does not copy host `/dev`. Each source inode is observed and
-rechecked through the storage parser, retaining large inode values as text;
-there are 12 metadata observations, each read only after its IO cleanup has
-succeeded. The private image must remain frozen while the root is active,
-because the observations before bind and after unmount are not a continuous FD
-lease.
-
-Each node gets an individual read-only, `nosuid`, `noexec`, device-enabled bind.
-After that mount is removed, the base root's `nodev` fallback refuses new opens.
-An already-open descriptor is not revoked by the fallback or by unmount. The
-full layout has eight children and uses 106 unique query slots. Teardown removes
-Opt, urandom, null, tmp, then `/usr`, `/lib`, `/sbin`, `/bin`, and the base root.
-Uncertain cleanup returns 129 and retains the guard; ordinary callback status
-is available only after complete root and IO cleanup. The callback remains a
-trusted synchronous native observer with no payload, chroot, async users,
-retained descriptors or `HOME` replacement.
-
-`tests/test_native_devices.py` adds 25 focused unit cases, passing in 4.74 seconds,
-and one host lifecycle case, passing in 35.04 seconds. The actual BusyBox
-representative and existing ninth kernel scenario are upgraded in place. The kernel wrapper
-opens FD5 on each node so unmount is witnessed busy, closes it to permit
-cleanup, then proves new opens fail through the `nodev` fallback. Host busy-fault
-tests separately prove runtime guard retention. The full Mac suite passes 1,593
-tests with 29 explicit platform skips in 487.36 seconds. The
-[38% Linux/BusyBox Actions run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37939185984)
-passes 1,622 tests with no skips in 138.30 seconds, six stripped-ash checks in
-7.42 seconds and all nine kernel scenarios. The upgraded native-root kernel
-scenario took 7.78 seconds; the namespace check took 13.52 seconds (15.07
-seconds including the full kernel check). The Linux job completed in 3 minutes
-39 seconds. Neither synthetic metadata nor these tests prove a continuous inode
-lease or router acceptance.
-
-Preserve independent supplied-manifest closure, fixed-probe, live-producer
-interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
-are obsolete with their implementation; their counts are not coverage targets.
-Reuse strict terminal framing and interrupted-reader cases for retained probe
-code, distinguishing ordinary capture rejection from uncertain completion.
+The current `cfmgr_isolation_native_config_root_with` entry is the fixed
+six-file composition over the retained-Opt/device lifecycle. Host coverage in
+`tests/test_native_devices.py` and `tests/test_entware_root.py` checks literal API
+selection, pre-bind staging failure, exact bytes, cleanup and preserved device/Opt
+behavior. The actual BusyBox composition is in `tests/test_native_root.py`; its
+local consumer was explicitly skipped because BusyBox was unavailable. Focused
+and full local evidence is in [PLAN.md](../PLAN.md); the 40% kernel/BusyBox CI
+gate remains pending. Focused checks do not replace the
+full checkpoint.
 
 ## 🧪 Run checks
 
@@ -455,61 +301,15 @@ unmount has no alternate-flag retry. There is no test-only syntax adapter.
 The [compatibility guide](compatibility.md#busybox-unmount-capabilities) records
 the firmware evidence and upstream behavior change.
 
-Three representative cases exercise the real lifecycle's successful cleanup,
-busy-mount retention and interruption handling. They enter at the preverified
-storage callback boundary using actual mount observations and a retained
-directory descriptor; block-device and UUID acquisition are outside this proof.
-A separate controlled executable fixture checks chroot and exact-mount busy
-behavior. One additional image scenario binds a private RAM executable/library
-image read-only with nosuid/nodev and execution allowed. It verifies unchanged
-mount identity, root-run EROFS for create and write, a still-writable outside
-alias, mapped-image busy refusal, and ordinary removal after exact actor release.
-The retained source is mounted separately for a read-and-close sentinel check.
-A sixth contained scenario assembles real image staging/hash verification, the
-read-only bind, fixed-probe supervision and ordinary checked cleanup. It uses
-controlled host ELF bytes under the six-row profile layout, with the host loader
-behind the profile alias. Its actor checks closed external descriptors, fixed
-bootstrap links, null, EROFS and absence of proc, shell and mutable offline Opt.
-Success requires the product guard and its mounts to be gone before namespace
-disposal, with the original source mount identity unchanged.
-A seventh scenario checks the proposed worker's filesystem-lifetime mechanisms.
-An inherited directory descriptor on the actual read-only root bind prevents
-removal while a launcher waits outside the root. After chroot and setsid, the
-child closes that descriptor and retains only its filesystem root/cwd and two
-proof-only communication pipes. Removing a writable `/opt` child bind exposes
-read-only empty fallbacks: delayed `/opt` and `/tmp` writes fail with EROFS,
-and the detached child still prevents ordinary root removal. Final removal
-succeeds after controlled child exit. Fixture guard markers illustrate the
-required uncertainty state; they do not implement an operational worker guard
-or prove arbitrary descendant reaping or Entware package compatibility.
-An eighth scenario calls the actual readonly-root runtime entry with native
-BusyBox tools and proc metadata. It checks the root descriptor's mount identity,
-failed writes through both readonly fallbacks, preserved caller descriptors,
-ordinary callback failure after successful teardown, and retained completion
-metadata. It requires the root mount to be absent before removing fixture RAM;
-namespace disposal cannot conceal an incomplete successful path.
-The ninth scenario now composes the native-tmp root with a retained Opt root and
-the fixed native devices.
-Alongside four readonly native views, staged hosts/resolver files and the
-quota-limited tmpfs, it mounts a controlled writable source through actual FD9,
-performs a bounded anchored write and confirms the source received it. FD8 is a
-regular fixture file whose metadata is observed synthetically; its real offset
-is preserved, so this does not prove physical block-device or UUID admission.
-The case also verifies that Opt is unmounted first and becomes the exact empty
-readonly fallback before tmpfs removal. The added device checks require the
-eight-child ledger and 106 query slots, verify the owned character nodes and
-their read-only child mounts, then hold a real BusyBox FD5 to witness a busy
-unmount. Closing it allows checked teardown; the nodev base fallback then
-refuses new opens. The earlier native data/FD6 checks, readonly-write refusal,
-executable tmpfs, 64-KiB/eight-inode limits, private empty home and unchanged
-observer `HOME` remain covered. The quota/Opt-only version was accepted at 37%;
-the fixed-device upgrade now passes full local and Linux CI validation. Host
-mirrors do not prove mount-enforced behavior or descriptor semantics.
-
-All nine namespace scenarios retain their individual 15-second outer bounds.
-Fixture compiler/library results do not establish Entware ABI or
-Merlin acceptance, and namespace disposal after a failed case does not count
-as successful runtime cleanup. Results and timings belong in the plan.
+The kernel lane contains nine bounded namespace scenarios. Coverage includes
+actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`, the
+quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
+scenario checks all six staged files, including a binary CA bundle larger than
+128 KiB, with native BusyBox `dd` and `cmp`; the 40% exact-head kernel result is
+pending. It substitutes a synthetic FD8 storage observation and a controlled
+FD9 source, so it does not prove router storage admission or acceptance. See the
+[test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
+and limits.
 
 ### Linux CI
 
@@ -534,10 +334,8 @@ Tool versions and kernel-case timings are printed in the job log.
 
 The workflow has read-only repository permissions and no router or provider
 credentials. Linux/BusyBox results complement the Mac checks; they do not prove
-Merlin firmware, 32-bit arithmetic or hardware acceptance. The first passing
-baseline ran **786 tests**, including its six dedicated BusyBox cases,
-with BusyBox 1.36.1 and ShellCheck 0.9.0. Its matching Mac baseline passed 780
-tests with six missing-BusyBox skips. Later stage results are recorded in the plan.
+Merlin firmware, 32-bit arithmetic or hardware acceptance. Current milestone
+counts and timings belong in the plan rather than this contributor workflow.
 
 The initial CI scope is one Linux/BusyBox job. Matching Merlin's patched kernels
 or exercising older ARM/32-bit environments would need additional dedicated
@@ -582,15 +380,15 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
-| `tests/test_native_config.py` | Legacy fixed-file staging and the actual BusyBox consumer upgraded to exercise extended staging |
+| `tests/test_native_config.py` | Legacy fixed-file staging plus direct extended staging and its actual BusyBox consumer |
 | `tests/test_native_config_extended.py` | Opaque byte limits, same-descriptor EOF checks, producer/cmp failures, partial retention and IO cleanup admission |
-| `tests/test_native_root.py` | Four fixed readonly views, staged data, child identity, cleanup and the actual BusyBox retained-Opt/native-device representative |
+| `tests/test_native_root.py` | Native root identity/cleanup and the actual BusyBox six-file retained-Opt/device composition |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
 | `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |
 | `tests/test_entware_root.py` | Retained Opt-root success, busy-Opt cleanup refusal and malformed API rejection |
 | `tests/test_entware_root_admission.py` | Cheap framing and storage-admission boundary cases |
-| `tests/test_native_devices.py` | Fixed node metadata, inode retention, mount lifecycle and busy cleanup faults |
-| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including retained Opt, fixed native devices, quota-limited native tmpfs and private HOME |
+| `tests/test_native_devices.py` | Fixed node metadata, inode retention, mount lifecycle, busy cleanup faults and literal extended-policy selection |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for Linux namespace proof, including six-file staging, retained Opt, fixed devices, quota-limited tmpfs and private HOME |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |
@@ -623,144 +421,15 @@ must explicitly expose any real executable they need.
 
 </details>
 
-### JSON parser proof
+### Runtime contract references
 
-`modules/lib/json.awk` currently provides strict validation and a bounded token ledger;
-it is not yet connected to a config reader or provider client. Its caller must
-supply a private, stable regular file, a separately checked byte count, and
-`LC_ALL=C`. Input is limited to 64 KiB, 32 nested containers, 4,096 value nodes
-and 16 KiB per decoded string. Numbers retain their original text.
-
-Token output is limited to 128 KiB, including its terminal count footer. Native
-awk can report success despite a failed output write, so future consumers must
-check exit status, exact footer/newline/EOF, body byte count and sequential record
-count before using any token. File ownership, bounded transport and router
-performance remain separate integration requirements. See the frozen contract
-in [PLAN.md](../PLAN.md#native-json-parser-proof-contract--current-package).
-
-`modules/lib/ip.sh` provides separate IPv4/IPv6 normalization functions. IPv6 uses lower
-case, shortest hextets and longest-leftmost zero compression, including hex
-output for dotted IPv4 tails. Valid syntax is not public-address eligibility;
-WAN selection, freshness and publish decisions remain separate. Python 3.14
-renders mapped addresses differently, so tests use explicit mapped vectors and
-address-equality checks alongside the independent standard-library oracle.
-
-The measured firmware resolves `printf`, `test` and `[` to BusyBox applet paths,
-not shell builtins. Native callers need a vetted firmware PATH even though host
-shell tests can run these helpers with no external tools exposed.
-
-### Mount snapshot parser
-
-`modules/lib/mountinfo.awk` selects the deepest mount covering a canonical target path
-and calculates the target's path within that filesystem, including bind-mount
-roots. It rejects ambiguous overmounts at any covering ancestor. Numeric IDs
-remain text, including values beyond the host's exact floating-point range.
-
-Its caller must supply `LC_ALL=C`, a private stable regular-file snapshot, its
-independently checked byte count, and `CFMGR_MOUNT_TARGET` through the environment.
-Limits are 64 KiB per snapshot, 1,024 records, 8,192 bytes per line including LF,
-and 4,096 bytes for the target. Standard mountinfo path escapes are decoded;
-other raw control characters are outside the supported input profile.
-
-The output is an internal ASCII record with byte-encoded paths and a terminal
-byte-count footer. Verify status, structure, count and exact EOF before using it.
-Hex encoding is not redaction: keep this metadata private. The parser reports
-mount facts, including read-only and pseudo-filesystem records. The private IO
-module below handles acquisition/framing; UUID checks, writability, supervision
-and protection against mount changes remain separate implementation work.
-
-### Private IO and snapshot handoff
-
-`modules/lib/io.sh` is an internal library, separate from CLI feature dispatch. Its caller
-supplies an already trusted RAM parent, controlled callback and verified parser
-path. Sourcing it has no side effects; production resolves a small fixed set of
-native tools and ignores inherited tool-path overrides.
-
-| Function | Contract |
-| --- | --- |
-| `cfmgr_io_with_workspace ROOT CALLBACK [ARGS...]` | Create an owned mode-700 directory with at most eight collision attempts, call the internal callback with that directory as its first argument, then clean it up. Callback output is suppressed. |
-| `cfmgr_io_with_report ROOT CALLBACK [ARGS...]` | The same private ownership, with exactly one explicitly staged report required for success. |
-| `cfmgr_io_stage_report PAYLOAD` | Within a report callback, stage a nonempty ASCII payload of at most 65,536 bytes. Publish only after callback success and owned cleanup. |
-| `cfmgr_io_capture SLOT OUT_LIMIT ERR_LIMIT TOOL [ARGS...]` | Within that callback, exclusively create private mode-600 stream/status files. Slots are 0–15 and consumed even after failure. Each accepted stream is at most 65,536 bytes. |
-| `cfmgr_io_mount_snapshot ROOT TARGET PARSER` | Acquire fixed `/proc/self/mountinfo`, run the trusted parser and verify its status, fields, complete framing and byte count. Emit the bounded ASCII result only after workspace cleanup succeeds. |
-
-**Capture status 0 means capture completed, not that the producer succeeded.**
-The callback must read the producer status from the complete `.status` record
-before using either stream. IO/limit/cleanup failures return 1, invalid usage
-returns 2, and mount selection preserves 3 for no covering mount. Workspace
-callbacks otherwise retain their own status; interrupted owners preserve
-129/130/143. Failures do not produce a valid mount result.
-
-File-size limits allow one overflow byte before exact acceptance checks. Because
-supported shells use 512- or 1,024-byte units, the conservative physical ceiling
-is 132,096 bytes per stream, or 4,227,072 bytes across 16 captures plus small
-status files. Accepted stream payload totals at most 2,097,152 bytes. A failed
-capture's partial files stay private until owned cleanup.
-
-Disable tracing before passing arguments. The isolated workspace owner preserves
-caller state and handles signals delivered to that owner; an external caller
-must forward signals or supervise it. There is no hard deadline for a hung
-native executable in this stage. The result is snapshot evidence, not authority
-to write through a mount path during hotplug.
-
-### Native storage observations
-
-`modules/lib/storageinfo.awk` parses bounded `fdinfo`, native `blkid`, numeric
-block-device listings and primary-superblock hex observations. It
-requires a stable private file, its independently checked byte count, `LC_ALL=C`
-and a literal mode. Inputs are at most 4 KiB; fdinfo has at most 64 records.
-Mount IDs remain exact decimal text, including values beyond numeric precision.
-
-For blkid, pass the expected device through `CFMGR_BLKID_DEVICE`, not an awk
-`-v` value that might interpret backslashes. The parser validates the entire
-native record, but withholds every LABEL-bearing result: the firmware's raw
-label formatting can imitate a UUID field. A label-free result contains
-byte-encoded UUID/optional filesystem type, never a storage authorization.
-
-Status 0 supplies a complete framed observation, 1 rejects malformed data,
-2 rejects invocation errors, and 3 means usable identity is unavailable.
-Consumers must check status and the complete terminal byte-count record.
-Expected-volume approval, writability and mount-loss handling remain separate
-work.
-
-### Held-descriptor storage observation
-
-After loading trusted IO and storage modules, an internal caller can use
-`cfmgr_storage_observe ROOT MOUNT_PARSER STORAGE_PARSER`. The arguments identify
-the trusted RAM parent and absolute verified parser paths. Production uses fixed
-`/opt` and proc inputs; fixture overrides belong to an explicit test API.
-
-The observer holds a directory descriptor, joins its `mnt_id` to the selected
-mount and checks that the current target still refers to that directory. It
-then holds the selected block device, compares its numeric device number and
-reads the first 1,152 bytes through the original descriptor's stdin. It requires
-ext magic, dynamic revision and a nonzero UUID. Filesystem type and `sb=` options
-are checked before the block-data read. Disk labels do not enter this UUID path.
-
-Before staging, it repeats the target, mount, descriptor and device checks. The
-result contains the mount ID, device number, filesystem type, byte-encoded paths
-and options, and UUID, followed by an exact byte-count footer. Treat these facts
-as private: hex encoding does not redact paths. Consumers must check exit status
-and complete framing before using a report.
-
-<details>
-<summary>Scope and evidence limits</summary>
-
-- Descriptors remain held through observation and staging, then are restored
-  before workspace cleanup and publication. The report transfers no open handle
-  or permission to mutate storage.
-- This first profile supports dynamic-revision ext2/ext3/ext4 primary
-  superblocks. Unsupported formats or unavailable identity return 3; malformed,
-  changed or failed observations return 1; invalid API arguments return 2.
-- Matching checks before and after a read do not prove atomic continuity,
-  device-generation stability, expected configured identity, writability or
-  filesystem health.
-- The 16-slot capture limit bounds staging, not native process count or CPU
-  cost. Command deadlines and native performance remain separate work.
-- Host fault fixtures and unprivileged Linux descriptor tests do not establish
-  physical hotplug, hardware or router runtime acceptance.
-
-</details>
+Runtime behavior and bounded input contracts belong in the
+[architecture guide](architecture.md#bounded-parser-and-io-contracts); firmware
+and native-tool evidence belongs in the [compatibility guide](compatibility.md).
+The test map above points to the focused parser, storage, IO and lifecycle suites.
+Use those tests to check a changed contract, then run the full check at the
+required checkpoint. Keep native diagnostics separate: their usage and host
+fixture command remain below.
 
 ### Native health report
 
@@ -843,35 +512,10 @@ promotion and live deployment still require separate authorization.
 
 ## 📦 Module catalog and forks
 
-**Selected design; config generation and catalog downloads are not implemented yet.** CFMgr
-will keep **`catalog.txt` at the repository root** alongside its readable source
-modules. Setup downloads that file from the selected repository snapshot to
-**`/jffs/addons/CFMgr.d/catalog.txt`**. The directory name is case-sensitive. Main `config` holds settings, credentials, feature state
-and the `developer` flag; the catalog holds the branch/commit selector and module
-URLs. Users edit the catalog file manually for testing or forks; there is no
-menu setter and no separate remote-catalog URL setting.
-
-The main settings file is **`/jffs/addons/CFMgr.d/config`**, without an extension.
-Fresh installation generates it from defaults in code; the public repository
-contains neither a config file nor a config template. Detect retained setup
-before generating defaults, and preserve existing values during updates and
-reinstalls under the schema migration contract. Parse settings as data.
-
-Planned full uninstall defaults to **KEEP**, retaining settings and recovery
-data. Explicit **WIPE** additionally removes the entire owned
-`/jffs/addons/CFMgr.d/` directory, including its config and catalog, after all
-required cleanup succeeds. Defer completion and retain recovery evidence if
-cleanup is incomplete. Reset shares the owned-data cleanup but keeps the
-verified manager package and generates fresh passive defaults.
-
-The repository-root `cfmgr.sh` installs as `/jffs/scripts/cfmgr.sh`. It is the
-CFMgr entry script in that directory; feature files and the `lib/`, `helpers/`
-and `hooks/` subdirectories install beneath `/jffs/addons/CFMgr.d/` alongside the
-catalog. Existing Merlin hook files retain their firmware-defined locations;
-their thin CFMgr dispatch entries call the manager or its owned handlers.
-
-The catalog consists of a source selector and named module URLs. Its logical
-contents look like this; the exact bounded text grammar is a P1 gate:
+Catalog and config generation are still planned; there is no installable manager
+or user command yet. The catalog selects one repository snapshot, and each
+relative destination must preserve its nested path under the installed manager.
+For example:
 
 ```text
 # main is the default; develop or a full 40-character commit hash is also valid.
@@ -879,109 +523,25 @@ branch: main
 lib/common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/modules/lib/common.sh
 ```
 
-This is a format illustration with the existing helper, not a complete install
-inventory. `{commit}` is a literal placeholder replaced only with the validated
-selected commit. The safe relative destination `lib/common.sh` preserves its
-nested path beneath the installed manager directory. Catalog values are parsed
-as data, never sourced as shell code.
-
-| Selection | Meaning |
-| --- | --- |
-| `branch: main` | Resolve the stable branch once, then use that exact snapshot. |
-| `branch: develop` | Resolve the development branch once for explicit testing. |
-| `branch: <full-commit-hash>` | Use that snapshot without following a moving branch. |
-
-A commit that changes one module still contains the complete repository tree.
-Other modules retain their latest contents **as of that commit**. Nothing newer
-is mixed in; missing historical files are not replaced from current main/develop.
-The selected manifest and every module use the same immutable commit.
-
-> [!NOTE]
-> The manual `developer` flag in `config` defaults to `false`. With it off,
-> updates and reinstalls may refresh **`catalog.txt`** from the selected package's
-> defaults. With `developer=true`, the existing router catalog stays unchanged
-> during branch/commit switches, updates and force reinstalls. Download the
-> selected snapshot's default catalog only if the local file is missing. A malformed
-> existing catalog is reported for repair, not overwritten. Catalog replacement does not replace
-> main settings, credentials or feature state. The action keeps its original
-> pinned source.
-
-The `developer` flag also suppresses normal manager update checks. An explicitly
-confirmed force reinstall preserves an existing catalog while the flag is true.
-Editing the catalog alone does not replace running code. The planned `uf`
-action stages and verifies the selected manager and all required modules, then
-activates that complete revision together; compatibility and downgrade checks
-still apply. Future developer capabilities can extend this flag.
-
-<details>
-<summary>🍴 Maintaining a fork and adding modules</summary>
-
-1. Change the module URLs in local `catalog.txt` to your fork for testing. All
-   entries must belong to the same selected repository and use `{commit}`.
-2. Select `main`, `develop`, or a full commit hash. Invalid sources fail the
-   affected action without silently switching back to the default repository.
-3. For a distributable fork, update `catalog.txt` at its repository root. Keep helpers
-   in separate named files; add new modules to both those defaults and the
-   generated manifest's identity/path/hash inventory.
-4. Test the complete package before publishing. A manually added URL is not
-   sufficient to bypass manifest, hash, version or schema checks.
-
-</details>
-
-Installation/reinstallation/repair stages the complete required set before
-activation. Reject duplicate destinations, unsupported URLs, path traversal,
-missing files, wrong hashes and incompatible versions before replacing working
-code. Each running invocation uses one compatible installed generation.
-
-Ordinary startup, status and automatic hooks use installed modules. Missing
-helpers defer the affected operation; explicit install/reinstall/repair uses the
-verified download path. The complete activation/recovery protocol remains a
-P1 gate in [PLAN.md](../PLAN.md). Existing downgrade restrictions remain in force;
-choosing `develop` does not disable integrity checks.
+`{commit}` is replaced by the validated snapshot hash. Keep fork entries in one
+repository and use that same placeholder so every module comes from one immutable
+snapshot. Preserve existing catalog bytes on developer checkouts according to the
+[architecture contract](architecture.md#-modules-and-forks). The example is not a
+complete package manifest or an available install/update workflow; detailed
+implementation gates remain in [PLAN.md](../PLAN.md).
 
 ## 🧭 Compatibility and documentation
 
-Check capabilities rather than assuming all Merlin builds share the same
-BusyBox configuration. The first measured target is GT-AX11000 on
-`3004.388.12_2`; its native shell has signed 32-bit arithmetic and omits several
-common applets. A 64-bit kernel does not establish 64-bit shell arithmetic.
-Use the [compatibility evidence](compatibility.md) and unresolved gates in
-[PLAN.md](../PLAN.md) before choosing runtime primitives.
+Check [compatibility evidence](compatibility.md) and [PLAN.md](../PLAN.md) before
+choosing firmware-specific primitives. The compatibility guide records the
+bounded three-image audit, its source/cache instructions and the distinction
+between static evidence, host/CI behavior and router acceptance. Reuse the
+ignored `.tmp/firmware-audit/INDEX.md` rather than repeating extraction; never
+commit its archives, images, extracted data, certificates or raw reports.
 
-The compatibility guide now summarizes a bounded static audit of three
-official firmware images. Reuse the ignored local cache by reading
-`.tmp/firmware-audit/INDEX.md` before repeating extraction or source checks; do
-not add its archives, extracted files, certificates or reports to Git. The audit
-does not run firmware programs, prove an execution graph or qualify every
-Merlin model/build. Its coverage map records 33 explicit native tool names per
-sample and 58 pinned source files, including `ln`/`chmod` and the current
-closure/supervision consumers. The cached integrity/static review passed in
-3.755 seconds; these remain source and static-image results only.
-
-The selected shared Entware prerequisites are `jq`, `coreutils-timeout` and
-`coreutils-sha256sum`; the [compatibility matrix](compatibility.md) documents
-scoped additions and feed/library evidence. The internal backend entries
-implement capability checks, healthy no-op and selected installation/reinstall
-behavior, but are not yet wired into the real startup and manager
-install/update/reinstall paths. Those lifecycle consumers must check required
-tools before operational work and retry eligible installation after a later
-launch. Advanced options will provide **Reinstall Entware dependencies**,
-distinct from Cloudflared daemon/hook/worker reinstallation.
-The normal and explicit force-reinstall backend entries are implemented.
-Approved-volume admission and cooperative exclusion have separate tested
-primitives; operational scheduling, complete worker lifetime and UI integration
-remain pending.
-Hook dispatch must stay prompt, and native doctor must remain available without
-Entware or working packages.
-The final guides must state the accepted kernel/ABI combinations; package
-presence alone does not prove compatibility.
-
-Router access for this stage is read-only. Bounded native syntax/capability probes
-are distinct from deploying code, changing services, installing packages,
-running pytest on the router, or performing provider writes.
-
-Keep guides concise, link to the canonical contracts, and describe implemented
-behavior. The final user guides and architecture document follow the verified
-runtime implementation. Use labeled screenshot placeholders until redacted
-captures are supplied; do not create broken image links or imply unrun checks
-passed through decorative badges.
+Dependency backend tests and policy are described above; actual startup,
+install/update/reinstall and worker lifecycle wiring remain separate stages.
+Router access stays read-only during development. Host checks and CI do not
+authorize installation, service changes, provider writes or router acceptance.
+At milestones, review all guides and record intentionally unchanged files in the
+plan.

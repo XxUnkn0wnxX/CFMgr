@@ -54,20 +54,16 @@ chroot paths behave on a router.
 
 The static image map also contains `/etc/nsswitch.conf` (196 bytes),
 `/etc/wgetrc` (50 bytes), `/etc/openssl.cnf` (2,050 bytes on GT and 2,234 on
-the other two), and the CA bundle sizes listed above. The source-only extended
-configuration helper now stages these four fixed files with caps of 65,536
-bytes each except for the 1 MiB CA cap. These measured ROM files fit those
-limits, but the image `/etc` links and init-time rewrites do not establish the
-live router contents. The native-data root composers still stage only hosts and
-resolver data; the four-file extension is not yet wired into a root. Opaque
+the other two), and the CA bundle sizes listed above. The source-only
+`cfmgr_isolation_native_config_root_with` composition stages these four files
+plus `/etc/hosts` and `/etc/resolv.conf` before any bind. Each of the five
+non-CA files is capped at 65,536 bytes; the CA cap is 1 MiB. The extended files
+are copied and compared as opaque data, including binary/NUL bytes. The image
+`/etc` links and init-time rewrites do not establish live router contents, and
 copying does not establish NSS behavior, OpenSSL policy, certificate trust or
-successful network/TLS use. The extended helper's focused tests passed 42 cases
-with one local BusyBox-unavailable skip in 9.68 seconds. The 39% full local
-gate passes 1,613 tests with 29 explicit platform skips in 769.14 seconds using
-one worker. Exact-head [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37946870895)
-passes all 1,642 tests in 112.06 seconds, six stripped-ash cases and all nine
-kernel scenarios. Coverage and deadlines
-are unchanged from normal concurrent validation.
+successful network/TLS use. Older root APIs keep the two-file hosts/resolver
+stager. This internal composition adds no payload, opkg or operational worker
+path. Full 40% local validation passes; kernel/BusyBox CI remains pending.
 
 The ignored local cache at `.tmp/firmware-audit/INDEX.md` records the audit
 method, provenance, selected paths and evidence limits. Read that index before
@@ -192,10 +188,11 @@ fixed-device update is covered by this result; the earlier 37% CI result remains
 historical.
 
 Neither host nor Linux namespace evidence establishes router acceptance. The
-views and data still lack complete native configuration, loader/helper/ELF,
-TLS or NSS closure and ordinary opkg execution. The native observer does not
-set `HOME` or launch a payload, and this is not an operational worker. No mount
-or chroot was executed on the router for these checks.
+internal native-config-root entry stages six fixed files, but does not establish
+their runtime semantics or provide complete loader/helper/ELF, TLS or NSS
+closure and ordinary opkg execution. The native observer does not set `HOME` or
+launch a payload, and this is not an operational worker. No mount or chroot was
+executed on the router for these checks.
 
 ## 🧩 Qualify each feature separately
 
