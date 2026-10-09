@@ -173,6 +173,19 @@ def prove(args: argparse.Namespace) -> None:
         (tools / "openssl").symlink_to(openssl)
         common = [compiler, "-O2", "-Wall", "-Wextra", "-Werror", str(FIXTURES / "probe.c")]
         command([*common, "-static", "-o", str(source / "probe")])
+        command(
+            [
+                compiler,
+                "-O2",
+                "-Wall",
+                "-Wextra",
+                "-Werror",
+                "-static",
+                str(FIXTURES / "worker_lifetime.c"),
+                "-o",
+                str(work / "worker-lifetime"),
+            ]
+        )
         # Discover the compiler's actual glibc closure before selecting an Opt
         # interpreter; never guess the runner's architecture or loader path.
         discovery = work / "discovery"
@@ -225,7 +238,15 @@ def prove(args: argparse.Namespace) -> None:
             raise ValueError(f"unsupported contained fixture library closure: {needed}")
         (work / "contained-manifest").write_bytes(contained_manifest(source, contained))
         lane_start = time.monotonic()
-        for scenario in ("success", "busy", "signal", "primitive", "image", "contained"):
+        for scenario in (
+            "success",
+            "busy",
+            "signal",
+            "primitive",
+            "image",
+            "contained",
+            "worker-lifetime",
+        ):
             print(f"Kernel proof: {scenario}", flush=True)
             started = time.monotonic()
             cleanup = False
@@ -242,7 +263,14 @@ def prove(args: argparse.Namespace) -> None:
                         "private",
                         str(busybox),
                         "sh",
-                        str(FIXTURES / "proof.sh"),
+                        str(
+                            FIXTURES
+                            / (
+                                "worker_lifetime.sh"
+                                if scenario == "worker-lifetime"
+                                else "proof.sh"
+                            )
+                        ),
                         str(ROOT),
                         str(work),
                         str(busybox),

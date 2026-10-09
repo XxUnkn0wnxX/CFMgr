@@ -134,12 +134,25 @@ invocation's retry. Keep one actual BusyBox representative. No direct-IPK,
 archive-layout, pinned package-version or synthetic library-closure matrix is
 needed for this backend.
 
+The separate internal `cfmgr_bootstrap_reinstall` entry always requests an
+update followed by `opkg --force-reinstall install` for all selected direct
+packages, then checks their capabilities. Its tests also prove that healthy
+tools do not bypass an explicit reinstall and that failed update/install steps
+stop the sequence. Opkg owns dependency resolution and package conflicts.
+
 The backend requires an already admitted, serialized caller with usable mounted
 Entware and suitable scheduling. Mount/authority/ownership and aggregate worker
 behavior remain separate integration acceptance gates. Its fixture root proves
 command policy and capability handling, not storage or router acceptance.
 `--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
 must prove that neither opkg nor unverified package executables are called.
+
+`modules/worker.sh` currently supplies only a native process-group admission
+check. It reads the calling shell's actual proc record and requires its PID,
+process group and shell `$$` to agree; session leadership is unnecessary.
+This rejects a nested shell whose `$$` still identifies its parent. The check
+does not establish exclusive group ownership, authorize signals or launch work.
+Its actual Linux and BusyBox cases are separate from cheap metadata fixtures.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
@@ -267,7 +280,17 @@ behind the profile alias. Its actor checks closed external descriptors, fixed
 bootstrap links, null, EROFS and absence of proc, shell and mutable offline Opt.
 Success requires the product guard and its mounts to be gone before namespace
 disposal, with the original source mount identity unchanged.
-All six namespace scenarios retain their individual 15-second outer bounds.
+A seventh scenario checks the proposed worker's filesystem-lifetime mechanisms.
+An inherited directory descriptor on the actual read-only root bind prevents
+removal while a launcher waits outside the root. After chroot and setsid, the
+child closes that descriptor and retains only its filesystem root/cwd and two
+proof-only communication pipes. Removing a writable `/opt` child bind exposes
+read-only empty fallbacks: delayed `/opt` and `/tmp` writes fail with EROFS,
+and the detached child still prevents ordinary root removal. Final removal
+succeeds after controlled child exit. Fixture guard markers illustrate the
+required uncertainty state; they do not implement an operational worker guard
+or prove arbitrary descendant reaping or Entware package compatibility.
+All seven namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
 Merlin acceptance, and namespace disposal after a failed case does not count
 as successful runtime cleanup. Results and timings belong in the plan.
@@ -671,8 +694,10 @@ launch and manager install/update/reinstall. An unavailable or unusable
 prerequisite keeps operational work stopped; a later launch checks and can retry
 installation. Advanced options will also provide **Reinstall Entware
 dependencies**, distinct from Cloudflared daemon/hook/worker reinstallation.
-The installed-opkg backend is implemented; operational launch scheduling,
-serialization, mount admission and force-reinstall integration remain pending.
+The normal and explicit force-reinstall backend entries are implemented.
+Approved-volume admission and cooperative exclusion have separate tested
+primitives; operational scheduling, complete worker lifetime and UI integration
+remain pending.
 Hook dispatch must stay prompt, and native doctor must remain available without
 Entware or working packages.
 The final guides must state the accepted kernel/ABI combinations; package
