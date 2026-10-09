@@ -16,8 +16,9 @@ development.
 
 The repository entry point is `cfmgr.sh`; runtime code is grouped in `modules/`.
 POSIX shell sources the shell helpers and invokes the awk parsers directly.
-There is no generated or compiled main script. The planned installed command
-remains `cfmgr`.
+There is no generated or compiled main script. The planned installed entry is
+`/jffs/scripts/cfmgr.sh`; its supporting modules and catalog live under
+`/jffs/addons/CFMgr.d/`.
 
 The development entry supports help, version and the two equivalent health
 commands. It does not install CFMgr or start a feature.
@@ -93,7 +94,7 @@ loading; this extension pattern guides the future menu/setup integration.
 
 | Location | Intended responsibility |
 | --- | --- |
-| `/jffs/scripts/cfmgr` | Installed public entry point |
+| `/jffs/scripts/cfmgr.sh` | Installed public entry point |
 | `/jffs/addons/CFMgr.d/` | Verified manager modules, private configuration and bounded durable recovery |
 | `/jffs/addons/CFMgr.d/config` | Authoritative settings, typed credentials, saved activation and the developer flag |
 | `/jffs/addons/CFMgr.d/catalog.txt` | Separate editable source selector and named module URLs |

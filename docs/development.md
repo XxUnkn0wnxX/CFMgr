@@ -476,8 +476,9 @@ supporting bootstrap and worker code is under `modules/helpers/`. Firmware hook
 templates are reserved for `modules/hooks/`, which currently contains no hooks.
 Files are sourced or invoked explicitly; there is no arbitrary directory
 autoloader. Runtime files are not compiled into a main executable. The Python
-compilation check validates developer tooling only. The planned installed
-command remains `cfmgr`.
+compilation check validates developer tooling only. The planned installed entry
+is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
+`/jffs/addons/CFMgr.d/`.
 
 | Path | Responsibility |
 | --- | --- |
@@ -762,6 +763,12 @@ modules. Setup downloads that file from the selected repository snapshot to
 and the `developer` flag; the catalog holds the branch/commit selector and module
 URLs. Users edit the catalog file manually for testing or forks; there is no
 menu setter and no separate remote-catalog URL setting.
+
+The repository-root `cfmgr.sh` installs as `/jffs/scripts/cfmgr.sh`. It is the
+CFMgr entry script in that directory; feature files and the `lib/`, `helpers/`
+and `hooks/` subdirectories install beneath `/jffs/addons/CFMgr.d/` alongside the
+catalog. Existing Merlin hook files retain their firmware-defined locations;
+their thin CFMgr dispatch entries call the manager or its owned handlers.
 
 The catalog consists of a source selector and named module URLs. Its logical
 contents look like this; the exact bounded text grammar is a P1 gate:
