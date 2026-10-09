@@ -207,6 +207,21 @@ matching child ledgers. Interrupted or incomplete teardown returns uncertainty
 with its guard retained; a callback status is ordinary only after complete
 child/root and IO cleanup.
 
+The internal `modules/lib/native_config.sh` helper runs inside an active IO
+callback and copies only the fixed `/etc/hosts` and `/etc/resolv.conf` inputs
+into the caller-owned private image outside IO scratch. Each file is captured
+through the existing IO owner with a 65,536-byte limit, checked for
+complete exact-byte publication, and written without interpreting its content.
+NUL bytes, truncation, unsafe paths and a pre-existing `/etc` staging path are
+rejected. `cfmgr_isolation_native_data_root_with` takes `RAMROOT`, `GUARD`, the
+mount and storage parsers, a synchronous native observer, then optional observer
+arguments. It stages these files before its first bind and reuses the four
+checked readonly native views. The helper does not check resolver syntax or
+readiness, execute the copies, or supply a complete native configuration or
+payload environment. A successful helper call still requires successful
+enclosing IO cleanup; partial staging remains under the retained execution guard
+on failure. Existing isolation APIs are unchanged.
+
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
 are obsolete with their implementation; their counts are not coverage targets.
@@ -349,11 +364,13 @@ failed writes through both readonly fallbacks, preserved caller descriptors,
 ordinary callback failure after successful teardown, and retained completion
 metadata. It requires the root mount to be absent before removing fixture RAM;
 namespace disposal cannot conceal an incomplete successful path.
-The ninth scenario exercises the native-root entry with four fixed views from a
-readonly synthetic source filesystem. It checks actual FD6 mount identity,
-readonly child and fallback writes, preserved caller descriptors, all 56 query
-slots and reverse teardown, then verifies no execution mounts remain before
-fixture cleanup.
+The ninth scenario exercises the native-data root entry with four fixed views
+from a readonly synthetic source filesystem and staged hosts/resolver files. It
+checks actual FD6 mount identity, exact staged bytes, failed writes to the staged
+`/etc` data and readonly child/fallback paths, preserved caller descriptors, all
+56 query slots and reverse teardown, then verifies no execution mounts remain
+before fixture cleanup. This is the actual-kernel readonly evidence; host fixture
+mirrors alone do not prove mount-enforced protection.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
@@ -430,8 +447,10 @@ command remains `cfmgr`.
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
-| `tests/test_native_root.py` | Four fixed readonly views, child identity and checked reverse cleanup |
-| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including the native-root consumer |
+| `tests/test_native_config.py` | Exact fixed-file staging, byte limits, NUL rejection, partial failures and cleanup ownership |
+| `tests/test_native_root.py` | Four fixed readonly views, staged native data, child identity and checked reverse cleanup |
+| `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including readonly native-data staging |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |

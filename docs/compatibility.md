@@ -94,12 +94,17 @@ descriptor mount identity, preserves its guard and requires checked ordinary
 teardown plus successful IO cleanup before returning an ordinary callback
 status. The native-root entry now adds four fixed readonly views for `/bin`,
 `/sbin`, `/lib` and `/usr`, with independently checked source and child mount
-identities. Host fixtures cover this controlled lifecycle; a ninth Linux
-namespace consumer is included for actual mount/descriptor validation, with its
-checkpoint result recorded in [PLAN.md](../PLAN.md). These
-views do not yet provide the complete native config/loader/helper closure,
-approved writable children or ordinary opkg execution, and are not composed into
-an operational worker. No mount or chroot was executed on the router for these
+identities. The native-data variant stages `/etc/hosts` and
+`/etc/resolv.conf` as opaque, exact bytes of at most 65,536 bytes each before
+any bind; the base readonly root then protects the staged files against writes.
+It does not parse or test resolver readiness. Host fixtures cover byte handling
+and failure retention, while the ninth Linux namespace consumer checks actual
+staged-data write refusal and mount/descriptor behavior. CI is pending for this
+checkpoint; neither host nor Linux namespace evidence establishes router
+acceptance. The views and data still lack complete native configuration,
+loader/helper/ELF, private writable `/tmp`, `HOME`, TLS or NSS closure, approved
+writable children and ordinary opkg execution. They are not composed into an
+operational worker. No mount or chroot was executed on the router for these
 checks.
 
 ## 🧩 Qualify each feature separately

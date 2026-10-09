@@ -37,7 +37,8 @@ flowchart LR
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
-| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, and read-only execution-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
+| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root and native-data-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
+| `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf` bytes into the caller-owned private image outside IO scratch | Fixed files only; no syntax/readiness checks, execution, or broader native configuration closure |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
 | `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal native callback only; operational scheduling and package/feature launch remain separate |
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
@@ -192,11 +193,29 @@ remain unfinished. Host fixtures exercise the lifecycle, and a ninth Linux
 namespace consumer is included for actual mount/descriptor validation. Its
 checkpoint result is tracked in PLAN.md; neither establishes router acceptance.
 
+`cfmgr_isolation_native_data_root_with` composes the fixed native views with
+opaque staging of `/etc/hosts` and `/etc/resolv.conf` before any bind. The helper
+uses the existing trusted IO capture owner, limits each file to 65,536 bytes,
+and accepts it only when the captured and staged bytes match exactly; NUL bytes,
+truncation and partial publication fail. Empty files and final newline bytes are
+preserved. It does not parse resolver settings, test DNS readiness or validate
+the contents for execution. The staged `etc` tree becomes read-only with the
+base root bind.
+
+This is an internal native-data lifecycle, not an operational configuration
+reader or runnable system root. Helper success is insufficient by itself: the
+enclosing IO cleanup must also succeed before the observer's ordinary callback
+status can return. Failures retain the execution guard and any partial staging
+for review. Existing bare-root and native-root APIs keep their contracts. The
+native-data callback remains synchronous native observation only; chroot,
+payload/opkg execution, `HOME`, private writable `/tmp`, and complete ELF,
+resolver, TLS or NSS closure are not provided.
+
 The execution guard remains on every outcome. A completion marker describes
 verified filesystem teardown; the enclosing IO transaction must also clean up
 successfully before the observer's ordinary status can return. Any incomplete
-step after reservation reports uncertainty. The entry does not yet provide
-native executable views, writable children, package execution or scheduling.
+step after reservation reports uncertainty. These root entries do not yet provide
+approved writable children, package execution or scheduling.
 Existing native and fixed-probe APIs retain their separate cleanup contracts.
 
 The retained-storage profile covers dynamic-revision ext2/ext3/ext4 primary
