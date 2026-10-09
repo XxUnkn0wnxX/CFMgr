@@ -9,6 +9,8 @@ Append one Codex Session line per actual new session; preserve earlier IDs and a
 
 Cloudflare Manager for Asuswrt-Merlin. This document is the working specification, build checklist, and handoff record.
 
+**Interface scope — confirmed 2026-10-10:** CFMgr is a terminal menu/CLI-only manager. A browser GUI/WebUI is only an optional future idea, not an approved feature, release requirement, current roadmap item or part of the completion percentage. Add it only after explicit user direction. References to uiScribe ASP pages describe that external log viewer, not a CFMgr GUI commitment.
+
 | Project state | Current position |
 | --- | --- |
 | Stage | **Approximately 37% complete — continuing toward the 40% new-session handoff.** Retained admitted Entware storage now composes with the checked native-data/tmp root. Full Mac checks: 1,567 passed / 29 explicit skips in 721.61s; narrow fixture repair focused checks also pass. Exact-head Linux/BusyBox CI 275ca76: 1,596 passed / zero skips in 99.86s, six stripped-ash cases in 7.08s and all nine kernel scenarios. Modular libraries/helpers and current architecture/developer guides are published. Operational dependency worker and P1/P2 remain incomplete. Next automatic new-session handoff and pause 40%, unless explicitly overridden. |

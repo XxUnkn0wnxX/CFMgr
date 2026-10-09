@@ -1,6 +1,6 @@
 # CFMgr
 
-Cloudflare Manager for Asuswrt-Merlin
+Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manager.
 
 > [!WARNING]
 > **Active development — not ready for runtime use.** CFMgr is incomplete and

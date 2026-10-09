@@ -14,6 +14,10 @@ development.
 
 ## 🧱 Current implementation
 
+CFMgr is CLI-only: terminal menus and command-line entry points are the approved
+interface. A browser GUI is an optional future idea outside the current roadmap;
+it requires a separate user decision before design or implementation.
+
 The repository entry point is `cfmgr.sh`; runtime code is grouped in `modules/`.
 POSIX shell sources the shell helpers and invokes the awk parsers directly.
 There is no generated or compiled main script. The planned installed entry is
