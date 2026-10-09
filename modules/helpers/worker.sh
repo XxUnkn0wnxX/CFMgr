@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Source-only native group admission and deadline for a trusted cron entry.
 # Group checks are read-only snapshots; only the dedicated deadline entry may
-# supervise/signal its group. Neither API admits an Entware or private-root job.
+# supervise/signal its group. The separate native_probe.sh composition is the
+# only fixed Entware/private-root probe exception; these APIs add no payload.
 # Caller tracing must already be off. No ambient proc path or fixture API exists.
 # The fixed watchdog deliberately inherits its isolated owner's private state.
 # shellcheck disable=SC2030,SC2031
@@ -110,8 +111,8 @@ _cfmgr_worker_pid_valid() {
 
 # Dedicated trusted cron group only: no foreign members or later unrelated work.
 # GUARD is already exclusive stable private RAM. This entry never removes it.
-# The synchronous native callback includes its cleanup; no Entware/root launch
-# is admitted here. No FD above9 is permitted at entry. Kernel/scheduler delays
+# The synchronous native callback includes its cleanup; native_probe.sh alone
+# composes the fixed Entware/root probe. No FD above9 is permitted at entry. Kernel/scheduler delays
 # and externally stopped/killed supervisors preclude an absolute kill guarantee.
 cfmgr_worker_deadline_with() {
 	_cfmgr_worker_deadline_api "$@" || return 2

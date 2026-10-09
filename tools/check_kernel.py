@@ -281,6 +281,7 @@ def prove(args: argparse.Namespace) -> None:
         "env",
         "ln",
         "chmod",
+        "setsid",
     }
     if required - applets:
         raise ValueError(f"missing BusyBox applets: {', '.join(sorted(required - applets))}")
@@ -390,6 +391,9 @@ def prove(args: argparse.Namespace) -> None:
             raise ValueError(f"unsupported contained fixture library closure: {needed}")
         (work / "contained-manifest").write_bytes(contained_manifest(source, contained))
         native_fixture(busybox, work, compiler, readelf)
+        # The native-root scenario instruments its tools; the composed proof
+        # needs fresh immutable tool links rather than that previous state.
+        shutil.copytree(tools, work / "native-probe-tools", symlinks=True)
         lane_start = time.monotonic()
         for scenario in (
             "success",
@@ -401,6 +405,7 @@ def prove(args: argparse.Namespace) -> None:
             "worker-lifetime",
             "execution-root",
             "native-root",
+            "native-probe",
         ):
             print(f"Kernel proof: {scenario}", flush=True)
             started = time.monotonic()
@@ -424,6 +429,7 @@ def prove(args: argparse.Namespace) -> None:
                                 "worker-lifetime": "worker_lifetime.sh",
                                 "execution-root": "execution_root.sh",
                                 "native-root": "native_root.sh",
+                                "native-probe": "native_probe.sh",
                             }.get(scenario, "proof.sh")
                         ),
                         str(ROOT),
