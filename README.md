@@ -16,7 +16,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Core foundations | Complete | Parsing, storage checks and managed workspaces |
 | Worker safety foundations | Complete | Process deadlines and read-only workspaces |
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
-| Dependency setup | In progress | Install/reinstall backend done; worker integration next |
+| Dependency setup | In progress | Repair/reinstall backend; worker integration next |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -28,18 +28,19 @@ and validation; it does not replace keeping the docs current during the build.
 
 CFMgr is in development. Implemented foundations include parsing, storage
 checks, guarded process deadlines, internal workspaces and a partial native
-health report. Internal fixed probes now cover one native shell launch and the
-installed Entware `opkg --version` response. They remain source-only checks: the
-worker composition calls only the shell probe and neither probe installs
-packages or starts an operational worker. The 43% O9c checkpoint passed the
-full local suite (1,707 passed, 32 platform skips), Linux/BusyBox CI (1,739
-passed, no skips), and all ten Linux kernel scenarios; see the
-[green CI run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431)
-and [PLAN.md](PLAN.md) for evidence limits. These are synthetic host/Linux
-proofs, not real opkg installation, executable provenance or Merlin acceptance.
-Live router acceptance remains pending. Operational setup and feature
-integration remain incomplete, and there is no installable manager yet.
-Routine Entware upgrades remain user-managed; the internal dependency backend
+health report. Fixed probes cover one native shell launch and the installed
+Entware `opkg --version` response. The source-only
+`cfmgr_native_dependencies` handoff can call the bundled repair or selected
+reinstall backend inside an already admitted native root; it does not create an
+operational worker, menu or installer. The focused O10a consumers passed 72
+tests with three local BusyBox skips. The full 44% local gate passed 1,732 tests
+with 33 platform skips; its Linux/BusyBox gate is pending. The preceding 43% O9c
+checkpoint passed all ten
+kernel scenarios and the full local and CI suites; see [PLAN.md](PLAN.md) for
+the separate evidence limits. These are synthetic host/Linux proofs, not
+installed-opkg provenance or Merlin acceptance. Live router acceptance and
+operational feature integration remain pending, and there is no installable
+manager yet. Routine Entware upgrades remain user-managed; normal repair
 installs only missing or unusable requirements.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom

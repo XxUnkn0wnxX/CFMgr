@@ -27,7 +27,7 @@ The ten scenarios retain individual 15-second bounds:
 | 6 (contained) | Controlled ELF/profile image verifies staging/hash and fixed-probe supervision; the host loader sits behind the profile alias. The actor checks closed external descriptors, bootstrap links, null, EROFS and absent proc/shell/writable Opt before guard cleanup | The ELF and profile are synthetic, not a router runtime |
 | 7 (worker-lifetime) | An inherited root descriptor blocks teardown; after chroot/setsid the child drops it but retains root/cwd and proof pipes. Removing Opt exposes readonly empty fallbacks until the detached child exits | Filesystem quiescence is not proof of arbitrary descendant reaping |
 | 8 (execution-root) | Actual readonly-root owner checks mount identity, fallback write refusal, restored caller descriptors and completed teardown before RAM removal | Not an operational worker or router acceptance |
-| 9 (native-root) | Native views, six staged files, quota tmpfs, retained Opt, fixed devices, the native shell probe and a synthetic static opkg-version stand-in use the checked lifecycle | FD8 remains synthetic; the stand-in is not Entware opkg or firmware ABI evidence; see below |
+| 9 (native-root) | O9c fixed probes use the checked lifecycle; O10a adds the source-only dependency handoff, synthetic backend and package write | FD8 remains synthetic; stand-ins are not Entware opkg or firmware ABI evidence; O10a Linux result is pending |
 | 10 (native-probe) | Real aggregate deadline and native-config-root/chroot cleanup around the fixed probe; the fixture inspects the watchdog's descriptors while FD6/8/9 are held and verifies a known FD0 witness | Storage acquisition is a synthetic seam; does not prove outer storage IO acquisition, physical block-device/UUID admission or router execution |
 
 The ninth scenario composes the quota-limited native-tmp root, retained
@@ -58,16 +58,27 @@ These host-native bytes and the interpreter adaptation do not establish ARM32,
 Merlin loader/NSS/TLS behavior or package execution. Firmware cache files are
 never inputs to this executable fixture.
 
-The O9c extension to scenario 9 also invokes a trusted synthetic static opkg
-stand-in through the fixed `/opt/bin/opkg --version` path. It witnesses exact
-child argv, clean environment and working directory, closure of inherited
+The O9c baseline extension to scenario 9 invoked a trusted synthetic static
+opkg stand-in through the fixed `/opt/bin/opkg --version` path. It witnesses
+exact child argv, clean environment and working directory, closure of inherited
 descriptors, and reading the retained Opt marker. It does not run Entware opkg
-or establish the installed executable's provenance. The O9c 43% Linux gate is
-green: all ten scenarios passed at candidate
+or establish the installed executable's provenance. At O9c, all ten scenarios
+passed at candidate
 `d0a04b3a6d2e57464803039255bccafc97d0e79c` in
 [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431).
-Scenario 9 took 6.17s. This synthetic fixture does not prove real opkg,
+Scenario 9 took 6.17s. This historical baseline does not prove real opkg,
 executable provenance or router execution.
+
+The O10a extension to the ninth scenario calls the source-only dependency
+handoff with the actual bundled bootstrap source and trusted synthetic static
+opkg and capability stand-ins. It witnesses a missing-tool repair, ordinary
+update/install arguments, post-checks, descriptor closure, and a 32-KiB package
+write without inheriting the old probe's small file limit. It does not execute
+Entware opkg or establish installed-code provenance. The O10a full local check
+passed 1,732 tests with 33 platform skips. Linux/BusyBox CI is pending, so this
+added kernel evidence is not yet
+accepted. Configured opkg scratch selection and filesystem admission remain
+separate limits; the host/Linux fixture does not prove router operation.
 
 Scenario 10 composes the source-only native-probe worker with the real deadline
 owner, fixed chrooted probe, native-config-root teardown and completion handoff.
@@ -113,6 +124,13 @@ reported as a privileged chroot or router test.
 independent response bytes, boundary and metacharacter versions, separate
 evidence, and no-launch/error outcomes. Its opkg fixture never executes real
 Entware opkg or installs a package; its BusyBox case is a batched representative.
+`tests/test_native_dependencies.py` composes the fixed handoff with the actual
+bundled backend and inert opkg/capability programs. It covers healthy no-op,
+missing-only repair, explicit selected reinstall, ordinary negative outcomes,
+source/result framing, writer failures, descriptor closure and package writes
+above the old probe cap. Its focused combined run passed 72 tests with three
+local BusyBox skips; O10a's full local run passed 1,732 tests with 33 platform
+skips, and the Linux gate remains pending.
 `tests/test_native_probe.py` checks the fixed worker's argument/authority
 routing, watchdog and cleanup ordering, 0/1 outcomes, caller state, stale markers
 and uncertain completion with fresh lower-level seams. Its early-exit case

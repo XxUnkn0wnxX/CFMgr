@@ -238,11 +238,32 @@ CI exercised the actual BusyBox grammar representative. Full local, CI and
 focused test counts are recorded in [development checks](development.md#-run-checks)
 and [PLAN.md](../PLAN.md). These are synthetic host/Linux proofs, not real opkg
 installation, executable provenance, Entware/ARM ABI or Merlin acceptance.
-Future repair remains a normal operation through the installed opkg and its
-configured feeds, with CFMgr's own serialization and the existing post-checks.
-This does not promise exclusion of unrelated writers or preservation of
-unrelated half-installed packages, and the fixed version check adds no repair
-behavior. The 42% gate cited above is retained as historical O9b evidence.
+The fixed version check in this O9c snapshot did not add repair behavior; the
+42% gate cited above remains historical O9b evidence.
+
+The O10a `cfmgr_native_dependencies ROOT BOOTSTRAP_SOURCE ACTION SCOPE
+LOCK_PROVIDER` helper now provides a fixed source-only handoff to the bundled
+normal repair or explicit selected-reinstall backend. Its trusted source,
+admitted retained-Opt/native-config root, storage authority, group/deadline and
+checked teardown remain caller prerequisites; source-path bounds do not prove
+code provenance. It preserves opkg's configured feeds, package/dependency
+resolution, locking, scratch-directory selection and normal configure-unpacked
+behavior. The existing backend clears `TMPDIR`, but opkg configuration can
+still select another `tmp_dir`; the private tmp quota is not a bound on all
+package scratch writes. Normal repair skips healthy requirements and installs
+only missing or unusable mapped tools. Selected force reinstall remains
+separate. CFMgr serializes only its own workers and does not promise a global
+external-writer exclusion or preservation of unrelated half-installed
+packages.
+
+The host consumer tests execute the actual bundled backend with inert opkg and
+capability stand-ins, including a 32-KiB package-file write without a tiny
+launcher file limit. The ninth Linux scenario now also runs a trusted synthetic
+static backend stand-in through the native root. O10a full local validation
+passed 1,732 tests with 33 platform skips; Linux/BusyBox CI evidence is pending.
+Neither synthetic
+test proves real opkg provenance, router execution or firmware ABI. No
+operational worker, menu, installer or router-side package operation is added.
 
 ## 🧩 Qualify each feature separately
 

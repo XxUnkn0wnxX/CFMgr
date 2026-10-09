@@ -436,6 +436,42 @@ and [PLAN.md](../PLAN.md). These synthetic host/Linux proofs do not establish
 real opkg installation, executable provenance, Entware/ARM ABI or Merlin
 acceptance. This fixed version check does not add repair behavior.
 
+`cfmgr_native_dependencies ROOT BOOTSTRAP_SOURCE ACTION SCOPE LOCK_PROVIDER`
+is a source-only handoff to the bundled dependency backend. It accepts only
+`repair|reinstall`, `shared|tunnel`, and `native|entware` selectors. The caller
+must supply the trusted immutable bootstrap source from the verified manager
+package and must already own the admitted native-config root, retained Opt
+authority, serialization and aggregate deadline. Its source must be a regular
+non-symlink file of 1–65,536 bytes; this bound is framing, not code provenance.
+No application descriptor above FD9 may be inherited. No menu, installer or
+operational worker is wired here.
+
+The handoff reserves fresh `GUARD/execution/dependencies` evidence and private
+root `/tmp/cfmgr-dependencies` result storage, copies and verifies the source,
+then launches its fixed shell with the selectors as positional data. FD6 is
+closed before bundled code runs; the launcher also closes FD3–5 and FD7–9.
+The child receives a clean environment, detached stdin and suppressed payload
+output. The fixed trailer calls the existing bootstrap repair or selected
+reinstall entry. It preserves normal installed-opkg behavior, including its
+configured feeds, dependency resolution, locking, temporary-directory choice
+and package configuration behavior. No tiny output-size limit reaches opkg or
+its writes; file limits apply only to the source copy and small result writer.
+
+Only an exact direct status of 0 or 1 paired with the same exact regular result
+record (`CFMGR_DEPENDENCIES_V1 STATUS` plus LF), the ledger
+`dependencies ACTION SCOPE LOCK_PROVIDER STATUS` plus LF, and an empty
+completion directory returns an ordinary result. Invalid API returns 2;
+unavailable preflight returns 1; incomplete framing, disagreement or failed
+post-reservation publication returns 129 and retains evidence. This proves a
+synchronous backend result, not root/Opt cleanup: the enclosing owner must
+still complete its checked teardown and retain its guard on uncertainty. Normal
+repair skips healthy requirements and installs only missing or unusable
+mapped tools; force reinstall remains a separate explicit selector. Host
+consumers exercise the actual bundled backend with inert opkg doubles. The
+ninth Linux scenario adds a synthetic static backend stand-in and a 32-KiB
+package write; its O10a result is pending the current Linux gate, and neither
+proof establishes real opkg provenance, router execution or firmware ABI.
+
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
 inputs are `RAMROOT`, `GUARD`,

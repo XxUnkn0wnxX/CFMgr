@@ -174,6 +174,40 @@ command policy and capability handling, not storage or router acceptance.
 `--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
 must prove that neither opkg nor unverified package executables are called.
 
+The source-only `cfmgr_native_dependencies ROOT BOOTSTRAP_SOURCE ACTION SCOPE
+LOCK_PROVIDER` handoff runs that existing backend only after its caller supplies
+the trusted immutable bundle source and the already admitted native-config root,
+retained Opt authority, serialization and deadline. It accepts finite repair,
+reinstall, scope and lock selectors; it is not an operational CLI or worker.
+The caller must supply no application descriptor above FD9. The child closes
+FD3–9, including FD6 before bundled code, receives detached stdin, and returns
+an exact status record that must agree with its direct exit before evidence is
+published. Uncertain post-start
+work returns 129 and leaves evidence for its owner; checked root/Opt teardown
+remains a separate completion requirement. The backend preserves normal opkg
+feeds, locking, temporary selection and package-configuration behavior. It
+clears `TMPDIR`, but configured opkg `tmp_dir` may still direct scratch writes
+outside the private tmpfs quota.
+
+`tests/test_native_dependencies.py` composes this handoff with the actual
+`modules/helpers/bootstrap.sh` backend and inert opkg/capability programs. It
+covers healthy no-op, missing-only repair, selected reinstall, ordinary failure
+and post-check failure, source/result framing, exit/result agreement, writer
+failure, descriptor closure and a 32-KiB package write. Its focused run with
+`tests/test_native_shell.py` and `tests/test_bootstrap.py` passed 72 tests with
+three local BusyBox skips in 36.67s; the 26 kernel-runner checks passed in
+1.04s. Run these host checks with:
+
+```sh
+python -m pytest tests/test_native_dependencies.py tests/test_native_shell.py tests/test_bootstrap.py
+```
+
+The full O10a local checkpoint passed 1,732 tests with 33 explicit platform
+skips in 921.88s, with all static checks passing. Its Linux/BusyBox CI gate is
+pending. The ninth kernel scenario adds one synthetic static backend and
+package-write witness; it does not run Entware opkg or prove package provenance,
+firmware ABI or router acceptance.
+
 The worker fixture set distinguishes cheap process-record checks from the
 Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group
 coverage in the focused worker tests; architecture documents the runtime
