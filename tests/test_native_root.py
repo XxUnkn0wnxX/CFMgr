@@ -29,6 +29,10 @@ from tests.test_storage import IO, STORAGE
 NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
 DATA_HOSTS = b"127.0.0.1\tlocalhost\\native-data\n"
 DATA_RESOLVER = b""
+TMP_MOUNT_ID = "905"
+TMP_DEVICE = "0:99"
+TMP_LIMIT_KIB = 64
+TMP_INODE_LIMIT = 8
 VIEWS = ("bin", "sbin", "lib", "usr")
 SOURCE_MOUNT_ID = "88"
 HOST_MOUNT_ID = "1"
@@ -73,6 +77,38 @@ def find_at(point):
     return next(row for row in state["mounts"] if row["point"] == encoded)
 
 if tool == "mount":
+    if args[:3] == ["-n", "-i", "-t"]:
+        if len(args) != 8 or args[3] != "tmpfs" or args[4] != "-o":
+            raise AssertionError((tool, args))
+        expected_options = (
+            f"rw,nosuid,nodev,exec,mode=700,size={settings['limit_kib']}k,"
+            f"nr_inodes={settings['inode_limit']}"
+        )
+        if args[5] != expected_options or args[6] != "cfmgr-tmp":
+            raise AssertionError((tool, args))
+        target = args[7]
+        if target != str(Path(settings["root_target"]) / "tmp"):
+            raise AssertionError((tool, args))
+        root_row = find_at(settings["root_target"])
+        row = dict(root_row)
+        row.update(
+            identifier=settings["tmp_mount_id"],
+            parent=settings["root_mount_id"],
+            device=settings["tmp_device"],
+            root=b"/".hex(),
+            point=os.fsencode(target).hex(),
+            options=b"rw,nosuid,nodev,relatime".hex(),
+            kind="tmpfs",
+            source=b"cfmgr-tmp".hex(),
+            super_options=(
+                f"rw,size={settings['limit_kib']}k,nr_inodes={settings['inode_limit']},mode=700"
+            ).encode().hex(),
+            optional=[],
+        )
+        state["mounts"].append(row)
+        state["tmp_mounted"] = True
+        publish()
+        sys.exit(0)
     if args[:3] != ["-n", "-i", "-o"] or len(args) < 5:
         raise AssertionError((tool, args))
     options = args[3]
@@ -96,6 +132,8 @@ if tool == "mount":
                 state["mirrored_data_root"] = target
             for name in state["view_ids"]:
                 (Path(target) / name).mkdir(mode=0o700, exist_ok=True)
+            if settings.get("native_tmp"):
+                (Path(target) / "tmp").mkdir(mode=0o700, exist_ok=True)
             row = dict(state["ram_mount"])
             row.update(
                 identifier=settings["root_mount_id"],
@@ -172,6 +210,13 @@ if tool == "umount":
     if target == state.get("mirrored_data_root"):
         shutil.rmtree(Path(target) / "etc")
         state.pop("mirrored_data_root")
+    if target == str(Path(settings["root_target"]) / "tmp") and state.get("tmp_mounted"):
+        for child in Path(target).iterdir():
+            if child.is_dir() and not child.is_symlink():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
+        state["tmp_mounted"] = False
     if fault == "fallback-change:" + Path(target).name:
         fallback = next(
             row for row in state["mounts"] if row["identifier"] == settings["root_mount_id"]
@@ -224,6 +269,9 @@ class NativeRootFixture(ExecutionRootFixture):
 
     def __init__(self, router: RouterHarness, fault: str = "") -> None:
         super().__init__(router, fault)
+        self.tmp_enabled = False
+        self.tmp_limit_kib = TMP_LIMIT_KIB
+        self.tmp_inode_limit = TMP_INODE_LIMIT
         self.source_root = router.path("work/native-source")
         self.source_root.mkdir(mode=0o700)
         self.data_source_root = router.path("work/native-data-source")
@@ -341,6 +389,11 @@ class NativeRootFixture(ExecutionRootFixture):
         settings.update(
             source_root=str(self.source_root),
             data_source_root=str(self.data_source_root),
+            native_tmp=self.tmp_enabled,
+            limit_kib=self.tmp_limit_kib,
+            inode_limit=self.tmp_inode_limit,
+            tmp_mount_id=TMP_MOUNT_ID,
+            tmp_device=TMP_DEVICE,
             root_target=str(self.guard / "execution/root"),
             view_ids=VIEW_IDS,
         )
@@ -355,23 +408,48 @@ class NativeRootFixture(ExecutionRootFixture):
         source_root: Path | None = None,
         data_root: bool = False,
         data_source_root: Path | None = None,
+        tmp_root: bool = False,
+        limit_kib: int = TMP_LIMIT_KIB,
+        inode_limit: int = TMP_INODE_LIMIT,
         focused_query: bool = True,
     ) -> ShellResult:
+        with_data = data_root or tmp_root
+        self.tmp_enabled = tmp_root
+        self.tmp_limit_kib = limit_kib
+        self.tmp_inode_limit = inode_limit
         self.prepare()
-        if data_root:
+        if with_data:
             callback_path = self.router.path("work/root-callback.py")
             callback = callback_path.read_text(encoding="utf-8")
             needle = 'base = Path(os.environ["CFMGR_TEST_ROOT"]) / "work"\n'
             assert needle in callback
             check = (
                 needle
-                + 'if "check-native-data" in args:\n'
-                + '    args.remove("check-native-data")\n'
-                + '    etc = root / "etc"\n'
-                + f'    if (etc / "hosts").read_bytes().hex() != "{DATA_HOSTS.hex()}" or '
-                + f'(etc / "resolv.conf").read_bytes().hex() != "{DATA_RESOLVER.hex()}":\n'
-                + "        sys.exit(94)\n"
-                + '    (base / "callback-data").write_text("staged data visible\\n")\n'
+                + (
+                    'if "check-native-data" in args:\n'
+                    + '    args.remove("check-native-data")\n'
+                    + '    etc = root / "etc"\n'
+                    + f'    if (etc / "hosts").read_bytes().hex() != "{DATA_HOSTS.hex()}" or '
+                    + f'(etc / "resolv.conf").read_bytes().hex() != "{DATA_RESOLVER.hex()}":\n'
+                    + "        sys.exit(94)\n"
+                    + '    (base / "callback-data").write_text("staged data visible\\n")\n'
+                    if data_root or tmp_root
+                    else ""
+                )
+                + (
+                    'if "check-native-tmp" in args:\n'
+                    + '    args.remove("check-native-tmp")\n'
+                    + '    home = root / "tmp/cfmgr-home"\n'
+                    + "    if (not home.is_dir() or home.stat().st_mode & 0o777 != 0o700 "
+                    + "or list(home.iterdir())):\n"
+                    + "        sys.exit(95)\n"
+                    + '    expected_home = os.path.join(os.environ["CFMGR_TEST_ROOT"], "home")\n'
+                    + '    if os.environ.get("HOME") != expected_home:\n'
+                    + "        sys.exit(96)\n"
+                    + '    (base / "callback-tmp").write_text("private home ready\\n")\n'
+                    if tmp_root
+                    else ""
+                )
             )
             callback_path.write_text(callback.replace(needle, check, 1), encoding="utf-8")
         self.fdinfo_input.write_text(
@@ -380,16 +458,20 @@ class NativeRootFixture(ExecutionRootFixture):
         script = (
             f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
-            + (f". {shlex.quote(str(NATIVE_CONFIG))}\n" if data_root else "")
+            + (f". {shlex.quote(str(NATIVE_CONFIG))}\n" if with_data else "")
             + (FOCUSED_ISOLATION_QUERY if focused_query else "")
             + CALLBACK
             + 'exec 7<"$CFMGR_TEST_ROOT/work/fd-seven" '
             + '8<"$CFMGR_TEST_ROOT/work/fd-eight" 9<"$CFMGR_TEST_ROOT/work/fd-nine"\n'
             + 'exec 6<"$CFMGR_TEST_ROOT/work/fd-six"\n'
             + (
-                'cfmgr_isolation_native_data_root_test "$@"; status=$?\n'
-                if data_root
-                else 'cfmgr_isolation_native_root_test "$@"; status=$?\n'
+                'cfmgr_isolation_native_tmp_root_test "$@"; status=$?\n'
+                if tmp_root
+                else (
+                    'cfmgr_isolation_native_data_root_test "$@"; status=$?\n'
+                    if data_root
+                    else 'cfmgr_isolation_native_root_test "$@"; status=$?\n'
+                )
             )
             + 'printf "RESULT\\t%s\\n" "$status"\n'
             + "IFS= read -r seven <&7; IFS= read -r eight <&8; IFS= read -r nine <&9; "
@@ -405,8 +487,10 @@ class NativeRootFixture(ExecutionRootFixture):
             str(self.fdinfo_input),
             str(source),
         ]
-        if data_root:
+        if with_data:
             paths.append(str(data_source_root or self.data_source_root))
+        if tmp_root:
+            paths.extend([str(limit_kib), str(inode_limit)])
         paths.extend(
             [
                 str(MOUNT_PARSER),
@@ -487,15 +571,15 @@ def test_native_root_completes_fixed_four_views_and_unmounts_in_reverse_order(
 @pytest.mark.integration
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_actual_busybox_native_data_root_stages_and_exposes_configuration(
+def test_actual_busybox_native_tmp_root_stages_data_and_exposes_private_home(
     busybox_router: RouterHarness,
 ) -> None:
     assert busybox_router.busybox is not None
     fixture = NativeRootFixture(busybox_router)
     result = fixture.run_native(
         shell=str(busybox_router.busybox),
-        data_root=True,
-        callback_args=("native args", "*", "check-native-data"),
+        tmp_root=True,
+        callback_args=("native args", "*", "check-native-data", "check-native-tmp"),
         focused_query=False,
     )
     assert result.returncode == 0, result
@@ -503,9 +587,15 @@ def test_actual_busybox_native_data_root_stages_and_exposes_configuration(
     assert result.stdout.startswith("RESULT\t0\n")
     ledger = fixture.callback_ledger.read_text().splitlines()
     assert ledger[0].startswith("mount\t900\t")
-    assert ledger[1].split("\t")[6] == "4"
+    assert ledger[1].split("\t")[6] == "5"
     assert fixture.router.read("work/callback-data") == "staged data visible\n"
+    assert fixture.router.read("work/callback-tmp") == "private home ready\n"
     assert (fixture.guard / "execution/image/etc/hosts").read_bytes() == DATA_HOSTS
+    assert (
+        (fixture.guard / "execution/mounted-tmp")
+        .read_text()
+        .startswith(f"mount\t{TMP_MOUNT_ID}\t{ROOT_MOUNT_ID}\t{TMP_DEVICE}\t")
+    )
     assert not (fixture.guard / "execution/root/etc").exists()
 
 
@@ -650,12 +740,22 @@ def test_native_view_check_requires_the_exact_saved_child_identity(
 @pytest.mark.unit
 @pytest.mark.matrix("V74", evidence="host")
 @pytest.mark.parametrize(
-    ("mutation", "expected", "checked"),
-    [("valid", 0, "root bin sbin lib usr"), ("saved-bin-id", 1, "root bin")],
-    ids=["positive-control", "count-four-but-child-ledger-changed"],
+    ("layout", "mutation", "expected", "checked"),
+    [
+        ("native", "valid", 0, "root bin sbin lib usr"),
+        ("native", "saved-bin-id", 1, "root bin"),
+        ("native-tmp", "valid", 0, "root bin sbin lib usr tmp"),
+        ("native-tmp", "tmp-child-changed", 1, "root bin sbin lib usr tmp"),
+    ],
+    ids=[
+        "native-positive-control",
+        "native-count-four-but-child-ledger-changed",
+        "native-tmp-positive-control",
+        "native-tmp-count-five-but-saved-tmp-ledger-changed",
+    ],
 )
 def test_native_layout_check_requires_each_saved_child_ledger(
-    router: RouterHarness, mutation: str, expected: int, checked: str
+    router: RouterHarness, layout: str, mutation: str, expected: int, checked: str
 ) -> None:
     guard = router.path("work/native-layout-guard")
     guard.mkdir()
@@ -663,6 +763,8 @@ def test_native_layout_check_requires_each_saved_child_ledger(
     root_dir = router.path("work/native-layout-root")
     for name in VIEWS:
         (root_dir / name).mkdir(parents=True)
+    if layout == "native-tmp":
+        (root_dir / "tmp/cfmgr-home").mkdir(parents=True, mode=0o700)
     tools = router.path("work/native-layout-tools")
     tools.mkdir()
     test_tool = router.write(
@@ -670,9 +772,11 @@ def test_native_layout_check_requires_each_saved_child_ledger(
     )
     query_log = router.path("work/native-layout-queries")
     query_log.write_text("", encoding="ascii")
-    root_body = "mount\t900\t77\t0:77\t2f\t2f726f6f74\ttmpfs\t746d706673\t"
+    root_path_hex = os.fsencode(root_dir).hex()
+    root_body = f"mount\t900\t77\t0:77\t2f\t{root_path_hex}\ttmpfs\t746d706673\t"
     root_body += "726f2c6e6f737569642c6e6f646576\t7277\t2f696d616765"
-    root_topology = "topology\t-\t-\t-\t0\t0\t4"
+    image_target_hex = root_body.rsplit("\t", 1)[1]
+    root_topology = f"topology\t-\t-\t-\t0\t0\t{5 if layout == 'native-tmp' else 4}"
 
     def framed(body: str, topology: str) -> str:
         return f"{body}\n{topology}\nend\t{len(body) + len(topology) + 2}\n"
@@ -691,7 +795,7 @@ def test_native_layout_check_requires_each_saved_child_ledger(
         fallback_body = root_body.rsplit("\t", 1)[0] + f"\t2f696d6167652f{name_hex}"
         fallback_ledger = framed(fallback_body, "topology\t-\t-\t-\t0\t0\t0")
         mounted_body = (
-            f"mount\t{VIEW_IDS[name]}\t900\t0:88\t{source_point}\t2f726f6f742f{name_hex}"
+            f"mount\t{VIEW_IDS[name]}\t900\t0:88\t{source_point}\t{root_path_hex}2f{name_hex}"
             f"\tsquashfs\t2f6465762f726f\t726f2c6e6f737569642c6e6f646576\t726f"
             f"\t{source_point}"
         )
@@ -712,6 +816,45 @@ def test_native_layout_check_requires_each_saved_child_ledger(
         router.write(f"work/native-layout-guard/intent-{name}", name + "\n")
     records = [view_metadata[name] for name in VIEWS]
     actual_mounts = [actual_ledgers[name] for name in VIEWS]
+    actual_tmp = ""
+    tmp_source_common = ""
+    if layout == "native-tmp":
+        tmp_path_hex = root_path_hex + "2f746d70"
+        tmp_topology = "topology\t-\t-\t-\t0\t0\t0"
+        tmp_source_common = "\t".join(
+            [
+                "mount",
+                "88",
+                "1",
+                "0:88",
+                "2f",
+                "2f736f75726365",
+                "squashfs",
+                "2f6465762f726f",
+                "726f2c72656c6174696d65",
+                "726f",
+            ]
+        )
+        tmp_fallback = framed(
+            root_body.rsplit("\t", 1)[0] + f"\t{image_target_hex}2f746d70", tmp_topology
+        )
+        tmp_mounted_body = (
+            f"mount\t{TMP_MOUNT_ID}\t900\t{TMP_DEVICE}\t2f\t{tmp_path_hex}"
+            f"\ttmpfs\t63666d67722d746d70\t72772c6e6f737569642c6e6f646576"
+            "\t72772c73697a653d36346b2c6e725f696e6f6465733d382c6d6f64653d373030\t2f"
+        )
+        saved_tmp_ledger = framed(tmp_mounted_body, tmp_topology)
+        if mutation == "tmp-child-changed":
+            tmp_mounted_body = tmp_mounted_body.replace(
+                f"mount\t{TMP_MOUNT_ID}\t", "mount\t906\t", 1
+            )
+        actual_tmp = framed(tmp_mounted_body, tmp_topology)
+        for name, value in (
+            ("intent-tmp", "tmp\n"),
+            ("fallback-tmp", tmp_fallback),
+            ("mounted-tmp", saved_tmp_ledger),
+        ):
+            router.write(f"work/native-layout-guard/{name}", value)
     script = (
         f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
         f". {shlex.quote(str(SOURCE))}\n"
@@ -719,11 +862,22 @@ def test_native_layout_check_requires_each_saved_child_ledger(
         f"_isolation_guard={shlex.quote(str(guard))}; "
         f"_isolation_tree={shlex.quote(str(root_dir))}\n"
         "_execution_native_count=4; _execution_mount_id=900; _isolation_ram_id=77\n"
+        f"_execution_layout={layout}; _execution_tmp_ready=1; _execution_tmp_kib=64; "
+        "_execution_tmp_inodes=8\n"
+        f"_execution_tmp_home={shlex.quote(str(root_dir / 'tmp/cfmgr-home'))}\n"
         "_execution_base_body=$2\n"
         f"_execution_root_ledger={shlex.quote(root_ledger)}\n"
-        "_execution_bin_record=$3; _execution_sbin_record=$4; "
+        + (
+            f"_execution_tmp_fallback_ledger={shlex.quote(tmp_fallback)}\n"
+            f"_execution_tmp_mounted_ledger={shlex.quote(saved_tmp_ledger)}\n"
+            "_execution_native_ids='901 902 903 904'; _execution_device=0:77\n"
+            f"_execution_native_source_common={shlex.quote(tmp_source_common)}\n"
+            if layout == "native-tmp"
+            else ""
+        )
+        + "_execution_bin_record=$3; _execution_sbin_record=$4; "
         "_execution_lib_record=$5; _execution_usr_record=$6\n"
-        "_actual_bin=$7; _actual_sbin=$8; _actual_lib=$9; _actual_usr=${10}\n"
+        "_actual_bin=$7; _actual_sbin=$8; _actual_lib=$9; _actual_usr=${10}; _actual_tmp=${11}\n"
         f"_query_log={shlex.quote(str(query_log))}; "
         f"_root_topology={shlex.quote(root_topology)}\n"
         "_cfmgr_isolation_query() {\n"
@@ -736,6 +890,7 @@ def test_native_layout_check_requires_each_saved_child_ledger(
         "    case $_execution_checked_view in\n"
         "      bin) _isolation_ledger=$_actual_bin ;; sbin) _isolation_ledger=$_actual_sbin ;;\n"
         "      lib) _isolation_ledger=$_actual_lib ;; usr) _isolation_ledger=$_actual_usr ;;\n"
+        "      tmp) _isolation_ledger=$_actual_tmp ;;\n"
         "    esac\n"
         '    _isolation_body=${_isolation_ledger%%"$_io_lf"*}\n'
         '    _isolation_topology="topology${_io_tab}-${_io_tab}-${_io_tab}-'
@@ -748,7 +903,9 @@ def test_native_layout_check_requires_each_saved_child_ledger(
         "if _cfmgr_isolation_native_layout_check; then status=0; else status=1; fi\n"
         'printf "RESULT\\t%s\\n" "$status"\n'
     )
-    result = router.run(script, [str(test_tool), root_body, *records, *actual_mounts], timeout=3)
+    result = router.run(
+        script, [str(test_tool), root_body, *records, *actual_mounts, actual_tmp], timeout=3
+    )
     assert result.returncode == 0, result
     assert result.stderr == ""
     assert result.stdout == f"RESULT\t{expected}\n"
@@ -814,8 +971,8 @@ def test_native_source_check_rejects_writable_or_mounted_views(
 @pytest.mark.matrix("V74", evidence="host")
 @pytest.mark.parametrize(
     ("layout", "expected"),
-    [("legacy", 1), ("native", 1), ("native-data", 1)],
-    ids=["old-ceiling", "native-ceiling", "native-data-ceiling"],
+    [("legacy", 1), ("native", 1), ("native-data", 1), ("native-tmp", 1)],
+    ids=["old-ceiling", "native-ceiling", "native-data-ceiling", "native-tmp-ceiling"],
 )
 def test_native_query_budget_is_literal_and_bounded(
     router: RouterHarness, layout: str, expected: int

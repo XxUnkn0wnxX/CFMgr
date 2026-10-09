@@ -1,5 +1,6 @@
 #!/bin/sh
-# Namespace-only native readonly views/data; no payload, chroot/router execution.
+# Namespace-only native RO views/data and capped private tmp/HOME.
+# No installed payload, chroot or router execution; fixed exec proof only.
 # IO supplies checked ledger/framing state inside its isolated callbacks.
 # shellcheck disable=SC2154
 set -eu
@@ -61,6 +62,46 @@ observe_native_data() {
 	[ ! -e "$1/etc/late" ] && [ ! -e "$1/etc/late-dir" ]
 }
 
+observe_native_tmp() {
+	observer_tmp=$1/tmp
+	[ "${HOME-}" = "$outside_home" ] || return 129
+	"$bb" test -d "$observer_tmp/cfmgr-home" && "$bb" test ! -L "$observer_tmp/cfmgr-home" || return 129
+	_cfmgr_isolation_root_empty "$observer_tmp/cfmgr-home" || return 129
+	[ "$("$bb" stat -c %a "$observer_tmp/cfmgr-home")" = 700 ] || return 129
+	printf 'scratch\n' >"$observer_tmp/scratch" || return 129
+	[ "$("$bb" cat "$observer_tmp/scratch")" = scratch ] || return 129
+	"$bb" rm "$observer_tmp/scratch" || return 129
+	# This tiny fixed proof script is the sole execution exception in the kernel
+	# fixture observer. It tests mount exec permission, never an installed payload.
+	printf '#!/bin/sh\nexit 23\n' >"$observer_tmp/exec-proof" || return 129
+	"$bb" chmod 700 "$observer_tmp/exec-proof" || return 129
+	observer_exec_status=0
+	"$observer_tmp/exec-proof" || observer_exec_status=$?
+	[ "$observer_exec_status" -eq 23 ] || return 129
+	"$bb" rm "$observer_tmp/exec-proof" || return 129
+	# Only 65 KiB is attempted against a 64 KiB cap, without an arbitrary wait.
+	if "$bb" dd if=/dev/zero of="$observer_tmp/byte-cap" bs=1024 count=65 2>/dev/null; then return 129; fi
+	observer_bytes=$("$bb" wc -c <"$observer_tmp/byte-cap") || return 129
+	[ "$observer_bytes" -eq 65536 ] || return 129
+	"$bb" rm "$observer_tmp/byte-cap" || return 129
+	observer_inode=0 observer_inode_failed=0
+	while [ "$observer_inode" -lt 9 ]; do
+		if (: >"$observer_tmp/inode-$observer_inode") 2>/dev/null; then
+			observer_inode=$((observer_inode + 1))
+		else
+			observer_inode_failed=1
+			break
+		fi
+	done
+	# The only existing inodes are the tmp root and its private empty HOME.
+	[ "$observer_inode_failed" -eq 1 ] && [ "$observer_inode" -eq 6 ] || return 129
+	while [ "$observer_inode" -gt 0 ]; do
+		observer_inode=$((observer_inode - 1))
+		"$bb" rm "$observer_tmp/inode-$observer_inode" || return 129
+	done
+	_cfmgr_isolation_root_empty "$observer_tmp/cfmgr-home"
+}
+
 observe_native_root() {
 	observer_root=$1 observer_ledger=$2
 	[ "$#" -eq 3 ] && [ "$3" = forwarded ] || return 129
@@ -84,11 +125,12 @@ observe_native_root() {
 	[ "$#" -eq 1 ] && [ "$1" = "$observer_id" ] || return 129
 	observer_topology=${observer_ledger#*"$_io_lf"}
 	observer_topology=${observer_topology%%"$_io_lf"*}
-	[ "$observer_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'4' ] || return 129
+	[ "$observer_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'5' ] || return 129
 	observe_native_data "$observer_root" || return 129
+	observe_native_tmp "$observer_root" || return 129
 	# Proof-only attempted writes demonstrate the admitted RO views/fallbacks;
 	# no mount commands, descendants or descriptors are retained by this observer.
-	for observer_name in bin sbin lib usr opt tmp; do
+	for observer_name in bin sbin lib usr opt; do
 		"$bb" test -d "$observer_root/$observer_name" || return 129
 		case $observer_name in
 		bin | sbin | lib | usr)
@@ -109,8 +151,9 @@ printf 'eight\n' >"$guard/fd8"
 printf 'nine\n' >"$guard/fd9"
 exec 6<"$guard/fd6" 7<"$guard/fd7" 8<"$guard/fd8" 9<"$guard/fd9"
 status=0
-cfmgr_isolation_native_data_root_test "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 \
-	"$native_source" "$data_source" "$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_native_root forwarded || status=$?
+outside_home=${HOME-}
+cfmgr_isolation_native_tmp_root_test "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 \
+	"$native_source" "$data_source" 64 8 "$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_native_root forwarded || status=$?
 [ "$status" -eq 7 ] || fail "ordinary callback status/teardown ($status)"
 if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8 && IFS= read -r fd9 <&9; then :; else
 	fail 'caller descriptors'
@@ -138,11 +181,15 @@ if [ "$image_hosts" = "${data_hosts}." ] && [ ! -s "$guard/execution/image/etc/r
 	fail 'staged data changed'
 fi
 query=0
-while [ "$query" -lt 56 ]; do
+while [ "$query" -lt 64 ]; do
 	[ -f "$guard/execution/query-$query" ] || fail 'missing unique query'
 	query=$((query + 1))
 done
-[ ! -e "$guard/execution/query-56" ] || fail 'unexpected query count'
+[ ! -e "$guard/execution/query-64" ] || fail 'unexpected query count'
+_cfmgr_isolation_root_empty "$guard/execution/image/tmp" || fail 'tmp fallback changed'
+for evidence in fallback intent mounted; do
+	[ -f "$guard/execution/$evidence-tmp" ] || fail 'missing tmp evidence'
+done
 # Assert no surviving execution-root or native child mounts before cleanup;
 # namespace destruction alone is never accepted as successful teardown.
 tree_clean() {
@@ -154,4 +201,4 @@ cfmgr_io_test "$ram" "$tools" workspace tree_clean "$native_source" || fail 'ret
 "$bb" rm -rf "$guard"
 "$bb" umount -n "$native_source" || fail 'source mount cleanup'
 "$bb" umount -n "$ram" || fail 'RAM mount cleanup'
-printf 'native readonly views/data, actual root lease and checked reverse teardown passed\n'
+printf 'native RO views/data, private tmp/HOME, byte/inode caps, exec permission, root lease and reverse teardown passed\n'

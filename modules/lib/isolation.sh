@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Internal owned-root lifecycle; trusted io.sh/storage.sh definitions required.
 # Fixed probes additionally require trusted closure.sh/supervision.sh definitions.
-# Native-data roots additionally require trusted native_config.sh definitions.
+# Native-data and native-tmp roots also require native_config.sh definitions.
 # Failed preparation retains its guard because normalized failure does not
 # prove that an interrupted intermediate left no producer.
 # Sourcing defines functions only; no CLI or general Opt execution approval.
@@ -240,7 +240,7 @@ _cfmgr_isolation_unmount() {
 # Each query uses a fresh two-capture IO owner, outside the mounted tree. Its
 # checked ledger is written exclusively, then checked again after IO cleanup.
 # Old/bare entries use 16 queries; literal native layouts use 64. No slot reuse
-# or unbounded retries. Their complete 56-query accounting is documented below.
+# or unbounded retries. Native/native-data use 56 observations; native-tmp uses 64.
 # A complete probe uses14: three admission, source recheck, null bind, image
 # parent, three image steps, two checks per unmount, and final RAM cleanup.
 _cfmgr_isolation_query_action() {
@@ -257,7 +257,7 @@ _cfmgr_isolation_query_action() {
 _cfmgr_isolation_query() {
 	# Only this literal owner/layout gets64; no ambient numeric limit is read.
 	case ${_isolation_mode-}:${_execution_layout-} in
-	root:native | root:native-data) [ "$_isolation_queries" -lt 64 ] || return 1 ;;
+	root:native | root:native-data | root:native-tmp) [ "$_isolation_queries" -lt 64 ] || return 1 ;;
 	*) [ "$_isolation_queries" -lt 16 ] || return 1 ;;
 	esac
 	_isolation_query_file=$_isolation_guard/query-$_isolation_queries
@@ -732,6 +732,14 @@ cfmgr_isolation_native_data_root_test() {
 	_cfmgr_isolation_root_owner native-data fixture "$@" >/dev/null 2>&1
 }
 
+cfmgr_isolation_native_tmp_root_with() {
+	_cfmgr_isolation_root_owner native-tmp production "$@" >/dev/null 2>&1
+}
+
+cfmgr_isolation_native_tmp_root_test() {
+	_cfmgr_isolation_root_owner native-tmp fixture "$@" >/dev/null 2>&1
+}
+
 _cfmgr_isolation_root_owner() (
 	set +x
 	set +e
@@ -755,13 +763,21 @@ _cfmgr_isolation_root_owner() (
 	trap 'exit 129' HUP INT QUIT TERM
 	_execution_layout=$1 _execution_kind=$2
 	shift 2
-	case $_execution_layout in bare | native | native-data) ;; *) return 2 ;; esac
+	case $_execution_layout in bare | native | native-data | native-tmp) ;; *) return 2 ;; esac
 	_execution_native_source_root=/
 	_execution_data_source_root=/
+	_execution_tmp_kib='' _execution_tmp_inodes='' _execution_tmp_ready=0
+	_execution_tmp_fallback_ledger='' _execution_tmp_mounted_ledger='' _execution_tmp_first_ledger=''
+	_execution_tmp_home=''
 	case $_execution_kind in
 	production)
 		[ "$#" -ge 5 ] || return 2
 		_isolation_root=$1 _execution_guard=$2
+		if [ "$_execution_layout" = native-tmp ]; then
+			[ "$#" -ge 7 ] || return 2
+			_execution_tmp_kib=$3 _execution_tmp_inodes=$4
+			shift 2
+		fi
 		_isolation_parser=$3 _isolation_storage_parser=$4 _isolation_callback=$5
 		_isolation_tools=
 		_isolation_input=/proc/self/mountinfo
@@ -781,6 +797,12 @@ _cfmgr_isolation_root_owner() (
 			[ "$#" -ge 10 ] || return 2
 			_execution_native_source_root=$6 _execution_data_source_root=$7
 			shift 2
+			;;
+		native-tmp)
+			[ "$#" -ge 12 ] || return 2
+			_execution_native_source_root=$6 _execution_data_source_root=$7
+			_execution_tmp_kib=$8 _execution_tmp_inodes=$9
+			shift 4
 			;;
 		bare)
 			[ "$#" -ge 8 ] || return 2
@@ -809,12 +831,16 @@ _cfmgr_isolation_root_owner() (
 				_cfmgr_isolation_path "$_execution_image/$_execution_view" || return 2
 		done
 	fi
-	if [ "$_execution_layout" = native-data ]; then
+	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ]; then
 		for _execution_path in "$_execution_data_source_root" \
 			"${_execution_data_source_root%/}/etc/hosts" "${_execution_data_source_root%/}/etc/resolv.conf" \
 			"$_execution_image/etc" "$_execution_image/etc/hosts" "$_execution_image/etc/resolv.conf"; do
 			_cfmgr_isolation_path "$_execution_path" || return 2
 		done
+	fi
+	if [ "$_execution_layout" = native-tmp ]; then
+		_cfmgr_isolation_tmp_limits "$_execution_tmp_kib" "$_execution_tmp_inodes" || return 2
+		_cfmgr_isolation_path "$_isolation_tree/tmp/cfmgr-home" || return 2
 	fi
 	[ "${_execution_guard%/*}" = "$_isolation_root" ] || return 2
 	_cfmgr_storage_callback_name "$_isolation_callback" || return 2
@@ -978,7 +1004,7 @@ _cfmgr_isolation_root_io() {
 	_execution_source_root=$_isolation_fs_target
 	_cfmgr_isolation_root_ram_path "$_isolation_tree" || return 129
 	_execution_prior_body=$_isolation_body
-	if [ "$_execution_layout" = native-data ]; then
+	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ]; then
 		# This outer workspace has no captures yet: queries used nested owners.
 		# The checked data subtree becomes RO through the base root bind itself.
 		case $_execution_kind in
@@ -1016,6 +1042,9 @@ _cfmgr_isolation_root_io() {
 		for _execution_view in bin sbin lib usr; do
 			_cfmgr_isolation_native_build "$_execution_view" || return 129
 		done
+		if [ "$_execution_layout" = native-tmp ]; then
+			_cfmgr_isolation_tmp_build || return 129
+		fi
 		_cfmgr_isolation_native_layout_check || return 129
 		_execution_root_ledger=$_execution_checked_root_ledger
 		_cfmgr_isolation_write "$_isolation_guard/populated-root" "$_execution_root_ledger" || return 129
@@ -1029,6 +1058,9 @@ _cfmgr_isolation_root_io() {
 		[ "$_execution_checked_root_ledger" = "$_execution_root_ledger" ] || return 129
 		_cfmgr_isolation_read "$_isolation_guard/populated-root" || return 129
 		[ "$_isolation_text" = "$_execution_root_ledger" ] || return 129
+		if [ "$_execution_layout" = native-tmp ]; then
+			_cfmgr_isolation_tmp_remove || return 129
+		fi
 		for _execution_view in usr lib sbin bin; do
 			_cfmgr_isolation_native_remove "$_execution_view" || return 129
 		done
@@ -1231,9 +1263,11 @@ _cfmgr_isolation_native_build() {
 # freshly queried and compared with its complete immutable ledger and intent.
 _cfmgr_isolation_native_layout_check() {
 	[ "$_execution_native_count" -eq 4 ] || return 1
+	_execution_expected_children=4
+	[ "$_execution_layout" != native-tmp ] || _execution_expected_children=5
 	_cfmgr_isolation_query "$_isolation_tree" 0 || return 1
 	[ "$_isolation_body" = "$_execution_base_body" ] &&
-		[ "$_isolation_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'4' ] || return 1
+		[ "$_isolation_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab$_execution_expected_children" ] || return 1
 	_execution_checked_root_ledger=$_isolation_ledger
 	for _execution_checked_view in bin sbin lib usr; do
 		_cfmgr_isolation_native_name "$_execution_checked_view" && _cfmgr_isolation_native_load || return 1
@@ -1241,6 +1275,12 @@ _cfmgr_isolation_native_layout_check() {
 			_cfmgr_isolation_native_view_options "$_isolation_options" "$_isolation_super" || return 1
 		[ "$_isolation_ledger" = "$_execution_view_mounted_ledger" ] || return 1
 	done
+	if [ "$_execution_layout" = native-tmp ]; then
+		[ "$_execution_tmp_ready" -eq 1 ] && _cfmgr_isolation_tmp_saved || return 1
+		_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_check || return 1
+		[ "$_isolation_ledger" = "$_execution_tmp_mounted_ledger" ] || return 1
+		[ -d "$_execution_tmp_home" ] && [ ! -L "$_execution_tmp_home" ] || return 1
+	fi
 }
 
 _cfmgr_isolation_native_remove() {
@@ -1254,7 +1294,157 @@ _cfmgr_isolation_native_remove() {
 	_execution_native_count=$((_execution_native_count - 1))
 }
 
+_cfmgr_isolation_tmp_limits() (
+	[ "$#" -eq 2 ] || return 1
+	for _tmp_limit in "$1" "$2"; do
+		case $_tmp_limit in '' | 0* | *[!0123456789]*) return 1 ;; esac
+	done
+	[ "${#1}" -le 5 ] && [ "${#2}" -le 4 ] || return 1
+	[ "$1" -ge 64 ] && [ "$1" -le 65536 ] && [ "$(($1 % 64))" -eq 0 ] &&
+		[ "$2" -ge 8 ] && [ "$2" -le 8192 ]
+)
+
+_cfmgr_isolation_tmp_decimal_hex() {
+	_execution_tmp_number_hex=
+	_execution_tmp_number=$1
+	while :; do
+		case $_execution_tmp_number in '') return 0 ;; esac
+		_execution_tmp_tail=${_execution_tmp_number#?}
+		_execution_tmp_digit=${_execution_tmp_number%"$_execution_tmp_tail"}
+		case $_execution_tmp_digit in [0123456789]) ;; *) return 1 ;; esac
+		_execution_tmp_number_hex=${_execution_tmp_number_hex}3$_execution_tmp_digit
+		_execution_tmp_number=$_execution_tmp_tail
+	done
+}
+
+# Effective superblock keys must occur once, with the exact approved values.
+_cfmgr_isolation_tmp_options() (
+	[ "$#" -eq 2 ] || return 1
+	_cfmgr_io_hex "$1" && _cfmgr_io_hex "$2" || return 1
+	_cfmgr_isolation_tmp_limits "$_execution_tmp_kib" "$_execution_tmp_inodes" || return 1
+	_cfmgr_isolation_options "$1" "$2" ram || return 1
+	_cfmgr_isolation_tmp_decimal_hex "$_execution_tmp_kib" || return 1
+	_tmp_size=73697a653d${_execution_tmp_number_hex}6b
+	_cfmgr_isolation_tmp_decimal_hex "$_execution_tmp_inodes" || return 1
+	_tmp_inodes=6e725f696e6f6465733d$_execution_tmp_number_hex
+	_tmp_size_seen=0 _tmp_inode_seen=0 _tmp_mode_seen=0
+	_tmp_nosuid=0 _tmp_nodev=0 _tmp_phase=mount
+	for _tmp_list in "$1" "$2"; do
+		_tmp_rest=${_tmp_list}2c _tmp_token=
+		while :; do
+			case $_tmp_rest in '') break ;; esac
+			_tmp_tail=${_tmp_rest#??}
+			_tmp_pair=${_tmp_rest%"$_tmp_tail"}
+			_tmp_rest=$_tmp_tail
+			case $_tmp_pair in
+			2c) ;;
+			*)
+				_tmp_token=$_tmp_token$_tmp_pair
+				continue
+				;;
+			esac
+			case $_tmp_token in
+			'' | 73756964 | 646576) return 1 ;;
+			6e6f73756964) [ "$_tmp_phase" != mount ] || _tmp_nosuid=1 ;;
+			6e6f646576) [ "$_tmp_phase" != mount ] || _tmp_nodev=1 ;;
+			73697a653d*)
+				[ "$_tmp_phase" = super ] && [ "$_tmp_size_seen" -eq 0 ] && [ "$_tmp_token" = "$_tmp_size" ] || return 1
+				_tmp_size_seen=1
+				;;
+			6e725f696e6f6465733d*)
+				[ "$_tmp_phase" = super ] && [ "$_tmp_inode_seen" -eq 0 ] && [ "$_tmp_token" = "$_tmp_inodes" ] || return 1
+				_tmp_inode_seen=1
+				;;
+			6d6f64653d*)
+				[ "$_tmp_phase" = super ] && [ "$_tmp_mode_seen" -eq 0 ] && [ "$_tmp_token" = 6d6f64653d373030 ] || return 1
+				_tmp_mode_seen=1
+				;;
+			esac
+			_tmp_token=
+		done
+		_tmp_phase=super
+	done
+	[ "$_tmp_nosuid:$_tmp_nodev:$_tmp_size_seen:$_tmp_inode_seen:$_tmp_mode_seen" = 1:1:1:1:1 ]
+)
+
+_cfmgr_isolation_tmp_check() {
+	_cfmgr_isolation_private && _cfmgr_isolation_tmp_options "$_isolation_options" "$_isolation_super" || return 1
+	[ "$_isolation_fs" = tmpfs ] && [ "$_isolation_mount_root" = 2f ] && [ "$_isolation_fs_target" = 2f ] || return 1
+	[ "$_isolation_parent" = "$_execution_mount_id" ] && [ "$_isolation_id" != "$_execution_mount_id" ] &&
+		[ "$_isolation_id" != "$_isolation_ram_id" ] && [ "$_isolation_device" != "$_execution_device" ] || return 1
+	case " $_execution_native_ids " in *" $_isolation_id "*) return 1 ;; esac
+	_execution_tmp_ifs=$IFS
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_execution_base_body
+	IFS=$_execution_tmp_ifs
+	[ "$#" -eq 11 ] && [ "$1" = mount ] || return 1
+	[ "$_isolation_point" = "${6}2f746d70" ] || return 1
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_execution_native_source_common
+	IFS=$_execution_tmp_ifs
+	[ "$#" -eq 10 ] && [ "$1" = mount ] || return 1
+	[ "$_isolation_id" != "$2" ] && [ "$_isolation_device" != "$4" ] || return 1
+	IFS=$_io_tab
+	# shellcheck disable=SC2086
+	set -- $_isolation_body
+	IFS=$_execution_tmp_ifs
+	[ "$#" -eq 11 ] && [ "$1" = mount ] && [ "$8" = 63666d67722d746d70 ]
+}
+
+_cfmgr_isolation_tmp_fallback_check() {
+	_execution_view_path=$_isolation_tree/tmp _execution_view_hex=746d70
+	_cfmgr_isolation_native_fallback_check
+}
+
+_cfmgr_isolation_tmp_saved() {
+	_cfmgr_isolation_read "$_isolation_guard/intent-tmp" || return 1
+	[ "$_isolation_text" = "tmp$_io_lf" ] || return 1
+	_cfmgr_isolation_read "$_isolation_guard/fallback-tmp" || return 1
+	[ "$_isolation_text" = "$_execution_tmp_fallback_ledger" ] || return 1
+	_cfmgr_isolation_read "$_isolation_guard/mounted-tmp" || return 1
+	[ "$_isolation_text" = "$_execution_tmp_mounted_ledger" ]
+}
+
+_cfmgr_isolation_tmp_home_create() {
+	[ "$_execution_tmp_ready" -eq 1 ] && _cfmgr_isolation_root_empty "$_isolation_tree/tmp" || return 129
+	_execution_tmp_home=$_isolation_tree/tmp/cfmgr-home
+	_cfmgr_isolation_native_call home-tmp "$_isolation_mkdir" -m 700 "$_execution_tmp_home" || return 129
+	_cfmgr_isolation_root_empty "$_execution_tmp_home" || return 129
+}
+
+_cfmgr_isolation_tmp_build() {
+	_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_fallback_check || return 129
+	_execution_tmp_fallback_ledger=$_isolation_ledger
+	_cfmgr_isolation_write "$_isolation_guard/fallback-tmp" "$_execution_tmp_fallback_ledger" || return 129
+	_cfmgr_isolation_write "$_isolation_guard/intent-tmp" "tmp$_io_lf" || return 129
+	_cfmgr_isolation_native_call mount-tmp "$_isolation_mount" -n -i -t tmpfs \
+		-o "rw,nosuid,nodev,exec,mode=700,size=${_execution_tmp_kib}k,nr_inodes=$_execution_tmp_inodes" \
+		cfmgr-tmp "$_isolation_tree/tmp" || return 129
+	_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_check || return 129
+	_execution_tmp_first_ledger=$_isolation_ledger
+	_cfmgr_isolation_native_call private-tmp "$_isolation_mount" -n -i -o make-private "$_isolation_tree/tmp" || return 129
+	_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_check || return 129
+	[ "$_isolation_ledger" = "$_execution_tmp_first_ledger" ] || return 129
+	_execution_tmp_mounted_ledger=$_isolation_ledger
+	_cfmgr_isolation_write "$_isolation_guard/mounted-tmp" "$_execution_tmp_mounted_ledger" || return 129
+	_execution_tmp_ready=1
+	_cfmgr_isolation_tmp_home_create
+}
+
+_cfmgr_isolation_tmp_remove() {
+	[ "$_execution_tmp_ready" -eq 1 ] && _cfmgr_isolation_tmp_saved || return 129
+	_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_check || return 129
+	[ "$_isolation_ledger" = "$_execution_tmp_mounted_ledger" ] || return 129
+	_cfmgr_isolation_unmount umount-tmp "$_isolation_tree/tmp" || return 129
+	_cfmgr_isolation_query "$_isolation_tree/tmp" 0 && _cfmgr_isolation_tmp_fallback_check || return 129
+	[ "$_isolation_ledger" = "$_execution_tmp_fallback_ledger" ] || return 129
+	_execution_tmp_ready=0
+}
+
 # Native/native-data success uses 56 queries: base construction 6; four view
 # phases 6 each; three whole-layout checks 5 each (prelease, withinlease,
 # postcallback); reverse removal 2 each; final base-root teardown 3.
 # All metadata slots remain unique.
+# Native-tmp uses 64: add build 3, one leaf in each layout check 3, teardown 2.
