@@ -96,6 +96,14 @@ loading; this extension pattern guides the future menu/setup integration.
 
 ## 🗂️ Storage and authority
 
+Integration follows Merlin’s official [Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts) and
+[Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
+guidance, checked against the supported firmware source. Revisit affected
+conventions when implementation changes and during milestone reviews; record
+version differences and design decisions in the plan. Firmware configuration
+overrides and shared WebUI settings are separate from CFMgr’s private config.
+
 | Location | Intended responsibility |
 | --- | --- |
 | `/jffs/scripts/cfmgr.sh` | Installed public entry point |
