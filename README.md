@@ -37,6 +37,10 @@ backend installs only missing or unusable requirements, while operational
 worker and feature integration remain incomplete. There is no installable
 manager yet.
 
+Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
+DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)
+for the replacement scope; the previous DDNS handler will not be backed up.
+
 Normal operation will require working Entware. Its installed `opkg` manages
 CFMgr's dependencies and their libraries; CFMgr manages Cloudflared release
 binaries separately for supported kernel and userspace architectures.

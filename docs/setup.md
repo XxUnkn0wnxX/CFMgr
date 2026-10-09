@@ -66,6 +66,17 @@ development work is not a declaration that every listed firmware is supported.
 | Public tunnel hostname | Your Cloudflare account, domain and the local application you want the tunnel to reach. |
 | IP-Sync | The intended Cloudflare Zero Trust IP list and the Access policy that uses it; DNS setup is separate from list synchronization. |
 
+> [!WARNING]
+> **Planned DDNS setup replaces your existing router DDNS setup.** Saving and
+> enabling CFMgr DDNS will enable Merlin's DDNS client, select **Custom**, set
+> your chosen hostname, and replace the existing `ddns-start` handler. This is
+> part of normal DDNS setup, without a separate takeover prompt or a backup of
+> the previous settings/handler. Other provider fields already stored by Merlin
+> are left alone. Other router settings and unrelated firmware hooks are outside
+> this replacement.
+>
+> This behavior is planned; DDNS setup is not available in the current build.
+
 Feature-specific credential permissions, CFMgr menus and setup commands will be
 documented with their validated implementations. CFMgr's scope does not include
 registering domains or changing registrar nameservers; complete those steps in
