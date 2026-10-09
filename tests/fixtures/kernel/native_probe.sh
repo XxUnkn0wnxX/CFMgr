@@ -29,13 +29,14 @@ if [ "$#" -eq 6 ]; then
 	for marker in probe-success root-returned deadline/armed deadline/done deadline/ack execution/complete watchdog-fds-checked storage-acquired; do
 		_cfmgr_isolation_root_empty "$guard/$marker" || fail "missing checked $marker"
 	done
-	[ ! -e "$guard/probe-negative" ] && [ ! -L "$guard/probe-negative" ] || fail 'conflicting outcome'
-	[ ! -e "$guard/deadline/cancel" ] && [ ! -L "$guard/deadline/cancel" ] || fail 'cancelled completion'
+	if [ -e "$guard/probe-negative" ] || [ -L "$guard/probe-negative" ]; then fail 'conflicting outcome'; fi
+	if [ -e "$guard/deadline/cancel" ] || [ -L "$guard/deadline/cancel" ]; then fail 'cancelled completion'; fi
 	[ ! -e "$guard/deadline/expired" ] || fail 'expired completion'
 	"$bb" printf 'CFMGR_NATIVE_SHELL_V1\n' >"$guard/expected"
 	"$bb" cmp -s "$guard/expected" "$guard/execution/native-shell/stdout" || fail 'exact native response'
 	[ ! -s "$guard/execution/native-shell/stderr" ] || fail 'native stderr'
-	# shellcheck disable=SC2329
+	# Invoked indirectly by the checked IO workspace callback.
+	# shellcheck disable=SC2317,SC2329
 	tree_clean() {
 		_cfmgr_io_mount_capture "$2" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 		[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ]
@@ -50,7 +51,7 @@ if [ "$#" -eq 6 ]; then
 	printf 'real armed deadline, synthetic storage original FD8/9 acquisition/authority, native root/shell and cleanup, watchdog own-process fd aliases, done/ack/exact wait passed\n'
 	exit 0
 fi
-[ "$7" = leader ] && [ "$$" -ne 1 ] || fail 'invalid leader'
+if [ "$7" != leader ] || [ "$$" -eq 1 ]; then fail 'invalid leader'; fi
 native_fixture_context native-probe
 native_fixture_load
 # shellcheck source=/dev/null
@@ -146,4 +147,4 @@ fixture_probe_root() {
 }
 cfmgr_worker_native_probe "$ram" "$guard" 14 1 64 8 "$repo/modules/lib/mountinfo.awk" \
 	"$repo/modules/lib/storageinfo.awk" 11111111-1111-1111-1111-111111111111 2f || fail 'composed native worker'
-[ ! -e /proc/self/fd/8 ] && [ ! -e /proc/self/fd/9 ] || fail 'leaked acquired descriptors'
+if [ -e /proc/self/fd/8 ] || [ -e /proc/self/fd/9 ]; then fail 'leaked acquired descriptors'; fi
