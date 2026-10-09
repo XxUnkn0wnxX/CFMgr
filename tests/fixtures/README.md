@@ -12,6 +12,17 @@ static fixtures are added only when a tested contract needs them.
 Keep the expected outcome and its evidence level clear. A captured capability
 profile is an observation, not proof that a runtime feature passes on that router.
 
+## Synthetic data-parser inputs
+
+`tests/test_config_header.py` runs the real JSON producer on synthetic inputs,
+then checks the source-only header projection and deliberately corrupted ledgers; it does not read a live settings file or expose
+credential values in parser output. `tests/test_catalog.py` uses complete
+synthetic catalog text with illustrative owners, repositories and URLs. Neither
+suite downloads a manifest, validates package trust or exercises a config reader
+or writer. Their ledger assertions establish parser behavior only.
+
+## Kernel fixtures
+
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit
 Linux namespace check. It uses actual BusyBox mounts and the runtime lifecycle,
 but substitutes synthetic storage metadata for block-device/UUID admission.

@@ -661,23 +661,97 @@ promotion and live deployment still require separate authorization.
 
 ## 📦 Module catalog and forks
 
-Catalog and config generation are still planned; there is no installable manager
-or user command yet. The catalog selects one repository snapshot, and each
-relative destination must preserve its nested path under the installed manager.
-For example:
+The source-only `modules/lib/config_header.awk` and `modules/lib/catalog.awk`
+validate bounded data formats. They are not connected to a config reader,
+catalog consumer or installed workflow. Full schema/defaults, config ownership,
+migration, activation and writes remain future work. There is no generated
+defaults file, config writer, shipped catalog, manifest verifier, downloader or
+installer.
+
+### Configuration-header projection
+
+`config_header.awk` consumes the existing `json.awk` token format from
+independently measured, immutable regular-file stdin. Its caller supplies
+`LC_ALL=C`, zero operands and canonical `cfmgr_config_header_size` from 1 to
+131,072 bytes. It requires exact input length and final LF, consecutive token
+IDs, valid container ancestry/preorder, valid typed locations and payloads,
+unique object keys, and exact producer footer counts. The root object must have
+exactly one top-level `schema` with the JSON number lexeme `1`, a canonical
+`generation` from 0 to
+2,147,483,647, and a boolean `developer` field. Nested keys do not substitute.
+Other fields remain structurally checked but opaque; their values and
+credentials are never returned or approved. Output is exactly
+`config-header<TAB>1<TAB>GENERATION<TAB>BOOLEAN<LF>` followed by
+`end<TAB>BODY_BYTES<LF>`; it contains no other setting values.
+
+Invocation/size errors return 2 and malformed data returns 1; valid projection
+returns 0. The caller must still verify the JSON producer's status and exact
+consumer output/footer bytes because AWK may not report an output-write failure.
+This projection does not establish complete settings validity, credential
+semantics, defaults or config ownership. The existing IO capture limit remains
+65,536 bytes: this standalone 131,072-byte parser bound does not widen it or
+provide a working large-config reader.
+
+### Source-catalog grammar
+
+`catalog.awk` accepts an immutable regular file on stdin under `LC_ALL=C`, no
+operands and canonical `cfmgr_catalog_size` from 1 to 32,768 bytes. Input must
+be printable ASCII with LF line endings and a final LF; blank and `#` comment
+lines are allowed, while tabs, CR, NUL, non-ASCII and lines over 1,024 bytes
+are rejected. Metadata keys are unique and limited to `catalog`, `repository`,
+`branch` and `manifest`, all required exactly once with exact `catalog: 1`.
+Other keys are file destinations and must follow the file rules below. The
+repository is one `https://github.com/OWNER/REPO` value; owner is 1–39
+alphanumeric/hyphen characters with alphanumeric ends, and repository is 1–100
+ASCII alphanumeric/dot/underscore/hyphen characters starting alphanumeric.
+Branch is `main`, `develop` or a full 40-digit hexadecimal commit, normalized
+to lowercase. The manifest and each file URL must use the same case-sensitive
+owner/repository and the fixed
+`https://raw.githubusercontent.com/OWNER/REPO/{commit}/SAFE_PATH` form.
+Arbitrary hosts, ports, credentials, queries, fragments and escaped paths are
+rejected.
+
+Entries use exact `KEY: VALUE` syntax with nonempty, unpadded values. One to 128
+unique file entries are required, including exactly `cfmgr.sh`. Other
+destination keys must be safe relative source paths below `modules/`; each
+component is 1–100 ASCII alphanumeric/dot/underscore/hyphen characters starting
+with an alphanumeric, and the full path is at most 240 characters. Empty, dot
+and dot-dot components, absolute paths, traversal, ancestor/descendant
+collisions, and the reserved `modules/config` and `modules/catalog.txt` paths and their
+descendants are rejected. These keys name repository files, not installed destinations: a
+future owner maps `cfmgr.sh` to the scripts entry and strips the `modules/`
+prefix under the established installed manager directory. A URL's safe source
+path is validated separately and may differ from its destination key.
+
+The parser preserves file-entry order and emits `catalog<TAB>1`,
+`repository<TAB>OWNER<TAB>REPO`, `branch<TAB>REF`, `manifest<TAB>URL`, then
+`file<TAB>DEST<TAB>URL` records and `end<TAB>FILE_COUNT<TAB>BODY_BYTES`; the
+output cap is 65,536 bytes. Invalid invocation returns 2,
+invalid catalog data returns 1, and a valid projection returns 0. Callers must
+verify parser status and exact output framing. This is source selection syntax
+only; it does not read or trust the manifest, verify hashes/completeness, resolve
+a branch or download/write/package anything.
+
+The following is a complete synthetic format example that satisfies the
+parser's grammar. Its example owner/repository and paths are illustrative; it is
+not a published manifest or downloadable package:
 
 ```text
-# main is the default; develop or a full 40-character commit hash is also valid.
+catalog: 1
+repository: https://github.com/ExampleOwner/ExampleRepo
 branch: main
-lib/common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/modules/lib/common.sh
+manifest: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/manifest.txt
+cfmgr.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/cfmgr.sh
+modules/lib/common.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/modules/lib/common.sh
 ```
 
-`{commit}` is replaced by the validated snapshot hash. Keep fork entries in one
-repository and use that same placeholder so every module comes from one immutable
-snapshot. Preserve existing catalog bytes on developer checkouts according to the
-[architecture contract](architecture.md#-modules-and-forks). The example is not a
-complete package manifest or an available install/update workflow; detailed
-implementation gates remain in [PLAN.md](../PLAN.md).
+The focused D1 parser checks passed 54 tests with two explicit missing-BusyBox
+skips in 6.38s; the slowest case took 1.77s. Source `4fd962d` also passes the full
+serial local gate: 1,812 tests with 36 explicit platform skips in 688.43s. Its
+exact Linux/BusyBox gate remains pending, so 45% remains the accepted checkpoint. Future developer-mode
+branch/commit changes must preserve existing router catalog bytes; default
+catalog acquisition remains limited to a genuinely missing file. See the
+[architecture contract](architecture.md#-modules-and-forks) and [PLAN.md](../PLAN.md).
 
 ## 🧭 Compatibility and documentation
 

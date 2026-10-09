@@ -278,6 +278,14 @@ It passes in 8.86s; the full Linux/BusyBox suite passes all 1,792 tests with no
 skips. This establishes the controlled host composition, while Merlin router,
 ARM32 ABI, installed opkg provenance and firmware acceptance remain unproved.
 
+The 46% candidate adds standalone AWK parsers for a small config-header
+projection and source-catalog grammar. Focused parser tests pass; two local
+BusyBox representatives are explicitly skipped when BusyBox is unavailable.
+No matching Merlin awk behavior or complete config/catalog runtime path is
+claimed. The full local gate passes 1,812 tests with 36 explicit platform skips
+in 688.43s; exact Linux/BusyBox validation remains pending. The accepted 45% worker gate remains the latest runtime-composition
+evidence.
+
 ## 🧩 Qualify each feature separately
 
 | Feature | Required capability | Current boundary |
@@ -286,6 +294,7 @@ ARM32 ABI, installed opkg provenance and firmware acceptance remain unproved.
 | Current storage-observation profile | Inherited descriptor mount IDs, native numeric device listing and bounded hexdump; dynamic-revision ext2/ext3/ext4 primary superblock | Read-only foundation only. Other filesystem profiles, writability and storage-loss containment remain pending. |
 | Integrity verification | Required `coreutils-sha256sum`; native OpenSSL retained for bootstrap and edge fallback | Both produced the same synthetic digest on the current router. Fallback does not waive failed required-package installation. |
 | Source-only dependency worker | Native process-group and lock/deadline behavior, retained storage/root and fixed `rmdir` lookup | Accepted 45% host/Linux composition; no operational entry wiring or Merlin compatibility is claimed. |
+| Config-header/catalog parsers | AWK, bounded immutable input and exact status/ledger checks by a future caller | 46% data-format candidate only; no integrated reader, manifest trust or Merlin runtime proof. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
 | Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |

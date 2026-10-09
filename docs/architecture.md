@@ -39,7 +39,8 @@ flowchart LR
 | --- | --- | --- |
 | `cfmgr.sh` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
-| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON framing | Libraries/parsers only; no feature startup or provider calls |
+| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
+| `modules/lib/config_header.awk`, `modules/lib/catalog.awk` | Bounded config-header projection and source-catalog grammar | Source-only parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes the finite `rmdir` prerequisite | Internal callbacks; no operational package execution or CLI integration; capture allowlist is unchanged |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
@@ -95,11 +96,13 @@ Repository folders do not change Merlin's installed hook destinations.
 
 Loading and dependencies stay explicit, and sourcing a shared shell library
 only defines its functions. A new module also needs focused behavior tests,
-current documentation and, once distribution is implemented, entries in the
-same verified package manifest. Nested paths such as `lib/common.sh` must stay
-relative to the installed manager directory and retain traversal, duplicate,
-hash and generation checks. The current CLI diagram above shows implemented
-loading; this extension pattern guides the future menu/setup integration.
+current documentation and, once distribution is implemented, an entry in the
+verified package manifest. Catalog source keys such as `modules/lib/common.sh`
+map later to `lib/common.sh` below the installed manager directory; `cfmgr.sh`
+maps to the installed script entry. The standalone catalog parser checks safe
+source-relative keys, while installer mapping, hashes and generation ownership
+remain future work. The current CLI diagram above shows implemented loading;
+this extension pattern guides future menu/setup integration.
 
 ## 🗂️ Storage and authority
 
@@ -533,6 +536,12 @@ marker release and the still-held lock. The full local check and all 1,792
 Linux/BusyBox tests pass; this remains host evidence, with router acceptance
 and operational entry paths still pending.
 
+The 46% candidate adds the standalone `config_header.awk` and `catalog.awk`
+parsers with [data-format contracts](development.md#-module-catalog-and-forks).
+Their focused checks and full local gate pass: 1,812 tests with 36 explicit
+platform skips in 688.43s. Exact Linux/BusyBox validation remains pending; no
+integrated config reader, manifest trust or catalog acquisition path is implemented.
+
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
 inputs are `RAMROOT`, `GUARD`,
@@ -792,15 +801,21 @@ or prove Entware ABI or Merlin runtime acceptance.
 
 ## 📦 Modules and forks
 
-**Planned distribution contract; config generation, catalog downloads and updates are not
-implemented yet.** Modules remain readable source files. Repository-root
-`catalog.txt` is downloaded to `/jffs/addons/CFMgr.d/catalog.txt` from the selected
-repository snapshot. Its shipped selector defaults to `main`; developers can
-manually select `develop` or a full commit hash in the separate
-`/jffs/addons/CFMgr.d/catalog.txt` file. The developer flag remains in `config`.
-Resolve a branch once, then acquire one immutable repository snapshot with its
-manifest and hashes. Never combine newer per-file fallbacks
-or execute catalog contents as shell code.
+**Planned distribution contract.** The standalone config-header and catalog
+parsers exist, but there is no integrated config reader/writer/generator,
+manifest verifier, downloader, updater or installed-package mapper. No catalog
+is shipped until a real manifest exists. `catalog.awk` checks candidate
+catalog syntax and safe source keys; it does not establish manifest trust,
+hashes or package completeness. Modules remain readable source files.
+
+When distribution is implemented, repository-root `catalog.txt` will be
+acquired from the selected repository snapshot and stored at
+`/jffs/addons/CFMgr.d/catalog.txt`. Its shipped selector is planned to default
+to `main`; developers can select `develop` or a full commit hash in the separate
+router catalog. The developer flag remains in `config`. Resolve a branch once,
+then acquire one immutable repository snapshot with its manifest and hashes.
+Never combine newer per-file fallbacks or execute catalog contents as shell
+code.
 
 The **developer flag** defaults to `false`. When `true`, branch/commit switches,
 updates and force reinstalls preserve the existing router `catalog.txt` unchanged,

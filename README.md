@@ -16,7 +16,8 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Core foundations | Complete | Parsing, storage checks and managed workspaces |
 | Worker safety foundations | Complete | Process deadlines and read-only workspaces |
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
-| Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring next |
+| Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
+| Settings and module catalog | In progress | Internal format checks; file handling and installation pending |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -34,13 +35,15 @@ Entware `opkg --version` response. The source-only
 reinstall backend inside an already admitted native root; it is not wired to an
 operational CLI, menu or installer. The accepted 45% checkpoint includes a
 source-only serialized dependency worker and passes the full local and
-Linux/BusyBox checks, including all eleven kernel scenarios. The worker is not
-wired to a CLI, scheduler, installer or readiness flow. See [PLAN.md](PLAN.md)
-for exact results and current progress. These
-synthetic host/Linux checks do not establish installed-opkg provenance or
-Merlin acceptance. Live router acceptance and operational feature integration
-remain pending, and there is no installable manager yet. Routine Entware
-upgrades remain user-managed; normal repair installs only missing or unusable
+Linux/BusyBox checks, including all eleven kernel scenarios. Source-only
+configuration-header and catalog parsers are in the 46% candidate; full local
+checks pass and exact Linux/BusyBox validation is pending. These parsers do not provide an integrated
+config reader, catalog trust or package-download workflow, and no catalog is
+shipped. See [PLAN.md](PLAN.md) for exact results and progress. Synthetic
+host/Linux checks do not establish installed-opkg provenance or Merlin
+acceptance. Live router acceptance and operational feature integration remain
+pending, and there is no installable manager yet. Routine Entware upgrades
+remain user-managed; normal repair installs only missing or unusable
 requirements.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
