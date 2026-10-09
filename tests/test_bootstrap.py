@@ -59,6 +59,8 @@ if mode == "opkg":
         },
     )
     if args == ["update"]:
+        if settings.get("update_status") is not None:
+            sys.exit(int(settings["update_status"]))
         marker = Path(settings["update_once_marker"])
         if settings.get("fail_update") or (
             settings.get("fail_update_once") and not marker.exists()
@@ -66,11 +68,17 @@ if mode == "opkg":
             marker.write_text("failed\n")
             sys.exit(7)
         sys.exit(0)
-    if not args or args[0] != "install":
+    if args[:2] == ["--force-reinstall", "install"]:
+        packages = args[2:]
+    elif args and args[0] == "install":
+        packages = args[1:]
+    else:
         sys.exit(40)
     if settings.get("fail_install"):
-        sys.exit(8)
-    for package in args[1:]:
+        sys.exit(int(settings.get("install_status", 8)))
+    if settings.get("install_status") is not None:
+        sys.exit(int(settings["install_status"]))
+    for package in packages:
         tool = settings["packages"].get(package)
         if tool is None:
             sys.exit(41)
@@ -223,6 +231,16 @@ class OpkgFixture:
         )
         return self.invoke(body, shell=shell)
 
+    def reinstall_call(
+        self, scope: str = "shared", lock_provider: str = "native", *, shell: str | None = None
+    ):
+        body = (
+            f"cfmgr_bootstrap_reinstall_test {shlex.quote(str(self.root))} "
+            f"{shlex.quote(scope)} {shlex.quote(lock_provider)}; status=$?\n"
+            'printf "RESULT\\t%s\\n" "$status"\n'
+        )
+        return self.invoke(body, shell=shell)
+
 
 def assert_result(result: ShellResult, code: int) -> None:
     assert result.returncode == 0, result
@@ -353,6 +371,139 @@ def test_install_failure_stops_and_post_install_probe_failure_is_not_success(
     assert not (post_probe.bin / "sha256sum").exists()
 
 
+@pytest.mark.parametrize(
+    ("scope", "lock_provider", "packages", "tools"),
+    [
+        ("shared", "native", COMMON, ("jq", "timeout", "sha256sum")),
+        (
+            "tunnel",
+            "native",
+            (*COMMON, "bind-dig"),
+            ("jq", "timeout", "sha256sum", "dig"),
+        ),
+        (
+            "shared",
+            "entware",
+            (*COMMON, "flock"),
+            ("jq", "timeout", "sha256sum", "flock"),
+        ),
+        (
+            "tunnel",
+            "entware",
+            (*COMMON, "bind-dig", "flock"),
+            ("jq", "timeout", "sha256sum", "dig", "flock"),
+        ),
+    ],
+    ids=["shared-native", "tunnel-native", "shared-entware", "tunnel-entware"],
+)
+@pytest.mark.matrix("V74", evidence="host")
+def test_explicit_reinstall_forces_every_selected_package_and_post_probe(
+    router: RouterHarness,
+    scope: str,
+    lock_provider: str,
+    packages: tuple[str, ...],
+    tools: tuple[str, ...],
+) -> None:
+    fixture = OpkgFixture(router)
+    fixture.seed(*tools)
+
+    assert_result(fixture.reinstall_call(scope, lock_provider), 0)
+    assert fixture.opkg_calls() == [
+        ["update"],
+        ["--force-reinstall", "install", *packages],
+    ]
+    assert [row[0] for row in fixture.probe_calls()] == list(tools)
+
+
+@pytest.mark.parametrize(
+    ("operation", "tool_status", "expected"),
+    [
+        ("update", 7, 1),
+        ("update", 129, 129),
+        ("install", 8, 1),
+        ("install", 129, 129),
+    ],
+    ids=["update-failure", "update-uncertain", "install-failure", "install-uncertain"],
+)
+@pytest.mark.matrix("V74", evidence="host")
+def test_reinstall_stops_at_failed_or_uncertain_opkg_step(
+    router: RouterHarness, operation: str, tool_status: int, expected: int
+) -> None:
+    fixture = OpkgFixture(router)
+    setting = "update_status" if operation == "update" else "install_status"
+    fixture.settings[setting] = tool_status
+    fixture.save()
+
+    assert_result(fixture.reinstall_call(), expected)
+    expected_calls = [["update"]]
+    if operation == "install":
+        expected_calls.append(["--force-reinstall", "install", *COMMON])
+    assert fixture.opkg_calls() == expected_calls
+    assert fixture.probe_calls() == []
+
+
+@pytest.mark.parametrize(
+    ("fault", "expected"),
+    [("ordinary", 1), ("uncertain", 129)],
+    ids=["post-probe-failure", "post-probe-uncertain"],
+)
+@pytest.mark.matrix("V74", evidence="host")
+def test_reinstall_requires_every_selected_post_probe(
+    router: RouterHarness, fault: str, expected: int
+) -> None:
+    fixture = OpkgFixture(router)
+    if fault == "ordinary":
+        fixture.settings["bad_capabilities"] = {"sha256sum": "fail"}
+    else:
+        fixture.settings["bad_capabilities"] = {"timeout": "uncertain"}
+    fixture.save()
+
+    assert_result(fixture.reinstall_call(), expected)
+    assert fixture.opkg_calls() == [
+        ["update"],
+        ["--force-reinstall", "install", *COMMON],
+    ]
+    probes = [row[0] for row in fixture.probe_calls()]
+    assert probes == (["jq", "timeout", "sha256sum"] if fault == "ordinary" else ["jq", "timeout"])
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_reinstall_api_validation_precedes_opkg(router: RouterHarness) -> None:
+    fixture = OpkgFixture(router)
+    missing_root = shlex.quote(str(fixture.root / "missing"))
+    body = (
+        "cfmgr_bootstrap_reinstall; a=$?\n"
+        "cfmgr_bootstrap_reinstall shared native extra; b=$?\n"
+        f"cfmgr_bootstrap_reinstall_test {shlex.quote(str(fixture.root))} shared; c=$?\n"
+        f"cfmgr_bootstrap_reinstall_test {shlex.quote(str(fixture.root))} invalid native; d=$?\n"
+        f"cfmgr_bootstrap_reinstall_test {shlex.quote(str(fixture.root))} shared invalid; e=$?\n"
+        "cfmgr_bootstrap_reinstall_test relative/root shared native; f=$?\n"
+        f"cfmgr_bootstrap_reinstall_test {missing_root} shared native; g=$?\n"
+        'printf "RESULT\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" '
+        '"$a" "$b" "$c" "$d" "$e" "$f" "$g"\n'
+    )
+    result = fixture.invoke(body)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "RESULT\t2\t2\t2\t2\t2\t2\t1\n"
+    assert fixture.opkg_calls() == []
+    assert fixture.probe_calls() == []
+
+
+@pytest.mark.matrix("V74", evidence="host")
+def test_production_reinstall_uses_literal_opt(router: RouterHarness) -> None:
+    fixture = OpkgFixture(router)
+    body = (
+        "_cfmgr_bootstrap_reinstall_run() { "
+        'printf "CALL\\t%s\\t%s\\t%s\\n" "$1" "$2" "$3"; }\n'
+        "cfmgr_bootstrap_reinstall tunnel entware; status=$?\n"
+        'printf "RESULT\\t%s\\n" "$status"\n'
+    )
+    result = fixture.invoke(body)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "CALL\t/opt\ttunnel\tentware\nRESULT\t0\n"
+    assert fixture.opkg_calls() == []
+
+
 @pytest.mark.matrix("V74", evidence="host")
 def test_native_probe_uncertainty_returns_129_without_package_mutation(
     router: RouterHarness,
@@ -452,5 +603,18 @@ def test_actual_busybox_shell_installs_only_shared_native_dependencies(
     fixture = OpkgFixture(busybox_router, busybox=busybox_router.busybox)
 
     assert_result(fixture.call("shared", "native", shell=busybox_router.busybox), 0)
-    assert fixture.opkg_calls() == [["update"], ["install", *COMMON]]
-    assert [row[0] for row in fixture.probe_calls()] == ["jq", "timeout", "sha256sum"]
+    assert_result(fixture.reinstall_call("shared", "native", shell=busybox_router.busybox), 0)
+    assert fixture.opkg_calls() == [
+        ["update"],
+        ["install", *COMMON],
+        ["update"],
+        ["--force-reinstall", "install", *COMMON],
+    ]
+    assert [row[0] for row in fixture.probe_calls()] == [
+        "jq",
+        "timeout",
+        "sha256sum",
+        "jq",
+        "timeout",
+        "sha256sum",
+    ]

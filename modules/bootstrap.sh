@@ -20,6 +20,18 @@ cfmgr_bootstrap_dependencies_test() {
 	_cfmgr_bootstrap_dependencies_run "$@"
 }
 
+# Explicit synchronous reinstall of every selected direct capability package.
+cfmgr_bootstrap_reinstall() {
+	[ "$#" -eq 2 ] || return 2
+	_cfmgr_bootstrap_reinstall_run /opt "$1" "$2"
+}
+
+# Explicit trusted host fixture only; production never reads an ambient root.
+cfmgr_bootstrap_reinstall_test() {
+	[ "$#" -eq 3 ] || return 2
+	_cfmgr_bootstrap_reinstall_run "$@"
+}
+
 _cfmgr_bootstrap_dependencies_run() (
 	trap - 0 HUP INT TERM
 	set +x
@@ -27,38 +39,8 @@ _cfmgr_bootstrap_dependencies_run() (
 	set +u
 	set -f
 	umask 077
-	LC_ALL=C
-	export LC_ALL
-	IFS=' 	'
-	IFS="${IFS}
-"
 	[ "$#" -eq 3 ] || return 2
-	_bootstrap_root=$1
-	_bootstrap_scope=$2
-	_bootstrap_lock=$3
-	case $_bootstrap_scope in shared | tunnel) ;; *) return 2 ;; esac
-	case $_bootstrap_lock in native | entware) ;; *) return 2 ;; esac
-	[ "${#_bootstrap_root}" -le 4096 ] || return 2
-	case $_bootstrap_root in /*) ;; *) return 2 ;; esac
-	case $_bootstrap_root in / | */ | *//* | */./* | */../* | */. | */.. | *[[:cntrl:]]*) return 2 ;; esac
-	PATH=/sbin:/bin:/usr/sbin:/usr/bin:$_bootstrap_root/bin:$_bootstrap_root/sbin
-	export PATH
-	unset ENV BASH_ENV CDPATH TZ
-	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
-	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
-	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
-	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
-	unset OPENSSL_CONF OPENSSL_CONF_INCLUDE OPENSSL_ENGINES OPENSSL_MODULES
-	unset OPKG_CONF_DIR OPKG_OFFLINE_ROOT OPKG_ROOT OPKG_INSTROOT OPKG_TMP_DIR
-	unset IPKG_CONF_DIR IPKG_OFFLINE_ROOT IPKG_INSTROOT IPKG_TMP_DIR DESTDIR
-	unset http_proxy https_proxy ftp_proxy all_proxy no_proxy
-	unset HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY NO_PROXY
-	unset CURL_HOME CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR WGETRC
-	_bootstrap_opkg=$_bootstrap_root/bin/opkg
-	[ -d "$_bootstrap_root" ] && [ -x "$_bootstrap_opkg" ] && [ ! -d "$_bootstrap_opkg" ] || return 1
-	_bootstrap_capabilities='jq timeout sha256sum'
-	[ "$_bootstrap_scope" != tunnel ] || _bootstrap_capabilities="$_bootstrap_capabilities dig"
-	[ "$_bootstrap_lock" != entware ] || _bootstrap_capabilities="$_bootstrap_capabilities flock"
+	_cfmgr_bootstrap_prepare "$@" || return "$?"
 	if _cfmgr_bootstrap_dependencies_check; then return 0; else
 		_bootstrap_status=$?
 		[ "$_bootstrap_status" -eq 1 ] || return 129
@@ -84,6 +66,91 @@ _cfmgr_bootstrap_dependencies_run() (
 	fi
 ) >/dev/null 2>&1
 
+_cfmgr_bootstrap_reinstall_run() (
+	trap - 0 HUP INT TERM
+	set +x
+	set +e
+	set +u
+	set -f
+	umask 077
+	[ "$#" -eq 3 ] || return 2
+	_cfmgr_bootstrap_prepare "$@" || return "$?"
+	if "$_bootstrap_opkg" update; then :; else
+		_bootstrap_status=$?
+		[ "$_bootstrap_status" -le 128 ] && return 1
+		return 129
+	fi
+	# The selected direct packages come from the same fixed capability map used
+	# by normal repair. This is an explicit reinstall, so no pre-probe can skip it.
+	# shellcheck disable=SC2086
+	set -- $_bootstrap_packages
+	if "$_bootstrap_opkg" --force-reinstall install "$@"; then :; else
+		_bootstrap_status=$?
+		[ "$_bootstrap_status" -le 128 ] && return 1
+		return 129
+	fi
+	if _cfmgr_bootstrap_dependencies_check; then return 0; else
+		_bootstrap_status=$?
+		[ "$_bootstrap_status" -eq 1 ] && return 1
+		return 129
+	fi
+) >/dev/null 2>&1
+
+_cfmgr_bootstrap_prepare() {
+	[ "$#" -eq 3 ] || return 2
+	LC_ALL=C
+	export LC_ALL
+	_bootstrap_root=$1
+	_bootstrap_scope=$2
+	_bootstrap_lock=$3
+	case $_bootstrap_scope in shared | tunnel) ;; *) return 2 ;; esac
+	case $_bootstrap_lock in native | entware) ;; *) return 2 ;; esac
+	[ "${#_bootstrap_root}" -le 4096 ] || return 2
+	case $_bootstrap_root in /*) ;; *) return 2 ;; esac
+	case $_bootstrap_root in / | */ | *//* | */./* | */../* | */. | */.. | *[[:cntrl:]]*) return 2 ;; esac
+	IFS=' 	'
+	IFS="${IFS}
+"
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin:$_bootstrap_root/bin:$_bootstrap_root/sbin
+	export PATH
+	unset ENV BASH_ENV CDPATH TZ
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
+	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
+	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
+	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
+	unset OPENSSL_CONF OPENSSL_CONF_INCLUDE OPENSSL_ENGINES OPENSSL_MODULES
+	unset OPKG_CONF_DIR OPKG_OFFLINE_ROOT OPKG_ROOT OPKG_INSTROOT OPKG_TMP_DIR
+	unset IPKG_CONF_DIR IPKG_OFFLINE_ROOT IPKG_INSTROOT IPKG_TMP_DIR DESTDIR
+	unset http_proxy https_proxy ftp_proxy all_proxy no_proxy
+	unset HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY NO_PROXY
+	unset CURL_HOME CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR WGETRC
+	_bootstrap_opkg=$_bootstrap_root/bin/opkg
+	[ -d "$_bootstrap_root" ] && [ -x "$_bootstrap_opkg" ] && [ ! -d "$_bootstrap_opkg" ] || return 1
+	_bootstrap_capabilities='jq timeout sha256sum'
+	[ "$_bootstrap_scope" != tunnel ] || _bootstrap_capabilities="$_bootstrap_capabilities dig"
+	[ "$_bootstrap_lock" != entware ] || _bootstrap_capabilities="$_bootstrap_capabilities flock"
+	_cfmgr_bootstrap_selected_packages
+}
+
+_cfmgr_bootstrap_selected_packages() {
+	_bootstrap_packages=
+	for _bootstrap_capability in $_bootstrap_capabilities; do
+		_cfmgr_bootstrap_package "$_bootstrap_capability" || return "$?"
+		_bootstrap_packages="$_bootstrap_packages $_bootstrap_package"
+	done
+}
+
+_cfmgr_bootstrap_package() {
+	case $1 in
+	jq) _bootstrap_package=jq ;;
+	timeout) _bootstrap_package=coreutils-timeout ;;
+	sha256sum) _bootstrap_package=coreutils-sha256sum ;;
+	dig) _bootstrap_package=bind-dig ;;
+	flock) _bootstrap_package=flock ;;
+	*) return 2 ;;
+	esac
+}
+
 _cfmgr_bootstrap_dependencies_check() {
 	_bootstrap_missing=
 	for _bootstrap_capability in $_bootstrap_capabilities; do
@@ -91,13 +158,7 @@ _cfmgr_bootstrap_dependencies_check() {
 			_bootstrap_status=$?
 			[ "$_bootstrap_status" -eq 1 ] || return 129
 		fi
-		case $_bootstrap_capability in
-		jq) _bootstrap_package=jq ;;
-		timeout) _bootstrap_package=coreutils-timeout ;;
-		sha256sum) _bootstrap_package=coreutils-sha256sum ;;
-		dig) _bootstrap_package=bind-dig ;;
-		flock) _bootstrap_package=flock ;;
-		esac
+		_cfmgr_bootstrap_package "$_bootstrap_capability" || return "$?"
 		_bootstrap_missing="$_bootstrap_missing $_bootstrap_package"
 	done
 	[ -z "$_bootstrap_missing" ]
