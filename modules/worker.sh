@@ -328,7 +328,9 @@ _cfmgr_worker_deadline_owner() (
 	fi
 	("$_worker_deadline_callback" "$@")
 	_worker_deadline_status=$?
-	[ "$_worker_deadline_status" -le 128 ] && [ "$_worker_deadline_interrupted" -eq 0 ] || _cfmgr_worker_deadline_cancel
+	if [ "$_worker_deadline_status" -le 128 ] && [ "$_worker_deadline_interrupted" -eq 0 ]; then :; else
+		_cfmgr_worker_deadline_cancel
+	fi
 	_cfmgr_worker_deadline_before_cutoff || _cfmgr_worker_deadline_cancel
 	"$_worker_deadline_mkdir" -m 700 "$_worker_deadline_state/done" || _cfmgr_worker_deadline_cancel
 	_cfmgr_worker_deadline_poll ack || _cfmgr_worker_deadline_cancel
