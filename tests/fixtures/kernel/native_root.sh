@@ -1,6 +1,6 @@
 #!/bin/sh
 # Namespace-only native RO views/extended data, tmp/HOME, Opt and fixed devices.
-# Fixed native shell and static opkg stand-in; no real opkg or router execution.
+# Fixed native shell/static opkg/backend stand-ins; no real opkg/router execution.
 # IO supplies checked ledger/framing state inside its isolated callbacks.
 # shellcheck disable=SC2154
 set -eu
@@ -23,6 +23,8 @@ native_fixture_prepare native-root
 # Trusted static stand-in only in this scenario; no installed opkg is executed.
 "$bb" mkdir -m 700 "$opt_source/bin"
 "$bb" cp "$work/opkg-probe" "$opt_source/bin/opkg"
+"$bb" ln -s opkg "$opt_source/bin/timeout"
+"$bb" ln -s opkg "$opt_source/bin/sha256sum"
 opkg_version='80503d94e356476250adaf1f669ee955ec26de76 (2025-11-05)'
 
 observe_native_data() {
@@ -156,6 +158,10 @@ observe_native_root() {
 	# FD3..63 outside/inside, then exec genuine chroot/BusyBox applets unchanged.
 	cfmgr_native_shell_probe "$observer_root" || return "$?"
 	cfmgr_native_opkg_probe "$observer_root" "$opkg_version" || return "$?"
+	# Actual bundled repair observes jq missing, runs exact ordinary opkg calls,
+	# and post-checks a newly installed executable through retained writable Opt.
+	cfmgr_native_dependencies "$observer_root" "$repo/modules/helpers/bootstrap.sh" repair shared native || return "$?"
+	[ "$("$bb" wc -c <"$observer_root/opt/dependency-package-data")" -eq 32768 ] || return 129
 	"$bb" test "$observer_root" -ef /proc/self/fd/6 || return 129
 	"$bb" test "$opt_source" -ef /proc/self/fd/9 || return 129
 	return 7
@@ -279,6 +285,14 @@ fi
 "$bb" printf 'opkg version %s\n' "$opkg_version" >"$guard/opkg-version-expected"
 "$bb" cmp -s "$guard/opkg-version-expected" "$guard/execution/opkg-version/stdout" || fail 'opkg exact response'
 [ ! -s "$guard/execution/opkg-version/stderr" ] || fail 'opkg version errors'
+"$bb" test -d "$guard/execution/dependencies/complete" || fail 'dependency handoff completion'
+[ "$("$bb" cat "$guard/execution/dependencies/status")" = 'dependencies repair shared native 0' ] || fail 'dependency status'
+"$bb" cmp -s "$repo/modules/helpers/bootstrap.sh" "$guard/execution/dependencies/bootstrap" || fail 'exact bundled bootstrap copy'
+"$bb" printf 'timeout\nsha256sum\nupdate\ninstall jq\njq\ntimeout\nsha256sum\n' >"$guard/dependency-commands-expected"
+"$bb" cmp -s "$guard/dependency-commands-expected" "$opt_source/dependency-commands" || fail 'ordinary update/install and post-check order'
+"$bb" dd if=/dev/zero of="$guard/dependency-package-expected" bs=4096 count=8 2>/dev/null
+"$bb" cmp -s "$guard/dependency-package-expected" "$opt_source/dependency-package-data" || fail 'unclipped 32KiB package write'
+"$bb" test -x "$opt_source/bin/jq" || fail 'installed jq stand-in'
 _cfmgr_isolation_root_empty "$guard/opt-fallback-checked" || fail 'missing immediate RO Opt fallback/order witness'
 if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8; then :; else
 	fail 'caller descriptors'
@@ -355,4 +369,4 @@ cfmgr_io_test "$ram" "$tools" workspace tree_clean "$opt_source" || fail 'retain
 "$bb" umount -n "$opt_source" || fail 'Opt source mount cleanup'
 "$bb" umount -n "$native_source" || fail 'source mount cleanup'
 "$bb" umount -n "$ram" || fail 'RAM mount cleanup'
-printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, genuine fixed native shell/loader with instrumented FD3..63 closure, synthetic static opkg --version/Opt handoff, busy references, nodev revocation and Opt-first reverse teardown passed\n'
+printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, genuine fixed native shell/loader with instrumented FD3..63 closure, synthetic static opkg version/repair and 32KiB Opt package write, busy references, nodev revocation and Opt-first reverse teardown passed\n'

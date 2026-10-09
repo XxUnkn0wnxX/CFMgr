@@ -16,6 +16,7 @@ IO = ROOT / "modules/lib/io.sh"
 NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
 ISOLATION = ROOT / "modules/lib/isolation.sh"
 SOURCE = ROOT / "modules/lib/native_exec.sh"
+NATIVE_DEPENDENCIES = ROOT / "modules/lib/native_dependencies.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
 
@@ -104,7 +105,7 @@ def _fd_is_directory(fd):
 fixture_root = Path({str(self.router.root)!r})
 actual_busybox = {str(self.actual_busybox) if self.actual_busybox else None!r}
 actual_opkg = fixture_root / "work/native-opkg"
-root, shell, option, script = sys.argv[1:]
+root, shell, option, script, *child_args = sys.argv[1:]
 record = {{
     "argv": sys.argv[1:],
     # The inert shell wrapper adds its own fixed host metadata before Python.
@@ -144,10 +145,17 @@ if mode.startswith("status-"):
     raise SystemExit(int(mode[7:]))
 
 pass_fds = (6,) if _fd_open(6) else ()
-if actual_busybox and mode == "busybox":
+if actual_busybox and (mode == "busybox" or mode.startswith("dependencies")):
     adapted = script.replace("/bin/busybox", shlex.quote(actual_busybox))
     adapted = adapted.replace("/tmp/cfmgr-home", "/tmp")
-    command = [actual_busybox, "sh", "-c", adapted]
+    if mode.startswith("dependencies"):
+        opt_root = fixture_root.joinpath("work/native-dependencies-opt-root").read_text()
+        private_root = Path(root) / "tmp/cfmgr-dependencies"
+        adapted = adapted.replace("/opt", shlex.quote(opt_root))
+        adapted = adapted.replace("/tmp/cfmgr-dependencies", shlex.quote(str(private_root)))
+        if mode == "dependencies-exit-mismatch":
+            adapted = adapted.replace('exit "$_native_dependencies_status"', "exit 0", 1)
+    command = [actual_busybox, "sh", "-c", adapted, *child_args]
 elif mode == "opkg":
     busybox = fixture_root.joinpath("work/native-shell-busybox.py")
     if actual_busybox:
@@ -156,19 +164,41 @@ elif mode == "opkg":
         adapted = script.replace("/bin/busybox", shlex.quote(str(busybox)))
     adapted = adapted.replace("/tmp/cfmgr-home", "/tmp")
     adapted = adapted.replace("/opt/bin/opkg", shlex.quote(str(actual_opkg)))
-    command = ([actual_busybox, "sh", "-c", adapted] if actual_busybox
-               else ["/bin/sh", "-c", adapted])
+    command = (
+        [actual_busybox, "sh", "-c", adapted, *child_args]
+        if actual_busybox
+        else ["/bin/sh", "-c", adapted, *child_args]
+    )
+elif mode.startswith("dependencies"):
+    busybox = fixture_root.joinpath("work/native-shell-busybox.py")
+    opt_root = fixture_root.joinpath("work/native-dependencies-opt-root").read_text()
+    private_root = Path(root) / "tmp/cfmgr-dependencies"
+    adapted = script.replace("/bin/busybox", shlex.quote(str(busybox)))
+    adapted = adapted.replace("/opt", shlex.quote(opt_root))
+    adapted = adapted.replace("/tmp/cfmgr-dependencies", shlex.quote(str(private_root)))
+    if mode == "dependencies-exit-mismatch":
+        adapted = adapted.replace('exit "$_native_dependencies_status"', "exit 0", 1)
+    command = ["/bin/sh", "-c", adapted, *child_args]
 else:
     busybox = fixture_root.joinpath("work/native-shell-busybox.py")
     adapted = script.replace("/bin/busybox", shlex.quote(str(busybox)))
-    command = ["/bin/sh", "-c", adapted]
+    command = ["/bin/sh", "-c", adapted, *child_args]
 result = subprocess.run(command, check=False, pass_fds=pass_fds)
+if mode == "dependencies-result-malformed":
+    private_root.joinpath("result").write_bytes(b"CFMGR_DEPENDENCIES_V1 X\n")
+elif mode == "dependencies-result-oversized":
+    private_root.joinpath("result").write_bytes(b"x" * 1024)
+elif mode == "dependencies-result-symlink":
+    result_path = private_root.joinpath("result")
+    result_path.unlink()
+    result_path.symlink_to("/dev/null")
 raise SystemExit(result.returncode)
 """
         self._write_python_tool("work/native-shell-chroot", script)
         self.router.write("work/native-shell-mode", self.mode + "\n")
         busybox_script = rf"""import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -180,12 +210,15 @@ def _fd_open(fd):
         return False
 
 fixture_root = Path({str(self.router.root)!r})
+mode = fixture_root.joinpath("work/native-shell-mode").read_text().strip()
 record = {{
     "argv": sys.argv[1:],
     "fd6_open": _fd_open(6),
 }}
 with fixture_root.joinpath("work/native-shell-busybox-witness.jsonl").open("a") as stream:
     stream.write(json.dumps(record) + "\n")
+if mode == "dependencies-writer-fail" and sys.argv[1:2] == ["printf"]:
+    raise SystemExit(7)
 if sys.argv[1:] in (["test", "-d", "/tmp/cfmgr-home"], ["test", "-d", "/tmp"]):
     raise SystemExit(0)
 if sys.argv[1:] == ["test", "-c", "/dev/null"]:
@@ -193,6 +226,8 @@ if sys.argv[1:] == ["test", "-c", "/dev/null"]:
 if sys.argv[1:] == ["printf", "CFMGR_NATIVE_SHELL_V1\\n"]:
     sys.stdout.buffer.write(b"CFMGR_NATIVE_SHELL_V1\n")
     raise SystemExit(0)
+if sys.argv[1:2] == ["printf"]:
+    raise SystemExit(subprocess.call(["/usr/bin/printf", *sys.argv[2:]]))
 raise SystemExit(91)
 """
         self._write_python_tool("work/native-shell-busybox.py", busybox_script)
@@ -255,6 +290,17 @@ raise SystemExit(91)
             invocation = invocation.replace(
                 'cfmgr_native_shell_probe "$root" "$@"; result=$?',
                 'cfmgr_native_opkg_probe "$root" "$@"; result=$?',
+                1,
+            )
+        elif probe == "dependencies":
+            invocation = invocation.replace(
+                f". {shlex.quote(str(SOURCE))}\n",
+                f". {shlex.quote(str(SOURCE))}\n. {shlex.quote(str(NATIVE_DEPENDENCIES))}\n",
+                1,
+            )
+            invocation = invocation.replace(
+                'cfmgr_native_shell_probe "$root" "$@"; result=$?',
+                'cfmgr_native_dependencies "$root" "$@"; result=$?',
                 1,
             )
         elif probe == "both":

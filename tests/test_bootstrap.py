@@ -39,6 +39,16 @@ def record(path, value):
 
 if mode == "opkg":
     record(settings["opkg_log"], args)
+    if settings.get("fd_witness"):
+        open_fds = []
+        for fd in range(3, 64):
+            try:
+                os.fstat(fd)
+            except OSError:
+                continue
+            open_fds.append(fd)
+        with Path(settings["fd_witness"]).open("a") as stream:
+            stream.write(json.dumps(open_fds) + "\n")
     record(
         settings["environment_log"],
         {
@@ -104,6 +114,11 @@ if mode == "opkg":
             + ' "$@"\n'
         )
         target.chmod(0o700)
+    payload_size = int(settings.get("payload_size", 0))
+    if payload_size:
+        payload = Path(settings["payload_path"])
+        payload.parent.mkdir(parents=True, exist_ok=True)
+        payload.write_bytes(b"p" * payload_size)
     sys.exit(0)
 
 if mode != "capability":
@@ -157,11 +172,16 @@ else:
 
 class OpkgFixture:
     def __init__(
-        self, router: RouterHarness, *, busybox: Path | None = None, name: str = ""
+        self,
+        router: RouterHarness,
+        *,
+        busybox: Path | None = None,
+        name: str = "",
+        root: Path | None = None,
     ) -> None:
         self.router = router
         suffix = f" {name}" if name else ""
-        self.root = router.path(f"ram/tmp/Entware root{suffix}")
+        self.root = root or router.path(f"ram/tmp/Entware root{suffix}")
         self.root.mkdir(mode=0o700)
         self.bin = self.root / "bin"
         self.bin.mkdir(mode=0o700)
@@ -181,6 +201,9 @@ class OpkgFixture:
             "packages": PACKAGE_TO_TOOL,
             "bad_capabilities": {},
             "skip_install": [],
+            "payload_path": str(self.root / "share/native-dependency-payload"),
+            "payload_size": 0,
+            "fd_witness": None,
         }
         self.save()
         self._write_executable(self.bin / "opkg", "opkg")

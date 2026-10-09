@@ -25,14 +25,7 @@ _cfmgr_native_exec_probe() (
 	set +u
 	set +C
 	set -f
-	PATH=/sbin:/bin:/usr/sbin:/usr/bin
-	LC_ALL=C
-	export PATH LC_ALL
-	unset ENV BASH_ENV CDPATH TZ
-	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
-	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
-	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
-	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
+	_cfmgr_native_exec_environment
 	IFS=' 	'
 	IFS="${IFS}
 "
@@ -67,43 +60,8 @@ exec /opt/bin/opkg --version
 		;;
 	*) return 2 ;;
 	esac
-	[ "${_io_active-}" = 1 ] && [ "${_isolation_mode-}" = root ] &&
-		[ "${_execution_layout-}" = native-devices ] && [ "${_execution_config_extended-}" = 1 ] &&
-		[ "${_entware_root_ready-}" = 1 ] && [ "${_execution_reserved-}" = 1 ] &&
-		[ "${_execution_io_complete-}" = 0 ] && [ "${_isolation_interrupted-}" = 0 ] || return 2
-	case ${_execution_kind-} in
-	production) [ -z "${_isolation_tools-}" ] || return 2 ;;
-	fixture) _cfmgr_isolation_path "${_isolation_tools-}" && [ -d "$_isolation_tools" ] || return 2 ;;
-	*) return 2 ;;
-	esac
-	_native_shell_root=$1
-	for _native_shell_path in "$_native_shell_root" "${_execution_guard-}" "${_isolation_guard-}"; do
-		_cfmgr_isolation_path "$_native_shell_path" && [ "$_native_shell_path" != / ] || return 2
-		_cfmgr_native_config_directory "$_native_shell_path" || return 2
-	done
-	[ "$_native_shell_root" = "${_isolation_tree-}" ] &&
-		[ "$_isolation_guard" = "$_execution_guard/execution" ] &&
-		[ "$_native_shell_root" = "$_isolation_guard/root" ] || return 2
+	_cfmgr_native_exec_context "$1" || return "$?"
 	_native_shell_dir=$_isolation_guard/$_native_shell_label
-	# All executables are fixed native tools or the explicit trusted fixture set.
-	_native_shell_env=$(_cfmgr_native_shell_tool env) || return 1
-	_native_shell_chroot=$(_cfmgr_native_shell_tool chroot) || return 1
-	_native_shell_cat=$(_cfmgr_native_shell_tool cat) || return 1
-	_io_wc=$(_cfmgr_native_shell_tool wc) || return 1
-	_isolation_printf=$(_cfmgr_native_shell_tool printf) || return 1
-	_native_shell_mkdir=$(_cfmgr_native_shell_tool mkdir) || return 1
-	_native_shell_test=$(_cfmgr_native_shell_tool test) || return 1
-	_io_lf='
-'
-	_cfmgr_isolation_read "$_isolation_guard/active" &&
-		[ "$_isolation_text" = "callback$_io_lf" ] || return 2
-	"$_native_shell_test" -d /proc/self/fd/6 &&
-		"$_native_shell_test" "$_native_shell_root" -ef /proc/self/fd/6 || return 2
-	for _native_shell_path in etc/ld.so.cache etc/ld.so.preload; do
-		[ ! -e "$_native_shell_root/$_native_shell_path" ] &&
-			[ ! -L "$_native_shell_root/$_native_shell_path" ] || return 1
-	done
-	[ -f "$_native_shell_root/bin/sh" ] && [ -x "$_native_shell_root/bin/sh" ] || return 1
 	case $_native_shell_mode in
 	shell) _native_shell_path=bin/busybox ;;
 	opkg-version) _native_shell_path=opt/bin/opkg ;;
@@ -148,6 +106,57 @@ exec /opt/bin/opkg --version
 	[ "$_native_shell_status" -eq 0 ] && [ "$_native_shell_err" -eq 0 ] &&
 		[ "$_native_shell_text" = "$_native_shell_expected$_io_lf" ] || return 1
 ) >/dev/null 2>&1
+
+_cfmgr_native_exec_environment() {
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	LC_ALL=C
+	export PATH LC_ALL
+	unset ENV BASH_ENV CDPATH TZ
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
+	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
+	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
+	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
+}
+
+_cfmgr_native_exec_context() {
+	[ "$#" -eq 1 ] || return 2
+	[ "${_io_active-}" = 1 ] && [ "${_isolation_mode-}" = root ] &&
+		[ "${_execution_layout-}" = native-devices ] && [ "${_execution_config_extended-}" = 1 ] &&
+		[ "${_entware_root_ready-}" = 1 ] && [ "${_execution_reserved-}" = 1 ] &&
+		[ "${_execution_io_complete-}" = 0 ] && [ "${_isolation_interrupted-}" = 0 ] || return 2
+	case ${_execution_kind-} in
+	production) [ -z "${_isolation_tools-}" ] || return 2 ;;
+	fixture) _cfmgr_isolation_path "${_isolation_tools-}" && [ -d "$_isolation_tools" ] || return 2 ;;
+	*) return 2 ;;
+	esac
+	_native_shell_root=$1
+	for _native_shell_path in "$_native_shell_root" "${_execution_guard-}" "${_isolation_guard-}"; do
+		_cfmgr_isolation_path "$_native_shell_path" && [ "$_native_shell_path" != / ] || return 2
+		_cfmgr_native_config_directory "$_native_shell_path" || return 2
+	done
+	[ "$_native_shell_root" = "${_isolation_tree-}" ] &&
+		[ "$_isolation_guard" = "$_execution_guard/execution" ] &&
+		[ "$_native_shell_root" = "$_isolation_guard/root" ] || return 2
+	# All executables are fixed native tools or the explicit trusted fixture set.
+	_native_shell_env=$(_cfmgr_native_shell_tool env) || return 1
+	_native_shell_chroot=$(_cfmgr_native_shell_tool chroot) || return 1
+	_native_shell_cat=$(_cfmgr_native_shell_tool cat) || return 1
+	_io_wc=$(_cfmgr_native_shell_tool wc) || return 1
+	_isolation_printf=$(_cfmgr_native_shell_tool printf) || return 1
+	_native_shell_mkdir=$(_cfmgr_native_shell_tool mkdir) || return 1
+	_native_shell_test=$(_cfmgr_native_shell_tool test) || return 1
+	_io_lf='
+'
+	_cfmgr_isolation_read "$_isolation_guard/active" &&
+		[ "$_isolation_text" = "callback$_io_lf" ] || return 2
+	"$_native_shell_test" -d /proc/self/fd/6 &&
+		"$_native_shell_test" "$_native_shell_root" -ef /proc/self/fd/6 || return 2
+	for _native_shell_path in etc/ld.so.cache etc/ld.so.preload; do
+		[ ! -e "$_native_shell_root/$_native_shell_path" ] &&
+			[ ! -L "$_native_shell_root/$_native_shell_path" ] || return 1
+	done
+	[ -f "$_native_shell_root/bin/sh" ] && [ -x "$_native_shell_root/bin/sh" ] || return 1
+}
 
 _cfmgr_native_shell_tool() (
 	case $1 in env | chroot | cat | wc | printf | mkdir | test) ;; *) return 2 ;; esac
