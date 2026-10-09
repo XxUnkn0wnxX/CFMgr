@@ -213,6 +213,10 @@ def test_group_denial_is_reported_and_descriptors_close(
 
     def deny_group(pgid, sig):
         assert pgid == processes[0].pid
+        if leader_exits:
+            # Establish this case's precondition before injecting denial. A
+            # deadline alone does not prove the leader finished child startup.
+            assert processes[0].wait(timeout=1) == 0
         signal_attempts.append(sig)
         if not leader_exits:
             assert processes[0].poll() is None
