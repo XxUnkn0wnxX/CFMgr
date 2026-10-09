@@ -756,13 +756,26 @@ promotion and live deployment still require separate authorization.
 
 ## 📦 Module catalog and forks
 
-**Selected design; config/catalog downloads are not implemented yet.** CFMgr
+**Selected design; config generation and catalog downloads are not implemented yet.** CFMgr
 will keep **`catalog.txt` at the repository root** alongside its readable source
 modules. Setup downloads that file from the selected repository snapshot to
 **`/jffs/addons/CFMgr.d/catalog.txt`**. The directory name is case-sensitive. Main `config` holds settings, credentials, feature state
 and the `developer` flag; the catalog holds the branch/commit selector and module
 URLs. Users edit the catalog file manually for testing or forks; there is no
 menu setter and no separate remote-catalog URL setting.
+
+The main settings file is **`/jffs/addons/CFMgr.d/config`**, without an extension.
+Fresh installation generates it from defaults in code; the public repository
+contains neither a config file nor a config template. Detect retained setup
+before generating defaults, and preserve existing values during updates and
+reinstalls under the schema migration contract. Parse settings as data.
+
+Planned full uninstall defaults to **KEEP**, retaining settings and recovery
+data. Explicit **WIPE** additionally removes the entire owned
+`/jffs/addons/CFMgr.d/` directory, including its config and catalog, after all
+required cleanup succeeds. Defer completion and retain recovery evidence if
+cleanup is incomplete. Reset shares the owned-data cleanup but keeps the
+verified manager package and generates fresh passive defaults.
 
 The repository-root `cfmgr.sh` installs as `/jffs/scripts/cfmgr.sh`. It is the
 CFMgr entry script in that directory; feature files and the `lib/`, `helpers/`

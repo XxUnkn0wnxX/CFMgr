@@ -96,7 +96,7 @@ loading; this extension pattern guides the future menu/setup integration.
 | --- | --- |
 | `/jffs/scripts/cfmgr.sh` | Installed public entry point |
 | `/jffs/addons/CFMgr.d/` | Verified manager modules, private configuration and bounded durable recovery |
-| `/jffs/addons/CFMgr.d/config` | Authoritative settings, typed credentials, saved activation and the developer flag |
+| `/jffs/addons/CFMgr.d/config` | Authoritative settings, typed credentials, saved activation and the developer flag; generated locally from defaults on fresh install |
 | `/jffs/addons/CFMgr.d/catalog.txt` | Separate editable source selector and named module URLs |
 | Private RAM workspace | Transient requests, queues, observations, captures and staging |
 | Verified Entware volume | Selected packages, cloudflared binary, tunnel runtime files and optional custom logs |
@@ -106,6 +106,16 @@ Persistent settings and recovery stay in JFFS; frequent observations and retry
 state stay in RAM. Missing storage must preserve saved intent and report waiting
 or incomplete work. A mount label, `/dev/sd` name, directory or executable alone
 cannot establish the expected volume.
+
+The extensionless `config` is private router data. The public repository ships
+neither a config file nor a config template; fresh installation generates it
+from defaults in the implementation, after checking for retained setup.
+Updates and reinstalls preserve existing settings under the migration contract.
+Planned full uninstall **KEEP** retains settings and recovery data. Explicit
+**WIPE** removes `/jffs/addons/CFMgr.d/` itself after verified owned cleanup is
+complete. An incomplete cleanup retains recovery evidence; it cannot report a
+successful wipe. Reset retains the verified manager package and regenerates
+passive defaults instead of deleting the entire package directory.
 
 The storage observer joins the held directory's mount ID to the current mount
 table, checks the block device number and reads the primary ext superblock through
@@ -417,7 +427,7 @@ or prove Entware ABI or Merlin runtime acceptance.
 
 ## 📦 Modules and forks
 
-**Planned distribution contract; config/catalog downloads and updates are not
+**Planned distribution contract; config generation, catalog downloads and updates are not
 implemented yet.** Modules remain readable source files. Repository-root
 `catalog.txt` is downloaded to `/jffs/addons/CFMgr.d/catalog.txt` from the selected
 repository snapshot. Its shipped selector defaults to `main`; developers can
