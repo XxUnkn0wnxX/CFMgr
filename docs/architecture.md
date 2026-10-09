@@ -39,6 +39,7 @@ flowchart LR
 | `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
+| `modules/entware.sh` | Admit a retained storage observation against independently approved UUID/subtree and writable/executable mount flags | Synchronous native callback only; no atomic write lease, package execution or operational startup |
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
@@ -78,6 +79,15 @@ and cleanup; mounted trees and asynchronous users must stay outside IO scratch.
 Ordinary return restores the caller's descriptors before cleanup. A signal-driven
 exit may retain them until process exit, so interrupted setup must preserve its
 external guard.
+
+`cfmgr_entware_with` adds an admission check within that retained callback. The
+caller supplies an independently approved UUID and filesystem subtree; the
+current observation cannot approve itself. Both mount and superblock option
+lists must contain `rw` and must not contain `ro` or `noexec`. The admitted
+native callback receives the same complete ledger and original descriptors.
+This check does not test physical media writes or make a later path lookup safe;
+the operational package worker still needs its own lifetime and mount-loss
+contract.
 
 The internal `cfmgr_isolation_with` API builds on that retained callback. It
 reserves a private guard outside IO scratch, checks the RAM/source topology,
