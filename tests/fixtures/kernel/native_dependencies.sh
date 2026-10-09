@@ -31,11 +31,11 @@ if [ "$#" -eq 6 ]; then
 	for marker in root-returned storage-returned deadline/armed deadline/done deadline/ack execution/complete execution/dependencies/complete watchdog-fds-checked storage-acquired locked-release-checked; do
 		_cfmgr_isolation_root_empty "$guard/$marker" || fail "missing checked $marker"
 	done
-	[ ! -e "$ram/dependencies.active" ] && [ ! -L "$ram/dependencies.active" ] || fail 'active marker retained'
-	[ -f "$ram/dependencies.lock" ] && [ ! -L "$ram/dependencies.lock" ] || fail 'lock removed or replaced'
+	if [ -e "$ram/dependencies.active" ] || [ -L "$ram/dependencies.active" ]; then fail 'active marker retained'; fi
+	if [ ! -f "$ram/dependencies.lock" ] || [ -L "$ram/dependencies.lock" ]; then fail 'lock removed or replaced'; fi
 	[ "$("$bb" stat -c '%d:%i' "$ram/dependencies.lock")" = "$lock_identity" ] || fail 'changed stable lock'
 	for marker in cancel expired; do
-		[ ! -e "$guard/deadline/$marker" ] && [ ! -L "$guard/deadline/$marker" ] || fail 'cancelled/expired completion'
+		if [ -e "$guard/deadline/$marker" ] || [ -L "$guard/deadline/$marker" ]; then fail 'cancelled/expired completion'; fi
 	done
 	"$bb" printf 'CFMGR_WORKER_DEPENDENCIES_V1 0\n' >"$guard/expected-result"
 	"$bb" cmp -s "$guard/expected-result" "$guard/dependencies-result" || fail 'exact worker result'
@@ -63,7 +63,7 @@ if [ "$#" -eq 6 ]; then
 	printf 'real native lock and armed dependency deadline, original storage/root leases, synthetic ordinary opkg repair/32KiB write, watchdog FD7/high aliases, done/ack/exact reap before owned release and stable lock passed\n'
 	exit 0
 fi
-[ "$7" = leader ] && [ "$$" -ne 1 ] || fail 'invalid leader'
+if [ "$7" != leader ] || [ "$$" -eq 1 ]; then fail 'invalid leader'; fi
 native_fixture_context native-dependencies
 native_fixture_load
 # shellcheck source=/dev/null
@@ -172,8 +172,8 @@ cfmgr_worker_dependencies "$ram" "$guard" 14 1 64 8 "$repo/modules/lib/mountinfo
 for caller_fd in 0 1 2 7; do
 	"$bb" test "$guard/caller$caller_fd" -ef "/proc/self/fd/$caller_fd" || fail 'caller descriptor changed'
 done
-[ ! -e /proc/self/fd/8 ] && [ ! -e /proc/self/fd/9 ] || fail 'leaked storage descriptors'
-[ ! -e "$ram/dependencies.active" ] && [ ! -L "$ram/dependencies.active" ] || fail 'owned release missing'
+if [ -e /proc/self/fd/8 ] || [ -e /proc/self/fd/9 ]; then fail 'leaked storage descriptors'; fi
+if [ -e "$ram/dependencies.active" ] || [ -L "$ram/dependencies.active" ]; then fail 'owned release missing'; fi
 # A fresh descriptor can acquire the unchanged file after the completed owner.
 exec 7<&-
 exec 7>>"$ram/dependencies.lock"
