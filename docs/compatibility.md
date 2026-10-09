@@ -99,9 +99,9 @@ identities. The native-data variant stages `/etc/hosts` and
 any bind; the base readonly root then protects the staged files against writes.
 It does not parse or test resolver readiness. Host fixtures cover byte handling
 and failure retention, while the ninth Linux namespace consumer checks actual
-staged-data write refusal and mount/descriptor behavior. CI is pending for this
-checkpoint; neither host nor Linux namespace evidence establishes router
-acceptance. The views and data still lack complete native configuration,
+staged-data write refusal and mount/descriptor behavior. The 35% checkpoint passed Linux/BusyBox CI and all nine kernel scenarios,
+with exact results recorded in [PLAN.md](../PLAN.md). Neither host nor Linux
+namespace evidence establishes router acceptance. The views and data still lack complete native configuration,
 loader/helper/ELF, private writable `/tmp`, `HOME`, TLS or NSS closure, approved
 writable children and ordinary opkg execution. They are not composed into an
 operational worker. No mount or chroot was executed on the router for these
