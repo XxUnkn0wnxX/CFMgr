@@ -17,14 +17,19 @@ _cfmgr_isolation_query_action() {
     [ "$_fixture_error_size" = 0 ] || return 1
     _cfmgr_isolation_read "$_io_stage/parsed" || return 1
     _mount_ledger=$_isolation_text
-    if [ "$4" = 1 ]; then
+    case $4 in
+        1) _fixture_canonical_target=$_isolation_root ;;
+        2) _fixture_canonical_target=$2 ;;
+        *) _fixture_canonical_target= ;;
+    esac
+    if [ -n "$_fixture_canonical_target" ]; then
         _fixture_readlink=$(_cfmgr_io_find readlink) || return 1
-        "$_fixture_readlink" -f "$_isolation_root" \
+        "$_fixture_readlink" -f "$_fixture_canonical_target" \
             >"$_io_stage/2.out" 2>"$_io_stage/2.err" || return 1
         _fixture_error_size=$(_cfmgr_io_size "$_io_stage/2.err") || return 1
         [ "$_fixture_error_size" = 0 ] || return 1
         _cfmgr_storage_line 2 || return 1
-        [ "$_storage_line" = "$_isolation_root" ] || return 1
+        [ "$_storage_line" = "$_fixture_canonical_target" ] || return 1
     fi
     _cfmgr_isolation_write "$3" "$_mount_ledger"
 }

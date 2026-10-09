@@ -247,6 +247,7 @@ def prove(args: argparse.Namespace) -> None:
             "contained",
             "worker-lifetime",
             "execution-root",
+            "native-root",
         ):
             print(f"Kernel proof: {scenario}", flush=True)
             started = time.monotonic()
@@ -269,6 +270,7 @@ def prove(args: argparse.Namespace) -> None:
                             / {
                                 "worker-lifetime": "worker_lifetime.sh",
                                 "execution-root": "execution_root.sh",
+                                "native-root": "native_root.sh",
                             }.get(scenario, "proof.sh")
                         ),
                         str(ROOT),
