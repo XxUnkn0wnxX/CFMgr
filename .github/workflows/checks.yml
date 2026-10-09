@@ -76,16 +76,23 @@ jobs:
           make -C .tmp/busybox-1.36.1 allnoconfig
           # The tiny true applet avoids BusyBox's single-applet dispatcher,
           # retaining the actual BusyBox banner/--list identity checks.
+          # allnoconfig retains a default sh alias; explicitly disable it.
           sed -i \
             -e 's/^# CONFIG_BUSYBOX is not set$/CONFIG_BUSYBOX=y/' \
             -e 's/^# CONFIG_FLOCK is not set$/CONFIG_FLOCK=y/' \
-            -e 's/^# CONFIG_TRUE is not set$/CONFIG_TRUE=y/' .tmp/busybox-1.36.1/.config
+            -e 's/^# CONFIG_TRUE is not set$/CONFIG_TRUE=y/' \
+            -e 's/^CONFIG_SH_IS_ASH=y$/# CONFIG_SH_IS_ASH is not set/' \
+            -e 's/^CONFIG_SHELL_ASH=y$/# CONFIG_SHELL_ASH is not set/' \
+            -e 's/^# CONFIG_SH_IS_NONE is not set$/CONFIG_SH_IS_NONE=y/' .tmp/busybox-1.36.1/.config
           make -C .tmp/busybox-1.36.1 KBUILD_DEFCONFIG=.config defconfig
           grep -Fx 'CONFIG_BUSYBOX=y' .tmp/busybox-1.36.1/.config
           grep -Fx 'CONFIG_FLOCK=y' .tmp/busybox-1.36.1/.config
           grep -Fx 'CONFIG_TRUE=y' .tmp/busybox-1.36.1/.config
+          grep -Fx 'CONFIG_SH_IS_NONE=y' .tmp/busybox-1.36.1/.config
           timeout 120s make -C .tmp/busybox-1.36.1 -j2 busybox
-          test "$(.tmp/busybox-1.36.1/busybox --list)" = "$(printf 'flock\ntrue')"
+          cfmgr_busybox_applets=$(.tmp/busybox-1.36.1/busybox --list)
+          printf '%s\n' "$cfmgr_busybox_applets"
+          test "$cfmgr_busybox_applets" = "$(printf 'flock\ntrue')"
 
       - name: Report tool versions
         run: |
