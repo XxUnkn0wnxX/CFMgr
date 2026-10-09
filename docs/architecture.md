@@ -40,6 +40,7 @@ flowchart LR
 | `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
 | `modules/entware.sh` | Admit a retained storage observation against independently approved UUID/subtree and writable/executable mount flags | Synchronous native callback only; no atomic write lease, package execution or operational startup |
+| `modules/dependency_lock.sh` | Nonblocking native lock around a trusted callback, retaining a stable RAM lock file and inherited FD7 | Cooperative exclusion only; worker launch, deadlines and arbitrary descendant completion remain separate |
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
@@ -88,6 +89,15 @@ native callback receives the same complete ledger and original descriptors.
 This check does not test physical media writes or make a later path lookup safe;
 the operational package worker still needs its own lifetime and mount-loss
 contract.
+
+`cfmgr_dependency_lock_with` reserves FD7 for native nonblocking `flock`, leaving
+FD8/FD9 available to the storage owner. Its private RAM parent and retained
+`dependencies.lock` file must stay at the same paths for every holder's lifetime.
+The function never unlinks the file or explicitly unlocks the shared open file
+description. A cooperative child that inherits FD7 continues to exclude new
+callers after the wrapper returns or is interrupted. A busy or failed acquisition
+does not invoke the callback. This does not establish that arbitrary package
+scripts preserve the descriptor or that their descendants have finished.
 
 The internal `cfmgr_isolation_with` API builds on that retained callback. It
 reserves a private guard outside IO scratch, checks the RAM/source topology,

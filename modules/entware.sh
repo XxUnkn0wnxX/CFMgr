@@ -7,13 +7,13 @@
 # and route signals to the storage IO owner. Caller tracing must already be off.
 
 cfmgr_entware_with() {
-	_cfmgr_entware_owner production "$@"
+	_cfmgr_entware_owner production "$@" >/dev/null 2>&1
 }
 
 # Explicit trusted fixture API: the eight storage fixture inputs, followed by
 # EXPECTED_UUID EXPECTED_FS_TARGET_HEX CALLBACK [ARGS...].
 cfmgr_entware_with_test() {
-	_cfmgr_entware_owner fixture "$@"
+	_cfmgr_entware_owner fixture "$@" >/dev/null 2>&1
 }
 
 _cfmgr_entware_owner() (
@@ -66,7 +66,7 @@ _cfmgr_entware_owner() (
 		cfmgr_storage_with_test "$_entware_root" "$_entware_tools" "$_entware_target" "$_entware_mount_input" "$_entware_fdinfo_input" "$_entware_block_file" "$_entware_mount_parser" "$_entware_storage_parser" _cfmgr_entware_admit "$@"
 		;;
 	esac
-) >/dev/null 2>&1
+)
 
 _cfmgr_entware_uuid() (
 	[ "$#" -eq 1 ] && [ "${#1}" -eq 36 ] || return 2

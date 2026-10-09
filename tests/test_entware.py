@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import shlex
+import sys
 from pathlib import Path
 
 import pytest
 
 from tests.harness import RouterHarness, ShellResult
+from tests.test_dependency_lock import LockFixture
 from tests.test_storage import IO, STORAGE, UUID, StorageFixture, quiet
 from tests.test_storageinfo import ledger
 
 ROOT = Path(__file__).resolve().parents[1]
 ENTWARE = ROOT / "modules/entware.sh"
+DEPENDENCY_LOCK = ROOT / "modules/dependency_lock.sh"
 MOUNT_PARSER = ROOT / "modules/mountinfo.awk"
 STORAGE_PARSER = ROOT / "modules/storageinfo.awk"
 TARGET = "/opt"
@@ -307,6 +311,15 @@ def test_callback_status_is_quiet_and_caller_shell_state_is_preserved(
     assert result.returncode == 7 and result.stdout == result.stderr == ""
 
 
+def test_native_callback_signal_is_quiet_and_preserved(router: RouterHarness) -> None:
+    terminate_owner = (
+        f"{shlex.quote(sys.executable)} -c "
+        f"{shlex.quote('import os,signal; os.kill(os.getppid(), signal.SIGTERM)')}"
+        "; return 0"
+    )
+    quiet(invoke_consumer(router, callback_body=terminate_owner), 143)
+
+
 def test_storage_unsupported_status_is_preserved_without_consumer_call(
     router: RouterHarness,
 ) -> None:
@@ -343,14 +356,39 @@ def run_real_storage(
     fixture: StorageFixture,
     *,
     callback_prefix: str,
+    lock_fixture: LockFixture,
     shell: str | None = None,
 ) -> ShellResult:
-    fixture.router.write(
-        "work/entware-invoke.sh",
-        f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
-        f". {shlex.quote(str(ENTWARE))}\n" + callback_prefix + 'cfmgr_entware_with_test "$@"\n',
+    checker = fixture.router.write(
+        "work/held-lock-check.py",
+        r"""import fcntl
+import json
+import os
+from pathlib import Path
+import sys
+
+lock_path, output = map(Path, sys.argv[1:])
+held = os.fstat(7)
+path = lock_path.stat()
+assert (held.st_dev, held.st_ino) == (path.st_dev, path.st_ino)
+with lock_path.open("rb") as contender:
+    try:
+        fcntl.flock(contender.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        contended = True
+    else:
+        raise AssertionError("FD7 lock was not held at the final storage callback")
+output.write_text(json.dumps({"identity": [held.st_dev, held.st_ino], "contended": contended}))
+""",
     )
-    args = [
+    lock_observation = fixture.router.path("work/held-lock-observation.json")
+    dependency_callback = (
+        "dependency_storage_callback() {\n"
+        f"{shlex.quote(sys.executable)} {shlex.quote(str(checker))} "
+        f"{shlex.quote(str(lock_fixture.lock))} {shlex.quote(str(lock_observation))} || return $?\n"
+        'fixture_callback "$@"\n}\n'
+    )
+    storage_args = [
         str(fixture.router.path("ram/tmp")),
         str(fixture.router.path("bin")),
         str(fixture.target),
@@ -361,15 +399,29 @@ def run_real_storage(
         str(STORAGE_PARSER),
         UUID,
         fixture.expected().split("\t")[6],
-        "fixture_callback",
+        "dependency_storage_callback",
         "forwarded argument",
     ]
+    locked_start = (
+        'dependency_start() { cfmgr_entware_with_test "$@"; }\n'
+        + lock_fixture.call("dependency_start", *storage_args)
+        + "\n"
+    )
+    fixture.router.write(
+        "work/entware-invoke.sh",
+        f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
+        f". {shlex.quote(str(ENTWARE))}\n"
+        f". {shlex.quote(str(DEPENDENCY_LOCK))}\n"
+        + callback_prefix
+        + dependency_callback
+        + locked_start,
+    )
     script = f'exec {shlex.quote(shell or "/bin/sh")} "$@"\n'
     if fixture.router.busybox:
         script = f'exec {shlex.quote(str(fixture.router.busybox))} sh "$@"\n'
     return fixture.router.run(
         script,
-        [str(fixture.router.path("work/entware-invoke.sh")), *args],
+        [str(fixture.router.path("work/entware-invoke.sh"))],
         timeout=45,
         env={
             "_storage_block_fixture": str(fixture.router.path("work/block")),
@@ -384,12 +436,24 @@ def test_real_storage_fixture_calls_consumer_with_retained_descriptors(
     router: RouterHarness,
 ) -> None:
     fixture = StorageFixture(router)
-    result = run_real_storage(fixture, callback_prefix=fixture.callback_prefix())
+    lock_fixture = LockFixture(router)
+    result = run_real_storage(
+        fixture,
+        callback_prefix=fixture.callback_prefix(),
+        lock_fixture=lock_fixture,
+    )
     quiet(result, 0)
     observed = fixture.callback_observation()
     assert observed["args"] == [str(fixture.target), fixture.expected(), "forwarded argument"]
     assert observed["fd8"] and observed["fd9"]
     assert observed["capture_files"] == 48
+    lock_check = json.loads(router.path("work/held-lock-observation.json").read_text())
+    assert lock_check == {
+        "identity": [lock_fixture.lock.stat().st_dev, lock_fixture.lock.stat().st_ino],
+        "contended": True,
+    }
+    assert lock_fixture.records()[0]["identity"] == lock_check["identity"]
+    assert lock_fixture.lock.read_bytes() == b""
     fixture.clean()
 
 
