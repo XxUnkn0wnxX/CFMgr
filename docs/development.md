@@ -416,10 +416,10 @@ is preserved, so this does not prove physical block-device or UUID admission.
 The case also verifies that Opt is unmounted first and becomes the exact empty
 readonly fallback before tmpfs removal. It retains the earlier FD6/native and
 staged-data checks, readonly-write refusal, executable tmpfs, the 64-KiB/eight-inode
-fixture limits, private empty home and unchanged observer `HOME`, all 78 query slots and complete cleanup before fixture
-disposal. The earlier quota-only version passed the 36% Linux CI gate; execution
-of the retained-Opt upgrade is pending CI. Host mirrors do not prove
-mount-enforced permissions, quota behavior or readonly fallback.
+fixture limits, private empty home and unchanged observer `HOME`, all 78 query
+slots and complete cleanup before fixture disposal. The retained-Opt upgrade
+passed the 37% Linux CI gate. Host mirrors do not prove mount-enforced
+permissions, quota behavior or readonly fallback.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or

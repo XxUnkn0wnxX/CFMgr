@@ -28,10 +28,9 @@ a controlled writable source mounted through actual FD9, a bounded anchored
 write reaching that source, and Opt-first teardown followed by an exact empty
 readonly fallback before tmpfs removal. FD8 uses a regular fixture file with
 synthetic metadata observation, so this scenario does not prove physical block
-identity or UUID approval. The earlier quota-only version passed the 36% CI
-gate; validation of the retained-Opt upgrade is pending. Host fixture mirrors
-alone do not prove mount-enforced behavior, quota enforcement or readonly
-fallback.
+identity or UUID approval. The retained-Opt upgrade passed the 37% CI gate. Host
+fixture mirrors alone do not prove mount-enforced behavior, quota enforcement or
+readonly fallback.
 The worker-lifetime fixture separately proves descriptor/root references and
 writable-child revocation with controlled descendants. Native BusyBox
 unmount capability selection is exercised through the runtime implementation;
@@ -46,8 +45,8 @@ with host fixtures; these mock mount tools and do not prove actual quota, write
 or exec behavior. `tests/test_entware_root.py` covers retained-Opt success,
 busy-Opt cleanup refusal and malformed API rejection; `tests/test_entware_root_admission.py`
 covers the storage-admission boundary. The upgraded BusyBox and kernel consumers
-provide separate integration evidence, with the current kernel result pending
-CI. Host fixtures do not prove mount-enforced readonly behavior.
+passed the 37% CI gate and provide separate integration evidence. Host fixtures
+do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete
 capture evidence. Other host fault tests may share the focused query fixture in

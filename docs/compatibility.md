@@ -105,22 +105,20 @@ requested size/inode ceilings; it creates an empty mode-`0700`
 `/tmp/cfmgr-home` while leaving the observer's `HOME` unchanged. These ceilings
 limit tmpfs use but do not reserve RAM or establish available memory headroom.
 
-The 36% snapshot passed the full local suite (1,526 tests, 29 explicit platform
-skips), Linux/BusyBox CI (1,555 tests, zero skips), supplemental stripped-ash
-checks and all nine kernel scenarios. At that snapshot, the ninth scenario
-proved actual tmpfs byte/inode limits, execute permission, private HOME and
-checked teardown; exact results are recorded in [PLAN.md](../PLAN.md).
+The 37% snapshot passes the full local suite (1,567 tests, 29 explicit platform
+skips), Linux/BusyBox CI (1,596 tests, zero skips), six supplemental stripped-ash
+checks and all nine kernel scenarios. Exact results and the fixture setup repair
+are recorded in [PLAN.md](../PLAN.md).
 
-The later retained-Opt composition uses the same ninth scenario. Its host tests
+The retained-Opt composition uses the ninth scenario. Its host tests
 cover success, busy-Opt cleanup refusal and malformed API rejection, plus cheap
 storage-admission boundary cases; the upgraded full-capture BusyBox consumer
 remains distinct from host mirrors. The kernel proof now checks a real writable
 source mounted through FD9, a bounded anchored write reaching that source, and
 Opt-first teardown followed by an exact empty readonly fallback before tmpfs
 removal. FD8 is a regular fixture file with synthetic metadata observation, so
-the scenario does not prove physical block-device or UUID approval. The newer code passes full local validation (1,567 tests, 29 explicit platform
-skips); Linux/BusyBox and kernel validation remain pending. Do not infer those
-results from the earlier 36% gate.
+the scenario does not prove physical block-device or UUID approval. The actual
+BusyBox consumer and upgraded kernel scenario passed the same 37% CI gate.
 
 Neither host nor Linux namespace evidence establishes router acceptance. The
 views and data still lack complete native configuration, loader/helper/ELF,
