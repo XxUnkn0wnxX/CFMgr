@@ -13,7 +13,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 
 | Feature / milestone | Status | At a glance |
 | --- | --- | --- |
-| Core foundations | Complete | Parsing, storage identity and native configuration staging |
+| Core foundations | Complete | Parsing, storage, native config and capped private `/tmp` |
 | Worker safety foundations | Complete | Process deadlines and read-only workspaces |
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Install/reinstall backend done; worker integration next |

@@ -98,12 +98,21 @@ identities. The native-data variant stages `/etc/hosts` and
 `/etc/resolv.conf` as opaque, exact bytes of at most 65,536 bytes each before
 any bind; the base readonly root then protects the staged files against writes.
 It does not parse or test resolver readiness. Host fixtures cover byte handling
-and failure retention, while the ninth Linux namespace consumer checks actual
-staged-data write refusal and mount/descriptor behavior. The 35% checkpoint passed Linux/BusyBox CI and all nine kernel scenarios,
-with exact results recorded in [PLAN.md](../PLAN.md). Neither host nor Linux
-namespace evidence establishes router acceptance. The views and data still lack complete native configuration,
-loader/helper/ELF, private writable `/tmp`, `HOME`, TLS or NSS closure, approved
-writable children and ordinary opkg execution. They are not composed into an
+and failure retention. The 36% native-tmp variant adds one checked writable
+tmpfs child with canonical size limits of 64–65,536 KiB in multiples of 64 and
+8–8,192 inodes. Its mount uses `rw,nosuid,nodev,exec`, `mode=700`, and the exact
+requested size/inode ceilings; it creates an empty mode-`0700`
+`/tmp/cfmgr-home` while leaving the observer's `HOME` unchanged. These ceilings
+limit tmpfs use but do not reserve RAM or establish available memory headroom.
+
+The preceding 35% snapshot passed Linux/BusyBox CI and its then-current nine
+kernel scenarios, as recorded in [PLAN.md](../PLAN.md). The updated native-tmp
+BusyBox representative and ninth kernel scenario are new evidence for 36%;
+focused host checks passed, the full local validation is running, and current CI
+is pending. Neither host nor Linux namespace evidence establishes router
+acceptance. The views and data still lack complete native configuration,
+loader/helper/ELF, writable Opt, TLS or NSS closure, and ordinary opkg execution.
+The native observer does not set `HOME` or launch a payload, and this is not an
 operational worker. No mount or chroot was executed on the router for these
 checks.
 

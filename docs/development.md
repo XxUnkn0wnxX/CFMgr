@@ -222,6 +222,26 @@ payload environment. A successful helper call still requires successful
 enclosing IO cleanup; partial staging remains under the retained execution guard
 on failure. Existing isolation APIs are unchanged.
 
+`cfmgr_isolation_native_tmp_root_with` extends the native-data lifecycle with a
+private writable tmpfs at `root/tmp`. Its production arguments add `LIMIT_KIB`
+and `INODE_LIMIT` before the parser paths. Size must be a canonical decimal
+multiple of 64 from 64 through 65,536 KiB; inode count must be a canonical
+decimal from 8 through 8,192. The owner verifies the exact tmpfs source, flags,
+mode, size and inode options, and a new distinct child identity under the base
+root. The fixture entry also requires explicit tools, mount/fdinfo inputs and
+native/data source roots. It creates an empty mode-`0700` `tmp/cfmgr-home`; the
+native observer's `HOME` variable remains unchanged. A future launcher may set
+its logical `HOME` to that path.
+
+The limits cap tmpfs usage; they do not reserve physical memory or establish
+available RAM headroom. After the observer returns, CFMgr checks the saved tmpfs
+ledger, ordinarily unmounts `/tmp`, then removes the four native views in reverse
+order and tears down the base root. The native-tmp layout uses 64 unique query
+slots within the fixed 64-query ceiling. The native-data API and older root APIs
+retain their existing contracts. This is still not a payload, chroot, opkg,
+readiness or operational worker path; writable Opt and complete native
+loader/ELF/TLS/NSS support remain unimplemented.
+
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
 are obsolete with their implementation; their counts are not coverage targets.
@@ -364,13 +384,15 @@ failed writes through both readonly fallbacks, preserved caller descriptors,
 ordinary callback failure after successful teardown, and retained completion
 metadata. It requires the root mount to be absent before removing fixture RAM;
 namespace disposal cannot conceal an incomplete successful path.
-The ninth scenario exercises the native-data root entry with four fixed views
-from a readonly synthetic source filesystem and staged hosts/resolver files. It
-checks actual FD6 mount identity, exact staged bytes, failed writes to the staged
-`/etc` data and readonly child/fallback paths, preserved caller descriptors, all
-56 query slots and reverse teardown, then verifies no execution mounts remain
-before fixture cleanup. This is the actual-kernel readonly evidence; host fixture
-mirrors alone do not prove mount-enforced protection.
+The ninth scenario now exercises the native-tmp root entry with four fixed views
+from a readonly synthetic source filesystem, staged hosts/resolver files, and
+the quota-limited private tmpfs. It checks actual FD6 mount identity, exact
+staged bytes, refusal of readonly-path writes, writable `/tmp` scratch, execute permission,
+the 64-KiB/eight-inode fixture limits, the private empty home directory and
+unchanged observer `HOME`, all 64 query slots, tmpfs-first teardown and reverse
+native-view cleanup. It verifies that no execution mounts remain before fixture
+cleanup. The upgraded kernel case is pending CI; host fixture mirrors alone do
+not prove mount-enforced permissions or quota behavior.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
@@ -448,9 +470,10 @@ command remains `cfmgr`.
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
 | `tests/test_native_config.py` | Exact fixed-file staging, byte limits, NUL rejection, partial failures and cleanup ownership |
-| `tests/test_native_root.py` | Four fixed readonly views, staged native data, child identity and checked reverse cleanup |
+| `tests/test_native_root.py` | Four fixed readonly views, staged native data, child identity, cleanup and the actual BusyBox tmp-root representative |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
-| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including readonly native-data staging |
+| `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including quota-limited native tmpfs and private HOME |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |

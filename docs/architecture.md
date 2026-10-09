@@ -37,7 +37,7 @@ flowchart LR
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
-| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root and native-data-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
+| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root and quota-limited native-tmp-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf` bytes into the caller-owned private image outside IO scratch | Fixed files only; no syntax/readiness checks, execution, or broader native configuration closure |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
 | `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal native callback only; operational scheduling and package/feature launch remain separate |
@@ -211,11 +211,34 @@ native-data callback remains synchronous native observation only; chroot,
 payload/opkg execution, `HOME`, private writable `/tmp`, and complete ELF,
 resolver, TLS or NSS closure are not provided.
 
+`cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
+five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
+inputs are `RAMROOT`, `GUARD`,
+`LIMIT_KIB`, `INODE_LIMIT`, the mount and storage parsers, a callback, and optional
+callback arguments. The two quota arguments must be canonical decimal integers:
+size is 64–65,536 KiB in multiples of 64; inode count is 8–8,192. The owner
+checks the exact tmpfs identity, `rw,nosuid,nodev,exec` options, mode `0700`, and
+the requested `size` and `nr_inodes` values after mounting and again before
+teardown. It creates an empty mode-`0700` `/tmp/cfmgr-home` directory. The
+observer's process `HOME` remains unchanged; setting that logical home belongs
+to a future launcher.
+
+These are kernel-enforced usage ceilings, not a RAM reservation or a measure of
+available memory headroom. The native-data API remains unchanged and keeps its
+read-only empty `/tmp` fallback. The native-tmp API still admits only a trusted
+synchronous native observer: no chroot, payload or opkg execution, readiness
+probe, or operational worker. Teardown uses ordinary unmount on the tmpfs first,
+then removes native views in reverse order and finally the base root. It uses
+64 unique mount-query slots, exactly the configured ceiling.
+
+The private temporary area is not an Entware environment. Writable Opt and the
+complete native loader, ELF, resolver, TLS and NSS closure remain separate work.
+
 The execution guard remains on every outcome. A completion marker describes
 verified filesystem teardown; the enclosing IO transaction must also clean up
 successfully before the observer's ordinary status can return. Any incomplete
 step after reservation reports uncertainty. These root entries do not yet provide
-approved writable children, package execution or scheduling.
+writable Entware storage, package execution or scheduling.
 Existing native and fixed-probe APIs retain their separate cleanup contracts.
 
 The retained-storage profile covers dynamic-revision ext2/ext3/ext4 primary
