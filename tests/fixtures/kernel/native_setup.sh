@@ -71,5 +71,5 @@ native_fixture_load() {
 	# shellcheck source=/dev/null
 	. "$repo/modules/lib/native_config_root.sh"
 	# shellcheck source=/dev/null
-	. "$repo/modules/lib/native_shell.sh"
+	. "$repo/modules/lib/native_exec.sh"
 }

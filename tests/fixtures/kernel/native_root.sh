@@ -1,6 +1,6 @@
 #!/bin/sh
 # Namespace-only native RO views/extended data, tmp/HOME, Opt and fixed devices.
-# No installed payload or router execution; fixed native-shell chroot proof only.
+# Fixed native shell and static opkg stand-in; no real opkg or router execution.
 # IO supplies checked ledger/framing state inside its isolated callbacks.
 # shellcheck disable=SC2154
 set -eu
@@ -20,6 +20,10 @@ fail() {
 # propagation and bounds/reaps this exact namespace init externally.
 . "$repo/tests/fixtures/kernel/native_setup.sh"
 native_fixture_prepare native-root
+# Trusted static stand-in only in this scenario; no installed opkg is executed.
+"$bb" mkdir -m 700 "$opt_source/bin"
+"$bb" cp "$work/opkg-probe" "$opt_source/bin/opkg"
+opkg_version='80503d94e356476250adaf1f669ee955ec26de76 (2025-11-05)'
 
 observe_native_data() {
 	"$bb" test -d "$1/etc" && "$bb" test ! -L "$1/etc" || return 129
@@ -151,6 +155,7 @@ observe_native_root() {
 	# Real native ash executes the fixed script. Fixture-only C wrappers observe
 	# FD3..63 outside/inside, then exec genuine chroot/BusyBox applets unchanged.
 	cfmgr_native_shell_probe "$observer_root" || return "$?"
+	cfmgr_native_opkg_probe "$observer_root" "$opkg_version" || return "$?"
 	"$bb" test "$observer_root" -ef /proc/self/fd/6 || return 129
 	"$bb" test "$opt_source" -ef /proc/self/fd/9 || return 129
 	return 7
@@ -269,6 +274,11 @@ fi
 "$bb" printf 'CFMGR_NATIVE_SHELL_V1\n' >"$guard/native-shell-expected"
 "$bb" cmp -s "$guard/native-shell-expected" "$guard/execution/native-shell/stdout" || fail 'native shell exact response'
 [ ! -s "$guard/execution/native-shell/stderr" ] || fail 'native shell errors'
+"$bb" test -d "$guard/execution/opkg-version/complete" || fail 'opkg version completion'
+[ "$("$bb" cat "$guard/execution/opkg-version/status")" = 'opkg-version 0 67 0' ] || fail 'opkg version status'
+"$bb" printf 'opkg version %s\n' "$opkg_version" >"$guard/opkg-version-expected"
+"$bb" cmp -s "$guard/opkg-version-expected" "$guard/execution/opkg-version/stdout" || fail 'opkg exact response'
+[ ! -s "$guard/execution/opkg-version/stderr" ] || fail 'opkg version errors'
 _cfmgr_isolation_root_empty "$guard/opt-fallback-checked" || fail 'missing immediate RO Opt fallback/order witness'
 if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8; then :; else
 	fail 'caller descriptors'
@@ -345,4 +355,4 @@ cfmgr_io_test "$ram" "$tools" workspace tree_clean "$opt_source" || fail 'retain
 "$bb" umount -n "$opt_source" || fail 'Opt source mount cleanup'
 "$bb" umount -n "$native_source" || fail 'source mount cleanup'
 "$bb" umount -n "$ram" || fail 'RAM mount cleanup'
-printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, genuine fixed native shell/loader with instrumented FD3..63 closure, busy references, nodev revocation and Opt-first reverse teardown passed\n'
+printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, genuine fixed native shell/loader with instrumented FD3..63 closure, synthetic static opkg --version/Opt handoff, busy references, nodev revocation and Opt-first reverse teardown passed\n'

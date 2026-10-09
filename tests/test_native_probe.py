@@ -21,7 +21,7 @@ SOURCES = (
     "entware_root.sh",
     "native_devices.sh",
     "native_config_root.sh",
-    "native_shell.sh",
+    "native_exec.sh",
 )
 UUID = "12345678-1234-1234-1234-123456789abc"
 HEX_TARGET = "2f757372"

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 IO = ROOT / "modules/lib/io.sh"
 NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
 ISOLATION = ROOT / "modules/lib/isolation.sh"
-SOURCE = ROOT / "modules/lib/native_shell.sh"
+SOURCE = ROOT / "modules/lib/native_exec.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
 
@@ -103,6 +103,7 @@ def _fd_is_directory(fd):
 
 fixture_root = Path({str(self.router.root)!r})
 actual_busybox = {str(self.actual_busybox) if self.actual_busybox else None!r}
+actual_opkg = fixture_root / "work/native-opkg"
 root, shell, option, script = sys.argv[1:]
 record = {{
     "argv": sys.argv[1:],
@@ -147,6 +148,16 @@ if actual_busybox and mode == "busybox":
     adapted = script.replace("/bin/busybox", shlex.quote(actual_busybox))
     adapted = adapted.replace("/tmp/cfmgr-home", "/tmp")
     command = [actual_busybox, "sh", "-c", adapted]
+elif mode == "opkg":
+    busybox = fixture_root.joinpath("work/native-shell-busybox.py")
+    if actual_busybox:
+        adapted = script.replace("/bin/busybox", shlex.quote(actual_busybox))
+    else:
+        adapted = script.replace("/bin/busybox", shlex.quote(str(busybox)))
+    adapted = adapted.replace("/tmp/cfmgr-home", "/tmp")
+    adapted = adapted.replace("/opt/bin/opkg", shlex.quote(str(actual_opkg)))
+    command = ([actual_busybox, "sh", "-c", adapted] if actual_busybox
+               else ["/bin/sh", "-c", adapted])
 else:
     busybox = fixture_root.joinpath("work/native-shell-busybox.py")
     adapted = script.replace("/bin/busybox", shlex.quote(str(busybox)))
@@ -237,13 +248,31 @@ raise SystemExit(91)
         root: Path | None = None,
         suffix: tuple[str, ...] = (),
         context: str = "",
+        probe: str = "shell",
     ) -> ShellResult:
         invocation = self._invoke_script()
+        if probe == "opkg":
+            invocation = invocation.replace(
+                'cfmgr_native_shell_probe "$root" "$@"; result=$?',
+                'cfmgr_native_opkg_probe "$root" "$@"; result=$?',
+                1,
+            )
+        elif probe == "both":
+            invocation = invocation.replace(
+                'cfmgr_native_shell_probe "$root" "$@"; result=$?',
+                'cfmgr_native_shell_probe "$root"; shell_result=$?\n'
+                'cfmgr_native_opkg_probe "$root" "$@"; result=$?\n'
+                '[ "$shell_result" -eq 0 ] || exit 94',
+                1,
+            )
+        else:
+            assert probe == "shell"
         if context:
             invocation = invocation.replace('exec 6<"$1"\n', f'exec 6<"$1"\n{context}\n', 1)
         self.router.write("work/invoke-native-shell.sh", invocation)
+        shell = f"{shlex.quote(str(self.actual_busybox))} sh" if self.actual_busybox else "/bin/sh"
         return self.router.run(
-            f'exec /bin/sh {shlex.quote(str(self.invoke))} "$@"\n',
+            f'exec {shell} {shlex.quote(str(self.invoke))} "$@"\n',
             [
                 str(self.native_root),
                 str(root or self.native_root),

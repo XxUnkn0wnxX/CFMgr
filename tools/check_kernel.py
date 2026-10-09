@@ -240,6 +240,28 @@ int main(int argc, char **argv) {
     )
 
 
+def opkg_fixture(work: Path, compiler: str, readelf: str) -> None:
+    """Build only the trusted static stand-in; never execute installed opkg."""
+    executable = work / "opkg-probe"
+    command(
+        [
+            compiler,
+            "-O2",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-static",
+            str(FIXTURES / "opkg_probe.c"),
+            "-o",
+            str(executable),
+        ]
+    )
+    headers = command([readelf, "-l", str(executable)])
+    libraries = command([readelf, "-d", str(executable)])
+    if "INTERP" in headers or "(NEEDED)" in libraries:
+        raise ValueError("opkg stand-in must be fully static")
+
+
 def prove(args: argparse.Namespace) -> None:
     if sys.platform != "linux":
         raise ValueError("kernel proof requires Linux; host doubles are separate evidence")
@@ -391,6 +413,7 @@ def prove(args: argparse.Namespace) -> None:
             raise ValueError(f"unsupported contained fixture library closure: {needed}")
         (work / "contained-manifest").write_bytes(contained_manifest(source, contained))
         native_fixture(busybox, work, compiler, readelf)
+        opkg_fixture(work, compiler, readelf)
         # The native-root scenario instruments its tools; the composed proof
         # needs fresh immutable tool links rather than that previous state.
         shutil.copytree(tools, work / "native-probe-tools", symlinks=True)

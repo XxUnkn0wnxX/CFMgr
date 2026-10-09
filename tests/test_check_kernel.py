@@ -239,3 +239,46 @@ def test_native_fixture_rejects_unverified_patch_before_dependency_tools(
     with pytest.raises(ValueError, match="readelf rejected"):
         check_kernel.native_fixture(busybox, tmp_path, "gcc", "readelf")
     assert len(calls) == 2
+
+
+def test_opkg_fixture_builds_trusted_source_static_and_checks_loader_boundaries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+
+    def host_command(argv: list[str], **_: object) -> str:
+        calls.append(argv)
+        return ""
+
+    monkeypatch.setattr(check_kernel, "command", host_command)
+    check_kernel.opkg_fixture(tmp_path, "gcc", "readelf")
+    assert calls == [
+        [
+            "gcc",
+            "-O2",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-static",
+            str(check_kernel.FIXTURES / "opkg_probe.c"),
+            "-o",
+            str(tmp_path / "opkg-probe"),
+        ],
+        ["readelf", "-l", str(tmp_path / "opkg-probe")],
+        ["readelf", "-d", str(tmp_path / "opkg-probe")],
+    ]
+
+
+@pytest.mark.parametrize(
+    "headers,libraries",
+    [("INTERP 0x200\n", ""), ("", "(NEEDED) Shared library: [libc.so.6]\n")],
+)
+def test_opkg_fixture_rejects_interpreter_or_dependency(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, headers: str, libraries: str
+) -> None:
+    def host_command(argv: list[str], **_: object) -> str:
+        return headers if argv[:2] == ["readelf", "-l"] else libraries
+
+    monkeypatch.setattr(check_kernel, "command", host_command)
+    with pytest.raises(ValueError, match="fully static"):
+        check_kernel.opkg_fixture(tmp_path, "gcc", "readelf")

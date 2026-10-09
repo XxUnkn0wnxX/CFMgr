@@ -3,12 +3,23 @@
 # Fixed synchronous launch only, inside a trusted active native-config owner.
 # Caller owns immutable native code/ancestors, frozen aliases, admitted FD8/9,
 # no application FD above9 and aggregate process-group/deadline supervision.
-# A successful probe admits no arbitrary executable, opkg, NSS or TLS behavior.
+# Installed opkg additionally requires independently trusted stable static code,
+# its approved profile/aliases and exclusion of conflicting replacement. Path
+# presence or matching version is not provenance. No package/NSS/TLS admission.
 # Source-only; trusted io/native_config/isolation helpers are already loaded.
 # The exit helper inherits the isolated probe's state.
 # shellcheck disable=SC2154,SC2030,SC2031
 
-cfmgr_native_shell_probe() (
+cfmgr_native_shell_probe() {
+	_cfmgr_native_exec_probe shell "$@"
+}
+
+cfmgr_native_opkg_probe() {
+	_cfmgr_native_exec_probe opkg-version "$@"
+}
+
+# Private finite modes only; expected version is comparison data, never payload.
+_cfmgr_native_exec_probe() (
 	set +x
 	set +e
 	set +u
@@ -29,7 +40,33 @@ cfmgr_native_shell_probe() (
 	_native_shell_reserved=0 _native_shell_complete=0
 	trap '_cfmgr_native_shell_exit "$?"' 0
 	trap 'exit 129' HUP INT QUIT TERM
-	[ "$#" -eq 1 ] || return 2
+	[ "$#" -ge 1 ] || return 2
+	_native_shell_mode=$1
+	shift
+	case $_native_shell_mode in
+	shell)
+		[ "$#" -eq 1 ] || return 2
+		_native_shell_label=native-shell
+		_native_shell_expected=CFMGR_NATIVE_SHELL_V1
+		_native_shell_script='
+exec 6<&-
+/bin/busybox test -d /tmp/cfmgr-home || exit 1
+/bin/busybox test -c /dev/null || exit 1
+/bin/busybox printf "CFMGR_NATIVE_SHELL_V1\n"
+'
+		;;
+	opkg-version)
+		[ "$#" -eq 2 ] && [ "${#2}" -ge 1 ] && [ "${#2}" -le 128 ] || return 2
+		case $2 in *[!\ -~]*) return 2 ;; esac
+		_native_shell_label=opkg-version
+		_native_shell_expected="opkg version $2"
+		_native_shell_script='
+exec 6<&-
+exec /opt/bin/opkg --version
+'
+		;;
+	*) return 2 ;;
+	esac
 	[ "${_io_active-}" = 1 ] && [ "${_isolation_mode-}" = root ] &&
 		[ "${_execution_layout-}" = native-devices ] && [ "${_execution_config_extended-}" = 1 ] &&
 		[ "${_entware_root_ready-}" = 1 ] && [ "${_execution_reserved-}" = 1 ] &&
@@ -47,7 +84,7 @@ cfmgr_native_shell_probe() (
 	[ "$_native_shell_root" = "${_isolation_tree-}" ] &&
 		[ "$_isolation_guard" = "$_execution_guard/execution" ] &&
 		[ "$_native_shell_root" = "$_isolation_guard/root" ] || return 2
-	_native_shell_dir=$_isolation_guard/native-shell
+	_native_shell_dir=$_isolation_guard/$_native_shell_label
 	# All executables are fixed native tools or the explicit trusted fixture set.
 	_native_shell_env=$(_cfmgr_native_shell_tool env) || return 1
 	_native_shell_chroot=$(_cfmgr_native_shell_tool chroot) || return 1
@@ -66,10 +103,12 @@ cfmgr_native_shell_probe() (
 		[ ! -e "$_native_shell_root/$_native_shell_path" ] &&
 			[ ! -L "$_native_shell_root/$_native_shell_path" ] || return 1
 	done
-	for _native_shell_path in bin/sh bin/busybox; do
-		[ -f "$_native_shell_root/$_native_shell_path" ] &&
-			[ -x "$_native_shell_root/$_native_shell_path" ] || return 1
-	done
+	[ -f "$_native_shell_root/bin/sh" ] && [ -x "$_native_shell_root/bin/sh" ] || return 1
+	case $_native_shell_mode in
+	shell) _native_shell_path=bin/busybox ;;
+	opkg-version) _native_shell_path=opt/bin/opkg ;;
+	esac
+	[ -f "$_native_shell_root/$_native_shell_path" ] && [ -x "$_native_shell_root/$_native_shell_path" ] || return 1
 	[ ! -e "$_native_shell_dir" ] && [ ! -L "$_native_shell_dir" ] || return 1
 	_native_shell_reserved=1
 	"$_native_shell_mkdir" -m 700 "$_native_shell_dir" || return 129
@@ -88,19 +127,14 @@ cfmgr_native_shell_probe() (
 		ulimit -f 9 || exit 129
 		exec 3<&- 4<&- 5<&- 7<&- 8<&- 9<&-
 		exec "$_native_shell_env" -i PATH=/sbin:/bin:/usr/sbin:/usr/bin LC_ALL=C \
-			HOME=/tmp/cfmgr-home TMPDIR=/tmp "$_native_shell_chroot" "$_native_shell_root" /bin/sh -c '
-exec 6<&-
-/bin/busybox test -d /tmp/cfmgr-home || exit 1
-/bin/busybox test -c /dev/null || exit 1
-/bin/busybox printf "CFMGR_NATIVE_SHELL_V1\n"
-'
+			HOME=/tmp/cfmgr-home TMPDIR=/tmp "$_native_shell_chroot" "$_native_shell_root" /bin/sh -c "$_native_shell_script"
 	) </dev/null >"$_native_shell_dir/stdout" 2>"$_native_shell_dir/stderr"
 	_native_shell_status=$?
 	[ "$_native_shell_status" -le 128 ] || return 129
 	_native_shell_out=$(_cfmgr_io_size "$_native_shell_dir/stdout") || return 129
 	_native_shell_err=$(_cfmgr_io_size "$_native_shell_dir/stderr") || return 129
 	[ "$_native_shell_out" -le 4096 ] && [ "$_native_shell_err" -le 4096 ] || return 129
-	_native_shell_ledger="native-shell $_native_shell_status $_native_shell_out $_native_shell_err$_io_lf"
+	_native_shell_ledger="$_native_shell_label $_native_shell_status $_native_shell_out $_native_shell_err$_io_lf"
 	_cfmgr_isolation_write "$_native_shell_dir/status" "$_native_shell_ledger" || return 129
 	# Read with a non-LF suffix and compare original byte length, so NUL or
 	# terminal LF loss cannot turn a malformed response into the sentinel.
@@ -112,7 +146,7 @@ exec 6<&-
 	_cfmgr_isolation_root_empty "$_native_shell_dir/complete" || return 129
 	_native_shell_complete=1
 	[ "$_native_shell_status" -eq 0 ] && [ "$_native_shell_err" -eq 0 ] &&
-		[ "$_native_shell_text" = "CFMGR_NATIVE_SHELL_V1$_io_lf" ] || return 1
+		[ "$_native_shell_text" = "$_native_shell_expected$_io_lf" ] || return 1
 ) >/dev/null 2>&1
 
 _cfmgr_native_shell_tool() (
