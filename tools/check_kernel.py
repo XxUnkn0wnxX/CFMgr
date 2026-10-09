@@ -138,6 +138,49 @@ def fixture_interpreter(data: bytes, replacement: str) -> bytes:
     return data[:offset] + encoded.ljust(size, b"\x00") + data[offset + size :]
 
 
+def native_witness_source(work: Path) -> Path:
+    """Write the shared descriptor witness without staging a shell or loader."""
+    witness = work / "native-fd-witness.c"
+    witness.write_text(
+        r"""#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    for (int fd = 3; fd <= 63; fd++) {
+#ifdef OUTSIDE
+        if (fd == 6) continue;
+#endif
+        errno = 0;
+        if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) return 120;
+    }
+#ifdef OUTSIDE
+    struct stat root, held;
+    if ((argc != 5 && argc != 9) || stat(argv[1], &root) || fstat(6, &held) ||
+        !S_ISDIR(held.st_mode) || root.st_dev != held.st_dev ||
+        root.st_ino != held.st_ino) return 121;
+    /* Fixed probes and the dependency handoff are the only outer call shapes. */
+    if (argc == 5) {
+        char *next[] = {"busybox", "chroot", argv[1], argv[2], argv[3], argv[4], 0};
+        execv(HOST_BUSYBOX, next);
+    } else {
+        char *next[] = {"busybox", "chroot", argv[1], argv[2], argv[3], argv[4],
+                        argv[5], argv[6], argv[7], argv[8], 0};
+        execv(HOST_BUSYBOX, next);
+    }
+#else
+    if (argc < 2) return 121;
+    argv[0] = "busybox";
+    execv("/bin/native-busybox", argv);
+#endif
+    return 122;
+}
+""",
+        encoding="ascii",
+    )
+    return witness
+
+
 def native_fixture(busybox: Path, work: Path, compiler: str, readelf: str) -> None:
     """Host-native shell/loader proof with fixture-only descriptor instrumentation."""
     staging = work / "native-staging"
@@ -196,37 +239,7 @@ def native_fixture(busybox: Path, work: Path, compiler: str, readelf: str) -> No
     (staging / "bin/sh").symlink_to("native-busybox")
     # The outer shim observes FD6 through external exec; the inner shim is run
     # by real native ash after its first `exec 6<&-`. Both inspect FD3..63.
-    witness = work / "native-fd-witness.c"
-    witness.write_text(
-        r"""#include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-int main(int argc, char **argv) {
-    for (int fd = 3; fd <= 63; fd++) {
-#ifdef OUTSIDE
-        if (fd == 6) continue;
-#endif
-        errno = 0;
-        if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) return 120;
-    }
-#ifdef OUTSIDE
-    struct stat root, held;
-    if (argc != 5 || stat(argv[1], &root) || fstat(6, &held) ||
-        !S_ISDIR(held.st_mode) || root.st_dev != held.st_dev ||
-        root.st_ino != held.st_ino) return 121;
-    char *next[] = {"busybox", "chroot", argv[1], argv[2], argv[3], argv[4], 0};
-    execv(HOST_BUSYBOX, next);
-#else
-    if (argc < 2) return 121;
-    argv[0] = "busybox";
-    execv("/bin/native-busybox", argv);
-#endif
-    return 122;
-}
-""",
-        encoding="ascii",
-    )
+    witness = native_witness_source(work)
     common = [compiler, "-O2", "-Wall", "-Wextra", "-Werror", "-static", str(witness)]
     command([*common, "-o", str(staging / "bin/busybox")])
     command(

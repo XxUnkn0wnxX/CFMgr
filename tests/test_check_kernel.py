@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import shutil
 import struct
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -14,6 +17,120 @@ import pytest
 from tools import check_kernel
 
 pytestmark = [pytest.mark.unit, pytest.mark.matrix("V43", evidence="harness")]
+
+
+@pytest.fixture(scope="module")
+def native_outer_witness(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Compile the real outer shim once; its target only prints NUL-framed argv."""
+    compiler = shutil.which("cc")
+    if compiler is None:
+        pytest.skip("compiled native witness regression requires a host C compiler")
+    work = tmp_path_factory.mktemp("native-outer-witness")
+    target = work / "inert-busybox"
+    target.write_text('#!/bin/sh\nprintf "%s\\000" "$@"\n', encoding="ascii")
+    target.chmod(0o700)
+    source = check_kernel.native_witness_source(work)
+    executable = work / "native-chroot"
+    check_kernel.command(
+        [
+            compiler,
+            "-O2",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-DOUTSIDE",
+            f"-DHOST_BUSYBOX={json.dumps(str(target))}",
+            str(source),
+            "-o",
+            str(executable),
+        ]
+    )
+    return executable
+
+
+def run_native_outer_witness(
+    executable: Path, argv: list[str], held: Path | None, extra_fd: int = 0
+) -> subprocess.CompletedProcess[bytes]:
+    # A fresh unprivileged launcher supplies real descriptors, including FD63
+    # beyond POSIX shell redirection syntax. No chroot or script evaluation.
+    launcher = """import os
+import sys
+
+held, extra, executable, *argv = sys.argv[1:]
+if held:
+    fd = os.open(held, os.O_RDONLY)
+    os.dup2(fd, 6, inheritable=True)
+    if fd != 6:
+        os.close(fd)
+if int(extra):
+    fd = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(fd, int(extra), inheritable=True)
+    os.set_inheritable(int(extra), True)
+    if fd != int(extra):
+        os.close(fd)
+os.execv(executable, [executable, *argv])
+"""
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            launcher,
+            str(held) if held else "",
+            str(extra_fd),
+            str(executable),
+            *argv,
+        ],
+        capture_output=True,
+        timeout=5,
+        check=False,
+    )
+
+
+def test_compiled_outer_witness_forwards_both_finite_native_call_shapes(
+    native_outer_witness: Path, tmp_path: Path
+) -> None:
+    root = tmp_path / "native root"
+    root.mkdir()
+    script = 'exec 6<&-\nprintf "%s\\n" "$1"\n# literal $() and trailing newline\n'
+    old = [str(root), "/bin/sh", "-c", script]
+    vectors = [
+        old,
+        [*old, "cfmgr-dependencies", "repair", "shared", "native"],
+        [*old, "cfmgr-dependencies", "reinstall", "tunnel", "entware"],
+    ]
+    for argv in vectors:
+        result = run_native_outer_witness(native_outer_witness, argv, root)
+        assert result.returncode == 0, (argv, result.stderr)
+        assert result.stderr == b""
+        assert result.stdout == b"".join(arg.encode() + b"\x00" for arg in ["chroot", *argv])
+
+
+def test_compiled_outer_witness_rejects_extra_arguments_root_mismatch_and_leaked_fds(
+    native_outer_witness: Path, tmp_path: Path
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    other = tmp_path / "other"
+    other.mkdir()
+    regular = tmp_path / "regular"
+    regular.write_text("not a directory", encoding="ascii")
+    old = [str(root), "/bin/sh", "-c", "exec 6<&-\n"]
+    cases = [
+        ([], root, 0, 121),
+        (old[:-1], root, 0, 121),
+        ([*old, "extra"], root, 0, 121),
+        ([*old, "cfmgr-dependencies", "repair", "shared"], root, 0, 121),
+        ([*old, "cfmgr-dependencies", "repair", "shared", "native", "extra"], root, 0, 121),
+        (old, None, 0, 121),
+        (old, other, 0, 121),
+        ([str(regular), *old[1:]], regular, 0, 121),
+        (old, root, 3, 120),
+        (old, root, 63, 120),
+    ]
+    for argv, held, extra_fd, status in cases:
+        result = run_native_outer_witness(native_outer_witness, argv, held, extra_fd)
+        assert result.returncode == status, (argv, held, extra_fd, result.stderr)
+        assert result.stdout == result.stderr == b""
 
 
 def test_help_never_checks_platform_or_privileges(monkeypatch: pytest.MonkeyPatch) -> None:
