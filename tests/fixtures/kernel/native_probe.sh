@@ -79,8 +79,9 @@ IFS='	'
 # shellcheck disable=SC2086
 set -- $volume_body
 fixture_device=$3
-IFS=' 	
-'
+IFS=' 	'
+IFS="${IFS}
+"
 printf 'synthetic block fixture\n' >"$guard/block"
 # The real retained-root observer still parses blockdev metadata and verifies
 # FD9. Only FD8's regular-file class is replaced by an exact synthetic response.
