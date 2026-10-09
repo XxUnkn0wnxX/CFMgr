@@ -57,6 +57,8 @@ if mode == "opkg":
                 "LD_LIBRARY_PATH",
                 "OPENSSL_CONF",
                 "WGETRC",
+                "SYSTEM_WGETRC",
+                "RANDFILE",
             )
         },
     )
@@ -335,6 +337,7 @@ def test_update_failure_stops_and_a_later_call_rechecks_and_retries(router: Rout
         "export OFFLINE_ROOT=/poison TMPDIR=/poison\n"
         "export http_proxy=http://invalid HTTPS_PROXY=http://invalid\n"
         "export LD_LIBRARY_PATH=/poison OPENSSL_CONF=/poison WGETRC=/poison\n"
+        "export SYSTEM_WGETRC=/poison RANDFILE=/poison\n"
         "cfmgr_bootstrap_dependencies_test "
         f"{shlex.quote(str(fixture.root))} shared native; first=$?\n"
         "cfmgr_bootstrap_dependencies_test "
@@ -412,6 +415,7 @@ def test_explicit_reinstall_forces_every_selected_package_and_post_probe(
 
     result = fixture.invoke(
         "export OFFLINE_ROOT=/poison TMPDIR=/poison\n"
+        "export SYSTEM_WGETRC=/poison RANDFILE=/poison\n"
         + f"cfmgr_bootstrap_reinstall_test {shlex.quote(str(fixture.root))} "
         + f"{shlex.quote(scope)} {shlex.quote(lock_provider)}; status=$?\n"
         + 'printf "RESULT\\t%s\\n" "$status"\n'

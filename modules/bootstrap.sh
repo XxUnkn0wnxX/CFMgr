@@ -128,7 +128,7 @@ _cfmgr_bootstrap_prepare() {
 	unset IPKG_CONF_DIR IPKG_OFFLINE_ROOT IPKG_INSTROOT IPKG_TMP_DIR DESTDIR
 	unset http_proxy https_proxy ftp_proxy all_proxy no_proxy
 	unset HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY NO_PROXY
-	unset CURL_HOME CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR WGETRC
+	unset CURL_HOME CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR WGETRC SYSTEM_WGETRC RANDFILE
 	_bootstrap_opkg=$_bootstrap_root/bin/opkg
 	[ -d "$_bootstrap_root" ] && [ -x "$_bootstrap_opkg" ] && [ ! -d "$_bootstrap_opkg" ] || return 1
 	_bootstrap_capabilities='jq timeout sha256sum'
