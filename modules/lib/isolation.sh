@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Internal owned-root lifecycle; trusted io.sh/storage.sh definitions required.
 # Fixed probes additionally require trusted closure.sh/supervision.sh definitions.
+# Native-data roots additionally require trusted native_config.sh definitions.
 # Failed preparation retains its guard because normalized failure does not
 # prove that an interrupted intermediate left no producer.
 # Sourcing defines functions only; no CLI or general Opt execution approval.
@@ -238,8 +239,8 @@ _cfmgr_isolation_unmount() {
 
 # Each query uses a fresh two-capture IO owner, outside the mounted tree. Its
 # checked ledger is written exclusively, then checked again after IO cleanup.
-# Old/bare entries use16 queries; the literal native root uses64. No slot reuse
-# or unbounded retries. Its complete56-query accounting is documented below.
+# Old/bare entries use 16 queries; literal native layouts use 64. No slot reuse
+# or unbounded retries. Their complete 56-query accounting is documented below.
 # A complete probe uses14: three admission, source recheck, null bind, image
 # parent, three image steps, two checks per unmount, and final RAM cleanup.
 _cfmgr_isolation_query_action() {
@@ -256,7 +257,7 @@ _cfmgr_isolation_query_action() {
 _cfmgr_isolation_query() {
 	# Only this literal owner/layout gets64; no ambient numeric limit is read.
 	case ${_isolation_mode-}:${_execution_layout-} in
-	root:native) [ "$_isolation_queries" -lt 64 ] || return 1 ;;
+	root:native | root:native-data) [ "$_isolation_queries" -lt 64 ] || return 1 ;;
 	*) [ "$_isolation_queries" -lt 16 ] || return 1 ;;
 	esac
 	_isolation_query_file=$_isolation_guard/query-$_isolation_queries
@@ -722,6 +723,15 @@ cfmgr_isolation_native_root_test() {
 	_cfmgr_isolation_root_owner native fixture "$@" >/dev/null 2>&1
 }
 
+# The fixed data phase is internal; no caller-selected staging callback/payload.
+cfmgr_isolation_native_data_root_with() {
+	_cfmgr_isolation_root_owner native-data production "$@" >/dev/null 2>&1
+}
+
+cfmgr_isolation_native_data_root_test() {
+	_cfmgr_isolation_root_owner native-data fixture "$@" >/dev/null 2>&1
+}
+
 _cfmgr_isolation_root_owner() (
 	set +x
 	set +e
@@ -745,8 +755,9 @@ _cfmgr_isolation_root_owner() (
 	trap 'exit 129' HUP INT QUIT TERM
 	_execution_layout=$1 _execution_kind=$2
 	shift 2
-	case $_execution_layout in bare | native) ;; *) return 2 ;; esac
+	case $_execution_layout in bare | native | native-data) ;; *) return 2 ;; esac
 	_execution_native_source_root=/
+	_execution_data_source_root=/
 	case $_execution_kind in
 	production)
 		[ "$#" -ge 5 ] || return 2
@@ -760,13 +771,21 @@ _cfmgr_isolation_root_owner() (
 	fixture)
 		_isolation_root=$1 _execution_guard=$2 _isolation_tools=$3
 		_isolation_input=$4 _execution_fdinfo=$5
-		if [ "$_execution_layout" = native ]; then
+		case $_execution_layout in
+		native)
 			[ "$#" -ge 9 ] || return 2
 			_execution_native_source_root=$6
 			shift
-		else
+			;;
+		native-data)
+			[ "$#" -ge 10 ] || return 2
+			_execution_native_source_root=$6 _execution_data_source_root=$7
+			shift 2
+			;;
+		bare)
 			[ "$#" -ge 8 ] || return 2
-		fi
+			;;
+		esac
 		_isolation_parser=$6 _isolation_storage_parser=$7 _isolation_callback=$8
 		[ -n "$_isolation_tools" ] || return 2
 		shift 8
@@ -783,11 +802,18 @@ _cfmgr_isolation_root_owner() (
 		_cfmgr_isolation_path "$_execution_path" && [ "$_execution_path" != / ] || return 2
 	done
 	[ -z "$_isolation_tools" ] || _cfmgr_isolation_path "$_isolation_tools" || return 2
-	if [ "$_execution_layout" = native ]; then
+	if [ "$_execution_layout" != bare ]; then
 		_cfmgr_isolation_path "$_execution_native_source_root" || return 2
 		for _execution_view in bin sbin lib usr; do
 			_cfmgr_isolation_path "${_execution_native_source_root%/}/$_execution_view" &&
 				_cfmgr_isolation_path "$_execution_image/$_execution_view" || return 2
+		done
+	fi
+	if [ "$_execution_layout" = native-data ]; then
+		for _execution_path in "$_execution_data_source_root" \
+			"${_execution_data_source_root%/}/etc/hosts" "${_execution_data_source_root%/}/etc/resolv.conf" \
+			"$_execution_image/etc" "$_execution_image/etc/hosts" "$_execution_image/etc/resolv.conf"; do
+			_cfmgr_isolation_path "$_execution_path" || return 2
 		done
 	fi
 	[ "${_execution_guard%/*}" = "$_isolation_root" ] || return 2
@@ -900,7 +926,7 @@ _cfmgr_isolation_root_lease() {
 	else
 		cfmgr_io_with_workspace "$_isolation_root" _cfmgr_isolation_root_fd_action || return 129
 	fi
-	if [ "$_execution_layout" = native ]; then
+	if [ "$_execution_layout" != bare ]; then
 		_cfmgr_isolation_native_layout_check || return 129
 		[ "$_execution_checked_root_ledger" = "$_execution_root_ledger" ] || return 129
 	else
@@ -925,7 +951,7 @@ _cfmgr_isolation_root_io() {
 	_cfmgr_isolation_umount_admit || return 129
 	_cfmgr_isolation_active prepare || return 129
 	"$_isolation_mkdir" -m 700 "$_execution_image" "$_execution_image/opt" "$_execution_image/tmp" "$_isolation_tree" || return 129
-	if [ "$_execution_layout" = native ]; then
+	if [ "$_execution_layout" != bare ]; then
 		for _execution_view in bin sbin lib usr; do
 			"$_isolation_mkdir" -m 700 "$_execution_image/$_execution_view" || return 129
 			_cfmgr_isolation_root_empty "$_execution_image/$_execution_view" || return 129
@@ -952,6 +978,14 @@ _cfmgr_isolation_root_io() {
 	_execution_source_root=$_isolation_fs_target
 	_cfmgr_isolation_root_ram_path "$_isolation_tree" || return 129
 	_execution_prior_body=$_isolation_body
+	if [ "$_execution_layout" = native-data ]; then
+		# This outer workspace has no captures yet: queries used nested owners.
+		# The checked data subtree becomes RO through the base root bind itself.
+		case $_execution_kind in
+		production) cfmgr_native_config_stage "$_execution_image" || return 129 ;;
+		fixture) cfmgr_native_config_test "$_execution_image" "$_execution_data_source_root" || return 129 ;;
+		esac
+	fi
 	_cfmgr_isolation_clear || return 129
 	_cfmgr_isolation_write "$_isolation_guard/intent-root" "root$_io_lf" || return 129
 	_cfmgr_isolation_native_call bind-root "$_isolation_mount" -n -i -o bind "$_execution_image" "$_isolation_tree" || return 129
@@ -972,7 +1006,7 @@ _cfmgr_isolation_root_io() {
 	_execution_base_ledger=$_isolation_ledger
 	_execution_base_body=$_isolation_body
 	_cfmgr_isolation_write "$_isolation_guard/mounted-root" "$_execution_root_ledger" || return 129
-	if [ "$_execution_layout" = native ]; then
+	if [ "$_execution_layout" != bare ]; then
 		_cfmgr_isolation_write "$_isolation_guard/base-root" "$_execution_base_ledger" || return 129
 		_execution_native_count=0
 		_execution_native_ids=
@@ -990,7 +1024,7 @@ _cfmgr_isolation_root_io() {
 	# Scoped redirection has closed the root lease and restored caller FD6.
 	cd / || return 129
 	[ ! -e "$_isolation_guard/active" ] && [ ! -L "$_isolation_guard/active" ] || return 129
-	if [ "$_execution_layout" = native ]; then
+	if [ "$_execution_layout" != bare ]; then
 		_cfmgr_isolation_native_layout_check || return 129
 		[ "$_execution_checked_root_ledger" = "$_execution_root_ledger" ] || return 129
 		_cfmgr_isolation_read "$_isolation_guard/populated-root" || return 129
@@ -1220,6 +1254,7 @@ _cfmgr_isolation_native_remove() {
 	_execution_native_count=$((_execution_native_count - 1))
 }
 
-# Native success uses 56 queries: base construction6; four view phases6 each;
-# three whole-layout checks5 each (prelease, withinlease, postcallback); reverse
-# removal2 each; final base-root teardown3. All metadata slots remain unique.
+# Native/native-data success uses 56 queries: base construction 6; four view
+# phases 6 each; three whole-layout checks 5 each (prelease, withinlease,
+# postcallback); reverse removal 2 each; final base-root teardown 3.
+# All metadata slots remain unique.

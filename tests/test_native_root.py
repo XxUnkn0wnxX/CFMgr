@@ -26,6 +26,9 @@ from tests.test_execution_root import (
 from tests.test_mountinfo import Mount, snapshot
 from tests.test_storage import IO, STORAGE
 
+NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
+DATA_HOSTS = b"127.0.0.1\tlocalhost\\native-data\n"
+DATA_RESOLVER = b""
 VIEWS = ("bin", "sbin", "lib", "usr")
 SOURCE_MOUNT_ID = "88"
 HOST_MOUNT_ID = "1"
@@ -33,6 +36,7 @@ VIEW_IDS = {name: str(901 + index) for index, name in enumerate(VIEWS)}
 NATIVE_DISPATCHER = r"""
 import json
 import os
+import shutil
 import stat
 import sys
 from pathlib import Path
@@ -86,6 +90,10 @@ if tool == "mount":
     if options == "bind":
         if target == root_target:
             relative = Path(source).relative_to(Path(settings["ramroot"]))
+            image_etc = Path(source) / "etc"
+            if image_etc.is_dir():
+                shutil.copytree(image_etc, Path(target) / "etc", symlinks=True)
+                state["mirrored_data_root"] = target
             for name in state["view_ids"]:
                 (Path(target) / name).mkdir(mode=0o700, exist_ok=True)
             row = dict(state["ram_mount"])
@@ -161,6 +169,9 @@ if tool == "umount":
     if fault == "unmount-busy:" + Path(target).name:
         sys.exit(0)
     state["mounts"] = [row for row in state["mounts"] if row["point"] != os.fsencode(target).hex()]
+    if target == state.get("mirrored_data_root"):
+        shutil.rmtree(Path(target) / "etc")
+        state.pop("mirrored_data_root")
     if fault == "fallback-change:" + Path(target).name:
         fallback = next(
             row for row in state["mounts"] if row["identifier"] == settings["root_mount_id"]
@@ -215,6 +226,13 @@ class NativeRootFixture(ExecutionRootFixture):
         super().__init__(router, fault)
         self.source_root = router.path("work/native-source")
         self.source_root.mkdir(mode=0o700)
+        self.data_source_root = router.path("work/native-data-source")
+        (self.data_source_root / "etc").mkdir(parents=True, mode=0o700)
+        hosts = DATA_HOSTS
+        if fault == "data-nul":
+            hosts = b"127.0.0.1\x00localhost\n"
+        (self.data_source_root / "etc/hosts").write_bytes(hosts)
+        (self.data_source_root / "etc/resolv.conf").write_bytes(DATA_RESOLVER)
         for name in VIEWS:
             path = self.source_root / name
             if fault == "source-alias" and name == "bin":
@@ -322,6 +340,7 @@ class NativeRootFixture(ExecutionRootFixture):
         settings = json.loads(settings_path.read_text())
         settings.update(
             source_root=str(self.source_root),
+            data_source_root=str(self.data_source_root),
             root_target=str(self.guard / "execution/root"),
             view_ids=VIEW_IDS,
         )
@@ -334,21 +353,44 @@ class NativeRootFixture(ExecutionRootFixture):
         callback_status: int = 0,
         callback_args: tuple[str, ...] = ("native args", "*"),
         source_root: Path | None = None,
+        data_root: bool = False,
+        data_source_root: Path | None = None,
         focused_query: bool = True,
     ) -> ShellResult:
         self.prepare()
+        if data_root:
+            callback_path = self.router.path("work/root-callback.py")
+            callback = callback_path.read_text(encoding="utf-8")
+            needle = 'base = Path(os.environ["CFMGR_TEST_ROOT"]) / "work"\n'
+            assert needle in callback
+            check = (
+                needle
+                + 'if "check-native-data" in args:\n'
+                + '    args.remove("check-native-data")\n'
+                + '    etc = root / "etc"\n'
+                + f'    if (etc / "hosts").read_bytes().hex() != "{DATA_HOSTS.hex()}" or '
+                + f'(etc / "resolv.conf").read_bytes().hex() != "{DATA_RESOLVER.hex()}":\n'
+                + "        sys.exit(94)\n"
+                + '    (base / "callback-data").write_text("staged data visible\\n")\n'
+            )
+            callback_path.write_text(callback.replace(needle, check, 1), encoding="utf-8")
         self.fdinfo_input.write_text(
             f"pos:\t0\nflags:\t0100000\nmnt_id:\t{ROOT_MOUNT_ID}\n", encoding="ascii"
         )
         script = (
             f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
+            + (f". {shlex.quote(str(NATIVE_CONFIG))}\n" if data_root else "")
             + (FOCUSED_ISOLATION_QUERY if focused_query else "")
             + CALLBACK
             + 'exec 7<"$CFMGR_TEST_ROOT/work/fd-seven" '
             + '8<"$CFMGR_TEST_ROOT/work/fd-eight" 9<"$CFMGR_TEST_ROOT/work/fd-nine"\n'
             + 'exec 6<"$CFMGR_TEST_ROOT/work/fd-six"\n'
-            + 'cfmgr_isolation_native_root_test "$@"; status=$?\n'
+            + (
+                'cfmgr_isolation_native_data_root_test "$@"; status=$?\n'
+                if data_root
+                else 'cfmgr_isolation_native_root_test "$@"; status=$?\n'
+            )
             + 'printf "RESULT\\t%s\\n" "$status"\n'
             + "IFS= read -r seven <&7; IFS= read -r eight <&8; IFS= read -r nine <&9; "
             + "IFS= read -r six <&6\n"
@@ -362,12 +404,18 @@ class NativeRootFixture(ExecutionRootFixture):
             str(self.mount_input),
             str(self.fdinfo_input),
             str(source),
-            str(MOUNT_PARSER),
-            str(STORAGE_PARSER),
-            "fixture_callback",
-            f"status-{callback_status}",
-            *callback_args,
         ]
+        if data_root:
+            paths.append(str(data_source_root or self.data_source_root))
+        paths.extend(
+            [
+                str(MOUNT_PARSER),
+                str(STORAGE_PARSER),
+                "fixture_callback",
+                f"status-{callback_status}",
+                *callback_args,
+            ]
+        )
         for name in ("six", "seven", "eight", "nine"):
             self.router.write(f"work/fd-{name}", f"original-{name}\n")
         if shell is not None:
@@ -439,18 +487,26 @@ def test_native_root_completes_fixed_four_views_and_unmounts_in_reverse_order(
 @pytest.mark.integration
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_actual_busybox_native_root_completes_fixed_views(
+def test_actual_busybox_native_data_root_stages_and_exposes_configuration(
     busybox_router: RouterHarness,
 ) -> None:
     assert busybox_router.busybox is not None
     fixture = NativeRootFixture(busybox_router)
-    result = fixture.run_native(shell=str(busybox_router.busybox), focused_query=False)
+    result = fixture.run_native(
+        shell=str(busybox_router.busybox),
+        data_root=True,
+        callback_args=("native args", "*", "check-native-data"),
+        focused_query=False,
+    )
     assert result.returncode == 0, result
     assert result.stderr == ""
     assert result.stdout.startswith("RESULT\t0\n")
     ledger = fixture.callback_ledger.read_text().splitlines()
     assert ledger[0].startswith("mount\t900\t")
     assert ledger[1].split("\t")[6] == "4"
+    assert fixture.router.read("work/callback-data") == "staged data visible\n"
+    assert (fixture.guard / "execution/image/etc/hosts").read_bytes() == DATA_HOSTS
+    assert not (fixture.guard / "execution/root/etc").exists()
 
 
 @pytest.mark.integration
@@ -757,7 +813,9 @@ def test_native_source_check_rejects_writable_or_mounted_views(
 @pytest.mark.unit
 @pytest.mark.matrix("V74", evidence="host")
 @pytest.mark.parametrize(
-    ("layout", "expected"), [("legacy", 1), ("native", 1)], ids=["old-ceiling", "native-ceiling"]
+    ("layout", "expected"),
+    [("legacy", 1), ("native", 1), ("native-data", 1)],
+    ids=["old-ceiling", "native-ceiling", "native-data-ceiling"],
 )
 def test_native_query_budget_is_literal_and_bounded(
     router: RouterHarness, layout: str, expected: int
@@ -770,7 +828,7 @@ def test_native_query_budget_is_literal_and_bounded(
         'printf "RESULT\\t%s\\n" "$status"\n'
     )
     query_count = "16" if layout == "legacy" else "64"
-    mode = "bare" if layout == "legacy" else "native"
+    mode = "bare" if layout == "legacy" else layout
     result = router.run(script, [query_count, mode], timeout=3)
     assert result.returncode == 0, result
     assert result.stderr == ""
