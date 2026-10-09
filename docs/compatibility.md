@@ -210,13 +210,11 @@ source-only helper does not install cron, launch opkg or establish an operationa
 dependency worker. Its tenth Linux scenario uses a synthetic storage-acquisition
 boundary while exercising real deadline, root/chroot and cleanup behavior; it
 does not prove physical storage or UUID admission, actual outer storage IO
-acquisition, ARM32 firmware execution or router acceptance. All ten Linux
-scenarios passed the exact-head 42%
+acquisition, ARM32 firmware execution or router acceptance. The O9b 42%
 [Linux/BusyBox gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-at `ffc3782`. The full local suite passed 1,691 tests with 31 platform skips;
-CI passed 1,722 tests with no skips. Six stripped-ash checks also passed.
-Synthetic storage acquisition still leaves physical block-device/UUID admission
-and outer storage IO acquisition unproved. See the
+is retained as the historical worker-composition baseline. Synthetic storage
+acquisition still leaves physical block-device/UUID admission and outer storage
+IO acquisition unproved. See the
 [fixture guide](../tests/fixtures/README.md) and [PLAN.md](../PLAN.md).
 
 The O9c extension adds `cfmgr_native_opkg_probe ROOT EXPECTED_VERSION` beside
@@ -233,11 +231,15 @@ added.
 The ninth Linux kernel scenario now also invokes a trusted synthetic static
 opkg stand-in to witness the fixed command, clean environment and working
 directory, closed inherited descriptors, and retained Opt marker read. It does
-not run Entware opkg or prove ARM, router, NSS or TLS behavior. The ten-scenario
-42% gate remains the last accepted full Linux result; the O9c 43% extension gate
-is pending. The focused host tests include `tests/test_native_opkg.py`; local
-BusyBox-specific coverage is explicitly skipped when no BusyBox executable is
-available.
+not run Entware opkg or prove ARM, router, NSS or TLS behavior. All ten scenarios
+passed the O9c 43% gate at candidate `d0a04b3a6d2e57464803039255bccafc97d0e79c`
+in [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431).
+CI exercised the actual BusyBox grammar representative. Full local, CI and
+focused test counts are recorded in [development checks](development.md#-run-checks)
+and [PLAN.md](../PLAN.md). These are synthetic host/Linux proofs, not real opkg
+installation, executable provenance, Entware/ARM ABI or Merlin acceptance.
+Automatic-repair policy remains pending; the fixed version check adds no repair
+behavior. The 42% gate cited above is retained as historical O9b evidence.
 
 ## 🧩 Qualify each feature separately
 

@@ -63,7 +63,11 @@ stand-in through the fixed `/opt/bin/opkg --version` path. It witnesses exact
 child argv, clean environment and working directory, closure of inherited
 descriptors, and reading the retained Opt marker. It does not run Entware opkg
 or establish the installed executable's provenance. The O9c 43% Linux gate is
-pending; the 42% ten-scenario run remains the last accepted kernel result.
+green: all ten scenarios passed at candidate
+`d0a04b3a6d2e57464803039255bccafc97d0e79c` in
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431).
+Scenario 9 took 6.17s. This synthetic fixture does not prove real opkg,
+executable provenance or router execution.
 
 Scenario 10 composes the source-only native-probe worker with the real deadline
 owner, fixed chrooted probe, native-config-root teardown and completion handoff.
@@ -74,11 +78,10 @@ witness before confirming no root/storage aliases appeared. The test storage
 seam keeps FD8 regular with synthetic metadata and
 uses a controlled FD9 source, but compares the supplied Entware authority. It
 does not exercise outer storage IO acquisition or physical block-device/UUID
-admission. All ten scenarios passed the exact-head 42%
-[Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-at `ffc3782`; the tenth scenario took 8.40s. The full local suite passed 1,691
-tests with 31 platform skips, and CI passed 1,722 tests with no skips. This
-does not establish router acceptance.
+admission. At 43%, all ten scenarios passed; the unchanged tenth scenario took
+8.79s. CI also ran the actual BusyBox opkg grammar representative. Full suite
+counts and timings are in the [development guide](../../docs/development.md#-run-checks).
+These host/Linux results do not establish router acceptance.
 
 The device layer adds only privately generated `/dev/null` (1:3) and
 `/dev/urandom` (1:9), with the expected root ownership and mode. Its wrapper
@@ -130,8 +133,8 @@ busy-Opt cleanup refusal and malformed API rejection;
 `tests/test_entware_root_admission.py` covers the storage-admission boundary.
 `tests/test_native_devices.py` covers fixed node metadata, inode rechecks and
 host busy-unmount guard retention. The actual BusyBox representative and ninth
-namespace scenario provide separate integration evidence for the accepted 41%
-checkpoint; the tenth native-probe scenario passed in the current 42% gate.
+namespace scenario now provide integration evidence for the 43% O9c gate above;
+the tenth native-probe scenario passed unchanged in that gate.
 Host fixtures do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete

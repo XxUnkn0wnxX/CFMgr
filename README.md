@@ -31,12 +31,13 @@ checks, guarded process deadlines, internal workspaces and a partial native
 health report. Internal fixed probes now cover one native shell launch and the
 installed Entware `opkg --version` response. They remain source-only checks: the
 worker composition calls only the shell probe and neither probe installs
-packages or starts an operational worker. The accepted 42% checkpoint passed
-the full local suite (1,691 passed, 31 platform skips), Linux/BusyBox CI (1,722
+packages or starts an operational worker. The 43% O9c checkpoint passed the
+full local suite (1,707 passed, 32 platform skips), Linux/BusyBox CI (1,739
 passed, no skips), and all ten Linux kernel scenarios; see the
-[green CI run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-and [PLAN.md](PLAN.md) for evidence limits. The O9c extension's 43% Linux gate is
-pending. Live router acceptance remains pending. Operational setup and feature
+[green CI run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431)
+and [PLAN.md](PLAN.md) for evidence limits. These are synthetic host/Linux
+proofs, not real opkg installation, executable provenance or Merlin acceptance.
+Live router acceptance remains pending. Operational setup and feature
 integration remain incomplete, and there is no installable manager yet.
 Routine Entware upgrades remain user-managed; the internal dependency backend
 installs only missing or unusable requirements.

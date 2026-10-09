@@ -335,7 +335,8 @@ cover actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`
 the quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
 128 KiB, with native BusyBox `dd` and `cmp`. The tenth composes the fixed native
-probe with the real deadline and root/chroot cleanup. All ten passed the 42%
+probe with the real deadline and root/chroot cleanup. The O9b baseline passed all
+ten scenarios at 42% in the
 [Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
 at `ffc3782`.
 The kernel fixture substitutes a synthetic FD8 storage observation and a
@@ -351,14 +352,17 @@ fixture wrappers inspect descriptors before forwarding to real chroot/applets.
 No firmware executable is copied or run. The tenth scenario adds the source-only
 worker's real deadline and checked root/probe cleanup, observes the watchdog's
 own descriptors, and uses synthetic storage acquisition; it does not prove
-outer storage IO acquisition or physical block-device/UUID admission. The
-42% full local run passed 1,691 tests with 31 BusyBox/platform skips in 861.98s;
-Linux/BusyBox CI passed 1,722 tests with no skips in 98.57s. Six stripped-ash
-checks passed in 6.98s. The ten kernel scenarios all passed; `native-root` took
-5.71s and `native-probe` 8.40s; namespace execution totaled 18.43s and the
-whole kernel command 19.40s. These are the accepted 42% results; the O9c 43%
-Linux extension gate is pending. The kernel suite remains developer-host
-evidence only. See [PLAN.md](../PLAN.md)
+outer storage IO acquisition or physical block-device/UUID admission. The 43%
+full local run passed 1,707 tests with 32 explicit platform skips in
+904.87s; [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431)
+passed 1,739 tests with no skips in 108.91s. Six stripped-ash cases passed in
+7.05s. All ten kernel scenarios passed: `native-root` took 6.17s and the
+unchanged `native-probe` 8.79s; namespace execution took 19.66s and the kernel
+command 20.98s. CI ran the actual BusyBox opkg grammar representative. These
+synthetic host/Linux results do not prove real opkg installation, executable
+provenance, Entware/ARM ABI or Merlin acceptance. Automatic-repair policy is
+still pending. The kernel suite remains developer-host evidence only. See
+[PLAN.md](../PLAN.md)
 for the full checkpoint record and the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
 and limits.

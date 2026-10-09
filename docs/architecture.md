@@ -419,10 +419,23 @@ does not install packages. Neither path adds arbitrary callback or executable
 authority. The tenth Linux kernel
 scenario exercises the real deadline, root/chroot and cleanup path with
 synthetic storage acquisition; it does not establish outer storage IO
-acquisition, block-device/UUID admission or router execution. All ten scenarios
-passed the exact-head 42%
+acquisition, block-device/UUID admission or router execution. This composition
+passed the 42% O9b
 [Linux/BusyBox gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-at `ffc3782`; full local and CI results are in [PLAN.md](../PLAN.md).
+at `ffc3782`; its results remain historical baseline evidence.
+
+The O9c 43% revision adds the fixed opkg-version probe to `native_exec.sh` and a
+trusted synthetic static stand-in to the ninth Linux scenario. The stand-in
+witnesses the fixed argv, clean environment and cwd, closed inherited
+descriptors, and retained Opt marker read; it does not run Entware opkg. The
+candidate `d0a04b3a6d2e57464803039255bccafc97d0e79c` passed all ten kernel scenarios in
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431).
+Scenario 9 took 6.17s and the unchanged scenario 10 took 8.79s. Full local,
+CI and stripped-ash results are in [development checks](development.md#-run-checks)
+and [PLAN.md](../PLAN.md). These synthetic host/Linux proofs do not establish
+real opkg installation, executable provenance, Entware/ARM ABI or Merlin
+acceptance. Automatic-repair policy remains undecided; this fixed version check
+does not add repair behavior.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
