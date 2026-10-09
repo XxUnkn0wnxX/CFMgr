@@ -238,7 +238,10 @@ CI exercised the actual BusyBox grammar representative. Full local, CI and
 focused test counts are recorded in [development checks](development.md#-run-checks)
 and [PLAN.md](../PLAN.md). These are synthetic host/Linux proofs, not real opkg
 installation, executable provenance, Entware/ARM ABI or Merlin acceptance.
-Automatic-repair policy remains pending; the fixed version check adds no repair
+Future repair remains a normal operation through the installed opkg and its
+configured feeds, with CFMgr's own serialization and the existing post-checks.
+This does not promise exclusion of unrelated writers or preservation of
+unrelated half-installed packages, and the fixed version check adds no repair
 behavior. The 42% gate cited above is retained as historical O9b evidence.
 
 ## 🧩 Qualify each feature separately

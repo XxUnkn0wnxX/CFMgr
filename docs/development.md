@@ -360,8 +360,13 @@ passed 1,739 tests with no skips in 108.91s. Six stripped-ash cases passed in
 unchanged `native-probe` 8.79s; namespace execution took 19.66s and the kernel
 command 20.98s. CI ran the actual BusyBox opkg grammar representative. These
 synthetic host/Linux results do not prove real opkg installation, executable
-provenance, Entware/ARM ABI or Merlin acceptance. Automatic-repair policy is
-still pending. The kernel suite remains developer-host evidence only. See
+provenance, Entware/ARM ABI or Merlin acceptance. The selected future repair path
+is normal installed-opkg operation using configured feeds and dependency
+resolution, with CFMgr's own serialization, deadlines, storage checks and
+post-checks. Its lock cannot exclude unrelated writers or guarantee preservation
+of unrelated half-installed packages; no custom foreign-state veto or additional
+package manager is planned. The O9c probe does not perform repair. The kernel
+suite remains developer-host evidence only. See
 [PLAN.md](../PLAN.md)
 for the full checkpoint record and the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence

@@ -434,8 +434,7 @@ Scenario 9 took 6.17s and the unchanged scenario 10 took 8.79s. Full local,
 CI and stripped-ash results are in [development checks](development.md#-run-checks)
 and [PLAN.md](../PLAN.md). These synthetic host/Linux proofs do not establish
 real opkg installation, executable provenance, Entware/ARM ABI or Merlin
-acceptance. Automatic-repair policy remains undecided; this fixed version check
-does not add repair behavior.
+acceptance. This fixed version check does not add repair behavior.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
@@ -639,11 +638,16 @@ The pinned opkg CLI reads configuration before acquiring its process-owned
 `lockf` lock, and ordinary install then configures all loaded unpacked packages.
 Its public options do not provide an atomic check that excludes unrelated
 partial installations. A separate status check leaves a gap before install,
-and CFMgr's cooperative lock covers only participating CFMgr work. Stable
-configuration and exclusion of conflicting writers across admission and package
-work remain unresolved operational prerequisites. The source-derived lock-file
-unlink race and exact source references are recorded in the plan; no runtime
-contention proof or custom opkg replacement is claimed.
+and CFMgr's cooperative lock covers only participating CFMgr work. The selected
+future repair path is normal installed-opkg operation using configured feeds,
+package resolution, temporary-directory selection and opkg's normal package
+configuration behavior. CFMgr's lock serializes its own workers, and opkg retains its native locking
+behavior. These do not establish global exclusion of external writers or
+guarantee that unrelated half-installed packages remain untouched. No custom foreign-state
+veto or additional package manager is planned. This policy does not imply that
+the O9c version probe performs repair or that router operation has been tested.
+The source-derived lock-file unlink race and exact source references are
+recorded in the plan.
 
 For ordinary Entware operations, pinned Entware 540 source sets the compiled
 default opkg temporary directory to `/opt/tmp`. The effective order is an
