@@ -36,8 +36,8 @@ upgrades remain user-managed; the dependency
 backend installs only missing or unusable requirements, while operational
 worker and feature integration remain incomplete. There is no installable
 manager yet. Extended NSS/wget/OpenSSL/CA staging is a source-only internal
-helper, not wired into a root. Its full local validation passes; Linux/BusyBox
-CI for the latest checkpoint is pending.
+helper, not wired into a root. Its full local and Linux/BusyBox CI validation
+passes; operational integration remains incomplete.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
 DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)

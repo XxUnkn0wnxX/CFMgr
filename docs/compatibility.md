@@ -64,7 +64,9 @@ copying does not establish NSS behavior, OpenSSL policy, certificate trust or
 successful network/TLS use. The extended helper's focused tests passed 42 cases
 with one local BusyBox-unavailable skip in 9.68 seconds. The 39% full local
 gate passes 1,613 tests with 29 explicit platform skips in 769.14 seconds using
-one worker; exact-head Linux/BusyBox CI remains pending. Coverage and deadlines
+one worker. Exact-head [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37946870895)
+passes all 1,642 tests in 112.06 seconds, six stripped-ash cases and all nine
+kernel scenarios. Coverage and deadlines
 are unchanged from normal concurrent validation.
 
 The ignored local cache at `.tmp/firmware-audit/INDEX.md` records the audit

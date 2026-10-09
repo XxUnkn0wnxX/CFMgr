@@ -263,7 +263,9 @@ passes 42 tests with one explicit local BusyBox-unavailable skip in 9.68 seconds
 each case takes under one second, and the shell/Python static checks pass. The
 39% full local checkpoint passes 1,613 tests with 29 explicit platform skips
 in 769.14 seconds using the documented single-worker mode. Exact-head
-Linux/BusyBox CI remains pending. This serial timing is separate from the
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37946870895)
+passes all 1,642 cases, six stripped-ash checks and nine kernel scenarios.
+This serial timing is separate from the
 earlier two-worker baseline; coverage and per-test deadlines are unchanged.
 
 `cfmgr_isolation_native_tmp_root_with` extends the native-data lifecycle with a

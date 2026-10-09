@@ -55,8 +55,10 @@ in `tests/test_native_config.py` and retains the hosts/resolver assertions; the
 extended files are not yet composed into a root.
 The focused extension suite passes 42 cases with one local BusyBox-unavailable
 skip in 9.68 seconds. The full local gate passes 1,613 tests with 29 explicit
-platform skips in 769.14 seconds using one worker; the 39% exact-head CI gate
-is pending. All cases and per-invocation deadlines are retained.
+platform skips in 769.14 seconds using one worker. The [39% exact-head CI
+gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37946870895) passes all
+1,642 tests, six stripped-ash cases and nine kernel scenarios. All cases and
+per-invocation deadlines are retained.
 `tests/test_native_tmp_root.py` checks quota validation and lifecycle metadata
 with host fixtures; these mock mount tools and do not prove actual quota, write
 or exec behavior. `tests/test_entware_root.py` covers retained-Opt success,
