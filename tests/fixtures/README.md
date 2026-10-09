@@ -15,13 +15,22 @@ profile is an observation, not proof that a runtime feature passes on that route
 ## Synthetic data-parser inputs
 
 `tests/test_config_header.py` runs the real JSON producer on synthetic inputs,
-then checks the source-only header projection and deliberately corrupted ledgers; it does not read a live settings file or expose
-credential values in parser output. `tests/test_catalog.py` uses complete
-synthetic catalog text with illustrative owners, repositories and URLs. Neither
-suite downloads a manifest, validates package trust or exercises a config reader
-or writer. Their ledger assertions establish parser behavior only. Both actual
-BusyBox parser cases pass in the accepted 46% Linux suite (1,848 tests, no skips);
-the Mac run explicitly skips them when BusyBox is unavailable.
+then checks the source-only header projection and deliberately corrupted
+ledgers; it does not read a live settings file or expose credential values in
+parser output. `tests/test_catalog.py` uses complete synthetic catalog text
+with illustrative owners, repositories and URLs. `tests/test_manifest.py`
+checks an independent literal ledger, file order, the functions-only helper,
+metadata/framing failures and exact input, file-count and declared-size bounds.
+Its actual BusyBox case exercises helper-plus-parser loading, hash normalization
+and malformed spacing/NUL refusal. The development guide's manifest example is
+fictional and uses placeholder hashes. The combined manifest/catalog focused
+gate passes 39 tests with two explicit missing-BusyBox skips in 5.78s; the 47%
+full local and exact CI gates remain pending. These parser checks
+do not download or authenticate a manifest, compare declared hashes with file
+bytes, establish inventory completeness, or exercise a config reader or
+writer. The catalog and config-header BusyBox cases passed in the accepted 46%
+Linux suite (1,848 tests, no skips); the Mac run explicitly skips them when
+BusyBox is unavailable.
 
 ## Kernel fixtures
 

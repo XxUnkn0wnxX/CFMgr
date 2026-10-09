@@ -661,12 +661,15 @@ promotion and live deployment still require separate authorization.
 
 ## 📦 Module catalog and forks
 
-The source-only `modules/lib/config_header.awk` and `modules/lib/catalog.awk`
-validate bounded data formats. They are not connected to a config reader,
-catalog consumer or installed workflow. Full schema/defaults, config ownership,
-migration, activation and writes remain future work. There is no generated
-defaults file, config writer, shipped catalog, manifest verifier, downloader or
-installer.
+The source-only `modules/lib/config_header.awk`, `catalog.awk` and
+`manifest.awk` validate bounded data formats. Callers explicitly load the
+functions-only `modules/lib/package_path.awk` helper before either catalog or
+manifest parser; no automatic helper loading or operational consumer is
+present. These parsers are not connected to a config reader, catalog consumer
+or installed workflow. Full
+schema/defaults, config ownership, migration, activation and writes remain
+future work. There is no generated defaults file, config writer, shipped
+catalog or manifest, trusted manifest verifier, downloader or installer.
 
 ### Configuration-header projection
 
@@ -694,9 +697,12 @@ provide a working large-config reader.
 
 ### Source-catalog grammar
 
-`catalog.awk` accepts an immutable regular file on stdin under `LC_ALL=C`, no
-operands and canonical `cfmgr_catalog_size` from 1 to 32,768 bytes. Input must
-be printable ASCII with LF line endings and a final LF; blank and `#` comment
+`catalog.awk` is called with the helper loaded explicitly first. For example,
+after independently measuring the exact byte count as `$size` and opening that
+same immutable regular file on stdin:
+`LC_ALL=C awk -v cfmgr_catalog_size="$size" -f modules/lib/package_path.awk -f modules/lib/catalog.awk <catalog.txt`.
+It accepts zero operands and canonical `cfmgr_catalog_size` from 1 to 32,768
+bytes. Input must be printable ASCII with LF line endings and a final LF; blank and `#` comment
 lines are allowed, while tabs, CR, NUL, non-ASCII and lines over 1,024 bytes
 are rejected. Metadata keys are unique and limited to `catalog`, `repository`,
 `branch` and `manifest`, all required exactly once with exact `catalog: 1`.
@@ -711,17 +717,30 @@ owner/repository and the fixed
 Arbitrary hosts, ports, credentials, queries, fragments and escaped paths are
 rejected.
 
+`package_path.awk` contains no input, `BEGIN` or `END` actions and defines only
+the explicitly called `cfmgr_package_path_safe`,
+`cfmgr_package_destination_safe` and `cfmgr_package_path_conflicts` functions.
+Paths are source-relative: 1–240 bytes total, 1–100 bytes per component,
+ASCII alphanumeric/dot/underscore/hyphen characters with an alphanumeric first
+character, no empty components and no absolute or trailing slash. Package
+destinations are exactly `cfmgr.sh` or below `modules/`, excluding
+`modules/config`, `modules/catalog.txt` and their descendants. A conflict means
+equal paths or an ancestor/descendant pair; each parser also rejects duplicate
+destinations.
+
 Entries use exact `KEY: VALUE` syntax with nonempty, unpadded values. One to 128
 unique file entries are required, including exactly `cfmgr.sh`. Other
 destination keys must be safe relative source paths below `modules/`; each
 component is 1–100 ASCII alphanumeric/dot/underscore/hyphen characters starting
 with an alphanumeric, and the full path is at most 240 characters. Empty, dot
 and dot-dot components, absolute paths, traversal, ancestor/descendant
-collisions, and the reserved `modules/config` and `modules/catalog.txt` paths and their
-descendants are rejected. These keys name repository files, not installed destinations: a
-future owner maps `cfmgr.sh` to the scripts entry and strips the `modules/`
-prefix under the established installed manager directory. A URL's safe source
-path is validated separately and may differ from its destination key.
+collisions, and the reserved `modules/config` and `modules/catalog.txt` paths
+and their descendants are rejected. These keys name repository files, not
+installed destinations: a future owner maps `cfmgr.sh` to the scripts entry and
+strips the `modules/` prefix under the established installed manager directory.
+A URL's safe source path is validated separately and may differ from its
+destination key. The accepted catalog input rules and projection bytes are
+preserved after extracting the shared path functions.
 
 The parser preserves file-entry order and emits `catalog<TAB>1`,
 `repository<TAB>OWNER<TAB>REPO`, `branch<TAB>REF`, `manifest<TAB>URL`, then
@@ -733,8 +752,8 @@ only; it does not read or trust the manifest, verify hashes/completeness, resolv
 a branch or download/write/package anything.
 
 The following is a complete synthetic format example that satisfies the
-parser's grammar. Its example owner/repository and paths are illustrative; it is
-not a published manifest or downloadable package:
+parser's grammar. Its example owner/repository and paths are illustrative; it
+is not a published catalog or downloadable package:
 
 ```text
 catalog: 1
@@ -743,6 +762,70 @@ branch: main
 manifest: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/manifest.txt
 cfmgr.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/cfmgr.sh
 modules/lib/common.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/modules/lib/common.sh
+```
+
+### Bounded package-manifest grammar
+
+`manifest.awk` is called with the same explicit helper-first order. For
+example, after independently measuring the exact byte count as `$size` and
+opening that same immutable regular file on stdin:
+`LC_ALL=C awk -v cfmgr_manifest_size="$size" -f modules/lib/package_path.awk -f modules/lib/manifest.awk <manifest.txt`.
+The caller supplies zero operands and canonical `cfmgr_manifest_size` from 1
+to 65,536 bytes. The parser checks the declared byte count and final LF. Input
+is printable ASCII plus LF, with lines up to 1,024 bytes; blank lines and
+comments beginning with `#` in column zero are allowed. Records use exact
+`KEY: VALUE` syntax, with unique required metadata in any order: `manifest: 1`,
+`version: MAJOR.MINOR.PATCH`, `config-schema: 1` and `package-api: 1`.
+
+The version is 5–128 bytes and has exactly three canonical unsigned decimal
+components. Leading zeroes, signs, prerelease labels and build suffixes are not
+accepted. Components remain text; the parser does not convert long values to
+machine-sized numbers or compare versions. The schema and package API numbers
+select declared data versions only;
+they do not establish code compatibility, migration behavior or downgrade
+approval.
+
+One to 128 file records are required, including `cfmgr.sh` exactly once with
+mode `0755`; other module entries may use `0644` or `0755`. Each record is
+`DEST: SIZE SHA256 MODE`, with exactly one ASCII space between the three value
+fields and no extra field. Destinations use the shared package path rules and
+cannot duplicate or collide as ancestor/descendant paths. Sizes are canonical
+decimal values from 1 to 1,048,576 bytes, with total declared file bytes at
+most 8,388,608. SHA-256 text is exactly 64 hexadecimal digits and is emitted in
+lowercase. Directories and symlink records are not supported.
+
+After validating the complete document, the parser emits `manifest<TAB>1`,
+`version<TAB>VERSION`, `config-schema<TAB>1`, `package-api<TAB>1`, the file
+records in input order as `file<TAB>DEST<TAB>SIZE<TAB>LOWER_SHA256<TAB>MODE`,
+and `end<TAB>FILE_COUNT<TAB>TOTAL_FILE_BYTES<TAB>BODY_BYTES`. The complete
+ledger is capped at 65,536 bytes. Invocation or declared-size errors return 2,
+malformed data returns 1, and valid input returns 0. Future consumers must
+check status, exact framing/footer and output-write completion; AWK status alone
+does not prove a successful write.
+
+The manifest is a declared inventory only. Parsing does not authenticate its
+source, verify actual file bytes or installed ownership/modes, prove required
+package completeness, compare it with a catalog, or authorize compatibility,
+downgrade, activation or installation. The manifest must not contain the
+containing commit hash: that would create a self-reference. A future acquisition
+step must bind the manifest to a single already-resolved immutable revision.
+There is currently no generated root catalog, published manifest, downloader,
+hashing workflow or installed-package mapper.
+
+The D2 manifest/catalog focused gate passes 39 tests with two explicit
+missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s; full local
+and exact Linux/BusyBox CI remain pending before 47% acceptance.
+
+The following complete manifest is fictional and uses placeholder hashes; file
+sizes and digests do not describe real repository files:
+
+```text
+manifest: 1
+version: 1.0.0
+config-schema: 1
+package-api: 1
+cfmgr.sh: 123 0000000000000000000000000000000000000000000000000000000000000000 0755
+modules/lib/common.sh: 456 1111111111111111111111111111111111111111111111111111111111111111 0644
 ```
 
 The accepted 46% checkpoint's focused parser checks pass 54 tests with two

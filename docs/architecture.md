@@ -40,7 +40,7 @@ flowchart LR
 | `cfmgr.sh` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
-| `modules/lib/config_header.awk`, `modules/lib/catalog.awk` | Bounded config-header projection and source-catalog grammar | Source-only parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
+| `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes the finite `rmdir` prerequisite | Internal callbacks; no operational package execution or CLI integration; capture allowlist is unchanged |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
@@ -95,14 +95,17 @@ belongs in `helpers/`, and its thin firmware or cron entry belongs in `hooks/`.
 Repository folders do not change Merlin's installed hook destinations.
 
 Loading and dependencies stay explicit, and sourcing a shared shell library
-only defines its functions. A new module also needs focused behavior tests,
-current documentation and, once distribution is implemented, an entry in the
-verified package manifest. Catalog source keys such as `modules/lib/common.sh`
-map later to `lib/common.sh` below the installed manager directory; `cfmgr.sh`
-maps to the installed script entry. The standalone catalog parser checks safe
-source-relative keys, while installer mapping, hashes and generation ownership
-remain future work. The current CLI diagram above shows implemented loading;
-this extension pattern guides future menu/setup integration.
+only defines its functions. AWK consumers explicitly load
+`package_path.awk` before `catalog.awk` or `manifest.awk`; there is no automatic
+helper discovery. A new module also needs focused behavior tests, current
+documentation and, once distribution is implemented, an entry in the verified
+package manifest. Catalog source keys such as `modules/lib/common.sh` map later
+to `lib/common.sh` below the installed manager directory; `cfmgr.sh` maps to the
+installed script entry. The standalone parsers check source-relative path
+grammar and declared manifest records, while installer mapping, trusted
+acquisition, actual-file hash checks and generation ownership remain future
+work. The current CLI diagram above shows implemented loading; this extension
+pattern guides future menu/setup integration.
 
 ## 🗂️ Storage and authority
 
@@ -543,6 +546,13 @@ exact Linux/BusyBox CI passes all 1,848 tests and all eleven unchanged kernel
 scenarios. This validates the parsers and preserves the worker composition;
 no integrated config reader, manifest trust or catalog acquisition path is implemented.
 
+The current 47% D2 candidate extracts shared safe-path functions and adds a
+bounded manifest parser. Combined manifest/catalog focused checks pass 39
+tests with two explicit missing-BusyBox skips in 5.78s; full local and exact CI
+validation remain pending, so this is not yet an accepted checkpoint. Matching Merlin awk behavior, full config
+validity, trusted manifest acquisition and an integrated config/catalog runtime
+path remain unproved.
+
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
 inputs are `RAMROOT`, `GUARD`,
@@ -802,12 +812,13 @@ or prove Entware ABI or Merlin runtime acceptance.
 
 ## 📦 Modules and forks
 
-**Planned distribution contract.** The standalone config-header and catalog
-parsers exist, but there is no integrated config reader/writer/generator,
-manifest verifier, downloader, updater or installed-package mapper. No catalog
-is shipped until a real manifest exists. `catalog.awk` checks candidate
-catalog syntax and safe source keys; it does not establish manifest trust,
-hashes or package completeness. Modules remain readable source files.
+**Planned distribution contract.** The standalone config-header, catalog and
+manifest parsers exist as source-only data checks, but there is no integrated
+config reader/writer/generator, trusted manifest verifier, downloader, updater
+or installed-package mapper. No catalog or manifest is shipped. The catalog
+and manifest parsers check grammar and declared paths/records; they do not
+establish source trust, compare actual file hashes or prove package
+completeness. Modules remain readable source files.
 
 When distribution is implemented, repository-root `catalog.txt` will be
 acquired from the selected repository snapshot and stored at

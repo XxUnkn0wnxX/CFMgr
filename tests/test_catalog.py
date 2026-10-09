@@ -9,7 +9,9 @@ import pytest
 
 from tests.harness import RouterHarness, ShellResult
 
-SOURCE = Path(__file__).resolve().parents[1] / "modules/lib/catalog.awk"
+LIB = Path(__file__).resolve().parents[1] / "modules/lib"
+SOURCE = LIB / "catalog.awk"
+PATH_HELPERS = LIB / "package_path.awk"
 HOST_AWKS = sorted(
     {
         str(Path(path).resolve())
@@ -62,6 +64,7 @@ def expected(data: bytes) -> str:
 @pytest.fixture(params=HOST_AWKS, ids=lambda path: path)
 def native_awk(router: RouterHarness, request: pytest.FixtureRequest) -> RouterHarness:
     router.path("bin/awk").symlink_to(request.param)
+    router.write("work/package_path.awk", PATH_HELPERS.read_text(encoding="utf-8"))
     router.write("work/catalog.awk", SOURCE.read_text(encoding="utf-8"))
     return router
 
@@ -81,7 +84,15 @@ def invoke(
     args = []
     if size != "MISSING":
         args.extend(["-v", "cfmgr_catalog_size=" + (str(len(document)) if size is None else size)])
-    args.extend(["-f", str(router.path("work/catalog.awk")), *operands])
+    args.extend(
+        [
+            "-f",
+            str(router.path("work/package_path.awk")),
+            "-f",
+            str(router.path("work/catalog.awk")),
+            *operands,
+        ]
+    )
     return router.run('awk "$@" < "$RAM_ROOT/catalog"\n', args, env={"LC_ALL": locale})
 
 
@@ -349,6 +360,7 @@ def test_framing_and_printable_ascii_are_exact(native_awk: RouterHarness, docume
 @pytest.mark.matrix("V32", evidence="busybox")
 def test_actual_busybox_catalog_record_framing_and_ledger(busybox_router: RouterHarness) -> None:
     busybox_router.busybox_applets("awk")
+    busybox_router.write("work/package_path.awk", PATH_HELPERS.read_text(encoding="utf-8"))
     busybox_router.write("work/catalog.awk", SOURCE.read_text(encoding="utf-8"))
     document = catalog(branch="0123456789ABCDEF0123456789ABCDEF01234567")
     result = invoke(busybox_router, document)

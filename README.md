@@ -17,7 +17,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Worker safety foundations | Complete | Process deadlines and read-only workspaces |
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
-| Settings and module catalog | In progress | Internal format checks; file handling and installation pending |
+| Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -36,11 +36,14 @@ reinstall backend inside an already admitted native root; it is not wired to an
 operational CLI, menu or installer. The accepted 46% checkpoint includes the
 source-only serialized dependency worker and configuration-header/catalog
 parsers. Full local and Linux/BusyBox checks pass, including all eleven kernel
-scenarios. The parsers do not provide an integrated config reader, manifest
-trust or package-download workflow, and no catalog is shipped. See [PLAN.md](PLAN.md) for exact results and progress. Synthetic
-host/Linux checks do not establish installed-opkg provenance or Merlin
-acceptance. Live router acceptance and operational feature integration remain
-pending, and there is no installable manager yet. Routine Entware upgrades
+scenarios. The current 47% candidate adds shared path checks and a source-only
+manifest parser; its full checkpoint gate is pending. These parsers do not
+provide an integrated config reader, manifest trust or package-download
+workflow, and no catalog or manifest is shipped. See [PLAN.md](PLAN.md) for
+exact results and progress. Synthetic host/Linux checks do not establish
+installed-opkg provenance or Merlin acceptance. Live router acceptance and
+operational feature integration remain pending, and there is no installable
+manager yet. Routine Entware upgrades
 remain user-managed; normal repair installs only missing or unusable
 requirements.
 

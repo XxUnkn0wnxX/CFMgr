@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Bounded source catalog grammar/projection. Caller supplies immutable regular
 # stdin, its independently checked byte count, LC_ALL=C, and no operands.
+# Explicitly load package_path.awk before this parser with a separate -f.
 # This selects data only; it does not establish source trust or package validity.
 # Before consuming output, callers must verify parser status, exact framing and
 # byte counts; native awk can report success after an output-write failure.
@@ -46,8 +47,7 @@ function parse_document(    position, newline, line, split_at, key, value, count
             if (key in metadata) invalid_data()
             metadata[key] = value
         } else {
-            if (!safe_path(key) || (key != "cfmgr.sh" && substr(key, 1, 8) != "modules/")) invalid_data()
-            if (reserved_destination(key)) invalid_data()
+            if (!cfmgr_package_destination_safe(key)) invalid_data()
             if (key in destinations) invalid_data()
             destinations[key] = 1
             file_count++
@@ -56,18 +56,6 @@ function parse_document(    position, newline, line, split_at, key, value, count
             file_url[file_count] = value
         }
     }
-}
-
-function safe_path(path,    parts, count, position) {
-    if (length(path) < 1 || length(path) > 240) return 0
-    if (substr(path, 1, 1) == "/" || substr(path, length(path), 1) == "/" || index(path, "//")) return 0
-    count = split(path, parts, "/")
-    if (count < 1) return 0
-    for (position = 1; position <= count; position++) {
-        if (length(parts[position]) < 1 || length(parts[position]) > 100) return 0
-        if (parts[position] !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) return 0
-    }
-    return 1
 }
 
 function validate_catalog(    owner, repository, repository_path, repository_parts, i, j, left, right) {
@@ -94,8 +82,7 @@ function validate_catalog(    owner, repository, repository_path, repository_par
         left = file_destination[i]
         for (j = 1; j < i; j++) {
             right = file_destination[j]
-            if (substr(left, 1, length(right) + 1) == right "/" ||
-                substr(right, 1, length(left) + 1) == left "/") invalid_data()
+            if (cfmgr_package_path_conflicts(left, right)) invalid_data()
         }
     }
 
@@ -111,7 +98,7 @@ function validate_catalog(    owner, repository, repository_path, repository_par
 function raw_url(url, prefix,    path) {
     if (substr(url, 1, length(prefix)) != prefix) return 0
     path = substr(url, length(prefix) + 1)
-    return safe_path(path)
+    return cfmgr_package_path_safe(path)
 }
 
 function valid_owner(value,    last) {
@@ -122,11 +109,6 @@ function valid_owner(value,    last) {
 
 function valid_repository(value) {
     return length(value) >= 1 && length(value) <= 100 && value ~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/
-}
-
-function reserved_destination(path) {
-    return path == "modules/config" || substr(path, 1, 15) == "modules/config/" ||
-        path == "modules/catalog.txt" || substr(path, 1, 20) == "modules/catalog.txt/"
 }
 
 function emit_catalog() {
