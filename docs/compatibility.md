@@ -189,8 +189,16 @@ recorded in [PLAN.md](../PLAN.md).
 Neither host nor Linux namespace evidence establishes router acceptance. The
 internal native-config-root entry stages six fixed files, but does not establish
 their runtime semantics or provide complete loader/helper/ELF, TLS or NSS
-closure and ordinary opkg execution. The native observer does not set `HOME` or
-launch a payload, and this is not an operational worker. No mount or chroot was
+closure and ordinary opkg execution. The separate `cfmgr_native_shell_probe`
+permits one fixed synchronous native shell/BusyBox invocation from the checked
+native-config callback. It supplies a clean child environment, omits loader
+cache/preload files, and keeps the root descriptor through chroot before closing
+it inside. Host tests cover its admission, capture and failure rules; the Linux
+fixture adds genuine host-native dynamic BusyBox execution and descriptor
+witnesses. See [PLAN.md](../PLAN.md) for the current checkpoint result. This
+does not establish ARM32/native firmware execution or NSS/TLS/config semantics.
+The observer's own `HOME` remains unchanged, and this is not an operational
+worker. No mount or chroot was
 executed on the router for these checks.
 
 ## 🧩 Qualify each feature separately

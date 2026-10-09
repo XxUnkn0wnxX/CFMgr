@@ -45,6 +45,7 @@ flowchart LR
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; an extended API adds fixed NSS, wget, OpenSSL config and CA files | Data copies only; no syntax, trust, readiness, execution or broader closure approval; legacy root entries remain two-file |
 | `modules/lib/native_config_root.sh` | Select the fixed extended-config composition over the retained-Opt/device root lifecycle | Source-only native observer API; six files staged before bind; no payload/opkg or operational lifecycle wiring |
+| `modules/lib/native_shell.sh` | Probe one fixed native shell/BusyBox command inside an already checked native-config root | Explicit synchronous callback exception; caller owns the deadline and root authority; no general executable, DNS/TLS or opkg admission |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
@@ -335,12 +336,40 @@ retains its guard.
 This composition keeps the eight-child layout, 106 unique mount-query slots
 and 12 device metadata observations of the fixed-device root. Staging happens
 before the first bind.
-The callback remains a trusted synchronous native observer: no payload, chroot,
-opkg, asynchronous users, retained descriptors or `HOME` replacement. It adds
+The callback remains a trusted synchronous native observer, with the explicit
+fixed shell-probe exception below. It cannot select arbitrary payloads, launch
+opkg, retain asynchronous users/descriptors or replace its own `HOME`. It adds
 no operational worker, menu, startup or package-install wiring, nor complete
 native execution closure. The [40% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858)
 passes the complete composition; host mirrors alone do not prove mount-enforced
 read-only behavior.
+
+`cfmgr_native_shell_probe ROOT` is a source-only, status-only helper for that
+active native-config callback. It requires the exact live owner/root context,
+callback intent and inherited FD6 identity. Trusted immutable native code,
+frozen aliases, admitted storage, no inherited application descriptor above 9,
+and aggregate group/deadline supervision remain caller prerequisites. Scalar
+context flags alone do not grant that authority. The helper refuses any staged
+`/etc/ld.so.cache` or `/etc/ld.so.preload`, including dangling links.
+
+One synchronous child executes a fixed native `env`/`chroot` chain with only
+PATH, LC_ALL, HOME and TMPDIR in its environment. It closes descriptors 3–5/7–9,
+keeps the root lease through chroot, then starts `/bin/sh` with a fixed script
+whose first operation closes FD6. Fixed BusyBox checks and an exact response
+prove this invocation only. Native ash closes its saved redirections during
+external exec; closing the numbered application descriptors alone is insufficient.
+The caller's descriptors, options and environment remain unchanged.
+
+Fresh captures and completion evidence remain under `GUARD/execution/native-shell`.
+Each accepted output stream is capped at 4 KiB. Exit 0, exact response bytes, empty
+stderr and verified completion return 0; a fully observed ordinary negative
+outcome returns 1. Invalid API/context returns 2 before reservation. Any incomplete
+post-reservation step, abnormal producer or uncertain observation returns 129,
+which the callback must propagate unchanged. The root owner then retains its
+guard. Normal probe return still requires the owner's existing checked teardown;
+the probe does not establish filesystem quiescence by itself. It neither
+accepts caller-selected command arguments nor authorizes ordinary opkg, NSS,
+TLS, network activity or a general executable closure.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

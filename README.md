@@ -28,8 +28,9 @@ and validation; it does not replace keeping the docs current during the build.
 
 CFMgr is in development. Implemented foundations include parsing, storage
 checks, guarded process deadlines, internal workspaces and a partial native
-health report. The latest workspace also stages the native configuration and
-certificate data needed for later dependency work. Full local and Linux/BusyBox checks pass;
+health report. The latest internal work adds a fixed native shell launch check
+to the checked workspace, alongside native configuration and certificate staging.
+Checkpoint validation and its limits are recorded in [PLAN.md](PLAN.md);
 live router acceptance remains pending. Operational setup and
 feature integration remain incomplete, and there is no installable manager yet.
 Routine Entware upgrades remain user-managed; the internal dependency backend

@@ -198,6 +198,15 @@ and full checkpoint evidence is in [PLAN.md](../PLAN.md). The composed root
 passes local and Linux/BusyBox validation; focused checks do not replace the
 full checkpoint.
 
+`tests/test_native_shell.py` checks the fixed shell probe with an inert chroot
+stand-in, real descriptor observations, exact environment/arguments, bounded
+output, caller-state preservation and uncertainty propagation through the real
+root lease. Its BusyBox case exercises actual ash separately. Use
+`python -m pytest tests/test_native_shell.py tests/test_check_kernel.py` for the
+focused launch/runner checks; these unprivileged tests do not perform chroot or
+prove router execution. The kernel scenario described below supplies that
+separate host execution evidence.
+
 ## 🧪 Run checks
 
 From the repository root with `.venv` active:
@@ -278,7 +287,8 @@ lock evidence. Without a supplemental selection, the lock case requires
 ### Isolated Linux kernel checks
 
 The explicit kernel lane requires a disposable Linux development runner, root,
-util-linux `unshare`, BusyBox, OpenSSL, GCC/binutils and glibc development files. Its
+util-linux `unshare`, dynamically linked BusyBox, OpenSSL, GCC/binutils, `ldd`
+and glibc development files. Its
 temporary source directory must reside on ext2/3/4. Run it separately from pytest:
 
 ```sh
@@ -307,7 +317,13 @@ quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
 128 KiB, with native BusyBox `dd` and `cmp`. All nine scenarios pass the
 [40% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858). It substitutes a synthetic FD8 storage observation and a controlled
-FD9 source, so it does not prove router storage admission or acceptance. See the
+FD9 source, so it does not prove router storage admission or acceptance. The
+current scenario also invokes the fixed shell probe through genuine host
+BusyBox/loader bytes. Only a private fixture copy's interpreter path is adapted
+to the existing `/lib` view, with structural and `readelf` verification; static
+fixture wrappers inspect descriptors before forwarding to real chroot/applets.
+No firmware executable is copied or run. Current checkpoint results supersede
+the earlier baseline and are recorded in [PLAN.md](../PLAN.md). See the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
 and limits.
 
@@ -382,6 +398,7 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
 | `tests/test_native_config.py` | Legacy fixed-file staging plus direct extended staging and its actual BusyBox consumer |
 | `tests/test_native_config_extended.py` | Opaque byte limits, same-descriptor EOF checks, producer/cmp failures, partial retention and IO cleanup admission |
+| `tests/test_native_shell.py` | Fixed shell admission, clean environment, descriptors, byte framing and retained uncertainty through the root lease |
 | `tests/test_native_root.py` | Native root identity/cleanup and the actual BusyBox six-file retained-Opt/device composition |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
 | `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |

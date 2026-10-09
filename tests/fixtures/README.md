@@ -27,7 +27,7 @@ The nine scenarios retain individual 15-second bounds:
 | 6 (contained) | Controlled ELF/profile image verifies staging/hash and fixed-probe supervision; the host loader sits behind the profile alias. The actor checks closed external descriptors, bootstrap links, null, EROFS and absent proc/shell/writable Opt before guard cleanup | The ELF and profile are synthetic, not a router runtime |
 | 7 (worker-lifetime) | An inherited root descriptor blocks teardown; after chroot/setsid the child drops it but retains root/cwd and proof pipes. Removing Opt exposes readonly empty fallbacks until the detached child exits | Filesystem quiescence is not proof of arbitrary descendant reaping |
 | 8 (execution-root) | Actual readonly-root owner checks mount identity, fallback write refusal, restored caller descriptors and completed teardown before RAM removal | Not an operational worker or router acceptance |
-| 9 (native-root) | Native views, six staged files, quota tmpfs, retained Opt and fixed devices use the complete checked lifecycle | FD8 remains synthetic; see the details below |
+| 9 (native-root) | Native views, six staged files, quota tmpfs, retained Opt, fixed devices and a fixed native shell probe use the checked lifecycle | FD8 remains synthetic; host executable fixtures do not prove firmware ABI; see below |
 
 The current ninth scenario composes the quota-limited native-tmp root, retained
 Opt root, fixed native devices and native-config-root entry. It stages all six
@@ -40,6 +40,20 @@ anchored write reaching it. Opt is unmounted first and must expose the exact
 empty readonly fallback before tmpfs removal. FD8 is a regular fixture file
 with synthetic metadata, so this does not prove physical block identity or UUID
 approval. The upgraded scenario passes the 40% kernel checkpoint.
+
+The fixed shell-probe extension uses genuine trusted host BusyBox and its
+loader/dependencies. The runner changes only the private BusyBox copy's existing
+PT_INTERP region to fit a short `/lib` loader path, verifies the exact rewrite
+with `readelf`, and restricts dependency staging to the observed `/lib` and
+`/usr/lib` layout. Small static fixture wrappers inspect FD3..63 outside and
+inside chroot, then forward to real chroot/BusyBox applets; `/bin/sh` itself is
+the genuine dynamic BusyBox. This instruments the descriptor boundary while
+executing the fixed script. Original caller descriptors and checked ordinary
+teardown remain asserted. The nine namespace scenarios retain their 15-second
+bounds; see [PLAN.md](../../PLAN.md) for this extension's checkpoint result.
+These host-native bytes and the interpreter adaptation do not establish ARM32,
+Merlin loader/NSS/TLS behavior or package execution. Firmware cache files are
+never inputs to this executable fixture.
 
 The device layer adds only privately generated `/dev/null` (1:3) and
 `/dev/urandom` (1:9), with the expected root ownership and mode. Its wrapper
@@ -61,6 +75,12 @@ or an authorization to run arbitrary programs through the runtime callback.
 direct helper coverage. `tests/test_native_config_extended.py` covers binary/NUL
 preservation, the 65,536-byte and 1-MiB caps, same-descriptor EOF,
 producer/comparison failures, partial staging and enclosing IO cleanup.
+`tests/test_native_shell.py` uses an inert chroot wrapper for cheap admission,
+descriptor, environment, capture and completion failures, plus real root-lease
+uncertainty propagation. It checks real open descriptors with `fstat` on macOS;
+the explicit BusyBox case proves ash behavior, and the namespace scenario
+separately proves actual dynamic launch and mount cleanup. No host mock is
+reported as a privileged chroot or router test.
 `tests/test_native_devices.py` contains the native-config-root policy and host
 lifecycle consumer; the actual BusyBox composition is in
 `tests/test_native_root.py`. These consumers exercise all six files with the
