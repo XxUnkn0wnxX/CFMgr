@@ -27,7 +27,7 @@ The ten scenarios retain individual 15-second bounds:
 | 6 (contained) | Controlled ELF/profile image verifies staging/hash and fixed-probe supervision; the host loader sits behind the profile alias. The actor checks closed external descriptors, bootstrap links, null, EROFS and absent proc/shell/writable Opt before guard cleanup | The ELF and profile are synthetic, not a router runtime |
 | 7 (worker-lifetime) | An inherited root descriptor blocks teardown; after chroot/setsid the child drops it but retains root/cwd and proof pipes. Removing Opt exposes readonly empty fallbacks until the detached child exits | Filesystem quiescence is not proof of arbitrary descendant reaping |
 | 8 (execution-root) | Actual readonly-root owner checks mount identity, fallback write refusal, restored caller descriptors and completed teardown before RAM removal | Not an operational worker or router acceptance |
-| 9 (native-root) | O9c fixed probes use the checked lifecycle; O10a adds the source-only dependency handoff, synthetic backend and package write | O10a failed with callback/teardown status129; new evidence unaccepted. FD8 and package executables remain synthetic |
+| 9 (native-root) | O9c fixed probes use the checked lifecycle; O10a adds the source-only dependency handoff, synthetic backend and package write | Earlier run exposed a fixture-witness argc mismatch before chroot; repaired Linux rerun pending. FD8 and package executables remain synthetic |
 | 10 (native-probe) | Real aggregate deadline and native-config-root/chroot cleanup around the fixed probe; the fixture inspects the watchdog's descriptors while FD6/8/9 are held and verifies a known FD0 witness | Storage acquisition is a synthetic seam; does not prove outer storage IO acquisition, physical block-device/UUID admission or router execution |
 
 The ninth scenario composes the quota-limited native-tmp root, retained
@@ -74,12 +74,18 @@ handoff with the actual bundled bootstrap source and trusted synthetic static
 opkg and capability stand-ins. It witnesses a missing-tool repair, ordinary
 update/install arguments, post-checks, descriptor closure, and a 32-KiB package
 write without inheriting the old probe's small file limit. It does not execute
-Entware opkg or establish installed-code provenance. The O10a full local check
-passed 1,732 tests with 33 platform skips and Linux/BusyBox passed 1,765 tests
-without skips. Scenario 9 then failed with `ordinary callback status/teardown
-(129)` after 5.06s, so its added kernel evidence is not accepted. The first eight
-scenarios passed; scenario 10 was not reached. The cause is unresolved and work
-is paused before repair; [PLAN.md](../../PLAN.md) records the handoff.
+Entware opkg or establish installed-code provenance. The historical O10a full
+local check passed 1,732 tests with 33 platform skips and Linux/BusyBox passed
+1,765 tests without skips. Scenario 9 then failed with `ordinary callback
+status/teardown (129)` after 5.06s. The outer fixture's compiled descriptor
+witness accepted argc 5 only and rejected the new argc-9 handoff with status
+121 before `chroot`; the runtime reported 129 because completion was absent.
+The witness now admits only argc 5 or 9, preserves the held-root and descriptor
+checks, and forwards the full argument list. This source-reproduced fixture
+defect is repaired, but its Linux rerun is pending, so the added kernel evidence
+is not accepted yet. The first eight scenarios passed in the historical run;
+scenario 10 was not reached. [PLAN.md](../../PLAN.md) records the current
+handoff and exact validation state.
 Configured opkg scratch selection and filesystem admission remain
 separate limits; the host/Linux fixture does not prove router operation.
 

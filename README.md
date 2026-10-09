@@ -34,10 +34,10 @@ Entware `opkg --version` response. The source-only
 reinstall backend inside an already admitted native root; it does not create an
 operational worker, menu or installer. The focused O10a consumers passed 72
 tests with three local BusyBox skips. The 44% candidate passed the full local
-and Linux/BusyBox suites, but its ninth Linux kernel scenario failed; work is
-paused before repair. The accepted checkpoint remains 43%, where all ten
-kernel scenarios passed. See [PLAN.md](PLAN.md) for exact results and the
-resumable handoff. These are synthetic host/Linux proofs, not
+and Linux/BusyBox suites. A reproduced argument-handling defect in the kernel
+test harness is repaired and the full local check passes; Linux kernel
+revalidation is pending. The accepted checkpoint remains 43%. See [PLAN.md](PLAN.md) for exact
+results and the current handoff. These are synthetic host/Linux proofs, not
 installed-opkg provenance or Merlin acceptance. Live router acceptance and
 operational feature integration remain pending, and there is no installable
 manager yet. Routine Entware upgrades remain user-managed; normal repair
