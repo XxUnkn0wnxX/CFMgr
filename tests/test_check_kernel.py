@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import struct
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -102,3 +103,139 @@ def test_contained_manifest_rejects_member_before_reading(
     with pytest.raises(ValueError, match="member exceeds closure bounds"):
         check_kernel.contained_manifest(tmp_path, tmp_path / "controlled-probe")
     read.assert_not_called()
+
+
+def dynamic_fixture(elf_class: int = 2, endian: str = "<") -> tuple[bytes, int, int]:
+    """Small inert ELF framing only; no executable payload or host ABI claim."""
+    data = bytearray(256)
+    data[:7] = b"\x7fELF" + bytes((elf_class, 1 if endian == "<" else 2, 1))
+    offset = 192
+    original = b"/lib64/ld-linux-x86-64.so.2\x00"
+    data[offset : offset + len(original)] = original
+    if elf_class == 2:
+        struct.pack_into(endian + "Q", data, 32, 64)
+        struct.pack_into(endian + "HH", data, 54, 56, 1)
+        struct.pack_into(endian + "I", data, 64, 3)
+        struct.pack_into(endian + "Q", data, 72, offset)
+        struct.pack_into(endian + "Q", data, 96, len(original))
+    else:
+        struct.pack_into(endian + "I", data, 28, 52)
+        struct.pack_into(endian + "HH", data, 42, 32, 1)
+        struct.pack_into(endian + "I", data, 52, 3)
+        struct.pack_into(endian + "I", data, 56, offset)
+        struct.pack_into(endian + "I", data, 68, len(original))
+    return bytes(data), offset, len(original)
+
+
+@pytest.mark.parametrize("elf_class,endian", [(1, "<"), (1, ">"), (2, "<"), (2, ">")])
+def test_fixture_interpreter_changes_only_original_bounded_region(
+    elf_class: int, endian: str
+) -> None:
+    original, offset, size = dynamic_fixture(elf_class, endian)
+    changed = check_kernel.fixture_interpreter(original, "/lib/cfmgr-ld.so")
+    assert len(changed) == len(original)
+    assert changed[:offset] == original[:offset]
+    assert changed[offset + size :] == original[offset + size :]
+    assert changed[offset : offset + size] == b"/lib/cfmgr-ld.so\x00".ljust(size, b"\x00")
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["header", "table", "missing", "overlap", "past-end", "nul", "relative", "long"],
+)
+def test_fixture_interpreter_rejects_unsupported_layout_without_mutating(fault: str) -> None:
+    original, offset, size = dynamic_fixture()
+    malformed = bytearray(original)
+    replacement = "/lib/cfmgr-ld.so"
+    if fault == "header":
+        malformed[4] = 0
+    elif fault == "table":
+        struct.pack_into("<Q", malformed, 32, 240)
+    elif fault == "missing":
+        struct.pack_into("<I", malformed, 64, 1)
+    elif fault == "overlap":
+        struct.pack_into("<Q", malformed, 72, 80)
+    elif fault == "past-end":
+        struct.pack_into("<Q", malformed, 96, 4096)
+    elif fault == "nul":
+        malformed[offset + size - 1] = 65
+    elif fault == "relative":
+        replacement = "lib/cfmgr-ld.so"
+    elif fault == "long":
+        replacement = "/lib/" + "x" * 64
+    before = bytes(malformed)
+    with pytest.raises(ValueError):
+        check_kernel.fixture_interpreter(before, replacement)
+    assert bytes(malformed) == before
+
+
+def test_native_fixture_verifies_patched_loader_and_stages_exact_dependency_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    busybox = tmp_path / "busybox"
+    original, _, _ = dynamic_fixture()
+    busybox.write_bytes(original)
+    busybox.chmod(0o755)
+    loader = tmp_path / "host-loader"
+    loader.write_bytes(b"trusted loader fixture")
+    library = tmp_path / "host-library"
+    library.write_bytes(b"trusted libc fixture")
+    calls = []
+
+    def host_command(argv: list[str], **_: object) -> str:
+        calls.append(argv)
+        if argv[:2] == ["readelf", "-l"]:
+            interpreter = str(loader) if argv[2] == str(busybox) else "/lib/cfmgr-ld.so"
+            return f"[Requesting program interpreter: {interpreter}]\n"
+        if argv[:2] == ["readelf", "-d"]:
+            return "(NEEDED) Shared library: [libc.so.6]\n"
+        if argv[0] == "ldd":
+            return "linux-vdso.so.1 (0x1234)\nlibc.so.6 => /lib/fixture/libc.so.6 (0x5678)\n"
+        assert argv[0] == "gcc" and "-static" in argv
+        return ""
+
+    resolve = Path.resolve
+
+    def fixture_resolve(path: Path, strict: bool = False) -> Path:
+        if str(path) == "/lib/fixture/libc.so.6":
+            return library
+        return resolve(path, strict=strict)
+
+    monkeypatch.setattr(check_kernel, "command", host_command)
+    monkeypatch.setattr(check_kernel, "native", lambda name: name)
+    monkeypatch.setattr(Path, "resolve", fixture_resolve)
+    check_kernel.native_fixture(busybox, work, "gcc", "readelf")
+    staged = work / "native-staging"
+    assert (staged / "bin/native-busybox").read_bytes() == check_kernel.fixture_interpreter(
+        original, "/lib/cfmgr-ld.so"
+    )
+    assert (staged / "bin/native-busybox").stat().st_mode & 0o777 == 0o755
+    assert busybox.read_bytes() == original
+    assert (staged / "lib/cfmgr-ld.so").read_bytes() == loader.read_bytes()
+    assert (staged / "lib/fixture/libc.so.6").read_bytes() == library.read_bytes()
+    assert (staged / "bin/sh").readlink() == Path("native-busybox")
+    assert len([call for call in calls if call[0] == "gcc"]) == 2
+
+
+@pytest.mark.parametrize("response", ["/lib/wrong.so", "/lib/cfmgr-ld.so\nsecond"])
+def test_native_fixture_rejects_unverified_patch_before_dependency_tools(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, response: str
+) -> None:
+    busybox = tmp_path / "busybox"
+    busybox.write_bytes(dynamic_fixture()[0])
+    loader = tmp_path / "loader"
+    loader.write_bytes(b"trusted loader")
+    calls = []
+
+    def host_command(argv: list[str], **_: object) -> str:
+        calls.append(argv)
+        assert argv[:2] == ["readelf", "-l"]
+        interpreter = str(loader) if argv[2] == str(busybox) else response
+        return f"[Requesting program interpreter: {interpreter}]\n"
+
+    monkeypatch.setattr(check_kernel, "command", host_command)
+    with pytest.raises(ValueError, match="readelf rejected"):
+        check_kernel.native_fixture(busybox, tmp_path, "gcc", "readelf")
+    assert len(calls) == 2

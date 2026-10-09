@@ -1,6 +1,6 @@
 #!/bin/sh
 # Namespace-only native RO views/extended data, tmp/HOME, Opt and fixed devices.
-# No installed payload, chroot or router execution; fixed exec proof only.
+# No installed payload or router execution; fixed native-shell chroot proof only.
 # IO supplies checked ledger/framing state inside its isolated callbacks.
 # shellcheck disable=SC2154
 set -eu
@@ -28,6 +28,11 @@ for view in bin sbin lib usr; do
 	"$bb" mkdir -m 700 "$native_source/$view"
 	printf '%s\n' "$view" >"$native_source/$view/marker"
 done
+# Genuine trusted host shell/loader bytes and static descriptor instrumentation.
+# The runner patches only its BusyBox fixture's PT_INTERP to fit the /lib view.
+"$bb" cp -a "$work/native-staging/." "$native_source/"
+"$bb" rm "$tools/chroot"
+"$bb" cp "$work/native-chroot" "$tools/chroot"
 # Remount the actual source filesystem readonly: a RO bind alone would leave
 # its superblock RW and must be refused by the native-source admission profile.
 "$bb" mount -n -i -o remount,ro "$native_source"
@@ -64,6 +69,8 @@ guard=$ram/native-root
 . "$repo/modules/lib/native_devices.sh"
 # shellcheck source=/dev/null
 . "$repo/modules/lib/native_config_root.sh"
+# shellcheck source=/dev/null
+. "$repo/modules/lib/native_shell.sh"
 
 observe_native_data() {
 	"$bb" test -d "$1/etc" && "$bb" test ! -L "$1/etc" || return 129
@@ -192,16 +199,24 @@ observe_native_root() {
 		fi
 		[ ! -e "$observer_root/$observer_name/late" ] || return 129
 	done
+	# Real native ash executes the fixed script. Fixture-only C wrappers observe
+	# FD3..63 outside/inside, then exec genuine chroot/BusyBox applets unchanged.
+	cfmgr_native_shell_probe "$observer_root" || return "$?"
+	"$bb" test "$observer_root" -ef /proc/self/fd/6 || return 129
+	"$bb" test "$opt_source" -ef /proc/self/fd/9 || return 129
 	return 7
 }
 
+printf 'three\n' >"$guard/fd3"
+printf 'four\n' >"$guard/fd4"
+printf 'five\n' >"$guard/fd5"
 printf 'six\n' >"$guard/fd6"
 printf 'seven\n' >"$guard/fd7"
 printf 'eight\n' >"$guard/fd8"
 # FD9 is a real retained directory. FD8 is deliberately a regular fixture
 # file; only its block metadata observation is synthetic. This does not prove
 # an ext filesystem, real UUID approval or real block-device acquisition.
-exec 6<"$guard/fd6" 7<"$guard/fd7" 8<"$guard/fd8" 9<"$opt_source"
+exec 3<"$guard/fd3" 4<"$guard/fd4" 5<"$guard/fd5" 6<"$guard/fd6" 7<"$guard/fd7" 8<"$guard/fd8" 9<"$opt_source"
 fixture_volume() {
 	_cfmgr_io_mount_capture "$2" "$repo/modules/lib/mountinfo.awk" /proc/self/mountinfo 0 1 topology || return 1
 	[ "$_mount_topology" = "topology$_io_tab-$_io_tab-$_io_tab-$_io_tab"'0'"$_io_tab"'0'"$_io_tab"'0' ] || return 1
@@ -296,13 +311,22 @@ outside_home=${HOME-}
 cfmgr_isolation_native_config_root_test "$opt_source" "$volume" "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 /proc/self/fdinfo/9 \
 	"$native_source" "$data_source" 64 8 "$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_native_root forwarded || status=$?
 [ "$status" -eq 7 ] || fail "ordinary callback status/teardown ($status)"
+if IFS= read -r fd3 <&3 && IFS= read -r fd4 <&4 && IFS= read -r fd5 <&5; then :; else
+	fail 'caller low descriptors'
+fi
+[ "$fd3:$fd4:$fd5" = three:four:five ] || fail 'restored low caller descriptors'
+"$bb" test -d "$guard/execution/native-shell/complete" || fail 'native shell completion'
+[ "$("$bb" cat "$guard/execution/native-shell/status")" = 'native-shell 0 22 0' ] || fail 'native shell status'
+"$bb" printf 'CFMGR_NATIVE_SHELL_V1\n' >"$guard/native-shell-expected"
+"$bb" cmp -s "$guard/native-shell-expected" "$guard/execution/native-shell/stdout" || fail 'native shell exact response'
+[ ! -s "$guard/execution/native-shell/stderr" ] || fail 'native shell errors'
 _cfmgr_isolation_root_empty "$guard/opt-fallback-checked" || fail 'missing immediate RO Opt fallback/order witness'
 if IFS= read -r fd6 <&6 && IFS= read -r fd7 <&7 && IFS= read -r fd8 <&8; then :; else
 	fail 'caller descriptors'
 fi
 [ "$fd6:$fd7:$fd8" = six:seven:eight ] || fail 'restored caller descriptors'
 "$bb" test "$opt_source" -ef /proc/self/fd/9 || fail 'retained caller directory descriptor'
-exec 6<&- 7<&- 8<&- 9<&-
+exec 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9<&-
 if [ -d "$guard/execution/complete" ] && [ ! -L "$guard/execution/complete" ]; then :; else
 	fail 'retained completion'
 fi
@@ -372,4 +396,4 @@ cfmgr_io_test "$ram" "$tools" workspace tree_clean "$opt_source" || fail 'retain
 "$bb" umount -n "$opt_source" || fail 'Opt source mount cleanup'
 "$bb" umount -n "$native_source" || fail 'source mount cleanup'
 "$bb" umount -n "$ram" || fail 'RAM mount cleanup'
-printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, busy references, nodev revocation and Opt-first reverse teardown passed\n'
+printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, genuine fixed native shell/loader with instrumented FD3..63 closure, busy references, nodev revocation and Opt-first reverse teardown passed\n'

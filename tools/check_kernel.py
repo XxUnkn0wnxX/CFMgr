@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
@@ -88,6 +90,154 @@ def contained_manifest(source: Path, executable: Path) -> bytes:
     if len(manifest) > 4096:
         raise ValueError("contained fixture manifest exceeds closure bounds")
     return manifest
+
+
+def fixture_interpreter(data: bytes, replacement: str) -> bytes:
+    """Patch only a bounded trusted host fixture's existing PT_INTERP bytes."""
+    if not 0 < len(data) <= 4194304 or data[:4] != b"\x7fELF":
+        raise ValueError("unsupported native fixture ELF")
+    if len(data) < 64 or data[4] not in (1, 2) or data[5] not in (1, 2) or data[6] != 1:
+        raise ValueError("unsupported native fixture ELF header")
+    endian = "<" if data[5] == 1 else ">"
+    if data[4] == 2:
+        phoff = struct.unpack_from(endian + "Q", data, 32)[0]
+        phsize, phcount = struct.unpack_from(endian + "HH", data, 54)
+        expected_size = 56
+    else:
+        phoff = struct.unpack_from(endian + "I", data, 28)[0]
+        phsize, phcount = struct.unpack_from(endian + "HH", data, 42)
+        expected_size = 32
+    if phsize != expected_size or not 0 < phcount <= 128:
+        raise ValueError("unsupported native fixture program headers")
+    table_end = phoff + phsize * phcount
+    if phoff < (64 if data[4] == 2 else 52) or table_end > len(data):
+        raise ValueError("native fixture program headers exceed file")
+    regions = []
+    for index in range(phcount):
+        entry = phoff + phsize * index
+        if struct.unpack_from(endian + "I", data, entry)[0] != 3:
+            continue
+        if data[4] == 2:
+            offset = struct.unpack_from(endian + "Q", data, entry + 8)[0]
+            size = struct.unpack_from(endian + "Q", data, entry + 32)[0]
+        else:
+            offset = struct.unpack_from(endian + "I", data, entry + 4)[0]
+            size = struct.unpack_from(endian + "I", data, entry + 16)[0]
+        if not 2 <= size <= 4096 or offset < table_end or offset + size > len(data):
+            raise ValueError("native fixture interpreter exceeds bounded file region")
+        original = data[offset : offset + size]
+        if original[-1:] != b"\x00" or original[:1] != b"/" or b"\x00" in original[:-1]:
+            raise ValueError("unsupported native fixture interpreter framing")
+        regions.append((offset, size))
+    if len(regions) != 1:
+        raise ValueError("native fixture requires exactly one interpreter")
+    encoded = replacement.encode("ascii") + b"\x00"
+    offset, size = regions[0]
+    if not replacement.startswith("/lib/") or ".." in replacement or len(encoded) > size:
+        raise ValueError("replacement exceeds native fixture interpreter region")
+    return data[:offset] + encoded.ljust(size, b"\x00") + data[offset + size :]
+
+
+def native_fixture(busybox: Path, work: Path, compiler: str, readelf: str) -> None:
+    """Host-native shell/loader proof with fixture-only descriptor instrumentation."""
+    staging = work / "native-staging"
+    staging.mkdir(mode=0o700)
+    (staging / "bin").mkdir(mode=0o700)
+    (staging / "lib").mkdir(mode=0o700)
+    headers = command([readelf, "-l", str(busybox)])
+    match = re.search(r"Requesting program interpreter: (/[^\]\n]+)\]", headers)
+    if match is None:
+        raise ValueError("native shell fixture requires dynamic host BusyBox")
+    loader = Path(match[1]).resolve(strict=True)
+    if not loader.is_file():
+        raise ValueError("native BusyBox loader unavailable")
+    # Only this trusted test copy changes. Runtime's firmware view layout stays
+    # bin/sbin/lib/usr; a host /lib64 interpreter is relocated inside fixture lib.
+    interpreter = "/lib/cfmgr-ld.so"
+    shell = staging / "bin/native-busybox"
+    size = busybox.stat().st_size
+    if not 0 < size <= 4194304:
+        raise ValueError("native BusyBox exceeds fixture byte bound")
+    original = busybox.read_bytes()
+    if len(original) != size:
+        raise ValueError("native BusyBox changed while reading fixture")
+    shell.write_bytes(fixture_interpreter(original, interpreter))
+    shell.chmod(stat.S_IMODE(busybox.stat().st_mode))
+    patched = command([readelf, "-l", str(shell)])
+    if re.findall(r"Requesting program interpreter: (/[^\]\n]+)\]", patched) != [interpreter]:
+        raise ValueError("readelf rejected native fixture interpreter patch")
+    shutil.copyfile(loader, staging / "lib/cfmgr-ld.so")
+    (staging / "lib/cfmgr-ld.so").chmod(0o700)
+    needed = re.findall(r"\(NEEDED\).*\[([^\]]+)\]", command([readelf, "-d", str(busybox)]))
+    # ldd is used only for the explicitly trusted runner executable; never for
+    # downloaded/extracted firmware or a caller-provided package payload.
+    dependencies = command([native("ldd"), str(busybox)])
+    found = {}
+    for line in dependencies.splitlines():
+        if "=>" not in line:
+            if re.fullmatch(r"\s*(?:linux-vdso\.so\.\d+|/[^\s]+) \(0x[0-9a-f]+\)\s*", line):
+                continue
+            raise ValueError("unsupported native BusyBox dependency row")
+        dependency = re.fullmatch(r"\s*([A-Za-z0-9_.+-]+) => (/[^\s]+) \(0x[0-9a-f]+\)\s*", line)
+        if dependency is None:
+            raise ValueError("unresolved native BusyBox dependency")
+        name, absolute = dependency.groups()
+        path = Path(absolute)
+        if name in found or not absolute.startswith(("/lib/", "/usr/lib/")) or ".." in path.parts:
+            raise ValueError("unsupported native BusyBox dependency layout")
+        found[name] = path
+    if sorted(found) != sorted(needed):
+        raise ValueError("native BusyBox dependency closure differs from DT_NEEDED")
+    for path in found.values():
+        destination = staging / str(path).lstrip("/")
+        destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        shutil.copyfile(path.resolve(strict=True), destination)
+        destination.chmod(0o700)
+    (staging / "bin/sh").symlink_to("native-busybox")
+    # The outer shim observes FD6 through external exec; the inner shim is run
+    # by real native ash after its first `exec 6<&-`. Both inspect FD3..63.
+    witness = work / "native-fd-witness.c"
+    witness.write_text(
+        r"""#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+int main(int argc, char **argv) {
+    for (int fd = 3; fd <= 63; fd++) {
+#ifdef OUTSIDE
+        if (fd == 6) continue;
+#endif
+        errno = 0;
+        if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) return 120;
+    }
+#ifdef OUTSIDE
+    struct stat root, held;
+    if (argc != 5 || stat(argv[1], &root) || fstat(6, &held) ||
+        !S_ISDIR(held.st_mode) || root.st_dev != held.st_dev ||
+        root.st_ino != held.st_ino) return 121;
+    char *next[] = {"busybox", "chroot", argv[1], argv[2], argv[3], argv[4], 0};
+    execv(HOST_BUSYBOX, next);
+#else
+    if (argc < 2) return 121;
+    argv[0] = "busybox";
+    execv("/bin/native-busybox", argv);
+#endif
+    return 122;
+}
+""",
+        encoding="ascii",
+    )
+    common = [compiler, "-O2", "-Wall", "-Wextra", "-Werror", "-static", str(witness)]
+    command([*common, "-o", str(staging / "bin/busybox")])
+    command(
+        [
+            *common,
+            "-DOUTSIDE",
+            f"-DHOST_BUSYBOX={json.dumps(str(busybox))}",
+            "-o",
+            str(work / "native-chroot"),
+        ]
+    )
 
 
 def prove(args: argparse.Namespace) -> None:
@@ -239,6 +389,7 @@ def prove(args: argparse.Namespace) -> None:
         if needed != ["libc.so.6"]:
             raise ValueError(f"unsupported contained fixture library closure: {needed}")
         (work / "contained-manifest").write_bytes(contained_manifest(source, contained))
+        native_fixture(busybox, work, compiler, readelf)
         lane_start = time.monotonic()
         for scenario in (
             "success",
