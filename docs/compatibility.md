@@ -260,9 +260,10 @@ The host consumer tests execute the actual bundled backend with inert opkg and
 capability stand-ins, including a 32-KiB package-file write without a tiny
 launcher file limit. The ninth Linux scenario now also runs a trusted synthetic
 static backend stand-in through the native root. O10a full local validation
-passed 1,732 tests with 33 platform skips; Linux/BusyBox CI evidence is pending.
-Neither synthetic
-test proves real opkg provenance, router execution or firmware ABI. No
+passed 1,732 tests with 33 platform skips, and Linux/BusyBox passed 1,765 tests
+without skips. The ninth kernel scenario failed with callback/teardown status
+129; its cause is unresolved and the candidate remains unaccepted. Neither
+synthetic test proves real opkg provenance, router execution or firmware ABI. No
 operational worker, menu, installer or router-side package operation is added.
 
 ## 🧩 Qualify each feature separately

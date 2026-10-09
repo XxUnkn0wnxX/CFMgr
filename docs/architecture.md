@@ -469,8 +469,9 @@ repair skips healthy requirements and installs only missing or unusable
 mapped tools; force reinstall remains a separate explicit selector. Host
 consumers exercise the actual bundled backend with inert opkg doubles. The
 ninth Linux scenario adds a synthetic static backend stand-in and a 32-KiB
-package write; its O10a result is pending the current Linux gate, and neither
-proof establishes real opkg provenance, router execution or firmware ABI.
+package write. Its O10a run failed with `ordinary callback status/teardown
+(129)`; the cause is unresolved and this added kernel evidence is not accepted.
+Neither proof establishes real opkg provenance, router execution or firmware ABI.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

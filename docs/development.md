@@ -203,10 +203,15 @@ python -m pytest tests/test_native_dependencies.py tests/test_native_shell.py te
 ```
 
 The full O10a local checkpoint passed 1,732 tests with 33 explicit platform
-skips in 921.88s, with all static checks passing. Its Linux/BusyBox CI gate is
-pending. The ninth kernel scenario adds one synthetic static backend and
-package-write witness; it does not run Entware opkg or prove package provenance,
-firmware ABI or router acceptance.
+skips in 921.88s, with all static checks passing. Linux/BusyBox passed 1,765 tests
+without skips in 129.17s, and the six stripped-ash checks passed in 7.20s.
+However, the ninth kernel scenario failed with `ordinary callback
+status/teardown (129)` after 5.06s; the tenth was not reached. See the
+[failed CI run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37983581429)
+and [pause handoff](../PLAN.md). The cause is unresolved; the 44% checkpoint
+requires repair and green CI before further implementation. The synthetic
+stand-in does not run Entware opkg or prove package provenance, firmware ABI
+or router acceptance.
 
 The worker fixture set distinguishes cheap process-record checks from the
 Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group

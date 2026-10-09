@@ -33,11 +33,11 @@ Entware `opkg --version` response. The source-only
 `cfmgr_native_dependencies` handoff can call the bundled repair or selected
 reinstall backend inside an already admitted native root; it does not create an
 operational worker, menu or installer. The focused O10a consumers passed 72
-tests with three local BusyBox skips. The full 44% local gate passed 1,732 tests
-with 33 platform skips; its Linux/BusyBox gate is pending. The preceding 43% O9c
-checkpoint passed all ten
-kernel scenarios and the full local and CI suites; see [PLAN.md](PLAN.md) for
-the separate evidence limits. These are synthetic host/Linux proofs, not
+tests with three local BusyBox skips. The 44% candidate passed the full local
+and Linux/BusyBox suites, but its ninth Linux kernel scenario failed; work is
+paused before repair. The accepted checkpoint remains 43%, where all ten
+kernel scenarios passed. See [PLAN.md](PLAN.md) for exact results and the
+resumable handoff. These are synthetic host/Linux proofs, not
 installed-opkg provenance or Merlin acceptance. Live router acceptance and
 operational feature integration remain pending, and there is no installable
 manager yet. Routine Entware upgrades remain user-managed; normal repair
