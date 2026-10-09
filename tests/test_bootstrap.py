@@ -12,7 +12,7 @@ import pytest
 from tests.harness import RouterHarness, ShellResult
 
 ROOT = Path(__file__).resolve().parents[1]
-BOOTSTRAP = ROOT / "modules/bootstrap.sh"
+BOOTSTRAP = ROOT / "modules/helpers/bootstrap.sh"
 COMMON = ("jq", "coreutils-timeout", "coreutils-sha256sum")
 PACKAGE_TO_TOOL = {
     "jq": "jq",

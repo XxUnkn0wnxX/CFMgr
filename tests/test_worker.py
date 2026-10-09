@@ -11,7 +11,7 @@ import pytest
 from tests.harness import RouterHarness
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "modules/worker.sh"
+SOURCE = ROOT / "modules/helpers/worker.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
 
