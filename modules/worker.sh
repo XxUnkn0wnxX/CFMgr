@@ -173,7 +173,7 @@ _cfmgr_worker_deadline_clock_read() {
 	done
 	_worker_clock_seconds=${1%.*}
 	_cfmgr_worker_deadline_seconds_valid "$_worker_clock_seconds" || return 1
-	command printf '%s\n' "$_worker_clock_seconds"
+	printf '%s\n' "$_worker_clock_seconds"
 }
 
 _cfmgr_worker_deadline_group_current() {
@@ -188,6 +188,7 @@ _cfmgr_worker_deadline_group_current() {
 _cfmgr_worker_deadline_tools() {
 	_worker_deadline_mkdir=
 	_worker_deadline_sleep=
+	_worker_deadline_kill=
 	for _worker_native_dir in /sbin /bin /usr/sbin /usr/bin; do
 		if [ -z "$_worker_deadline_mkdir" ] && [ -f "$_worker_native_dir/mkdir" ] && [ -x "$_worker_native_dir/mkdir" ]; then
 			_worker_deadline_mkdir=$_worker_native_dir/mkdir
@@ -195,8 +196,11 @@ _cfmgr_worker_deadline_tools() {
 		if [ -z "$_worker_deadline_sleep" ] && [ -f "$_worker_native_dir/sleep" ] && [ -x "$_worker_native_dir/sleep" ]; then
 			_worker_deadline_sleep=$_worker_native_dir/sleep
 		fi
+		if [ -z "$_worker_deadline_kill" ] && [ -f "$_worker_native_dir/kill" ] && [ -x "$_worker_native_dir/kill" ]; then
+			_worker_deadline_kill=$_worker_native_dir/kill
+		fi
 	done
-	[ -n "$_worker_deadline_mkdir" ] && [ -n "$_worker_deadline_sleep" ]
+	[ -n "$_worker_deadline_mkdir" ] && [ -n "$_worker_deadline_sleep" ] && [ -n "$_worker_deadline_kill" ]
 }
 
 _cfmgr_worker_deadline_refresh() {
@@ -265,7 +269,7 @@ _cfmgr_worker_deadline_cancel() {
 	if [ "$_worker_deadline_expired" -eq 1 ]; then
 		"$_worker_deadline_mkdir" -m 700 "$_worker_deadline_state/expired" >/dev/null 2>&1 || :
 	fi
-	command kill -TERM 0 || :
+	"$_worker_deadline_kill" -TERM 0 || :
 	_cfmgr_worker_deadline_refresh || _worker_cancel_valid=0
 	_worker_cancel_polls=0
 	while [ "$_worker_cancel_valid" -eq 1 ] && [ "$_worker_cancel_polls" -lt "$_worker_deadline_grace" ]; do
@@ -275,7 +279,7 @@ _cfmgr_worker_deadline_cancel() {
 		"$_worker_deadline_sleep" 1 || break
 		_cfmgr_worker_deadline_refresh || break
 	done
-	command kill -KILL 0
+	"$_worker_deadline_kill" -KILL 0
 	exit 129
 }
 
@@ -308,6 +312,7 @@ _cfmgr_worker_deadline_owner() (
 	_worker_deadline_elapsed=0
 	[ -d "$_worker_deadline_guard" ] && [ ! -L "$_worker_deadline_guard" ] || return 1
 	_cfmgr_worker_deadline_tools || return 1
+	"$_worker_deadline_kill" -0 0 || return 1
 	"$_worker_deadline_sleep" 0 || return 1
 	_worker_deadline_state=$_worker_deadline_guard/deadline
 	[ ! -e "$_worker_deadline_state" ] && [ ! -L "$_worker_deadline_state" ] || return 1
@@ -346,7 +351,8 @@ _cfmgr_worker_deadline_watchdog() {
 	exec 0</dev/null
 	_cfmgr_worker_deadline_group_current "$_worker_deadline_leader" 6</proc/self/stat || exit 1
 	_cfmgr_worker_deadline_before_cutoff || _cfmgr_worker_deadline_cancel
-	[ -x "$_worker_deadline_mkdir" ] && [ -x "$_worker_deadline_sleep" ] || exit 1
+	[ -x "$_worker_deadline_mkdir" ] && [ -x "$_worker_deadline_sleep" ] && [ -x "$_worker_deadline_kill" ] || exit 1
+	"$_worker_deadline_kill" -0 0 || _cfmgr_worker_deadline_cancel
 	"$_worker_deadline_sleep" 0 || _cfmgr_worker_deadline_cancel
 	"$_worker_deadline_mkdir" -m 700 "$_worker_deadline_state/armed" || _cfmgr_worker_deadline_cancel
 	_worker_watch_polls=0

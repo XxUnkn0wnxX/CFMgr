@@ -184,13 +184,13 @@ _cfmgr_closure_size_owned() (
 	set +u
 	set -f
 	LC_ALL=C
-	export LC_ALL
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	export LC_ALL PATH
 	[ "$#" -eq 2 ] && [ -n "$1" ] || return 2
 	_cfmgr_closure_file "$2" || return 10
-	_closure_count=$(
-		command exec <"$2" || exit 10
-		exec "$1" -c
-	)
+	# Failed redirection/exec terminates only this capture; classify its status
+	# below together with wc failure, without relying on the command builtin.
+	_closure_count=$(exec "$1" -c <"$2")
 	_closure_count_status=$?
 	case $_closure_count_status in
 	0) ;;
@@ -204,7 +204,7 @@ _cfmgr_closure_size_owned() (
 	done
 	case $_closure_count in '' | *[!0123456789]* | 0[0123456789]*) return 10 ;; esac
 	[ "${#_closure_count}" -le 8 ] || return 10
-	command printf '%s\n' "$_closure_count"
+	printf '%s\n' "$_closure_count"
 	_closure_count_status=$?
 	[ "$_closure_count_status" -eq 0 ] && return 0
 	[ "$_closure_count_status" -le 128 ] && return 10

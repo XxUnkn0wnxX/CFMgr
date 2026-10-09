@@ -53,6 +53,7 @@ LOADER_LINK = {
     "mipselsf-k3.4": ("ld.so.1", "ld-2.27.so"),
 }
 TOOL_NAMES = ("mkdir", "dd", "wc", "env", "openssl", "hexdump", "ln", "chmod")
+BUSYBOX_TOOL_NAMES = frozenset({"mkdir", "wc", "env", "hexdump"})
 pytestmark = pytest.mark.integration
 
 
@@ -104,9 +105,11 @@ class ClosureFixture:
             source.chmod(0o600)
         self.write_manifest()
         for name in TOOL_NAMES:
-            router.path(f"work/native tools/{name}").symlink_to(
-                native_path(name, router.busybox or busybox)
-            )
+            if router.busybox is not None and name in BUSYBOX_TOOL_NAMES:
+                selected_tool = str(router.busybox)
+            else:
+                selected_tool = native_path(name, router.busybox or busybox)
+            router.path(f"work/native tools/{name}").symlink_to(selected_tool)
 
     def source(self, relative: str) -> Path:
         if relative.startswith("libexec/"):
@@ -404,6 +407,7 @@ def test_existing_stage_is_never_adopted_or_reused(closure: ClosureFixture, prio
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
 def test_native_stage_runs_under_busybox_shell(busybox_router: RouterHarness) -> None:
+    busybox_router.busybox_applets("printf", "[", "test")
     closure = ClosureFixture(busybox_router)
     result = closure.run()
     closure.assert_success(result)

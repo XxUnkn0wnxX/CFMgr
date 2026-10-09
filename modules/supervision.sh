@@ -269,13 +269,12 @@ _cfmgr_supervision_size() (
 	set +u
 	set -f
 	LC_ALL=C
-	export LC_ALL
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	export LC_ALL PATH
 	[ "$#" -eq 2 ] || return 1
 	[ -f "$2" ] && [ ! -L "$2" ] || return 1
-	_supervision_size=$(
-		command exec <"$2" || exit 1
-		exec "$1" -c
-	)
+	# Isolate failed redirection/exec in this capture and classify below.
+	_supervision_size=$(exec "$1" -c <"$2")
 	_supervision_size_status=$?
 	if [ "$_supervision_size_status" -ne 0 ]; then
 		[ "$_supervision_size_status" -le 128 ] && return 1
@@ -289,7 +288,7 @@ _cfmgr_supervision_size() (
 	0 | [1-9] | [1-9][0-9] | [1-9][0-9][0-9] | [1-3][0-9][0-9][0-9] | 40[0-8][0-9] | 409[0-6]) ;;
 	*) return 1 ;;
 	esac
-	command printf '%s\n' "$_supervision_size"
+	printf '%s\n' "$_supervision_size"
 	_supervision_size_status=$?
 	[ "$_supervision_size_status" -eq 0 ] && return 0
 	[ "$_supervision_size_status" -le 128 ] && return 1

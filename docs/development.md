@@ -11,9 +11,12 @@ developer tools; [PLAN.md](../PLAN.md) remains the design, acceptance checklist,
 and progress record. There is no installable manager yet.
 
 Use focused tests and relevant lint/static checks for each small implementation
-batch, then review and commit. At a major checkpoint, run the full local suite
-and fix failures until it passes before pushing the tested commits to `develop`.
-Wait for CI and resolve failures before beginning the next set of batches.
+batch, then review and commit. Accumulate those commits for publication at each
+approximately one percentage point of delivered requirements, as tracked in the
+plan. At that checkpoint, run the full local suite and fix failures until it
+passes before pushing the tested commits to `develop`. Wait for CI and resolve
+failures before beginning the next set of batches. Pause after each ten-point
+milestone's gates pass, or at the next safe boundary after a user pause request.
 Unvalidated work stays local.
 
 Keep the suite affordable as it grows. Review the latest pytest duration report
@@ -230,8 +233,8 @@ that applet when necessary:
 python tools/check.py --busybox /path/to/busybox --busybox-flock /path/to/busybox-with-flock
 ```
 
-The supplemental binary provides only the lock test's `flock`; the primary
-binary still provides its shell and all existing applet checks. A missing or
+With `--busybox-flock`, the supplemental binary provides only the lock test's
+`flock`; the primary binary still provides its shell and existing applet checks. A missing or
 invalid explicitly selected binary, or a build without the required applet,
 fails rather than silently substituting another implementation or skipping the
 lock evidence. Without a supplemental selection, the lock case requires
@@ -303,14 +306,16 @@ tooling changes pushed to `develop` or proposed in pull requests targeting
 24.04, Python 3.14.0 in a virtualenv, the pinned Python requirements and the
 runner's packaged BusyBox/ShellCheck. It invokes the same check command with
 `--busybox /usr/bin/busybox`, so missing BusyBox is a failure rather than a skip.
-For the dependency-lock case, it also builds a minimal BusyBox
-1.36.1 containing `flock` and `true` from the official archive with a pinned
-SHA256, using the existing host compiler and two build jobs. The trivial `true`
-applet preserves the multicall banner/list interface, which a single-applet
-build bypasses. The workflow supplies that binary through
-`--busybox-flock`; it does not replace the packaged BusyBox or install any
-router tools. This retains actual BusyBox `ash`/`flock` descriptor-inheritance
-coverage despite Ubuntu's disabled applet.
+It also builds a small BusyBox 1.36.1 from the official archive with a pinned
+SHA256, using the existing host compiler and two build jobs. That binary supplies
+`flock` through `--busybox-flock`, preserving real descriptor-inheritance coverage
+despite Ubuntu's disabled applet. It additionally includes ash, arithmetic and
+the few applets needed by the focused fixtures. Its ash deliberately disables
+`command`, job control and the printf/test/echo builtins, matching those specific
+firmware configuration constraints. A separate focused run exercises the worker,
+bootstrap, closure and supervision BusyBox consumers with that shell. This is
+configuration evidence on a newer BusyBox, not a full reproduction of Merlin's
+patched build. Neither binary replaces router tools.
 The separately named kernel step runs the explicit namespace proof afterward.
 Tool versions and kernel-case timings are printed in the job log.
 

@@ -169,13 +169,16 @@ class SupervisionFixture:
             "printf 'RESULT\\t%s\\t%s\\t%s\\n' \"$_probe_status\" "
             '"$_supervision_started" "$_supervision_complete"\n'
             "printf 'CHILD\\t%s\\n' \"${_supervision_status:-unset}\"\n"
-            + '[ "$IFS" = x ] && [ "$(trap)" = "$before_traps" ] && '
-            + '[ "$(set +o)" = "$before_options" ] && [ "$(umask)" = "$before_umask" ] || exit 7\n'
+            + "case $IFS in x) : ;; *) exit 7 ;; esac\n"
+            + 'case "$(trap)" in "$before_traps") : ;; *) exit 7 ;; esac\n'
+            + 'case "$(set +o)" in "$before_options") : ;; *) exit 7 ;; esac\n'
+            + 'case "$(umask)" in "$before_umask") : ;; *) exit 7 ;; esac\n'
             + "IFS= read -r eight <&8; IFS= read -r nine <&9\n"
-            + '[ "$eight" = caller-eight ] && [ "$nine" = caller-nine ] || exit 7\n'
-            + 'if [ "$_supervision_complete" = 0 ]; then\n'
-            + '  [ -z "$_supervision_stdout$_supervision_stderr" ] && '
-            + '  [ -z "$_supervision_stdout_bytes$_supervision_stderr_bytes" ] || exit 7\nfi\n'
+            + "case $eight:$nine in caller-eight:caller-nine) : ;; *) exit 7 ;; esac\n"
+            + "case $_supervision_complete in 0)\n"
+            + "  case $_supervision_stdout$_supervision_stderr$_supervision_stdout_bytes"
+            + "$_supervision_stderr_bytes in '') : ;; *) exit 7 ;; esac\n"
+            + "esac\n"
             + suffix
         )
         arguments = (
@@ -534,6 +537,7 @@ def test_worker_startup_failure_retains_reserved_probe(supervision: SupervisionF
 def test_probe_with_required_busybox_shell_and_native_applets(
     busybox_router: RouterHarness,
 ) -> None:
+    busybox_router.busybox_applets("printf", "[", "test")
     supervision = SupervisionFixture(busybox_router)
     assert busybox_router.busybox is not None
     for name in ("mkdir", "wc", "env", "printf"):
@@ -571,3 +575,41 @@ def test_size_accepts_only_native_leading_whitespace_and_canonical_digits(
     result = router.run(script, [str(wc), str(data), *(value for value, _ in cases)])
     assert result.returncode == 0 and result.stderr == "", result
     assert result.stdout.splitlines() == [expected for _, expected in cases]
+
+
+@pytest.mark.parametrize(
+    ("module", "consumer", "ordinary_failure"),
+    [
+        ("closure.sh", "_cfmgr_closure_size_owned", 10),
+        ("supervision.sh", "_cfmgr_supervision_size", 1),
+    ],
+)
+def test_native_size_readers_reject_failed_producers_and_preserve_uncertainty(
+    router: RouterHarness, module: str, consumer: str, ordinary_failure: int
+) -> None:
+    data = router.write("work/size-input", "x")
+    failed = router.write("work/wc-failed", "#!/bin/sh\nprintf '1\\n'\nexit 7\n", executable=True)
+    signalled = router.write(
+        "work/wc-signalled", '#!/bin/sh\n/bin/kill -TERM "$$"\n', executable=True
+    )
+    result = router.run(
+        f". {shlex.quote(str(SOURCE.with_name(module)))}\n"
+        + "consumer=$1; data=$2; shift 2\nfor producer do\n"
+        + '  value=$("$consumer" "$producer" "$data"); status=$?\n'
+        + '  printf "<%s> %s\\n" "$value" "$status"\ndone\n',
+        [
+            consumer,
+            str(data),
+            "/usr/bin/wc",
+            str(failed),
+            str(router.path("work/absent-wc")),
+            str(signalled),
+        ],
+    )
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout.splitlines() == [
+        "<1> 0",
+        f"<> {ordinary_failure}",
+        f"<> {ordinary_failure}",
+        "<> 129",
+    ]

@@ -50,6 +50,8 @@ if mode == "opkg":
                 "OPKG_CONF_DIR",
                 "OPKG_OFFLINE_ROOT",
                 "IPKG_CONF_DIR",
+                "OFFLINE_ROOT",
+                "TMPDIR",
                 "http_proxy",
                 "HTTPS_PROXY",
                 "LD_LIBRARY_PATH",
@@ -330,6 +332,7 @@ def test_update_failure_stops_and_a_later_call_rechecks_and_retries(router: Rout
     fixture.save()
     body = (
         "export OPKG_CONF_DIR=/poison OPKG_OFFLINE_ROOT=/poison IPKG_CONF_DIR=/poison\n"
+        "export OFFLINE_ROOT=/poison TMPDIR=/poison\n"
         "export http_proxy=http://invalid HTTPS_PROXY=http://invalid\n"
         "export LD_LIBRARY_PATH=/poison OPENSSL_CONF=/poison WGETRC=/poison\n"
         "cfmgr_bootstrap_dependencies_test "
@@ -407,12 +410,20 @@ def test_explicit_reinstall_forces_every_selected_package_and_post_probe(
     fixture = OpkgFixture(router)
     fixture.seed(*tools)
 
-    assert_result(fixture.reinstall_call(scope, lock_provider), 0)
+    result = fixture.invoke(
+        "export OFFLINE_ROOT=/poison TMPDIR=/poison\n"
+        + f"cfmgr_bootstrap_reinstall_test {shlex.quote(str(fixture.root))} "
+        + f"{shlex.quote(scope)} {shlex.quote(lock_provider)}; status=$?\n"
+        + 'printf "RESULT\\t%s\\n" "$status"\n'
+    )
+    assert_result(result, 0)
     assert fixture.opkg_calls() == [
         ["update"],
         ["--force-reinstall", "install", *packages],
     ]
     assert [row[0] for row in fixture.probe_calls()] == list(tools)
+    assert len(fixture.opkg_environments()) == 2
+    assert all(value is None for row in fixture.opkg_environments() for value in row.values())
 
 
 @pytest.mark.parametrize(
@@ -600,6 +611,7 @@ def test_actual_busybox_shell_installs_only_shared_native_dependencies(
     busybox_router: RouterHarness,
 ) -> None:
     assert busybox_router.busybox is not None
+    busybox_router.busybox_applets("printf", "[", "test")
     fixture = OpkgFixture(busybox_router, busybox=busybox_router.busybox)
 
     assert_result(fixture.call("shared", "native", shell=busybox_router.busybox), 0)

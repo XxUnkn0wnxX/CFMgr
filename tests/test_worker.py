@@ -221,7 +221,7 @@ cfmgr_worker_group_check || exit 90
 (
     cfmgr_worker_group_check
     nested=$?
-    [ "$nested" = 1 ] || exit 91
+    case $nested in 1) : ;; *) exit 91 ;; esac
 )
 """
     result = busybox_router.run(script, timeout=3)
@@ -613,6 +613,7 @@ exit 0
         + f"""_cfmgr_worker_deadline_tools() {{
     _worker_deadline_mkdir={shlex.quote(str(mkdir_wrapper))}
     _worker_deadline_sleep=/bin/sleep
+    _worker_deadline_kill=/bin/kill
 }}
 deadline_callback() {{ : >{shlex.quote(str(callback_started))}; return 0; }}
 cfmgr_worker_deadline_with "$@"
@@ -708,3 +709,44 @@ cfmgr_worker_deadline_with "$@"
     deadline = guard / "deadline"
     assert all((deadline / name).is_dir() for name in ("armed", "done", "ack"))
     assert not (deadline / "cancel").exists()
+
+
+@pytest.mark.busybox
+@pytest.mark.matrix("V74", evidence="busybox")
+def test_actual_busybox_deadline_cancels_term_ignoring_callback(
+    busybox_router: RouterHarness,
+) -> None:
+    assert busybox_router.busybox is not None
+    guard = _deadline_guard(busybox_router)
+    callback = _timeout_callback(busybox_router)
+    started = busybox_router.path("work/busybox-callback-started")
+    script = (
+        "trap ':' TERM\nexec 9>&1\n"
+        + _deadline_api_script()
+        + "PATH=''\n"
+        + """deadline_callback() { "$1" "$2" "$3"; }
+cfmgr_worker_deadline_with "$@"
+"""
+    )
+    result = busybox_router.run(
+        script,
+        [
+            str(guard),
+            "4",
+            "1",
+            "deadline_callback",
+            str(sys.executable),
+            str(callback),
+            str(started),
+        ],
+        timeout=10,
+    )
+    deadline = guard / "deadline"
+    assert started.read_text(encoding="utf-8") == "started\n"
+    assert (deadline / "armed").is_dir()
+    assert (deadline / "expired").is_dir()
+    assert (deadline / "cancel").is_dir()
+    assert not (deadline / "ack").exists()
+    assert result.returncode == -9
+    assert result.stdout == result.stderr == ""
+    assert guard.is_dir()

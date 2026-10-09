@@ -10,25 +10,25 @@
 # shellcheck disable=SC2030,SC2031
 
 cfmgr_bootstrap_dependencies() {
-	[ "$#" -eq 2 ] || return 2
+	case $# in 2) ;; *) return 2 ;; esac
 	_cfmgr_bootstrap_dependencies_run /opt "$1" "$2"
 }
 
 # Explicit trusted host fixture only; production never reads an ambient root.
 cfmgr_bootstrap_dependencies_test() {
-	[ "$#" -eq 3 ] || return 2
+	case $# in 3) ;; *) return 2 ;; esac
 	_cfmgr_bootstrap_dependencies_run "$@"
 }
 
 # Explicit synchronous reinstall of every selected direct capability package.
 cfmgr_bootstrap_reinstall() {
-	[ "$#" -eq 2 ] || return 2
+	case $# in 2) ;; *) return 2 ;; esac
 	_cfmgr_bootstrap_reinstall_run /opt "$1" "$2"
 }
 
 # Explicit trusted host fixture only; production never reads an ambient root.
 cfmgr_bootstrap_reinstall_test() {
-	[ "$#" -eq 3 ] || return 2
+	case $# in 3) ;; *) return 2 ;; esac
 	_cfmgr_bootstrap_reinstall_run "$@"
 }
 
@@ -39,7 +39,9 @@ _cfmgr_bootstrap_dependencies_run() (
 	set +u
 	set -f
 	umask 077
-	[ "$#" -eq 3 ] || return 2
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	export PATH
+	case $# in 3) ;; *) return 2 ;; esac
 	_cfmgr_bootstrap_prepare "$@" || return "$?"
 	if _cfmgr_bootstrap_dependencies_check; then return 0; else
 		_bootstrap_status=$?
@@ -73,7 +75,9 @@ _cfmgr_bootstrap_reinstall_run() (
 	set +u
 	set -f
 	umask 077
-	[ "$#" -eq 3 ] || return 2
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	export PATH
+	case $# in 3) ;; *) return 2 ;; esac
 	_cfmgr_bootstrap_prepare "$@" || return "$?"
 	if "$_bootstrap_opkg" update; then :; else
 		_bootstrap_status=$?
@@ -97,9 +101,15 @@ _cfmgr_bootstrap_reinstall_run() (
 ) >/dev/null 2>&1
 
 _cfmgr_bootstrap_prepare() {
-	[ "$#" -eq 3 ] || return 2
+	case $# in 3) ;; *) return 2 ;; esac
 	LC_ALL=C
-	export LC_ALL
+	PATH=/sbin:/bin:/usr/sbin:/usr/bin
+	export LC_ALL PATH
+	unset ENV BASH_ENV CDPATH TZ
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
+	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
+	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
+	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
 	_bootstrap_root=$1
 	_bootstrap_scope=$2
 	_bootstrap_lock=$3
@@ -113,13 +123,8 @@ _cfmgr_bootstrap_prepare() {
 "
 	PATH=/sbin:/bin:/usr/sbin:/usr/bin:$_bootstrap_root/bin:$_bootstrap_root/sbin
 	export PATH
-	unset ENV BASH_ENV CDPATH TZ
-	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
-	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
-	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
-	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
 	unset OPENSSL_CONF OPENSSL_CONF_INCLUDE OPENSSL_ENGINES OPENSSL_MODULES
-	unset OPKG_CONF_DIR OPKG_OFFLINE_ROOT OPKG_ROOT OPKG_INSTROOT OPKG_TMP_DIR
+	unset OPKG_CONF_DIR OPKG_OFFLINE_ROOT OPKG_ROOT OPKG_INSTROOT OPKG_TMP_DIR OFFLINE_ROOT TMPDIR
 	unset IPKG_CONF_DIR IPKG_OFFLINE_ROOT IPKG_INSTROOT IPKG_TMP_DIR DESTDIR
 	unset http_proxy https_proxy ftp_proxy all_proxy no_proxy
 	unset HTTP_PROXY HTTPS_PROXY FTP_PROXY ALL_PROXY NO_PROXY
@@ -179,7 +184,11 @@ EOF_JSON
 		else _bootstrap_status=$?; fi
 		;;
 	sha256sum)
-		if _bootstrap_output=$(command printf abc | "$_bootstrap_executable"); then
+		if _bootstrap_output=$({
+			PATH=/sbin:/bin:/usr/sbin:/usr/bin
+			export PATH
+			printf abc
+		} | "$_bootstrap_executable"); then
 			[ "$_bootstrap_output" = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  -' ] && return 0
 			return 1
 		else _bootstrap_status=$?; fi

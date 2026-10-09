@@ -108,6 +108,13 @@ is still pending. [Linux 3.15 descriptor information](https://github.com/torvald
   `command -v`, `timeout`, `mktemp`, `stat`, `sha256sum`, `base64`, `od`, `setsid`
   or `dig`; installed Entware copies do not prove native availability. Older
   base configurations can omit `hexdump` too.
+- The matched 3004.388.12_2 ash configuration disables `command`, job control and
+  builtin printf/test/echo. Its builtin `kill` is also conditional on job control.
+  Use fixed native executable selection for group signalling and a verified
+  native PATH before external predicates or output producers. A full host
+  BusyBox shell does not establish compatibility with these stripped settings.
+  [Matched configuration](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/config_base)
+  and [ash builtin registration](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/shell/ash.c).
 - Bound streamed responses independently. Before curl 8.4.0,
   `--max-filesize` cannot enforce a limit for responses of unknown size.
   [curl size-limit behavior][curl-size]
