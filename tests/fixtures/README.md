@@ -24,7 +24,7 @@ stages opaque hosts/resolver bytes before the first bind, then checks readonly
 `/etc`, writable tmpfs scratch, executable permission, the configured byte and
 inode ceilings, and an empty private `tmp/cfmgr-home`. It also checks that the
 observer's `HOME` is unchanged, all 64 query slots, tmpfs-first teardown and
-reverse native-view cleanup. The upgraded kernel scenario is pending CI; host
+reverse native-view cleanup. The upgraded scenario passed the 36% CI gate; host
 fixture mirrors alone do not prove mount-enforced behavior or quota enforcement.
 The worker-lifetime fixture separately proves descriptor/root references and
 writable-child revocation with controlled descendants. Native BusyBox
@@ -37,8 +37,8 @@ or an authorization to run arbitrary programs through the runtime callback.
 limit, NUL rejection, failure retention and the enclosing IO cleanup result.
 `tests/test_native_tmp_root.py` checks quota validation and lifecycle metadata
 with host fixtures; these mock mount tools and do not prove actual quota, write
-or exec behavior. The native-root BusyBox representative and the upgraded kernel
-scenario are pending CI. Host fixtures do not prove mount-enforced readonly
+or exec behavior. The native-root BusyBox representative and upgraded kernel
+scenario passed the 36% CI gate. Host fixtures do not prove mount-enforced readonly
 behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete

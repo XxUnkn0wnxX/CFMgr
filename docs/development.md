@@ -391,7 +391,7 @@ staged bytes, refusal of readonly-path writes, writable `/tmp` scratch, execute 
 the 64-KiB/eight-inode fixture limits, the private empty home directory and
 unchanged observer `HOME`, all 64 query slots, tmpfs-first teardown and reverse
 native-view cleanup. It verifies that no execution mounts remain before fixture
-cleanup. The upgraded kernel case is pending CI; host fixture mirrors alone do
+cleanup. The upgraded case passed the 36% Linux CI gate; host fixture mirrors alone do
 not prove mount-enforced permissions or quota behavior.
 
 All nine namespace scenarios retain their individual 15-second outer bounds.
