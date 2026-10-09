@@ -43,7 +43,7 @@ flowchart LR
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
-| `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf` bytes into the caller-owned private image outside IO scratch | Fixed files only; no syntax/readiness checks, execution, or broader native configuration closure |
+| `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; a separate extended API adds fixed NSS, wget, OpenSSL config and CA files | Source-only staging; no syntax, trust, readiness, execution or broader closure approval; roots still use the legacy two-file stager |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
@@ -115,7 +115,7 @@ overrides and shared WebUI settings are separate from CFMgr’s private config.
 | `/jffs/addons/CFMgr.d/catalog.txt` | Separate editable source selector and named module URLs |
 | Private RAM workspace | Transient requests, queues, observations, captures and staging |
 | Verified Entware volume | Selected packages, cloudflared binary, tunnel runtime files and optional custom logs |
-| User-selected backup drive | Manual data-only archives under `CFBackup/` |
+| User-selected backup drive | Manual data-only archives of CFMgr-owned setup and inventoried data under `CFBackup/` |
 
 Persistent settings and recovery stay in JFFS; frequent observations and retry
 state stay in RAM. Missing storage must preserve saved intent and report waiting
@@ -239,6 +239,23 @@ native-data callback remains synchronous native observation only; chroot,
 payload/opkg execution, `HOME`, private writable `/tmp`, and complete ELF,
 resolver, TLS or NSS closure are not provided.
 
+The source-only `cfmgr_native_config_extended_stage IMAGE` helper (and explicit
+fixture form `cfmgr_native_config_extended_test IMAGE SOURCE_ROOT`) adds four
+fixed opaque files: `/etc/nsswitch.conf`, `/etc/wgetrc`, `/etc/openssl.cnf` and
+`/etc/ssl/certs/ca-certificates.crt`. The first three are capped at 65,536 bytes
+each and the CA bundle at 1 MiB. The added bytes may contain binary/NUL data;
+the helper copies and verifies them without parsing policy, checking TLS trust
+or proving NSS/loader readiness. It creates private `0700` certificate
+directories and `0600` files, retaining partial image data if a later step
+fails. A successful helper result is usable only after its enclosing IO cleanup
+also succeeds.
+
+The existing native-data, native-tmp, retained-Opt and native-device root
+composers still invoke only the original hosts/resolver stager. No current root
+composer stages these four files through the extended helper, and no operational
+consumer uses them yet; root integration remains a later stage. Existing staging and IO
+capture limits and APIs are unchanged.
+
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
 inputs are `RAMROOT`, `GUARD`,
@@ -335,10 +352,14 @@ separate profiles. A matching observation does not prove writability, filesystem
 health or uninterrupted device identity, and it cannot authorize a later write
 through a freshly resolved path.
 
-Backups contain configuration and inventoried data, including credentials; they
-do not restore executable code or live process/queue/transaction state. The
-planned restore path validates data and rebuilds the manager's own integrations;
-that operational path is not implemented yet.
+Backups contain CFMgr settings and inventoried owned data, including Cloudflared
+configuration, full YAML and matching JSON, account certificate, owned JFFS
+certificate recovery, optional owned `config.yml.bak`, and eligible logs. They are not
+whole-router/NVRAM backups and do not include unrelated add-on/provider setup or
+displaced pre-CFMgr `ddns-start` content. They do not restore executable code or
+live process/queue/transaction state. The planned restore path validates this
+data and rebuilds the manager's own integrations; that operational path is not
+implemented yet.
 
 ## ⚙️ Intended execution boundaries
 

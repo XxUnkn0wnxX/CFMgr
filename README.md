@@ -20,7 +20,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
-| Backup and restore | Planned | Configuration and data recovery |
+| Backup and restore | Planned | CFMgr-owned setup and data only |
 
 These descriptions and their usage guides are updated after each finalized
 milestone. A final consistency and polish pass follows complete implementation
@@ -35,7 +35,9 @@ already-admitted Entware storage to its managed workspace. Routine Entware
 upgrades remain user-managed; the dependency
 backend installs only missing or unusable requirements, while operational
 worker and feature integration remain incomplete. There is no installable
-manager yet.
+manager yet. Extended NSS/wget/OpenSSL/CA staging is a source-only internal
+helper, not wired into a root. Its full local validation passes; Linux/BusyBox
+CI for the latest checkpoint is pending.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
 DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)
@@ -62,7 +64,7 @@ Planned features:
 - Offer separate Cloudflared, DDNS, and IP-Sync file logs through configured Scribe/logrotate, with explicit logging setup and removal controls.
 - Keep core configuration and small credentials in JFFS; use mounted Entware for the documented shared packages, Cloudflared and optional custom file logging.
 - Provide an extended health report through `--diagnostic` / `--doctor`, with platform information, dependency checks and safe command tests.
-- Back up and restore configuration and owned data, including available configured log history. Backups do not contain executable code.
+- Back up and restore CFMgr's own setup and inventoried data, including Cloudflared configuration/certificates and eligible logs. It does not cover the whole router or unrelated add-on/provider setups, and excludes displaced pre-CFMgr `ddns-start` content and executable code.
 
 Project documentation lives in `docs/`; planned screenshots belong in `.images/`.
 Guides are reviewed with implementation milestones so current capabilities and

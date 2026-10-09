@@ -231,6 +231,41 @@ payload environment. A successful helper call still requires successful
 enclosing IO cleanup; partial staging remains under the retained execution guard
 on failure. Existing isolation APIs are unchanged.
 
+The same source-only helper also exposes
+`cfmgr_native_config_extended_stage IMAGE` and the explicit fixture form
+`cfmgr_native_config_extended_test IMAGE SOURCE_ROOT`. These extend staging
+with `/etc/nsswitch.conf`, `/etc/wgetrc`, `/etc/openssl.cnf` (each capped at
+65,536 bytes) and `/etc/ssl/certs/ca-certificates.crt` (1 MiB). The extra files
+are copied as opaque binary data, including NUL and terminal LF bytes; this
+does not parse NSS rules, wget/OpenSSL configuration or certificate contents,
+establish TLS trust, or approve any file for execution. The original
+hosts/resolver staging rules and limits are unchanged.
+
+The extended API requires trusted `io.sh` definitions, an active caller-owned IO
+transaction and a canonical private image outside IO scratch. It creates fresh
+`0700` certificate directories and `0600` files. For each extra file, bounded
+native `dd` reads the source and probes EOF on the same opened descriptor; a
+finite native `wc -c` count enforces its cap, then native `cmp -s` checks the
+copied bytes under the stable-source-generation precondition. It uses four
+distinct fresh IO-stage EOF artifacts; it does not widen generic capture limits
+or APIs. Firmware source links may be followed only under the trusted stable
+source and ancestor precondition. Failure retains partial image staging; helper
+status `0` is sufficient only when the enclosing IO cleanup also returns `0`.
+Malformed API/context returns `2`; a completed source/acquisition failure
+returns `1`.
+
+The existing native-data and Entware-root composers still call only the legacy
+hosts/resolver stager. This extended stage is not yet wired into a root or an
+operational consumer; that composition remains a later implementation stage.
+The upgraded actual BusyBox config consumer retains its prior hosts/resolver
+assertions while exercising the extended source-only entry. The focused set
+passes 42 tests with one explicit local BusyBox-unavailable skip in 9.68 seconds;
+each case takes under one second, and the shell/Python static checks pass. The
+39% full local checkpoint passes 1,613 tests with 29 explicit platform skips
+in 769.14 seconds using the documented single-worker mode. Exact-head
+Linux/BusyBox CI remains pending. This serial timing is separate from the
+earlier two-worker baseline; coverage and per-test deadlines are unchanged.
+
 `cfmgr_isolation_native_tmp_root_with` extends the native-data lifecycle with a
 private writable tmpfs at `root/tmp`. Its production arguments add `LIMIT_KIB`
 and `INODE_LIMIT` before the parser paths. Size must be a canonical decimal
@@ -545,7 +580,8 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
-| `tests/test_native_config.py` | Exact fixed-file staging, byte limits, NUL rejection, partial failures and cleanup ownership |
+| `tests/test_native_config.py` | Legacy fixed-file staging and the actual BusyBox consumer upgraded to exercise extended staging |
+| `tests/test_native_config_extended.py` | Opaque byte limits, same-descriptor EOF checks, producer/cmp failures, partial retention and IO cleanup admission |
 | `tests/test_native_root.py` | Four fixed readonly views, staged data, child identity, cleanup and the actual BusyBox retained-Opt/native-device representative |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
 | `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |
@@ -910,13 +946,25 @@ common applets. A 64-bit kernel does not establish 64-bit shell arithmetic.
 Use the [compatibility evidence](compatibility.md) and unresolved gates in
 [PLAN.md](../PLAN.md) before choosing runtime primitives.
 
+The compatibility guide now summarizes a bounded static audit of three
+official firmware images. Reuse the ignored local cache by reading
+`.tmp/firmware-audit/INDEX.md` before repeating extraction or source checks; do
+not add its archives, extracted files, certificates or reports to Git. The audit
+does not run firmware programs, prove an execution graph or qualify every
+Merlin model/build. Its coverage map records 33 explicit native tool names per
+sample and 58 pinned source files, including `ln`/`chmod` and the current
+closure/supervision consumers. The cached integrity/static review passed in
+3.755 seconds; these remain source and static-image results only.
+
 The selected shared Entware prerequisites are `jq`, `coreutils-timeout` and
 `coreutils-sha256sum`; the [compatibility matrix](compatibility.md) documents
-scoped additions and feed/library evidence. Required tools are checked on each
-launch and manager install/update/reinstall. An unavailable or unusable
-prerequisite keeps operational work stopped; a later launch checks and can retry
-installation. Advanced options will also provide **Reinstall Entware
-dependencies**, distinct from Cloudflared daemon/hook/worker reinstallation.
+scoped additions and feed/library evidence. The internal backend entries
+implement capability checks, healthy no-op and selected installation/reinstall
+behavior, but are not yet wired into the real startup and manager
+install/update/reinstall paths. Those lifecycle consumers must check required
+tools before operational work and retry eligible installation after a later
+launch. Advanced options will provide **Reinstall Entware dependencies**,
+distinct from Cloudflared daemon/hook/worker reinstallation.
 The normal and explicit force-reinstall backend entries are implemented.
 Approved-volume admission and cooperative exclusion have separate tested
 primitives; operational scheduling, complete worker lifetime and UI integration

@@ -8,7 +8,7 @@
 
 CFMgr aims to support Merlin by the capabilities each feature needs. **No
 firmware is declared fully supported yet.** This evidence snapshot was collected
-on **8–9 October 2026**; individual feed and source snapshots retain their
+on **8–10 October 2026**; individual feed and source snapshots retain their
 recorded dates. Source inspection, harmless installed-tool probes, host tests,
 and complete router acceptance are different levels of proof.
 
@@ -27,6 +27,60 @@ sample showed a smaller integer range. This does not establish every model,
 fork, build override, or installed tool's behavior. The current target has an
 aarch64 kernel with an ARM32 native BusyBox, illustrating why `uname -m` alone
 is insufficient. [BusyBox arithmetic types][math] · [ARM32 ABI][abi]
+
+## Representative official image snapshots
+
+These three ZIPs were checked as static image data. They represent selected
+releases, not supported model families. GT-AX11000 is the standard non-ROG
+firmware member; the paired ROG member was inventoried but neither extracted nor
+compared.
+
+| Official release ZIP | Image and native userland facts | Verified ZIP SHA-256 |
+| --- | --- | --- |
+| [GT-AX11000 `3004_388.12_2`](https://sourceforge.net/projects/asuswrt-merlin/files/GT-AX11000/Release/GT-AX11000_3004_388.12_2.zip/download), published 2026-08-20 | UBI/UBIFS; AArch64 kernel image, 4.1.51 banner; BusyBox/curl/wget/OpenSSL CLIs are ELF32 ARM little-endian with `/lib/ld-linux.so.3`; libc 2.26 and OpenSSL 1.1.1w banners; ROM CA file 227,375 bytes | `2f7685a95c8072f1734a06bbafdfae349d1c2e826f3ddf3294099a77a33df32f` |
+| [RT-AX88U_PRO `3006_102.9_0`](https://sourceforge.net/projects/asuswrt-merlin/files/RT-AX88U_PRO/Release/RT-AX88U_PRO_3006_102.9_0.zip/download), published 2026-09-23 | SquashFS 4.0 XZ; AArch64 kernel image, 4.19.183 banner; BusyBox/curl/wget/OpenSSL CLIs are ELF32 ARM little-endian with `/lib/ld-linux.so.3`; libc 2.30 and OpenSSL 3.5.8 banners; ROM CA file 181,713 bytes | `2b91a0ea4745c1277d12c6dd3109dda0c11527929d6895a4f67d3e877a2abed2` |
+| [RT-BE96U `3006_102.9_0`](https://sourceforge.net/projects/asuswrt-merlin/files/RT-BE96U/Release/RT-BE96U_3006_102.9_0.zip/download), published 2026-09-23 | SquashFS 4.0 XZ; AArch64 kernel image, 4.19.294 banner; BusyBox/curl/wget/OpenSSL CLIs are ELF32 ARM little-endian with `/lib/ld-linux.so.3`; libc 2.32 and OpenSSL 3.5.8 banners; ROM CA file 181,713 bytes | `883dad9970619e8341fceb64440f67d4eb1e5ee9f70b98b154c0b13df254a4b8` |
+
+ELF class, machine and interpreter, filesystem format, image paths and embedded
+IKCONFIG are decoded facts. Kernel, libc, BusyBox, curl and OpenSSL version
+numbers are embedded banner strings, not results from invoking those programs.
+All three images contain real `/bin`, `/sbin`, `/lib` and `/usr` directories;
+the AArch64 kernel does not change the ARM32 ABI of the shipped native command
+line tools. All three embedded kernel configurations disable
+`CONFIG_NAMESPACES`, enable procfs/tmpfs/devtmpfs/compat and ext4, and disable
+the separate ext2/ext3 drivers. This is build configuration, not a live mount,
+device-policy or boot test. It does not by itself establish how CFMgr's bind and
+chroot paths behave on a router.
+
+The static image map also contains `/etc/nsswitch.conf` (196 bytes),
+`/etc/wgetrc` (50 bytes), `/etc/openssl.cnf` (2,050 bytes on GT and 2,234 on
+the other two), and the CA bundle sizes listed above. The source-only extended
+configuration helper now stages these four fixed files with caps of 65,536
+bytes each except for the 1 MiB CA cap. These measured ROM files fit those
+limits, but the image `/etc` links and init-time rewrites do not establish the
+live router contents. The native-data root composers still stage only hosts and
+resolver data; the four-file extension is not yet wired into a root. Opaque
+copying does not establish NSS behavior, OpenSSL policy, certificate trust or
+successful network/TLS use. The extended helper's focused tests passed 42 cases
+with one local BusyBox-unavailable skip in 9.68 seconds. The 39% full local
+gate passes 1,613 tests with 29 explicit platform skips in 769.14 seconds using
+one worker; exact-head Linux/BusyBox CI remains pending. Coverage and deadlines
+are unchanged from normal concurrent validation.
+
+The ignored local cache at `.tmp/firmware-audit/INDEX.md` records the audit
+method, provenance, selected paths and evidence limits. Read that index before
+repeating work and reuse its verified local artifacts where applicable; its
+archive, image, extracted data, certificates and raw reports stay ignored and
+must not be committed. `audit.py` can rewrite provenance, so consult the cache
+instructions before rerunning it. The exact official archive URLs and hashes
+are listed above and in the local provenance record.
+
+The coverage map records 33 explicit native tool names per sample and 58 pinned
+source files, including `ln`/`chmod` and the current closure/supervision
+consumers. The cached integrity/static review passed in 3.755 seconds. Static
+file/link graphs and source/config inspection do not establish loader behavior,
+TLS or trust, NSS/socket readiness, hook execution, installed router state or
+compatibility across every model/build.
 
 <details>
 <summary>🔗 Pinned source evidence</summary>
@@ -150,7 +204,7 @@ or chroot was executed on the router for these checks.
 | Integrity verification | Required `coreutils-sha256sum`; native OpenSSL retained for bootstrap and edge fallback | Both produced the same synthetic digest on the current router. Fallback does not waive failed required-package installation. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
-| Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | A source capability check does not prove extraction, ownership, mount-loss or restore safety. |
+| Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |
 
 For example, the inspected Cloudflared `2026.10.0` packaging uses Go 1.26,
 provides ARM/ARMHF/ARM64 and x86 builds, and has no MIPS asset. Go requires Linux
