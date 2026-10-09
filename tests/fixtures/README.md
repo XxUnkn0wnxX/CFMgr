@@ -39,16 +39,15 @@ metadata observations, and an FD9-backed controlled writable source with an
 anchored write reaching it. Opt is unmounted first and must expose the exact
 empty readonly fallback before tmpfs removal. FD8 is a regular fixture file
 with synthetic metadata, so this does not prove physical block identity or UUID
-approval. The upgraded kernel result remains pending the 40% CI gate.
+approval. The upgraded scenario passes the 40% kernel checkpoint.
 
 The device layer adds only privately generated `/dev/null` (1:3) and
 `/dev/urandom` (1:9), with the expected root ownership and mode. Its wrapper
 holds a real BusyBox FD5 to witness that unmount is busy, closes it to permit
 cleanup, then checks that the `nodev` fallback refuses new opens. This does not
 claim that an existing descriptor is revoked or that inode checks provide a
-continuous lease; the source image must remain frozen. The Opt-only version
-passed the earlier 37% CI gate. The fixed-device upgrade passed all nine kernel
-scenarios in the [38% Linux/BusyBox Actions run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37939185984).
+continuous lease; the source image must remain frozen. All nine scenarios pass
+the [40% Linux/BusyBox Actions run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858).
 Host mirrors alone do not prove mount-enforced permissions, quota enforcement
 or descriptor semantics.
 The worker-lifetime fixture separately proves descriptor/root references and
@@ -66,9 +65,8 @@ producer/comparison failures, partial staging and enclosing IO cleanup.
 lifecycle consumer; the actual BusyBox composition is in
 `tests/test_native_root.py`. These consumers exercise all six files with the
 retained-Opt/device lifecycle. The local BusyBox root case was explicitly
-skipped because no local binary was available. Full 40% local validation passes;
-exact-head kernel/BusyBox CI remains pending; the accepted 39% baseline does not
-include this composition. Host mirrors do not prove mount-enforced readonly
+skipped because no local binary was available; the Linux CI consumer passes.
+Full local and exact-head kernel/BusyBox validation pass for the composition. Host mirrors do not prove mount-enforced readonly
 behavior.
 `tests/test_native_tmp_root.py` checks quota validation and lifecycle metadata
 with host fixtures; these mock mount tools and do not prove actual quota, write
@@ -76,9 +74,9 @@ or exec behavior. `tests/test_entware_root.py` covers retained-Opt success,
 busy-Opt cleanup refusal and malformed API rejection;
 `tests/test_entware_root_admission.py` covers the storage-admission boundary.
 `tests/test_native_devices.py` covers fixed node metadata, inode rechecks and
-host busy-unmount guard retention. Its upgraded actual BusyBox representative
-and the ninth namespace scenario provide separate integration evidence in the
-38% CI run; the upgraded nine-scenario native-config proof is pending 40% CI.
+host busy-unmount guard retention. The actual BusyBox representative and ninth
+namespace scenario provide separate integration evidence in the current
+checkpoint.
 Host fixtures do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete

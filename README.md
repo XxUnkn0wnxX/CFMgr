@@ -29,8 +29,8 @@ and validation; it does not replace keeping the docs current during the build.
 CFMgr is in development. Implemented foundations include parsing, storage
 checks, guarded process deadlines, internal workspaces and a partial native
 health report. The latest workspace also stages the native configuration and
-certificate data needed for later dependency work. Full local checks pass;
-Linux/BusyBox validation for this checkpoint is pending. Operational setup and
+certificate data needed for later dependency work. Full local and Linux/BusyBox checks pass;
+live router acceptance remains pending. Operational setup and
 feature integration remain incomplete, and there is no installable manager yet.
 Routine Entware upgrades remain user-managed; the internal dependency backend
 installs only missing or unusable requirements.

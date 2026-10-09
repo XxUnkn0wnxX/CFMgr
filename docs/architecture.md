@@ -338,8 +338,9 @@ before the first bind.
 The callback remains a trusted synchronous native observer: no payload, chroot,
 opkg, asynchronous users, retained descriptors or `HOME` replacement. It adds
 no operational worker, menu, startup or package-install wiring, nor complete
-native execution closure. The 40% kernel validation is pending; host mirrors do
-not prove mount-enforced read-only behavior.
+native execution closure. The [40% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858)
+passes the complete composition; host mirrors alone do not prove mount-enforced
+read-only behavior.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

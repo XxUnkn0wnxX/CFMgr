@@ -194,8 +194,8 @@ six-file composition over the retained-Opt/device lifecycle. Host coverage in
 selection, pre-bind staging failure, exact bytes, cleanup and preserved device/Opt
 behavior. The actual BusyBox composition is in `tests/test_native_root.py`; its
 local consumer was explicitly skipped because BusyBox was unavailable. Focused
-and full local evidence is in [PLAN.md](../PLAN.md); the 40% kernel/BusyBox CI
-gate remains pending. Focused checks do not replace the
+and full checkpoint evidence is in [PLAN.md](../PLAN.md). The composed root
+passes local and Linux/BusyBox validation; focused checks do not replace the
 full checkpoint.
 
 ## 🧪 Run checks
@@ -305,8 +305,8 @@ The kernel lane contains nine bounded namespace scenarios. Coverage includes
 actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`, the
 quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
-128 KiB, with native BusyBox `dd` and `cmp`; the 40% exact-head kernel result is
-pending. It substitutes a synthetic FD8 storage observation and a controlled
+128 KiB, with native BusyBox `dd` and `cmp`. All nine scenarios pass the
+[40% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858). It substitutes a synthetic FD8 storage observation and a controlled
 FD9 source, so it does not prove router storage admission or acceptance. See the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
 and limits.

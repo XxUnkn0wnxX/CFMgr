@@ -63,7 +63,8 @@ are copied and compared as opaque data, including binary/NUL bytes. The image
 copying does not establish NSS behavior, OpenSSL policy, certificate trust or
 successful network/TLS use. Older root APIs keep the two-file hosts/resolver
 stager. This internal composition adds no payload, opkg or operational worker
-path. Full 40% local validation passes; kernel/BusyBox CI remains pending.
+path. Full local and Linux/BusyBox validation pass for this composition;
+router runtime acceptance remains separate.
 
 The ignored local cache at `.tmp/firmware-audit/INDEX.md` records the audit
 method, provenance, selected paths and evidence limits. Read that index before
@@ -179,13 +180,11 @@ unmount, but does not revoke already-open descriptors; before/after inode
 checks are not a continuous FD lease, so the private source image must remain
 frozen. The same ninth kernel scenario now witnesses a real BusyBox FD5 making
 unmount busy, closes it to allow cleanup, and checks new-open refusal. Host busy
-faults separately cover runtime guard retention. The 38% code snapshot passes
-the full Mac suite (1,593 tests, 29 explicit platform skips, 487.36 seconds)
-and [Linux/BusyBox Actions](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37939185984)
-(1,622 tests, no skips, 138.30 seconds), six stripped-ash checks and all nine
-kernel scenarios. The full evidence record is in [PLAN.md](../PLAN.md). The
-fixed-device update is covered by this result; the earlier 37% CI result remains
-historical.
+faults separately cover runtime guard retention. The full Mac suite and
+[40% Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858)
+pass, including six stripped-ash checks and all nine kernel scenarios with the
+extended configuration composition. Exact commits, counts and timings are
+recorded in [PLAN.md](../PLAN.md).
 
 Neither host nor Linux namespace evidence establishes router acceptance. The
 internal native-config-root entry stages six fixed files, but does not establish
