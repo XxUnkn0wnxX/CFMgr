@@ -18,7 +18,8 @@ from tests.conftest import busybox_flock_executable
 from tests.harness import RouterHarness, ShellResult
 from tools import check
 
-SOURCE = Path(__file__).resolve().parents[1] / "modules/lib/dependency_lock.sh"
+ROOT = Path(__file__).resolve().parents[1]
+SOURCE = ROOT / "modules/lib/dependency_lock.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
 FLOCK_TOOL = r"""
@@ -336,7 +337,7 @@ def test_supplemental_flock_argument_reaches_pytest(monkeypatch: pytest.MonkeyPa
             "-q",
             "tests/test_dependency_lock.py",
         ],
-        cwd=SOURCE.parents[1],
+        cwd=ROOT,
         capture_output=True,
         text=True,
         timeout=5,

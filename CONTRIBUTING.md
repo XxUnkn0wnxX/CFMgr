@@ -47,6 +47,8 @@ configuration and private data. Do not add implicit deployment, service changes
 or provider mutations to developer tests.
 
 Never submit live configuration, credentials, private domains or router identity
-data. Use synthetic fixtures and redacted examples. Keep modules readable and
-document their boundaries; the architecture guide and plan describe the current
-implementation and intended behaviour separately.
+data. Use synthetic fixtures and redacted examples. Keep feature logic in its
+owning module, shared code in `modules/lib/`, and supporting workers in
+`modules/helpers/`. Reserve `modules/hooks/` for thin firmware-hook templates;
+do not introduce arbitrary directory loading. The architecture guide and plan
+describe current implementation and intended behaviour separately.

@@ -38,8 +38,11 @@ binaries separately for supported kernel and userspace architectures.
 `--doctor` / `--diagnostic` remain native diagnostics and work without Entware
 or usable dependencies, without attempting package installation.
 
-Runtime source lives in **`cfmgr.sh`** and **`modules/`**. These shell and awk
-files run directly; there is no compilation step for the manager.
+Runtime source lives in **`cfmgr.sh`** and **`modules/`**. Shared libraries and
+parsers are in `modules/lib/`; supporting workers and dependency setup are in
+`modules/helpers/`. These shell and awk files run directly; there is no
+compilation step for the manager. Only diagnostics are connected to the current
+CLI; operational feature wiring is still in development.
 
 Planned features:
 

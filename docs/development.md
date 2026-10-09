@@ -143,7 +143,7 @@ disabled by default; repository or organization policy can also restrict them.
 
 ## Entware dependency backend tests
 
-`modules/bootstrap.sh` delegates selected dependency installation to the existing
+`modules/helpers/bootstrap.sh` delegates selected dependency installation to the existing
 Entware opkg. Test it with inert executable doubles under an explicit fixture
 root; never invoke host/router opkg, fetch feeds or install packages in tests.
 Assert exact update/install arguments, selected-only packages, healthy no-op,
@@ -165,7 +165,7 @@ command policy and capability handling, not storage or router acceptance.
 `--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
 must prove that neither opkg nor unverified package executables are called.
 
-`modules/worker.sh` supplies native process-group admission and a separate
+`modules/helpers/worker.sh` supplies native process-group admission and a separate
 guarded aggregate-deadline controller. The admission check reads the calling
 shell's actual proc record and requires its PID,
 process group and shell `$$` to agree; session leadership is unnecessary.
@@ -176,7 +176,7 @@ Deadline cases additionally exercise arm-before-callback, cooperative completion
 exact watchdog wait and real current-group cancellation. Their short, intentional
 polling and termination budgets are integration costs, not parser-test targets.
 
-The separate readonly-root entry in `modules/isolation.sh` shares checked IO and
+The separate readonly-root entry in `modules/lib/isolation.sh` shares checked IO and
 mount parsing without broadening the earlier callbacks. Its host consumers use
 inert mount tools and actual inherited file descriptors. Complete success cases
 retain every bounded capture; focused fault cases share the established query
@@ -185,6 +185,27 @@ Keep ordinary callback failure separate from incomplete root teardown or failed
 IO cleanup: only the fully completed transaction may return that callback status.
 The Linux consumer provides actual mount/readonly/descriptor evidence; neither
 layer establishes an operational Entware worker.
+
+The fixed native-view entry is
+`cfmgr_isolation_native_root_with RAMROOT GUARD MOUNT_PARSER STORAGE_PARSER CALLBACK [ARGS...]`.
+Its explicit fixture counterpart additionally takes tools, mount/fdinfo inputs
+and a synthetic source root; production uses only `/bin`, `/sbin`, `/lib` and
+`/usr`. Source directories must share a private readonly executable UBIFS or
+squashfs filesystem; the fixture also permits a readonly tmpfs source. Exact
+child ledgers and topology are checked before, during and after the scoped FD6
+lease. The observer receives the root path, populated-root ledger and arguments;
+it cannot launch payloads, chroot, leave asynchronous users or retain descriptors.
+Children are removed in reverse order before checked base-root teardown.
+
+The complete native-view transaction uses 56 unique query slots within a fixed
+64-query limit; older entries retain their 16-query limit. Its host lifecycle
+uses the focused query fixture to avoid duplicating every external capture.
+The actual BusyBox and kernel consumers retain full captures, as does the
+existing bare-root success case. Cheap direct cases cover source/options/child
+identity and prove that a count of four descendants cannot substitute for four
+matching child ledgers. Interrupted or incomplete teardown returns uncertainty
+with its guard retained; a callback status is ordinary only after complete
+child/root and IO cleanup.
 
 Preserve independent supplied-manifest closure, fixed-probe, live-producer
 interruption, mount ownership and kernel proofs. The retiring direct-IPK tests
@@ -203,7 +224,7 @@ python tools/check.py
 This checks installed dependencies, Python lint/formatting/compilation, discovered
 shell syntax, ShellCheck, `shfmt`, and pytest. It recognizes `.sh`, `.sh.in`, and
 extensionless shell entry points. Scratch, virtualenv, cache, and symlinked
-source paths are excluded. The first native source, `modules/common.sh`, provides
+source paths are excluded. The first native library, `modules/lib/common.sh`, provides
 pure parsing helpers; it does not install or start CFMgr.
 
 `tools/check.py` locates the checkout from its own file, so a fork can use a
@@ -328,8 +349,13 @@ failed writes through both readonly fallbacks, preserved caller descriptors,
 ordinary callback failure after successful teardown, and retained completion
 metadata. It requires the root mount to be absent before removing fixture RAM;
 namespace disposal cannot conceal an incomplete successful path.
+The ninth scenario exercises the native-root entry with four fixed views from a
+readonly synthetic source filesystem. It checks actual FD6 mount identity,
+readonly child and fallback writes, preserved caller descriptors, all 56 query
+slots and reverse teardown, then verifies no execution mounts remain before
+fixture cleanup.
 
-All eight namespace scenarios retain their individual 15-second outer bounds.
+All nine namespace scenarios retain their individual 15-second outer bounds.
 Fixture compiler/library results do not establish Entware ABI or
 Merlin acceptance, and namespace disposal after a failed case does not count
 as successful runtime cleanup. Results and timings belong in the plan.
@@ -378,8 +404,12 @@ Actions. Pull requests use the same code filters and must target `develop`.
 
 ## 🧱 Test structure
 
-The runtime entry point is `cfmgr.sh`, with directly used shell/awk helpers in
-`modules/`. These files are not compiled into a main executable. The Python
+The runtime entry point is `cfmgr.sh`. The current native health report is
+`modules/diagnostic.sh`; shared shell/awk code is under `modules/lib/`, and
+supporting bootstrap and worker code is under `modules/helpers/`. Firmware hook
+templates are reserved for `modules/hooks/`, which currently contains no hooks.
+Files are sourced or invoked explicitly; there is no arbitrary directory
+autoloader. Runtime files are not compiled into a main executable. The Python
 compilation check validates developer tooling only. The planned installed
 command remains `cfmgr`.
 
@@ -400,7 +430,8 @@ command remains `cfmgr`.
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
 | `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
-| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof |
+| `tests/test_native_root.py` | Four fixed readonly views, child identity and checked reverse cleanup |
+| `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof, including the native-root consumer |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
 | `tools/check.py` | One host validation entry point |
 | `tools/check_kernel.py` | Explicit Linux/root kernel proof, separate from normal pytest |
@@ -435,7 +466,7 @@ must explicitly expose any real executable they need.
 
 ### JSON parser proof
 
-`modules/json.awk` currently provides strict validation and a bounded token ledger;
+`modules/lib/json.awk` currently provides strict validation and a bounded token ledger;
 it is not yet connected to a config reader or provider client. Its caller must
 supply a private, stable regular file, a separately checked byte count, and
 `LC_ALL=C`. Input is limited to 64 KiB, 32 nested containers, 4,096 value nodes
@@ -448,7 +479,7 @@ count before using any token. File ownership, bounded transport and router
 performance remain separate integration requirements. See the frozen contract
 in [PLAN.md](../PLAN.md#native-json-parser-proof-contract--current-package).
 
-`modules/ip.sh` provides separate IPv4/IPv6 normalization functions. IPv6 uses lower
+`modules/lib/ip.sh` provides separate IPv4/IPv6 normalization functions. IPv6 uses lower
 case, shortest hextets and longest-leftmost zero compression, including hex
 output for dotted IPv4 tails. Valid syntax is not public-address eligibility;
 WAN selection, freshness and publish decisions remain separate. Python 3.14
@@ -461,7 +492,7 @@ shell tests can run these helpers with no external tools exposed.
 
 ### Mount snapshot parser
 
-`modules/mountinfo.awk` selects the deepest mount covering a canonical target path
+`modules/lib/mountinfo.awk` selects the deepest mount covering a canonical target path
 and calculates the target's path within that filesystem, including bind-mount
 roots. It rejects ambiguous overmounts at any covering ancestor. Numeric IDs
 remain text, including values beyond the host's exact floating-point range.
@@ -481,7 +512,7 @@ and protection against mount changes remain separate implementation work.
 
 ### Private IO and snapshot handoff
 
-`modules/io.sh` is an internal library, separate from CLI feature dispatch. Its caller
+`modules/lib/io.sh` is an internal library, separate from CLI feature dispatch. Its caller
 supplies an already trusted RAM parent, controlled callback and verified parser
 path. Sourcing it has no side effects; production resolves a small fixed set of
 native tools and ignores inherited tool-path overrides.
@@ -515,7 +546,7 @@ to write through a mount path during hotplug.
 
 ### Native storage observations
 
-`modules/storageinfo.awk` parses bounded `fdinfo`, native `blkid`, numeric
+`modules/lib/storageinfo.awk` parses bounded `fdinfo`, native `blkid`, numeric
 block-device listings and primary-superblock hex observations. It
 requires a stable private file, its independently checked byte count, `LC_ALL=C`
 and a literal mode. Inputs are at most 4 KiB; fdinfo has at most 64 records.
@@ -665,12 +696,14 @@ contents look like this; the exact enclosing config schema is a P1 gate:
 ```text
 # main is the default; develop or a full 40-character commit hash is also valid.
 branch: main
-common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/modules/common.sh
+lib/common.sh https://raw.githubusercontent.com/XxUnkn0wnxX/CFMgr/{commit}/modules/lib/common.sh
 ```
 
 This is a format illustration with the existing helper, not a complete install
 inventory. `{commit}` is a literal placeholder replaced only with the validated
-selected commit. Catalog values are parsed as data, never sourced as shell code.
+selected commit. The safe relative destination `lib/common.sh` preserves its
+nested path beneath the installed manager directory. Catalog values are parsed
+as data, never sourced as shell code.
 
 | Selection | Meaning |
 | --- | --- |

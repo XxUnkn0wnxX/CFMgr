@@ -89,14 +89,18 @@ ARM with interpreter `/lib/ld-linux.so.3`; an AArch64 loader also exists. `/etc`
 resolves to `/tmp/etc`, and `/usr/local/share` to `/tmp/share`. Those facts do not
 prove a complete loader, resolver, TLS or NSS environment inside a new root.
 
-The separate execution-root entry now owns a readonly RAM bind, verifies its
-actual descriptor mount identity, preserves its guard and requires checked
-ordinary teardown plus successful IO cleanup before returning an ordinary
-callback status. Its host fixtures use inert mounts; the Linux namespace
-consumer also passed, with separate evidence recorded in [PLAN.md](../PLAN.md).
-Native executable views, writable child mounts and ordinary-opkg execution are
-not yet composed into an operational worker. No mount or chroot was executed on
-the router for these checks.
+The separate execution-root entry owns a readonly RAM bind, verifies its actual
+descriptor mount identity, preserves its guard and requires checked ordinary
+teardown plus successful IO cleanup before returning an ordinary callback
+status. The native-root entry now adds four fixed readonly views for `/bin`,
+`/sbin`, `/lib` and `/usr`, with independently checked source and child mount
+identities. Host fixtures cover this controlled lifecycle; a ninth Linux
+namespace consumer is included for actual mount/descriptor validation, with its
+checkpoint result recorded in [PLAN.md](../PLAN.md). These
+views do not yet provide the complete native config/loader/helper closure,
+approved writable children or ordinary opkg execution, and are not composed into
+an operational worker. No mount or chroot was executed on the router for these
+checks.
 
 ## 🧩 Qualify each feature separately
 

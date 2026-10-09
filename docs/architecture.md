@@ -14,7 +14,7 @@ development.
 
 ## 🧱 Current implementation
 
-The repository entry point is `cfmgr.sh`; its runtime helpers live in `modules/`.
+The repository entry point is `cfmgr.sh`; runtime code is grouped in `modules/`.
 POSIX shell sources the shell helpers and invokes the awk parsers directly.
 There is no generated or compiled main script. The planned installed command
 remains `cfmgr`.
@@ -34,24 +34,58 @@ flowchart LR
 | --- | --- | --- |
 | `cfmgr.sh` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
-| `modules/common.sh` | Decimal/range/version/SHA-256 text validation | No filesystem, service or network work |
-| `modules/json.awk` | Strict bounded JSON validation and token framing | Caller must acquire stable input and validate complete output |
-| `modules/ip.sh` | Strict IPv4/IPv6 host normalization | Address syntax does not establish public eligibility or current WAN state |
-| `modules/mountinfo.awk` | Select a covering mount; optionally report propagation and descendant counts | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
-| `modules/io.sh` | Private bounded captures, checked mount/topology snapshots and publication after cleanup | Internal library; volume approval and command supervision remain separate |
-| `modules/storageinfo.awk` | Parse mount-ID, block-device and primary-superblock observations | Strict observation formats; label-bearing blkid reports cannot establish UUID identity |
-| `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
-| `modules/entware.sh` | Admit a retained storage observation against independently approved UUID/subtree and writable/executable mount flags | Synchronous native callback only; no atomic write lease, package execution or operational startup |
-| `modules/dependency_lock.sh` | Nonblocking native lock around a trusted callback, retaining a stable RAM lock file and inherited FD7 | Cooperative exclusion only; worker launch, deadlines and arbitrary descendant completion remain separate |
-| `modules/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision for a dedicated trusted cron group | Internal native callback only; operational scheduling, Entware/root launch and filesystem cleanup remain separate |
-| `modules/isolation.sh` | Checked native/fixed-probe mounts and a separate readonly RAM root with an actual mount descriptor lease | Distinct internal lifecycles; the readonly-root guard is retained, and no entry exposes an operational CLI |
-| `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
-| `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
-| `modules/bootstrap.sh` | Check selected capabilities, install missing dependencies or explicitly reinstall the selected direct packages through existing Entware opkg, then verify the result | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
+| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON framing | Libraries/parsers only; no feature startup or provider calls |
+| `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
+| `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission | Internal callbacks; no operational package execution or CLI integration |
+| `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, and read-only execution-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
+| `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
+| `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal native callback only; operational scheduling and package/feature launch remain separate |
+| `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
 validation and the separate BusyBox evidence requirement.
+
+### Source layout and loading
+
+```text
+cfmgr.sh                Public development command dispatch
+modules/
+├── diagnostic.sh       Current native health-report feature
+├── helpers/            Dependency bootstrap and supervised worker helpers
+├── lib/                Shared shell libraries and awk parsers
+└── hooks/              Reserved for thin firmware-hook/cron entry scripts
+tests/                  Host tests and controlled kernel fixtures
+tools/                  Developer validation tools
+docs/                   Architecture, development and user guidance
+```
+
+Feature modules belong directly in `modules/`; shared code belongs in `lib/`,
+and supporting workers, updaters, or dependency setup belong in `helpers/`.
+Firmware-hook and cron entry scripts belong in `hooks/` and should stay thin.
+The hooks directory is currently only a placeholder. Feature logic should use
+small explicit interfaces and shared libraries rather than copied helpers.
+The entry point resolves and sources the diagnostics module explicitly; there is
+no automatic loading of arbitrary files or directories. Menu, setup, and
+dispatch connections will be added as their features are implemented.
+
+### Adding a feature
+
+Keep a feature's behavior in its own module, such as the future Cloudflared,
+DDNS or IP-Sync module. Define its configuration, setup/teardown, status and
+action interfaces alongside that implementation. The menu and setup flow then
+call those interfaces; they should not contain copies of the feature logic.
+Shared parsing, IO, storage and locking belong in `lib/`. A worker or updater
+belongs in `helpers/`, and its thin firmware or cron entry belongs in `hooks/`.
+Repository folders do not change Merlin's installed hook destinations.
+
+Loading and dependencies stay explicit, and sourcing a shared shell library
+only defines its functions. A new module also needs focused behavior tests,
+current documentation and, once distribution is implemented, entries in the
+same verified package manifest. Nested paths such as `lib/common.sh` must stay
+relative to the installed manager directory and retain traversal, duplicate,
+hash and generation checks. The current CLI diagram above shows implemented
+loading; this extension pattern guides the future menu/setup integration.
 
 ## 🗂️ Storage and authority
 
@@ -136,13 +170,27 @@ adopted or removed automatically. The native callback API does not launch a
 process inside the root. A separate internal fixed-probe entry connects image
 staging and supervision as described below; neither entry exposes an operational CLI action.
 
-A separate `cfmgr_isolation_root_with` entry prepares the readonly root foundation
-without acquiring Entware or launching a payload. It reserves a fresh execution
-guard, stages empty `/opt` and `/tmp` fallbacks, and verifies a private root bind
-with readonly, nodev and nosuid flags. A trusted synchronous native observer
-receives the complete root ledger while FD6 holds that exact mount; fdinfo mount
-identity and directory identity must both agree. The scoped descriptor closes
-before checked ordinary unmount and exact absence verification.
+A separate `cfmgr_isolation_root_with` entry prepares the readonly root
+foundation without acquiring Entware or launching a payload. It reserves a fresh
+execution guard, stages empty `/opt` and `/tmp` fallbacks, and verifies a private
+root bind with readonly, nodev and nosuid flags. A trusted synchronous native
+observer receives the complete root ledger while FD6 holds that exact mount;
+fdinfo mount identity and directory identity must both agree. The scoped
+descriptor closes before checked ordinary unmount and exact absence
+verification.
+
+`cfmgr_isolation_native_root_with` extends that lifecycle with four fixed
+read-only native views: `/bin`, `/sbin`, `/lib`, and `/usr`. It verifies each
+source, mount identity, readonly flags and topology, then presents the populated
+root ledger to the same narrowly scoped native observer. Production sources must
+be on the approved readonly UBIFS or squashfs firmware root; the explicit host
+fixture also admits a readonly tmpfs source to prove real mount behavior. This is
+a tested internal construction primitive, not an Entware environment: native
+configuration and executable/loader/resolver/TLS/NSS closure, approved writable
+children, ordinary opkg execution and operational worker/menu/startup wiring
+remain unfinished. Host fixtures exercise the lifecycle, and a ninth Linux
+namespace consumer is included for actual mount/descriptor validation. Its
+checkpoint result is tracked in PLAN.md; neither establishes router acceptance.
 
 The execution guard remains on every outcome. A completion marker describes
 verified filesystem teardown; the enclosing IO transaction must also clean up
@@ -259,8 +307,8 @@ helpers and never invoke this backend, opkg or unverified Entware executables.
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its
 exact mounts before deleting staging. Uncertain cleanup retains a guard and
-workspace for recovery. The initial native ownership and cleanup code is in
-`modules/isolation.sh`. Focused host fixtures cover its fault matrix; the separate
+workspace for recovery. The native ownership and cleanup code is in
+`modules/lib/isolation.sh`. Focused host fixtures cover its fault matrix; the separate
 [Linux kernel lane](development.md#isolated-linux-kernel-checks) exercises actual
 mounts, busy cleanup, interruption and controlled static/dynamic executable
 mapping behavior. Its namespaces and compiler are developer tools only. The
