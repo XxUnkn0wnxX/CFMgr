@@ -95,7 +95,8 @@ loading; this extension pattern guides the future menu/setup integration.
 | --- | --- |
 | `/jffs/scripts/cfmgr` | Installed public entry point |
 | `/jffs/addons/CFMgr.d/` | Verified manager modules, private configuration and bounded durable recovery |
-| `/jffs/addons/CFMgr.d/config` | Authoritative settings, typed credentials, saved activation and module catalog |
+| `/jffs/addons/CFMgr.d/config` | Authoritative settings, typed credentials, saved activation and the developer flag |
+| `/jffs/addons/CFMgr.d/catalog.txt` | Separate editable source selector and named module URLs |
 | Private RAM workspace | Transient requests, queues, observations, captures and staging |
 | Verified Entware volume | Selected packages, cloudflared binary, tunnel runtime files and optional custom logs |
 | User-selected backup drive | Manual data-only archives under `CFBackup/` |
@@ -416,16 +417,20 @@ or prove Entware ABI or Merlin runtime acceptance.
 ## 📦 Modules and forks
 
 **Planned distribution contract; config/catalog downloads and updates are not
-implemented yet.** Modules remain readable source files. The shipped catalog defaults to `main`;
-developers can manually select `develop` or a full commit hash in the main
-configuration. Resolve a branch once, then acquire one immutable repository
-snapshot with its manifest and hashes. Never combine newer per-file fallbacks
+implemented yet.** Modules remain readable source files. Repository-root
+`catalog.txt` is downloaded to `/jffs/addons/CFMgr.d/catalog.txt` from the selected
+repository snapshot. Its shipped selector defaults to `main`; developers can
+manually select `develop` or a full commit hash in the separate
+`/jffs/addons/CFMgr.d/catalog.txt` file. The developer flag remains in `config`.
+Resolve a branch once, then acquire one immutable repository snapshot with its
+manifest and hashes. Never combine newer per-file fallbacks
 or execute catalog contents as shell code.
 
-The **developer flag** defaults to `false`. When `true`, update/reinstall preserves
-an existing catalog and normal manager update checks are suppressed. A missing
-catalog may be seeded; malformed settings require repair. The detailed catalog
-contract and fork examples are in the [development guide](development.md#-module-catalog-and-forks).
+The **developer flag** defaults to `false`. When `true`, branch/commit switches,
+updates and force reinstalls preserve the existing router `catalog.txt` unchanged,
+and normal manager update checks are suppressed. Download a default catalog only
+when the local file is missing; malformed existing catalog data requires repair.
+The detailed catalog contract and fork examples are in the [development guide](development.md#-module-catalog-and-forks).
 
 Normal startup and hooks do not fetch missing manager code. Installation and
 repair own package acquisition; dependency checks do not authorize arbitrary

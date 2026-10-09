@@ -756,13 +756,15 @@ promotion and live deployment still require separate authorization.
 ## 📦 Module catalog and forks
 
 **Selected design; config/catalog downloads are not implemented yet.** CFMgr
-will ship catalog defaults with its readable source modules. Setup stores the
-active catalog in **`/jffs/addons/CFMgr.d/config`**. The directory name is
-case-sensitive. Users edit the catalog settings manually for testing or forks;
-there is no menu setter and no separate remote-catalog URL setting.
+will keep **`catalog.txt` at the repository root** alongside its readable source
+modules. Setup downloads that file from the selected repository snapshot to
+**`/jffs/addons/CFMgr.d/catalog.txt`**. The directory name is case-sensitive. Main `config` holds settings, credentials, feature state
+and the `developer` flag; the catalog holds the branch/commit selector and module
+URLs. Users edit the catalog file manually for testing or forks; there is no
+menu setter and no separate remote-catalog URL setting.
 
 The catalog consists of a source selector and named module URLs. Its logical
-contents look like this; the exact enclosing config schema is a P1 gate:
+contents look like this; the exact bounded text grammar is a P1 gate:
 
 ```text
 # main is the default; develop or a full 40-character commit hash is also valid.
@@ -788,25 +790,30 @@ is mixed in; missing historical files are not replaced from current main/develop
 The selected manifest and every module use the same immutable commit.
 
 > [!NOTE]
-> The manual `developer` flag defaults to `false`. With it off, updates and
-> reinstalls may refresh the **catalog portion** from the selected package's
-> defaults. With `developer=true`, an existing catalog is preserved; a missing
-> catalog may still be initialized. A malformed existing catalog is reported
-> for repair, not overwritten. Credentials, feature state and other settings
-> are outside catalog replacement. The action keeps its original pinned source.
+> The manual `developer` flag in `config` defaults to `false`. With it off,
+> updates and reinstalls may refresh **`catalog.txt`** from the selected package's
+> defaults. With `developer=true`, the existing router catalog stays unchanged
+> during branch/commit switches, updates and force reinstalls. Download the
+> selected snapshot's default catalog only if the local file is missing. A malformed
+> existing catalog is reported for repair, not overwritten. Catalog replacement does not replace
+> main settings, credentials or feature state. The action keeps its original
+> pinned source.
 
 The `developer` flag also suppresses normal manager update checks. An explicitly
 confirmed force reinstall preserves an existing catalog while the flag is true.
-Future developer capabilities can extend this flag.
+Editing the catalog alone does not replace running code. The planned `uf`
+action stages and verifies the selected manager and all required modules, then
+activates that complete revision together; compatibility and downgrade checks
+still apply. Future developer capabilities can extend this flag.
 
 <details>
 <summary>🍴 Maintaining a fork and adding modules</summary>
 
-1. Change the module URLs in the local config to your fork for testing. All
+1. Change the module URLs in local `catalog.txt` to your fork for testing. All
    entries must belong to the same selected repository and use `{commit}`.
 2. Select `main`, `develop`, or a full commit hash. Invalid sources fail the
    affected action without silently switching back to the default repository.
-3. For a distributable fork, update its shipped catalog defaults. Keep helpers
+3. For a distributable fork, update `catalog.txt` at its repository root. Keep helpers
    in separate named files; add new modules to both those defaults and the
    generated manifest's identity/path/hash inventory.
 4. Test the complete package before publishing. A manually added URL is not
