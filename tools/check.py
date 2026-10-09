@@ -46,16 +46,26 @@ def executable(value: str, label: str) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--busybox", help="require actual BusyBox shell/applet checks at PATH")
+    parser.add_argument(
+        "--busybox-flock", help="supplemental BusyBox with flock (requires --busybox)"
+    )
     parser.add_argument("--shellcheck", default="shellcheck")
     parser.add_argument("--shfmt", default=str(Path(sys.executable).parent / "shfmt"))
     parser.add_argument("--jobs", type=int, choices=(1, 2), default=2)
     args = parser.parse_args()
+    if args.busybox_flock is not None and args.busybox is None:
+        parser.error("--busybox-flock requires --busybox for the shell checks")
     if sys.version_info < (3, 11) or sys.prefix == sys.base_prefix:
         parser.error("run with Python >=3.11 from the development virtualenv")
     try:
         shellcheck = executable(args.shellcheck, "ShellCheck")
         shfmt = executable(args.shfmt, "shfmt")
         busybox = executable(args.busybox, "BusyBox") if args.busybox is not None else None
+        busybox_flock = (
+            executable(args.busybox_flock, "BusyBox flock")
+            if args.busybox_flock is not None
+            else None
+        )
     except ValueError as error:
         parser.error(str(error))
     commands = [
@@ -85,6 +95,8 @@ def main() -> int:
         pytest.extend(["-n", "2", "--dist=load", "--max-worker-restart=0"])
     if busybox:
         pytest.append(f"--busybox={busybox}")
+        if busybox_flock:
+            pytest.append(f"--busybox-flock={busybox_flock}")
     else:
         print("BusyBox unavailable/unselected: compatibility remains unverified.", flush=True)
     commands.append(pytest)

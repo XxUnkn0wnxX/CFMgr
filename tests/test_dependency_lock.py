@@ -7,12 +7,16 @@ import json
 import os
 import shlex
 import stat
+import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from tests.conftest import busybox_flock_executable
 from tests.harness import RouterHarness, ShellResult
+from tools import check
 
 SOURCE = Path(__file__).resolve().parents[1] / "modules/dependency_lock.sh"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
@@ -308,8 +312,76 @@ def test_inherited_descriptor_retains_lock_after_owner_exit(
 
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_actual_busybox_flock_and_ash_inherited_ownership(busybox_router: RouterHarness) -> None:
+def test_actual_busybox_flock_and_ash_inherited_ownership(
+    busybox_router: RouterHarness, busybox_flock: Path
+) -> None:
     fixture = LockFixture(busybox_router)
     fixture.tool = busybox_router.path("bin/flock")
-    busybox_router.busybox_applets("flock")
+    fixture.tool.symlink_to(busybox_flock)
     exercise_inherited_lock(fixture, "ordinary")
+
+
+@pytest.mark.unit
+@pytest.mark.matrix("V43", evidence="harness")
+def test_supplemental_flock_argument_reaches_pytest(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Real parser rejection proves registration; the runner stub checks forwarding
+    # only and supplies no compatibility or locking evidence.
+    parsed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--busybox-flock=/usr/bin/true",
+            "--collect-only",
+            "-q",
+            "tests/test_dependency_lock.py",
+        ],
+        cwd=SOURCE.parents[1],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    assert parsed.returncode == 4
+    assert "--busybox-flock requires --busybox" in parsed.stderr
+    assert "unrecognized arguments" not in parsed.stderr
+    calls = []
+
+    def run(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "check",
+            "--busybox=/usr/bin/true",
+            "--busybox-flock=/usr/bin/true",
+            "--shellcheck=/usr/bin/true",
+            "--shfmt=/usr/bin/true",
+        ],
+    )
+    monkeypatch.setattr(check, "shell_sources", lambda _root: [])
+    monkeypatch.setattr(check.subprocess, "run", run)
+    assert check.main() == 0
+    pytest_command = next(command for command in calls if command[1:3] == ["-m", "pytest"])
+    executable = str(Path("/usr/bin/true").resolve())
+    assert f"--busybox={executable}" in pytest_command
+    assert f"--busybox-flock={executable}" in pytest_command
+
+
+@pytest.mark.unit
+@pytest.mark.matrix("V43", evidence="harness")
+def test_selected_flock_rejects_plain_tool_and_absent_applet(router: RouterHarness) -> None:
+    with pytest.raises(pytest.UsageError, match="not a working BusyBox"):
+        busybox_flock_executable("/usr/bin/true")
+    # Synthetic identity response exercises rejection only; real applet behavior
+    # remains exclusively in the BusyBox inherited-ownership test above.
+    incomplete = router.fake_tool(
+        "busybox-without-flock",
+        'case "$#" in 0) printf "BusyBox vtest\\n" ;; '
+        '*) [ "$1" = --list ] || exit 90; printf "ash\\nsh\\n" ;; esac\n',
+    )
+    with pytest.raises(pytest.UsageError, match="selected BusyBox lacks flock"):
+        busybox_flock_executable(str(incomplete))

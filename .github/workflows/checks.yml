@@ -59,21 +59,43 @@ jobs:
       - name: Install runner check tools
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes busybox shellcheck gcc libc6-dev binutils
+          sudo apt-get install --no-install-recommends --yes busybox shellcheck gcc libc6-dev binutils make bzip2
 
       - name: Install development dependencies
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install -r requirements-dev.txt
 
+      - name: Build supplemental BusyBox flock
+        timeout-minutes: 4
+        run: |
+          mkdir -p .tmp
+          curl --fail --location --retry 2 --max-time 45 --output .tmp/busybox-1.36.1.tar.bz2 https://busybox.net/downloads/busybox-1.36.1.tar.bz2
+          printf '%s\n' 'b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314  .tmp/busybox-1.36.1.tar.bz2' | sha256sum --check -
+          tar -xjf .tmp/busybox-1.36.1.tar.bz2 -C .tmp
+          make -C .tmp/busybox-1.36.1 allnoconfig
+          # The tiny true applet avoids BusyBox's single-applet dispatcher,
+          # retaining the actual BusyBox banner/--list identity checks.
+          sed -i \
+            -e 's/^# CONFIG_BUSYBOX is not set$/CONFIG_BUSYBOX=y/' \
+            -e 's/^# CONFIG_FLOCK is not set$/CONFIG_FLOCK=y/' \
+            -e 's/^# CONFIG_TRUE is not set$/CONFIG_TRUE=y/' .tmp/busybox-1.36.1/.config
+          make -C .tmp/busybox-1.36.1 KBUILD_DEFCONFIG=.config defconfig
+          grep -Fx 'CONFIG_BUSYBOX=y' .tmp/busybox-1.36.1/.config
+          grep -Fx 'CONFIG_FLOCK=y' .tmp/busybox-1.36.1/.config
+          grep -Fx 'CONFIG_TRUE=y' .tmp/busybox-1.36.1/.config
+          timeout 120s make -C .tmp/busybox-1.36.1 -j2 busybox
+          test "$(.tmp/busybox-1.36.1/busybox --list)" = "$(printf 'flock\ntrue')"
+
       - name: Report tool versions
         run: |
           .venv/bin/python --version
           /usr/bin/busybox 2>&1 | sed -n '1p'
+          .tmp/busybox-1.36.1/busybox 2>&1 | sed -n '1p'
           shellcheck --version
 
       - name: Run checks
-        run: .venv/bin/python tools/check.py --busybox /usr/bin/busybox
+        run: .venv/bin/python tools/check.py --busybox /usr/bin/busybox --busybox-flock .tmp/busybox-1.36.1/busybox
 
       - name: Run isolated Linux kernel proof
         run: sudo -n .venv/bin/python tools/check_kernel.py --busybox /usr/bin/busybox

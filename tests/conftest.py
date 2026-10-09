@@ -29,11 +29,50 @@ def validate_matrix_marker(marker: pytest.Mark, known: frozenset[str]) -> None:
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--busybox", metavar="PATH", help="required executable BusyBox for this run")
+    parser.addoption(
+        "--busybox-flock", metavar="PATH", help="supplemental BusyBox flock; requires --busybox"
+    )
+
+
+def busybox_flock_executable(value: str) -> tuple[Path, str]:
+    """Validate a real BusyBox flock selection without requiring its shell."""
+    executable = Path(value).expanduser().resolve()
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        raise pytest.UsageError(f"requested BusyBox flock is unavailable: {value}")
+    try:
+        version = subprocess.run(
+            [str(executable)],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+            env={"PATH": "", "LC_ALL": "C"},
+        )
+        applets = subprocess.run(
+            [str(executable), "--list"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+            env={"PATH": "", "LC_ALL": "C"},
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise pytest.UsageError(f"requested BusyBox flock cannot run: {error}") from error
+    banner = version.stdout + version.stderr
+    if "BusyBox v" not in banner:
+        raise pytest.UsageError("requested flock executable is not a working BusyBox")
+    if applets.returncode != 0 or "flock" not in applets.stdout.splitlines():
+        raise pytest.UsageError("selected BusyBox lacks flock; supply --busybox-flock PATH")
+    return executable, banner.splitlines()[0]
 
 
 def pytest_configure(config: pytest.Config) -> None:
     value = config.getoption("busybox")
+    flock_value = config.getoption("busybox_flock")
+    if flock_value is not None and value is None:
+        raise pytest.UsageError("--busybox-flock requires --busybox for the shell checks")
     config._cfmgr_busybox = None
+    config._cfmgr_busybox_flock = None
     if value is not None:
         executable = Path(value).expanduser().resolve()
         if not executable.is_file() or not os.access(executable, os.X_OK):
@@ -61,13 +100,21 @@ def pytest_configure(config: pytest.Config) -> None:
             raise pytest.UsageError("requested executable is not a working BusyBox with sh")
         config._cfmgr_busybox = executable
         config._cfmgr_busybox_version = banner.splitlines()[0]
+    if flock_value is not None:
+        config._cfmgr_busybox_flock, config._cfmgr_busybox_flock_version = busybox_flock_executable(
+            flock_value
+        )
 
 
 def pytest_report_header(config: pytest.Config) -> list[str]:
     busybox = getattr(config, "_cfmgr_busybox_version", "unavailable; busybox tests skipped")
+    flock = getattr(
+        config, "_cfmgr_busybox_flock_version", "use selected BusyBox if flock is present"
+    )
     return [
         "CFMgr evidence: synthetic harness/host only; PLAN V cases remain separately assessed",
         f"BusyBox: {busybox}",
+        f"BusyBox flock: {flock}",
     ]
 
 
@@ -120,3 +167,14 @@ def busybox_router(tmp_path: Path, pytestconfig: pytest.Config) -> RouterHarness
     if executable is None:
         pytest.skip("BusyBox unavailable; supply --busybox PATH")
     return RouterHarness(tmp_path / "busybox-router", busybox=executable)
+
+
+@pytest.fixture
+def busybox_flock(pytestconfig: pytest.Config) -> Path:
+    """Explicit supplemental applet or the selected main BusyBox; never fake flock."""
+    executable = pytestconfig._cfmgr_busybox_flock
+    if executable is not None:
+        return executable
+    if pytestconfig._cfmgr_busybox is None:
+        pytest.skip("BusyBox unavailable; supply --busybox PATH")
+    return busybox_flock_executable(str(pytestconfig._cfmgr_busybox))[0]

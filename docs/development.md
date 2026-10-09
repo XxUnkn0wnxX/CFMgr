@@ -208,6 +208,22 @@ shell/applet fixture. Ordinary `router` fixtures still use the host `/bin/sh`;
 it does **not** silently rerun the whole suite under BusyBox. A modern full
 BusyBox build also does not reproduce a router's stripped older build.
 
+The dependency-lock case requires a real BusyBox `flock` applet as well as
+BusyBox `ash`. Some distribution builds omit `flock`; Ubuntu 24.04's packaged
+BusyBox is one such build. Supply a supplemental BusyBox binary containing
+that applet when necessary:
+
+```sh
+python tools/check.py --busybox /path/to/busybox --busybox-flock /path/to/busybox-with-flock
+```
+
+The supplemental binary provides only the lock test's `flock`; the primary
+binary still provides its shell and all existing applet checks. A missing or
+invalid explicitly selected binary, or a build without the required applet,
+fails rather than silently substituting another implementation or skipping the
+lock evidence. Without a supplemental selection, the lock case requires
+`flock` in the primary BusyBox.
+
 ### Isolated Linux kernel checks
 
 The explicit kernel lane requires a disposable Linux development runner, root,
@@ -264,6 +280,14 @@ tooling changes pushed to `develop` or proposed in pull requests targeting
 24.04, Python 3.14.0 in a virtualenv, the pinned Python requirements and the
 runner's packaged BusyBox/ShellCheck. It invokes the same check command with
 `--busybox /usr/bin/busybox`, so missing BusyBox is a failure rather than a skip.
+For the dependency-lock case, it also builds a minimal BusyBox
+1.36.1 containing `flock` and `true` from the official archive with a pinned
+SHA256, using the existing host compiler and two build jobs. The trivial `true`
+applet preserves the multicall banner/list interface, which a single-applet
+build bypasses. The workflow supplies that binary through
+`--busybox-flock`; it does not replace the packaged BusyBox or install any
+router tools. This retains actual BusyBox `ash`/`flock` descriptor-inheritance
+coverage despite Ubuntu's disabled applet.
 The separately named kernel step runs the explicit namespace proof afterward.
 Tool versions and kernel-case timings are printed in the job log.
 
