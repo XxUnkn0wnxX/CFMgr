@@ -118,9 +118,9 @@ remains distinct from host mirrors. The kernel proof now checks a real writable
 source mounted through FD9, a bounded anchored write reaching that source, and
 Opt-first teardown followed by an exact empty readonly fallback before tmpfs
 removal. FD8 is a regular fixture file with synthetic metadata observation, so
-the scenario does not prove physical block-device or UUID approval. Results for
-this newer code revision are pending local/CI validation; do not infer them from
-the earlier 36% gate.
+the scenario does not prove physical block-device or UUID approval. The newer code passes full local validation (1,567 tests, 29 explicit platform
+skips); Linux/BusyBox and kernel validation remain pending. Do not infer those
+results from the earlier 36% gate.
 
 Neither host nor Linux namespace evidence establishes router acceptance. The
 views and data still lack complete native configuration, loader/helper/ELF,

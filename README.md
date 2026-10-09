@@ -29,8 +29,8 @@ and validation; it does not replace keeping the docs current during the build.
 CFMgr is in development. Implemented foundations include parsing, retained-storage
 checks, guarded process deadlines, internal execution-root lifecycles and bounded
 native configuration staging, plus a partial native health report. An internal
-helper now attaches verified Entware storage to its managed workspace. The dependency backend uses installed Entware opkg, while
-operational worker and feature integration remain incomplete. There is no
+helper now attaches verified Entware storage to its managed workspace. The
+dependency backend uses installed Entware opkg, while operational worker and feature integration remain incomplete. There is no
 installable manager yet.
 
 Normal operation will require working Entware. Its installed `opkg` manages
