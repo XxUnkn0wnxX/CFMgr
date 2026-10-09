@@ -41,10 +41,11 @@ flowchart LR
 | `modules/storage.sh` | Compare mount/device facts and read an ext UUID; optionally retain the original descriptors through a trusted callback | Observation does not grant write permission; no dependency execution or CLI integration |
 | `modules/entware.sh` | Admit a retained storage observation against independently approved UUID/subtree and writable/executable mount flags | Synchronous native callback only; no atomic write lease, package execution or operational startup |
 | `modules/dependency_lock.sh` | Nonblocking native lock around a trusted callback, retaining a stable RAM lock file and inherited FD7 | Cooperative exclusion only; worker launch, deadlines and arbitrary descendant completion remain separate |
+| `modules/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision for a dedicated trusted cron group | Internal native callback only; operational scheduling, Entware/root launch and filesystem cleanup remain separate |
 | `modules/isolation.sh` | Own a private RAM root, verify native or fixed-probe mounts and remove them before deleting staging | Separate synchronous native and admitted fixed-probe APIs; no operational CLI |
 | `modules/supervision.sh` | Bound fixed-probe startup polling and validate private terminal/capture records | Used by the fixed-probe lifecycle; admitted executable closure and explicit completion remain mandatory |
 | `modules/closure.sh` | Stage a bounded fixed library/tool image and verify private copies against the supplied manifest | Copy/integrity only; caller must first bound manifest acquisition and independently approve provenance and ELF graph before execution |
-| `modules/bootstrap.sh` | Check selected capabilities, install missing dependencies through existing Entware opkg and verify the result | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
+| `modules/bootstrap.sh` | Check selected capabilities, install missing dependencies or explicitly reinstall the selected direct packages through existing Entware opkg, then verify the result | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
 The parsing modules are tested foundations, not yet a complete operational call
 path. See [development checks](development.md#-run-checks) for reproducible host
@@ -98,6 +99,27 @@ description. A cooperative child that inherits FD7 continues to exclude new
 callers after the wrapper returns or is interrupted. A busy or failed acquisition
 does not invoke the callback. This does not establish that arbitrary package
 scripts preserve the descriptor or that their descendants have finished.
+
+`cfmgr_worker_group_check` reads the calling shell's own native proc record and
+requires its actual PID and process group to match the original shell PID. The
+matched Merlin cron source creates a group before executing a job; the runtime
+check remains mandatory because cron does not check that operation's result.
+An ordinary nested shell fails admission even when its POSIX `$$` is unchanged.
+
+`cfmgr_worker_deadline_with` requires that admitted group to contain only its
+trusted work and an existing private RAM guard. Its total budget includes startup,
+callback cleanup, completion handoff and termination grace. One native watchdog
+arms before the callback can run. Successful completion requires a timely done
+marker, irreversible watchdog disarm, acknowledgement and a successful exact-child
+wait. An ordinary callback failure can return only through the same handoff.
+Uncertainty or expiry instead cancels the current group with TERM followed by KILL;
+it never signals a saved numeric PID or group ID. The guard remains on every
+outcome for the higher lifecycle owner to resolve.
+
+This internal controller does not launch packages or authorize removing their
+mounts. Kernel-uninterruptible work, scheduling delays and externally stopped or
+killed supervisors prevent an unconditional termination deadline. Filesystem
+quiescence and arbitrary descendants require the separate root-lifetime gate.
 
 The internal `cfmgr_isolation_with` API builds on that retained callback. It
 reserves a private guard outside IO scratch, checks the RAM/source topology,
@@ -203,7 +225,9 @@ it performs one ordinary opkg update and installs only missing/unusable direct
 packages, then checks every selected capability again. A usable jq supplied by
 an alternative package needs no replacement. Failed package work or failed
 post-checks return failure; a later invocation rechecks rather than trusting a
-success cache. Force-reinstall remains separate unfinished work.
+success cache. The separate `cfmgr_bootstrap_reinstall` backend runs one update,
+force-reinstalls every selected direct package, then repeats all selected checks.
+Its operational menu and worker wiring remain unfinished.
 
 Entware is required for operational features. This synchronous backend must be
 called by an admitted, serialized dependency worker after verifying the expected
