@@ -115,8 +115,9 @@ exec 7<{shlex.quote(str(caller_fd))}
 trap 'printf exit >{shlex.quote(str(trap_file))}' 0
 trap ':' TERM
 callback() {{
-    [ "$IFS" = ' 	
-' ] && [ "$LC_ALL" = C ] || return 91
+    _fixture_expected_ifs=$(printf ' \\t\\n_')
+    _fixture_expected_ifs=${{_fixture_expected_ifs%_}}
+    [ "$IFS" = "$_fixture_expected_ifs" ] && [ "$LC_ALL" = C ] || return 91
     case $- in *e*|*u*) return 92 ;; esac
     printf '%s\\0' "$@" >{shlex.quote(str(fixture.callback))}
     printf 'quiet stdout'; printf 'quiet stderr' >&2
