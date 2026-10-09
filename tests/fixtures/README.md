@@ -24,8 +24,9 @@ metadata/framing failures and exact input, file-count and declared-size bounds.
 Its actual BusyBox case exercises helper-plus-parser loading, hash normalization
 and malformed spacing/NUL refusal. The development guide's manifest example is
 fictional and uses placeholder hashes. The combined manifest/catalog focused
-gate passes 39 tests with two explicit missing-BusyBox skips in 5.78s; the 47%
-full local and exact CI gates remain pending. These parser checks
+gate passes 39 tests with two explicit missing-BusyBox skips in 5.78s. The
+full local gate passes 1,819 tests with 37 explicit platform skips in
+1,159.49s; cost review is complete and exact CI remains pending. These parser checks
 do not download or authenticate a manifest, compare declared hashes with file
 bytes, establish inventory completeness, or exercise a config reader or
 writer. The catalog and config-header BusyBox cases passed in the accepted 46%

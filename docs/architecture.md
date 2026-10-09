@@ -548,8 +548,9 @@ no integrated config reader, manifest trust or catalog acquisition path is imple
 
 The current 47% D2 candidate extracts shared safe-path functions and adds a
 bounded manifest parser. Combined manifest/catalog focused checks pass 39
-tests with two explicit missing-BusyBox skips in 5.78s; full local and exact CI
-validation remain pending, so this is not yet an accepted checkpoint. Matching Merlin awk behavior, full config
+tests with two explicit missing-BusyBox skips in 5.78s. The full local gate
+passes 1,819 tests with 37 explicit platform skips in 1,159.49s. Cost review
+is complete; exact CI remains pending before acceptance. Matching Merlin awk behavior, full config
 validity, trusted manifest acquisition and an integrated config/catalog runtime
 path remain unproved.
 

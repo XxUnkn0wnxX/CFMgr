@@ -813,8 +813,13 @@ There is currently no generated root catalog, published manifest, downloader,
 hashing workflow or installed-package mapper.
 
 The D2 manifest/catalog focused gate passes 39 tests with two explicit
-missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s; full local
-and exact Linux/BusyBox CI remain pending before 47% acceptance.
+missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s. The full
+serial Mac check passes 1,819 tests with 37 explicit platform skips in
+1,159.49s. Cost review is complete; exact Linux/BusyBox CI remains pending
+before 47% acceptance. An unchanged integration hit its 60s deadline in the
+timing follow-up, then passed its isolated retry in 53.69s under the same
+bound. Elevated host load and the retained failure are recorded in PLAN.md;
+no assertions, timeouts or source changed.
 
 The following complete manifest is fictional and uses placeholder hashes; file
 sizes and digests do not describe real repository files:
