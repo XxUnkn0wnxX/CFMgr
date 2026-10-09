@@ -24,11 +24,8 @@ PACKAGE_TO_TOOL = {
 pytestmark = pytest.mark.integration
 
 DISPATCHER = r"""
-import hashlib
 import json
 import os
-import shlex
-import subprocess
 import sys
 from pathlib import Path
 
@@ -82,6 +79,8 @@ if mode == "opkg":
         sys.exit(int(settings.get("install_status", 8)))
     if settings.get("install_status") is not None:
         sys.exit(int(settings["install_status"]))
+    import shlex
+
     for package in packages:
         tool = settings["packages"].get(package)
         if tool is None:
@@ -95,6 +94,7 @@ if mode == "opkg":
                 shlex.quote(value)
                 for value in (
                     sys.executable,
+                    "-S",
                     settings["dispatcher"],
                     "capability",
                     str(settings_path),
@@ -127,6 +127,8 @@ if tool == "jq":
         sys.exit(10)
     print("wrong" if behavior == "mismatch" else "ready")
 elif tool == "sha256sum":
+    import hashlib
+
     data = sys.stdin.buffer.read()
     if args or data != b"abc":
         sys.exit(11)
@@ -137,6 +139,8 @@ elif tool == "sha256sum":
 elif tool == "timeout":
     if args != ["1", "/bin/sh", "-c", "exit 0"]:
         sys.exit(12)
+    import subprocess
+
     sys.exit(subprocess.run(args[1:], check=False).returncode)
 elif tool == "dig":
     if args != ["-v"]:
@@ -185,6 +189,7 @@ class OpkgFixture:
     def _write_executable(self, path: Path, mode: str, *fixed_args: str) -> None:
         command = (
             sys.executable,
+            "-S",
             str(self.dispatcher),
             mode,
             str(self.settings_path),
