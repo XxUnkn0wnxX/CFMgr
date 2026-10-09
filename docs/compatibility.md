@@ -259,16 +259,14 @@ packages.
 The host consumer tests execute the actual bundled backend with inert opkg and
 capability stand-ins, including a 32-KiB package-file write without a tiny
 launcher file limit. The ninth Linux scenario now also runs a trusted synthetic
-static backend stand-in through the native root. O10a full local validation
-passed 1,732 tests with 33 platform skips, and Linux/BusyBox passed 1,765 tests
-without skips. The ninth kernel scenario's outer fixture witness accepted only
-argc 5 and rejected the new argc-9 handoff with status 121 before `chroot`,
-leading to callback/teardown status 129. The fixture now permits those two
-finite call shapes and forwards all arguments after the held-root and descriptor
-checks. The cause is source-reproduced and the fixture is repaired; the Linux
-rerun remains pending, so the 44% candidate is not accepted yet. Neither
-synthetic test proves real opkg provenance, router execution or firmware ABI. No
-operational worker, menu, installer or router-side package operation is added.
+static backend stand-in through the native root. The accepted 44% checkpoint
+passes the full local check (1,734 tests, 33 explicit platform skips) and
+Linux/BusyBox (1,767 tests, no skips); all ten kernel scenarios pass, including
+native-root in 7.55s. The ninth scenario's opkg and capability programs and its
+storage metadata are synthetic. These checks do not establish real opkg
+provenance, router execution or firmware ABI. No operational worker, menu,
+installer or router-side package operation is added. Exact results are in
+[PLAN.md](../PLAN.md).
 
 ## 🧩 Qualify each feature separately
 

@@ -202,26 +202,20 @@ three local BusyBox skips in 36.67s; the 26 kernel-runner checks passed in
 python -m pytest tests/test_native_dependencies.py tests/test_native_shell.py tests/test_bootstrap.py
 ```
 
-The historical O10a full local run passed 1,732 tests with 33 explicit
-platform skips in 921.88s, with all static checks passing. Linux/BusyBox passed
-1,765 tests without skips in 129.17s, and the six stripped-ash checks passed
-in 7.20s. Its ninth kernel scenario stopped before `chroot`: the compiled outer
-descriptor witness accepted only argc 5, while the new dependency handoff uses
-argc 9. The witness now admits those two finite call shapes, checks the held
-root and descriptor boundary, and forwards every argument. The old runtime
-status 129 was the consequence of the fixture's status-121 refusal before
-`chroot`, not an unresolved runtime failure; scenario 10 was not reached in
-that run. The 44% checkpoint remains
-unaccepted pending a rerun of the repaired Linux scenario; see the
-[historical CI run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37983581429)
-and [current handoff](../PLAN.md). The repaired source also passes the full local check: 1,734 tests with
-33 platform skips in 790.73s, with all statics green. Its 28 focused runner
-tests pass in 1.79s. Two of them compile the actual descriptor witness once and check
-13 argument/descriptor cases without chroot or privileged operations. They
-require a host `cc` executable and report explicit skips when it is absent;
-the Linux CI image supplies the compiler. This is a developer-test dependency,
-not a router requirement. The synthetic stand-in does not run Entware opkg or
-prove package provenance, firmware ABI or router acceptance.
+The accepted 44% checkpoint passes the full local check with 1,734 tests and 33
+explicit platform skips in 790.73s, including all static checks. Linux/BusyBox
+passes 1,767 tests with no skips in 131.28s; all ten kernel scenarios pass,
+including native-root in 7.55s and native-probe in 10.19s. The six stripped-ash
+checks pass in 7.21s. See the [green Linux/BusyBox run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37987932713)
+and [PLAN.md](../PLAN.md) for the full checkpoint record.
+
+The 28 focused kernel-runner tests pass in 1.79s. Two compile
+the actual descriptor witness once and check 13 argument/descriptor cases
+without chroot or privileged operations. They require a host `cc` executable
+and report explicit skips when it is absent; Linux CI supplies the compiler.
+This is a developer-test dependency, not a router requirement. Synthetic
+stand-ins do not run Entware opkg or prove package provenance, firmware ABI or
+router acceptance.
 
 The worker fixture set distinguishes cheap process-record checks from the
 Linux/BusyBox lifecycle cases. Keep deadline, signal and real process-group

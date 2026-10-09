@@ -469,14 +469,12 @@ repair skips healthy requirements and installs only missing or unusable
 mapped tools; force reinstall remains a separate explicit selector. Host
 consumers exercise the actual bundled backend with inert opkg doubles. The
 ninth Linux scenario adds a synthetic static backend stand-in and a 32-KiB
-package write. The O10a run's outer descriptor witness accepted only argc 5,
-so it refused the new argc-9 handoff with status 121 before entering `chroot`;
-the enclosing runtime consequently returned 129 for incomplete completion.
-The fixture now admits only argc 5 or 9, validates the held-root and descriptor
-boundary, and forwards all arguments. This repairs the reproduced fixture
-defect; the ninth scenario's Linux rerun is still pending, so its added kernel
-evidence is not yet accepted. Neither synthetic proof establishes real opkg
-provenance, router execution or firmware ABI.
+package write. At the accepted 44% checkpoint, all ten Linux kernel scenarios
+pass, including native-root in 7.55s and native-probe in 10.19s. The fixture
+checks the bounded handoff and descriptor boundary while using synthetic
+storage metadata and package executables. This does not establish real opkg
+provenance, router execution or firmware ABI; see [PLAN.md](../PLAN.md) for
+exact validation results.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
