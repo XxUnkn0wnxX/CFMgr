@@ -108,8 +108,8 @@ limit tmpfs use but do not reserve RAM or establish available memory headroom.
 The preceding 35% snapshot passed Linux/BusyBox CI and its then-current nine
 kernel scenarios, as recorded in [PLAN.md](../PLAN.md). The updated native-tmp
 BusyBox representative and ninth kernel scenario are new evidence for 36%;
-focused host checks passed, the full local validation is running, and current CI
-is pending. Neither host nor Linux namespace evidence establishes router
+focused checks and the full local suite passed (1,526 tests, 29 explicit platform
+skips), and current CI is pending. Neither host nor Linux namespace evidence establishes router
 acceptance. The views and data still lack complete native configuration,
 loader/helper/ELF, writable Opt, TLS or NSS closure, and ordinary opkg execution.
 The native observer does not set `HOME` or launch a payload, and this is not an
