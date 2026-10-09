@@ -15,7 +15,7 @@ profile is an observation, not proof that a runtime feature passes on that route
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit
 Linux namespace check. It uses actual BusyBox mounts and the runtime lifecycle,
 but substitutes synthetic storage metadata for block-device/UUID admission.
-The nine scenarios retain individual 15-second bounds:
+The ten scenarios retain individual 15-second bounds:
 
 | Scenario | Evidence established | Limit |
 | --- | --- | --- |
@@ -28,8 +28,9 @@ The nine scenarios retain individual 15-second bounds:
 | 7 (worker-lifetime) | An inherited root descriptor blocks teardown; after chroot/setsid the child drops it but retains root/cwd and proof pipes. Removing Opt exposes readonly empty fallbacks until the detached child exits | Filesystem quiescence is not proof of arbitrary descendant reaping |
 | 8 (execution-root) | Actual readonly-root owner checks mount identity, fallback write refusal, restored caller descriptors and completed teardown before RAM removal | Not an operational worker or router acceptance |
 | 9 (native-root) | Native views, six staged files, quota tmpfs, retained Opt, fixed devices and a fixed native shell probe use the checked lifecycle | FD8 remains synthetic; host executable fixtures do not prove firmware ABI; see below |
+| 10 (native-probe) | Real aggregate deadline and native-config-root/chroot cleanup around the fixed probe; the fixture inspects the watchdog's descriptors while FD6/8/9 are held and verifies a known FD0 witness | Storage acquisition is a synthetic seam; does not prove outer storage IO acquisition, physical block-device/UUID admission or router execution |
 
-The current ninth scenario composes the quota-limited native-tmp root, retained
+The ninth scenario composes the quota-limited native-tmp root, retained
 Opt root, fixed native devices and native-config-root entry. It stages all six
 fixed files before the first bind, including a binary CA bundle larger than
 128 KiB, and uses actual BusyBox `dd`/`cmp` to verify exact bytes and readonly
@@ -50,11 +51,23 @@ with `readelf`, and restricts dependency staging to the observed `/lib` and
 inside chroot, then forward to real chroot/BusyBox applets; `/bin/sh` itself is
 the genuine dynamic BusyBox. This instruments the descriptor boundary while
 executing the fixed script. Original caller descriptors and checked ordinary
-teardown remain asserted. The nine namespace scenarios retain their 15-second
-bounds; see [PLAN.md](../../PLAN.md) for this extension's checkpoint result.
+teardown remain asserted. Each namespace scenario retains its 15-second bound;
+see [PLAN.md](../../PLAN.md) for the checkpoint results.
 These host-native bytes and the interpreter adaptation do not establish ARM32,
 Merlin loader/NSS/TLS behavior or package execution. Firmware cache files are
 never inputs to this executable fixture.
+
+Scenario 10 composes the source-only native-probe worker with the real deadline
+owner, fixed chrooted probe, native-config-root teardown and completion handoff.
+The worker checks exact-zero root cleanup and the synthetic outer-storage
+callback before the deadline completion handoff. The root callback inspects the
+watchdog's FD3..63 set while FD6/8/9 are held; a known FD0 metadata read is the positive
+witness before confirming no root/storage aliases appeared. The test storage
+seam keeps FD8 regular with synthetic metadata and
+uses a controlled FD9 source, but compares the supplied Entware authority. It
+does not exercise outer storage IO acquisition or physical block-device/UUID
+admission. This scenario is in the frozen 42% snapshot; its exact-head
+Linux/BusyBox gate is pending and it does not establish router acceptance.
 
 The device layer adds only privately generated `/dev/null` (1:3) and
 `/dev/urandom` (1:9), with the expected root ownership and mode. Its wrapper
@@ -82,13 +95,19 @@ uncertainty propagation. It checks real open descriptors with `fstat` on macOS;
 the explicit BusyBox case proves ash behavior, and the namespace scenario
 separately proves actual dynamic launch and mount cleanup. No host mock is
 reported as a privileged chroot or router test.
+`tests/test_native_probe.py` checks the fixed worker's argument/authority
+routing, watchdog and cleanup ordering, 0/1 outcomes, caller state, stale markers
+and uncertain completion with fresh lower-level seams. Its early-exit case
+exercises the composition's completion guard; it does not duplicate the real
+kernel root lifecycle.
 `tests/test_native_devices.py` contains the native-config-root policy and host
 lifecycle consumer; the actual BusyBox composition is in
 `tests/test_native_root.py`. These consumers exercise all six files with the
 retained-Opt/device lifecycle. The local BusyBox root case was explicitly
 skipped because no local binary was available; the Linux CI consumer passes.
-Full local and exact-head kernel/BusyBox validation pass for the composition. Host mirrors do not prove mount-enforced readonly
-behavior.
+The fixed-device/native-config composition passed the prior full local and
+exact-head kernel/BusyBox gates. Host mirrors do not prove mount-enforced
+readonly behavior.
 `tests/test_native_tmp_root.py` checks quota validation and lifecycle metadata
 with host fixtures; these mock mount tools and do not prove actual quota, write
 or exec behavior. `tests/test_entware_root.py` covers retained-Opt success,
@@ -96,8 +115,9 @@ busy-Opt cleanup refusal and malformed API rejection;
 `tests/test_entware_root_admission.py` covers the storage-admission boundary.
 `tests/test_native_devices.py` covers fixed node metadata, inode rechecks and
 host busy-unmount guard retention. The actual BusyBox representative and ninth
-namespace scenario provide separate integration evidence in the current
-checkpoint.
+namespace scenario provide separate integration evidence for the accepted 41%
+checkpoint. The tenth native-probe scenario awaits its exact-head Linux/BusyBox
+gate.
 Host fixtures do not prove mount-enforced readonly behavior.
 Native-root host tests use the focused query fixture in
 `tests/isolation_helpers.py`, while its Linux/BusyBox consumer retains complete
@@ -106,3 +126,22 @@ capture evidence. Other host fault tests may share the focused query fixture in
 framing and descriptor checks. The bare-root host success and actual
 BusyBox/kernel consumers retain the full bounded-capture path. Document this evidence boundary
 when adding cases, and review fixture guidance at implementation milestones.
+
+The native host dispatcher performs real path and descriptor observations before
+loading unrelated simulated mount state. Its standard-library-only processes
+skip Python site initialization and load file-copy helpers only when needed;
+observations are never cached. On macOS, the fixed descriptor tests use the
+system `stat` tool on inherited stdin, preserving the actual open descriptor
+without reopening its path. Other hosts retain the Python observations.
+`tests/test_native_observation.py` checks real inode relationships, directory
+versus file metadata, symlinks, closed descriptors and continued descriptor use
+in one small batch. Stateful mount/device simulation remains unchanged.
+`tests/test_io_hex.py` separately compares both
+hex validators with a decoded-byte grammar, including valid inputs containing
+misleading matches between byte boundaries. Full lifecycle assertions and
+deadlines remain unchanged.
+
+The opkg fixture also starts its standard-library-only dispatcher with Python
+site initialization disabled. It loads hashing, shell quoting and subprocess
+helpers only for the actions that use them, while preserving fresh settings,
+call logs, real timeout-child execution and the original per-action deadline.

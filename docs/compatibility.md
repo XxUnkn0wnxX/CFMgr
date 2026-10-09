@@ -201,6 +201,20 @@ The observer's own `HOME` remains unchanged, and this is not an operational
 worker. No mount or chroot was
 executed on the router for these checks.
 
+The O9b source snapshot adds `cfmgr_worker_native_probe`, which composes the
+fixed shell check with the existing native process-group deadline, retained
+storage descriptors and checked native-config-root cleanup. It returns an
+ordinary probe result only after root and outer storage/IO cleanup both report
+exact success; uncertain or inconsistent completion remains guarded. This
+source-only helper does not install cron, launch opkg or establish an operational
+dependency worker. Its tenth Linux scenario uses a synthetic storage-acquisition
+boundary while exercising real deadline, root/chroot and cleanup behavior; it
+does not prove physical storage or UUID admission, actual outer storage IO
+acquisition, ARM32 firmware execution or router acceptance. The 41% CI evidence
+above covers the prior nine-scenario snapshot. The exact-head Linux/BusyBox gate
+for the tenth scenario remains pending; see the
+[fixture guide](../tests/fixtures/README.md) and [PLAN.md](../PLAN.md).
+
 ## 🧩 Qualify each feature separately
 
 | Feature | Required capability | Current boundary |

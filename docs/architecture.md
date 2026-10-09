@@ -46,6 +46,7 @@ flowchart LR
 | `modules/lib/native_config.sh` | Inside an active IO callback, stage opaque `/etc/hosts` and `/etc/resolv.conf`; an extended API adds fixed NSS, wget, OpenSSL config and CA files | Data copies only; no syntax, trust, readiness, execution or broader closure approval; legacy root entries remain two-file |
 | `modules/lib/native_config_root.sh` | Select the fixed extended-config composition over the retained-Opt/device root lifecycle | Source-only native observer API; six files staged before bind; no payload/opkg or operational lifecycle wiring |
 | `modules/lib/native_shell.sh` | Probe one fixed native shell/BusyBox command inside an already checked native-config root | Explicit synchronous callback exception; caller owns the deadline and root authority; no general executable, DNS/TLS or opkg admission |
+| `modules/helpers/native_probe.sh` | Compose the fixed native shell probe with the existing deadline, retained-storage and checked native-config-root owners | Source-only ten-argument internal API; no CLI, cron installation, operational worker, package or network action |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
 | `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
@@ -199,6 +200,12 @@ after owned cleanup; handled HUP/INT/TERM exits remain `129`/`130`/`143`. The
 owner preserves caller state; external callers must forward signals or supervise
 it. IO has no deadline for a hung native executable. Failed partial captures stay
 private until owner cleanup.
+
+Hex validation still requires nonempty lowercase byte pairs without NUL; path
+validation additionally requires an absolute path without empty, `.` or `..`
+components, with `/` accepted explicitly. Ordinary inputs avoid repeated byte
+walking only when no forbidden encoding can be present. Suspicious matches,
+including matches between byte boundaries, use the unchanged strict walkers.
 
 The internal `cfmgr_storage_with` API instead runs a trusted callback after all
 checks, passing the resolved directory, complete volume ledger and caller
@@ -370,6 +377,33 @@ guard. Normal probe return still requires the owner's existing checked teardown;
 the probe does not establish filesystem quiescence by itself. It neither
 accepts caller-selected command arguments nor authorizes ordinary opkg, NSS,
 TLS, network activity or a general executable closure.
+
+`cfmgr_worker_native_probe RAMROOT GUARD TOTAL GRACE TMP_KIB TMP_INODES
+MOUNT_PARSER STORAGE_PARSER EXPECTED_UUID EXPECTED_FS_TARGET_HEX` is the fixed
+source-only composition around that probe. It validates its ten arguments and
+fresh guard before entering the existing deadline API in the caller's original
+shell, so process-group admission precedes the armed watchdog. Only then does
+the fixed callback enter the retained-storage owner and native-config-root
+lifecycle, forwarding the independently selected UUID/filesystem target and
+held descriptors. The native-shell callback accepts no command input.
+
+The probe's ordinary 0/1 result is recorded separately from owner completion.
+After a verified probe result, the callback publishes exactly one empty
+`probe-success` or `probe-negative` marker. Exact-zero root cleanup then allows
+an empty `root-returned` marker; exact-zero outer storage/IO cleanup is required
+before the worker validates those markers and returns the recorded 0/1 result to
+the deadline owner. Only that normal completion can reach the existing done,
+acknowledgement and exact-child wait. Invalid API returns 2; unclassified
+admission, cleanup, publication or marker uncertainty returns 129 and does not
+acknowledge completion. No marker by itself authorizes cleanup.
+
+This composition is still an internal fixed probe, not operational dependency
+execution: it installs no cron entry, invokes no opkg or network operation, and
+does not add arbitrary callback or executable authority. The new tenth Linux
+kernel scenario exercises the real deadline, root/chroot and cleanup path with
+synthetic storage acquisition; it does not establish outer storage IO
+acquisition, block-device/UUID admission or router execution. The exact-head
+Linux gate for this snapshot remains pending; see [PLAN.md](../PLAN.md).
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
@@ -568,6 +602,16 @@ mounted storage; file existence alone is not that proof. It does not provide an
 aggregate deadline or mount-loss containment, and the worker/feature launch
 integration remains unfinished. `--doctor` and `--diagnostic` use only native
 helpers and never invoke this backend, opkg or unverified Entware executables.
+
+The pinned opkg CLI reads configuration before acquiring its process-owned
+`lockf` lock, and ordinary install then configures all loaded unpacked packages.
+Its public options do not provide an atomic check that excludes unrelated
+partial installations. A separate status check leaves a gap before install,
+and CFMgr's cooperative lock covers only participating CFMgr work. Stable
+configuration and exclusion of conflicting writers across admission and package
+work remain unresolved operational prerequisites. The source-derived lock-file
+unlink race and exact source references are recorded in the plan; no runtime
+contention proof or custom opkg replacement is claimed.
 
 The existing native profile binds the expected Entware directory and `/dev/null`.
 The outer native owner checks mount identity and removes its

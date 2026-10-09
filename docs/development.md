@@ -207,6 +207,14 @@ focused launch/runner checks; these unprivileged tests do not perform chroot or
 prove router execution. The kernel scenario described below supplies that
 separate host execution evidence.
 
+`tests/test_native_probe.py` checks the source-only worker composition with
+fresh markers and narrow storage/root/deadline seams. It verifies fixed
+ten-argument routing, arm/acquire/probe/cleanup/acknowledgement order, clean
+probe results, caller-state preservation and uncertainty refusal, including an
+early `exit 0` through the completion guard. Run it with
+`python -m pytest tests/test_native_probe.py`; these host tests do not repeat the
+real root/deadline lifecycle or establish firmware behavior.
+
 ## 🧪 Run checks
 
 From the repository root with `.venv` active:
@@ -311,19 +319,25 @@ unmount has no alternate-flag retry. There is no test-only syntax adapter.
 The [compatibility guide](compatibility.md#busybox-unmount-capabilities) records
 the firmware evidence and upstream behavior change.
 
-The kernel lane contains nine bounded namespace scenarios. Coverage includes
-actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`, the
-quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
+The kernel lane now contains ten bounded namespace scenarios. The original nine
+cover actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`,
+the quota tmpfs, retained Opt and device-node cleanup. The newest native-config-root
 scenario checks all six staged files, including a binary CA bundle larger than
-128 KiB, with native BusyBox `dd` and `cmp`. All nine scenarios pass the
-[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595). It substitutes a synthetic FD8 storage observation and a controlled
-FD9 source, so it does not prove router storage admission or acceptance. The
-current scenario also invokes the fixed shell probe through genuine host
-BusyBox/loader bytes. Only a private fixture copy's interpreter path is adapted
-to the existing `/lib` view, with structural and `readelf` verification; static
+128 KiB, with native BusyBox `dd` and `cmp`. All nine passed the
+[41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595).
+The kernel fixture substitutes a synthetic FD8 storage observation and a
+controlled FD9 source, so it does not prove router storage admission or
+acceptance. The accepted 41% scenario also invokes the fixed shell probe
+through genuine host BusyBox/loader bytes. Only a private fixture copy's
+interpreter path is adapted to the existing `/lib` view, with structural and
+`readelf` verification; static
 fixture wrappers inspect descriptors before forwarding to real chroot/applets.
-No firmware executable is copied or run. Current checkpoint results supersede
-the earlier baseline and are recorded in [PLAN.md](../PLAN.md). See the
+No firmware executable is copied or run. The tenth scenario adds the source-only
+worker's real deadline and checked root/probe cleanup, observes the watchdog's
+own descriptors, and uses synthetic storage acquisition; it does not prove
+outer storage IO acquisition or physical block-device/UUID admission. The
+ten-scenario 42% Linux gate is pending. Current results are recorded in
+[PLAN.md](../PLAN.md). See the
 [test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
 and limits.
 
@@ -391,6 +405,7 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
 | `tests/test_io.py` | Private staging, stream bounds, producer status, signal cleanup and complete mount handoff |
+| `tests/test_io_hex.py` | Independent byte-grammar oracle for hex/path validation, including misleading matches between byte boundaries |
 | `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
 | `tests/test_storage.py` | Held-descriptor observation, before/after identity checks and rejection without publication |
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
@@ -399,7 +414,9 @@ is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
 | `tests/test_native_config.py` | Legacy fixed-file staging plus direct extended staging and its actual BusyBox consumer |
 | `tests/test_native_config_extended.py` | Opaque byte limits, same-descriptor EOF checks, producer/cmp failures, partial retention and IO cleanup admission |
 | `tests/test_native_shell.py` | Fixed shell admission, clean environment, descriptors, byte framing and retained uncertainty through the root lease |
+| `tests/test_native_probe.py` | Fixed worker ordering, authority routing, cleanup gates, caller-state preservation and uncertainty markers |
 | `tests/test_native_root.py` | Native root identity/cleanup and the actual BusyBox six-file retained-Opt/device composition |
+| `tests/test_native_observation.py` | Real descriptor metadata, inode relationships, symlink failures and retained descriptor usability in host fixture tools |
 | `tests/test_native_data_root.py` | Native-data composition before bind, exact staged bytes, query budget and checked teardown |
 | `tests/test_native_tmp_root.py` | Canonical quota validation, tmpfs identity/options, private HOME and cleanup retention |
 | `tests/test_entware_root.py` | Retained Opt-root success, busy-Opt cleanup refusal and malformed API rejection |
