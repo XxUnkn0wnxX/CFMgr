@@ -8,8 +8,9 @@
 
 CFMgr aims to support Merlin by the capabilities each feature needs. **No
 firmware is declared fully supported yet.** This evidence snapshot was collected
-on **8 October 2026**; source inspection, harmless installed-tool probes, host
-tests, and complete router acceptance are different levels of proof.
+on **8–9 October 2026**; individual feed and source snapshots retain their
+recorded dates. Source inspection, harmless installed-tool probes, host tests,
+and complete router acceptance are different levels of proof.
 
 ## 📋 Representative firmware
 
@@ -54,7 +55,7 @@ shared version; the reviewed Wi-Fi 6 and Wi-Fi 7 router trees use the shared
 router directory. This is source/build evidence, not an installed measurement
 for every model. A firmware-family number alone does not identify its BusyBox
 capabilities. [3006 release version](https://github.com/RMerl/asuswrt-merlin.ng/blob/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/release/src/router/busybox/Makefile#L1)
-· [Build selection](https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7d57102260f/release/src-rt/Makefile#L145)
+· [Build selection](https://github.com/RMerl/asuswrt-merlin.ng/blob/b053ba701af02e46a86d465d82cc2a7891a288a7/release/src-rt/Makefile#L133)
 · [Wi-Fi 6 branch version](https://github.com/RMerl/asuswrt-merlin.ng/blob/2df5b849fdf7af5e9f887703390cc5924c67def9/release/src/router/busybox/Makefile#L1).
 
 BusyBox changed its loop-device behavior between upstream 1.26.2 and 1.27.0.
@@ -71,6 +72,31 @@ fails before any bind; an unmount failure never triggers an alternate command.
 This supports the two recognized capability profiles without assuming all future
 firmware is compatible. Help-disabled builds and changed descriptions require
 review. Kernel, ABI, storage and full router acceptance remain separate gates.
+
+## Native worker and execution-root evidence
+
+The matched native cron source creates a process group before launching a job.
+CFMgr independently verifies the actual original shell's PID/group identity and
+uses a native guarded watchdog with cooperative completion. Cancellation signals
+its current group, avoiding stored numeric PID reuse. Linux/BusyBox tests prove
+those internal paths; operational cron dispatch and router acceptance are still
+pending. A blocked kernel task or externally stopped watchdog cannot be given an
+unconditional userspace termination guarantee.
+
+A brief read-only probe on 9 October found canonical `/bin`, `/sbin`, `/lib` and
+`/usr` directories on the target's readonly UBIFS root. Native BusyBox is ELF32
+ARM with interpreter `/lib/ld-linux.so.3`; an AArch64 loader also exists. `/etc`
+resolves to `/tmp/etc`, and `/usr/local/share` to `/tmp/share`. Those facts do not
+prove a complete loader, resolver, TLS or NSS environment inside a new root.
+
+The separate execution-root entry now owns a readonly RAM bind, verifies its
+actual descriptor mount identity, preserves its guard and requires checked
+ordinary teardown plus successful IO cleanup before returning an ordinary
+callback status. Its host fixtures use inert mounts; the Linux namespace
+consumer also passed, with separate evidence recorded in [PLAN.md](../PLAN.md).
+Native executable views, writable child mounts and ordinary-opkg execution are
+not yet composed into an operational worker. No mount or chroot was executed on
+the router for these checks.
 
 ## 🧩 Qualify each feature separately
 
@@ -152,9 +178,11 @@ an old 2.6.22 router. [Entware support matrix][entware-support] ·
 | `flock` | Only if the native locking command cannot satisfy the tested contract. Present in all five inspected feeds. |
 
 The installed Entware opkg manages versions, package selection and transitive
-libraries using its configured repositories. CFMgr's backend requests only its
+libraries using its configured repositories. CFMgr's normal backend requests only its
 missing/unusable direct dependencies and checks their capabilities afterward;
 it does not manually acquire IPKs, choose library versions or change feeds.
+A separate implemented internal backend explicitly force-reinstalls all selected
+direct packages and repeats the post-checks. Its menu remains unimplemented.
 Operational worker/startup integration and router acceptance remain unfinished.
 CFMgr does not install Entware or request a whole-system upgrade. Native
 `--doctor`/`--diagnostic` remain available without Entware and never install
@@ -262,9 +290,9 @@ For ext2/3/4, source review and harmless installed probes support an independent
 route: read the UUID bytes from the primary superblock through an already open
 block descriptor, using bounded native `hexdump`. Labels never enter that
 interpretation. Native numeric `ls` can report the held block device's number
-for comparison with the mount record. Integration, failure handling and other
-filesystem profiles remain pending; labelled ext drives are not excluded by
-the blkid limitation. [Superblock format][ext-superblock]
+for comparison with the mount record. The reader and retained-descriptor callback have host/CI coverage; operational
+composition, router acceptance and other filesystem profiles remain pending.
+Labelled ext drives are not excluded by the blkid limitation. [Superblock format][ext-superblock]
 
 <details>
 <summary>🚧 Remaining firmware-specific proofs</summary>

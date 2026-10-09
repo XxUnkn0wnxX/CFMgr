@@ -19,6 +19,21 @@ failures before beginning the next set of batches. Pause after each ten-point
 milestone's gates pass, or at the next safe boundary after a user pause request.
 Unvalidated work stays local.
 
+Finalize and review milestone code before updating its documentation. Assign
+the parent or a dedicated documentation worker to the finalized commit/snapshot;
+that work may run alongside CI, validation or other independent tasks. Recheck
+the documentation after any later code fix and before publication.
+
+Review and update the README and all relevant guides at every major milestone,
+and no later than each ten-percentage-point checkpoint. Check development
+commands, architecture, compatibility claims, setup instructions, contribution
+rules and fixture evidence against the implemented stage. Record the audit,
+including guides that remain accurate without edits, in PLAN.md. Documentation
+accuracy is part of the checkpoint. Readers should be able to follow feature
+availability and current usage as implementation progresses; planned commands
+must remain clearly distinguished from available ones. At 100% completion, run a
+separate end-to-end consistency and polish pass across all documentation.
+
 Keep the suite affordable as it grows. Review the latest pytest duration report
 before each `develop` push and after about three local implementation batches,
 whichever comes first. Normal runs report the slowest calls; record comparable
@@ -383,6 +398,7 @@ command remains `cfmgr`.
 | `tests/test_storageinfo.py` | Native mount-ID/UUID observations, exact framing and ambiguous disk-label refusal |
 | `tests/test_storage.py` | Held-descriptor observation, before/after identity checks and rejection without publication |
 | `tests/test_isolation.py` | Focused ownership/cleanup faults plus representative complete lifecycle fixtures |
+| `tests/isolation_helpers.py` | Shared focused mount-query fixture; full-capture consumers remain separate |
 | `tests/test_execution_root.py` | Readonly-root ownership, descriptor lease, retained guards and complete versus uncertain cleanup |
 | `tests/fixtures/kernel/` | Controlled shell/C fixtures for the explicit Linux namespace proof |
 | `tests/fixtures/` | Synthetic or reviewed sanitized data only |
@@ -600,8 +616,8 @@ output. Cleanup only removes that owned directory, including on handled signals;
 colliding pre-existing paths are left alone. Native command paths and locale are
 fixed, and OpenSSL configuration/module overrides are isolated.
 
-There is no verified supervisor for a hung native executable yet. The report
-therefore tests finite local operations and leaves flock contention untested.
+The report is not yet connected to the guarded deadline controller. It tests
+finite local operations and leaves flock contention untested.
 The curl check verifies option parsing only; it makes no HTTPS request. Host
 fixtures and optional BusyBox-shell checks do not establish deployed-router
 acceptance. Future runtime changes must extend this inventory and its tests.

@@ -7,8 +7,10 @@
 
 This is a working developer guide. It separates implemented foundations from
 the intended manager; [PLAN.md](../PLAN.md) owns the detailed contracts,
-acceptance checklist and implementation record. The full documentation polish
-follows implementation and validation.
+acceptance checklist and implementation record. This guide and the other
+repository documentation are reviewed at major milestones and before each
+ten-percentage-point checkpoint; implementation status stays current throughout
+development.
 
 ## 🧱 Current implementation
 
@@ -130,9 +132,9 @@ unchanged arguments only after both mounts pass verification.
 Cleanup checks each recorded mount again, removes Opt before null, and proves
 both absent before deleting the guard. Busy, changed or uncertain mounts and
 interrupted operations leave the guard for recovery. Existing guards are never
-adopted or removed automatically. The native callback API does not launch a process inside the root. A separate
-internal fixed-probe entry connects image staging and supervision as described
-below; neither entry exposes an operational CLI action.
+adopted or removed automatically. The native callback API does not launch a
+process inside the root. A separate internal fixed-probe entry connects image
+staging and supervision as described below; neither entry exposes an operational CLI action.
 
 A separate `cfmgr_isolation_root_with` entry prepares the readonly root foundation
 without acquiring Entware or launching a payload. It reserves a fresh execution
@@ -149,7 +151,8 @@ step after reservation reports uncertainty. The entry does not yet provide
 native executable views, writable children, package execution or scheduling.
 Existing native and fixed-probe APIs retain their separate cleanup contracts.
 
-This first profile covers dynamic-revision ext2/ext3/ext4 primary superblocks.
+The retained-storage profile covers dynamic-revision ext2/ext3/ext4 primary
+superblocks; the separate readonly-root foundation uses private tmpfs or ramfs.
 Other filesystems, alternate `sb=` mounts and missing mount-ID support need
 separate profiles. A matching observation does not prove writability, filesystem
 health or uninterrupted device identity, and it cannot authorize a later write
@@ -157,7 +160,8 @@ through a freshly resolved path.
 
 Backups contain configuration and inventoried data, including credentials; they
 do not restore executable code or live process/queue/transaction state. The
-current manager validates a restore and rebuilds its own integrations.
+planned restore path validates data and rebuilds the manager's own integrations;
+that operational path is not implemented yet.
 
 ## ⚙️ Intended execution boundaries
 
@@ -192,9 +196,11 @@ successful parser exit does not prove its output was written completely. A
 live process does not prove tunnel connectivity.
 
 The intended controller checks the evidence appropriate to each boundary and
-preserves unknown outcomes. Dependency installation, operational mount-loss handling and general command
-supervision still need implementation and fault-path validation. The fixed-probe
-helpers have a narrower contract and do not establish those guarantees.
+preserves unknown outcomes. Installed-opkg selection and native deadline
+supervision have internal implementations; their operational composition,
+mount-loss handling and feature startup still need implementation and validation.
+The fixed-probe helpers have a narrower contract and do not establish those
+guarantees.
 
 </details>
 
@@ -205,11 +211,10 @@ Operational dependencies are to be installed by the existing Entware `opkg`
 using its configured repositories and normal package/library resolution. CFMgr
 checks required capabilities and verifies the result. Cloudflared is handled
 directly through release binaries matched to supported kernel and userspace
-architecture/ABI combinations; the kernel architecture alone is insufficient. The direct-IPK bootstrap and isolated-image work below
-are internal proofs, currently unselected for operational installation. They
-have no operational CLI wiring. The next design pass must simplify dependency
-setup around opkg and decide which helpers remain useful; these proofs do not
-establish an installer or require a replacement package-resolution mechanism.
+architecture/ABI combinations; the kernel architecture alone is insufficient.
+The direct-IPK bootstrap was retired. Supplied-manifest isolated-image helpers
+remain internal execution proofs with no operational CLI wiring. They do not
+establish an installer or replace opkg's package-resolution mechanism.
 
 Entware's loader reads absolute `/opt` paths before a program starts. An
 explicit loader path alone therefore cannot contain execution when the public
@@ -287,7 +292,8 @@ or prove Entware ABI or Merlin runtime acceptance.
 
 ## 📦 Modules and forks
 
-Modules remain readable source files. The shipped catalog defaults to `main`;
+**Planned distribution contract; config/catalog downloads and updates are not
+implemented yet.** Modules remain readable source files. The shipped catalog defaults to `main`;
 developers can manually select `develop` or a full commit hash in the main
 configuration. Resolve a branch once, then acquire one immutable repository
 snapshot with its manifest and hashes. Never combine newer per-file fallbacks

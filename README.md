@@ -8,7 +8,29 @@ Cloudflare Manager for Asuswrt-Merlin
 > version on a live router. Passing developer tests do not establish safe router
 > operation; installation instructions will follow validated implementation.
 
-CFMgr is in initial development. The implementation has tested parsing and read-only storage foundations, plus a partial native health report; there is no installable manager yet.
+Completed milestones below have passed developer checks; router runtime
+acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
+
+| Feature / milestone | Status | At a glance |
+| --- | --- | --- |
+| Core foundations | Complete | Input parsing and storage identity checks |
+| Worker safety foundations | Complete | Process deadlines and read-only workspaces |
+| Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
+| Dependency setup | In progress | Install/reinstall backend done; worker integration next |
+| DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
+| Cloudflared | Planned | Tunnel setup, service controls and updates |
+| Logging | Planned | Optional feature logs and rotation |
+| Backup and restore | Planned | Configuration and data recovery |
+
+These descriptions and their usage guides are updated after each finalized
+milestone. A final consistency and polish pass follows complete implementation
+and validation; it does not replace keeping the docs current during the build.
+
+CFMgr is in development. Implemented foundations include parsing, retained-storage
+checks, guarded process deadlines and internal execution-root lifecycles, plus a
+partial native health report. The dependency backend uses installed Entware
+opkg; operational worker and feature integration remain incomplete. There is
+no installable manager yet.
 
 Normal operation will require working Entware. Its installed `opkg` manages
 CFMgr's dependencies and their libraries; CFMgr manages Cloudflared release
@@ -30,7 +52,9 @@ Planned features:
 - Provide an extended health report through `--diagnostic` / `--doctor`, with platform information, dependency checks and safe command tests.
 - Back up and restore configuration and owned data, including available configured log history. Backups do not contain executable code.
 
-Project documentation and images will live in `docs/` and `.images/`.
+Project documentation lives in `docs/`; planned screenshots belong in `.images/`.
+Guides are reviewed with implementation milestones so current capabilities and
+remaining acceptance limits stay explicit.
 
 ☁️ **Before setup:** create a Cloudflare account. For DDNS or public tunnel
 hostnames, add a domain whose DNS is managed by Cloudflare; it can be registered

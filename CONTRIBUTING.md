@@ -26,6 +26,9 @@ For larger changes, check the contracts and remaining acceptance work in
    explain any changed test expectations.
 4. Record what was actually tested. Keep host, BusyBox and router evidence
    distinct; leave untested firmware combinations clearly marked.
+5. Update affected documentation with the change. Major milestones include a
+   review of the README and development, architecture, compatibility, setup and
+   fixture guides; record that review in the plan before publication.
 
 GitHub Actions runs the same check command with BusyBox on Linux for code,
 tests and tooling changes targeting `develop`. Documentation-only changes do
