@@ -563,11 +563,39 @@ class NativeRootFixture(ExecutionRootFixture):
         dispatcher = shlex.quote(str(self.router.path("work/native-dispatch.py")))
         root = shlex.quote(str(ROOT))
         settings = shlex.quote(str(self.router.path("work/root-settings.json")))
+        directory = equality = f'exec {python} {dispatcher} {root} {settings} test "$@"'
+        native = ""
+        if sys.platform == "darwin":
+            # BSD stat without a filename observes its inherited stdin directly.
+            # Match Python's PATH-first lookup and dev:ino equality, including
+            # refusing BSD stat's dangling-symlink fallback after -L.
+            native = r"""native_fd_directory() {
+    case $1 in
+    /proc/self/fd/6) held=$(LC_ALL=C /usr/bin/stat -f '%HT' 2>/dev/null <&6) || return 1 ;;
+    /proc/self/fd/9) held=$(LC_ALL=C /usr/bin/stat -f '%HT' 2>/dev/null <&9) || return 1 ;;
+    *) return 1 ;;
+    esac
+    [ "$held" = Directory ]
+}
+native_fd_equal() {
+    candidate=$(LC_ALL=C /usr/bin/stat -L -f '%d:%i:%HT' -- "$1" 2>/dev/null) || return 1
+    case $candidate in *':Symbolic Link') return 1 ;; esac
+    candidate=${candidate%:*}
+    case $2 in
+    /proc/self/fd/6) held=$(LC_ALL=C /usr/bin/stat -f '%d:%i' 2>/dev/null <&6) || return 1 ;;
+    /proc/self/fd/8) held=$(LC_ALL=C /usr/bin/stat -f '%d:%i' 2>/dev/null <&8) || return 1 ;;
+    /proc/self/fd/9) held=$(LC_ALL=C /usr/bin/stat -f '%d:%i' 2>/dev/null <&9) || return 1 ;;
+    *) return 1 ;;
+    esac
+    [ "$candidate" = "$held" ]
+}
+"""
+            directory = 'native_fd_directory "$2"; exit "$?"'
+            equality = 'native_fd_equal "$1" "$3"; exit "$?"'
         return (
-            "#!/bin/sh\n"
-            'if [ "$#" -eq 2 ] && [ "$1" = -d ]; then\n'
+            "#!/bin/sh\n" + native + 'if [ "$#" -eq 2 ] && [ "$1" = -d ]; then\n'
             '    case "$2" in /proc/self/fd/6|/proc/self/fd/9)\n'
-            f'        exec {python} {dispatcher} {root} {settings} test "$@"\n'
+            f"        {directory}\n"
             "    esac\n"
             "fi\n"
             'if [ "$#" -eq 2 ] && [ "$1" = -c ]; then\n'
@@ -575,7 +603,7 @@ class NativeRootFixture(ExecutionRootFixture):
             "fi\n"
             'if [ "$#" -eq 3 ] && [ "$2" = -ef ]; then\n'
             '    case "$3" in /proc/self/fd/6|/proc/self/fd/8|/proc/self/fd/9)\n'
-            f'    exec {python} {dispatcher} {root} {settings} test "$@"\n'
+            f"    {equality}\n"
             "    esac\n"
             "fi\n"
             'test "$@"\n'
