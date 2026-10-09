@@ -767,6 +767,12 @@ _cfmgr_isolation_root_owner() (
 	trap 'exit 129' HUP INT QUIT TERM
 	_execution_layout=$1 _execution_kind=$2
 	shift 2
+	# Literal entry selection alone enables extended data. Never inherit policy
+	# from the caller, including when an existing root API is invoked afterward.
+	_execution_config_extended=0
+	case $_execution_layout in
+	native-config) _execution_config_extended=1 _execution_layout=native-devices ;;
+	esac
 	case $_execution_layout in bare | native | native-data | native-tmp | native-opt | native-devices) ;; *) return 2 ;; esac
 	_execution_native_source_root=/
 	_execution_data_source_root=/
@@ -1027,9 +1033,12 @@ _cfmgr_isolation_root_io() {
 	if [ "$_execution_layout" = native-data ] || [ "$_execution_layout" = native-tmp ] || [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then
 		# This outer workspace has no captures yet: queries used nested owners.
 		# The checked data subtree becomes RO through the base root bind itself.
-		case $_execution_kind in
-		production) cfmgr_native_config_stage "$_execution_image" || return 129 ;;
-		fixture) cfmgr_native_config_test "$_execution_image" "$_execution_data_source_root" || return 129 ;;
+		case $_execution_config_extended:$_execution_kind in
+		0:production) cfmgr_native_config_stage "$_execution_image" || return 129 ;;
+		0:fixture) cfmgr_native_config_test "$_execution_image" "$_execution_data_source_root" || return 129 ;;
+		1:production) cfmgr_native_config_extended_stage "$_execution_image" || return 129 ;;
+		1:fixture) cfmgr_native_config_extended_test "$_execution_image" "$_execution_data_source_root" || return 129 ;;
+		*) return 129 ;;
 		esac
 	fi
 	if [ "$_execution_layout" = native-opt ] || [ "$_execution_layout" = native-devices ]; then

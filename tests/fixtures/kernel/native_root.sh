@@ -1,5 +1,5 @@
 #!/bin/sh
-# Namespace-only native RO views/data, private tmp/HOME, Opt and fixed devices.
+# Namespace-only native RO views/extended data, tmp/HOME, Opt and fixed devices.
 # No installed payload, chroot or router execution; fixed exec proof only.
 # IO supplies checked ledger/framing state inside its isolated callbacks.
 # shellcheck disable=SC2154
@@ -38,6 +38,14 @@ data_hosts='127.0.0.1	localhost\fixture
 '
 printf '%s' "$data_hosts" >"$data_source/etc/hosts"
 : >"$data_source/etc/resolv.conf"
+"$bb" mkdir -m 700 "$data_source/etc/ssl" "$data_source/etc/ssl/certs"
+"$bb" printf 'hosts: files dns\n\000nss-bytes\n' >"$data_source/etc/nsswitch.conf"
+"$bb" printf 'ca_certificate=/etc/ssl/certs/ca-certificates.crt\n\000wget-bytes\n' >"$data_source/etc/wgetrc"
+"$bb" printf '[default]\nvalue=opaque\\bytes\n\n' >"$data_source/etc/openssl.cnf"
+# Binary data is produced and compared through files, never large argv/env.
+"$bb" dd if=/dev/zero of="$data_source/etc/ssl/certs/ca-certificates.crt" bs=4096 count=33 2>/dev/null
+"$bb" printf '\001ca-tail\n\n' >>"$data_source/etc/ssl/certs/ca-certificates.crt"
+[ "$("$bb" wc -c <"$data_source/etc/ssl/certs/ca-certificates.crt")" -gt 131072 ] || fail 'small CA fixture'
 guard=$ram/native-root
 "$bb" mkdir -m 700 "$guard"
 # shellcheck source=/dev/null
@@ -54,19 +62,28 @@ guard=$ram/native-root
 . "$repo/modules/lib/entware_root.sh"
 # shellcheck source=/dev/null
 . "$repo/modules/lib/native_devices.sh"
+# shellcheck source=/dev/null
+. "$repo/modules/lib/native_config_root.sh"
 
 observe_native_data() {
 	"$bb" test -d "$1/etc" && "$bb" test ! -L "$1/etc" || return 129
-	for observer_data_name in hosts resolv.conf; do
+	for observer_data_name in hosts resolv.conf nsswitch.conf wgetrc openssl.cnf ssl/certs/ca-certificates.crt; do
 		"$bb" test -f "$1/etc/$observer_data_name" && "$bb" test ! -L "$1/etc/$observer_data_name" || return 129
+		[ "$("$bb" stat -c %a "$1/etc/$observer_data_name")" = 600 ] || return 129
+		"$bb" cmp -s "$data_source/etc/$observer_data_name" "$1/etc/$observer_data_name" || return 129
 		if (printf 'forbidden\n' >"$1/etc/$observer_data_name") 2>/dev/null; then
 			return 129
 		fi
+	done
+	for observer_config_directory in etc etc/ssl etc/ssl/certs; do
+		"$bb" test -d "$1/$observer_config_directory" && "$bb" test ! -L "$1/$observer_config_directory" || return 129
+		[ "$("$bb" stat -c %a "$1/$observer_config_directory")" = 700 ] || return 129
 	done
 	observer_hosts=$("$bb" cat "$1/etc/hosts" && "$bb" printf '.') || return 129
 	[ "$observer_hosts" = "${data_hosts}." ] && [ ! -s "$1/etc/resolv.conf" ] || return 129
 	if (printf 'forbidden\n' >"$1/etc/late") 2>/dev/null; then return 129; fi
 	if "$bb" mkdir "$1/etc/late-dir" 2>/dev/null; then return 129; fi
+	if "$bb" mkdir "$1/etc/ssl/certs/late-dir" 2>/dev/null; then return 129; fi
 	[ ! -e "$1/etc/late" ] && [ ! -e "$1/etc/late-dir" ]
 }
 
@@ -276,7 +293,7 @@ REAL_UMOUNT
 "$bb" chmod 700 "$tools/umount"
 status=0
 outside_home=${HOME-}
-cfmgr_isolation_native_devices_root_test "$opt_source" "$volume" "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 /proc/self/fdinfo/9 \
+cfmgr_isolation_native_config_root_test "$opt_source" "$volume" "$ram" "$guard" "$tools" /proc/self/mountinfo /proc/self/fdinfo/6 /proc/self/fdinfo/9 \
 	"$native_source" "$data_source" 64 8 "$repo/modules/lib/mountinfo.awk" "$repo/modules/lib/storageinfo.awk" observe_native_root forwarded || status=$?
 [ "$status" -eq 7 ] || fail "ordinary callback status/teardown ($status)"
 _cfmgr_isolation_root_empty "$guard/opt-fallback-checked" || fail 'missing immediate RO Opt fallback/order witness'
@@ -306,6 +323,14 @@ if [ "$image_hosts" = "${data_hosts}." ] && [ ! -s "$guard/execution/image/etc/r
 	[ ! -e "$guard/execution/image/etc/late" ] && [ ! -e "$guard/execution/image/etc/late-dir" ]; then :; else
 	fail 'staged data changed'
 fi
+for data_name in hosts resolv.conf nsswitch.conf wgetrc openssl.cnf ssl/certs/ca-certificates.crt; do
+	"$bb" cmp -s "$data_source/etc/$data_name" "$guard/execution/image/etc/$data_name" || fail 'staged configuration bytes changed'
+	[ "$("$bb" stat -c %a "$guard/execution/image/etc/$data_name")" = 600 ] || fail 'staged configuration mode'
+done
+for data_directory in etc etc/ssl etc/ssl/certs; do
+	[ "$("$bb" stat -c %a "$guard/execution/image/$data_directory")" = 700 ] || fail 'staged configuration directory mode'
+done
+[ ! -e "$guard/execution/image/etc/ssl/certs/late-dir" ] || fail 'writable CA directory'
 query=0
 while [ "$query" -lt 106 ]; do
 	[ -f "$guard/execution/query-$query" ] || fail 'missing unique query'
@@ -347,4 +372,4 @@ cfmgr_io_test "$ram" "$tools" workspace tree_clean "$opt_source" || fail 'retain
 "$bb" umount -n "$opt_source" || fail 'Opt source mount cleanup'
 "$bb" umount -n "$native_source" || fail 'source mount cleanup'
 "$bb" umount -n "$ram" || fail 'RAM mount cleanup'
-printf 'native RO views/data, private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, busy references, nodev revocation and Opt-first reverse teardown passed\n'
+printf 'native RO views/extended binary configuration (>128KiB CA), private tmp/HOME, byte/inode caps, exec permission, retained Opt bind/write, root lease and fixed null/urandom IO, busy references, nodev revocation and Opt-first reverse teardown passed\n'

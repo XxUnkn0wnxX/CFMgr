@@ -36,7 +36,7 @@ _cfmgr_entware_root_owner() (
 "
 	_entware_root_layout=$1 _entware_root_kind=$2
 	shift 2
-	case $_entware_root_layout in native-opt | native-devices) ;; *) return 2 ;; esac
+	case $_entware_root_layout in native-opt | native-devices | native-config) ;; *) return 2 ;; esac
 	_entware_root_resolved='' _entware_root_volume='' _entware_root_fdinfo=''
 	_entware_root_facts='' _entware_root_uuid='' _entware_root_source_ledger=''
 	_entware_root_fallback_ledger='' _entware_root_mounted_ledger=''

@@ -29,6 +29,7 @@ ENTWARE = ROOT / "modules/lib/entware.sh"
 NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
 ENTWARE_ROOT = ROOT / "modules/lib/entware_root.sh"
 ISOLATION = ROOT / "modules/lib/isolation.sh"
+NATIVE_CONFIG_ROOT = ROOT / "modules/lib/native_config_root.sh"
 
 CALLBACK_PROBE = r"""
 import json
@@ -60,6 +61,19 @@ assert args[:2] == ["arg with spaces", "*"]
 assert args[-2:] == [sys.argv[-2], sys.argv[-1]]
 expected_children = "8" if os.environ.get("CFMGR_NATIVE_DEVICES") == "1" else "6"
 assert root_ledger.splitlines()[1].split("\t")[6] == expected_children
+if os.environ.get("CFMGR_NATIVE_CONFIG_ROOT") == "1":
+    source = Path(os.environ["CFMGR_NATIVE_CONFIG_SOURCE"])
+    for relative in (
+        "nsswitch.conf",
+        "wgetrc",
+        "openssl.cnf",
+        "ssl/certs/ca-certificates.crt",
+    ):
+        target = root / "etc" / relative
+        assert target.read_bytes() == (source / "etc" / relative).read_bytes()
+        assert target.stat().st_mode & 0o777 == 0o600
+    assert (root / "etc/ssl").stat().st_mode & 0o777 == 0o700
+    assert (root / "etc/ssl/certs").stat().st_mode & 0o777 == 0o700
 device_nodes = {}
 if expected_children == "8":
     for name in ("null", "urandom"):
@@ -107,6 +121,8 @@ def run_native_opt(
     callback_args: tuple[str, ...] = ("arg with spaces", "*"),
     focused_query: bool = True,
     devices_root: bool = False,
+    native_config_root: bool = False,
+    native_config_fault: str = "",
 ) -> tuple[NativeRootFixture, StorageFixture, ShellResult]:
     """Run the native-opt fixture while retaining real host FDs 8 and 9."""
     # Storage contributes retained data; its tool doubles must not replace the
@@ -116,7 +132,9 @@ def run_native_opt(
     fixture.tmp_enabled = True
     volume_mount = replace(storage.mounts[0], parent=HOST_MOUNT_ID)
     fixture.opt_enabled = True
-    fixture.devices_enabled = devices_root
+    fixture.devices_enabled = devices_root or native_config_root
+    if native_config_root:
+        fixture.enable_native_config(native_config_fault)
     fixture.opt_volume_mount_object = volume_mount
     fixture.opt_volume_mount = {
         "identifier": volume_mount.identifier,
@@ -147,9 +165,10 @@ def run_native_opt(
         f". {shlex.quote(str(ENTWARE_ROOT))}\n"
         + (
             f". {shlex.quote(str(ROOT / 'modules/lib/native_devices.sh'))}\n"
-            if devices_root
+            if devices_root or native_config_root
             else ""
         )
+        + (f". {shlex.quote(str(NATIVE_CONFIG_ROOT))}\n" if native_config_root else "")
         + (FOCUSED_ISOLATION_QUERY if focused_query else "")
         + "fixture_callback() {\n"
         f'  {shlex.quote(sys.executable)} {shlex.quote(str(callback))} "$@"\n'
@@ -160,14 +179,20 @@ def run_native_opt(
         f"9<{shlex.quote(str(storage.target))} "
         '6<"$CFMGR_TEST_ROOT/work/fd-six"\n'
         + (
-            'cfmgr_isolation_native_devices_root_test "$@"; status=$?\n'
-            if devices_root
-            else 'cfmgr_isolation_entware_root_test "$@"; status=$?\n'
+            'cfmgr_isolation_native_config_root_test "$@"; status=$?\n'
+            if native_config_root
+            else (
+                'cfmgr_isolation_native_devices_root_test "$@"; status=$?\n'
+                if devices_root
+                else 'cfmgr_isolation_entware_root_test "$@"; status=$?\n'
+            )
         )
         + 'printf "RESULT\\t%s\\n" "$status"\n'
         "IFS= read -r seven <&7; IFS= read -r six <&6\n"
-        f"{shlex.quote(sys.executable)} {shlex.quote(str(post_callback))} "
+        'if [ -f "$CFMGR_TEST_ROOT/work/entware-callback.json" ]; then\n'
+        f"  {shlex.quote(sys.executable)} {shlex.quote(str(post_callback))} "
         f"{shlex.quote(str(router.path('work/entware-callback.json')))}\n"
+        'else printf "CALLBACK\\tabsent\\n"; fi\n'
         'printf "FDSTATE\\t%s\\t%s\\n" "$seven" "$six"\n'
     )
     args = [
@@ -205,11 +230,31 @@ def run_native_opt(
             "CFMGR_VOLUME_ROOT": str(storage.target),
             "CFMGR_BLOCK_FILE": str(storage.router.path("work/block")),
             "PYTHON": sys.executable,
-            "CFMGR_NATIVE_DEVICES": "1" if devices_root else "0",
+            "CFMGR_NATIVE_DEVICES": "1" if devices_root or native_config_root else "0",
             "CFMGR_TEST_IMAGE": str(fixture.guard / "execution/image"),
+            "CFMGR_NATIVE_CONFIG_ROOT": "1" if native_config_root else "0",
+            "CFMGR_NATIVE_CONFIG_SOURCE": str(fixture.data_source_root),
         },
     )
     return fixture, storage, result
+
+
+def assert_native_config_bytes(fixture: NativeRootFixture) -> None:
+    image_etc = fixture.guard / "execution/image/etc"
+    source_etc = fixture.data_source_root / "etc"
+    for relative in (
+        "nsswitch.conf",
+        "wgetrc",
+        "openssl.cnf",
+        "ssl/certs/ca-certificates.crt",
+    ):
+        assert (image_etc / relative).read_bytes() == (source_etc / relative).read_bytes()
+        assert (image_etc / relative).stat().st_mode & 0o777 == 0o600
+    assert (image_etc / "ssl").stat().st_mode & 0o777 == 0o700
+    assert (image_etc / "ssl/certs").stat().st_mode & 0o777 == 0o700
+    ca_bundle = (source_etc / "ssl/certs/ca-certificates.crt").read_bytes()
+    assert len(ca_bundle) > 131_072
+    assert b"\x00" in ca_bundle and b"\n" in ca_bundle
 
 
 @pytest.mark.integration
@@ -278,6 +323,32 @@ def test_entware_root_uses_retained_volume_and_cleans_native_opt_first(
     ]
     assert state["opt_mounted"] is False
     assert storage.expected() == observation["volume_ledger"]
+
+
+@pytest.mark.integration
+@pytest.mark.matrix("V74", evidence="host")
+def test_native_config_root_stage_failure_stops_before_any_bind_or_callback(
+    router: RouterHarness,
+) -> None:
+    fixture, _storage, result = run_native_opt(
+        router,
+        native_config_root=True,
+        native_config_fault="missing-ca",
+    )
+
+    assert result.returncode == 0, result
+    assert result.stderr == ""
+    assert result.stdout == (
+        "RESULT\t129\nCALLBACK\tabsent\nFDSTATE\toriginal-seven\toriginal-six\n"
+    )
+    assert fixture.guard.is_dir()
+    assert (fixture.guard / "execution/image").is_dir()
+    assert (fixture.guard / "execution/active").read_text() == "prepare\n"
+    assert not (fixture.guard / "execution/complete").exists()
+    assert not router.path("work/entware-callback.json").exists()
+    calls = [json.loads(line) for line in fixture.tool_log.read_text().splitlines()]
+    assert not [args for tool, args in calls if tool == "mount" and args != ["--help"]]
+    assert not [args for tool, args in calls if tool == "mknod"]
 
 
 @pytest.mark.integration

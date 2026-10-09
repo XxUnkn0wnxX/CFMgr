@@ -13,7 +13,7 @@ from textwrap import dedent
 import pytest
 
 from tests.harness import RouterHarness
-from tests.test_entware_root import run_native_opt
+from tests.test_entware_root import assert_native_config_bytes, run_native_opt
 from tests.test_execution_root import ROOT
 
 STORAGEINFO = ROOT / "modules/lib/storageinfo.awk"
@@ -105,6 +105,44 @@ def test_native_devices_fixture_rejects_bad_api_before_reservation(
     assert result.stdout == "RESULT\t2\n"
     assert result.stderr == ""
     assert not router.path("ram/tmp/cfmgr-execution-guard/execution").exists()
+
+
+@pytest.mark.unit
+@pytest.mark.matrix("V74", evidence="host")
+def test_native_config_root_sets_only_its_literal_extended_policy(
+    router: RouterHarness,
+) -> None:
+    observed = router.path("work/root-config-policy")
+    script = (
+        f'. "{ROOT}/modules/lib/io.sh"\n'
+        f'. "{ROOT}/modules/lib/storage.sh"\n'
+        f'. "{ROOT}/modules/lib/entware.sh"\n'
+        f'. "{ROOT}/modules/lib/native_config.sh"\n'
+        f'. "{ROOT}/modules/lib/isolation.sh"\n'
+        f'. "{ROOT}/modules/lib/entware_root.sh"\n'
+        f'. "{ROOT}/modules/lib/native_devices.sh"\n'
+        f'. "{ROOT}/modules/lib/native_config_root.sh"\n'
+        "cfmgr_isolation_native_config_root_with; with_status=$?\n"
+        "cfmgr_isolation_native_config_root_test; test_status=$?\n"
+        '_cfmgr_native_devices_reset() { printf "%s\\t%s\\n" '
+        '"$_execution_config_extended" "$_execution_layout" >>"$CFMGR_POLICY_LOG"; }\n'
+        "_execution_config_extended=1\n"
+        "_cfmgr_isolation_root_owner native-config fixture; config_status=$?\n"
+        "_execution_config_extended=1\n"
+        "_cfmgr_isolation_root_owner native-devices fixture; legacy_status=$?\n"
+        'printf "API\\t%s\\t%s\\n" "$with_status" "$test_status"\n'
+        'printf "OWNER\\t%s\\t%s\\n" "$config_status" "$legacy_status"\n'
+    )
+    result = router.run(script, env={"CFMGR_POLICY_LOG": str(observed)})
+
+    assert result.returncode == 0, result
+    assert result.stdout == "API\t2\t2\nOWNER\t2\t2\n"
+    assert result.stderr == ""
+    assert not router.path("ram/tmp/cfmgr-execution-guard/execution").exists()
+    assert observed.read_text().splitlines() == [
+        "1\tnative-devices",
+        "0\tnative-devices",
+    ]
 
 
 @pytest.mark.unit
@@ -521,7 +559,9 @@ def test_device_remove_requires_observed_unmount_and_fallback(
 def test_native_devices_compose_with_entware_and_retain_each_inode_observation(
     router: RouterHarness,
 ) -> None:
-    fixture, storage, result = run_native_opt(router, callback_status=7, devices_root=True)
+    fixture, storage, result = run_native_opt(
+        router, callback_status=7, devices_root=True, native_config_root=True
+    )
 
     assert result.returncode == 0, result
     assert result.stderr == ""
@@ -536,6 +576,7 @@ def test_native_devices_compose_with_entware_and_retain_each_inode_observation(
         "",
     ]
     assert observation["root_ledger"].splitlines()[1].split("\t")[6] == "8"
+    assert_native_config_bytes(fixture)
     assert set(observation["device_nodes"]) == {"null", "urandom"}
     for name in ("null", "urandom"):
         assert observation["device_nodes"][name][1] == observation["device_nodes"][name][2]

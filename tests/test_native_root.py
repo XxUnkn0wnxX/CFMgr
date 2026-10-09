@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import sys
 from pathlib import Path
 
@@ -30,6 +31,12 @@ from tests.test_storageinfo import BLOCK_LINE
 NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
 DATA_HOSTS = b"127.0.0.1\tlocalhost\\native-data\n"
 DATA_RESOLVER = b""
+NATIVE_CONFIG_EXTRA = {
+    "nsswitch.conf": b"passwd: files\nhosts: files dns\x00opaque\n",
+    "wgetrc": b"",
+    "openssl.cnf": b"[default]\ninclude = opaque\x00bytes\n",
+    "ca-certificates.crt": (b"\x00certificate-data\n" * 12_000) + b"tail\x00\n",
+}
 TMP_MOUNT_ID = "905"
 TMP_DEVICE = "0:99"
 TMP_LIMIT_KIB = 64
@@ -510,6 +517,28 @@ class NativeRootFixture(ExecutionRootFixture):
         self._tool("readlink", self._native_wrapper("readlink"))
         self._tool("mknod", self._native_wrapper("mknod"))
 
+    def enable_native_config(self, fault: str = "") -> None:
+        extra_root = self.data_source_root / "etc"
+        (extra_root / "ssl/certs").mkdir(parents=True, mode=0o700)
+        for name, payload in NATIVE_CONFIG_EXTRA.items():
+            if fault == "missing-ca" and name == "ca-certificates.crt":
+                continue
+            source = (
+                extra_root / "ssl/certs" / name
+                if name == "ca-certificates.crt"
+                else extra_root / name
+            )
+            source.write_bytes(payload)
+        if self.router.busybox is not None:
+            self.router.busybox_applets("dd", "cmp")
+            for name in ("dd", "cmp"):
+                (self.tools / name).symlink_to(self.router.busybox)
+        else:
+            for name in ("dd", "cmp"):
+                executable = shutil.which(name)
+                assert executable is not None
+                (self.tools / name).symlink_to(executable)
+
     def _native_wrapper(self, tool: str) -> str:
         return (
             "#!/bin/sh\nexec "
@@ -757,7 +786,7 @@ def test_actual_busybox_native_devices_keep_entware_data_and_home_observable(
     busybox_router: RouterHarness,
 ) -> None:
     assert busybox_router.busybox is not None
-    from tests.test_entware_root import run_native_opt
+    from tests.test_entware_root import assert_native_config_bytes, run_native_opt
 
     fixture, _storage, result = run_native_opt(
         busybox_router,
@@ -766,6 +795,7 @@ def test_actual_busybox_native_devices_keep_entware_data_and_home_observable(
         callback_args=("arg with spaces", "*"),
         focused_query=False,
         devices_root=True,
+        native_config_root=True,
     )
     assert result.returncode == 0, result
     assert result.stderr == ""
@@ -780,6 +810,7 @@ def test_actual_busybox_native_devices_keep_entware_data_and_home_observable(
     ]
     assert (fixture.guard / "execution/image/etc/hosts").read_bytes() == DATA_HOSTS
     assert (fixture.guard / "execution/image/etc/resolv.conf").read_bytes() == DATA_RESOLVER
+    assert_native_config_bytes(fixture)
     assert set(observation["device_nodes"]) == {"null", "urandom"}
     for name, node in observation["device_nodes"].items():
         assert node[1] == node[2]
