@@ -25,6 +25,7 @@ from tests.test_execution_root import (
 )
 from tests.test_mountinfo import Mount, snapshot
 from tests.test_storage import IO, STORAGE
+from tests.test_storageinfo import BLOCK_LINE
 
 NATIVE_CONFIG = ROOT / "modules/lib/native_config.sh"
 DATA_HOSTS = b"127.0.0.1\tlocalhost\\native-data\n"
@@ -50,8 +51,14 @@ state_path = Path(settings["state"])
 state = json.loads(state_path.read_text())
 tool, args = sys.argv[3], sys.argv[4:]
 log = Path(settings["tool_log"])
-with log.open("a") as stream:
-    stream.write(json.dumps([tool, args]) + "\n")
+if tool == "ls":
+    # Captured commands inherit a file-size ceiling. Keep each observation's
+    # evidence small instead of appending to the cumulative lifecycle log.
+    with log.with_name(f"native-ls-{os.getpid()}.json").open("x") as stream:
+        stream.write(json.dumps([tool, args]))
+elif tool not in ("readlink", "test"):
+    with log.open("a") as stream:
+        stream.write(json.dumps([tool, args]) + "\n")
 
 def mountinfo_bytes(rows):
     escaped = {32: b"\\040", 9: b"\\011", 10: b"\\012", 92: b"\\134"}
@@ -134,6 +141,8 @@ if tool == "mount":
                 (Path(target) / name).mkdir(mode=0o700, exist_ok=True)
             if settings.get("native_tmp"):
                 (Path(target) / "tmp").mkdir(mode=0o700, exist_ok=True)
+            if settings.get("native_opt"):
+                (Path(target) / "opt").mkdir(mode=0o700, exist_ok=True)
             row = dict(state["ram_mount"])
             row.update(
                 identifier=settings["root_mount_id"],
@@ -143,6 +152,18 @@ if tool == "mount":
                 options=b"rw,relatime".hex(),
                 optional=[],
             )
+        elif settings.get("native_opt") and target == str(Path(root_target) / "opt"):
+            if source != "/proc/self/fd/9":
+                raise AssertionError((tool, args))
+            row = dict(settings["volume_mount"])
+            row.update(
+                identifier=settings["opt_mount_id"],
+                parent=settings["root_mount_id"],
+                point=os.fsencode(target).hex(),
+                options=b"rw,relatime".hex(),
+                optional=[],
+            )
+            state["opt_mounted"] = True
         else:
             name = Path(target).name
             if name not in state["view_ids"] or target != str(Path(root_target) / name):
@@ -177,6 +198,13 @@ if tool == "mount":
                 )
                 state["mounts"].append(extra)
         state["mounts"].append(row)
+        publish()
+        sys.exit(0)
+    if options == "remount,bind,rw,nosuid,nodev,exec" and settings.get("native_opt"):
+        row = find_at(target)
+        if target != str(Path(root_target) / "opt") or source != "/proc/self/fd/9":
+            raise AssertionError((tool, args))
+        row["options"] = b"rw,nosuid,nodev,relatime,exec".hex()
         publish()
         sys.exit(0)
     if options == "remount,bind,ro,nosuid,nodev,exec":
@@ -217,6 +245,8 @@ if tool == "umount":
             else:
                 child.unlink()
         state["tmp_mounted"] = False
+    if target == str(Path(settings["root_target"]) / "opt") and state.get("opt_mounted"):
+        state["opt_mounted"] = False
     if fault == "fallback-change:" + Path(target).name:
         fallback = next(
             row for row in state["mounts"] if row["identifier"] == settings["root_mount_id"]
@@ -235,6 +265,23 @@ if tool == "test":
         try:
             path_stat = os.stat(args[0])
             fd_stat = os.fstat(6)
+        except OSError:
+            sys.exit(1)
+        same_inode = (path_stat.st_dev, path_stat.st_ino) == (fd_stat.st_dev, fd_stat.st_ino)
+        sys.exit(0 if same_inode else 1)
+    if args == ["-d", "/proc/self/fd/9"]:
+        try:
+            sys.exit(0 if stat.S_ISDIR(os.fstat(9).st_mode) else 1)
+        except OSError:
+            sys.exit(1)
+    if len(args) == 3 and args[1:] in (
+        ["-ef", "/proc/self/fd/8"],
+        ["-ef", "/proc/self/fd/9"],
+    ):
+        fd = 8 if args[2].endswith("/8") else 9
+        try:
+            path_stat = os.stat(args[0])
+            fd_stat = os.fstat(fd)
         except OSError:
             sys.exit(1)
         same_inode = (path_stat.st_dev, path_stat.st_ino) == (fd_stat.st_dev, fd_stat.st_ino)
@@ -260,6 +307,16 @@ if tool == "test":
         result = False
     sys.exit(0 if result != negate else 1)
 
+if tool == "ls" and args == ["-dnL", "/proc/self/fd/8"]:
+    if not stat.S_ISREG(os.fstat(8).st_mode):
+        sys.exit(1)
+    sys.stdout.write(settings["block_line"])
+    sys.exit(0)
+
+if tool == "readlink" and len(args) == 2 and args[0] == "-f":
+    print(os.path.realpath(args[1]))
+    sys.exit(0)
+
 raise AssertionError((tool, args))
 """
 
@@ -272,6 +329,12 @@ class NativeRootFixture(ExecutionRootFixture):
         self.tmp_enabled = False
         self.tmp_limit_kib = TMP_LIMIT_KIB
         self.tmp_inode_limit = TMP_INODE_LIMIT
+        self.opt_enabled = False
+        self.opt_mount_id = "906"
+        self.opt_volume_mount: dict[str, object] = {}
+        self.opt_volume_mount_object: Mount | None = None
+        self.opt_volume_root: Path | None = None
+        self.block_line = BLOCK_LINE.decode("ascii")
         self.source_root = router.path("work/native-source")
         self.source_root.mkdir(mode=0o700)
         self.data_source_root = router.path("work/native-data-source")
@@ -324,21 +387,21 @@ class NativeRootFixture(ExecutionRootFixture):
             super_options=source_super,
         )
         self.state["mounts"] = [_mount_row(host), _mount_row(ram), _mount_row(source)]
+        self.mount_objects = [host, ram, source]
         if fault == "source-descendant":
-            descendant = _mount_row(
-                Mount(
-                    identifier="89",
-                    parent=SOURCE_MOUNT_ID,
-                    device="0:88",
-                    root=b"/bin/child",
-                    point=os.fsencode(self.source_root / "bin/child"),
-                    options=source_options,
-                    kind="squashfs",
-                    source=b"/dev/firmware",
-                    super_options=source_super,
-                )
+            descendant = Mount(
+                identifier="89",
+                parent=SOURCE_MOUNT_ID,
+                device="0:88",
+                root=b"/bin/child",
+                point=os.fsencode(self.source_root / "bin/child"),
+                options=source_options,
+                kind="squashfs",
+                source=b"/dev/firmware",
+                super_options=source_super,
             )
-            self.state["mounts"].append(descendant)
+            self.mount_objects.append(descendant)
+            self.state["mounts"].append(_mount_row(descendant))
         self.state["ram_mount"] = _mount_row(ram)
         self.state["source_mount"] = _mount_row(source)
         self.state["view_ids"] = VIEW_IDS
@@ -348,6 +411,8 @@ class NativeRootFixture(ExecutionRootFixture):
         self._tool("mount", self._native_wrapper("mount"))
         self._tool("umount", self._native_wrapper("umount"))
         self._tool("test", self._native_test_wrapper())
+        self._tool("ls", self._native_wrapper("ls"))
+        self._tool("readlink", self._native_wrapper("readlink"))
 
     def _native_wrapper(self, tool: str) -> str:
         return (
@@ -371,29 +436,43 @@ class NativeRootFixture(ExecutionRootFixture):
         settings = shlex.quote(str(self.router.path("work/root-settings.json")))
         return (
             "#!/bin/sh\n"
-            'if [ "$#" -eq 2 ] && [ "$1" = -d ] && '
-            '[ "$2" = /proc/self/fd/6 ]; then\n'
-            f'    exec {python} {dispatcher} {root} {settings} test "$@"\n'
+            'if [ "$#" -eq 2 ] && [ "$1" = -d ]; then\n'
+            '    case "$2" in /proc/self/fd/6|/proc/self/fd/9)\n'
+            f'        exec {python} {dispatcher} {root} {settings} test "$@"\n'
+            "    esac\n"
             "fi\n"
-            'if [ "$#" -eq 3 ] && [ "$2" = -ef ] && '
-            '[ "$3" = /proc/self/fd/6 ]; then\n'
+            'if [ "$#" -eq 3 ] && [ "$2" = -ef ]; then\n'
+            '    case "$3" in /proc/self/fd/6|/proc/self/fd/8|/proc/self/fd/9)\n'
             f'    exec {python} {dispatcher} {root} {settings} test "$@"\n'
+            "    esac\n"
             "fi\n"
             'test "$@"\n'
         )
 
     def prepare(self) -> None:
         super().prepare()
+        if self.opt_enabled:
+            assert self.opt_volume_root is not None
+            assert self.opt_volume_mount_object is not None
+            mounts = [*self.mount_objects, self.opt_volume_mount_object]
+            self.state["mounts"] = [_mount_row(mount) for mount in mounts]
+            self.save()
+            self.mount_input.write_bytes(snapshot(mounts))
         settings_path = self.router.path("work/root-settings.json")
         settings = json.loads(settings_path.read_text())
         settings.update(
             source_root=str(self.source_root),
             data_source_root=str(self.data_source_root),
             native_tmp=self.tmp_enabled,
+            native_opt=self.opt_enabled,
             limit_kib=self.tmp_limit_kib,
             inode_limit=self.tmp_inode_limit,
             tmp_mount_id=TMP_MOUNT_ID,
             tmp_device=TMP_DEVICE,
+            opt_mount_id=self.opt_mount_id,
+            volume_mount=self.opt_volume_mount,
+            volume_root=str(self.opt_volume_root or ""),
+            block_line=self.block_line,
             root_target=str(self.guard / "execution/root"),
             view_ids=VIEW_IDS,
         )
@@ -571,30 +650,39 @@ def test_native_root_completes_fixed_four_views_and_unmounts_in_reverse_order(
 @pytest.mark.integration
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
-def test_actual_busybox_native_tmp_root_stages_data_and_exposes_private_home(
+def test_actual_busybox_native_opt_stages_data_and_exposes_private_home(
     busybox_router: RouterHarness,
 ) -> None:
     assert busybox_router.busybox is not None
-    fixture = NativeRootFixture(busybox_router)
-    result = fixture.run_native(
+    from tests.test_entware_root import run_native_opt
+
+    fixture, _storage, result = run_native_opt(
+        busybox_router,
         shell=str(busybox_router.busybox),
-        tmp_root=True,
-        callback_args=("native args", "*", "check-native-data", "check-native-tmp"),
+        callback_status=0,
+        callback_args=("arg with spaces", "*"),
         focused_query=False,
     )
     assert result.returncode == 0, result
     assert result.stderr == ""
-    assert result.stdout.startswith("RESULT\t0\n")
-    ledger = fixture.callback_ledger.read_text().splitlines()
+    assert result.stdout == ("RESULT\t0\nFDIDENT\t1\t1\nFDSTATE\toriginal-seven\toriginal-six\n")
+    observation = json.loads(fixture.router.read("work/entware-callback.json"))
+    ledger = observation["root_ledger"].splitlines()
     assert ledger[0].startswith("mount\t900\t")
-    assert ledger[1].split("\t")[6] == "5"
-    assert fixture.router.read("work/callback-data") == "staged data visible\n"
-    assert fixture.router.read("work/callback-tmp") == "private home ready\n"
+    assert ledger[1].split("\t")[6] == "6"
+    assert observation["args"][:2] == [
+        "arg with spaces",
+        "*",
+    ]
     assert (fixture.guard / "execution/image/etc/hosts").read_bytes() == DATA_HOSTS
+    assert (fixture.guard / "execution/image/etc/resolv.conf").read_bytes() == DATA_RESOLVER
     assert (
         (fixture.guard / "execution/mounted-tmp")
         .read_text()
         .startswith(f"mount\t{TMP_MOUNT_ID}\t{ROOT_MOUNT_ID}\t{TMP_DEVICE}\t")
+    )
+    assert (
+        (fixture.guard / "execution/mounted-opt").read_text().startswith("mount\t906\t900\t8:1\t")
     )
     assert not (fixture.guard / "execution/root/etc").exists()
 
