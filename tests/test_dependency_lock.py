@@ -310,6 +310,6 @@ def test_inherited_descriptor_retains_lock_after_owner_exit(
 @pytest.mark.matrix("V74", evidence="busybox")
 def test_actual_busybox_flock_and_ash_inherited_ownership(busybox_router: RouterHarness) -> None:
     fixture = LockFixture(busybox_router)
-    busybox_router.busybox_applets("flock")
     fixture.tool = busybox_router.path("bin/flock")
+    busybox_router.busybox_applets("flock")
     exercise_inherited_lock(fixture, "ordinary")
