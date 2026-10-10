@@ -116,7 +116,7 @@ healthy private immutable premise. The fixture does not authenticate source,
 check installed permissions or ownership, establish semantic module/API
 compatibility, install code or prove router acceptance.
 
-### Entry-version parser and report (D7 candidate)
+### Entry-version parser and report (D7 accepted)
 
 `tests/test_entry_version.py` checks `entry_version.awk` with host AWK: the
 literal version convention, exact size and operand rules, optional final LF,
@@ -133,18 +133,24 @@ cleanup and caller-state preservation, and extends the actual BusyBox
 composition to the version report and small reserved-byte refusals. The
 grouped output/status faults use the real IO owner and a focused capture
 callback with a valid-output control, avoiding repeated tree/hash validation.
-The combined focused run passes 40 tests with one unavailable-BusyBox skip in
-31.73s; the grouped capture case takes 1.54s and the dense 1-MiB parser case
-is below one second. Full local passes 1,859 tests with 38 explicit platform
-skips in 533.88s, with all static checks green. Every new case remains below
-two seconds in that run; the capture group takes 1.58s and the dense parser
-case 0.09s. The 6.7% increase over the previous full run and existing
-integration timing changes are recorded in PLAN.md. Exact-head Linux/BusyBox
-CI remains pending.
-Neither parser nor consumer executes the source. The report establishes only
-literal entry/manifest version agreement, not source authenticity, required
+These parser and consumer checks are included in the accepted 52% checkpoint;
+see PLAN.md for validation evidence. Neither parser nor consumer executes the
+source. The report establishes only literal
+entry/manifest version agreement, not source authenticity, required
 module/API compatibility, downgrade policy, installed permissions, activation
 or router acceptance.
+
+### Supplied package-policy report (D8)
+
+`tests/test_package.py` composes `cfmgr_package_policy_test` with the D6/D7
+package checks. The fixtures cover accepted equal/newer versions and ledger
+bytes; downgrade and manifest-version mismatch; invalid comparator results;
+requirements path shape and aliases; and malformed, duplicate, oversized or
+nonmatching requirement rows. Cheap helper seams include valid controls;
+separate complete compositions and the existing BusyBox case exercise the
+combined report. See [PLAN.md](../../PLAN.md) for validation results. The report checks only the supplied structural/version
+policy; it does not prove policy provenance, source authenticity, semantic
+compatibility, complete profile selection, permissions or installation.
 
 ## Kernel fixtures
 

@@ -4,7 +4,6 @@
 # Local workspace
 .tmp/
 tmp/
-AGENTS.md
 
 # Python environment and cache
 .venv/

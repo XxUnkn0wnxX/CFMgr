@@ -19,6 +19,7 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manag
 | Manifest reader and byte verification | Implemented | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier) |
 | Prepared source-tree report | Implemented | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report) |
 | Entry/manifest version check | Implemented | Source-only [literal version comparison](docs/development.md#source-only-entry-version-report) |
+| Supplied package policy | Implemented | Source-only [version floor and requirements check](docs/development.md#source-only-package-policy-report) |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |

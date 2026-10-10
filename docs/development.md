@@ -7,66 +7,32 @@
 ![Project stage](https://img.shields.io/badge/stage-foundation-orange)
 
 CFMgr is being implemented in checked stages. This guide describes the working
-developer tools; [PLAN.md](../PLAN.md) remains the design, acceptance checklist,
-and progress record. There is no installable manager yet.
+developer tools; [PLAN.md](../PLAN.md) owns design, acceptance, progress and
+checkpoint procedures. There is no installable manager yet. Keep feature status
+and commands aligned with implementation; planned commands are not available
+until their runtime path exists.
 
-Use focused tests and relevant lint/static checks for each small implementation
-batch, then review and commit. Accumulate those commits for publication at each
-approximately one percentage point of delivered requirements, as tracked in the
-plan. At that checkpoint, run the full local suite and fix failures until it
-passes before pushing the tested commits to `develop`. Wait for CI and resolve
-failures before beginning the next set of batches. Pause after each ten-point
-milestone's gates pass, or at the next safe boundary after a user pause request.
-Unvalidated work stays local.
+Use focused tests and relevant lint/static checks for each package. The plan
+defines full local, publication, CI and ten-point handoff gates. Update milestone
+documentation only against finalized code, then reconcile it after any later
+code fix. At major milestones, audit every relevant guide and record intentionally
+unchanged files in the plan; reserve the full documentation consistency and
+polish pass for 100% completion.
 
-Finalize and review milestone code before updating its documentation. Assign
-the parent or a dedicated documentation worker to the finalized commit/snapshot;
-that work may run alongside CI, validation or other independent tasks. Recheck
-the documentation after any later code fix and before publication.
+Review the latest pytest duration report before each `develop` push and after
+about three local batches, whichever comes first. Reuse comparable full-suite
+measurements and time affected cases rather than rerunning the suite just to
+collect timings. Review new ordinary tests over roughly two seconds, integration
+cases over five seconds, or comparable suite growth near 20%. These are review
+triggers, not reasons to raise timeouts or remove distinct coverage. Keep a small
+set of real-consumer integrations, reduce repeated setup, and retain separate
+signal, ownership, descriptor, framing, failure and required BusyBox checks.
+The 60/70/80/90/100% audits review every test for justified optimization; record
+coverage, timings and retained expensive cases in PLAN.md.
 
-Review and update the README and all relevant guides at every major milestone,
-and no later than each ten-percentage-point checkpoint. Check development
-commands, architecture, compatibility claims, setup instructions, contribution
-rules and fixture evidence against the implemented stage. Record the audit,
-including guides that remain accurate without edits, in PLAN.md. Documentation
-accuracy is part of the checkpoint. Readers should be able to follow feature
-availability and current usage as implementation progresses; planned commands
-must remain clearly distinguished from available ones. At 100% completion, run a
-separate end-to-end consistency and polish pass across all documentation.
-
-Keep the suite affordable as it grows. Review the latest pytest duration report
-before each `develop` push and after about three local implementation batches,
-whichever comes first. Normal runs report the slowest calls; record comparable
-full-suite times and coverage changes in [PLAN.md](../PLAN.md). Reuse existing
-measurements and time affected cases rather than running the full suite again
-just to gather timings.
-
-After completing milestone implementation at 60%, 70%, 80%, 90% and 100%,
-review every test, including parametrized cases and shared fixtures, for further
-optimization. Make justified improvements before the final full-suite,
-publication, green-CI and handoff gate. Record the reviewed inventory, preserved
-coverage, timing changes and reasons for retaining expensive cases in PLAN.md.
-This complete review supplements the cost review before every push.
-
-Investigate new ordinary tests taking over roughly two seconds, integration
-cases over five seconds, or a roughly 20% increase in comparable suite timings.
-These are review triggers, not automatic failures or reasons to increase
-timeouts. When costs grow, use a focused timing/duplication review and simplify
-before adding further coverage. Aim for a full local suite of a few minutes.
-
-Test data and policy permutations through the actual function or consumer;
-keep a small set of complete integration cases to prove the connections between
-layers. Run the primary shell's behavior matrix once, with selected secondary
-shell cases for compatibility-sensitive behavior and the required BusyBox
-checks. Preserve distinct signal, ownership, descriptor, byte-framing and
-failure regressions. Reduce repeated acquisition and setup, not the assertions
-that establish those contracts. Avoid a complex fixture framework or new
-dependencies solely to save a few cases.
-
-Before implementing a plan package, update any outdated test or fixture
-instructions in that section to follow this strategy. Keep distinct acceptance
-requirements, but do not recreate superseded fixture layouts or historical test
-counts. Record the selected coverage and actual results in the plan.
+Before each package, reconcile its test/fixture instructions with that strategy.
+Preserve distinct acceptance requirements and update actual results in the plan;
+historical test counts and superseded fixture layouts are not targets.
 
 The branch is an active development checkout, not a router release; router
 runtime acceptance and stable promotion remain separate gates.
@@ -1043,7 +1009,7 @@ acceptance remains separate.
 
 ### Source-only entry-version report
 
-The D7 candidate adds `cfmgr_package_version_report RAM_ROOT SOURCE_ROOT
+The accepted D7 API adds `cfmgr_package_version_report RAM_ROOT SOURCE_ROOT
 MANIFEST PATH_HELPER MANIFEST_PARSER ENTRY_PARSER` and the fixture-only
 `cfmgr_package_version_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST PATH_HELPER
 MANIFEST_PARSER ENTRY_PARSER`. Explicitly source trusted `io.sh`,
@@ -1109,17 +1075,9 @@ The four captures use twelve scratch files; at most 256 digest/hex files bring
 the maximum to 268. Accepted capture streams are bounded to 213,248 bytes,
 plus 12,288 digest/hex bytes; conservative file allocation is at most
 1,073,152 bytes plus status files. Caller input and shell/producer memory are
-additional. The combined entry-parser, package-consumer and generator checks
-pass 40 tests with one local unavailable-BusyBox skip in 31.73s. The grouped
-capture/status/framing test takes 1.54s; it uses a focused owner callback with
-a valid-output control, while separate real compositions retain tree/hash
-and version-agreement evidence. The LF-dense 1-MiB parser case is below one
-second. Full local validation passes 1,859 tests with 38 explicit platform
-skips in 533.88s, including all static checks. The full-run grouped capture
-case takes 1.58s and the dense parser case 0.09s. Total runtime is 6.7% above
-the preceding 500.19s run; existing integrations account for the larger timing
-changes, while every new case remains below two seconds. The per-case cost
-review is recorded in PLAN.md. Exact-head Linux/BusyBox CI remains pending.
+additional. D7 is included in the accepted 52% host/Linux checkpoint; see
+[PLAN.md](../PLAN.md) for its validation record. This is not router runtime
+acceptance.
 
 With the same trusted path variables used above, a developer caller invokes
 the production entry like this:
@@ -1136,6 +1094,77 @@ cfmgr_package_version_report "$RAM_ROOT" "$SOURCE_ROOT" "$MANIFEST" \
 
 Check both the function status and complete `package-version` ledger. The
 fixture API is `cfmgr_package_version_test` and is only for developer tests.
+
+### Source-only package-policy report
+
+D8 adds `cfmgr_package_policy_report RAM_ROOT SOURCE_ROOT MANIFEST PATH_HELPER
+MANIFEST_PARSER ENTRY_PARSER EXPECTED_VERSION INSTALLED_VERSION REQUIREMENTS`
+and fixture-only `cfmgr_package_policy_test RAM_ROOT TOOLS SOURCE_ROOT
+MANIFEST PATH_HELPER MANIFEST_PARSER ENTRY_PARSER EXPECTED_VERSION
+INSTALLED_VERSION REQUIREMENTS`. Source trusted `common.sh`, `io.sh`,
+`native_digest.sh` and `package.sh` explicitly. The API is not wired to a
+catalog, acquisition, installer or activation path.
+
+The report performs D6's manifest, observed-tree and declared-byte checks and
+D7's entry/manifest literal-version check once within the same IO owner. It
+also compares the caller's expected version with the installed floor using
+`cfmgr_version_compare`. Both versions use its canonical three-component,
+at-most-128-byte format. Malformed version arguments or unavailable/invalid comparator
+output returns 2; a lower expected version or invalid package/policy data
+returns 1; equal and newer versions are accepted. The manifest version must
+equal the expected version exactly before the tree and digest checks. There is
+no downgrade bypass. Normal update callers should provide only newer versions;
+a force reinstall may accept equality. The caller must establish the actual
+installed floor, or prove that the installation is genuinely fresh before
+selecting one. Unknown or damaged installed metadata must not be treated as
+`0.0.0`.
+
+`REQUIREMENTS` is a pre-acquired, caller-trusted immutable regular readable
+nonsymlink file outside `SOURCE_ROOT`. Its canonical absolute path is limited
+to 4,096 bytes and cannot contain controls, repeated slashes, dot components
+or a trailing slash. The existing native size helper observes a positive
+original size no greater than 32,768 bytes. Contents require exact LF-framed
+rows: `requirements: 1`, then 1–128 unique `DEST: MODE` rows, with safe
+package destinations, mode `0644` or `0755`, and exactly one `cfmgr.sh: 0755`.
+Each row must match a manifest destination and mode exactly; the supplied rows
+are minimum requirements, so additional package files are allowed. The final
+row must end in LF, and reconstructed bytes must equal the observed file size.
+A noncanonical path or invalid file shape is API
+misuse (2); invalid size, observation or policy content is refusal (1). The
+outside-root check is only a lexical misuse guard; trusted unaliased immutable
+ancestors, no hard-link alias and independent selection of a complete
+requirements profile remain caller preconditions.
+
+On success the API publishes the normal metadata/file ledger with header
+`package-policy<TAB>1` and a recomputed footer. It proves only that the
+caller-prepared package matches the supplied structural and version policy.
+It does not authenticate source, establish semantic module/API compatibility,
+approve full configuration migration or installed permissions, acquire or
+install code, or authorize activation. The same four captures use twelve
+scratch files; with at most 256 digest/hex files, the maximum is 268.
+Accepted capture streams are bounded to 213,248 bytes plus 12,288 digest/hex
+bytes; conservative file allocation is at most 1,073,152 bytes plus status
+files. Caller input and process memory are additional. D8 validation is
+tracked in [PLAN.md](../PLAN.md).
+
+With prepared inputs and the same trusted path variables, a developer caller
+can invoke the library API as follows:
+
+```sh
+. "$CFMGR_LIB/common.sh"
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/native_digest.sh"
+. "$CFMGR_LIB/package.sh"
+MANIFEST_PARSER=$CFMGR_LIB/manifest.awk
+ENTRY_PARSER=$CFMGR_LIB/entry_version.awk
+cfmgr_package_policy_report "$RAM_ROOT" "$SOURCE_ROOT" "$MANIFEST" \
+  "$PATH_HELPER" "$MANIFEST_PARSER" "$ENTRY_PARSER" \
+  "$EXPECTED_VERSION" "$INSTALLED_VERSION" "$REQUIREMENTS"
+```
+
+Check both the function status and complete `package-policy` ledger. The
+fixture API is only for developer tests; it does not exercise installation or
+live router state.
 
 ### Developer package inventory
 
