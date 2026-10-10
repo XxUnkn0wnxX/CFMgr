@@ -20,7 +20,8 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
 | Manifest reader and byte verification | Available to developers | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); host/CI checks passed |
-| Prepared source-tree report | Available to developers | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report); host/CI checks passed |
+| Prepared source-tree report | Accepted at 51%; available to developers | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report) |
+| Entry/manifest version check | Local checks passed; CI pending | Source-only [literal version comparison](docs/development.md#source-only-entry-version-report); source is read as data |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -43,17 +44,21 @@ deterministic manifest from an explicit local Git commit. The native manifest
 reader emits a checked canonical ledger, and the D5 verifier compares each
 declared file's size and SHA-256 in a caller-prepared source tree. D6 adds a
 report that compares a bounded native namespace observation with the
-manifest-derived paths before applying those byte checks. Its local checkpoint
-passes 1,848 tests with 38 platform skips; exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38051496887)
-passes 1,886 tests, zero skips, six stripped-ash checks and all eleven kernel
-scenarios. The **51% checkpoint** also includes test-cost improvements; see
-[PLAN.md](PLAN.md) for their validation and remaining work.
+manifest-derived paths before applying those byte checks. Its accepted 51%
+checkpoint passes 1,848 local tests with 38 platform skips; exact-head
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576)
+passes 1,886 tests with zero skips, six stripped-ash checks and all eleven
+kernel scenarios. D7 adds a source-only check that the literal `cfmgr.sh`
+version matches the manifest; its full local run passes 1,859 tests with 38
+platform skips, and its exact-head CI checkpoint is pending. See
+[PLAN.md](PLAN.md) for checkpoint evidence and remaining work.
 
 These checks do not establish source authenticity, required module/API
 compatibility, installed permissions or router acceptance. The tree report
 requires a caller-owned private immutable tree; its native traversal limits
 are documented in the [development guide](docs/development.md#source-only-complete-tree-report).
+D7's version check proves only literal entry/manifest agreement; it does not
+establish semantic compatibility or execute/authenticate the source.
 There is no integrated config reader, catalog/acquisition workflow or installer,
 and no catalog or manifest is shipped. Synthetic host/Linux evidence does not
 prove installed-opkg provenance or Merlin behavior. Routine Entware upgrades

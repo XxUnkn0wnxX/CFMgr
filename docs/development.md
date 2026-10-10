@@ -672,7 +672,7 @@ The source-only `modules/lib/config_header.awk`, `catalog.awk` and
 `manifest.awk` validate bounded data formats. Callers explicitly load the
 functions-only `modules/lib/package_path.awk` helper before either catalog or
 manifest parser; no automatic helper loading is provided. Source-only native
-report and declared-file verification APIs are described below; neither is
+manifest, byte, tree and entry-version reports are described below; none is
 connected to a config reader, catalog consumer or installed workflow. Full
 schema/defaults, config ownership, migration, activation and writes remain
 future work. There is no generated defaults file, config writer, shipped
@@ -1032,17 +1032,110 @@ The three captures use nine scratch files; per-file digest and hex captures
 add at most 256, for 265 total. Accepted capture streams are bounded to 208,896
 bytes plus 12,288 digest/hex bytes; conservative file allocation is at most
 1,054,720 bytes plus status files. Caller input, shell/producer memory, and
-filesystem traversal remain additional. Runtime source `4082a04` with the
-test-cost follow-up `5f83f6f` passes the full local checkpoint: 1,848 tests and
-38 explicit platform skips in 500.19s. All static
-checks pass. Exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38051496887)
-passes 1,886 tests with zero skips in 123.19s at `5e40c6f`, six stripped-ash
-cases in 7.19s and all eleven kernel scenarios. That CI run precedes the
-test-only cost follow-up, which removes repeated Python launches for healthy
-IO fixture operations. The full local run improved from 678.39s to 500.19s;
-host load also affects timings. Exact CI for the follow-up and the complete
-duration record are tracked in PLAN.md.
+filesystem traversal remain additional. Runtime and test-cost follow-up source
+`5f83f6f` passes the accepted 51% full local checkpoint: 1,848 tests and 38
+explicit platform skips in 500.19s, with all static checks green. Published
+head `28f8e1d` passes exact-head
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576):
+1,886 tests with zero skips in 121.54s, six stripped-ash cases in 7.13s and
+all eleven kernel scenarios in 31.24s. This is host/CI evidence; router runtime
+acceptance remains separate.
+
+### Source-only entry-version report
+
+The D7 candidate adds `cfmgr_package_version_report RAM_ROOT SOURCE_ROOT
+MANIFEST PATH_HELPER MANIFEST_PARSER ENTRY_PARSER` and the fixture-only
+`cfmgr_package_version_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST PATH_HELPER
+MANIFEST_PARSER ENTRY_PARSER`. Explicitly source trusted `io.sh`,
+`native_digest.sh`, then `package.sh`. The APIs are not connected to the CLI,
+catalog, acquisition, installer or activation path.
+
+The entry parser, `modules/lib/entry_version.awk`, reads the caller-supplied
+regular immutable entry as data on stdin under `LC_ALL=C`; it has no filename
+operands and never sources or executes the entry. The caller independently
+measures the file and supplies canonical positive `cfmgr_entry_size` from 1 to
+1,048,576 bytes. The parser checks whole-document byte length and EOF using
+ASCII 28 as its record separator, rejecting that byte anywhere; it also rejects
+NUL explicitly for AWKs that preserve it. A final LF is optional. Other
+unrelated controls, CR and high bytes remain allowed.
+
+`ENTRY_PARSER` must be a trusted absolute readable regular nonsymlink file;
+the entry, helper, parser, native tools and their ancestors retain the existing
+immutable/unaliased caller trust requirements. The source-root package limits
+remain 1 MiB per file and 8 MiB aggregate.
+
+A candidate declaration begins at the start of the document or after LF, with
+zero or more spaces/tabs and optionally `export` or `readonly` followed by
+spaces/tabs before `CFMGR_VERSION=`. Exactly one candidate must exist, but the
+accepted line itself must be column-zero and exactly
+`CFMGR_VERSION=X.Y.Z`. Each component is a canonical nonnegative decimal
+string: `0` or a nonzero digit followed by digits, with no leading zeroes.
+The complete version is at most 128 bytes. Indentation, an `export` or
+`readonly` prefix, quotes, expansion, duplicate or missing candidates, a
+leading zero, or any trailing space, CR or other line data is rejected.
+Comments and unrelated lines are not interpreted as declarations. The
+host-only `tools/package_manifest.py` extractor follows the same convention
+and globally rejects NUL and ASCII 28.
+
+On success the parser emits exactly
+`entry-version<TAB>VALUE<LF>end<TAB>BODY_BYTES<LF>`, where `BODY_BYTES`
+includes the first line's LF. Invalid invocation, missing/noncanonical size,
+or an out-of-range declared size returns 2; a byte-count, framing or grammar
+mismatch returns 1; success returns 0 with no refusal output. The consumer
+still checks producer status, empty stderr, exact output bytes, both lines,
+the footer and EOF; AWK status alone does not prove a complete output write.
+
+The source-only consumer performs D6's manifest read, strict observed-tree
+comparison and every declared size/hash check once within the same IO owner.
+It then independently
+measures `cfmgr.sh`, requires its size to be 1 MiB or less, and captures the
+entry parser in IO slot 3 with 256 stdout bytes and 4,096 stderr bytes. It
+requires the exact literal version to equal the accepted manifest version
+before publishing the existing metadata/file ledger with header
+`package-version<TAB>1` and a recomputed footer. Source acquisition remains
+bounded and caller-owned; AWK reading through EOF does not add a hard read
+deadline. A successful report proves only literal entry/manifest version
+agreement. Required-module policy, semantic module/API compatibility,
+no-downgrade checks, source authentication/acquisition, installed permissions,
+activation and router acceptance remain separate gates.
+
+The consumer preserves D6's status classes: API/preflight misuse returns 2,
+ordinary parser, mismatch, tool, input or cleanup failure returns 1, and owner
+HUP/INT/TERM return 129/130/143. A successfully captured parser status 2 with
+empty stderr remains 2; other nonzero parser statuses or any parser stderr map
+to 1.
+
+The four captures use twelve scratch files; at most 256 digest/hex files bring
+the maximum to 268. Accepted capture streams are bounded to 213,248 bytes,
+plus 12,288 digest/hex bytes; conservative file allocation is at most
+1,073,152 bytes plus status files. Caller input and shell/producer memory are
+additional. The combined entry-parser, package-consumer and generator checks
+pass 40 tests with one local unavailable-BusyBox skip in 31.73s. The grouped
+capture/status/framing test takes 1.54s; it uses a focused owner callback with
+a valid-output control, while separate real compositions retain tree/hash
+and version-agreement evidence. The LF-dense 1-MiB parser case is below one
+second. Full local validation passes 1,859 tests with 38 explicit platform
+skips in 533.88s, including all static checks. The full-run grouped capture
+case takes 1.58s and the dense parser case 0.09s. Total runtime is 6.7% above
+the preceding 500.19s run; existing integrations account for the larger timing
+changes, while every new case remains below two seconds. The per-case cost
+review is recorded in PLAN.md. Exact-head Linux/BusyBox CI remains pending.
+
+With the same trusted path variables used above, a developer caller invokes
+the production entry like this:
+
+```sh
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/native_digest.sh"
+. "$CFMGR_LIB/package.sh"
+MANIFEST_PARSER=$CFMGR_LIB/manifest.awk
+ENTRY_PARSER=$CFMGR_LIB/entry_version.awk
+cfmgr_package_version_report "$RAM_ROOT" "$SOURCE_ROOT" "$MANIFEST" \
+  "$PATH_HELPER" "$MANIFEST_PARSER" "$ENTRY_PARSER"
+```
+
+Check both the function status and complete `package-version` ledger. The
+fixture API is `cfmgr_package_version_test` and is only for developer tests.
 
 ### Developer package inventory
 
@@ -1070,10 +1163,11 @@ their Git executable modes and hashing their raw bytes with SHA-256. The only
 excluded module entries are empty, regular, nonexecutable `.gitkeep` blobs.
 Unsafe or reserved destinations, unsupported Git object types or modes,
 invalid package limits, and a missing or nonexecutable entry are errors. The
-tool extracts exactly one canonical, literal full-line `CFMGR_VERSION`
-declaration as data and validates the complete generated document with the
-trusted parsers in the tool's current checkout. It never sources or runs the
-selected snapshot's files.
+tool applies the same literal version convention described in the
+[entry-version report](#source-only-entry-version-report), including global
+NUL and ASCII 28 refusal. It validates the complete generated document with
+the trusted parsers in the tool's current checkout and never sources or runs
+the selected snapshot's files.
 
 This deterministic local inventory is not origin or release authentication,
 trusted acquisition, proof of package completeness, verification of installed

@@ -93,7 +93,7 @@ only; they do not authenticate the manifest,
 prove directory completeness or permissions, install code or establish Merlin
 runtime acceptance.
 
-### Complete-tree report
+### Complete-tree report (D6)
 
 The D6 cases in `tests/test_package.py` exercise
 `cfmgr_package_tree_test` with a prepared synthetic tree, explicit fixture
@@ -106,7 +106,7 @@ The required native `find` composition is distinct from host-only doubles.
 
 The complete local checkpoint, including the IO fixture optimization, passes
 1,848 tests with 38 explicit platform skips in 500.19s. All static checks pass. The preceding exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38051496887)
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576)
 passes 1,886 tests with zero skips, six stripped-ash checks and all eleven
 kernel scenarios. The report compares with the namespace actually
 observed by `find`. Matched Merlin BusyBox traversal does not distinguish
@@ -115,6 +115,36 @@ acquisition owner must create the exact accepted tree under the documented
 healthy private immutable premise. The fixture does not authenticate source,
 check installed permissions or ownership, establish semantic module/API
 compatibility, install code or prove router acceptance.
+
+### Entry-version parser and report (D7 candidate)
+
+`tests/test_entry_version.py` checks `entry_version.awk` with host AWK: the
+literal version convention, exact size and operand rules, optional final LF,
+global NUL/ASCII 28 rejection, unrelated control/high-byte acceptance, and
+an LF-dense 1-MiB input. It uses a second host AWK when available. The
+`tests/test_package_manifest.py` cases check the matching host inventory
+extractor's reserved-byte and version-length rules without executing the
+selected entry.
+
+`tests/test_package.py` composes the candidate `cfmgr_package_version_test`
+with the D6 tree and digest checks. It checks exact version-ledger bytes,
+manifest/entry mismatch refusal, parser status/stderr/output/footer failures,
+cleanup and caller-state preservation, and extends the actual BusyBox
+composition to the version report and small reserved-byte refusals. The
+grouped output/status faults use the real IO owner and a focused capture
+callback with a valid-output control, avoiding repeated tree/hash validation.
+The combined focused run passes 40 tests with one unavailable-BusyBox skip in
+31.73s; the grouped capture case takes 1.54s and the dense 1-MiB parser case
+is below one second. Full local passes 1,859 tests with 38 explicit platform
+skips in 533.88s, with all static checks green. Every new case remains below
+two seconds in that run; the capture group takes 1.58s and the dense parser
+case 0.09s. The 6.7% increase over the previous full run and existing
+integration timing changes are recorded in PLAN.md. Exact-head Linux/BusyBox
+CI remains pending.
+Neither parser nor consumer executes the source. The report establishes only
+literal entry/manifest version agreement, not source authenticity, required
+module/API compatibility, downgrade policy, installed permissions, activation
+or router acceptance.
 
 ## Kernel fixtures
 

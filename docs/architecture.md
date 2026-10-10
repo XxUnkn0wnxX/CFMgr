@@ -48,7 +48,8 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
-| `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification and the manifest-derived tree report | Source-only APIs require a caller-prepared immutable tree; no source authenticity, semantic compatibility, installation or activation authority |
+| `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
+| `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification, manifest-derived tree report and entry/manifest version agreement report | Source-only APIs require a caller-prepared immutable tree; no source authenticity, semantic compatibility, installation or activation authority |
 | `modules/lib/native_digest.sh` | Shared bounded-size and native digest observations used by package verification and executable-closure checks | Caller owns bounded acquisition, scratch, cleanup and signals; no independent source trust or hard deadline |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes `rmdir` and bounded captures allow native `find` | Internal callbacks; no operational package execution or CLI integration |
@@ -837,19 +838,24 @@ manifest-derived namespace with one bounded native `find` observation. Neither r
 establishes source trust, semantic API compatibility or installation authority.
 Modules remain readable source files.
 
-`modules/lib/package.sh` adds source-only manifest reporting and two verification
-reports around the existing IO owner. D5 checks every declared member's shape,
-size and SHA-256. D6 additionally derives the expected paths from
-the accepted manifest and compares them with one bounded native `find . -print`
+`modules/lib/package.sh` adds source-only manifest reporting and three
+verification reports around the existing IO owner. D5 checks every declared
+member's shape, size and SHA-256. D6 also derives the expected paths from the
+accepted manifest and compares them with one bounded native `find . -print`
 observation, rejecting unexpected and missing observed entries before applying
-the D5 byte checks. Both require caller-prepared bounded immutable inputs,
-trusted helpers/parser and explicitly sourced libraries. D6 also requires the
-native traversal to be healthy: matched firmware code can treat a `readdir`
-error as EOF, so an omitted path cannot be ruled out by this report. It does
-not acquire or authenticate source, inspect installed permissions/ownership,
-establish semantic module/API/version compatibility, or make its report an
-installer input. See the [development guide](development.md#source-only-complete-tree-report)
-for the D6 API and resource limits.
+the D5 byte checks. The D7 candidate performs that manifest, namespace and
+digest validation once within the same owner, then reads
+`cfmgr.sh` as data and requires its literal version to equal the manifest
+version before publishing a `package-version` ledger. It never executes the
+entry. Each API requires caller-prepared bounded immutable inputs, trusted
+helpers/parsers and explicitly sourced libraries. D6 still relies on healthy
+native traversal: matched firmware code can treat a `readdir` error as EOF, so
+an omitted path cannot be ruled out by that report. D7 proves version identity
+only; it does not establish required-module policy or semantic compatibility.
+None of these reports acquires or authenticates source, checks installed
+permissions/ownership, or makes its ledger an installer input. See the
+[development guide](development.md#source-only-entry-version-report) for the
+D7 parser, consumer and resource limits.
 
 When distribution is implemented, repository-root `catalog.txt` will be
 acquired from the selected repository snapshot and stored at

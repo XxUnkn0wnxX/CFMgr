@@ -296,7 +296,8 @@ with full local and [exact Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMg
 config-schema and package-api value, plus file paths, sizes, SHA-256 text and modes; successful parsing validates
 those fields as data only. It does not prove that declared bytes match, that
 the inventory is complete or trusted, that the declared APIs are compatible,
-or that installation is safe. Matching Merlin AWK behavior remains unproved.
+or that installation is safe. Matching Merlin AWK behavior for these parser
+grammars remains unproved.
 
 ## 🧩 Qualify each feature separately
 
@@ -311,7 +312,8 @@ or that installation is safe. Matching Merlin AWK behavior remains unproved.
 | Developer package inventory | Developer-host Python 3.11+ and local Git objects | Accepted 48%; host tool only, not a router dependency or Merlin compatibility claim. Trust and installation gates remain open. |
 | D4 native manifest report | BusyBox-compatible POSIX `sh`, existing IO owner, native `cat`/AWK, trusted immutable files | Accepted 49% host and Linux/BusyBox evidence; no deadline, authentication or Merlin runtime acceptance is established. |
 | D5 declared-file verifier | BusyBox-compatible POSIX `sh`, bounded pre-acquired immutable source, native `wc`, OpenSSL and `hexdump` | Focused package checks pass (14 passed /1 local BusyBox skip in 6.87s); path-with-spaces fixture regressions pass 2/2 in 0.84s. Accepted 50%: full local passes 1,843 tests /38 platform skips in 571.13s; exact-head Linux/BusyBox CI passes 1,881 tests /zero skips, six stripped-ash cases and all eleven kernel scenarios. Missing production `hexdump` fails closed. No source authentication, directory completeness, permission check or Merlin acceptance is established. |
-| D6 complete prepared-tree report | BusyBox-compatible POSIX `sh`, native `find`, the existing IO owner, native `wc`, OpenSSL and `hexdump` | Source-tree check compares a manifest-derived expected namespace and declared bytes. Full local, including the IO fixture optimization, passes 1,848 tests /38 platform skips in 500.19s. The preceding exact-head Linux/BusyBox CI passes 1,886 tests /zero skips, six stripped-ash checks and all eleven kernel scenarios; follow-up CI is tracked in PLAN.md. Matched Merlin traversal can silently omit paths on `readdir` error, so caller-owned healthy acquisition remains required. No authentication, semantic compatibility, installed-permission or router acceptance claim. |
+| D6 complete prepared-tree report | BusyBox-compatible POSIX `sh`, native `find`, the existing IO owner, native `wc`, OpenSSL and `hexdump` | Accepted 51% source-tree check compares a manifest-derived expected namespace and declared bytes. Full local passes 1,848 tests /38 platform skips in 500.19s; exact-head [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576) passes 1,886 tests /zero skips, six stripped-ash checks in 7.13s and all eleven kernel scenarios in 31.24s. Matched Merlin traversal can silently omit paths on `readdir` error, so caller-owned healthy acquisition remains required. No authentication, semantic compatibility, installed-permission or router acceptance claim. |
+| D7 entry-version report | D6 tree/digest capabilities plus BusyBox-compatible POSIX `sh`/AWK and bounded immutable entry source | Its parser reads `cfmgr.sh` as data and checks literal equality with the manifest. Focused checks pass 40 tests /1 local unavailable-BusyBox skip in 31.73s; full local passes 1,859 tests /38 platform skips in 533.88s, with all static checks green. Exact-head Linux/BusyBox CI is pending. The check does not establish required-module/API semantics, no-downgrade policy, source trust/acquisition, installed permissions, activation or router acceptance. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
 | Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |
@@ -326,6 +328,11 @@ default. Its
 does not distinguish `readdir` error from EOF or report `closedir` failure.
 This is matched source/image capability evidence only; it does not establish
 the API's full checkpoint result or runtime acceptance on a router.
+
+For D7, matched Merlin BusyBox 1.25.1 AWK source supports the parser's
+record-separator and byte-length framing under the C locale. This source review
+is distinct from host-AWK and actual-BusyBox developer tests, and neither is
+router runtime acceptance.
 
 For example, the inspected Cloudflared `2026.10.0` packaging uses Go 1.26,
 provides ARM/ARMHF/ARM64 and x86 builds, and has no MIPS asset. Go requires Linux
