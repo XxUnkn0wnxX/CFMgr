@@ -50,6 +50,7 @@ flowchart LR
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
 | `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification, manifest-derived tree, entry-version and supplied-policy reports | Source-only APIs require caller-prepared immutable inputs; no source authenticity, semantic compatibility, installation or activation authority |
+| `modules/lib/catalog.sh` | Join a parsed catalog projection with a separately supplied manifest into a commit-pinned source plan | Caller owns branch-to-commit correspondence and manifest provenance; no acquisition, authentication, source-byte verification or installation authority |
 | `modules/lib/native_digest.sh` | Shared bounded-size and native digest observations used by package verification and executable-closure checks | Caller owns bounded acquisition, scratch, cleanup and signals; no independent source trust or hard deadline |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes `rmdir` and bounded captures allow native `find` | Internal callbacks; no operational package execution or CLI integration |
@@ -856,6 +857,16 @@ policy trust. These reports do not authenticate or acquire source, establish
 semantic compatibility, approve installed permissions or authorize
 installation/activation. See the [development guide](development.md#source-only-package-policy-report)
 for D8 inputs, status rules and resource limits.
+
+The D9 `catalog.sh` API joins a trusted catalog projection with a separately
+supplied manifest by exact destination keys, then emits file rows in manifest
+order with URLs pinned to a caller-provided commit. The join accepts different
+source URL paths and package destinations, but equal file counts and exact keys
+are required. It does not prove the local manifest was fetched from its pinned
+URL or that a branch points to the supplied commit; catalog and manifest
+authenticity, complete profile selection, source-byte checks and installation
+remain with future owners. See the [development guide](development.md#source-only-catalog-request-plan)
+for API inputs, output framing and bounds.
 
 When distribution is implemented, repository-root `catalog.txt` will be
 acquired from the selected repository snapshot and stored at

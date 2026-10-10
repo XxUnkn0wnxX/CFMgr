@@ -14,12 +14,9 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manag
 | Worker safety foundations | Implemented | Process deadlines and read-only workspaces |
 | Health report | In progress | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
-| Settings and module catalog | In progress | Source-only config, path and manifest checks; integration pending |
+| Settings and module catalog | In progress | Source-only config and [commit-pinned request plan](docs/development.md#source-only-catalog-request-plan); acquisition pending |
 | Developer package inventory | Implemented | Host-only [manifest command](docs/development.md#developer-package-inventory) |
-| Manifest reader and byte verification | Implemented | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier) |
-| Prepared source-tree report | Implemented | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report) |
-| Entry/manifest version check | Implemented | Source-only [literal version comparison](docs/development.md#source-only-entry-version-report) |
-| Supplied package policy | Implemented | Source-only [version floor and requirements check](docs/development.md#source-only-package-policy-report) |
+| Prepared package validation | Implemented | Source-only [manifest, tree, version and policy reports](docs/development.md#source-only-package-policy-report) |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |

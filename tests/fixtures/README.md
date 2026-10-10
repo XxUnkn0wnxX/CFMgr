@@ -148,9 +148,22 @@ bytes; downgrade and manifest-version mismatch; invalid comparator results;
 requirements path shape and aliases; and malformed, duplicate, oversized or
 nonmatching requirement rows. Cheap helper seams include valid controls;
 separate complete compositions and the existing BusyBox case exercise the
-combined report. See [PLAN.md](../../PLAN.md) for validation results. The report checks only the supplied structural/version
-policy; it does not prove policy provenance, source authenticity, semantic
+combined report. See [PLAN.md](../../PLAN.md) for validation results. The report
+checks only the supplied structural/version policy; it does not prove policy provenance, source authenticity, semantic
 compatibility, complete profile selection, permissions or installation.
+
+### Catalog request plan (D9)
+
+The fixture-only entry point is `cfmgr_catalog_plan_test`; its contract uses
+synthetic catalog and manifest files with explicit helper/parser paths and no
+network access. Cases check the exact report and footer, destination-key joins independent of row order and source URL path, commit
+pinning and selector mismatch, plus quiet refusal on transport or cleanup
+failures. Cheap helper groups use valid controls for byte framing, producer status
+and key mismatches; the maximum-input case builds its manifest without
+constructing an unused source tree. A separate BusyBox case exercises the actual
+composition. See [PLAN.md](../../PLAN.md) for the test and validation
+record. These fixtures cannot prove URL provenance, branch mapping, repository
+authenticity, profile completeness, source-byte validity or installation.
 
 ## Kernel fixtures
 

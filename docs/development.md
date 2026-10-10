@@ -638,11 +638,12 @@ The source-only `modules/lib/config_header.awk`, `catalog.awk` and
 `manifest.awk` validate bounded data formats. Callers explicitly load the
 functions-only `modules/lib/package_path.awk` helper before either catalog or
 manifest parser; no automatic helper loading is provided. Source-only native
-manifest, byte, tree and entry-version reports are described below; none is
-connected to a config reader, catalog consumer or installed workflow. Full
-schema/defaults, config ownership, migration, activation and writes remain
-future work. There is no generated defaults file, config writer, shipped
-catalog or manifest, authenticated manifest acquisition, downloader or installer.
+manifest, byte, tree, version and policy reports plus the D9 catalog request
+planner are described below; none is connected to a config reader or installed
+workflow. Full schema/defaults, config ownership, migration, activation and
+writes remain future work. There is no generated defaults file, config writer,
+shipped catalog or manifest, authenticated manifest acquisition, downloader or
+installer.
 
 ### Configuration-header projection
 
@@ -736,6 +737,76 @@ manifest: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/ma
 cfmgr.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/cfmgr.sh
 modules/lib/common.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/modules/lib/common.sh
 ```
+
+### Source-only catalog request plan
+
+D9 adds `cfmgr_catalog_plan_report RAM_ROOT CATALOG MANIFEST PATH_HELPER
+CATALOG_PARSER MANIFEST_PARSER COMMIT` and fixture-only
+`cfmgr_catalog_plan_test RAM_ROOT TOOLS CATALOG MANIFEST PATH_HELPER
+CATALOG_PARSER MANIFEST_PARSER COMMIT`. Source trusted `io.sh`, `package.sh`,
+then `catalog.sh`. The API accepts separately prepared private, immutable
+catalog and manifest files and trusted parser/helper paths; it does not fetch
+either input or hash package files.
+
+The report captures the catalog in IO slot 0 and the parser result in slot 1,
+then parses the manifest through the existing package helper in slots 2 and 3.
+It checks producer status and empty stderr, then reconstructs the parser's
+catalog header, metadata, rows, footer and exact byte framing. This rejects
+NUL normalization and short successful writes against the captured byte count;
+`catalog.awk` remains the semantic grammar authority. The report pins the
+single literal `{commit}` placeholder in the manifest URL and every file URL
+to the caller's full 40-character lowercase hexadecimal `COMMIT`. A
+catalog selector of `main` or `develop` is accepted with that commit, but the
+caller must establish their correspondence. A full-commit selector is
+normalized to lowercase and must equal `COMMIT`. No branch lookup occurs.
+
+The planner joins the catalog file list to the manifest by exact destination
+keys, regardless of row order or differences between source URL paths and
+destination names. Counts must match, and every key must match exactly once.
+The resulting `source-plan<TAB>1` ledger emits repository, selector, commit,
+pinned manifest URL, manifest version, config-schema and package-api metadata,
+then file rows in manifest order with destination, size, lowercase digest,
+mode and pinned URL. Its LF-terminated footer records manifest file count,
+package payload total and the complete report body byte count. The URL text is
+not part of the package payload total. The consumer must still check function
+status and exact ledger framing.
+
+Invalid API/code arguments or malformed `COMMIT` return 2. Catalog or
+manifest data, selector mismatch, transport/framing, join and cleanup refusal
+return 1; an invoked trusted parser's status 2 and the existing owner signal
+statuses are preserved. No report is published unless the complete join and
+cleanup succeed.
+
+The catalog raw/result stdout limits are 32,768/65,536 bytes; each manifest
+capture allows 65,536 stdout bytes. The four captures use twelve scratch files
+and allow 245,760 accepted bytes total: 229,376 stdout plus 16,384 stderr
+(4,096 per capture). Conservative file allocation is 925,696 bytes plus
+status records; there is no digest scratch. The joined ledger is capped at
+65,536 bytes and has a conservative upper estimate of 47,904 bytes. Caller
+input files and in-memory projections are additional. The planner adds no
+source-acquisition deadline.
+
+With the same trusted inputs prepared by the caller, a developer can invoke
+the source-only API like this:
+
+```sh
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/package.sh"
+. "$CFMGR_LIB/catalog.sh"
+PATH_HELPER=$CFMGR_LIB/package_path.awk
+CATALOG_PARSER=$CFMGR_LIB/catalog.awk
+MANIFEST_PARSER=$CFMGR_LIB/manifest.awk
+cfmgr_catalog_plan_report "$RAM_ROOT" "$CATALOG" "$MANIFEST" \
+  "$PATH_HELPER" "$CATALOG_PARSER" "$MANIFEST_PARSER" "$COMMIT"
+```
+
+This report does not prove that the local manifest came from its pinned URL,
+that a named branch maps to the supplied commit, or that the repository is
+authentic. It does not verify acquired source bytes, establish an independently
+complete required profile or semantic compatibility, or grant installation
+permission. A matching catalog and local manifest remain inputs to a future
+trusted acquisition owner; D8 policy validation and installation are separate
+later gates. See [PLAN.md](../PLAN.md) for the D9 validation record.
 
 ### Bounded package-manifest grammar
 
