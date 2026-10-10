@@ -609,6 +609,7 @@ class IsolationFixture:
         self.router.write(
             "work/invoke-probe.sh",
             f". {shlex.quote(str(IO))}\n. {shlex.quote(str(STORAGE))}\n"
+            f". {shlex.quote(str(ROOT / 'modules/lib/native_digest.sh'))}\n"
             f". {shlex.quote(str(ROOT / 'modules/lib/closure.sh'))}\n"
             f". {shlex.quote(str(ROOT / 'modules/lib/supervision.sh'))}\n"
             f". {shlex.quote(str(SOURCE))}\n"

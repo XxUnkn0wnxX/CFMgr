@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import shlex
 import shutil
 from pathlib import Path
 
@@ -13,9 +14,11 @@ from tests.harness import RouterHarness, ShellResult
 LIB = Path(__file__).resolve().parents[1] / "modules/lib"
 IO = LIB / "io.sh"
 PACKAGE = LIB / "package.sh"
+NATIVE_DIGEST = LIB / "native_digest.sh"
 PATH_HELPER = LIB / "package_path.awk"
 PARSER = LIB / "manifest.awk"
 TOOL_NAMES = ("awk", "cat", "mkdir", "printf", "rm", "wc")
+NATIVE_TOOL_NAMES = ("openssl", "env")
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
 
@@ -66,8 +69,17 @@ def ledger_with_files(rows: tuple[tuple[str, str, str, str], ...]) -> bytes:
     return body + f"end\t{len(rows)}\t{total}\t{len(body)}\n".encode("ascii")
 
 
+def expected_bytes_report(data: bytes) -> bytes:
+    """Independent report oracle: change only the header and body-byte footer."""
+    ledger = expected_ledger(data)
+    old_body, footer = ledger.rsplit(b"end\t", 1)
+    count, total, _body_bytes = footer[:-1].decode("ascii").split("\t")
+    new_body = b"package-bytes\t1\n" + old_body[len(b"manifest\t1\n") :]
+    return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
+
+
 class PackageFixture:
-    def __init__(self, router: RouterHarness):
+    def __init__(self, router: RouterHarness, *, busybox: Path | None = None):
         self.router = router
         if router.busybox is None:
             for name in TOOL_NAMES:
@@ -76,8 +88,22 @@ class PackageFixture:
                 self.tool_path(name).symlink_to(Path(executable).resolve())
         else:
             router.busybox_applets(*TOOL_NAMES)
+        for name in NATIVE_TOOL_NAMES:
+            executable = shutil.which(name)
+            assert executable is not None
+            self.tool_path(name).symlink_to(Path(executable).resolve())
+        hexdump = shutil.which("hexdump")
+        if hexdump is not None:
+            self.tool_path("hexdump").symlink_to(Path(hexdump).resolve())
+        elif busybox is not None:
+            self.tool_path("hexdump").symlink_to(busybox)
+        else:
+            pytest.fail("native hexdump is unavailable; it must be preinstalled")
         self.input = router.path("work/manifest.txt")
-        self.input.write_bytes(manifest())
+        self.source_root = router.path("work/source-root")
+        self.source_root.mkdir()
+        self.payloads = {"cfmgr.sh": b"entry", "modules/z.sh": b"z"}
+        self.configure(self.payloads)
         self.input.chmod(0o600)
         self.helper = router.write("work/package_path.awk", PATH_HELPER.read_text())
         self.parser = router.write("work/manifest.awk", PARSER.read_text())
@@ -102,6 +128,44 @@ class PackageFixture:
 
     def source(self) -> str:
         return f'. "{IO}"\n. "{PACKAGE}"\n'
+
+    def verifier_source(self) -> str:
+        return f'. "{IO}"\n. "{NATIVE_DIGEST}"\n. "{PACKAGE}"\n'
+
+    def configure(self, payloads: dict[str, bytes]) -> None:
+        self.payloads = payloads.copy()
+        for relative, data in self.payloads.items():
+            path = self.source_root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            path.chmod(0o600)
+        rows = tuple(
+            (path, data, 0o755 if path == "cfmgr.sh" else 0o644)
+            for path, data in self.payloads.items()
+        )
+        self.input.write_bytes(manifest(rows))
+
+    def verify(
+        self, *, production: bool = False, args: tuple[str, ...] | None = None
+    ) -> ShellResult:
+        function = "cfmgr_package_verify_report" if production else "cfmgr_package_verify_test"
+        supplied = (
+            tuple(
+                map(
+                    str,
+                    (self.root, self.tools, self.source_root, self.input, self.helper, self.parser),
+                )
+            )
+            if args is None
+            else args
+        )
+        if production:
+            supplied = (
+                tuple(map(str, (self.root, self.source_root, self.input, self.helper, self.parser)))
+                if args is None
+                else args
+            )
+        return self.router.run(self.verifier_source() + f'{function} "$@"\n', supplied)
 
     def public(
         self, *, production: bool = False, args: tuple[str, ...] | None = None
@@ -152,8 +216,8 @@ class PackageFixture:
 
 
 @pytest.fixture
-def package(router: RouterHarness) -> PackageFixture:
-    return PackageFixture(router)
+def package(router: RouterHarness, pytestconfig: pytest.Config) -> PackageFixture:
+    return PackageFixture(router, busybox=pytestconfig._cfmgr_busybox)
 
 
 def quiet(result: ShellResult, status: int = 1) -> None:
@@ -308,7 +372,7 @@ def test_source_only_loading_preserves_shell_state(router: RouterHarness) -> Non
     result = router.run(
         'IFS=x; set -f; umask 027; trap ":" TERM\n'
         "before_trap=$(trap); before_options=$(set +o); before_umask=$(umask); before_pwd=$PWD\n"
-        f'. "{IO}"\n. "{PACKAGE}"\n'
+        f'. "{IO}"\n. "{NATIVE_DIGEST}"\n. "{PACKAGE}"\n'
         '[ "$IFS" = x ] && [ "$(trap)" = "$before_trap" ] && '
         '[ "$(set +o)" = "$before_options" ] && [ "$(umask)" = "$before_umask" ] && '
         '[ "$PWD" = "$before_pwd" ]\n'
@@ -337,10 +401,167 @@ def test_reader_preserves_status_quietness_and_caller_state(package: PackageFixt
     assert result.stderr == ""
 
 
+def test_verifier_hashes_binary_members_and_publishes_recomputed_report(
+    package: PackageFixture,
+) -> None:
+    payloads = {
+        "cfmgr.sh": b"entry",
+        "modules/binary.bin": bytes(range(256)) * 320,
+        "modules/maximum.bin": bytes(range(256)) * 4096,
+    }
+    assert len(payloads["modules/binary.bin"]) > 65536
+    assert len(payloads["modules/maximum.bin"]) == 1048576
+    package.configure(payloads)
+    result = package.verify()
+    expected = expected_bytes_report(package.input.read_bytes())
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout.encode("ascii") == expected
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_production_verifier_report_uses_the_fixed_native_resolver(
+    package: PackageFixture,
+) -> None:
+    result = package.verify(production=True)
+    native_hexdump = any(
+        (Path(directory) / "hexdump").is_file()
+        and (Path(directory) / "hexdump").stat().st_mode & 0o111
+        for directory in ("/sbin", "/bin", "/usr/sbin", "/usr/bin")
+    )
+    if native_hexdump:
+        assert result.returncode == 0 and result.stderr == ""
+        assert result.stdout.encode("ascii") == expected_bytes_report(package.input.read_bytes())
+    else:
+        quiet(result)
+
+
+def test_verifier_rejects_actual_size_before_invoking_openssl(package: PackageFixture) -> None:
+    package.configure({"cfmgr.sh": b"entry", "modules/size.bin": b"abc"})
+    package.source_root.joinpath("cfmgr.sh").write_bytes(b"entries")
+    marker = package.router.path("work/openssl-called")
+    package.replace_tool("openssl", f"printf called > {shlex.quote(str(marker))}\nexit 9\n")
+    quiet(package.verify())
+    assert not marker.exists()
+
+
+def test_later_same_size_hash_mismatch_prevents_report_publication(package: PackageFixture) -> None:
+    package.configure({"cfmgr.sh": b"entry", "modules/a.bin": b"first", "modules/z.bin": b"later"})
+    package.source_root.joinpath("modules/z.bin").write_bytes(b"other")
+    quiet(package.verify())
+
+
+def test_native_digest_rejects_failed_short_and_bad_hex_tools(package: PackageFixture) -> None:
+    package.replace_tool("openssl", "exit 7\n")
+    quiet(package.verify())
+
+    package.replace_tool("openssl", "printf x\nexit 0\n")
+    quiet(package.verify())
+
+    package.tool_path("openssl").unlink()
+    package.tool_path("openssl").symlink_to(Path(shutil.which("openssl")).resolve())
+    package.replace_tool("hexdump", "printf bad\nexit 0\n")
+    quiet(package.verify())
+    bad_hex = "g" * 64
+    package.replace_tool("hexdump", f"printf '%s' {shlex.quote(bad_hex)}\nexit 0\n")
+    quiet(package.verify())
+
+
+def verifier_refusal_group(
+    package: PackageFixture,
+    cases: tuple[tuple[int, str], ...],
+) -> ShellResult:
+    output_path = package.router.path("work/verify-output")
+    calls = []
+    for expected_status, source_root in cases:
+        args = (
+            package.root,
+            package.tools,
+            source_root,
+            package.input,
+            package.helper,
+            package.parser,
+        )
+        calls.append(
+            "check "
+            + str(expected_status)
+            + " "
+            + " ".join(shlex.quote(str(argument)) for argument in args)
+            + " || exit 91"
+        )
+    script = (
+        package.verifier_source()
+        + f"output={shlex.quote(str(output_path))}\n"
+        + "check() {\n"
+        + "  expected=$1; shift\n"
+        + '  cfmgr_package_verify_test "$@" > "$output" 2>&1\n'
+        + "  actual=$?\n"
+        + '  [ "$actual" = "$expected" ] && [ ! -s "$output" ] || return 1\n'
+        + "  printf '%s\\n' \"$actual\"\n"
+        + "}\n"
+        + "\n".join(calls)
+        + "\n"
+    )
+    return package.router.run(script)
+
+
+def test_verifier_rejects_bad_roots_and_declared_member_shapes_as_a_group(
+    package: PackageFixture,
+) -> None:
+    file_root = package.router.path("work/source-file")
+    file_root.write_text("not a directory", encoding="ascii")
+    symlink_root = package.router.path("work/source-link")
+    symlink_root.symlink_to(package.source_root)
+
+    missing_root = package.router.path("work/missing-member-root")
+    missing_root.mkdir()
+    (missing_root / "cfmgr.sh").write_bytes(b"entry")
+    (missing_root / "modules").mkdir()
+
+    directory_root = package.router.path("work/nonregular-member-root")
+    directory_root.mkdir()
+    (directory_root / "cfmgr.sh").write_bytes(b"entry")
+    (directory_root / "modules").mkdir()
+    (directory_root / "modules/z.sh").mkdir()
+
+    intermediate_root = package.router.path("work/intermediate-link-root")
+    intermediate_root.mkdir()
+    (intermediate_root / "cfmgr.sh").write_bytes(b"entry")
+    target_modules = intermediate_root / "target-modules"
+    target_modules.mkdir()
+    (target_modules / "z.sh").write_bytes(b"z")
+    (intermediate_root / "modules").symlink_to(target_modules)
+
+    terminal_root = package.router.path("work/terminal-link-root")
+    terminal_root.mkdir()
+    (terminal_root / "cfmgr.sh").write_bytes(b"entry")
+    (terminal_root / "modules").mkdir()
+    target_file = terminal_root / "target-z"
+    target_file.write_bytes(b"z")
+    (terminal_root / "modules/z.sh").symlink_to(target_file)
+
+    cases = (
+        (2, "/"),
+        (2, str(package.source_root) + "/"),
+        (2, str(package.source_root) + "/."),
+        (2, str(file_root)),
+        (2, str(symlink_root)),
+        (1, str(missing_root)),
+        (1, str(directory_root)),
+        (1, str(intermediate_root)),
+        (1, str(terminal_root)),
+    )
+    result = verifier_refusal_group(package, cases)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "2\n2\n2\n2\n2\n1\n1\n1\n1\n"
+
+
 @pytest.mark.busybox
 @pytest.mark.matrix("V74", evidence="busybox")
 def test_actual_busybox_composes_package_reader_and_io_owner(busybox_router: RouterHarness) -> None:
-    package = PackageFixture(busybox_router)
+    package = PackageFixture(busybox_router, busybox=busybox_router.busybox)
     result = package.public()
     assert result.returncode == 0 and result.stderr == ""
     assert result.stdout.encode("ascii") == expected_ledger(package.input.read_bytes())
+    verifier = package.verify()
+    assert verifier.returncode == 0 and verifier.stderr == ""
+    assert verifier.stdout.encode("ascii") == expected_bytes_report(package.input.read_bytes())

@@ -124,6 +124,7 @@ class ClosureFixture:
 
     def run(self, *, shell: str | None = None, base: Path | None = None) -> ShellResult:
         script = (
+            f". {shlex.quote(str(SOURCE.with_name('native_digest.sh')))}\n"
             f". {shlex.quote(str(SOURCE))}\n"
             'cfmgr_closure_test "$@"\n'
             "_closure_rc=$?\n"
@@ -320,6 +321,7 @@ def test_manifest_consumer_checks_profiles_grammar_and_resource_limits(
     output_dir.mkdir(mode=0o700)
     wc = native_path("wc")
     script = (
+        f". {shlex.quote(str(SOURCE.with_name('native_digest.sh')))}\n"
         f". {shlex.quote(str(SOURCE))}\n"
         "while [ $# -gt 0 ]; do\n"
         "  label=$1; profile=$2; path=$3; expected=$4; total=$5; output=$6; shift 6\n"

@@ -593,6 +593,7 @@ def test_native_size_readers_reject_failed_producers_and_preserve_uncertainty(
         "work/wc-signalled", '#!/bin/sh\n/bin/kill -TERM "$$"\n', executable=True
     )
     result = router.run(
+        f". {shlex.quote(str(SOURCE.with_name('native_digest.sh')))}\n"
         f". {shlex.quote(str(SOURCE.with_name(module)))}\n"
         + "consumer=$1; data=$2; shift 2\nfor producer do\n"
         + '  value=$("$consumer" "$producer" "$data"); status=$?\n'

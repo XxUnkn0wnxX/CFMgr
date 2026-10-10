@@ -319,7 +319,7 @@ def test_interrupted_closure_intermediate_retains_guard_with_live_producer(
     )
     sources = [
         ROOT / "modules/lib" / name
-        for name in ("io.sh", "storage.sh", "supervision.sh", "isolation.sh")
+        for name in ("io.sh", "storage.sh", "native_digest.sh", "supervision.sh", "isolation.sh")
     ]
     script = (
         "\n".join(f". {shlex.quote(str(source))}" for source in sources)
@@ -546,7 +546,14 @@ def test_probe_entry_validates_profile_mode_and_replaces_inherited_entry_state(
 ) -> None:
     source = "\n".join(
         f". {shlex.quote(str(ROOT / 'modules/lib' / name))}"
-        for name in ("io.sh", "storage.sh", "closure.sh", "supervision.sh", "isolation.sh")
+        for name in (
+            "io.sh",
+            "storage.sh",
+            "native_digest.sh",
+            "closure.sh",
+            "supervision.sh",
+            "isolation.sh",
+        )
     )
     called = router.path("work/storage-called")
     observed = router.path("work/entry-state")

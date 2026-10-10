@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Owned native manifest reports; explicitly source trusted io.sh first.
+# Byte verification additionally requires explicitly sourced native_digest.sh.
 # Input/code and their ancestors must be trusted, immutable and unaliased.
 # These path checks are not atomic hostile-filesystem admission or provenance.
 # Source loading only defines functions; public entries use the IO owner to
@@ -17,6 +18,101 @@ cfmgr_package_manifest_report() {
 cfmgr_package_manifest_test() {
 	[ "$#" -eq 5 ] || return 2
 	cfmgr_io_test "$1" "$2" report _cfmgr_package_manifest_action "$3" "$4" "$5"
+}
+
+# SOURCE_ROOT is already private/immutable, acquired within 1 MiB per input and
+# 8 MiB aggregate. Native size/hash checks read to EOF, not bounded acquisition.
+# This verifies only declared bytes; modes remain desired package attributes.
+cfmgr_package_verify_report() {
+	[ "$#" -eq 5 ] || return 2
+	cfmgr_io_with_report "$1" _cfmgr_package_verify_action "$2" "$3" "$4" "$5"
+}
+
+cfmgr_package_verify_test() {
+	[ "$#" -eq 6 ] || return 2
+	cfmgr_io_test "$1" "$2" report _cfmgr_package_verify_action "$3" "$4" "$5" "$6"
+}
+
+_cfmgr_package_verify_action() {
+	[ "$#" -eq 5 ] && [ "${_io_active-}" = 1 ] || return 2
+	_package_verify_root=$2
+	_package_verify_index=0
+	_package_verify_body=
+	_package_verify_ledger=
+	[ "${#_package_verify_root}" -le 4096 ] || return 2
+	case $_package_verify_root in /*) ;; *) return 2 ;; esac
+	case $_package_verify_root in / | */ | *//* | */./* | */../* | */. | */.. | *[[:cntrl:]]*) return 2 ;; esac
+	[ -d "$_package_verify_root" ] && [ ! -L "$_package_verify_root" ] &&
+		[ -r "$_package_verify_root" ] && [ -x "$_package_verify_root" ] || return 2
+	_cfmgr_package_manifest_capture "$3" "$4" "$5" 0 1 || return "$?"
+	_package_verify_env=$(_cfmgr_package_verify_find env) || return 1
+	_package_verify_openssl=$(_cfmgr_package_verify_find openssl) || return 1
+	_package_verify_hexdump=$(_cfmgr_package_verify_find hexdump) || return 1
+	# Decode already checked every field. Read that accepted body directly,
+	# retaining its order and attributes as the sole inventory source.
+	_package_verify_inventory=$_package_manifest_body
+	while [ -n "$_package_verify_inventory" ]; do
+		_package_verify_row=${_package_verify_inventory%%"$_io_lf"*}
+		_package_verify_inventory=${_package_verify_inventory#*"$_io_lf"}
+		case $_package_verify_row in "file$_io_tab"*) ;; *) continue ;; esac
+		_package_verify_saved_ifs=$IFS
+		IFS=$_io_tab
+		# Trusted owner has noglob set; cardinality was established by D4.
+		# shellcheck disable=SC2086
+		set -- $_package_verify_row
+		IFS=$_package_verify_saved_ifs
+		_cfmgr_package_verify_member "$2" || return 1
+		_package_verify_size=$(_cfmgr_native_size_owned "$_io_wc" "$_package_verify_file") || return 1
+		[ "$_package_verify_size" = "$3" ] || return 1
+		_package_verify_index=$((_package_verify_index + 1))
+		_cfmgr_native_digest_match "$_package_verify_file" "$4" \
+			"$_io_stage/package-$_package_verify_index.digest" \
+			"$_io_stage/package-$_package_verify_index.hex" "$_io_wc" \
+			"$_package_verify_env" "$_package_verify_openssl" "$_package_verify_hexdump" || return 1
+	done
+	[ "$_package_verify_index" -eq "$_package_manifest_count" ] || return 1
+	_package_verify_header="manifest${_io_tab}1$_io_lf"
+	_package_verify_body="package-bytes${_io_tab}1$_io_lf${_package_manifest_body#"$_package_verify_header"}"
+	_package_verify_ledger="${_package_verify_body}end$_io_tab$_package_manifest_count$_io_tab$_package_manifest_total$_io_tab${#_package_verify_body}$_io_lf"
+	cfmgr_io_stage_report "$_package_verify_ledger"
+}
+
+# Native digest tools only. The IO owner fixes fixture selection/production PATH.
+_cfmgr_package_verify_find() (
+	[ "$#" -eq 1 ] || return 1
+	case $1 in env | openssl | hexdump) ;; *) return 1 ;; esac
+	if [ -n "$_io_tools" ]; then
+		[ -x "$_io_tools/$1" ] && [ ! -d "$_io_tools/$1" ] || return 1
+		printf '%s\n' "$_io_tools/$1"
+		return
+	fi
+	for _package_verify_dir in /sbin /bin /usr/sbin /usr/bin; do
+		if [ -x "$_package_verify_dir/$1" ] && [ ! -d "$_package_verify_dir/$1" ]; then
+			printf '%s\n' "$_package_verify_dir/$1"
+			return
+		fi
+	done
+	return 1
+)
+
+# Destination grammar belongs to the trusted parser; check physical components
+# below the caller's prepared root without following intermediate/terminal links.
+_cfmgr_package_verify_member() {
+	_package_verify_relative=$1
+	_package_verify_file=$_package_verify_root
+	while :; do
+		case $_package_verify_relative in
+		*/*)
+			_package_verify_file=$_package_verify_file/${_package_verify_relative%%/*}
+			_package_verify_relative=${_package_verify_relative#*/}
+			[ -d "$_package_verify_file" ] && [ ! -L "$_package_verify_file" ] &&
+				[ -x "$_package_verify_file" ] || return 1
+			;;
+		*) break ;;
+		esac
+	done
+	_package_verify_file=$_package_verify_file/$_package_verify_relative
+	[ -f "$_package_verify_file" ] && [ ! -L "$_package_verify_file" ] && [ -r "$_package_verify_file" ]
 }
 
 _cfmgr_package_manifest_action() {

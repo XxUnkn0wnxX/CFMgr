@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Internal owned-root lifecycle; trusted io.sh/storage.sh definitions required.
-# Fixed probes additionally require trusted closure.sh/supervision.sh definitions.
+# Fixed probes additionally require native_digest.sh/closure.sh/supervision.sh.
 # Native-data/tmp/Opt roots also require native_config.sh definitions.
 # Native Opt additionally requires explicitly loaded entware_root.sh helpers.
 # The fixed-device profile also requires native_devices.sh definitions.

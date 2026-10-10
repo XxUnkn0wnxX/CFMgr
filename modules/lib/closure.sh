@@ -1,8 +1,9 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Fixed-profile copying/integrity only; no execution, provenance or ELF admission.
-# Source defines functions only. The trusted native owner disables tracing and
-# supplies approved identities, stable private inputs, retained BASE and fresh
+# Source defines functions only. The trusted native owner explicitly sources
+# native_digest.sh, disables tracing and supplies approved identities, stable
+# private inputs, retained BASE and fresh
 # private RAM GUARD outside IO scratch. Trusted ancestors/native tools and no
 # other writers are preconditions, not atomic path or hostile-root guarantees.
 # The caller must first construct/acquire MANIFEST within 4096 original bytes in
@@ -177,39 +178,9 @@ _cfmgr_closure_size() {
 
 # Audited acquisition size: 0 success, 10 completed rejection, 2 invalid API,
 # 129 uncertainty. Older closure callers intentionally retain their 0/1 API.
-_cfmgr_closure_size_owned() (
-	trap - 0 HUP INT TERM
-	set +x
-	set +e
-	set +u
-	set -f
-	LC_ALL=C
-	PATH=/sbin:/bin:/usr/sbin:/usr/bin
-	export LC_ALL PATH
-	[ "$#" -eq 2 ] && [ -n "$1" ] || return 2
-	_cfmgr_closure_file "$2" || return 10
-	# Failed redirection/exec terminates only this capture; classify its status
-	# below together with wc failure, without relying on the command builtin.
-	_closure_count=$(exec "$1" -c <"$2")
-	_closure_count_status=$?
-	case $_closure_count_status in
-	0) ;;
-	*)
-		[ "$_closure_count_status" -le 128 ] && return 10
-		return 129
-		;;
-	esac
-	while :; do
-		case $_closure_count in ' '* | '	'*) _closure_count=${_closure_count#?} ;; *) break ;; esac
-	done
-	case $_closure_count in '' | *[!0123456789]* | 0[0123456789]*) return 10 ;; esac
-	[ "${#_closure_count}" -le 8 ] || return 10
-	printf '%s\n' "$_closure_count"
-	_closure_count_status=$?
-	[ "$_closure_count_status" -eq 0 ] && return 0
-	[ "$_closure_count_status" -le 128 ] && return 10
-	return 129
-) 2>/dev/null
+_cfmgr_closure_size_owned() {
+	_cfmgr_native_size_owned "$@"
+}
 
 _cfmgr_closure_build() (
 	trap - 0
@@ -273,25 +244,7 @@ _cfmgr_closure_copy() (
 
 _cfmgr_closure_hash() (
 	[ "$#" -eq 3 ] || return 1
-	# Clear inherited controls before the first external env/OpenSSL execution.
-	unset ENV BASH_ENV CDPATH TZ
-	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE
-	unset LD_PROFILE_OUTPUT LD_TRACE_LOADED_OBJECTS LD_BIND_NOW LD_BIND_NOT
-	unset LD_ASSUME_KERNEL LD_ORIGIN_PATH LD_HWCAP_MASK LD_SHOW_AUXV LD_VERBOSE LD_WARN
-	unset LD_DYNAMIC_WEAK LD_USE_LOAD_BIAS GLIBC_TUNABLES
-	unset OPENSSL_CONF OPENSSL_CONF_INCLUDE OPENSSL_ENGINES OPENSSL_MODULES
-	_closure_digest=$_closure_stage/metadata/$3.digest
-	_closure_hex_file=$_closure_stage/metadata/$3.hex
-	ulimit -f 1 || return 1
-	set -C
-	"$_closure_env" -i LC_ALL=C OPENSSL_CONF=/dev/null PATH=/sbin:/bin:/usr/sbin:/usr/bin \
-		"$_closure_openssl" dgst -sha256 -binary <"$1" >"$_closure_digest" || return 1
-	[ "$(_cfmgr_closure_size "$_closure_wc" "$_closure_digest")" = 32 ] || return 1
-	"$_closure_hexdump" -v -n 32 -e '1/1 "%02x"' <"$_closure_digest" >"$_closure_hex_file" || return 1
-	[ "$(_cfmgr_closure_size "$_closure_wc" "$_closure_hex_file")" = 64 ] || return 1
-	_closure_hash_value=
-	IFS= read -r _closure_hash_value <"$_closure_hex_file" && return 1
-	[ "${#_closure_hash_value}" -eq 64 ] || return 1
-	case $_closure_hash_value in *[!0123456789abcdef]*) return 1 ;; esac
-	[ "$_closure_hash_value" = "$2" ]
+	_cfmgr_native_digest_match "$1" "$2" "$_closure_stage/metadata/$3.digest" \
+		"$_closure_stage/metadata/$3.hex" "$_closure_wc" "$_closure_env" \
+		"$_closure_openssl" "$_closure_hexdump"
 )

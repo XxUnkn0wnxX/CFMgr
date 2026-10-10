@@ -68,6 +68,8 @@ ram=$work/ram source=$work/source tools=$work/tools
 # shellcheck source=/dev/null
 . "$repo/modules/lib/storage.sh"
 # shellcheck source=/dev/null
+. "$repo/modules/lib/native_digest.sh"
+# shellcheck source=/dev/null
 . "$repo/modules/lib/closure.sh"
 # shellcheck source=/dev/null
 . "$repo/modules/lib/supervision.sh"
