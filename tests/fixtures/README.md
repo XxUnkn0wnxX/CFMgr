@@ -51,8 +51,9 @@ host tests; the Python inventory tool is not part of the router runtime.
 The combined generator/manifest/catalog focused gate passes 49 tests with two
 local missing-BusyBox skips in 46.80s; the inventory-specific cases pass 10
 tests in 7.95s. The full local two-worker suite passes 1,829 tests with 37 explicit platform
-skips in 527.97s; exact-head CI remains pending. This
-candidate does not establish trusted source acquisition, complete package
+skips in 527.97s; [exact-head CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095)
+passes 1,866 tests with zero skips in 138.97s, six stripped-ash checks and all
+eleven kernel scenarios. This accepted 48% checkpoint does not establish trusted source acquisition, complete package
 coverage, installed-file verification or router acceptance.
 
 ## Kernel fixtures

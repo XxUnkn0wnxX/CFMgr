@@ -813,7 +813,7 @@ There is no generated root catalog, published manifest, downloader or
 installed-package mapper. The developer inventory below writes only to stdout;
 it does not publish or install the generated document.
 
-### Developer package inventory (48% candidate)
+### Developer package inventory
 
 `tools/package_manifest.py` is a host-only Python developer command. It reads
 the raw Git tree and blobs at one explicit local commit and prints a canonical
@@ -853,7 +853,9 @@ and router acceptance. The combined generator/manifest/catalog focused gate
 passes 49 tests with two local missing-BusyBox skips in 46.80s; the generator
 tests pass 10 cases in 7.95s. The resumed full local gate passes 1,829 tests with 37 explicit platform
 skips in 527.97s using two workers, including all static checks. Exact-head
-Linux/BusyBox CI remains pending.
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095)
+passes all 1,866 tests with zero skips in 138.97s at exact head `763c410`,
+six stripped-ash checks in 7.25s and all eleven kernel scenarios.
 
 The accepted 47% D2 manifest/catalog focused gate passes 39 tests with two
 explicit missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s.
@@ -864,8 +866,8 @@ platform skips in 1,159.49s. Exact head
 1,856 tests with zero skips in 116.52s, six stripped-ash checks in 7.07s and
 all eleven kernel scenarios. Native-root, native-probe and native-dependencies
 take 6.33s, 8.88s and 9.52s; namespace execution totals 29.53s. The 47%
-checkpoint remains the accepted baseline; implementation has resumed on the
-48% developer inventory candidate described above.
+results remain historical parser evidence; the accepted 48% developer
+inventory checkpoint adds the host command described above.
 
 Cost review is complete. An unchanged integration hit its 60s deadline in a
 Mac timing follow-up, then passed its isolated retry in 53.69s under the same

@@ -291,8 +291,8 @@ and a bounded manifest grammar parser. Full local checks pass 1,819 tests
 with 37 explicit platform skips. Exact
 [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
 passes 1,856 tests with zero skips and all eleven kernel scenarios. The accepted
-47% checkpoint remains the validated baseline; the 48% developer inventory
-candidate is in progress. The manifest declares a version,
+47% parser checkpoint is followed by the accepted 48% host inventory tool,
+with full local and [exact Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095) passing. The manifest declares a version,
 config-schema and package-api value, plus file paths, sizes, SHA-256 text and modes; successful parsing validates
 those fields as data only. It does not prove that declared bytes match, that
 the inventory is complete or trusted, that the declared APIs are compatible,
@@ -308,7 +308,7 @@ or that installation is safe. Matching Merlin AWK behavior remains unproved.
 | Source-only dependency worker | Native process-group and lock/deadline behavior, retained storage/root and fixed `rmdir` lookup | Accepted 45% host/Linux composition; no operational entry wiring or Merlin compatibility is claimed. |
 | Config-header/catalog parsers | AWK, bounded immutable input and exact status/ledger checks by a future caller | Accepted 46% host/BusyBox data-format proof; no integrated reader, manifest trust or Merlin runtime proof. |
 | Shared package paths and manifest parser | Functions-only AWK helper explicitly loaded before the manifest parser | Accepted 47% host/BusyBox data-format proof; declared data checks only, with no trusted acquisition, file hashing, completeness or Merlin runtime proof. |
-| Developer package inventory | Developer-host Python 3.11+ and local Git objects | 48% candidate; host tool only, not a router dependency or Merlin compatibility claim. Trust and installation gates remain open. |
+| Developer package inventory | Developer-host Python 3.11+ and local Git objects | Accepted 48%; host tool only, not a router dependency or Merlin compatibility claim. Trust and installation gates remain open. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
 | Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |

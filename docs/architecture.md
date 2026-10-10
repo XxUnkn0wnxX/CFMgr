@@ -559,8 +559,9 @@ tests with two explicit missing-BusyBox skips in 5.78s. The full local gate
 passes 1,819 tests with 37 explicit platform skips in 1,159.49s; exact
 [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
 passes 1,856 tests with zero skips and all eleven kernel scenarios at
-`76fd146`. This remains the accepted 47% baseline; the 48% developer inventory
-candidate is in progress. Matching Merlin awk behavior, full config validity,
+`76fd146`. This is the accepted 47% parser baseline. The 48% developer inventory
+command also passes full local and [exact Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095),
+including all eleven unchanged kernel scenarios. Matching Merlin awk behavior, full config validity,
 trusted manifest acquisition and an integrated config/catalog runtime path
 remain unproved.
 

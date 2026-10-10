@@ -18,7 +18,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
-| Developer package inventory | Candidate (48%) | Host-only [manifest command](docs/development.md#developer-package-inventory-48-candidate); trust gates remain open |
+| Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -39,7 +39,7 @@ source-only serialized dependency worker, configuration-header/catalog parsers,
 shared package-path checks and a bounded manifest parser. Full local and
 Linux/BusyBox checks pass, including all eleven kernel scenarios. A host-only
 Python tool now generates a deterministic manifest from an explicit local Git
-commit; the 48% candidate passes its full local gate and awaits exact-head CI.
+commit; the accepted 48% checkpoint passes full local and exact-head Linux/BusyBox CI.
 Work continues through the authorized 50% handoff. The inventory is not an
 authenticated release, installer input, complete-package verifier or router
 acceptance result. These parsers do not
