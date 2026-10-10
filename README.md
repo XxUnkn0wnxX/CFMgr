@@ -1,6 +1,6 @@
 # ☁️ CFMgr
 
-Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manager.
+Cloudflare Manager for Asuswrt-Merlin — a command-line project.
 
 > [!WARNING]
 > **Work in progress — not ready for router use.** Do not install or run this
@@ -8,26 +8,19 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manag
 
 ## 🚧 Implementation checklist
 
-| Feature / milestone | Status | At a glance |
+| Feature | Status | At a glance |
 | --- | --- | --- |
 | Core foundations | Implemented | Parsing, storage checks and managed workspaces |
 | Worker safety foundations | Implemented | Process deadlines and read-only workspaces |
 | Health report | In progress | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
-| Settings and module catalog | In progress | Source-only [header report](docs/development.md#source-only-config-header-report) and [catalog plan](docs/development.md#source-only-catalog-request-plan); full settings/acquisition pending |
+| Settings and module catalog | In progress | Source-only [header](docs/development.md#config-header-report), [lifecycle](docs/development.md#config-lifecycle-report) and [catalog](docs/development.md#catalog-request-plan) reports; full settings/acquisition pending |
 | Developer package inventory | Implemented | Host-only [manifest command](docs/development.md#developer-package-inventory) |
-| Prepared package validation | Implemented | Source-only [manifest, tree, version and policy reports](docs/development.md#source-only-package-policy-report) |
+| Prepared package validation | Implemented | Source-only [manifest, tree, version and policy reports](docs/development.md#package-policy-report) |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
 | Backup and restore | Planned | CFMgr-owned setup and data only |
-
-## ✨ Planned README
-
-- Feature overview and supported router requirements.
-- Installation, first-time setup and a quick start.
-- Common menu and CLI workflows, updates, backup and restore.
-- Troubleshooting and links to detailed guides.
 
 ## 📚 Documentation
 

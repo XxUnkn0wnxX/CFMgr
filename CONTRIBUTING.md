@@ -19,15 +19,15 @@ For larger changes, check the contracts and remaining acceptance work in
 ## 🧪 Validate the change
 
 1. Follow the [virtualenv setup](docs/development.md#-set-up-the-environment).
-2. Run focused tests and relevant lint while making small commits. At a major
-   checkpoint, pass `python tools/check.py` before pushing and require green CI
-   before starting the next set of changes.
+2. Run focused tests and relevant lint while making small commits. Before
+   publication, pass `python tools/check.py` and require green CI before
+   starting further code changes. See [PLAN.md](PLAN.md) for the project cadence.
 3. Include meaningful failure-path tests when changing runtime behaviour, and
    explain any changed test expectations.
 4. Record what was actually tested. Keep host, BusyBox and router evidence
    distinct; leave untested firmware combinations clearly marked.
-5. Update affected documentation with the change. Major milestones include a
-   review of the README and development, architecture, compatibility, setup and
+5. Update affected documentation with the change. Major documentation reviews
+   include the README and development, architecture, compatibility, setup and
    fixture guides; record that review in the plan before publication.
 
 GitHub Actions runs the same check command with BusyBox on Linux for code,

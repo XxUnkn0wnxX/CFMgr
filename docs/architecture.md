@@ -3,29 +3,18 @@
 [← README](../README.md) · [Development](development.md) · [Compatibility](compatibility.md) · [Implementation plan](../PLAN.md)
 
 ![Runtime](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
-![Status](https://img.shields.io/badge/design-in_development-orange)
 
-This is a working developer guide. It separates implemented foundations from
-the intended manager; [PLAN.md](../PLAN.md) owns the detailed contracts,
-acceptance checklist and implementation record. This guide and the other
-repository documentation are reviewed at major milestones and before each
-ten-percentage-point checkpoint; implementation status stays current throughout
-development.
+This guide describes the current source layout and internal interfaces.
+[PLAN.md](../PLAN.md) owns detailed design and validation records.
 
 ## 🧱 Current implementation
 
-CFMgr is CLI-only: terminal menus and command-line entry points are the approved
-interface. A browser GUI is an optional future idea outside the current roadmap;
-it requires a separate user decision before design or implementation.
+CFMgr currently exposes a development command-line entry point.
 
 The repository entry point is `cfmgr.sh`; runtime code is grouped in `modules/`.
 POSIX shell sources the shell helpers and invokes the awk parsers directly.
-There is no generated or compiled main script. The planned installed entry is
-`/jffs/scripts/cfmgr.sh`; its supporting modules and catalog live under
-`/jffs/addons/CFMgr.d/`.
-
-The development entry supports help, version and the two equivalent health
-commands. It does not install CFMgr or start a feature.
+There is no generated or compiled main script. The entry supports help, version
+and the two equivalent health commands; it is a development diagnostic.
 
 The host-only `tools/package_manifest.py` developer utility inventories raw
 Git blobs from one explicit full commit ID and validates its generated manifest
@@ -45,10 +34,10 @@ flowchart LR
 | Module | Implemented responsibility | Boundary |
 | --- | --- | --- |
 | `cfmgr.sh` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
-| `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
+| `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Does not execute Entware tools or feature operations |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
-| `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
-| `modules/lib/json.sh`, `modules/lib/config.sh` | Fixed internal JSON-token capture and owned config-header report through one IO owner | Returns only schema marker, generation and developer flag; no full settings validation or installed-config admission |
+| `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config header/lifecycle, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
+| `modules/lib/json.sh`, `modules/lib/config.sh` | Fixed internal JSON-token capture and owned config-header/lifecycle reports through one IO owner | Returns only saved header and feature flags; credential values are not returned, and full settings validation or installed-config admission is outside the API |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
 | `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification, manifest-derived tree, entry-version and supplied-policy reports | Source-only APIs require caller-prepared immutable inputs; no source authenticity, semantic compatibility, installation or activation authority |
 | `modules/lib/catalog.sh` | Join a parsed catalog projection with a separately supplied manifest into a commit-pinned source plan | Caller owns branch-to-commit correspondence and manifest provenance; no acquisition, authentication, source-byte verification or installation authority |
@@ -67,9 +56,9 @@ flowchart LR
 | `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal compositions only; operational scheduling and package/feature launch remain separate |
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
-The parsing modules are tested foundations, not yet a complete operational call
-path. See [development checks](development.md#-run-checks) for reproducible host
-validation and the separate BusyBox evidence requirement.
+The parsing modules and native reports are internal interfaces; the CLI
+currently exposes only development diagnostics. See [development checks](development.md#-run-checks) for host validation
+commands and the separate BusyBox evidence requirement.
 
 ### Source layout and loading
 
@@ -93,32 +82,7 @@ small explicit interfaces and shared libraries rather than copied helpers.
 The entry point resolves and sources the diagnostics module explicitly; the
 native configuration, retained-Opt and fixed-device helpers are source-only
 internal APIs. There is no automatic loading of arbitrary files or directories.
-Menu, setup, and dispatch connections will be added as their features are
-implemented.
-
-### Adding a feature
-
-Keep a feature's behavior in its own module, such as the future Cloudflared,
-DDNS or IP-Sync module. Define its configuration, setup/teardown, status and
-action interfaces alongside that implementation. The menu and setup flow then
-call those interfaces; they should not contain copies of the feature logic.
-Shared parsing, IO, storage and locking belong in `lib/`. A worker or updater
-belongs in `helpers/`, and its thin firmware or cron entry belongs in `hooks/`.
-Repository folders do not change Merlin's installed hook destinations.
-
-Loading and dependencies stay explicit, and sourcing a shared shell library
-only defines its functions. AWK consumers explicitly load
-`package_path.awk` before `catalog.awk` or `manifest.awk`; there is no automatic
-helper discovery. A new module also needs focused behavior tests, current
-documentation and, once distribution is implemented, an entry in the verified
-package manifest. Catalog source keys such as `modules/lib/common.sh` map later
-to `lib/common.sh` below the installed manager directory; `cfmgr.sh` maps to the
-installed script entry. The standalone parsers check source-relative path
-grammar and declared manifest records. The source-only `package.sh` verifier
-checks declared source bytes after its caller supplies a bounded immutable
-tree; installer mapping, trusted acquisition and generation ownership remain
-future work. The current CLI diagram above shows implemented loading; this
-extension pattern guides future menu/setup integration.
+The current entry explicitly loads only the diagnostics module.
 
 ## 🗂️ Storage and authority
 
@@ -126,34 +90,11 @@ Integration follows Merlin’s official [Addons API](https://github.com/RMerl/as
 [User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts) and
 [Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
 guidance, checked against the supported firmware source. Revisit affected
-conventions when implementation changes and during milestone reviews; record
+conventions when source changes; record
 version differences and design decisions in the plan. Firmware configuration
 overrides and shared WebUI settings are separate from CFMgr’s private config.
 
-| Location | Intended responsibility |
-| --- | --- |
-| `/jffs/scripts/cfmgr.sh` | Installed public entry point |
-| `/jffs/addons/CFMgr.d/` | Verified manager modules, private configuration and bounded durable recovery |
-| `/jffs/addons/CFMgr.d/config` | Authoritative settings, typed credentials, saved activation and the developer flag; generated locally from defaults on fresh install |
-| `/jffs/addons/CFMgr.d/catalog.txt` | Separate editable source selector and named module URLs |
-| Private RAM workspace | Transient requests, queues, observations, captures and staging |
-| Verified Entware volume | Selected packages, cloudflared binary, tunnel runtime files and optional custom logs |
-| User-selected backup drive | Manual data-only archives of CFMgr-owned setup and inventoried data under `CFBackup/` |
-
-Persistent settings and recovery stay in JFFS; frequent observations and retry
-state stay in RAM. Missing storage must preserve saved intent and report waiting
-or incomplete work. A mount label, `/dev/sd` name, directory or executable alone
-cannot establish the expected volume.
-
-The extensionless `config` is private router data. The public repository ships
-neither a config file nor a config template; fresh installation generates it
-from defaults in the implementation, after checking for retained setup.
-Updates and reinstalls preserve existing settings under the migration contract.
-Planned full uninstall **KEEP** retains settings and recovery data. Explicit
-**WIPE** removes `/jffs/addons/CFMgr.d/` itself after verified owned cleanup is
-complete. An incomplete cleanup retains recovery evidence; it cannot report a
-successful wipe. Reset retains the verified manager package and regenerates
-passive defaults instead of deleting the entire package directory.
+Persistent-storage observations require held descriptors and current mount evidence; a path, label, or executable alone does not establish the expected volume.
 
 The storage observer joins the held directory's mount ID to the current mount
 table, checks the block device number and reads the first 1,152 bytes of the
@@ -209,8 +150,11 @@ The per-stream physical file ceiling is 132,096 bytes for ordinary captures
 and 263,168 bytes for JSON tokens, or 526,336 bytes per token-profile slot.
 Across 16 token-profile slots, the physical output ceiling is 8,421,376 bytes
 plus status records. The private profile does not widen ordinary limits, size
-helpers or report staging. Its current config-header report uses three slots
-and accepts 209,152 stream bytes. The capture interfaces are:
+helpers or report staging. The config-header and config-lifecycle reports share
+three slots and this owner; lifecycle mode adds only saved feature flags and
+cross-field implications, with no settings writer or operational callback.
+Each allows 209,152 accepted capture bytes including stderr. The
+capture interfaces are:
 
 | Function | Caller contract |
 | --- | --- |
@@ -313,13 +257,12 @@ root ledger to the same narrowly scoped native observer. Production sources must
 be on the approved readonly UBIFS or squashfs firmware root; the explicit host
 fixture also admits a readonly tmpfs source to prove real mount behavior. This is
 a tested internal construction primitive, not an Entware environment: this
-entry does not add the writable `/tmp` and Opt children supplied by later
-compositions, and no entry provides complete native configuration semantics or
+entry does not add writable `/tmp` or Opt children. No entry provides complete
+native configuration semantics or
 executable/loader/resolver/TLS/NSS closure. Ordinary opkg execution and
-operational worker/menu/startup wiring also remain unfinished. Host fixtures
-exercise the lifecycle, and a ninth Linux namespace consumer is included for
-actual mount/descriptor validation. Its
-checkpoint result is tracked in PLAN.md; neither establishes router acceptance.
+operational worker/menu/startup wiring are outside this API. Host fixtures
+exercise the lifecycle, and the Linux namespace consumer checks actual mount
+and descriptor behavior. Neither establishes router acceptance.
 
 `cfmgr_isolation_native_data_root_with` composes the fixed native views with
 opaque staging of `/etc/hosts` and `/etc/resolv.conf` before any bind. The helper
@@ -368,18 +311,6 @@ API/context and `1` for completed acquisition failure. A `0` is usable only
 after enclosing IO cleanup succeeds; partial image data remains on failure.
 The root maps any pre-bind staging failure after reservation to `129` and
 retains its guard.
-
-This composition keeps the eight-child layout, 106 unique mount-query slots
-and 12 device metadata observations of the fixed-device root. Staging happens
-before the first bind.
-The callback remains a trusted synchronous native observer, with the explicit
-fixed shell and opkg-version probe exceptions below. It cannot select arbitrary
-payloads, perform ordinary package operations, retain asynchronous
-users/descriptors or replace its own `HOME`. It adds no operational worker,
-menu, startup or package-install wiring, nor complete native execution closure.
-The [41% kernel checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37957863595)
-passes the complete composition; host mirrors alone do not prove mount-enforced
-read-only behavior.
 
 `cfmgr_native_shell_probe ROOT` is a source-only, status-only helper for that
 active native-config callback. It requires the exact live owner/root context,
@@ -441,30 +372,6 @@ acknowledgement and exact-child wait. Invalid API returns 2; unclassified
 admission, cleanup, publication or marker uncertainty returns 129 and does not
 acknowledge completion. No marker by itself authorizes cleanup.
 
-This composition is still an internal fixed probe, not operational dependency
-execution: the worker invokes only the fixed shell probe, installs no cron entry,
-and performs no package or network operation. The separate opkg version probe
-does not install packages. Neither path adds arbitrary callback or executable
-authority. The tenth Linux kernel
-scenario exercises the real deadline, root/chroot and cleanup path with
-synthetic storage acquisition; it does not establish outer storage IO
-acquisition, block-device/UUID admission or router execution. This composition
-passed the 42% O9b
-[Linux/BusyBox gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-at `ffc3782`; its results remain historical baseline evidence.
-
-The O9c 43% revision adds the fixed opkg-version probe to `native_exec.sh` and a
-trusted synthetic static stand-in to the ninth Linux scenario. The stand-in
-witnesses the fixed argv, clean environment and cwd, closed inherited
-descriptors, and retained Opt marker read; it does not run Entware opkg. The
-candidate `d0a04b3a6d2e57464803039255bccafc97d0e79c` passed all ten kernel scenarios in
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431).
-Scenario 9 took 6.17s and the unchanged scenario 10 took 8.79s. Full local,
-CI and stripped-ash results are in [development checks](development.md#-run-checks)
-and [PLAN.md](../PLAN.md). These synthetic host/Linux proofs do not establish
-real opkg installation, executable provenance, Entware/ARM ABI or Merlin
-acceptance. This fixed version check does not add repair behavior.
-
 `cfmgr_native_dependencies ROOT BOOTSTRAP_SOURCE ACTION SCOPE LOCK_PROVIDER`
 is a source-only handoff to the bundled dependency backend. It accepts only
 `repair|reinstall`, `shared|tunnel`, and `native|entware` selectors. The caller
@@ -486,24 +393,13 @@ configured feeds, dependency resolution, locking, temporary-directory choice
 and package configuration behavior. No tiny output-size limit reaches opkg or
 its writes; file limits apply only to the source copy and small result writer.
 
-Only an exact direct status of 0 or 1 paired with the same exact regular result
-record (`CFMGR_DEPENDENCIES_V1 STATUS` plus LF), the ledger
-`dependencies ACTION SCOPE LOCK_PROVIDER STATUS` plus LF, and an empty
-completion directory returns an ordinary result. Invalid API returns 2;
-unavailable preflight returns 1; incomplete framing, disagreement or failed
-post-reservation publication returns 129 and retains evidence. This proves a
-synchronous backend result, not root/Opt cleanup: the enclosing owner must
-still complete its checked teardown and retain its guard on uncertainty. Normal
-repair skips healthy requirements and installs only missing or unusable
-mapped tools; force reinstall remains a separate explicit selector. Host
-consumers exercise the actual bundled backend with inert opkg doubles. The
-ninth Linux scenario adds a synthetic static backend stand-in and a 32-KiB
-package write. At the accepted 44% checkpoint, all ten Linux kernel scenarios
-pass, including native-root in 7.55s and native-probe in 10.19s. The fixture
-checks the bounded handoff and descriptor boundary while using synthetic
-storage metadata and package executables. This does not establish real opkg
-provenance, router execution or firmware ABI; see [PLAN.md](../PLAN.md) for
-exact validation results.
+Ordinary 0/1 requires agreement between the direct status, exact
+`CFMGR_DEPENDENCIES_V1 STATUS` result record, the
+`dependencies ACTION SCOPE LOCK_PROVIDER STATUS` ledger and an empty completion
+directory. Both records are LF-terminated. Invalid API returns 2; unavailable
+preflight returns 1; post-reservation uncertainty returns 129 and retains
+evidence. Backend completion does not establish root/Opt cleanup: the enclosing
+owner must complete its checked teardown.
 
 ### Source-only serialized dependency worker
 
@@ -546,39 +442,18 @@ That `rmdir` is the release point; no filesystem read follows it. The IO
 resolver provides this finite `rmdir` prerequisite without making `rmdir` a
 capture command.
 
-Completed backend outcomes map to public 0/1; invalid API maps to 2, safe
-pre-effect/native-lock refusal maps to 1, and a stale marker or uncertainty
-before successful release maps to 129 with available recovery evidence retained.
-Interruption after successful `rmdir` can lose result delivery with the marker
-already absent; at that release point, resources are complete and no later launch
-remains. There is no PID-based cleanup, rollback, arbitrary descendant-reaping
-guarantee, readiness or retry orchestration, scheduler/CLI wiring, installer or
-router operation.
-The eleventh Linux fixture exercises the full composition with synthetic
-package executables and storage metadata. It passed in 8.86s at the accepted
-45% checkpoint, including the watchdog's own descriptors, exact reap before
-marker release and the still-held lock. The full local check and all 1,792
-Linux/BusyBox tests pass; this remains host evidence, with router acceptance
-and operational entry paths still pending.
+Completed backend outcomes return 0/1; API misuse returns 2; safe pre-effect or
+native-lock refusal returns 1. Stale markers or uncertainty before release
+return 129. A signal after successful marker-directory removal may lose result
+delivery after resources have completed. This API provides no PID-based recovery,
+rollback or arbitrary descendant-reaping guarantee.
 
 The configuration and catalog parsers have explicit
-[data-format contracts](development.md#-module-catalog-and-forks). The
-[owned header report](development.md#source-only-config-header-report) connects
-JSON parsing and header framing through one managed workspace. Full settings
-validation, installed-config admission and trusted acquisition remain pending;
-[PLAN.md](../PLAN.md) retains checkpoint validation evidence.
-
-The accepted 47% D2 checkpoint extracts shared safe-path functions and adds a
-bounded manifest parser. Combined manifest/catalog focused checks pass 39
-tests with two explicit missing-BusyBox skips in 5.78s. The full local gate
-passes 1,819 tests with 37 explicit platform skips in 1,159.49s; exact
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
-passes 1,856 tests with zero skips and all eleven kernel scenarios at
-`76fd146`. This is the accepted 47% parser baseline. The 48% developer inventory
-command also passes full local and [exact Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095),
-including all eleven unchanged kernel scenarios. Matching Merlin awk behavior, full config validity,
-trusted manifest acquisition and an integrated config/catalog runtime path
-remain unproved.
+[data-format contracts](development.md#-source-data-and-package-reports). The
+[owned header report](development.md#config-header-report) connects JSON
+parsing and header framing through one managed workspace. These APIs do not
+validate full settings, installed configuration or source provenance; see
+[PLAN.md](../PLAN.md) for validation records.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production
@@ -590,7 +465,7 @@ checks the exact tmpfs identity, `rw,nosuid,nodev,exec` options, mode `0700`, an
 the requested `size` and `nr_inodes` values after mounting and again before
 teardown. It creates an empty mode-`0700` `/tmp/cfmgr-home` directory. The
 observer's process `HOME` remains unchanged; setting that logical home belongs
-to a future launcher.
+to a caller-selected environment.
 
 These are kernel-enforced usage ceilings, not a RAM reservation or a measure of
 available memory headroom. The native-data API remains unchanged and keeps its
@@ -669,6 +544,13 @@ step after reservation reports uncertainty. These internal observer APIs do not
 provide package execution or scheduling.
 Existing native and fixed-probe APIs retain their separate cleanup contracts.
 
+For fixed-profile probes, the caller supplies the manifest already bounded to
+4,096 original bytes in private RAM; the EOF size check is not bounded
+acquisition. Started probes require validated launcher completion and checked
+ordinary unmount before staging removal. A returned failure or deadline alone
+does not authorize cleanup. Even failed pre-bind staging requires a fresh check
+that the private RAM topology is unchanged.
+
 The retained-storage profile covers dynamic-revision ext2/ext3/ext4 primary
 superblocks; the separate readonly-root foundation uses private tmpfs or ramfs.
 Other filesystems, alternate `sb=` mounts and missing mount-ID support need
@@ -676,223 +558,37 @@ separate profiles. A matching observation does not prove writability, filesystem
 health or uninterrupted device identity, and it cannot authorize a later write
 through a freshly resolved path.
 
-Backups contain CFMgr settings and inventoried owned data, including Cloudflared
-configuration, full YAML and matching JSON, account certificate, owned JFFS
-certificate recovery, optional owned `config.yml.bak`, and eligible logs. They are not
-whole-router/NVRAM backups and do not include unrelated add-on/provider setup or
-displaced pre-CFMgr `ddns-start` content. They do not restore executable code or
-live process/queue/transaction state. The planned restore path validates this
-data and rebuilds the manager's own integrations; that operational path is not
-implemented yet.
-
-## ⚙️ Intended execution boundaries
-
-The runtime language is BusyBox-compatible POSIX `sh`. Python, pytest and the
-virtualenv are developer tools only. Shared operational prerequisites are `jq`,
-`coreutils-timeout` and `coreutils-sha256sum`; scoped DNS/locking additions follow
-the [compatibility policy](compatibility.md). Native recovery and health checks
-must remain available when those packages cannot run.
-
-| Boundary | Required behavior |
-| --- | --- |
-| Entry and hooks | Validate the action, apply guards and admit bounded work; no menu or unbounded wait from a firmware hook |
-| Shared controller | Check current configuration, prerequisites, ownership and retry eligibility before starting work |
-| DDNS and IP-Sync | Share current IPv4/IPv6 observations, retain independent outcomes and reconcile only configured targets |
-| Cloudflared controller | Keep saved activation, binary maintenance, readiness and owned-process recovery distinct |
-| Installer and updater | Verify the selected generation and complete staged artifacts before replacement; retain recoverable failures |
-| Status and health | Report evidence without starting services, installing dependencies or contacting providers |
-
-The DDNS hook is the explicit bounded-wait exception so it can report Merlin's
-success/failure result. It must defer promptly during boot or missing readiness.
-Only a failed or timed-out firmware DDNS attempt schedules the additional CFMgr
-retry; successful completion does not schedule a forced update. Exact boot
-release, overlap handling and the whole-action deadline remain implementation
-gates.
-
-<details>
-<summary>Why checking a command or mount once is insufficient</summary>
-
-An installed-package record does not prove that its executable loads, supports
-the required arguments or still belongs to the expected mounted volume. A
-successful parser exit does not prove its output was written completely. A
-live process does not prove tunnel connectivity.
-
-The intended controller checks the evidence appropriate to each boundary and
-preserves unknown outcomes. Installed-opkg selection and native deadline
-supervision have internal implementations; their operational composition,
-mount-loss handling and feature startup still need implementation and validation.
-The fixed-probe helpers have a narrower contract and do not establish those
-guarantees.
-
-</details>
-
-<details>
-<summary>🔒 Internal dependency execution proofs</summary>
-
-Operational dependencies are to be installed by the existing Entware `opkg`
-using its configured repositories and normal package/library resolution. CFMgr
-checks required capabilities and verifies the result. Cloudflared is handled
-directly through release binaries matched to supported kernel and userspace
-architecture/ABI combinations; the kernel architecture alone is insufficient.
-The direct-IPK bootstrap was retired. Supplied-manifest isolated-image helpers
-remain internal execution proofs with no operational CLI wiring. They do not
-establish an installer or replace opkg's package-resolution mechanism.
-
-Entware's loader reads absolute `/opt` paths before a program starts. An
-explicit loader path alone therefore cannot contain execution when the public
-mount path changes. The fixed-probe profile uses native bind mounts and chroot
-to separate verified executable bytes from the mutable installation destination.
-A small private RAM image provides the admitted programs, loader and libraries
-at `/opt`, with a verified read-only bind and no preload file. The earlier restricted
-installation proposal would expose the retained Entware directory separately at
-`/offline/opt`. Version probes do not mount the mutable Entware directory
-inside their root. Artifact provenance and ELF-graph admission remain caller
-prerequisites; accepting supplied hashes does not establish trust. Before calling
-the internal probe entry, the owner must construct/acquire the approved manifest
-within 4096 original bytes in stable private RAM. Staging validates its length
-after reading through EOF, so that check is not a bounded acquisition primitive.
-
-The earlier direct-IPK catalogue, native fetch/extraction and acquisition
-lifecycle have been retired. Their development history remains in Git and the
-plan, but operational dependency setup does not use those APIs or choose package
-versions/libraries itself. The supplied-manifest closure and fixed-probe helpers
-remain independent internal proofs; they do not constrain opkg's dependency
-resolution or constitute the normal package installer.
-
-`cfmgr_bootstrap_dependencies` selects the shared jq, timeout and SHA256
-capabilities, optionally adding tunnel DNS or Entware locking. Its production
-paths are fixed under `/opt`; the explicit test entry selects a fixture root.
-If all selected capabilities are usable, it runs no package command. Otherwise
-it performs one ordinary opkg update and installs only missing/unusable direct
-packages, then checks every selected capability again. A usable jq supplied by
-an alternative package needs no replacement. Failed package work or failed
-post-checks return failure; a later invocation rechecks rather than trusting a
-success cache. The separate `cfmgr_bootstrap_reinstall` backend runs one update,
-force-reinstalls every selected direct package, then repeats all selected checks.
-Its operational menu and worker wiring remain unfinished.
-
-Entware is required for operational features. This synchronous backend must be
-called by an admitted, serialized dependency worker after verifying the expected
-mounted storage; file existence alone is not that proof. It does not provide an
-aggregate deadline or mount-loss containment, and the worker/feature launch
-integration remains unfinished. `--doctor` and `--diagnostic` use only native
-helpers and never invoke this backend, opkg or unverified Entware executables.
-
-The pinned opkg CLI reads configuration before acquiring its process-owned
-`lockf` lock, and ordinary install then configures all loaded unpacked packages.
-Its public options do not provide an atomic check that excludes unrelated
-partial installations. A separate status check leaves a gap before install,
-and CFMgr's cooperative lock covers only participating CFMgr work. The selected
-future repair path is normal installed-opkg operation using configured feeds,
-package resolution, temporary-directory selection and opkg's normal package
-configuration behavior. CFMgr's lock serializes its own workers, and opkg retains its native locking
-behavior. These do not establish global exclusion of external writers or
-guarantee that unrelated half-installed packages remain untouched. No custom foreign-state
-veto or additional package manager is planned. This policy does not imply that
-the O9c version probe performs repair or that router operation has been tested.
-The source-derived lock-file unlink race and exact source references are
-recorded in the plan.
-
-For ordinary Entware operations, pinned Entware 540 source sets the compiled
-default opkg temporary directory to `/opt/tmp`. The effective order is an
-explicit configuration or command-line `tmp_dir`, then `TMPDIR`, then that
-compiled default. CFMgr's existing backend unsets `TMPDIR` and preserves opkg
-configuration, so a configured `tmp_dir` can still direct package scratch writes
-outside a private tmpfs quota. The version-only `--version` command exits before
-loading configuration or creating temporary files, so this does not change the
-fixed version probe above. See the pinned
-[Entware default-temp patch](https://github.com/Entware/Entware/blob/969c703e6fd8b2ad84d82affaeb14b48d1fcb105/package/system/opkg/patches/540-DEFAULT_TMP_DIR.patch).
-
-The existing native profile binds the expected Entware directory and `/dev/null`.
-The outer native owner checks mount identity and removes its
-exact mounts before deleting staging. Uncertain cleanup retains a guard and
-workspace for recovery. The native ownership and cleanup code is in
-`modules/lib/isolation.sh`. Focused host fixtures cover its fault matrix; the separate
-[Linux kernel lane](development.md#isolated-linux-kernel-checks) exercises actual
-mounts, busy cleanup, interruption and controlled static/dynamic executable
-mapping behavior. Its namespaces and compiler are developer tools only. The
-[plan](../PLAN.md#mount-snapshot-parser-contract--current-package) records its
-proof gates and the distinction from hostile-root security isolation.
-
-Before any bind, the owner checks the native BusyBox unmount capability using
-bounded help output. It selects the older `-D -n` or newer `-n` command while
-preserving ordinary unmount and avoiding loop-device and mtab side effects.
-Unknown capability stops the attempt before mounts; an actual cleanup failure
-never triggers a retry with different flags. Firmware version numbers alone
-do not select this behavior.
-
-For contained probes, cleanup uses ordinary unmount's busy check:
-admitted executable mappings retain the exact execution-image bind. Native
-launcher completion and successful verified unmount are both required before
-staging can be removed. A bounded polling helper records completion separately
-from exit status; a polling deadline leaves the launcher unproved and the guard
-retained. It never signals a saved numeric PID. The separate fixed-probe entry
-accepts only the timeout or gzip version probe. It clears the active launcher
-only when nothing started or the supervisor validated completion; a returned
-failure or deadline alone cannot authorize cleanup. Even a pre-bind staging
-failure requires a fresh unchanged/private RAM topology check before removal.
-This does not promise complete process reaping or a hard deadline for blocked
-kernel IO. Controlled host ELF tests do not expand the native callback's scope
-or prove Entware ABI or Merlin runtime acceptance.
-
-</details>
-
 ## 📦 Modules and forks
 
-**Planned distribution contract.** The standalone config-header, catalog and
-manifest parsers and native package reports are source-only checks. There is no
-integrated config reader/writer/generator, authenticated manifest acquisition,
-downloader, updater or installed-package mapper. No catalog or manifest is
-shipped. Parsing checks grammar and declared paths/records; the D5 verifier
-checks bytes for listed records, while D6 also compares the
-manifest-derived namespace with one bounded native `find` observation. Neither report
-establishes source trust, semantic API compatibility or installation authority.
-Modules remain readable source files.
+Package, catalog and configuration reports are source-only checks over
+caller-supplied data. They do not establish source trust, semantic API
+compatibility or installation authority.
 
-`modules/lib/package.sh` adds source-only manifest reporting and four
-verification reports around the existing IO owner. D5 checks each declared
-member's shape, size and SHA-256. D6 also derives expected paths from the
-manifest and compares them with one bounded native `find . -print`
-observation. The accepted D7 report checks the observed tree and declared
-bytes once within the owner, then reads `cfmgr.sh` as data and requires its
-literal version to equal the manifest version; it never executes the entry.
-D8 adds a supplied-policy report that also enforces a caller-selected
-no-downgrade floor and checks a separate requirements file against the
-manifest's exact destination/mode rows. Each API requires caller-prepared
-bounded immutable inputs, trusted helpers/parsers and explicitly sourced
-libraries. D6 still relies on healthy native traversal: matched firmware code
-can treat a `readdir` error as EOF, so an omitted path cannot be ruled out by
-that report. D8's lexical outside-root check does not establish independent
-policy trust. These reports do not authenticate or acquire source, establish
-semantic compatibility, approve installed permissions or authorize
-installation/activation. See the [development guide](development.md#source-only-package-policy-report)
-for D8 inputs, status rules and resource limits.
+`modules/lib/package.sh` provides source-only manifest reporting and verification
+reports around the existing IO owner. The declared-file report checks each
+member's shape, size and SHA-256. The tree report also derives expected paths
+from the manifest and compares them with one bounded native `find . -print`
+observation. The version report checks the observed tree and declared bytes once
+within the owner, then reads `cfmgr.sh` as data and requires its literal version
+to equal the manifest version; it never executes the entry. The policy report
+also enforces a caller-selected no-downgrade floor and checks a separate
+requirements file against exact manifest destination/mode rows. Each API requires caller-prepared bounded immutable inputs, trusted
+helpers/parsers and explicitly sourced libraries. The tree report relies on
+healthy native traversal: matched firmware code can treat a `readdir` error as
+EOF, so a silently omitted path cannot be ruled out. The policy report's lexical
+outside-root check does not establish independent policy trust. These reports
+do not authenticate or acquire source, establish semantic compatibility,
+approve installed permissions or authorize installation/activation. See the
+[development guide](development.md#package-policy-report) for inputs, status
+rules and resource limits.
 
-The D9 `catalog.sh` API joins a trusted catalog projection with a separately
+The `catalog.sh` API joins a trusted catalog projection with a separately
 supplied manifest by exact destination keys, then emits file rows in manifest
 order with URLs pinned to a caller-provided commit. The join accepts different
 source URL paths and package destinations, but equal file counts and exact keys
 are required. It does not prove the local manifest was fetched from its pinned
 URL or that a branch points to the supplied commit; catalog and manifest
 authenticity, complete profile selection, source-byte checks and installation
-remain with future owners. See the [development guide](development.md#source-only-catalog-request-plan)
-for API inputs, output framing and bounds.
-
-When distribution is implemented, repository-root `catalog.txt` will be
-acquired from the selected repository snapshot and stored at
-`/jffs/addons/CFMgr.d/catalog.txt`. Its shipped selector is planned to default
-to `main`; developers can select `develop` or a full commit hash in the separate
-router catalog. The developer flag remains in `config`. Resolve a branch once,
-then acquire one immutable repository snapshot with its manifest and hashes.
-Never combine newer per-file fallbacks or execute catalog contents as shell
-code.
-
-The **developer flag** defaults to `false`. When `true`, branch/commit switches,
-updates and force reinstalls preserve the existing router `catalog.txt` unchanged,
-and normal manager update checks are suppressed. Download a default catalog only
-when the local file is missing; malformed existing catalog data requires repair.
-The detailed catalog contract and fork examples are in the [development guide](development.md#-module-catalog-and-forks).
-
-Normal startup and hooks do not fetch missing manager code. Installation and
-repair own package acquisition; dependency checks do not authorize arbitrary
-module downloads.
+remain outside this API. See the [development guide](development.md#catalog-request-plan)
+for API inputs, output framing and bounds. The catalog report does not acquire a
+catalog or establish branch-to-commit correspondence.

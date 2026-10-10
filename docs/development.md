@@ -4,20 +4,11 @@
 
 ![Python requirement](https://img.shields.io/badge/development-Python_3.11%2B-3776ab?logo=python&logoColor=white)
 ![Runtime target](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
-![Project stage](https://img.shields.io/badge/stage-foundation-orange)
 
-CFMgr is being implemented in checked stages. This guide describes the working
-developer tools; [PLAN.md](../PLAN.md) owns design, acceptance, progress and
-checkpoint procedures. There is no installable manager yet. Keep feature status
-and commands aligned with implementation; planned commands are not available
-until their runtime path exists.
-
-Use focused tests and relevant lint/static checks for each package. The plan
-defines full local, publication, CI and ten-point handoff gates. Update milestone
-documentation only against finalized code, then reconcile it after any later
-code fix. At major milestones, audit every relevant guide and record intentionally
-unchanged files in the plan; reserve the full documentation consistency and
-polish pass for 100% completion.
+[PLAN.md](../PLAN.md) is the source of design and validation records. Follow the
+[repository guidance](../AGENTS.md) for publication policy. This guide
+describes the current developer tools and source-only interfaces. Commands not
+listed here are not available through the current entry point.
 
 Review the latest pytest duration report before each `develop` push and after
 about three local batches, whichever comes first. Reuse comparable full-suite
@@ -27,12 +18,11 @@ cases over five seconds, or comparable suite growth near 20%. These are review
 triggers, not reasons to raise timeouts or remove distinct coverage. Keep a small
 set of real-consumer integrations, reduce repeated setup, and retain separate
 signal, ownership, descriptor, framing, failure and required BusyBox checks.
-The 60/70/80/90/100% audits review every test for justified optimization; record
-coverage, timings and retained expensive cases in PLAN.md.
+The complete-suite review cadence and its evidence belong in [PLAN.md](../PLAN.md).
 
-Before each package, reconcile its test/fixture instructions with that strategy.
-Preserve distinct acceptance requirements and update actual results in the plan;
-historical test counts and superseded fixture layouts are not targets.
+Before each implementation batch, reconcile test and fixture instructions with
+this strategy. Preserve distinct acceptance requirements; record evidence and
+results in the plan rather than repeating them here.
 
 The branch is an active development checkout, not a router release; router
 runtime acceptance and stable promotion remain separate gates.
@@ -116,8 +106,11 @@ disabled by default; repository or organization policy can also restrict them.
 
 ## Entware dependency backend tests
 
-`modules/helpers/bootstrap.sh` delegates selected dependency installation to the existing
-Entware opkg. Test it with inert executable doubles under an explicit fixture
+`modules/helpers/bootstrap.sh` exposes the internal
+`cfmgr_bootstrap_dependencies SCOPE LOCK_PROVIDER` backend, which delegates
+selected dependency installation to the existing Entware opkg. `SCOPE` is
+`shared|tunnel`; `LOCK_PROVIDER` is `native|entware`. Test it with inert executable
+doubles under an explicit fixture
 root; never invoke host/router opkg, fetch feeds or install packages in tests.
 Assert exact update/install arguments, selected-only packages, healthy no-op,
 usable alternative providers, failure and post-check handling, and a later
@@ -127,9 +120,8 @@ needed for this backend.
 
 The separate internal `cfmgr_bootstrap_reinstall` entry always requests an
 update followed by `opkg --force-reinstall install` for all selected direct
-packages, then checks their capabilities. Its tests also prove that healthy
-tools do not bypass an explicit reinstall and that failed update/install steps
-stop the sequence. Opkg owns dependency resolution and package conflicts.
+packages, then checks their capabilities. Its tests cover the explicit reinstall of healthy
+tools and refusal after failed update/install steps. Opkg owns dependency resolution and package conflicts.
 
 Routine Entware upgrades remain user-managed through amtm/opkg. The normal
 backend never runs a blanket upgrade or force-reinstalls healthy dependencies:
@@ -137,12 +129,11 @@ it probes mapped requirements, returns immediately when they are usable, and
 refreshes package lists only when installation is needed. The selected install
 lets opkg resolve required transitive dependencies. The internal explicit
 dependency-reinstall backend is separate and force-reinstalls the selected
-direct requirements; its advanced menu wiring remains planned. Cloudflared
-binary updates and its service/watchdog lifecycle are managed independently.
+direct requirements. The current CLI does not expose this internal backend.
 
-The backend requires an already admitted, serialized caller with usable mounted
-Entware and suitable scheduling. Mount/authority/ownership and aggregate worker
-behavior remain separate integration acceptance gates. Its fixture root proves
+The backend requires an admitted, serialized caller with usable mounted
+Entware and suitable scheduling. Its interface does not itself perform storage
+admission or aggregate worker supervision. Its fixture root covers
 command policy and capability handling, not storage or router acceptance.
 `--doctor`/`--diagnostic` remain native without Entware; their existing fixtures
 must prove that neither opkg nor unverified package executables are called.
@@ -166,23 +157,14 @@ outside the private tmpfs quota.
 `modules/helpers/bootstrap.sh` backend and inert opkg/capability programs. It
 covers healthy no-op, missing-only repair, selected reinstall, ordinary failure
 and post-check failure, source/result framing, exit/result agreement, writer
-failure, descriptor closure and a 32-KiB package write. Its focused run with
-`tests/test_native_shell.py` and `tests/test_bootstrap.py` passed 72 tests with
-three local BusyBox skips in 36.67s; the 26 kernel-runner checks passed in
-1.04s. Run these host checks with:
+failure, descriptor closure and a 32-KiB package write. Run these host checks
+with:
 
 ```sh
 python -m pytest tests/test_native_dependencies.py tests/test_native_shell.py tests/test_bootstrap.py
 ```
 
-The accepted 44% checkpoint passes the full local check with 1,734 tests and 33
-explicit platform skips in 790.73s, including all static checks. Linux/BusyBox
-passes 1,767 tests with no skips in 131.28s; all ten kernel scenarios pass,
-including native-root in 7.55s and native-probe in 10.19s. The six stripped-ash
-checks pass in 7.21s. See the [green Linux/BusyBox run](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37987932713)
-and [PLAN.md](../PLAN.md) for the full checkpoint record.
-
-The 28 focused kernel-runner tests pass in 1.79s. Two compile
+Two focused kernel-runner tests compile
 the actual descriptor witness once and check 13 argument/descriptor cases
 without chroot or privileged operations. They require a host `cc` executable
 and report explicit skips when it is absent; Linux CI supplies the compiler.
@@ -192,8 +174,8 @@ router acceptance.
 
 ### Source-only serialized dependency worker
 
-The accepted 45% checkpoint adds `modules/helpers/dependencies.sh` with a finite
-fourteen-argument internal API. It admits only the actual original shell's
+`modules/helpers/dependencies.sh` provides a finite fourteen-argument internal
+API. It admits only the actual original shell's
 dedicated process group, detaches standard streams and application descriptors,
 then takes the existing stable CFMgr dependency lock before its armed deadline.
 An exact persistent active-owner marker prevents another CFMgr attempt after
@@ -206,25 +188,14 @@ The worker uses the IO resolver's finite `rmdir` lookup; `rmdir` is not a
 capture command. See the [architecture contract](architecture.md#source-only-serialized-dependency-worker)
 for argument, status and recovery details.
 
-The checkpoint also adds an eleventh genuine Linux fixture composition for the
-lock, deadline, retained-Opt/root and synthetic normal-opkg path. Its assertions
-cover the watchdog's own descriptors (including FD7/high aliases),
-completion/reap before owned-marker release, and the stable lock. This new
-scenario passes in 8.86s. The 45% checkpoint's full serial local check
-passes 1,758 tests with 34 explicit platform skips in 836.10s; all static checks
-pass. That is 5.7% above the prior local run, with no new case among the slowest
-20. Exact commit `4c59937503f7e984268cdb5c75c8b144f8cc7309` passes
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37994019737):
-1,792 tests with no skips in 102.36s, six stripped-ash cases in 6.89s, and all
-eleven kernel scenarios. Native-root takes 5.84s, native-probe 8.14s, and total
-namespace execution 27.30s. The job takes 3m15s. CI's ShellCheck 0.9.0 and the
-local 0.11.0 both accept the explicit fixture assertions.
-
-The focused worker contract suite passes 23 host cases with one explicit local
-BusyBox skip in 4.05s. It distinguishes completed backend outcomes from unproved
-cleanup and premature exits, and checks retained foreign/partial markers. One
-real process-group death case proves that a live child can outlast the owner
-while the marker blocks a fresh attempt after actual lock reacquisition.
+The Linux fixture composes the lock, deadline, retained-Opt/root and synthetic
+normal-opkg path. Its assertions cover the watchdog's own descriptors
+(including FD7/high aliases), completion/reap before owned-marker release, and
+the stable lock. The focused worker tests distinguish completed backend
+outcomes from unproved cleanup and premature exits, and check retained
+foreign/partial markers. A real process-group death case proves that a live
+child can outlast the owner while the marker blocks a fresh attempt after actual
+lock reacquisition.
 Storage, root and deadline boundaries are otherwise narrow synthetic seams;
 their complete Linux composition is established by the separate kernel gate.
 
@@ -243,14 +214,10 @@ failure. The Linux kernel lane supplies mount-enforced evidence; see the
 limits. Neither proves router acceptance or supplies an operational worker.
 
 The current `cfmgr_isolation_native_config_root_with` entry is the fixed
-six-file composition over the retained-Opt/device lifecycle. Host coverage in
-`tests/test_native_devices.py` and `tests/test_entware_root.py` checks literal API
+six-file composition over the retained-Opt/device lifecycle. Its tests check API
 selection, pre-bind staging failure, exact bytes, cleanup and preserved device/Opt
-behavior. The actual BusyBox composition is in `tests/test_native_root.py`; its
-local consumer was explicitly skipped because BusyBox was unavailable. Focused
-and full checkpoint evidence is in [PLAN.md](../PLAN.md). The composed root
-passes local and Linux/BusyBox validation; focused checks do not replace the
-full checkpoint.
+behavior. The BusyBox composition is in `tests/test_native_root.py`; see the
+[fixture guide](../tests/fixtures/README.md) for the evidence boundary.
 
 `tests/test_native_shell.py` checks the fixed shell probe with an inert chroot
 stand-in, real descriptor observations, exact environment/arguments, bounded
@@ -267,10 +234,8 @@ metacharacters, separate evidence, and pre-effect refusal and completed-negative
 outcomes. It proves the child receives only `--version`, not the expected value,
 and that the opkg probe does not invoke `/bin/busybox`. Its single actual-BusyBox case
 batches invalid values and one successful 128-byte version. Run
-`python -m pytest tests/test_native_opkg.py` for these host checks. The focused
-O9c consumer run passed 71 tests with two local BusyBox skips; the kernel runner
-selection passed 26 cases. These host tests do not establish opkg provenance or
-package execution.
+`python -m pytest tests/test_native_opkg.py` for these host checks. They do not
+establish opkg provenance or package execution.
 
 `tests/test_native_probe.py` checks the source-only worker composition with
 fresh markers and narrow storage/root/deadline seams. It verifies fixed
@@ -333,8 +298,8 @@ python tools/check.py --busybox /path/to/busybox
 
 Explicitly requesting a missing or invalid executable fails the run. Without
 one, dedicated BusyBox tests are visibly skipped and compatibility remains
-unverified. An unavailable local Linux/BusyBox environment is missing evidence,
-not a successful compatibility run.
+unverified. Linux/BusyBox evidence must come from the dedicated Linux runner or a local
+Linux environment with the required privileges.
 
 Currently this option exercises BusyBox shell syntax and the dedicated
 shell/applet fixture. Ordinary `router` fixtures still use the host `/bin/sh`;
@@ -384,48 +349,18 @@ unmount has no alternate-flag retry. There is no test-only syntax adapter.
 The [compatibility guide](compatibility.md#busybox-unmount-capabilities) records
 the firmware evidence and upstream behavior change.
 
-The kernel lane contains eleven accepted bounded namespace scenarios,
-including the dependency-worker composition described above. The original nine
-cover actual BusyBox mount lifecycle, fixed native views, readonly staged `/etc`,
-the quota tmpfs, retained Opt and device-node cleanup. The native-config-root
-scenario checks all six staged files, including a binary CA bundle larger than
-128 KiB, with native BusyBox `dd` and `cmp`. The tenth composes the fixed native
-probe with the real deadline and root/chroot cleanup. The O9b baseline passed all
-ten scenarios at 42% in the
-[Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-at `ffc3782`.
-The kernel fixture substitutes a synthetic FD8 storage observation and a
-controlled FD9 source, so it does not prove router storage admission or
-acceptance. The accepted 41% scenario also invokes the fixed shell probe
-through genuine host BusyBox/loader bytes. The O9c extension adds a trusted
-synthetic static opkg stand-in to the ninth scenario; it witnesses fixed argv,
-clean environment and cwd, closed inherited descriptors, and reading the
-retained Opt marker. It does not run Entware opkg. Only a private fixture copy's
-interpreter path is adapted to the existing `/lib` view, with structural and
-`readelf` verification; static
-fixture wrappers inspect descriptors before forwarding to real chroot/applets.
-No firmware executable is copied or run. The tenth scenario adds the source-only
-worker's real deadline and checked root/probe cleanup, observes the watchdog's
-own descriptors, and uses synthetic storage acquisition; it does not prove
-outer storage IO acquisition or physical block-device/UUID admission. The 43%
-full local run passed 1,707 tests with 32 explicit platform skips in
-904.87s; [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431)
-passed 1,739 tests with no skips in 108.91s. Six stripped-ash cases passed in
-7.05s. All ten kernel scenarios passed: `native-root` took 6.17s and the
-unchanged `native-probe` 8.79s; namespace execution took 19.66s and the kernel
-command 20.98s. CI ran the actual BusyBox opkg grammar representative. These
-synthetic host/Linux results do not prove real opkg installation, executable
-provenance, Entware/ARM ABI or Merlin acceptance. The selected future repair path
-is normal installed-opkg operation using configured feeds and dependency
-resolution, with CFMgr's own serialization, deadlines, storage checks and
-post-checks. Its lock cannot exclude unrelated writers or guarantee preservation
-of unrelated half-installed packages; no custom foreign-state veto or additional
-package manager is planned. The O9c probe does not perform repair. The kernel
-suite remains developer-host evidence only. See
-[PLAN.md](../PLAN.md)
-for the full checkpoint record and the
-[test-fixture guide](../tests/fixtures/README.md) for scenario-level evidence
-and limits.
+The kernel lane contains bounded namespace scenarios for BusyBox mounts,
+fixed native views, readonly staged `/etc`, quota-limited tmpfs, retained Opt,
+device-node cleanup, native probes and the serialized dependency worker. The
+native-config-root scenario checks six staged files, including a binary CA bundle
+larger than 128 KiB, with native BusyBox `dd` and `cmp`. The probe scenarios use
+genuine host BusyBox/loader bytes and inspect descriptor and cleanup behavior;
+the dependency-worker composition uses synthetic package executables. Storage
+metadata is synthetic, so these fixtures do not prove router storage admission,
+physical block-device/UUID approval, real opkg installation, firmware ABI or
+router acceptance. They never copy or run firmware executables. See the
+[test-fixture guide](../tests/fixtures/README.md) for scenario details and
+limits.
 
 ### Linux CI
 
@@ -449,23 +384,19 @@ The separately named kernel step runs the explicit namespace proof afterward.
 Tool versions and kernel-case timings are printed in the job log.
 
 The workflow has read-only repository permissions and no router or provider
-credentials. Linux/BusyBox results complement the Mac checks; they do not prove
-Merlin firmware, 32-bit arithmetic or hardware acceptance. Current milestone
-counts and timings belong in the plan rather than this contributor workflow.
+credentials. Linux/BusyBox checks complement host checks; they do not prove
+Merlin firmware, 32-bit arithmetic or hardware acceptance.
 
-The initial CI scope is one Linux/BusyBox job. Matching Merlin's patched kernels
-or exercising older ARM/32-bit environments would need additional dedicated
-infrastructure and acceptance cases; a hosted runner's kernel is not a router
-kernel compatibility matrix.
+CI uses one Linux/BusyBox job. Its hosted kernel does not establish compatibility
+with Merlin's patched kernels or older ARM/32-bit environments.
 
 All contributions target `develop`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-At a major checkpoint, pass the local runner first, then push eligible code
-changes to the fork's `develop` branch. That push starts Actions independently;
-GitHub does not wait for a local process. An already-pushed change may therefore
-have a CI run before the local checks finish. Documentation-only pushes do not
-start this workflow, and rerunning local checks without a push does not trigger
-Actions. Pull requests use the same code filters and must target `develop`.
+Before publication, run the local checks. Eligible code changes pushed to the
+fork's `develop` branch start the GitHub Actions workflow; documentation-only
+changes do not. Pull requests use the same code filters and target `develop`.
+The repository guidance and [PLAN.md](../PLAN.md) define the full publication
+and validation cadence.
 
 ## 🧱 Test structure
 
@@ -475,9 +406,7 @@ supporting bootstrap and worker code is under `modules/helpers/`. Firmware hook
 templates are reserved for `modules/hooks/`, which currently contains no hooks.
 Files are sourced or invoked explicitly; there is no arbitrary directory
 autoloader. Runtime files are not compiled into a main executable. The Python
-compilation check validates developer tooling only. The planned installed entry
-is `/jffs/scripts/cfmgr.sh`, with modules and `catalog.txt` under
-`/jffs/addons/CFMgr.d/`.
+compilation check validates developer tooling only. The current development entry does not install runtime files on a router.
 
 | Path | Responsibility |
 | --- | --- |
@@ -549,27 +478,24 @@ Runtime behavior and bounded input contracts belong in the
 [architecture guide](architecture.md#bounded-parser-and-io-contracts); firmware
 and native-tool evidence belongs in the [compatibility guide](compatibility.md).
 The test map above points to the focused parser, storage, IO and lifecycle suites.
-Use those tests to check a changed contract, then run the full check at the
-required checkpoint. Keep native diagnostics separate: their usage and host
+Use focused tests to check a changed contract, then run the full check before
+publication as required by the repository workflow. Keep native diagnostics separate: their usage and host
 fixture command remain below.
 
 ### Native health report
 
 The local development entry supports `--help`, `--version`, `--diagnostic` and
-its identical alias `--doctor`. This first report tests native command
-capabilities; it is not an installable manager or a complete health check yet.
+its identical alias `--doctor`. This report tests native command capabilities; it is not an installable manager
+or a complete system health check.
 Exercise it through the isolated host fixtures:
 
 ```sh
 python -m pytest tests/test_diagnostic.py
 ```
 
-The planned report extends choice **0) Check status** with platform information,
-dependency inventory and command checks. The current stage reports feature
-status and Entware checks as unavailable until their safe readers/preflight are
-implemented. It does not read config, execute Entware programs, contact providers,
-install packages or start services. Do not deploy this development entry to the
-live router during host validation.
+The report includes feature-status and native command checks. Entware checks
+are reported unavailable; the command does not read configuration, execute
+Entware programs, contact providers, install packages or start services.
 
 Each result has a stable check ID, `PASS`/`FAIL`/`SKIP`, requirement scope,
 evidence level and concise reason. Availability, accepted options and a working
@@ -597,15 +523,12 @@ output. Cleanup only removes that owned directory, including on handled signals;
 colliding pre-existing paths are left alone. Native command paths and locale are
 fixed, and OpenSSL configuration/module overrides are isolated.
 
-The report is not yet connected to the guarded deadline controller. It tests
-finite local operations and leaves flock contention untested.
 The curl check verifies option parsing only; it makes no HTTPS request. Host
-fixtures and optional BusyBox-shell checks do not establish deployed-router
-acceptance. Future runtime changes must extend this inventory and its tests.
+fixtures and BusyBox-shell checks do not establish deployed-router acceptance.
 
 </details>
 
-## 🔎 Evidence and stage commits
+## 🔎 Evidence and validation
 
 Mark meaningful tests with the corresponding validation IDs from `PLAN.md`:
 
@@ -625,25 +548,23 @@ Develop on `develop`. For each coherent stage, review the affected contracts,
 implement and test normal/failure paths, run the relevant checks, and update the
 plan before committing. Explain changes to existing test expectations; preserve
 the behavior being tested. Do not mask safety failures with skips or `xfail`.
-Publish completed code, tests, documentation and requirements to `develop` at
-major checkpoints after the full local suite passes, then require green CI
-before the next set of batches. Keep the README's
+Publish reviewed code, tests, documentation and requirements to `develop` only
+after full local validation passes; wait for green CI before further code work. Keep the README's
 explicit active-development warning until router runtime acceptance is complete.
-Never include an unfinished worker's changes in a passing-stage commit. Stable
+Do not include unreviewed changes in a publication. Stable
 promotion and live deployment still require separate authorization.
 
-## 📦 Module catalog and forks
+## 📦 Source data and package reports
 
 The source-only `modules/lib/config_header.awk`, `catalog.awk` and
 `manifest.awk` validate bounded data formats. Callers explicitly load the
 functions-only `modules/lib/package_path.awk` helper before either catalog or
 manifest parser; no automatic helper loading is provided. Source-only native
-manifest, byte, tree, version and policy reports plus the D9 catalog request
-planner are described below; none is connected to a full settings reader or
-installed workflow. Full schema/defaults, config ownership, migration,
-activation and writes remain future work. There is no generated defaults file,
-config writer, shipped catalog or manifest, authenticated manifest acquisition,
-downloader or installer.
+manifest, byte, tree, version and policy reports, catalog request planner,
+and config-header and config-lifecycle reports are described below;
+none is connected to a full settings reader or installed workflow. These source-only reports do not implement full settings validation, defaults,
+configuration writes, authenticated acquisition or installation. No generated
+defaults file, catalog or manifest is shipped.
 
 ### Configuration-header projection
 
@@ -656,23 +577,23 @@ unique object keys, and exact producer footer counts. The root object must have
 exactly one top-level `schema` with the JSON number lexeme `1`, a canonical
 `generation` from 0 to
 2,147,483,647, and a boolean `developer` field. Nested keys do not substitute.
-Other fields remain structurally checked but opaque; their values and
-credentials are never returned or approved. Output is exactly
+Other fields remain structurally checked but opaque; credentials are never
+returned or approved. In header mode, output is exactly
 `config-header<TAB>1<TAB>GENERATION<TAB>BOOLEAN<LF>` followed by
 `end<TAB>BODY_BYTES<LF>`; it contains no other setting values.
 
 Invocation/size errors return 2 and malformed data returns 1; valid projection
 returns 0. The caller must still verify the JSON producer's status and exact
 consumer output/footer bytes because AWK may not report an output-write failure.
-This projection does not establish complete settings validity, credential
+Header mode does not establish complete settings validity, credential
 semantics, defaults or config ownership. The public/ordinary IO capture and
-measurement limits remain 65,536 bytes. D10 adds a fixed private JSON-token
+measurement limits remain 65,536 bytes. The report uses a fixed private JSON-token
 capture profile for this report; it does not widen arbitrary captures or
 provide a large-config reader.
 
-### Source-only config-header report
+### Config-header report
 
-D10 adds `cfmgr_config_header_report RAM_ROOT CONFIG JSON_PARSER HEADER_PARSER`
+The config-header API is `cfmgr_config_header_report RAM_ROOT CONFIG JSON_PARSER HEADER_PARSER`
 and fixture-only `cfmgr_config_header_test RAM_ROOT TOOLS CONFIG JSON_PARSER
 HEADER_PARSER`. Explicitly source trusted `io.sh`, `json.sh` and `config.sh`.
 The caller supplies a private immutable readable regular nonsymlink CONFIG
@@ -722,6 +643,59 @@ cfmgr_config_header_report "$RAM_ROOT" "$CONFIG" \
 The fixture API is only for developer tests. No CLI, defaults, live-config
 admission, persistence or installed lifecycle calls this report.
 
+### Config-lifecycle report
+
+`cfmgr_config_lifecycle_report RAM_ROOT CONFIG JSON_PARSER HEADER_PARSER`
+projects saved feature flags from the same caller-prepared private immutable
+CONFIG file. Its fixture API is
+`cfmgr_config_lifecycle_test RAM_ROOT TOOLS CONFIG JSON_PARSER HEADER_PARSER`.
+Explicitly source trusted `io.sh`, `json.sh` and `config.sh`; parser paths must
+be trusted absolute readable regular nonsymlink files. The API selects the
+fixed lifecycle projection internally, while the existing header API and its
+output remain unchanged.
+
+Direct AWK callers select `cfmgr_config_header_mode=lifecycle`; omitted,
+empty or literal `header` retains the header projection. Any other mode is an
+invocation error. The original token-size and producer checks still apply.
+
+Lifecycle mode requires the root `features` object and its `cloudflared`,
+`ddns` and `ip-sync` objects. Each needs explicit boolean `configured` and
+`enabled`; Cloudflared also needs boolean `maintenance_enabled` and string
+`mode`. Every enabled feature must be configured. Cloudflared `enabled=true`
+also requires `maintenance_enabled=true`. A configured Cloudflared feature
+uses mode `token` or `advanced`; an unconfigured one uses `none`. A
+maintenance-only setup can remain `configured=false` and `enabled=false`.
+Installed availability is separate, so missing binaries or storage do not
+erase saved intent.
+
+The report emits exactly five LF-terminated rows in this order:
+
+```text
+config-lifecycle<TAB>1<TAB>GENERATION<TAB>DEVELOPER
+cloudflared<TAB>CONFIGURED<TAB>ENABLED<TAB>MAINTENANCE_ENABLED<TAB>MODE
+ddns<TAB>CONFIGURED<TAB>ENABLED
+ip-sync<TAB>CONFIGURED<TAB>ENABLED
+end<TAB>BODY_BYTES
+```
+
+`DEVELOPER` and flag fields are `true` or `false`; generation is canonical
+from 0 through 2147483647. The owner checks exact row order and count, parser
+and producer status with empty stderr, original bytes, footer, final LF, EOF
+and cleanup before publishing. It returns saved header and feature state only;
+it returns no credential values or draft state and does not validate the full
+settings schema or establish installed availability or generation coherence.
+It grants no migration, installation, recovery-guard or write authority. It
+creates no defaults and writes no configuration.
+
+The report uses the same three captures and nine scratch artifacts as the
+header report: 209,152 accepted capture bytes including stderr and 808,960
+bytes of conservative file-limit allocation plus status records. The caller
+still owns private input acquisition and provenance. The fixture API is only
+for developer tests; no CLI or operational lifecycle consumes this report.
+Return codes and signal handling match the header API above. Use
+`cfmgr_config_lifecycle_report` in its shell example with a CONFIG containing
+the required feature fields.
+
 ### Source-catalog grammar
 
 `catalog.awk` is called with the helper loaded explicitly first. For example,
@@ -762,12 +736,10 @@ component is 1–100 ASCII alphanumeric/dot/underscore/hyphen characters startin
 with an alphanumeric, and the full path is at most 240 characters. Empty, dot
 and dot-dot components, absolute paths, traversal, ancestor/descendant
 collisions, and the reserved `modules/config` and `modules/catalog.txt` paths
-and their descendants are rejected. These keys name repository files, not
-installed destinations: a future owner maps `cfmgr.sh` to the scripts entry and
-strips the `modules/` prefix under the established installed manager directory.
+and their descendants are rejected. These keys name repository files; the parser
+does not map them to installed destinations.
 A URL's safe source path is validated separately and may differ from its
-destination key. The accepted catalog input rules and projection bytes are
-preserved after extracting the shared path functions.
+destination key.
 
 The parser preserves file-entry order and emits `catalog<TAB>1`,
 `repository<TAB>OWNER<TAB>REPO`, `branch<TAB>REF`, `manifest<TAB>URL`, then
@@ -791,9 +763,9 @@ cfmgr.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/cf
 modules/lib/common.sh: https://raw.githubusercontent.com/ExampleOwner/ExampleRepo/{commit}/modules/lib/common.sh
 ```
 
-### Source-only catalog request plan
+### Catalog request plan
 
-D9 adds `cfmgr_catalog_plan_report RAM_ROOT CATALOG MANIFEST PATH_HELPER
+The API is `cfmgr_catalog_plan_report RAM_ROOT CATALOG MANIFEST PATH_HELPER
 CATALOG_PARSER MANIFEST_PARSER COMMIT` and fixture-only
 `cfmgr_catalog_plan_test RAM_ROOT TOOLS CATALOG MANIFEST PATH_HELPER
 CATALOG_PARSER MANIFEST_PARSER COMMIT`. Source trusted `io.sh`, `package.sh`,
@@ -857,9 +829,8 @@ This report does not prove that the local manifest came from its pinned URL,
 that a named branch maps to the supplied commit, or that the repository is
 authentic. It does not verify acquired source bytes, establish an independently
 complete required profile or semantic compatibility, or grant installation
-permission. A matching catalog and local manifest remain inputs to a future
-trusted acquisition owner; D8 policy validation and installation are separate
-later gates. See [PLAN.md](../PLAN.md) for the D9 validation record.
+permission. A matching catalog and local manifest remain caller-supplied inputs;
+policy validation and installation are outside this report.
 
 ### Bounded package-manifest grammar
 
@@ -896,7 +867,7 @@ After validating the complete document, the parser emits `manifest<TAB>1`,
 records in input order as `file<TAB>DEST<TAB>SIZE<TAB>LOWER_SHA256<TAB>MODE`,
 and `end<TAB>FILE_COUNT<TAB>TOTAL_FILE_BYTES<TAB>BODY_BYTES`. The complete
 ledger is capped at 65,536 bytes. Invocation or declared-size errors return 2,
-malformed data returns 1, and valid input returns 0. Future consumers must
+malformed data returns 1, and valid input returns 0. Consumers must
 check status, exact framing/footer and output-write completion; AWK status alone
 does not prove a successful write.
 
@@ -906,14 +877,14 @@ package completeness, compare it with a catalog, or authorize compatibility,
 downgrade, activation or installation. A separate source-only verifier below
 checks declared file bytes under explicit caller prerequisites; it does not
 authenticate the manifest or prove directory completeness. The manifest must
-not contain the containing commit hash: that would create a self-reference. A
-future acquisition step must bind the manifest to a single already-resolved
+not contain the containing commit hash: that would create a self-reference. An
+acquisition caller must bind the manifest to a single already-resolved
 immutable revision.
 There is no generated root catalog, published manifest, downloader or
 installed-package mapper. The developer inventory below writes only to stdout;
 it does not publish or install the generated document.
 
-### Source-only native manifest report
+### Native manifest report
 
 `modules/lib/package.sh` composes the existing IO owner with the trusted path
 helper and manifest parser. Explicitly source trusted `modules/lib/io.sh`
@@ -958,14 +929,7 @@ authentication and does not prove package completeness, install anything or
 authorize a router workflow. No menu, catalog consumer or installer calls
 either API.
 
-The D4 focused gate passes 8 tests with one unavailable-BusyBox skip in 3.06s.
-The full two-worker local gate passes 1,837 tests with 38 explicit platform skips
-in 450.58s at source `d1bd99a`; all static checks pass. [Exact-head Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38047884781)
-passes all 1,875 tests with zero skips in 139.42s at `adf5f21`, six stripped-ash
-cases in 7.29s and all eleven kernel scenarios. This accepts 49%; Merlin
-runtime acceptance remains separate.
-
-### Source-only declared-file verifier
+### Declared-file verifier
 
 `modules/lib/package.sh` adds `cfmgr_package_verify_report RAM_ROOT SOURCE_ROOT
 MANIFEST PATH_HELPER PARSER` for production callers and the explicit
@@ -1043,24 +1007,11 @@ signalled.
 At most 262 scratch files support the maximum 128 declared members and their
 digest/hex pairs. Those pairs accept at most 12,288 bytes, in addition to the
 manifest-reader capture streams. The conservative portable file-allocation
-ceiling is 790,528 bytes plus status files; input and process memory are
-additional. The focused package run passes 14 tests with one unavailable-
-BusyBox skip in 6.87s; the slowest new grouped refusal takes 1.58s. Related
-closure/size runtime regressions pass 15 tests with one local BusyBox skip in
-27.46s. After a path-with-spaces fixture correction, its focused regressions
-pass 2 tests in 0.84s. The full local rerun passes 1,843 tests with 38
-explicit platform skips in 571.13s, including all static checks. Exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
-passes 1,881 tests with zero skips in 140.52s at `c9d531a`, six stripped-ash
-cases in 7.33s and all eleven kernel scenarios. The two existing Entware cases
-reviewed for local timing pass a focused follow-up in 23.09s; the CI suite is
-0.8% above the prior checkpoint. Runtime source `018a616` and fixture correction
-`1ae5160` are accepted at the 50% handoff. These checks do not establish Merlin
-runtime acceptance.
+ceiling is 790,528 bytes plus status files; input and process memory are additional.
 
-### Source-only complete-tree report
+### Complete-tree report
 
-D6 adds `cfmgr_package_tree_report RAM_ROOT SOURCE_ROOT
+The tree report API is `cfmgr_package_tree_report RAM_ROOT SOURCE_ROOT
 MANIFEST PATH_HELPER PARSER` and the fixture-only
 `cfmgr_package_tree_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST PATH_HELPER
 PARSER`. Explicitly source trusted `io.sh`, `native_digest.sh`, and
@@ -1085,11 +1036,11 @@ files, repository metadata and other development files are also refused. The
 64-KiB listing cap can reject an otherwise valid manifest with many deep
 directories. This API adds no traversal deadline.
 
-Only after namespace and all D5 size/SHA-256 checks succeed does the API emit
+Only after namespace and all declared size/SHA-256 checks succeed does the API emit
 the `package-tree<TAB>1` ledger, retaining manifest metadata and file records
 and recomputing the footer length. It uses the existing IO owner for all three
 captures and cleanup before report publication. The public entries preserve
-the D5 status classes: misuse returns 2, processing/input/tool/cleanup failure
+the declared-file status classes: misuse returns 2, processing/input/tool/cleanup failure
 returns 1, and owner HUP/INT/TERM return 129/130/143.
 
 With the same trusted path variables used by the verifier above, a developer
@@ -1112,8 +1063,7 @@ Merlin BusyBox source, recursive traversal does not distinguish a `readdir`
 error from EOF or report `closedir` failure, so the report cannot rule out an
 undeclared path silently omitted by a traversal error. Consequently it is an
 additional check under the healthy private immutable-tree premise, not source
-acquisition or authority to adopt an arbitrary existing tree. A future owner
-must create exactly the accepted inventory. The API also does not authenticate
+acquisition or authority to adopt an arbitrary existing tree. The caller must create exactly the accepted inventory. The API also does not authenticate
 source, check installed permissions/ownership, establish semantic module/API
 or version compatibility, acquire/download/install/activate code, or prove
 Merlin runtime acceptance.
@@ -1121,19 +1071,12 @@ Merlin runtime acceptance.
 The three captures use nine scratch files; per-file digest and hex captures
 add at most 256, for 265 total. Accepted capture streams are bounded to 208,896
 bytes plus 12,288 digest/hex bytes; conservative file allocation is at most
-1,054,720 bytes plus status files. Caller input, shell/producer memory, and
-filesystem traversal remain additional. Runtime and test-cost follow-up source
-`5f83f6f` passes the accepted 51% full local checkpoint: 1,848 tests and 38
-explicit platform skips in 500.19s, with all static checks green. Published
-head `28f8e1d` passes exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576):
-1,886 tests with zero skips in 121.54s, six stripped-ash cases in 7.13s and
-all eleven kernel scenarios in 31.24s. This is host/CI evidence; router runtime
-acceptance remains separate.
+1,054,720 bytes plus status files. Caller input, shell/producer memory and
+filesystem traversal remain additional.
 
-### Source-only entry-version report
+### Entry-version report
 
-The accepted D7 API adds `cfmgr_package_version_report RAM_ROOT SOURCE_ROOT
+The entry-version API is `cfmgr_package_version_report RAM_ROOT SOURCE_ROOT
 MANIFEST PATH_HELPER MANIFEST_PARSER ENTRY_PARSER` and the fixture-only
 `cfmgr_package_version_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST PATH_HELPER
 MANIFEST_PARSER ENTRY_PARSER`. Explicitly source trusted `io.sh`,
@@ -1175,7 +1118,7 @@ mismatch returns 1; success returns 0 with no refusal output. The consumer
 still checks producer status, empty stderr, exact output bytes, both lines,
 the footer and EOF; AWK status alone does not prove a complete output write.
 
-The source-only consumer performs D6's manifest read, strict observed-tree
+The source-only consumer performs the manifest read, strict observed-tree
 comparison and every declared size/hash check once within the same IO owner.
 It then independently
 measures `cfmgr.sh`, requires its size to be 1 MiB or less, and captures the
@@ -1189,19 +1132,14 @@ agreement. Required-module policy, semantic module/API compatibility,
 no-downgrade checks, source authentication/acquisition, installed permissions,
 activation and router acceptance remain separate gates.
 
-The consumer preserves D6's status classes: API/preflight misuse returns 2,
+The consumer preserves the complete-tree report's status classes: API/preflight misuse returns 2,
 ordinary parser, mismatch, tool, input or cleanup failure returns 1, and owner
 HUP/INT/TERM return 129/130/143. A successfully captured parser status 2 with
 empty stderr remains 2; other nonzero parser statuses or any parser stderr map
 to 1.
 
-The four captures use twelve scratch files; at most 256 digest/hex files bring
-the maximum to 268. Accepted capture streams are bounded to 213,248 bytes,
-plus 12,288 digest/hex bytes; conservative file allocation is at most
-1,073,152 bytes plus status files. Caller input and shell/producer memory are
-additional. D7 is included in the accepted 52% host/Linux checkpoint; see
-[PLAN.md](../PLAN.md) for its validation record. This is not router runtime
-acceptance.
+Its four captures have the same resource bounds as the
+[package-policy report](#package-policy-report) below.
 
 With the same trusted path variables used above, a developer caller invokes
 the production entry like this:
@@ -1219,9 +1157,9 @@ cfmgr_package_version_report "$RAM_ROOT" "$SOURCE_ROOT" "$MANIFEST" \
 Check both the function status and complete `package-version` ledger. The
 fixture API is `cfmgr_package_version_test` and is only for developer tests.
 
-### Source-only package-policy report
+### Package-policy report
 
-D8 adds `cfmgr_package_policy_report RAM_ROOT SOURCE_ROOT MANIFEST PATH_HELPER
+The package-policy API is `cfmgr_package_policy_report RAM_ROOT SOURCE_ROOT MANIFEST PATH_HELPER
 MANIFEST_PARSER ENTRY_PARSER EXPECTED_VERSION INSTALLED_VERSION REQUIREMENTS`
 and fixture-only `cfmgr_package_policy_test RAM_ROOT TOOLS SOURCE_ROOT
 MANIFEST PATH_HELPER MANIFEST_PARSER ENTRY_PARSER EXPECTED_VERSION
@@ -1229,8 +1167,8 @@ INSTALLED_VERSION REQUIREMENTS`. Source trusted `common.sh`, `io.sh`,
 `native_digest.sh` and `package.sh` explicitly. The API is not wired to a
 catalog, acquisition, installer or activation path.
 
-The report performs D6's manifest, observed-tree and declared-byte checks and
-D7's entry/manifest literal-version check once within the same IO owner. It
+The report performs the manifest, observed-tree and declared-byte checks and
+the entry/manifest literal-version check once within the same IO owner. It
 also compares the caller's expected version with the installed floor using
 `cfmgr_version_compare`. Both versions use its canonical three-component,
 at-most-128-byte format. Malformed version arguments or unavailable/invalid comparator
@@ -1268,8 +1206,7 @@ install code, or authorize activation. The same four captures use twelve
 scratch files; with at most 256 digest/hex files, the maximum is 268.
 Accepted capture streams are bounded to 213,248 bytes plus 12,288 digest/hex
 bytes; conservative file allocation is at most 1,073,152 bytes plus status
-files. Caller input and process memory are additional. D8 validation is
-tracked in [PLAN.md](../PLAN.md).
+files. Caller input and process memory are additional.
 
 With prepared inputs and the same trusted path variables, a developer caller
 can invoke the library API as follows:
@@ -1317,45 +1254,13 @@ excluded module entries are empty, regular, nonexecutable `.gitkeep` blobs.
 Unsafe or reserved destinations, unsupported Git object types or modes,
 invalid package limits, and a missing or nonexecutable entry are errors. The
 tool applies the same literal version convention described in the
-[entry-version report](#source-only-entry-version-report), including global
+[entry-version report](#entry-version-report), including global
 NUL and ASCII 28 refusal. It validates the complete generated document with
 the trusted parsers in the tool's current checkout and never sources or runs
 the selected snapshot's files.
 
-This deterministic local inventory is not origin or release authentication,
-trusted acquisition, proof of package completeness, verification of installed
-file bytes or ownership, compatibility approval, activation or installation.
-Consumers must separately bind it to an immutable revision and establish trust,
-acquisition, completeness, lifecycle and router acceptance. The source-only
-verifier above checks declared bytes only after the caller has prepared its
-bounded input; it does not authenticate that input. The combined
-generator/manifest/catalog focused gate passes 49 tests with two local
-missing-BusyBox skips in 46.80s; the generator
-tests pass 10 cases in 7.95s. The resumed full local gate passes 1,829 tests with 37 explicit platform
-skips in 527.97s using two workers, including all static checks. Exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095)
-passes all 1,866 tests with zero skips in 138.97s at exact head `763c410`,
-six stripped-ash checks in 7.25s and all eleven kernel scenarios.
-
-The accepted 47% D2 manifest/catalog focused gate passes 39 tests with two
-explicit missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s.
-Source `68fa3ed` passes the full serial Mac check: 1,819 tests with 37 explicit
-platform skips in 1,159.49s. Exact head
-`76fd14677ec925d6dfba495f828fb09a46867200` passes
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996):
-1,856 tests with zero skips in 116.52s, six stripped-ash checks in 7.07s and
-all eleven kernel scenarios. Native-root, native-probe and native-dependencies
-take 6.33s, 8.88s and 9.52s; namespace execution totals 29.53s. The 47%
-results remain historical parser evidence; the accepted 48% developer
-inventory checkpoint adds the host command described above.
-
-Cost review is complete. An unchanged integration hit its 60s deadline in a
-Mac timing follow-up, then passed its isolated retry in 53.69s under the same
-bound; CI passes it in 6.86s. Elevated Mac host load, the retained failure and
-the Linux suite's 20.4% timing increase are recorded in PLAN.md. New manifest
-cases are absent from both full runs' slowest-20 lists. No assertions,
-timeouts or source changed, and no second exhaustive run was made solely
-for timing.
+This Git inventory does not authenticate source, establish an independently
+required complete package, verify installed files or authorize installation.
 
 The following complete manifest is fictional and uses placeholder hashes; file
 sizes and digests do not describe real repository files:
@@ -1369,21 +1274,6 @@ cfmgr.sh: 123 0000000000000000000000000000000000000000000000000000000000000000 0
 modules/lib/common.sh: 456 1111111111111111111111111111111111111111111111111111111111111111 0644
 ```
 
-The preceding 46% checkpoint's focused parser checks pass 54 tests with two
-explicit missing-BusyBox skips in 6.38s; the slowest case took 1.77s. Source
-`4fd962d` passes the full serial local gate: 1,812 tests with 36 explicit platform
-skips in 688.43s. Exact commit `4a3ae58708d77a484906becac12de2a99150b879` passes
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37997220279):
-all 1,848 tests with zero skips in 96.81s, six stripped-ash checks in 6.86s and
-all eleven kernel scenarios. The two new actual-BusyBox parser cases run in CI.
-Native-root, native-probe and native-dependencies take 5.59s, 8.02s and 8.57s;
-namespace execution totals 26.47s, with unchanged 15-second scenario bounds.
-These are host checks, separate from Merlin acceptance.
-
-Future developer-mode branch/commit changes must preserve existing router
-catalog bytes; default catalog acquisition remains limited to a genuinely missing file. See the
-[architecture contract](architecture.md#-modules-and-forks) and [PLAN.md](../PLAN.md).
-
 ## 🧭 Compatibility and documentation
 
 Check [compatibility evidence](compatibility.md) and [PLAN.md](../PLAN.md) before
@@ -1394,8 +1284,8 @@ ignored `.tmp/firmware-audit/INDEX.md` rather than repeating extraction; never
 commit its archives, images, extracted data, certificates or raw reports.
 
 Dependency backend tests and policy are described above; actual startup,
-install/update/reinstall and worker lifecycle wiring remain separate stages.
+install/update/reinstall and worker lifecycle wiring are not provided by the current entry.
 Router access stays read-only during development. Host checks and CI do not
 authorize installation, service changes, provider writes or router acceptance.
-At milestones, review all guides and record intentionally unchanged files in the
+At major documentation reviews, record intentionally unchanged guides in the
 plan.

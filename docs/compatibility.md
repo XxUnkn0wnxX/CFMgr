@@ -4,7 +4,7 @@
 
 ![Runtime](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
 ![Evidence](https://img.shields.io/badge/evidence-source_%2B_read--only_probes-blue)
-![Acceptance](https://img.shields.io/badge/runtime_acceptance-pending-orange)
+![Acceptance](https://img.shields.io/badge/runtime_acceptance-not_claimed-lightgrey)
 
 CFMgr aims to support Merlin by the capabilities each feature needs. **No
 firmware is declared fully supported yet.** This evidence snapshot was collected
@@ -63,8 +63,8 @@ are copied and compared as opaque data, including binary/NUL bytes. The image
 copying does not establish NSS behavior, OpenSSL policy, certificate trust or
 successful network/TLS use. Older root APIs keep the two-file hosts/resolver
 stager. This internal composition adds no payload, opkg or operational worker
-path. Full local and Linux/BusyBox validation pass for this composition;
-router runtime acceptance remains separate.
+path. Host and Linux fixtures describe the source-level behavior; they do not
+establish router runtime acceptance.
 
 The ignored local cache at `.tmp/firmware-audit/INDEX.md` records the audit
 method, provenance, selected paths and evidence limits. Read that index before
@@ -76,7 +76,7 @@ are listed above and in the local provenance record.
 
 The coverage map records 33 explicit native tool names per sample and 58 pinned
 source files, including `ln`/`chmod` and the current closure/supervision
-consumers. The cached integrity/static review passed in 3.755 seconds. Static
+consumers. Static
 file/link graphs and source/config inspection do not establish loader behavior,
 TLS or trust, NSS/socket readiness, hook execution, installed router state or
 compatibility across every model/build.
@@ -122,8 +122,8 @@ loop-option description. Older capability selects `umount -D -n PATH`; newer
 capability selects `umount -n PATH`. Both use ordinary unmount, suppress mtab
 writes and avoid loop-device release. Unknown, conflicting or incomplete help
 fails before any bind; an unmount failure never triggers an alternate command.
-This supports the two recognized capability profiles without assuming all future
-firmware is compatible. Help-disabled builds and changed descriptions require
+This supports the two recognized capability profiles without assuming every
+firmware build is compatible. Help-disabled builds and changed descriptions require
 review. Kernel, ABI, storage and full router acceptance remain separate gates.
 
 ## Native worker and execution-root evidence
@@ -131,9 +131,9 @@ review. Kernel, ABI, storage and full router acceptance remain separate gates.
 The matched native cron source creates a process group before launching a job.
 CFMgr independently verifies the actual original shell's PID/group identity and
 uses a native guarded watchdog with cooperative completion. Cancellation signals
-its current group, avoiding stored numeric PID reuse. Linux/BusyBox tests prove
-those internal paths; operational cron dispatch and router acceptance are still
-pending. A blocked kernel task or externally stopped watchdog cannot be given an
+its current group, avoiding stored numeric PID reuse. Linux/BusyBox fixtures exercise
+those internal paths; they do not prove operational cron dispatch or router
+acceptance. A blocked kernel task or externally stopped watchdog cannot be given an
 unconditional userspace termination guarantee.
 
 A brief read-only probe on 9 October found canonical `/bin`, `/sbin`, `/lib` and
@@ -151,177 +151,65 @@ identities. The native-data variant stages `/etc/hosts` and
 `/etc/resolv.conf` as opaque, exact bytes of at most 65,536 bytes each before
 any bind; the base readonly root then protects the staged files against writes.
 It does not parse or test resolver readiness. Host fixtures cover byte handling
-and failure retention. The 36% native-tmp variant adds one checked writable
+and failure retention. The native-tmp variant adds one checked writable
 tmpfs child with canonical size limits of 64–65,536 KiB in multiples of 64 and
 8–8,192 inodes. Its mount uses `rw,nosuid,nodev,exec`, `mode=700`, and the exact
 requested size/inode ceilings; it creates an empty mode-`0700`
 `/tmp/cfmgr-home` while leaving the observer's `HOME` unchanged. These ceilings
 limit tmpfs use but do not reserve RAM or establish available memory headroom.
 
-The earlier accepted 37% snapshot passed the full local suite (1,567 tests, 29
-explicit platform skips), Linux/BusyBox CI (1,596 tests, zero skips), six
-supplemental stripped-ash checks and its nine kernel scenarios. Exact results
-and the fixture setup repair are recorded in [PLAN.md](../PLAN.md). Those
-results predate the fixed native-device extension below.
+The retained-Opt composition uses a checked writable source mounted through
+FD9 and removes Opt before exposing an exact empty readonly fallback. Its kernel
+fixture verifies a bounded anchored write; the fixture's FD8 storage metadata is
+synthetic, so it does not prove physical block-device or UUID approval.
 
-The retained-Opt composition uses the ninth scenario. Its host tests cover
-success, busy-Opt cleanup refusal and malformed API rejection, plus cheap
-storage-admission boundary cases; the upgraded full-capture BusyBox consumer is
-distinct from host mirrors. The kernel proof checks a real writable source
-mounted through FD9, a bounded anchored write reaching that source, and
-Opt-first teardown followed by an exact empty readonly fallback before tmpfs
-removal. FD8 is a regular fixture file with synthetic metadata observation, so
-the scenario does not prove physical block-device or UUID approval.
+The fixed native-device layer provides only private-image `/dev/null` (1:3) and
+`/dev/urandom` (1:9), mounted as read-only, `nosuid`, `noexec`, device-enabled
+children. The base-root `nodev` fallback refuses new opens after child unmount;
+it does not revoke already-open descriptors. Before/after inode checks are not
+a continuous FD lease, so the private source image must remain frozen.
 
-The fixed native-device layer adds only private-image `/dev/null` (1:3) and
-`/dev/urandom` (1:9), mounted as separate read-only, `nosuid`, `noexec`
-device-enabled children. The base-root `nodev` fallback refuses new opens after
-unmount, but does not revoke already-open descriptors; before/after inode
-checks are not a continuous FD lease, so the private source image must remain
-frozen. The same ninth kernel scenario now witnesses a real BusyBox FD5 making
-unmount busy, closes it to allow cleanup, and checks new-open refusal. Host busy
-faults separately cover runtime guard retention. The full Mac suite and
-[40% Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37950451858)
-pass, including six stripped-ash checks and all nine kernel scenarios with the
-extended configuration composition. Exact commits, counts and timings are
-recorded in [PLAN.md](../PLAN.md).
+The native-config-root entry stages six fixed files before binding: hosts,
+resolver, NSS, wget, OpenSSL configuration and CA certificates. It copies bytes
+without validating resolver, TLS, NSS or loader semantics. The fixed native
+shell probe runs one trusted synchronous BusyBox command with a clean
+environment and a checked root lease; the separate opkg version probe runs
+only `/opt/bin/opkg --version` and treats the expected version as comparison
+data. Neither grants general executable, network or package-install authority.
 
-Neither host nor Linux namespace evidence establishes router acceptance. The
-internal native-config-root entry stages six fixed files, but does not establish
-their runtime semantics or provide complete loader/helper/ELF, TLS or NSS
-closure and ordinary opkg execution. The separate `cfmgr_native_shell_probe`
-permits one fixed synchronous native shell/BusyBox invocation from the checked
-native-config callback. It supplies a clean child environment, omits loader
-cache/preload files, and keeps the root descriptor through chroot before closing
-it inside. Host tests cover its admission, capture and failure rules; the Linux
-fixture adds genuine host-native dynamic BusyBox execution and descriptor
-witnesses. See [PLAN.md](../PLAN.md) for the current checkpoint result. This
-does not establish ARM32/native firmware execution or NSS/TLS/config semantics.
-The observer's own `HOME` remains unchanged, and this is not an operational
-worker. No mount or chroot was
-executed on the router for these checks.
+`cfmgr_worker_native_probe` composes the fixed shell check with process-group
+deadline supervision, retained-storage descriptors and checked root/IO cleanup.
+Its ordinary result is published only after exact completion evidence; uncertain
+cleanup remains guarded. Storage acquisition in the developer kernel fixture is
+synthetic, so outer storage IO, block-device/UUID admission, ARM32 execution and
+router acceptance remain unproved.
 
-The O9b source snapshot adds `cfmgr_worker_native_probe`, which composes the
-fixed shell check with the existing native process-group deadline, retained
-storage descriptors and checked native-config-root cleanup. It returns an
-ordinary probe result only after root and outer storage/IO cleanup both report
-exact success; uncertain or inconsistent completion remains guarded. This
-source-only helper does not install cron, launch opkg or establish an operational
-dependency worker. Its tenth Linux scenario uses a synthetic storage-acquisition
-boundary while exercising real deadline, root/chroot and cleanup behavior; it
-does not prove physical storage or UUID admission, actual outer storage IO
-acquisition, ARM32 firmware execution or router acceptance. The O9b 42%
-[Linux/BusyBox gate](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37973995819)
-is retained as the historical worker-composition baseline. Synthetic storage
-acquisition still leaves physical block-device/UUID admission and outer storage
-IO acquisition unproved. See the
-[fixture guide](../tests/fixtures/README.md) and [PLAN.md](../PLAN.md).
-
-The O9c extension adds `cfmgr_native_opkg_probe ROOT EXPECTED_VERSION` beside
-the unchanged fixed shell probe. It checks an independently approved 1–128 byte
-printable-ASCII version against the exact `opkg --version` response; the version
-is comparison data only and is never passed to the child. The new
-`execution/opkg-version` captures and ledger are separate from the shell-probe
-evidence. A successful string check does not establish opkg provenance: the
-caller must already trust the stable installed static code/profile and exclude
-conflicting writers. The source-only worker composition still invokes only its
-fixed shell probe; no operational dependency worker or package installation was
-added.
-
-The ninth Linux kernel scenario now also invokes a trusted synthetic static
-opkg stand-in to witness the fixed command, clean environment and working
-directory, closed inherited descriptors, and retained Opt marker read. It does
-not run Entware opkg or prove ARM, router, NSS or TLS behavior. All ten scenarios
-passed the O9c 43% gate at candidate `d0a04b3a6d2e57464803039255bccafc97d0e79c`
-in [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/37977771431).
-CI exercised the actual BusyBox grammar representative. Full local, CI and
-focused test counts are recorded in [development checks](development.md#-run-checks)
-and [PLAN.md](../PLAN.md). These are synthetic host/Linux proofs, not real opkg
-installation, executable provenance, Entware/ARM ABI or Merlin acceptance.
-The fixed version check in this O9c snapshot did not add repair behavior; the
-42% gate cited above remains historical O9b evidence.
-
-The O10a `cfmgr_native_dependencies ROOT BOOTSTRAP_SOURCE ACTION SCOPE
-LOCK_PROVIDER` helper now provides a fixed source-only handoff to the bundled
-normal repair or explicit selected-reinstall backend. Its trusted source,
-admitted retained-Opt/native-config root, storage authority, group/deadline and
-checked teardown remain caller prerequisites; source-path bounds do not prove
-code provenance. It preserves opkg's configured feeds, package/dependency
-resolution, locking, scratch-directory selection and normal configure-unpacked
-behavior. The existing backend clears `TMPDIR`, but opkg configuration can
-still select another `tmp_dir`; the private tmp quota is not a bound on all
-package scratch writes. Normal repair skips healthy requirements and installs
-only missing or unusable mapped tools. Selected force reinstall remains
-separate. CFMgr serializes only its own workers and does not promise a global
-external-writer exclusion or preservation of unrelated half-installed
-packages.
-
-The host consumer tests execute the actual bundled backend with inert opkg and
-capability stand-ins, including a 32-KiB package-file write without a tiny
-launcher file limit. The ninth Linux scenario now also runs a trusted synthetic
-static backend stand-in through the native root. The accepted 44% checkpoint
-passes the full local check (1,734 tests, 33 explicit platform skips) and
-Linux/BusyBox (1,767 tests, no skips); all ten kernel scenarios pass, including
-native-root in 7.55s. The ninth scenario's opkg and capability programs and its
-storage metadata are synthetic. These checks do not establish real opkg
-provenance, router execution or firmware ABI. This 44% snapshot added no menu,
-installer or router-side package operation. Exact results are in [PLAN.md](../PLAN.md).
-
-The accepted 45% checkpoint adds a source-only bounded dependency worker. It requires
-native process-group and lock/deadline behavior, a trusted fixed runtime bundle,
-and caller-supplied retained-storage authority. The new lifecycle also resolves
-native `rmdir` through the finite IO tool map; this host-only implementation has not
-verified that applet on Merlin. It preserves normal configured opkg scratch and
-package-configuration behavior. The eleventh Linux fixture combines the worker
-with host locking, deadline, retained-Opt/root cleanup and synthetic opkg repair.
-It passes in 8.86s; the full Linux/BusyBox suite passes all 1,792 tests with no
-skips. This establishes the controlled host composition, while Merlin router,
-ARM32 ABI, installed opkg provenance and firmware acceptance remain unproved.
-
-The preceding 46% checkpoint added standalone AWK parsers for a config-header
-projection and source-catalog grammar. The full local gate passes 1,812 tests
-with 36 explicit platform skips in 688.43s. Exact Linux/BusyBox CI passes all
-1,848 tests in 96.81s, including the two new actual-BusyBox parser cases, and
-all eleven unchanged kernel scenarios. This preserves the earlier worker
-composition evidence. Matching Merlin awk behavior, full config validity and
-an integrated config/catalog runtime path remain unproved.
-
-The accepted 47% checkpoint adds a shared source-relative package-path helper
-and a bounded manifest grammar parser. Full local checks pass 1,819 tests
-with 37 explicit platform skips. Exact
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
-passes 1,856 tests with zero skips and all eleven kernel scenarios. The accepted
-47% parser checkpoint is followed by the accepted 48% host inventory tool,
-with full local and [exact Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095) passing. The manifest declares a version,
-config-schema and package-api value, plus file paths, sizes, SHA-256 text and modes; successful parsing validates
-those fields as data only. It does not prove that declared bytes match, that
-the inventory is complete or trusted, that the declared APIs are compatible,
-or that installation is safe. Matching Merlin AWK behavior for these parser
-grammars remains unproved.
+The source-only dependency handoff accepts finite repair/reinstall, scope and
+lock selectors. It runs the existing Entware backend with configured feeds,
+package resolution, locking and package configuration. Normal repair installs
+only missing or unusable mapped tools; selected force reinstall remains
+separate. CFMgr serializes only its own workers. A configured opkg `tmp_dir` can
+still direct package scratch writes outside a private tmpfs quota. Its lock does
+not exclude external writers or guarantee that unrelated half-installed packages
+remain untouched. The serialized dependency worker requires native process-group
+admission, lock/deadline support and the fixed `rmdir` capability. Developer
+fixtures use inert opkg/capability programs and synthetic storage metadata; they
+do not establish installed-code provenance, real package execution, firmware
+ABI or router acceptance. See [PLAN.md](../PLAN.md) for validation records.
 
 ## 🧩 Qualify each feature separately
 
 | Feature | Required capability | Current boundary |
 | --- | --- | --- |
-| Core manager, DDNS, IP-Sync | POSIX shell, verified HTTPS/CA trust, bounded IO/locking, JFFS/RAM state and usable shared Entware prerequisites | Native recovery diagnostics remain available when prerequisites fail. Complete runtime acceptance remains pending. |
-| Current storage-observation profile | Inherited descriptor mount IDs, native numeric device listing and bounded hexdump; dynamic-revision ext2/ext3/ext4 primary superblock | Read-only foundation only. Other filesystem profiles, writability and storage-loss containment remain pending. |
-| Integrity verification | Required `coreutils-sha256sum`; native OpenSSL retained for bootstrap and edge fallback | Both produced the same synthetic digest on the current router. Fallback does not waive failed required-package installation. |
-| Source-only dependency worker | Native process-group and lock/deadline behavior, retained storage/root and fixed `rmdir` lookup | Accepted 45% host/Linux composition; no operational entry wiring or Merlin compatibility is claimed. |
-| Config-header/catalog parsers | AWK, bounded immutable input and exact status/ledger checks | Data-only grammar and framing checks; the native catalog planner is listed below. Full config reading, source trust and Merlin runtime acceptance remain pending. |
-| Shared package paths and manifest parser | Functions-only AWK helper explicitly loaded before the manifest parser | Accepted 47% host/BusyBox data-format proof; declared data checks only, with no trusted acquisition, file hashing, completeness or Merlin runtime proof. |
-| Developer package inventory | Developer-host Python 3.11+ and local Git objects | Accepted 48%; host tool only, not a router dependency or Merlin compatibility claim. Trust and installation gates remain open. |
-| D4 native manifest report | BusyBox-compatible POSIX `sh`, existing IO owner, native `cat`/AWK, trusted immutable files | Accepted 49% host and Linux/BusyBox evidence; no deadline, authentication or Merlin runtime acceptance is established. |
-| D5 declared-file verifier | BusyBox-compatible POSIX `sh`, bounded pre-acquired immutable source, native `wc`, OpenSSL and `hexdump` | Focused package checks pass (14 passed /1 local BusyBox skip in 6.87s); path-with-spaces fixture regressions pass 2/2 in 0.84s. Accepted 50%: full local passes 1,843 tests /38 platform skips in 571.13s; exact-head Linux/BusyBox CI passes 1,881 tests /zero skips, six stripped-ash cases and all eleven kernel scenarios. Missing production `hexdump` fails closed. No source authentication, directory completeness, permission check or Merlin acceptance is established. |
-| D6 complete prepared-tree report | BusyBox-compatible POSIX `sh`, native `find`, the existing IO owner, native `wc`, OpenSSL and `hexdump` | Accepted 51% source-tree check compares a manifest-derived expected namespace and declared bytes. Full local passes 1,848 tests /38 platform skips in 500.19s; exact-head [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576) passes 1,886 tests /zero skips, six stripped-ash checks in 7.13s and all eleven kernel scenarios in 31.24s. Matched Merlin traversal can silently omit paths on `readdir` error, so caller-owned healthy acquisition remains required. No authentication, semantic compatibility, installed-permission or router acceptance claim. |
-| D7 entry-version report | D6 tree/digest capabilities plus BusyBox-compatible POSIX `sh`/AWK and bounded immutable entry source | Accepted in the 52% host/Linux checkpoint. Its parser reads `cfmgr.sh` as data and checks literal equality with the manifest. It does not establish required-module/API semantics, no-downgrade policy, source trust/acquisition, installed permissions, activation or router acceptance. |
-| D8 supplied package policy | D6/D7 package checks, existing native size observation and `cfmgr_version_compare` | The report checks a caller-selected installed-version floor and exact manifest destination/mode requirements. Requirements-file trust and complete-profile selection stay with the caller; source authenticity, semantic compatibility, acquisition, installed permissions, activation and router acceptance remain unproved. See [PLAN.md](../PLAN.md) for the validation record. |
-| D9 catalog request plan | BusyBox-compatible POSIX `sh`, existing IO owner, native `cat`/AWK and trusted path/manifest parsers | Source-only join maps a parsed catalog to a separately supplied manifest by destination and pins URLs to a caller-provided commit. It does not prove the manifest came from that URL, branch-to-commit correspondence, repository authenticity, complete profile, source-byte validity or installation. See [PLAN.md](../PLAN.md) for validation. |
-| D10 config-header report | BusyBox-compatible POSIX `sh`, native `cat`/AWK, JSON and header parsers, existing IO owner | Reads private JSON up to 65,536 bytes and uses a fixed 131,072-byte token-output profile to return only schema marker, generation and developer flag. It does not validate all settings or credentials, inspect installed configuration, provide defaults/persistence or establish router acceptance. |
-| Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
-| Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
-| Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |
+| Native diagnostic | POSIX shell and native command checks | Read-only host report; it does not load Entware, read configuration, install packages or contact providers. |
+| Storage observation | Descriptor mount IDs, native numeric device listing, bounded hexdump and dynamic-revision ext2/ext3/ext4 primary-superblock layout | Read-only observation only; not persistent identity, writability or storage-loss containment. |
+| Integrity verification | `coreutils-sha256sum`; native OpenSSL fallback | Both can compare synthetic digests; fallback does not waive a failed required-package installation. |
+| Config header and lifecycle reports | BusyBox-compatible POSIX `sh`, native `cat`/AWK, JSON/header parsers and the IO owner | Caller-prepared immutable data only; reports may read raw configuration input but never return or approve credential values, validate full settings or inspect installed availability. |
+| Source catalog plan | Existing IO owner, native `cat`/AWK and trusted path/manifest parsers | Joins a parsed catalog to a separately supplied manifest and pins URLs to a supplied commit. It does not prove URL provenance, branch mapping, source authenticity, completeness or installation. |
+| Package manifest and verification reports | BusyBox-compatible POSIX `sh`, AWK, native `find`, `wc`, OpenSSL and `hexdump` | Parse declared records, verify declared bytes, compare the observed tree, check entry-version equality and apply a supplied policy. No source acquisition, authentication, complete-profile approval, installed permissions or activation authority. |
+| Developer package inventory | Developer-host Python 3.11+ and local Git objects | Reads one explicit local commit; not a router dependency or a source-authentication claim. |
 
-For D6, matched `3004.388.12_2` and `3006.102.9` source
+Matched `3004.388.12_2` and `3006.102.9` source
 configurations enable BusyBox `find`, and the retained representative image
 inventories contain `/usr/bin/find` as a link to BusyBox. The pinned
 [3004 `find` implementation](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/findutils/find.c)
@@ -330,28 +218,28 @@ default. Its
 [recursive traversal implementation](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/libbb/recursive_action.c)
 does not distinguish `readdir` error from EOF or report `closedir` failure.
 This is matched source/image capability evidence only; it does not establish
-the API's full checkpoint result or runtime acceptance on a router.
+complete runtime acceptance on a router.
 
-For D7, matched Merlin BusyBox 1.25.1 AWK source supports the parser's
+Matched Merlin BusyBox 1.25.1 AWK source supports the parser's
 record-separator and byte-length framing under the C locale. This source review
 is distinct from host-AWK and actual-BusyBox developer tests, and neither is
-router runtime acceptance. D8 reuses this parser plus the existing version
+router runtime acceptance. The supplied package-policy report reuses this parser plus the existing version
 comparator and native size helper; its structural-policy checks add no new
 firmware applet requirement.
 
-For example, the inspected Cloudflared `2026.10.0` packaging uses Go 1.26,
-provides ARM/ARMHF/ARM64 and x86 builds, and has no MIPS asset. Go requires Linux
-3.2 or newer. The sampled legacy MIPS kernel is 2.6.22.19 and RT-AC68U's is
-2.6.36.4. Those samples cannot qualify for that modern binary merely because
-Entware works. Native DDNS/IP-Sync eligibility is evaluated separately.
+The inspected Cloudflared `2026.10.0` release metadata lists ARM/ARMHF/ARM64
+and x86 assets but no MIPS asset. Go 1.26 requires Linux 3.2 or newer; the
+sampled legacy MIPS kernel is 2.6.22.19 and RT-AC68U's is 2.6.36.4. These are
+external asset and kernel facts, not a claim that CFMgr installs or manages
+Cloudflared.
 [Cloudflared packaging][cf-packages] · [Go version][cf-go] · [Go platform minimums][go-min]
 
 The current storage observer needs `mnt_id` in proc descriptor information.
 Mainline Linux added this in 3.15; older vendor kernels need a verified backport
 or a separate observation profile. An Entware feed name such as `k3.10` does not
 establish this capability. The measured router exposes it, and lightweight
-native hexdump/device-listing probes passed; assembled CFMgr runtime acceptance
-is still pending. [Linux 3.15 descriptor information](https://github.com/torvalds/linux/blob/v3.15/fs/proc/fd.c#L47).
+native hexdump/device-listing probes confirm the required applets; CFMgr runtime
+acceptance remains unverified. [Linux 3.15 descriptor information](https://github.com/torvalds/linux/blob/v3.15/fs/proc/fd.c#L47).
 
 ## 🔧 Rules for native implementation
 
@@ -404,20 +292,19 @@ an old 2.6.22 router. [Entware support matrix][entware-support] ·
 | `jq` | Shared JSON selection/serialization. Use the ordinary package's non-regex functionality; no `jq-full` requirement. |
 | `coreutils-timeout` | Shared bounded command/process-group supervision. Bootstrap must work safely before this command exists. |
 | `coreutils-sha256sum` | Required checksum command, present across every feed above. OpenSSL remains available for bootstrap/fallback. |
-| `bind-dig` | Tunnel DNS/SRV readiness when native DNS tools cannot satisfy the required queries. |
+| `bind-dig` | Selected by the backend's `tunnel` scope. Its `dig -v` check establishes invocation only, not DNS/SRV readiness. |
 | `flock` | Only if the native locking command cannot satisfy the tested contract. Present in all five inspected feeds. |
 
 The installed Entware opkg manages versions, package selection and transitive
 libraries using its configured repositories. CFMgr's normal backend requests only its
 missing/unusable direct dependencies and checks their capabilities afterward;
 it does not manually acquire IPKs, choose library versions or change feeds.
-A separate implemented internal backend explicitly force-reinstalls all selected
-direct packages and repeats the post-checks. Its menu remains unimplemented.
-Operational worker/startup integration and router acceptance remain unfinished.
+A separate internal backend explicitly force-reinstalls all selected direct
+packages and repeats the post-checks; the CLI does not expose this API.
+The backend is an internal interface; router acceptance is unverified.
 CFMgr does not install Entware or request a whole-system upgrade. Native
 `--doctor`/`--diagnostic` remain available without Entware and never install
-packages. Cloudflared release binaries are managed separately for supported
-kernel and userspace architecture/ABI combinations.
+packages.
 
 <details>
 <summary>📦 Verified package contents</summary>
@@ -427,7 +314,7 @@ archives were checked across the three maintained feeds, plus aarch64 `flock`
 and `bind-dig`: **14 packages**, each matched to its index size and SHA-256 before
 inspection. They use a gzip/tar outer archive and contain no maintainer scripts
 or conffiles. This finding covers those exact direct packages, not all libraries
-or future versions. [AArch64 index][feed-aarch64] ·
+or later versions. [AArch64 index][feed-aarch64] ·
 [ARM index][feed-arm32] · [MIPS index][feed-mips]
 
 The checksum and timeout executables live under `/opt/libexec`; their public
@@ -473,18 +360,9 @@ compatibility. [glibc minimum][glibc-min] · [AArch64 minimum][glibc-arm64-min] 
 
 The live target is Linux 4.1.51. Current official Merlin source also contains
 4.19.183 and 4.19.294 kernel families. These are source observations, not an
-invented maximum supported kernel. The final README will state the lowest
-accepted profile and the highest tested/source-known families with their
-evidence level. [AX kernel][kernel-ax] · [BE kernel][kernel-be]
+invented maximum supported kernel. [AX kernel][kernel-ax] · [BE kernel][kernel-be]
 
 </details>
-
-The planned operational integration checks required packages on launch and
-during CFMgr install, update and reinstall. Missing or unusable requirements block operational work; failed
-installation can be retried on the next launch. A separate **Reinstall Entware
-dependencies** action will force-reinstall CFMgr's selected package set and
-verify it afterward. It preserves configuration/activation and does not perform
-the Cloudflared submenu's daemon, hook or worker reinstall.
 
 ## 💾 Retained-volume identity
 
@@ -507,9 +385,9 @@ but compares device/inode and cannot distinguish bind mounts of the same inode.
 [Linux 3.14][fdinfo-before] · [Linux 3.15][fdinfo-added] ·
 [Legacy comparison][legacy-ef]
 
-These observations do not yet qualify volume acquisition, UUID binding,
-writability, mount-loss handling or package installation. There is no new
-blanket firmware support declaration.
+These observations do not qualify volume acquisition, UUID binding,
+writability, mount-loss handling or package installation. No blanket firmware
+support declaration is made.
 
 Native `blkid` has a separate limitation: its output does not escape disk labels.
 A label containing quotes can imitate a UUID field. CFMgr must therefore reject
@@ -521,28 +399,11 @@ route: read the UUID bytes from the primary superblock through an already open
 block descriptor, using bounded native `hexdump`. Labels never enter that
 interpretation. Native numeric `ls` can report the held block device's number
 for comparison with the mount record. The reader and retained-descriptor callback have host/CI coverage; operational
-composition, router acceptance and other filesystem profiles remain pending.
+composition, router acceptance and other filesystem profiles are unverified.
 Labelled ext drives are not excluded by the blkid limitation. [Superblock format][ext-superblock]
 
-<details>
-<summary>🚧 Remaining firmware-specific proofs</summary>
-
-SRV readiness will use a verified capable DNS tool; the current native `nslookup`
-exposes host/server lookup only, and `bind-dig` remains untested on the router.
-The matched custom-DDNS callback takes a result
-without a request identity, so delayed background completion cannot yet be
-treated as safe. A short capped wait has been selected for eligible DDNS calls,
-but boot callers must return promptly. NTP/network readiness alone does not
-prove boot completion: the matched firmware can call DDNS during startup.
-Only a failed/timed-out firmware DDNS attempt schedules the additional CFMgr
-fallback, which stays pending until full readiness. Exact boot gating, overlap
-and retry behavior remain implementation gates in `PLAN.md`.
-
-All router work so far has been read-only. No CFMgr deployment, package install,
-service change, callback execution, provider mutation, or router pytest run was
-performed. Full boot/outage and feature acceptance require later testing.
-
-</details>
+Merlin callback source and host fixtures do not establish router-level
+feature acceptance.
 
 [math]: https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/shell/math.h#L66
 [abi]: https://github.com/ARM-software/abi-aa/blob/509aee3027a52ec0e87d19b87116ca1958e0f72b/aapcs32/aapcs32.rst#L1766
