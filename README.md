@@ -8,20 +8,20 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manag
 > version on a live router. Passing developer tests do not establish safe router
 > operation; installation instructions will follow validated implementation.
 
-Completed milestones below have passed developer checks; router runtime
-acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
+Feature status is summarized below. See [PLAN.md](PLAN.md) for detailed
+progress and validation evidence.
 
 | Feature / milestone | Status | At a glance |
 | --- | --- | --- |
-| Core foundations | Complete | Parsing, storage checks and managed workspaces |
-| Worker safety foundations | Complete | Process deadlines and read-only workspaces |
-| Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
+| Core foundations | Implemented | Parsing, storage checks and managed workspaces |
+| Worker safety foundations | Implemented | Process deadlines and read-only workspaces |
+| Health report | In progress | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
-| Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
-| Manifest reader and byte verification | Available to developers | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); host/CI checks passed |
-| Prepared source-tree report | Accepted at 51%; available to developers | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report) |
-| Entry/manifest version check | Local checks passed; CI pending | Source-only [literal version comparison](docs/development.md#source-only-entry-version-report); source is read as data |
+| Developer package inventory | Implemented | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
+| Manifest reader and byte verification | Implemented | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier) |
+| Prepared source-tree report | Implemented | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report) |
+| Entry/manifest version check | Implemented | Source-only [literal version comparison](docs/development.md#source-only-entry-version-report); source is read as data |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -41,23 +41,16 @@ operational CLI, menu and installer wiring remain pending.
 Source-only libraries validate configuration headers, catalogs and package
 manifests with shared safe-path checks. A host-only Python command generates a
 deterministic manifest from an explicit local Git commit. The native manifest
-reader emits a checked canonical ledger, and the D5 verifier compares each
-declared file's size and SHA-256 in a caller-prepared source tree. D6 adds a
-report that compares a bounded native namespace observation with the
-manifest-derived paths before applying those byte checks. Its accepted 51%
-checkpoint passes 1,848 local tests with 38 platform skips; exact-head
-[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38052708576)
-passes 1,886 tests with zero skips, six stripped-ash checks and all eleven
-kernel scenarios. D7 adds a source-only check that the literal `cfmgr.sh`
-version matches the manifest; its full local run passes 1,859 tests with 38
-platform skips, and its exact-head CI checkpoint is pending. See
-[PLAN.md](PLAN.md) for checkpoint evidence and remaining work.
+reader emits a checked canonical ledger. Package checks compare the prepared
+tree's paths, each declared file's size and SHA-256, and the literal
+`cfmgr.sh` version against the manifest. See [PLAN.md](PLAN.md) for checkpoint
+evidence and remaining work.
 
 These checks do not establish source authenticity, required module/API
 compatibility, installed permissions or router acceptance. The tree report
 requires a caller-owned private immutable tree; its native traversal limits
 are documented in the [development guide](docs/development.md#source-only-complete-tree-report).
-D7's version check proves only literal entry/manifest agreement; it does not
+The version check proves only literal entry/manifest agreement; it does not
 establish semantic compatibility or execute/authenticate the source.
 There is no integrated config reader, catalog/acquisition workflow or installer,
 and no catalog or manifest is shipped. Synthetic host/Linux evidence does not
