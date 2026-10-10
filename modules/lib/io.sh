@@ -131,13 +131,28 @@ _cfmgr_io_slots() (
 	done
 )
 
-_cfmgr_io_size() (
+_cfmgr_io_size() {
+	_cfmgr_io_size_profile ordinary "$@"
+}
+
+# Only the fixed JSON-token profile may measure above the public 64 KiB cap.
+_cfmgr_io_size_profile() (
+	_size_profile=$1
+	shift
+	case $_size_profile in ordinary | json-tokens) ;; *) return 1 ;; esac
 	[ -f "$1" ] && [ ! -L "$1" ] || return 1
 	_count=$("$_io_wc" -c <"$1") || return 1
 	# wc may pad its one canonical count; noglob and fixed IFS are required.
 	# shellcheck disable=SC2086
 	set -- $_count
-	[ "$#" -eq 1 ] && _cfmgr_io_limit "$1" || return 1
+	[ "$#" -eq 1 ] || return 1
+	case $_size_profile in
+	ordinary) _cfmgr_io_limit "$1" || return 1 ;;
+	json-tokens)
+		case $1 in '' | *[!0123456789]* | 0[0123456789]*) return 1 ;; esac
+		[ "${#1}" -le 6 ] && [ "$1" -le 131072 ] || return 1
+		;;
+	esac
 	printf '%s\n' "$1"
 ) 2>/dev/null
 
@@ -146,7 +161,18 @@ _cfmgr_io_size() (
 # RETURN0 MEANS CAPTURE COMPLETED, NOT PRODUCER SUCCESS: caller MUST read/check
 # SLOT.status (capture TAB producer_status TAB stdout_bytes TAB stderr_bytes LF)
 # before using SLOT.out/.err. Failed captures leave no usable status ledger.
-cfmgr_io_capture() (
+cfmgr_io_capture() {
+	_cfmgr_io_capture_engine ordinary "$@"
+}
+
+# SLOT TRUSTED_JSON_PARSER CANONICAL_RAW_SIZE. This fixed private operation has
+# no arbitrary command, mode or limit arguments; contents stay on regular stdin.
+_cfmgr_io_json_tokens_capture() {
+	[ "$#" -eq 3 ] || return 2
+	_cfmgr_io_capture_engine json-tokens "$@"
+}
+
+_cfmgr_io_capture_engine() (
 	set +x
 	set +e
 	set +u
@@ -155,7 +181,14 @@ cfmgr_io_capture() (
 	IFS=' 	'
 	IFS="${IFS}
 "
-	[ "$#" -ge 4 ] && [ "${_io_active-}" = 1 ] || return 2
+	[ "$#" -ge 1 ] && [ "${_io_active-}" = 1 ] || return 2
+	_cap_profile=$1
+	shift
+	case $_cap_profile in
+	ordinary) [ "$#" -ge 4 ] || return 2 ;;
+	json-tokens) [ "$#" -eq 3 ] || return 2 ;;
+	*) return 2 ;;
+	esac
 	case $1 in [0123456789] | 1[012345]) ;; *) return 2 ;; esac
 	_cap_slot=$1
 	_cap_out=$_io_stage/$_cap_slot.out
@@ -169,17 +202,33 @@ cfmgr_io_capture() (
 	(: >"$_cap_status") || return 1
 	_cfmgr_io_slots || return 1
 	[ ! -e "$_cap_out" ] && [ ! -L "$_cap_out" ] && [ ! -e "$_cap_err" ] && [ ! -L "$_cap_err" ] || return 1
-	_cfmgr_io_limit "$2" && _cfmgr_io_limit "$3" || return 2
-	_cap_out_limit=$2
-	_cap_err_limit=$3
-	case $4 in cat | awk | wc | printf | test | '[' | readlink | ls | hexdump | find) ;; *) return 2 ;; esac
-	_cap_command=$(_cfmgr_io_find "$4") || return 1
-	shift 4
+	case $_cap_profile in
+	ordinary)
+		_cfmgr_io_limit "$2" && _cfmgr_io_limit "$3" || return 2
+		_cap_out_limit=$2
+		_cap_err_limit=$3
+		case $4 in cat | awk | wc | printf | test | '[' | readlink | ls | hexdump | find) ;; *) return 2 ;; esac
+		_cap_command=$(_cfmgr_io_find "$4") || return 1
+		shift 4
+		;;
+	json-tokens)
+		_cap_parser=$2
+		_cap_raw_size=$3
+		case $_cap_parser in /*) ;; *) return 2 ;; esac
+		[ -f "$_cap_parser" ] && [ ! -L "$_cap_parser" ] && [ -r "$_cap_parser" ] || return 2
+		_cfmgr_io_limit "$_cap_raw_size" && [ "$_cap_raw_size" -gt 0 ] || return 2
+		_cap_out_limit=131072
+		_cap_err_limit=4096
+		_cap_command=$(_cfmgr_io_find awk) || return 1
+		set -- -v "cfmgr_json_size=$_cap_raw_size" -v cfmgr_json_mode=tokens -f "$_cap_parser"
+		;;
+	esac
 	_cap_ceiling=$_cap_out_limit
 	[ "$_cap_err_limit" -le "$_cap_ceiling" ] || _cap_ceiling=$_cap_err_limit
 	# Use512-byte units conservatively:512/1024-byte implementations both permit
 	# legitimate limit-sized output. Disk ceiling per stream is at most
-	# ceil((max_limit+1)/512)*1024 bytes (<=132096); final byte caps are exact.
+	# ceil((max_limit+1)/512)*1024 bytes (ordinary<=132096, tokens<=263168);
+	# final byte caps are exact.
 	# The extra byte makes overflow observable even at an exact512-byte boundary,
 	# instead of accepting a short native write clipped exactly to the byte cap.
 	_cap_blocks=$(((_cap_ceiling + 512) / 512))
@@ -188,8 +237,8 @@ cfmgr_io_capture() (
 	_cap_producer=$?
 	# IO creation failures must not be mistaken for a valid producer failure.
 	[ -f "$_cap_out" ] && [ ! -L "$_cap_out" ] && [ -f "$_cap_err" ] && [ ! -L "$_cap_err" ] || return 1
-	_cap_out_bytes=$(_cfmgr_io_size "$_cap_out") || return 1
-	_cap_err_bytes=$(_cfmgr_io_size "$_cap_err") || return 1
+	_cap_out_bytes=$(_cfmgr_io_size_profile "$_cap_profile" "$_cap_out") || return 1
+	_cap_err_bytes=$(_cfmgr_io_size_profile "$_cap_profile" "$_cap_err") || return 1
 	[ "$_cap_out_bytes" -le "$_cap_out_limit" ] && [ "$_cap_err_bytes" -le "$_cap_err_limit" ] || return 1
 	"$_io_printf" 'capture\t%s\t%s\t%s\n' "$_cap_producer" "$_cap_out_bytes" "$_cap_err_bytes" >>"$_cap_status" || return 1
 	_cap_expected="capture$_io_tab$_cap_producer$_io_tab$_cap_out_bytes$_io_tab$_cap_err_bytes"

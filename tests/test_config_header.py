@@ -38,6 +38,27 @@ def produce(router: RouterHarness, document: bytes) -> bytes:
     return result.stdout.encode("ascii")
 
 
+def exact_token_cap_document() -> bytes:
+    """Build bounded JSON whose real token ledger occupies exactly131072 bytes."""
+    value = {"schema": 1, "generation": 0, "developer": False, "opaque": [""] * 4, "padding": 1}
+    document = json.dumps(value, separators=(",", ":")).encode()
+    base = oracle(document).encode("ascii")
+    body = base[: base.rfind(b"end\t")]
+    needed = 131072 - len(b"end\t10\t131072\n") - len(body)
+    if needed % 2:
+        value["padding"] = 10
+        needed -= 1
+    for index in range(4):
+        length = min(16384, needed // 2)
+        value["opaque"][index] = "q" * length
+        needed -= 2 * length
+    assert needed == 0
+    document = json.dumps(value, separators=(",", ":")).encode()
+    assert len(document) <= 65536
+    assert len(oracle(document).encode("ascii")) == 131072
+    return document
+
+
 def consume(
     router: RouterHarness,
     tokens: bytes,
@@ -293,21 +314,7 @@ def test_exact_input_size_and_invocation_are_independent_gates(native_awk: Route
 
 
 def test_exact_ledger_byte_cap_with_real_producer(native_awk: RouterHarness) -> None:
-    value = {"schema": 1, "generation": 0, "developer": False, "opaque": [""] * 4, "padding": 1}
-    document = json.dumps(value, separators=(",", ":")).encode()
-    base = oracle(document).encode("ascii")
-    body = base[: base.rfind(b"end\t")]
-    needed = 131072 - len(b"end\t10\t131072\n") - len(body)
-    if needed % 2:
-        value["padding"] = 10
-        needed -= 1
-    for index in range(4):
-        length = min(16384, needed // 2)
-        value["opaque"][index] = "q" * length
-        needed -= 2 * length
-    assert needed == 0
-    document = json.dumps(value, separators=(",", ":")).encode()
-    assert len(document) <= 65536
+    document = exact_token_cap_document()
     tokens = produce(native_awk, document)
     assert len(tokens) == 131072
     result = consume(native_awk, tokens)

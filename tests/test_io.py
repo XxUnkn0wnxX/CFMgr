@@ -16,6 +16,7 @@ from tests.test_mountinfo import Mount, oracle, snapshot, topology_oracle
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "modules/lib/io.sh"
 PARSER = ROOT / "modules/lib/mountinfo.awk"
+JSON_PARSER = ROOT / "modules/lib/json.awk"
 MOUNTS = [Mount("1"), Mount("2", point=b"/tmp/opt", root=b"/entware", device="8:1")]
 TARGET = "/tmp/opt/bin/jq"
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
@@ -91,7 +92,10 @@ if tool == "rm":
             observations["files"][path.name] = {"symlink": True}
         elif path.is_file():
             data = path.read_bytes()
-            assert len(data) <= 132096
+            fixed_json_stream = (
+                "json_output_bytes" in settings and path.name in ("0.out", "0.err")
+            )
+            assert len(data) <= (263168 if fixed_json_stream else 132096)
             observations["files"][path.name] = {
                 "mode": path.stat().st_mode & 0o777, "bytes": len(data),
                 "head_hex": data[:128].hex(), "sha256": hashlib.sha256(data).hexdigest(),
@@ -108,6 +112,13 @@ if tool == "cat" and args == ["produce"]:
     write_all(1, bytes.fromhex(settings.get("stdout_hex", "")))
     write_all(2, bytes.fromhex(settings.get("stderr_hex", "")))
     sys.exit(settings.get("producer_status", 0))
+if tool == "awk" and "json_output_bytes" in settings:
+    assert args == [
+        "-v", "cfmgr_json_size=2", "-v", "cfmgr_json_mode=tokens",
+        "-f", settings["json_parser"],
+    ]
+    write_all(1, b"t" * settings["json_output_bytes"])
+    sys.exit(0)
 if tool == "awk" and "awk_output_hex" in settings:
     assert args[0] == "-v" and args[1].startswith("cfmgr_mountinfo_size=")
     assert args[-2:] == ["-f", settings["parser"]]
@@ -198,6 +209,8 @@ class IOFixture:
                 "IFS": "x",
                 "_mount_mode": "topology",
                 "_mount_topology": "invalid inherited topology",
+                "_cap_profile": "json-tokens",
+                "_size_profile": "json-tokens",
             },
         )
 
@@ -344,6 +357,76 @@ def test_exact_stream_limits_and_conservative_rounding(
         assert (
             observation["files"][name]["bytes"] <= ((max(out_limit, err_limit) + 512) // 512) * 1024
         )
+    io.clean()
+
+
+@pytest.mark.parametrize(("output_size", "capture_status"), [(131072, 0), (131073, 1)])
+def test_fixed_json_capacity_overflow_and_shared_failed_slots(
+    io: IOFixture, output_size: int, capture_status: int
+) -> None:
+    # Synthetic producer bytes isolate the IO cap; actual JSON token semantics
+    # and the exact-cap valid document are proved by the config consumer tests.
+    input_file = io.router.write("work/fixed-json-input", "{}")
+    io.settings.update(json_output_bytes=output_size, json_parser=str(JSON_PARSER))
+    io.save()
+    callback = (
+        '_cfmgr_io_json_tokens_capture 0 "$2" 2 <"$3"; fixed_status=$?\n'
+        "cfmgr_io_capture 0 1 1 printf forbidden; reused_status=$?\n"
+        "cfmgr_io_capture 1 131072 4096 awk; public_status=$?\n"
+        f'[ "$fixed_status" = {capture_status} ] && [ "$reused_status" = 1 ] '
+        '&& [ "$public_status" = 2 ]'
+    )
+    quiet(io.workspace(callback, str(JSON_PARSER), str(input_file)), 0)
+    awk_calls = [call for call in io.calls() if call["tool"] == "awk"]
+    assert len(awk_calls) == 1
+    assert awk_calls[0]["args"] == [
+        "-v",
+        "cfmgr_json_size=2",
+        "-v",
+        "cfmgr_json_mode=tokens",
+        "-f",
+        str(JSON_PARSER),
+    ]
+    files = io.observations()[0]["files"]
+    assert set(files) == {"0.out", "0.err", "0.status", "1.status"}
+    assert files["0.out"]["bytes"] == output_size
+    assert files["0.out"]["sha256"] == hashlib.sha256(b"t" * output_size).hexdigest()
+    assert files["0.err"]["bytes"] == files["1.status"]["bytes"] == 0
+    if capture_status == 0:
+        assert bytes.fromhex(files["0.status"]["head_hex"]) == b"capture\t0\t131072\t0\n"
+    else:
+        assert files["0.status"]["bytes"] == 0
+    io.clean()
+
+
+def test_fixed_json_measurement_does_not_widen_public_size(io: IOFixture) -> None:
+    # These explicit private fixture files exceed the generic harness input cap.
+    wide = io.router.path("work/wide-size")
+    overflow = io.router.path("work/wide-overflow")
+    empty = io.router.path("work/wide-empty")
+    wide.write_bytes(b"x" * 131072)
+    overflow.write_bytes(b"x" * 131073)
+    empty.write_bytes(b"")
+    result = io.run(
+        "set -f\nLC_ALL=C; export LC_ALL\nIFS=' \t\n'\n_io_wc=$4\n"
+        '[ "$(_cfmgr_io_size_profile json-tokens "$1")" = 131072 ] || exit 1\n'
+        '_cfmgr_io_size "$1" >/dev/null; [ "$?" = 1 ] || exit 1\n'
+        '_cfmgr_io_size_profile json-tokens "$2" >/dev/null; [ "$?" = 1 ] || exit 1\n'
+        '[ "$(_cfmgr_io_size_profile json-tokens "$3")" = 0 ] || exit 1\n'
+        '_cfmgr_io_limit 131072; [ "$?" = 1 ] || exit 1\n'
+        '_cfmgr_io_size_profile unknown "$1" >/dev/null; [ "$?" = 1 ]\n',
+        [str(wide), str(overflow), str(empty), str(io.router.path("bin/wc"))],
+    )
+    quiet(result, 0)
+    io.settings["modes"]["wc"] = "invalid"
+    io.save()
+    quiet(
+        io.run(
+            '_io_wc=$2\n_cfmgr_io_size_profile json-tokens "$1"\n',
+            [str(wide), str(io.router.path("bin/wc"))],
+        ),
+        1,
+    )
     io.clean()
 
 
