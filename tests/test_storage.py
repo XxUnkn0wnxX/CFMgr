@@ -45,8 +45,8 @@ import sys
 settings = json.loads(Path(sys.argv[1]).read_text())
 tool, args = sys.argv[2], sys.argv[3:]
 log = Path(settings["log"])
-calls = [json.loads(path.read_text()) for path in log.glob("*.json")]
-count = 1 + sum(item["tool"] == tool for item in calls)
+call_paths = list(log.glob("*.json"))
+count = 1 + sum(path.name.startswith(tool + "-") for path in call_paths)
 record = {"tool": tool, "args": args, "count": count}
 for fd in (8, 9):
     try:
@@ -55,8 +55,9 @@ for fd in (8, 9):
         assert fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_ACCMODE == os.O_RDONLY
     except OSError:
         pass
-record["sequence"] = len(calls)
-(log / (str(os.getpid()) + ".json")).write_text(json.dumps(record))
+record["sequence"] = len(call_paths)
+# Tool-prefixed records keep repeated dispatch bookkeeping to one directory scan.
+(log / (tool + "-" + str(os.getpid()) + ".json")).write_text(json.dumps(record))
 fault = settings.get("fault", "")
 if fault == tool + "-error":
     os.write(2, b"SECRET ignored native error\n")
