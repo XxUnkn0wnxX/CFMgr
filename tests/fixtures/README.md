@@ -56,6 +56,18 @@ passes 1,866 tests with zero skips in 138.97s, six stripped-ash checks and all
 eleven kernel scenarios. This accepted 48% checkpoint does not establish trusted source acquisition, complete package
 coverage, installed-file verification or router acceptance.
 
+### Native manifest reader
+
+`tests/test_package.py` exercises the source-only `modules/lib/package.sh`
+through its explicit fixture API and the real path helper and manifest parser.
+It checks exact canonical ledger publication, input/path limits, original-byte
+and record framing failures, independent producer status/stderr handling,
+cleanup and publication failures, signal status, and caller-state preservation.
+One representative test composes the reader with BusyBox and the actual IO
+owner. The local focused run passes 8 tests and skips that BusyBox case when
+BusyBox is unavailable (3.06s). The full local gate passes 1,837 tests with38 platform skips in450.58s; the Linux/BusyBox checkpoint gate remains pending. These source-only tests do not authenticate a manifest,
+hash package files, run an installer or establish router acceptance.
+
 ## Kernel fixtures
 
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit

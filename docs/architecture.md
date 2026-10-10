@@ -48,6 +48,7 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
+| `modules/lib/package.sh` | Owned native manifest capture and validated canonical report | Functions-only reader; declared records do not verify actual files or grant source/install authority |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes the finite `rmdir` prerequisite | Internal callbacks; no operational package execution or CLI integration; capture allowlist is unchanged |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
@@ -831,6 +832,14 @@ or installed-package mapper. No catalog or manifest is shipped. The catalog
 and manifest parsers check grammar and declared paths/records; they do not
 establish source trust, compare actual file hashes or prove package
 completeness. Modules remain readable source files.
+
+`modules/lib/package.sh` adds a source-only native report around the existing
+IO owner: with an explicitly supplied immutable input and trusted helper/parser,
+it validates the manifest and emits the parser's complete canonical ledger.
+It does not fetch a manifest, verify installed files, establish source trust
+or make the report an installer input. The public entries and their caller
+prerequisites are documented in the
+[development guide](development.md#source-only-native-manifest-report).
 
 When distribution is implemented, repository-root `catalog.txt` will be
 acquired from the selected repository snapshot and stored at

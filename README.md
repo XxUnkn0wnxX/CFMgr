@@ -19,6 +19,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
+| Native manifest report | In progress | Source-only [bounded reader](docs/development.md#source-only-native-manifest-report); full local gate passed; exact-head CI pending |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -38,11 +39,14 @@ operational CLI, menu or installer. The accepted 47% checkpoint includes the
 source-only serialized dependency worker, configuration-header/catalog parsers,
 shared package-path checks and a bounded manifest parser. Full local and
 Linux/BusyBox checks pass, including all eleven kernel scenarios. A host-only
-Python tool now generates a deterministic manifest from an explicit local Git
+Python tool generates a deterministic manifest from an explicit local Git
 commit; the accepted 48% checkpoint passes full local and exact-head Linux/BusyBox CI.
+The 49% source package adds a functions-only native reader that validates a
+supplied manifest through the existing IO owner and emits its canonical ledger.
+Its focused and full local checks pass; the 49% exact-head CI gate is pending.
 Work continues through the authorized 50% handoff. The inventory is not an
 authenticated release, installer input, complete-package verifier or router
-acceptance result. These parsers do not
+acceptance result. These parsers and the native reader do not
 provide an integrated config reader, manifest trust or package-download
 workflow, and no catalog or manifest is shipped. See [PLAN.md](PLAN.md) for
 exact results and progress. Synthetic host/Linux checks do not establish

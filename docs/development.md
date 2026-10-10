@@ -665,8 +665,8 @@ The source-only `modules/lib/config_header.awk`, `catalog.awk` and
 `manifest.awk` validate bounded data formats. Callers explicitly load the
 functions-only `modules/lib/package_path.awk` helper before either catalog or
 manifest parser; no automatic helper loading or operational consumer is
-present. These parsers are not connected to a config reader, catalog consumer
-or installed workflow. Full
+present. A source-only native report API is described below; it is not
+connected to a config reader, catalog consumer or installed workflow. Full
 schema/defaults, config ownership, migration, activation and writes remain
 future work. There is no generated defaults file, config writer, shipped
 catalog or manifest, trusted manifest verifier, downloader or installer.
@@ -812,6 +812,55 @@ step must bind the manifest to a single already-resolved immutable revision.
 There is no generated root catalog, published manifest, downloader or
 installed-package mapper. The developer inventory below writes only to stdout;
 it does not publish or install the generated document.
+
+### Source-only native manifest report
+
+`modules/lib/package.sh` composes the existing IO owner with the trusted path
+helper and manifest parser. Explicitly source trusted `modules/lib/io.sh`
+before `package.sh`; the package module defines functions and does not load its
+dependencies automatically. The production entry is
+`cfmgr_package_manifest_report ROOT INPUT PATH_HELPER PARSER`; the explicit
+fixture entry is `cfmgr_package_manifest_test ROOT TOOLS INPUT PATH_HELPER
+PARSER`. The fixture entry exists for developer tests and is not a production
+tool-selection interface.
+
+`ROOT` must be the caller's trusted private RAM parent. `INPUT` must be a stable,
+immutable, readable regular nonsymlink manifest. `PATH_HELPER` and `PARSER` must
+be absolute paths to trusted immutable readable regular nonsymlink code, and
+their ancestors and native tools must be trusted. Callers must exclude aliases
+and concurrent writers. These path checks do not provide atomic admission
+against a hostile filesystem, provenance or a hard deadline.
+
+The owner makes two bounded captures: native `cat` reads the original input,
+then native AWK consumes that captured input with the path helper explicitly
+before `manifest.awk` under the C locale. Each capture allows at most 65,536
+stdout bytes and 4,096 stderr bytes. The reader independently checks producer
+status and stderr. It passes the measured raw-input byte count to AWK as
+`cfmgr_manifest_size`. After parsing, it reconstructs the ordered tab-separated
+ledger and checks its byte count against the AWK capture's independently
+measured stdout size; this is a separate check because the normalized ledger
+and raw manifest have different formats. Any nonempty AWK stderr is failure;
+quiet parser status 2 remains 2. The complete canonical ledger is published
+only after owner cleanup. It contains the metadata, one to 128 file records and
+a checked footer; accepted declared file sizes are at most 1 MiB each and 8 MiB
+total. Output may be partial if final
+publication itself fails, so downstream consumers must still check status and
+complete framing. The two captures use six owner files; accepted stream data is
+bounded to 139,264 bytes plus status records, with a portable failure-allocation
+ceiling of 528,384 bytes plus statuses. Input and process memory are additional.
+
+The public entries return 0 for a complete report, 1 for invalid manifest or
+ordinary processing/cleanup failure, and 2 for API or preflight misuse. The IO
+owner's HUP, INT and TERM statuses (129, 130 and 143) remain intact. This
+interface validates framing and declared fields only: it has no deadline or
+authentication, does not hash actual package files, prove package completeness,
+install anything or authorize a router workflow. No menu, catalog consumer or
+installer calls it.
+
+The D4 focused gate passes8 tests with one unavailable-BusyBox skip in3.06s.
+The full two-worker local gate passes1,837 tests with38 explicit platform skips
+in450.58s at source `d1bd99a`; all static checks pass. Exact-head Linux/BusyBox
+CI remains pending, and Merlin runtime acceptance is separate.
 
 ### Developer package inventory
 
