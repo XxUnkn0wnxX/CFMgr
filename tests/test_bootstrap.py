@@ -619,11 +619,12 @@ def test_production_route_uses_literal_opt_and_ignores_ambient_policy(
 def test_backend_preserves_caller_shell_state(router: RouterHarness) -> None:
     fixture = OpkgFixture(router)
     fixture.seed("jq", "timeout", "sha256sum")
-    marker = router.path("work/opkg-exit-trap")
+    marker = router.path("work/opkg exit trap")
+    trap_command = f"printf fired >>{shlex.quote(str(marker))}"
     body = (
         "set +f\nset -- alpha beta\nIFS=:\nLC_ALL=POSIX\numask 027\n"
         "_bootstrap_probe='ambient poison'; _bootstrap_packages='ambient packages'\n"
-        f"trap 'printf fired >>{shlex.quote(str(marker))}' 0\n"
+        f"trap {shlex.quote(trap_command)} 0\n"
         "cfmgr_bootstrap_dependencies_test "
         f"{shlex.quote(str(fixture.root))} shared native; status=$?\n"
         "case $- in *f*) noglob=yes ;; *) noglob=no ;; esac\n"

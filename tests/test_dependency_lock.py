@@ -113,11 +113,12 @@ def test_retained_inode_arguments_mode_and_caller_state(router: RouterHarness) -
     fixture.lock.write_bytes(b"retained lock bytes\n")
     identity = fixture.lock.stat().st_ino
     caller_fd = router.write("work/caller-seven", "caller fd seven\n")
-    trap_file = router.path("work/caller-trap")
+    trap_file = router.path("work/caller trap")
+    trap_command = f"printf exit >{shlex.quote(str(trap_file))}"
     arguments = ("argument with spaces", "", "a\nb", "--*?[argument]")
     script = f"""
 exec 7<{shlex.quote(str(caller_fd))}
-trap 'printf exit >{shlex.quote(str(trap_file))}' 0
+trap {shlex.quote(trap_command)} 0
 trap ':' TERM
 callback() {{
     _fixture_expected_ifs=$(printf ' \\t\\n_')
