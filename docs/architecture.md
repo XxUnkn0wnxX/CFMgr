@@ -4,17 +4,15 @@
 
 ![Runtime](https://img.shields.io/badge/runtime-POSIX_sh-4EAA25)
 
-This guide describes the current source layout and internal interfaces.
+This guide describes the source layout and internal interfaces.
 [PLAN.md](../PLAN.md) owns detailed design and validation records.
 
-## 🧱 Current implementation
-
-CFMgr currently exposes a development command-line entry point.
+## 🧱 Runtime structure
 
 The repository entry point is `cfmgr.sh`; runtime code is grouped in `modules/`.
 POSIX shell sources the shell helpers and invokes the awk parsers directly.
 There is no generated or compiled main script. The entry supports help, version
-and the two equivalent health commands; it is a development diagnostic.
+and the two equivalent health commands.
 
 The host-only `tools/package_manifest.py` developer utility inventories raw
 Git blobs from one explicit full commit ID and validates its generated manifest
@@ -31,13 +29,13 @@ flowchart LR
     Native --> Report[PASS / FAIL / SKIP report]
 ```
 
-| Module | Implemented responsibility | Boundary |
+| Module | Responsibility | Boundary |
 | --- | --- | --- |
-| `cfmgr.sh` | Development command dispatch and bounded module-path resolution | No operational startup or repair |
+| `cfmgr.sh` | Command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Does not execute Entware tools or feature operations |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config header/lifecycle, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
-| `modules/lib/json.sh`, `modules/lib/config.sh` | Fixed internal JSON-token capture and owned config-header/lifecycle reports through one IO owner | Returns only saved header and feature flags; credential values are not returned, and full settings validation or installed-config admission is outside the API |
+| `modules/lib/json.sh`, `modules/lib/config.sh`, `modules/lib/setup_state.sh` | Fixed JSON-token capture, config-header/lifecycle projection, and supplied setup-state report through the IO owner | Returns saved projection fields only; credential values are not returned, and full settings validation or installed-config admission is outside these APIs |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
 | `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification, manifest-derived tree, entry-version and supplied-policy reports | Source-only APIs require caller-prepared immutable inputs; no source authenticity, semantic compatibility, installation or activation authority |
 | `modules/lib/catalog.sh` | Join a parsed catalog projection with a separately supplied manifest into a commit-pinned source plan | Caller owns branch-to-commit correspondence and manifest provenance; no acquisition, authentication, source-byte verification or installation authority |
@@ -57,32 +55,28 @@ flowchart LR
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
 The parsing modules and native reports are internal interfaces; the CLI
-currently exposes only development diagnostics. See [development checks](development.md#-run-checks) for host validation
+exposes help, version and diagnostic commands. See [development checks](development.md#-run-checks) for host validation
 commands and the separate BusyBox evidence requirement.
 
 ### Source layout and loading
 
 ```text
-cfmgr.sh                Public development command dispatch
+cfmgr.sh                Command dispatch
 modules/
-├── diagnostic.sh       Current native health-report feature
+├── diagnostic.sh       Native health report
 ├── helpers/            Dependency bootstrap and supervised worker helpers
-├── lib/                Shared shell libraries and awk parsers
-└── hooks/              Reserved for thin firmware-hook/cron entry scripts
+└── lib/                Shared shell libraries and awk parsers
 tests/                  Host tests and controlled kernel fixtures
 tools/                  Developer validation tools
 docs/                   Architecture, development and user guidance
 ```
 
 Feature modules belong directly in `modules/`; shared code belongs in `lib/`,
-and supporting workers, updaters, or dependency setup belong in `helpers/`.
-Firmware-hook and cron entry scripts belong in `hooks/` and should stay thin.
-The hooks directory is currently only a placeholder. Feature logic should use
-small explicit interfaces and shared libraries rather than copied helpers.
+and supporting workers and dependency setup belong in `helpers/`. Feature
+modules use small explicit interfaces and shared libraries.
 The entry point resolves and sources the diagnostics module explicitly; the
 native configuration, retained-Opt and fixed-device helpers are source-only
 internal APIs. There is no automatic loading of arbitrary files or directories.
-The current entry explicitly loads only the diagnostics module.
 
 ## 🗂️ Storage and authority
 
@@ -560,8 +554,8 @@ through a freshly resolved path.
 
 ## 📦 Modules and forks
 
-Package, catalog and configuration reports are source-only checks over
-caller-supplied data. They do not establish source trust, semantic API
+Package, catalog, configuration and setup-state reports are source-only checks
+over caller-supplied data. They do not establish source trust, semantic API
 compatibility or installation authority.
 
 `modules/lib/package.sh` provides source-only manifest reporting and verification
@@ -581,6 +575,15 @@ do not authenticate or acquire source, establish semantic compatibility,
 approve installed permissions or authorize installation/activation. See the
 [development guide](development.md#package-policy-report) for inputs, status
 rules and resource limits.
+
+`setup_state.sh` validates a supplied four-row, LF-terminated guard with a
+version marker, a known state, a canonical generation claim and a lowercase
+32-hex identity claim. Retained and transitional states report `not-read`
+without inspecting CONFIG or parser paths. `installed` and `reset-passive`
+compare the guard generation with the config-lifecycle projection; reset-passive
+also requires every projected feature/developer flag off and Cloudflared mode
+`none`. The report validates recorded claims only: it does not inspect an installed path, verify
+identity or generation authenticity, write state or authorize setup/cleanup.
 
 The `catalog.sh` API joins a trusted catalog projection with a separately
 supplied manifest by exact destination keys, then emits file rows in manifest

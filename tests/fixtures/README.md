@@ -100,6 +100,18 @@ projection framing. The previous header projection remains a separate mode.
 The fixture does not inspect installed feature availability, credentials or the
 full settings schema.
 
+### Setup-state report
+
+`tests/test_setup_state.py` checks all seven accepted guard states, the four
+transitional `unknown` generation cases, canonical generation and identity
+bounds, exact framing, malformed rows and original-size mismatches. Owner cases
+verify that retained/transitional states do not read CONFIG, installed state
+requires a generation-matched lifecycle projection, and reset-passive requires
+every projected feature/developer flag off with mode `none`. Tests also cover
+producer and cleanup refusal; a BusyBox case composes the installed-state path.
+The report establishes saved-state consistency only, not installation,
+identity authenticity, setup completion or cleanup authority.
+
 ## Kernel fixtures
 
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit

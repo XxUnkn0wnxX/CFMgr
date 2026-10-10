@@ -206,6 +206,7 @@ ABI or router acceptance. See [PLAN.md](../PLAN.md) for validation records.
 | Integrity verification | `coreutils-sha256sum`; native OpenSSL fallback | Both can compare synthetic digests; fallback does not waive a failed required-package installation. |
 | Config header and lifecycle reports | BusyBox-compatible POSIX `sh`, native `cat`/AWK, JSON/header parsers and the IO owner | Caller-prepared immutable data only; reports may read raw configuration input but never return or approve credential values, validate full settings or inspect installed availability. |
 | Source catalog plan | Existing IO owner, native `cat`/AWK and trusted path/manifest parsers | Joins a parsed catalog to a separately supplied manifest and pins URLs to a supplied commit. It does not prove URL provenance, branch mapping, source authenticity, completeness or installation. |
+| Setup-state report | Existing IO owner plus the JSON/header parser path for installed-state checks | Uses caller-supplied immutable guard/config data; recorded identity and generation claims do not prove installed state or authorize setup/cleanup. |
 | Package manifest and verification reports | BusyBox-compatible POSIX `sh`, AWK, native `find`, `wc`, OpenSSL and `hexdump` | Parse declared records, verify declared bytes, compare the observed tree, check entry-version equality and apply a supplied policy. No source acquisition, authentication, complete-profile approval, installed permissions or activation authority. |
 | Developer package inventory | Developer-host Python 3.11+ and local Git objects | Reads one explicit local commit; not a router dependency or a source-authentication claim. |
 
@@ -326,7 +327,7 @@ loader and libraries independent of Entware.
 The loader audit also found that explicit `ld.so --library-path` execution
 still reads `/opt/etc/ld.so.preload` before the program starts. Disabling its
 cache does not suppress this lookup. A verified dynamic `unshare` binary has
-the same bootstrap problem, so neither approach currently establishes safe
+the same bootstrap problem, so neither approach establishes safe
 execution during `/opt` changes. Independent internal proofs use native bind
 mounts and chroot for admitted fixed probes. They do not replace normal opkg
 dependency resolution. The native command paths/help are confirmed on the

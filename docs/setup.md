@@ -4,7 +4,7 @@
 
 ![Guide](https://img.shields.io/badge/guide-user_setup-0051c3)
 
-CFMgr's current entry is a read-only development diagnostic. It is not an
+CFMgr's entry point provides read-only diagnostics. It is not an
 installer or feature setup wizard and should not be run on a live router.
 
 From the repository checkout, use:

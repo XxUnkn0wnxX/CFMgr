@@ -206,8 +206,8 @@ contract, and the fixture guide describes kernel evidence.
 
 ### Root lifecycle test coverage
 
-The root lifecycles and their current boundaries are documented in
-[architecture](architecture.md#-current-implementation). The host fixtures exercise
+The root lifecycles and their boundaries are documented in
+[architecture](architecture.md#-runtime-structure). The host fixtures exercise
 ownership, exact child ledgers, checked teardown, IO cleanup and retained-guard
 failure. The Linux kernel lane supplies mount-enforced evidence; see the
 [test-fixture guide](../tests/fixtures/README.md) for scenario coverage and its
@@ -267,11 +267,10 @@ by the checked-in workflow.
 
 The runner defaults to two local pytest workers (`--jobs 2`), using standard
 [pytest-xdist distribution](https://pytest-xdist.readthedocs.io/en/stable/distribution.html).
-Worker crashes fail the run without automatic restart. Use `--jobs 1` for a
-serial full check; direct focused pytest commands remain serial unless explicitly
-given parallel options. The paired representative trial and full-suite acceptance
-are recorded in the plan; neither mode skips tests or changes their
-per-invocation deadlines.
+Small pending queues balance work between workers. Worker crashes fail the run
+without automatic restart. Use `--jobs 1` for a serial full check; direct focused
+pytest commands remain serial unless explicitly given parallel options. Both modes
+run the full selected inventory with the same per-invocation deadlines.
 
 | Task | Command |
 | --- | --- |
@@ -301,7 +300,7 @@ one, dedicated BusyBox tests are visibly skipped and compatibility remains
 unverified. Linux/BusyBox evidence must come from the dedicated Linux runner or a local
 Linux environment with the required privileges.
 
-Currently this option exercises BusyBox shell syntax and the dedicated
+This option exercises BusyBox shell syntax and the dedicated
 shell/applet fixture. Ordinary `router` fixtures still use the host `/bin/sh`;
 it does **not** silently rerun the whole suite under BusyBox. A modern full
 BusyBox build also does not reproduce a router's stripped older build.
@@ -400,13 +399,12 @@ and validation cadence.
 
 ## 🧱 Test structure
 
-The runtime entry point is `cfmgr.sh`. The current native health report is
+The runtime entry point is `cfmgr.sh`. The native health report is
 `modules/diagnostic.sh`; shared shell/awk code is under `modules/lib/`, and
-supporting bootstrap and worker code is under `modules/helpers/`. Firmware hook
-templates are reserved for `modules/hooks/`, which currently contains no hooks.
+supporting bootstrap and worker code is under `modules/helpers/`.
 Files are sourced or invoked explicitly; there is no arbitrary directory
 autoloader. Runtime files are not compiled into a main executable. The Python
-compilation check validates developer tooling only. The current development entry does not install runtime files on a router.
+compilation check validates developer tooling only. The entry point does not install runtime files on a router.
 
 | Path | Responsibility |
 | --- | --- |
@@ -695,6 +693,61 @@ for developer tests; no CLI or operational lifecycle consumes this report.
 Return codes and signal handling match the header API above. Use
 `cfmgr_config_lifecycle_report` in its shell example with a CONFIG containing
 the required feature fields.
+
+### Setup-state report
+
+`cfmgr_setup_state_report RAM_ROOT GUARD CONFIG JSON_PARSER HEADER_PARSER`
+reads a caller-prepared guard and, for two states, composes the existing config
+lifecycle projection. The fixture-only API adds `TOOLS` after `RAM_ROOT`:
+`cfmgr_setup_state_test RAM_ROOT TOOLS GUARD CONFIG JSON_PARSER HEADER_PARSER`.
+Source trusted `io.sh`, `json.sh`, `config.sh` and `setup_state.sh`; use private,
+immutable, unaliased inputs and trusted parser paths. The report does not inspect
+an installed path or write configuration.
+
+The guard is at most 256 original bytes and exactly four LF-terminated rows:
+`setup-state: 1`, `state: NAME`,
+`generation: VALUE`, and `identity: HEX`. The seven state names are `installed`,
+`retained`, `installing`, `removing-keep`, `removing-wipe`, `resetting` and
+`reset-passive`. Generation is canonical decimal from 0 through 2,147,483,647;
+`unknown` is accepted only for the four transitional states (`installing`,
+`removing-keep`, `removing-wipe`, `resetting`). Identity is exactly 32 lowercase
+hex characters. These fields are recorded claims, not authenticated identity,
+installation or generation evidence.
+
+For `retained` and the four transitional states, the API reports
+`config-check<TAB>not-read` and does not inspect CONFIG or parser paths. For
+`installed`, it requires lifecycle generation equality and reports
+`lifecycle-match`. For `reset-passive`, it also requires developer mode off,
+all Cloudflared/DDNS/IP-Sync flags off, and Cloudflared mode `none`, then reports
+`passive-match`. It compares only these saved-state fields; it does not check an
+installed generation, verify setup completion, write defaults or authorize
+installation, activation, rollback or cleanup.
+
+The three-row output is `setup-state<TAB>1<TAB>STATE<TAB>GENERATION<TAB>IDENTITY`,
+`config-check<TAB>VALUE`, and `end<TAB>BODY_BYTES`, each LF-terminated. The
+guard is reconstructed against its original captured byte count. The report
+returns 0 only after the report owner's cleanup succeeds. Ordinary input, tool,
+producer or cleanup failures return 1; API or required code-path errors return 2,
+including a checked projection-parser status of 2. HUP/INT/TERM retain 129/130/143.
+
+A developer caller supplies prepared paths and trusted parsers explicitly:
+
+```sh
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/json.sh"
+. "$CFMGR_LIB/config.sh"
+. "$CFMGR_LIB/setup_state.sh"
+JSON_PARSER=$CFMGR_LIB/json.awk
+HEADER_PARSER=$CFMGR_LIB/config_header.awk
+cfmgr_setup_state_report "$RAM_ROOT" "$GUARD" "$CONFIG" \
+  "$JSON_PARSER" "$HEADER_PARSER"
+```
+
+The blocked one-capture path uses three scratch artifacts, at most 4,352
+accepted bytes and 18,432 bytes of conservative allocation plus status. The
+four-capture checked path uses twelve artifacts, at most 213,504 accepted bytes
+and 827,392 bytes of conservative allocation plus statuses. Caller inputs and
+process memory are additional. The fixture API is for developer tests only.
 
 ### Source-catalog grammar
 
