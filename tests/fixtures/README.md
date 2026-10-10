@@ -65,8 +65,30 @@ and record framing failures, independent producer status/stderr handling,
 cleanup and publication failures, signal status, and caller-state preservation.
 One representative test composes the reader with BusyBox and the actual IO
 owner. The local focused run passes 8 tests and skips that BusyBox case when
-BusyBox is unavailable (3.06s). The full local gate passes 1,837 tests with 38 platform skips in 450.58s; the [exact Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38047884781) passes 1,875 tests with zero skips in 139.42s, six stripped-ash cases and all eleven kernel scenarios. These source-only tests do not authenticate a manifest,
+BusyBox is unavailable (3.06s). The full local gate passes 1,837 tests with 38 platform skips in 450.58s; the [exact Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38047884781) passes 1,875 tests with zero skips in 139.42s, six stripped-ash cases and all eleven kernel scenarios. These D4 reader cases do not authenticate a manifest,
 hash package files, run an installer or establish router acceptance.
+
+### Declared package-byte verification
+
+The D5 cases in `tests/test_package.py` use small synthetic source trees and the
+real native digest path. They verify success for binary content above the
+64-KiB IO text cap and at the 1-MiB file limit, reject a size mismatch and a
+later file with same-size but wrong bytes, and check canonical source-root and
+member paths, symlinks, missing/nonregular members, failed or short digest
+output, and malformed hex output. One case composes the verifier with the
+actual BusyBox `hexdump` through the IO owner; it is skipped when BusyBox is
+unavailable locally.
+
+The focused package gate passes 14 tests with one missing-BusyBox skip in
+6.87s; the slowest grouped refusal is 1.58s. Related closure/size runtime
+regressions pass 15 tests with one local BusyBox skip in 27.46s. After a
+path-with-spaces fixture correction, the focused regressions pass 2/2 in 0.84s.
+The full local 50% gate passes 1,843 tests with 38 platform skips in 571.13s,
+including all static checks; exact-head Linux/BusyBox CI remains pending.
+These fixtures verify listed synthetic file bytes
+only; they do not authenticate the manifest,
+prove directory completeness or permissions, install code or establish Merlin
+runtime acceptance.
 
 ## Kernel fixtures
 

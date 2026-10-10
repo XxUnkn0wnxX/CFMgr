@@ -664,12 +664,12 @@ promotion and live deployment still require separate authorization.
 The source-only `modules/lib/config_header.awk`, `catalog.awk` and
 `manifest.awk` validate bounded data formats. Callers explicitly load the
 functions-only `modules/lib/package_path.awk` helper before either catalog or
-manifest parser; no automatic helper loading or operational consumer is
-present. A source-only native report API is described below; it is not
+manifest parser; no automatic helper loading is provided. Source-only native
+report and declared-file verification APIs are described below; neither is
 connected to a config reader, catalog consumer or installed workflow. Full
 schema/defaults, config ownership, migration, activation and writes remain
 future work. There is no generated defaults file, config writer, shipped
-catalog or manifest, trusted manifest verifier, downloader or installer.
+catalog or manifest, authenticated manifest acquisition, downloader or installer.
 
 ### Configuration-header projection
 
@@ -806,9 +806,12 @@ does not prove a successful write.
 The manifest is a declared inventory only. Parsing does not authenticate its
 source, verify actual file bytes or installed ownership/modes, prove required
 package completeness, compare it with a catalog, or authorize compatibility,
-downgrade, activation or installation. The manifest must not contain the
-containing commit hash: that would create a self-reference. A future acquisition
-step must bind the manifest to a single already-resolved immutable revision.
+downgrade, activation or installation. A separate source-only verifier below
+checks declared file bytes under explicit caller prerequisites; it does not
+authenticate the manifest or prove directory completeness. The manifest must
+not contain the containing commit hash: that would create a self-reference. A
+future acquisition step must bind the manifest to a single already-resolved
+immutable revision.
 There is no generated root catalog, published manifest, downloader or
 installed-package mapper. The developer inventory below writes only to stdout;
 it does not publish or install the generated document.
@@ -852,10 +855,11 @@ ceiling of 528,384 bytes plus statuses. Input and process memory are additional.
 The public entries return 0 for a complete report, 1 for invalid manifest or
 ordinary processing/cleanup failure, and 2 for API or preflight misuse. The IO
 owner's HUP, INT and TERM statuses (129, 130 and 143) remain intact. This
-interface validates framing and declared fields only: it has no deadline or
-authentication, does not hash actual package files, prove package completeness,
-install anything or authorize a router workflow. No menu, catalog consumer or
-installer calls it.
+report API validates framing and declared fields only; it does not hash source
+files. The separate verifier below checks declared bytes but has no deadline or
+authentication and does not prove package completeness, install anything or
+authorize a router workflow. No menu, catalog consumer or installer calls
+either API.
 
 The D4 focused gate passes 8 tests with one unavailable-BusyBox skip in 3.06s.
 The full two-worker local gate passes 1,837 tests with 38 explicit platform skips
@@ -863,6 +867,95 @@ in 450.58s at source `d1bd99a`; all static checks pass. [Exact-head Linux/BusyBo
 passes all 1,875 tests with zero skips in 139.42s at `adf5f21`, six stripped-ash
 cases in 7.29s and all eleven kernel scenarios. This accepts 49%; Merlin
 runtime acceptance remains separate.
+
+### Source-only declared-file verifier
+
+`modules/lib/package.sh` adds `cfmgr_package_verify_report RAM_ROOT SOURCE_ROOT
+MANIFEST PATH_HELPER PARSER` for production callers and the explicit
+fixture-only `cfmgr_package_verify_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST
+PATH_HELPER PARSER`. These library functions are not connected to a CLI,
+catalog, downloader, installer or router workflow. Explicitly source trusted
+`io.sh`, `native_digest.sh`, then `package.sh`; the libraries do not load one
+another automatically. Source `native_digest.sh` before `closure.sh` as well.
+The public closure size and hash adapters retain their 0/1 results. The internal
+`_cfmgr_closure_size_owned` helper preserves its existing 0/10/2/129 statuses.
+
+A caller must first acquire the manifest and all declared files into a private,
+immutable `SOURCE_ROOT`, capped at 1 MiB per file and 8 MiB total. Native `wc`
+and OpenSSL read through EOF, so the verifier does not supply or prove bounded
+acquisition and has no hard deadline. The root must be a canonical absolute
+non-root path of at most 4,096 bytes, with no trailing/repeated slash, dot or
+dot-dot component, or control byte. The root, trusted ancestors, code, native
+runtime and inputs must stay immutable and unaliased, with no concurrent
+writers. These checks are defensive path-shape checks, not atomic admission
+against a hostile filesystem.
+
+For every file in the already-decoded manifest, the verifier walks each source
+path component without following symlinks, requires intermediate directories
+and a readable regular nonsymlink file, then compares its actual size and
+SHA-256 with the declaration. It processes files in manifest order and does
+not capture whole files through the 64-KiB text interface; files up to 1 MiB
+are streamed to native OpenSSL. Production uses fixed native `env`, `openssl`
+and `hexdump` paths plus the IO owner's `wc`; missing production `hexdump`
+fails verification. Explicit fixture tool selection may use BusyBox `hexdump`,
+while OpenSSL remains native. The helper requires successful producers, exactly
+32 binary digest bytes, exactly 64 lowercase hex bytes with no line ending, and
+an exact match to the declared hash. It clears inherited loader/OpenSSL controls
+and runs OpenSSL with a null configuration.
+
+After every declared file passes, the report replaces the first
+`manifest<TAB>1` line with `package-bytes<TAB>1`, keeps the other accepted
+records, count and total, and recomputes the footer byte count. Modes remain
+declared desired attributes: the verifier does not check actual permissions or
+ownership. This establishes that listed bytes match declarations; it does not
+prove that the directory contains every required file or no extra files,
+authenticate the manifest/source, establish API compatibility, or authorize
+download, installation or activation. Publication follows owner cleanup, but
+failure during final output can leave partial stdout. Consumers must check
+status and complete framing. Existing cleanup does not prove every external
+child has terminated or been reaped.
+
+The production entry takes five arguments and uses fixed native utility
+directories with the IO owner's `wc`. The fixture entry takes six arguments
+and inserts an explicit tools directory after `RAM_ROOT`. Both require trusted
+absolute helper/parser paths and the caller-prepared files described above. A
+developer caller with these prerequisites can load and invoke the API as follows:
+
+```sh
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/native_digest.sh"
+. "$CFMGR_LIB/package.sh"
+cfmgr_package_verify_report "$RAM_ROOT" "$SOURCE_ROOT" "$MANIFEST" \
+  "$PATH_HELPER" "$PARSER"
+```
+
+Set `CFMGR_LIB` to the trusted absolute library directory and provide the
+remaining variables as validated paths. Check the function's status and the
+complete `package-bytes` ledger; bytes on stdout alone do not prove success.
+The fixture API is `cfmgr_package_verify_test`; it is for tests and never
+selects production tools.
+
+The verifier returns 0 for a completed report, 1 for invalid manifest/member,
+size/hash/tool or processing/cleanup failure, and 2 for API, RAM-root,
+`SOURCE_ROOT` or trusted-code preflight misuse. An unsuccessful native size
+observation maps to verifier status 1, including size-helper uncertainty; an
+IO-owner HUP, INT or TERM keeps its 129, 130 or 143 status. A failed size
+observation does not become a signal result unless the IO owner itself was
+signalled.
+
+At most 262 scratch files support the maximum 128 declared members and their
+digest/hex pairs. Those pairs accept at most 12,288 bytes, in addition to the
+manifest-reader capture streams. The conservative portable file-allocation
+ceiling is 790,528 bytes plus status files; input and process memory are
+additional. The focused package run passes 14 tests with one unavailable-
+BusyBox skip in 6.87s; the slowest new grouped refusal takes 1.58s. Related
+closure/size runtime regressions pass 15 tests with one local BusyBox skip in
+27.46s. After a path-with-spaces fixture correction, its focused regressions
+pass 2 tests in 0.84s. The full local rerun passes 1,843 tests with 38
+explicit platform skips in 571.13s, including all static checks. Exact-head
+Linux/BusyBox CI remains pending.
+Runtime source remains frozen at `018a616`; these host checks do not establish
+Merlin runtime acceptance.
 
 ### Developer package inventory
 
@@ -898,10 +991,12 @@ selected snapshot's files.
 This deterministic local inventory is not origin or release authentication,
 trusted acquisition, proof of package completeness, verification of installed
 file bytes or ownership, compatibility approval, activation or installation.
-Future consumers must separately bind the result to an immutable revision and
-establish trust, acquisition, actual-file verification, completeness, lifecycle
-and router acceptance. The combined generator/manifest/catalog focused gate
-passes 49 tests with two local missing-BusyBox skips in 46.80s; the generator
+Consumers must separately bind it to an immutable revision and establish trust,
+acquisition, completeness, lifecycle and router acceptance. The source-only
+verifier above checks declared bytes only after the caller has prepared its
+bounded input; it does not authenticate that input. The combined
+generator/manifest/catalog focused gate passes 49 tests with two local
+missing-BusyBox skips in 46.80s; the generator
 tests pass 10 cases in 7.95s. The resumed full local gate passes 1,829 tests with 37 explicit platform
 skips in 527.97s using two workers, including all static checks. Exact-head
 [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38046534095)

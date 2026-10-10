@@ -48,7 +48,8 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
-| `modules/lib/package.sh` | Owned native manifest capture and validated canonical report | Functions-only reader; declared records do not verify actual files or grant source/install authority |
+| `modules/lib/package.sh` | Owned native manifest capture, canonical reports and declared-file byte verification | Source-only APIs require an already acquired immutable tree; no source authenticity, complete-directory inventory or install authority |
+| `modules/lib/native_digest.sh` | Shared bounded-size and native digest observations used by package verification and executable-closure checks | Caller owns bounded acquisition, scratch, cleanup and signals; no independent source trust or hard deadline |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes the finite `rmdir` prerequisite | Internal callbacks; no operational package execution or CLI integration; capture allowlist is unchanged |
 | `modules/lib/dependency_lock.sh`, `modules/lib/isolation.sh` | Cooperative lock and checked native, fixed-probe, read-only execution-root, native-data-root, quota-limited native-tmp-root and retained Entware-root lifecycles | Internal APIs; uncertainty retains guards and no entry exposes an operational CLI |
@@ -59,7 +60,7 @@ flowchart LR
 | `modules/helpers/dependencies.sh` | Compose original-shell process-group admission, stable CFMgr locking, aggregate deadline, retained storage, native-config root, fixed dependency backend and checked release | Source-only fourteen-argument API; no CLI, cron installation, readiness/retry flow or router acceptance |
 | `modules/lib/entware_root.sh` | Attach an already-admitted Entware directory to the checked native root through held FD9 | Requires independent storage admission and original FD8/FD9; the ledger format alone grants no authority; callback is native-only |
 | `modules/lib/native_devices.sh` | Add fixed private-RAM `/dev/null` and `/dev/urandom` nodes to the retained-Opt native root | Only these two root-owned nodes; checked mount views do not lease inode identity continuously or revoke already-open descriptors |
-| `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging | Caller must separately approve provenance and executable closure; these are not a general package runner |
+| `modules/lib/supervision.sh`, `modules/lib/closure.sh` | Fixed-probe completion and bounded executable-image staging, using the shared native digest helper | Caller must separately approve provenance and executable closure; these are not a general package runner |
 | `modules/helpers/worker.sh` | Native process-group admission and guarded aggregate-deadline supervision | Internal compositions only; operational scheduling and package/feature launch remain separate |
 | `modules/helpers/bootstrap.sh` | Install missing dependencies or explicitly reinstall selected direct packages through Entware opkg, then verify them | Internal synchronous backend; admitted mount, serialized worker and hook scheduling remain caller prerequisites; doctor never calls it |
 
@@ -110,10 +111,11 @@ documentation and, once distribution is implemented, an entry in the verified
 package manifest. Catalog source keys such as `modules/lib/common.sh` map later
 to `lib/common.sh` below the installed manager directory; `cfmgr.sh` maps to the
 installed script entry. The standalone parsers check source-relative path
-grammar and declared manifest records, while installer mapping, trusted
-acquisition, actual-file hash checks and generation ownership remain future
-work. The current CLI diagram above shows implemented loading; this extension
-pattern guides future menu/setup integration.
+grammar and declared manifest records. The source-only `package.sh` verifier
+checks declared source bytes after its caller supplies a bounded immutable
+tree; installer mapping, trusted acquisition and generation ownership remain
+future work. The current CLI diagram above shows implemented loading; this
+extension pattern guides future menu/setup integration.
 
 ## 🗂️ Storage and authority
 
@@ -826,20 +828,23 @@ or prove Entware ABI or Merlin runtime acceptance.
 ## 📦 Modules and forks
 
 **Planned distribution contract.** The standalone config-header, catalog and
-manifest parsers exist as source-only data checks, but there is no integrated
-config reader/writer/generator, trusted manifest verifier, downloader, updater
-or installed-package mapper. No catalog or manifest is shipped. The catalog
-and manifest parsers check grammar and declared paths/records; they do not
-establish source trust, compare actual file hashes or prove package
-completeness. Modules remain readable source files.
+manifest parsers and the native declared-file verifier are source-only data
+checks. There is no integrated config reader/writer/generator, authenticated
+manifest acquisition, downloader, updater or installed-package mapper. No
+catalog or manifest is shipped. Parsing checks grammar and declared
+paths/records; the native verifier checks bytes for those listed records only.
+Neither establishes source trust, complete-directory coverage, API compatibility
+or installation authority. Modules remain readable source files.
 
-`modules/lib/package.sh` adds a source-only native report around the existing
-IO owner: with an explicitly supplied immutable input and trusted helper/parser,
-it validates the manifest and emits the parser's complete canonical ledger.
-It does not fetch a manifest, verify installed files, establish source trust
-or make the report an installer input. The public entries and their caller
-prerequisites are documented in the
-[development guide](development.md#source-only-native-manifest-report).
+`modules/lib/package.sh` adds source-only manifest reporting and declared-byte
+verification around the existing IO owner. Verification requires a caller-
+prepared bounded immutable source tree, manifest, trusted helper/parser and
+explicitly loaded `native_digest.sh`. It checks each declared member's shape,
+size and SHA-256, then publishes the verified package-bytes ledger after owner
+cleanup. It does not acquire or authenticate inputs, check for undeclared files,
+compare actual permissions or ownership, or make the report an installer input.
+The APIs and caller prerequisites are documented in the
+[development guide](development.md#source-only-declared-file-verifier).
 
 When distribution is implemented, repository-root `catalog.txt` will be
 acquired from the selected repository snapshot and stored at

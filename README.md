@@ -19,7 +19,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
-| Native manifest report | In progress | Source-only [bounded reader](docs/development.md#source-only-native-manifest-report); host/CI checks passed |
+| Manifest reader and byte verification | In progress | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); final 50% gates underway |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -29,32 +29,27 @@ These descriptions and their usage guides are updated after each finalized
 milestone. A final consistency and polish pass follows complete implementation
 and validation; it does not replace keeping the docs current during the build.
 
-CFMgr is in development. Implemented foundations include parsing, storage
-checks, guarded process deadlines, internal workspaces and a partial native
-health report. Fixed probes cover one native shell launch and the installed
-Entware `opkg --version` response. The source-only
-`cfmgr_native_dependencies` handoff can call the bundled repair or selected
-reinstall backend inside an already admitted native root; it is not wired to an
-operational CLI, menu or installer. The accepted 47% checkpoint includes the
-source-only serialized dependency worker, configuration-header/catalog parsers,
-shared package-path checks and a bounded manifest parser. Full local and
-Linux/BusyBox checks pass, including all eleven kernel scenarios. A host-only
-Python tool generates a deterministic manifest from an explicit local Git
-commit; the accepted 48% checkpoint passes full local and exact-head Linux/BusyBox CI.
-The 49% source package adds a functions-only native reader that validates a
-supplied manifest through the existing IO owner and emits its canonical ledger.
-The accepted 49% checkpoint passes focused, full local and exact-head Linux/BusyBox checks.
-Work continues through the authorized 50% handoff. The inventory is not an
-authenticated release, installer input, complete-package verifier or router
-acceptance result. These parsers and the native reader do not
-provide an integrated config reader, manifest trust or package-download
-workflow, and no catalog or manifest is shipped. See [PLAN.md](PLAN.md) for
-exact results and progress. Synthetic host/Linux checks do not establish
-installed-opkg provenance or Merlin acceptance. Live router acceptance and
-operational feature integration remain pending, and there is no installable
-manager yet. Routine Entware upgrades
-remain user-managed; normal repair installs only missing or unusable
-requirements.
+Implemented foundations include parsing, storage checks, guarded process
+deadlines, internal workspaces and a partial native health report. Fixed probes
+cover one native shell launch and the installed Entware `opkg --version`
+response. The source-only serialized dependency worker can run the bundled
+repair or selected reinstall backend inside an already admitted native root;
+operational CLI, menu and installer wiring remain pending.
+
+Source-only libraries validate configuration headers, catalogs and package
+manifests with shared safe-path checks. A host-only Python command generates a
+deterministic manifest from an explicit local Git commit. The native manifest
+reader emits a checked canonical ledger, and the new verifier compares each
+declared file's size and SHA-256 in a caller-prepared source tree. The full 50% local gate passes 1,843 tests with 38 platform skips;
+exact-head Linux/BusyBox CI remains pending.
+See [PLAN.md](PLAN.md) for checkpoint results and remaining work.
+
+These checks do not establish source authenticity, complete package inventory,
+compatibility, installed permissions or router acceptance. There is no
+integrated config reader, catalog/acquisition workflow or installer, and no
+catalog or manifest is shipped. Synthetic host/Linux evidence does not prove
+installed-opkg provenance or Merlin behavior. Routine Entware upgrades remain
+user-managed; normal repair installs only missing or unusable requirements.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
 DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)
