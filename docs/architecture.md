@@ -48,6 +48,7 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
+| `modules/lib/json.sh`, `modules/lib/config.sh` | Fixed internal JSON-token capture and owned config-header report through one IO owner | Returns only schema marker, generation and developer flag; no full settings validation or installed-config admission |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
 | `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification, manifest-derived tree, entry-version and supplied-policy reports | Source-only APIs require caller-prepared immutable inputs; no source authenticity, semantic compatibility, installation or activation authority |
 | `modules/lib/catalog.sh` | Join a parsed catalog projection with a separately supplied manifest into a commit-pinned source plan | Caller owns branch-to-commit correspondence and manifest provenance; no acquisition, authentication, source-byte verification or installation authority |
@@ -197,9 +198,19 @@ because it could interpret backslashes.
 `modules/lib/io.sh` has no source-time side effects. The caller supplies a
 trusted RAM parent, callback and verified parser path; production tool paths are
 fixed and inherited path overrides are ignored. Disable tracing before passing
-arguments. It provides private callback workspaces and capture slots 0–15;
-each accepted stdout/stderr stream is at most 65,536 bytes, and accepted stream
-data totals at most 2 MiB. Its interfaces are:
+arguments. It provides private callback workspaces, 16 capture slots and at
+most 48 capture/status artifacts. Public
+ordinary captures accept at most 65,536 bytes on each stdout/stderr stream; 16
+ordinary slots can accept up to 2 MiB of combined stream data. A separate fixed
+JSON-token profile allows 131,072 stdout and 4,096 stderr bytes for the trusted
+JSON parser only; callers cannot select it through the public capture API or
+environment. Its 16-slot theoretical maximum is 2,162,688 accepted bytes.
+The per-stream physical file ceiling is 132,096 bytes for ordinary captures
+and 263,168 bytes for JSON tokens, or 526,336 bytes per token-profile slot.
+Across 16 token-profile slots, the physical output ceiling is 8,421,376 bytes
+plus status records. The private profile does not widen ordinary limits, size
+helpers or report staging. Its current config-header report uses three slots
+and accepts 209,152 stream bytes. The capture interfaces are:
 
 | Function | Caller contract |
 | --- | --- |
@@ -211,9 +222,8 @@ data totals at most 2 MiB. Its interfaces are:
 
 Capture status `0` means transport completed, not that the producer succeeded;
 the caller must read the complete `.status` record before using output. An
-overflow byte is captured for exact limit checks; supported shells yield a
-132,096-byte physical ceiling per stream, while accepted stream data totals at
-most 2 MiB. IO, limit or cleanup failures return `1`, invalid usage returns `2`,
+overflow byte is captured for exact limit checks. IO, limit or cleanup failures
+return `1`, invalid usage returns `2`,
 and no covering mount remains `3`. Callback status otherwise passes through
 after owned cleanup; handled HUP/INT/TERM exits remain `129`/`130`/`143`. The
 owner preserves caller state; external callers must forward signals or supervise
@@ -551,12 +561,12 @@ marker release and the still-held lock. The full local check and all 1,792
 Linux/BusyBox tests pass; this remains host evidence, with router acceptance
 and operational entry paths still pending.
 
-The preceding 46% checkpoint added the standalone `config_header.awk` and
-`catalog.awk` parsers with [data-format contracts](development.md#-module-catalog-and-forks).
-The full local gate passes 1,812 tests with 36 explicit platform skips in 688.43s;
-exact Linux/BusyBox CI passes all 1,848 tests and all eleven unchanged kernel
-scenarios. This validates the parsers and preserves the worker composition;
-no integrated config reader, manifest trust or catalog acquisition path is implemented.
+The configuration and catalog parsers have explicit
+[data-format contracts](development.md#-module-catalog-and-forks). The
+[owned header report](development.md#source-only-config-header-report) connects
+JSON parsing and header framing through one managed workspace. Full settings
+validation, installed-config admission and trusted acquisition remain pending;
+[PLAN.md](../PLAN.md) retains checkpoint validation evidence.
 
 The accepted 47% D2 checkpoint extracts shared safe-path functions and adds a
 bounded manifest parser. Combined manifest/catalog focused checks pass 39

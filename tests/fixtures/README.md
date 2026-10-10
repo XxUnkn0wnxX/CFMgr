@@ -165,6 +165,19 @@ composition. See [PLAN.md](../../PLAN.md) for the test and validation
 record. These fixtures cannot prove URL provenance, branch mapping, repository
 authenticity, profile completeness, source-byte validity or installation.
 
+### Config-header report (D10)
+
+`tests/test_config_header_report.py` composes the real IO owner with the JSON
+and header parsers over fresh synthetic configuration. It checks the exact
+header-only ledger, the fixed token-output capacity, original-byte framing,
+producer status and stderr, and cleanup refusal. Existing parser tests cover
+malformed JSON/header structure; the new report tests cover projection framing
+and a BusyBox case exercises the actual composition. Related IO cases retain
+caller-state checks and verify that private token capture does not widen public
+measurement or ordinary capture limits. These fixtures never read live
+configuration and do not validate other settings or credentials. See [PLAN.md](../../PLAN.md) for
+the validation record.
+
 ## Kernel fixtures
 
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit

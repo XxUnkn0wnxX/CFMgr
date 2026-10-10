@@ -14,7 +14,7 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manag
 | Worker safety foundations | Implemented | Process deadlines and read-only workspaces |
 | Health report | In progress | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
-| Settings and module catalog | In progress | Source-only config and [commit-pinned request plan](docs/development.md#source-only-catalog-request-plan); acquisition pending |
+| Settings and module catalog | In progress | Source-only [header report](docs/development.md#source-only-config-header-report) and [catalog plan](docs/development.md#source-only-catalog-request-plan); full settings/acquisition pending |
 | Developer package inventory | Implemented | Host-only [manifest command](docs/development.md#developer-package-inventory) |
 | Prepared package validation | Implemented | Source-only [manifest, tree, version and policy reports](docs/development.md#source-only-package-policy-report) |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |

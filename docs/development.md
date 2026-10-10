@@ -639,11 +639,11 @@ The source-only `modules/lib/config_header.awk`, `catalog.awk` and
 functions-only `modules/lib/package_path.awk` helper before either catalog or
 manifest parser; no automatic helper loading is provided. Source-only native
 manifest, byte, tree, version and policy reports plus the D9 catalog request
-planner are described below; none is connected to a config reader or installed
-workflow. Full schema/defaults, config ownership, migration, activation and
-writes remain future work. There is no generated defaults file, config writer,
-shipped catalog or manifest, authenticated manifest acquisition, downloader or
-installer.
+planner are described below; none is connected to a full settings reader or
+installed workflow. Full schema/defaults, config ownership, migration,
+activation and writes remain future work. There is no generated defaults file,
+config writer, shipped catalog or manifest, authenticated manifest acquisition,
+downloader or installer.
 
 ### Configuration-header projection
 
@@ -665,9 +665,62 @@ Invocation/size errors return 2 and malformed data returns 1; valid projection
 returns 0. The caller must still verify the JSON producer's status and exact
 consumer output/footer bytes because AWK may not report an output-write failure.
 This projection does not establish complete settings validity, credential
-semantics, defaults or config ownership. The existing IO capture limit remains
-65,536 bytes: this standalone 131,072-byte parser bound does not widen it or
-provide a working large-config reader.
+semantics, defaults or config ownership. The public/ordinary IO capture and
+measurement limits remain 65,536 bytes. D10 adds a fixed private JSON-token
+capture profile for this report; it does not widen arbitrary captures or
+provide a large-config reader.
+
+### Source-only config-header report
+
+D10 adds `cfmgr_config_header_report RAM_ROOT CONFIG JSON_PARSER HEADER_PARSER`
+and fixture-only `cfmgr_config_header_test RAM_ROOT TOOLS CONFIG JSON_PARSER
+HEADER_PARSER`. Explicitly source trusted `io.sh`, `json.sh` and `config.sh`.
+The caller supplies a private immutable readable regular nonsymlink CONFIG
+file and trusted absolute readable regular nonsymlink parser paths. The report
+does not source or evaluate configuration, select an installed path, or fetch
+input.
+
+One IO owner captures raw CONFIG in slot 0 at 65,536 stdout and 4,096 stderr
+bytes. The fixed internal JSON-token profile in slot 1 runs `json.awk` in token
+mode using the measured raw size; its output cap is 131,072 bytes, with 4,096
+stderr bytes. The report passes those token bytes as stdin to `config_header.awk`
+in slot 2 with 256 stdout and 4,096 stderr bytes. JSON and token contents stay
+in files, not shell variables or argv. Each producer must succeed with empty
+stderr. The owner then reconstructs the header output and checks exact fields,
+canonical generation, boolean value, footer, original byte count, final LF,
+EOF and absence of extra data before staging the report and cleaning up.
+
+The public ledger is exactly
+`config-header<TAB>1<TAB>GENERATION<TAB>true|false<LF>end<TAB>BODY_BYTES<LF>`.
+It exposes only the supported schema marker, generation and developer flag;
+it does not approve other settings, credential values or installation state.
+Data, producer or cleanup refusal returns 1; invalid API/parser arguments
+return 2. A trusted AWK/parser status 2 is preserved after empty-stderr checks.
+The IO owner's HUP/INT/TERM results remain 129/130/143.
+
+The report uses three captures and nine scratch artifacts. It allows 209,152
+accepted capture bytes including stderr: 65,536 raw JSON, 131,072 token output,
+256 header output and 12,288 stderr. Conservative file-limit allocation is
+808,960 bytes plus status records: 264,192 raw, 526,336 tokens and 18,432
+projection. Caller files and parser memory are additional; input acquisition
+has no hard deadline. The ordinary `cfmgr_io_capture`, `_cfmgr_io_limit`,
+`_cfmgr_io_size` and `cfmgr_io_stage_report` contracts remain at 65,536 bytes.
+
+With prepared inputs and trusted parser paths, a developer can call the
+source-only report as follows:
+
+```sh
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/json.sh"
+. "$CFMGR_LIB/config.sh"
+JSON_PARSER=$CFMGR_LIB/json.awk
+HEADER_PARSER=$CFMGR_LIB/config_header.awk
+cfmgr_config_header_report "$RAM_ROOT" "$CONFIG" \
+  "$JSON_PARSER" "$HEADER_PARSER"
+```
+
+The fixture API is only for developer tests. No CLI, defaults, live-config
+admission, persistence or installed lifecycle calls this report.
 
 ### Source-catalog grammar
 
