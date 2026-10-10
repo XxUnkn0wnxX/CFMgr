@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Pure address normalization and coarse IPv4 scope classification; no route,
+# Pure address normalization and coarse address scope classification; no route,
 # ownership or publish authority.
 # Sourcing defines functions. Subshell bodies isolate caller state and scratch.
 
@@ -237,4 +237,73 @@ cfmgr_ipv4_classify() (
 		;;
 	esac
 	printf '%s\n' "$_cfmgr_ip4_scope"
+)
+
+# Address-scope classification only; categories do not authorize publication.
+cfmgr_ipv6_classify() (
+	[ "$#" -eq 1 ] || return 1
+	_cfmgr_ip6_classified=$(cfmgr_ipv6_normalize "$1") || return 1
+	_cfmgr_ip6_scope_left=$_cfmgr_ip6_classified
+	_cfmgr_ip6_scope_right=
+	case $_cfmgr_ip6_classified in
+	*::*)
+		_cfmgr_ip6_scope_left=${_cfmgr_ip6_classified%%::*}
+		_cfmgr_ip6_scope_right=${_cfmgr_ip6_classified#*::}
+		;;
+	esac
+	IFS=:
+	set -f
+	_cfmgr_ip6_scope_count=0
+	for _cfmgr_ip6_scope_side in "$_cfmgr_ip6_scope_left" "$_cfmgr_ip6_scope_right"; do
+		# Both sides contain only canonical hextets from the existing normalizer.
+		# shellcheck disable=SC2086
+		set -- $_cfmgr_ip6_scope_side
+		_cfmgr_ip6_scope_count=$((_cfmgr_ip6_scope_count + $#))
+	done
+	_cfmgr_ip6_scope_missing=$((8 - _cfmgr_ip6_scope_count))
+	_cfmgr_ip6_scope_full=$_cfmgr_ip6_scope_left
+	while [ "$_cfmgr_ip6_scope_missing" -gt 0 ]; do
+		_cfmgr_ip6_scope_full=$_cfmgr_ip6_scope_full:0
+		_cfmgr_ip6_scope_missing=$((_cfmgr_ip6_scope_missing - 1))
+	done
+	if [ -n "$_cfmgr_ip6_scope_right" ]; then
+		_cfmgr_ip6_scope_full=$_cfmgr_ip6_scope_full:$_cfmgr_ip6_scope_right
+	fi
+	_cfmgr_ip6_scope_full=${_cfmgr_ip6_scope_full#:}
+	# Exactly eight canonical hexadecimal words; no octal or wide arithmetic.
+	# shellcheck disable=SC2086
+	set -- $_cfmgr_ip6_scope_full
+	_cfmgr_ip6_scope_first=$((0x$1))
+	_cfmgr_ip6_scope_second=$((0x$2))
+	_cfmgr_ip6_scope=nonpublic
+	if [ "$_cfmgr_ip6_scope_first" -ge 8192 ] && [ "$_cfmgr_ip6_scope_first" -le 16383 ]; then
+		_cfmgr_ip6_scope=global
+	fi
+
+	if [ "$((_cfmgr_ip6_scope_first & 65024))" -eq 64512 ]; then
+		# fc00::/7, including both ULA halves.
+		_cfmgr_ip6_scope=private
+	elif [ "$1:$2:$3:$4:$5:$6" = 0:0:0:0:0:ffff ] ||
+		{ [ "$1:$2:$3:$4:$5:$6" = 0:0:0:0:0:0 ] &&
+			[ "$7:$8" != 0:0 ] && [ "$7:$8" != 0:1 ]; } ||
+		[ "$1:$2:$3:$4:$5:$6" = 64:ff9b:0:0:0:0 ] ||
+		[ "$1:$2:$3" = 64:ff9b:1 ] ||
+		[ "$1:$2" = 2001:0 ] || [ "$1" = 2002 ]; then
+		# Mapped, compatible, well-known/local translation, Teredo and 6to4.
+		_cfmgr_ip6_scope=transition
+	elif { [ "$1:$2:$3:$4:$5:$6:$7" = 2001:1:0:0:0:0:0 ] &&
+		{ [ "$8" = 1 ] || [ "$8" = 2 ] || [ "$8" = 3 ]; }; } ||
+		[ "$1:$2" = 2001:3 ] || [ "$1:$2:$3" = 2001:4:112 ] ||
+		{ [ "$1" = 2001 ] && [ "$_cfmgr_ip6_scope_second" -ge 32 ] &&
+			[ "$_cfmgr_ip6_scope_second" -le 63 ]; } ||
+		[ "$1:$2:$3" = 2620:4f:8000 ]; then
+		# Point exceptions, AMT, AS112, ORCHIDv2 /28, DET /28 and direct AS112.
+		_cfmgr_ip6_scope=special
+	elif { [ "$1" = 2001 ] && [ "$_cfmgr_ip6_scope_second" -le 511 ]; } ||
+		[ "$1:$2" = 2001:db8 ] || [ "$1" = 3ffe ] ||
+		{ [ "$1" = 3fff ] && [ "$_cfmgr_ip6_scope_second" -le 4095 ]; }; then
+		# Remaining 2001::/23, documentation and retired 6bone space.
+		_cfmgr_ip6_scope=nonpublic
+	fi
+	printf '%s\n' "$_cfmgr_ip6_scope"
 )
