@@ -12,6 +12,12 @@ profile is an observation, not proof that a runtime feature works on that router
 
 ## Synthetic data and package reports
 
+`tests/test_ip_classify.py` checks an independent range-boundary oracle,
+special-case addresses, quiet invalid-input refusal, caller-state preservation
+and representative BusyBox behavior. The separate `tests/test_ip.py` cases
+cover strict IPv4/IPv6 syntax and canonical formatting. Classification does
+not establish network assignment or reachability.
+
 `tests/test_config_header.py` runs the real JSON producer on synthetic inputs,
 then checks the source-only header projection and deliberately corrupted
 ledgers. It does not read live settings or expose credential values. The

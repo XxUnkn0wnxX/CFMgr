@@ -414,6 +414,7 @@ compilation check validates developer tooling only. The entry point does not ins
 | `tests/test_reporting.py` | Accurate test-evidence counts |
 | `tests/test_primitives.py` | Native decimal/version/digest parsing and caller-state preservation |
 | `tests/test_ip.py` | Strict IPv4/IPv6 host syntax and deterministic canonical formatting |
+| `tests/test_ip_classify.py` | IPv4 scope-range boundaries, quiet invalid-input refusal and caller-state preservation |
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
@@ -551,6 +552,42 @@ after full local validation passes; wait for green CI before further code work. 
 explicit active-development warning until router runtime acceptance is complete.
 Do not include unreviewed changes in a publication. Stable
 promotion and live deployment still require separate authorization.
+
+## 🧭 Address helpers
+
+`cfmgr_ipv4_normalize ADDRESS` validates strict IPv4 text and returns it unchanged.
+`cfmgr_ipv6_normalize ADDRESS` returns lowercase hexadecimal with shortest,
+leftmost zero compression, including hexadecimal output for dotted IPv4 tails.
+Both accept one host address, return 0 with one newline-terminated result, and
+refuse invalid syntax or argument counts quietly with status 1.
+
+`modules/lib/ip.sh` provides `cfmgr_ipv4_classify ADDRESS`. It accepts exactly
+one strict canonical IPv4 address and prints one of `global`, `private`,
+`shared` or `nonpublic`, followed by a newline, with status 0. Invalid syntax, a noncanonical
+address or the wrong argument count returns status 1 without output. The helper
+is a pure shell classification; it does not discover interfaces, access the
+network or read state.
+
+The fixed ranges are:
+
+| Result | IPv4 ranges |
+| --- | --- |
+| `private` | `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` |
+| `shared` | `100.64.0.0/10` |
+| `nonpublic` | `0.0.0.0/8`, `127.0.0.0/8`, `169.254.0.0/16`, `192.0.0.0/24` except `192.0.0.9` and `.10`, `192.0.2.0/24`, `192.88.99.0/24`, `198.18.0.0/15`, `198.51.100.0/24`, `203.0.113.0/24`, and `224.0.0.0/3` |
+| `global` | Other syntactically valid addresses, including the two listed `192.0.0.0/24` exceptions |
+
+The category is only a range classification. It does not prove assignment,
+routing, WAN ownership, freshness, NAT, reachability or eligibility for
+publication. The final octet alone does not identify a subnet's network or
+broadcast address. IPv6 normalization remains syntax-only.
+
+From the repository root, this POSIX-shell example loads the helper and
+classifies a supplied value:
+
+```sh
+sh -c '. ./modules/lib/ip.sh; cfmgr_ipv4_classify 8.8.8.8'
+```
 
 ## 📦 Source data and package reports
 

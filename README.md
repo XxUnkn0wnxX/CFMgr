@@ -10,7 +10,7 @@ Cloudflare Manager for Asuswrt-Merlin — a command-line project.
 
 | Feature | Status | At a glance |
 | --- | --- | --- |
-| Core foundations | Implemented | Parsing, storage checks and managed workspaces |
+| Core foundations | Implemented | Parsing, [address helpers](docs/development.md#-address-helpers), storage checks and managed workspaces |
 | Worker safety foundations | Implemented | Process deadlines and read-only workspaces |
 | Health report | In progress | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |

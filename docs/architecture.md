@@ -33,7 +33,7 @@ flowchart LR
 | --- | --- | --- |
 | `cfmgr.sh` | Command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Does not execute Entware tools or feature operations |
-| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
+| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and IPv4 scope classification, plus bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config header/lifecycle, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/json.sh`, `modules/lib/config.sh`, `modules/lib/setup_state.sh` | Fixed JSON-token capture, config-header/lifecycle projection, and supplied setup-state report through the IO owner | Returns saved projection fields only; credential values are not returned, and full settings validation or installed-config admission is outside these APIs |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
@@ -107,8 +107,11 @@ including the terminal count footer; numeric text is preserved. Consumers set
 records; this does not establish configuration semantics or authorize a provider
 request. `modules/lib/ip.sh`
 normalizes IPv4/IPv6 text, including lower-case shortest IPv6 with longest-leftmost
-zero compression. Valid syntax alone does not establish public-address
-eligibility, WAN selection or freshness.
+zero compression. `cfmgr_ipv4_classify` accepts one canonical IPv4 address and
+returns `global`, `private`, `shared` or `nonpublic` using fixed address ranges.
+This is a source-only classification: it does not establish assignment, routing,
+WAN ownership, freshness, NAT or reachability. IPv6 normalization remains
+syntax-only.
 
 `modules/lib/mountinfo.awk` chooses the deepest mount covering a canonical path
 and rejects ambiguous covering ancestors. It consumes a stable snapshot capped
