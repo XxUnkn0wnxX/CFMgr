@@ -1,0 +1,149 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Owned native manifest reports; explicitly source trusted io.sh first.
+# Input/code and their ancestors must be trusted, immutable and unaliased.
+# These path checks are not atomic hostile-filesystem admission or provenance.
+# Source loading only defines functions; public entries use the IO owner to
+# isolate state, bound captures and clean up before publishing one report.
+# IO-owned variables are initialized by the explicitly sourced owner.
+# shellcheck disable=SC2154
+
+cfmgr_package_manifest_report() {
+	[ "$#" -eq 4 ] || return 2
+	cfmgr_io_with_report "$1" _cfmgr_package_manifest_action "$2" "$3" "$4"
+}
+
+# Explicit fixture-only tool selection, never a production environment input.
+cfmgr_package_manifest_test() {
+	[ "$#" -eq 5 ] || return 2
+	cfmgr_io_test "$1" "$2" report _cfmgr_package_manifest_action "$3" "$4" "$5"
+}
+
+_cfmgr_package_manifest_action() {
+	[ "$#" -eq 4 ] || return 2
+	_cfmgr_package_manifest_capture "$2" "$3" "$4" 0 1 || return "$?"
+	cfmgr_io_stage_report "$_package_manifest_ledger"
+}
+
+# Controlled owner callback only. Slots are distinct, consumed even on failure,
+# and share the existing IO owner's budget; no competing traps or cleanup.
+_cfmgr_package_manifest_capture() {
+	[ "${_io_active-}" = 1 ] || return 2
+	_package_manifest_body=
+	_package_manifest_ledger=
+	_package_manifest_count=0
+	_package_manifest_total=0
+	_package_manifest_version=
+	_package_manifest_raw_bytes=
+	[ "$#" -eq 5 ] || return 2
+	_package_manifest_input=$1
+	_package_manifest_helper=$2
+	_package_manifest_parser=$3
+	_package_manifest_raw_slot=$4
+	_package_manifest_result_slot=$5
+	for _package_manifest_slot in "$4" "$5"; do
+		case $_package_manifest_slot in [0123456789] | 1[012345]) ;; *) return 2 ;; esac
+	done
+	[ "$4" != "$5" ] || return 2
+	for _package_manifest_code in "$2" "$3"; do
+		case $_package_manifest_code in /*) ;; *) return 2 ;; esac
+		[ -f "$_package_manifest_code" ] && [ ! -L "$_package_manifest_code" ] &&
+			[ -r "$_package_manifest_code" ] || return 2
+	done
+	[ -f "$_package_manifest_input" ] && [ ! -L "$_package_manifest_input" ] &&
+		[ -r "$_package_manifest_input" ] || return 1
+	# No filename operand: even an input name beginning '-' stays regular stdin.
+	cfmgr_io_capture "$_package_manifest_raw_slot" 65536 4096 cat <"$_package_manifest_input" || return 1
+	_cfmgr_io_capture_status "$_package_manifest_raw_slot" || return 1
+	[ "$_io_producer" -eq 0 ] && [ "$_io_err_bytes" -eq 0 ] || return 1
+	_package_manifest_raw_bytes=$_io_out_bytes
+	[ "$_package_manifest_raw_bytes" -gt 0 ] || return 1
+	cfmgr_io_capture "$_package_manifest_result_slot" 65536 4096 awk \
+		-v "cfmgr_manifest_size=$_package_manifest_raw_bytes" \
+		-f "$_package_manifest_helper" -f "$_package_manifest_parser" \
+		<"$_io_stage/$_package_manifest_raw_slot.out" || return 1
+	_cfmgr_io_capture_status "$_package_manifest_result_slot" || return 1
+	[ "$_io_err_bytes" -eq 0 ] || return 1
+	case $_io_producer in 0) ;; 2) return 2 ;; *) return 1 ;; esac
+	_cfmgr_package_manifest_decode "$_io_stage/$_package_manifest_result_slot.out" "$_io_out_bytes"
+}
+
+# Check the trusted parser's transport ledger, not its path/version semantics.
+# EXPECTED_BYTES comes from capture's independently measured original bytes:
+# reconstructing all tabs/LFs and comparing it detects shell NUL stripping,
+# collapsed empty fields, truncation and short successful parser writes.
+_cfmgr_package_manifest_decode() {
+	[ "${_io_active-}" = 1 ] || return 2
+	_package_manifest_body=
+	_package_manifest_ledger=
+	_package_manifest_count=0
+	_package_manifest_total=0
+	_package_manifest_version=
+	_package_manifest_line=
+	_package_manifest_extra=
+	_package_manifest_footer=
+	_package_manifest_rebuilt=
+	[ "$#" -eq 2 ] || return 2
+	_package_manifest_file=$1
+	_package_manifest_expected=$2
+	_cfmgr_io_limit "$_package_manifest_expected" || return 1
+	[ "$_package_manifest_expected" -gt 0 ] || return 1
+	[ -f "$_package_manifest_file" ] && [ ! -L "$_package_manifest_file" ] &&
+		[ -r "$_package_manifest_file" ] || return 1
+	_cfmgr_package_manifest_records <"$_package_manifest_file"
+}
+
+_cfmgr_package_manifest_records() {
+	IFS= read -r _package_manifest_line || return 1
+	[ "$_package_manifest_line" = "manifest$_io_tab"'1' ] || return 1
+	IFS= read -r _package_manifest_line || return 1
+	case $_package_manifest_line in "version$_io_tab"*) ;; *) return 1 ;; esac
+	_package_manifest_version=${_package_manifest_line#"version$_io_tab"}
+	[ -n "$_package_manifest_version" ] && [ "${#_package_manifest_version}" -le 128 ] || return 1
+	case $_package_manifest_version in *[!\ -~]*) return 1 ;; esac
+	IFS= read -r _package_manifest_line || return 1
+	[ "$_package_manifest_line" = "config-schema$_io_tab"'1' ] || return 1
+	IFS= read -r _package_manifest_line || return 1
+	[ "$_package_manifest_line" = "package-api$_io_tab"'1' ] || return 1
+	_package_manifest_body="manifest${_io_tab}1${_io_lf}version$_io_tab$_package_manifest_version$_io_lf"
+	_package_manifest_body="${_package_manifest_body}config-schema${_io_tab}1${_io_lf}package-api${_io_tab}1$_io_lf"
+	while IFS= read -r _package_manifest_line; do
+		case $_package_manifest_line in
+		"end$_io_tab"*)
+			[ "$_package_manifest_count" -gt 0 ] || return 1
+			_package_manifest_footer="end$_io_tab$_package_manifest_count$_io_tab$_package_manifest_total$_io_tab${#_package_manifest_body}"
+			[ "$_package_manifest_line" = "$_package_manifest_footer" ] || return 1
+			if IFS= read -r _package_manifest_extra || [ -n "$_package_manifest_extra" ]; then
+				return 1
+			fi
+			[ "$((${#_package_manifest_body} + ${#_package_manifest_footer} + 1))" -eq "$_package_manifest_expected" ] || return 1
+			_package_manifest_ledger=$_package_manifest_body$_package_manifest_footer$_io_lf
+			return 0
+			;;
+		esac
+		case $_package_manifest_line in *[!\ -~"$_io_tab"]*) return 1 ;; esac
+		_package_manifest_saved_ifs=$IFS
+		IFS=$_io_tab
+		# Owner has noglob set. Reconstruction rejects IFS tab/empty collapse.
+		# shellcheck disable=SC2086
+		set -- $_package_manifest_line
+		IFS=$_package_manifest_saved_ifs
+		[ "$#" -eq 5 ] && [ "$1" = file ] || return 1
+		_package_manifest_rebuilt="$1$_io_tab$2$_io_tab$3$_io_tab$4$_io_tab$5"
+		[ "$_package_manifest_rebuilt" = "$_package_manifest_line" ] || return 1
+		[ -n "$2" ] && [ "${#2}" -le 240 ] || return 1
+		# Only these bounded sizes enter shell arithmetic. Version components
+		# above remain lexical, including arbitrarily large supported components.
+		case $3 in '' | 0* | *[!0123456789]*) return 1 ;; esac
+		[ "${#3}" -le 7 ] && [ "$3" -le 1048576 ] || return 1
+		[ "${#4}" -eq 64 ] || return 1
+		case $4 in *[!0123456789abcdef]*) return 1 ;; esac
+		case $5 in 0644 | 0755) ;; *) return 1 ;; esac
+		_package_manifest_count=$((_package_manifest_count + 1))
+		_package_manifest_total=$((_package_manifest_total + $3))
+		[ "$_package_manifest_count" -le 128 ] && [ "$_package_manifest_total" -le 8388608 ] || return 1
+		_package_manifest_body=$_package_manifest_body$_package_manifest_rebuilt$_io_lf
+	done
+	# Failed read means missing LF/footer, even if a final partial line was read.
+	return 1
+}
