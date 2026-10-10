@@ -19,6 +19,12 @@ and representative BusyBox behavior for IPv4 and IPv6 classifiers. The separate
 Classification applies fixed address-range policy; it does not establish
 network assignment, routing or reachability.
 
+`tests/test_ip_observation.py` checks the supplied IPv4 decision table,
+versioned byte-count framing, quiet refusal of invalid operands or arity,
+caller-state preservation and representative BusyBox behavior. It does not
+collect network observations or establish that an active candidate is fresh or
+reachable.
+
 `tests/test_config_header.py` runs the real JSON producer on synthetic inputs,
 then checks the source-only header projection and deliberately corrupted
 ledgers. It does not read live settings or expose credential values. The

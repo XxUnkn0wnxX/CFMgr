@@ -415,6 +415,7 @@ compilation check validates developer tooling only. The entry point does not ins
 | `tests/test_primitives.py` | Native decimal/version/digest parsing and caller-state preservation |
 | `tests/test_ip.py` | Strict IPv4/IPv6 host syntax and deterministic canonical formatting |
 | `tests/test_ip_classify.py` | IPv4/IPv6 scope-range boundaries, quiet invalid-input refusal and caller-state preservation |
+| `tests/test_ip_observation.py` | Supplied IPv4 observation decisions, output framing, invalid-input refusal and caller-state preservation |
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
@@ -605,6 +606,50 @@ classify supplied values:
 ```sh
 sh -c '. ./modules/lib/ip.sh; cfmgr_ipv4_classify 8.8.8.8'
 sh -c '. ./modules/lib/ip.sh; cfmgr_ipv6_classify 2001:4860::1'
+```
+
+### Supplied IPv4 observations
+
+`cfmgr_ipv4_observation_report WAN EXTERNAL` compares two caller-supplied IPv4
+values. Use `-` when either observation is unavailable; every other operand
+must be accepted by `cfmgr_ipv4_classify`. Invalid arity or input returns
+status 1 without output. The helper does not collect addresses, inspect routes,
+contact the network or call a provider.
+
+Both operands are validated before the report applies its decision rules; invalid
+input returns status 1 even when another condition would otherwise produce an
+`unknown` result. For an operational comparison, the caller must provide a
+fresh WAN observation for the selected-WAN/config generation and an external
+observation whose IPv4 egress is verified for that same WAN and generation.
+The helper does not establish those prerequisites.
+
+The data row is `ipv4-observation<TAB>1<TAB>STATE<TAB>ADDRESS<TAB>NAT<TAB>REASON`.
+The next row is `end<TAB>COUNT`, where `COUNT` is the byte length of the data
+row including its terminating newline. Both rows end with a newline.
+
+| WAN scope / value | External scope / value | State | Address | NAT | Reason |
+| --- | --- | --- | --- | --- | --- |
+| `-` | Any valid value or `-` | `unknown` | `-` | `unknown` | `wan-unavailable` |
+| `nonpublic` | Any valid value or `-` | `unknown` | `-` | `unknown` | `wan-nonpublic` |
+| `global`, `private` or `shared` | `-` | `unknown` | `-` | `unknown` | `external-unavailable` |
+| `global`, `private` or `shared` | Non-global | `unknown` | `-` | `unknown` | `external-nonpublic` |
+| Global and equal to external | `global` | `active` | WAN address | `false` | `address-match` |
+| Global and different from external | `global` | `active` | External address | `true` | `address-mismatch` |
+| `private` | `global` | `active` | External address | `true` | `private-wan` |
+| `shared` | `global` | `active` | External address | `true` | `shared-wan` |
+
+`active` identifies a candidate from these supplied values, not address
+assignment, freshness or reachability. `unknown` does not authorize deletion.
+`nat=false` means only that the supplied global addresses match; it does not
+prove that no upstream translation exists. `nat=true` follows the mismatch or
+private/shared-WAN rules, does not identify where translation occurs and does
+not prove inbound reachability.
+
+From the repository root, this POSIX-shell example sources the helper and
+prints the framed comparison report:
+
+```sh
+sh -c '. ./modules/lib/ip.sh; cfmgr_ipv4_observation_report 10.0.0.1 8.8.8.8'
 ```
 
 ## 📦 Source data and package reports

@@ -33,7 +33,7 @@ flowchart LR
 | --- | --- | --- |
 | `cfmgr.sh` | Command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Does not execute Entware tools or feature operations |
-| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, IPv4/IPv6 normalization and scope classification, plus bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
+| `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, IPv4/IPv6 normalization and scope classification, supplied IPv4 observation report, plus bounded JSON token framing | Libraries/parsers only; no observation collection, feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config header/lifecycle, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/json.sh`, `modules/lib/config.sh`, `modules/lib/setup_state.sh` | Fixed JSON-token capture, config-header/lifecycle projection, and supplied setup-state report through the IO owner | Returns saved projection fields only; credential values are not returned, and full settings validation or installed-config admission is outside these APIs |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
@@ -119,6 +119,16 @@ WAN ownership, freshness, NAT, reachability or eligibility for publication.
 IPv6 normalization remains a separate syntax and canonical-format operation;
 the classifier does not detect network-specific NAT64 or assess an embedded
 IPv4 address's scope or reachability.
+
+`cfmgr_ipv4_observation_report WAN EXTERNAL` compares two caller-supplied IPv4
+values, using `-` for an unavailable observation. It emits a versioned,
+newline-terminated tab-separated record and a footer containing the byte count
+of that record. Invalid arity or invalid non-`-` input returns status 1 without
+output. The helper performs no address collection, route lookup or network or
+provider access. `active` is a candidate from the supplied comparison, not
+proof of address assignment, freshness or reachability; `unknown` never
+authorizes deletion. `nat=false` records matching supplied global addresses
+and is not universal proof that no upstream translation exists.
 
 `modules/lib/mountinfo.awk` chooses the deepest mount covering a canonical path
 and rejects ambiguous covering ancestors. It consumes a stable snapshot capped
