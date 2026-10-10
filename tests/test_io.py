@@ -151,17 +151,40 @@ class IOFixture:
         }
         self.settings_path = router.path("work/settings.json")
         self.save()
-        for tool in ["mkdir", "rm", "cat", "wc", "awk", "printf"]:
+        for tool in ("mkdir", "rm", "cat", "awk"):
             router.fake_tool(
                 tool,
                 f"exec {shlex.quote(sys.executable)} "
                 f"{shlex.quote(str(router.path('work/dispatcher.py')))} "
                 f'{shlex.quote(str(self.settings_path))} {tool} "$@"\n',
             )
+        self._install_fast_tool("wc", "/usr/bin/wc")
+        self._install_fast_tool("printf", "/usr/bin/printf")
 
     def save(self) -> None:
         self.settings_path.write_text(json.dumps(self.settings))
         self.settings_path.chmod(0o600)
+        for tool in ("wc", "printf"):
+            marker = self.router.path(f"work/{tool}-fault")
+            if self.settings["modes"].get(tool):
+                marker.write_text("fault selected")
+            elif marker.exists():
+                marker.unlink()
+
+    def _install_fast_tool(self, tool: str, native: str) -> None:
+        marker = self.router.path(f"work/{tool}-fault")
+        dispatcher = (
+            f"exec {shlex.quote(sys.executable)} "
+            f"{shlex.quote(str(self.router.path('work/dispatcher.py')))} "
+            f'{shlex.quote(str(self.settings_path))} {tool} "$@"'
+        )
+        self.router.write(
+            f"bin/{tool}",
+            "#!/bin/sh\n"
+            f"if [ -f {shlex.quote(str(marker))} ]; then {dispatcher}; fi\n"
+            f'exec {shlex.quote(native)} "$@"\n',
+            executable=True,
+        )
 
     def run(self, script: str, args: list[str], *, timeout: float = 15) -> ShellResult:
         self.router.write("work/invoke.sh", f". {shlex.quote(str(SOURCE))}\n" + script)
@@ -341,11 +364,6 @@ def test_failed_slot_is_consumed_and_never_reused(io: IOFixture) -> None:
 
 
 def test_sixteen_slots_bound_capture_files(io: IOFixture) -> None:
-    # Use native no-fault wc/printf here to avoid 64 Python dispatcher launches.
-    io.router.path("bin/wc").unlink()
-    io.router.path("bin/wc").symlink_to("/usr/bin/wc")
-    io.router.path("bin/printf").unlink()
-    io.router.path("bin/printf").symlink_to("/usr/bin/printf")
     quiet(
         io.workspace(
             'i=0\nwhile [ "$i" -lt 16 ]; do\n'
