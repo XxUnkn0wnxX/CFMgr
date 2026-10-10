@@ -35,9 +35,7 @@ DISPATCHER = r"""
 import json
 import os
 from pathlib import Path
-import signal
 import stat
-import subprocess
 import sys
 
 sys.path.insert(0, sys.argv[1])
@@ -150,6 +148,8 @@ if tool == "mount":
         if fault == "bind-" + kind + "-partial":
             sys.exit(7)
         if fault == "signal-mount":
+            import signal
+
             os.kill(os.getppid(), signal.SIGTERM)
         sys.exit(0)
     if args[:4] == ["-n", "-i", "-o", "remount,bind,ro,nosuid,nodev,exec"]:
@@ -222,6 +222,9 @@ if tool == "umount":
     sys.exit(0)
 if tool == "cat" and args == [settings["mount_input"]]:
     if fault == "signal-query" and guard.exists():
+        import signal
+        import subprocess
+
         owner = int(
             subprocess.check_output(
                 ["/bin/ps", "-o", "ppid=", "-p", str(os.getppid())], text=True
@@ -288,6 +291,8 @@ if tool == "test" and args == [settings["target"], "-ef", "/proc/self/fd/9"]:
     current, held = os.stat(args[0]), os.fstat(9)
     sys.exit(0 if (current.st_dev, current.st_ino) == (held.st_dev, held.st_ino) else 1)
 if tool == "test":
+    import subprocess
+
     sys.exit(subprocess.call(["/bin/test", *args]))
 if tool == "chroot":
     record["environment"] = dict(os.environ)
@@ -340,6 +345,8 @@ if tool == "printf":
         save()
         if state["record_writes"] == 2:
             sys.exit(7)
+    import subprocess
+
     sys.exit(subprocess.call(["/usr/bin/printf", *args]))
 if tool == "rm":
     assert args[0] in ("-f", "-rf") and len(args) == 2
@@ -353,9 +360,13 @@ if tool == "rm":
             sys.exit(7)
     else:
         assert destination.name == "active" or destination.name.startswith("cfmgr-io.")
+    import subprocess
+
     sys.exit(subprocess.call(["/bin/rm", *args]))
 # Existing storage fixture commands remain synthetic; only its awk child is an
 # actual parser. Pass retained descriptors through this delegation explicitly.
+import subprocess
+
 sys.exit(
     subprocess.call(
         [sys.executable, "-S", settings["storage_dispatcher"], str(settings_file), tool, *args],

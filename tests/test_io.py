@@ -32,12 +32,9 @@ SHELLS = [
 # Tools are explicit fixture wrappers. Only cat/awk/wc/printf and owned RAM
 # mkdir/rm operations are allowed; the Python dispatcher is HOST TEST CODE.
 DISPATCHER = r"""
-import hashlib
 import json
 import os
 from pathlib import Path
-import signal
-import subprocess
 import sys
 
 settings = json.loads(Path(sys.argv[1]).read_text())
@@ -66,6 +63,8 @@ if tool == "mkdir":
     assert stage.parent == Path(settings["ram"]) and stage.name.startswith("cfmgr-io.")
     attempt = int(stage.name.rsplit(".", 1)[1])
     if mode == "signal":
+        import signal
+
         os.kill(os.getppid(), signal.SIGTERM)
         sys.exit(1)
     if attempt < settings.get("collisions", 0):
@@ -82,6 +81,9 @@ if tool == "mkdir":
         stage.chmod(0o500)
     sys.exit(0)
 if tool == "rm":
+    import hashlib
+    import subprocess
+
     assert args[0] == "-rf" and len(args) == 2
     stage = Path(args[1])
     assert stage.parent == Path(settings["ram"]) and stage.name.startswith("cfmgr-io.")
@@ -106,6 +108,9 @@ if tool == "cat" and args == ["produce"]:
     if mode == "signal-owner":
         # Producer's parent is the capture subshell; target its workspace owner,
         # not the external harness caller. This is HOST-only process inspection.
+        import signal
+        import subprocess
+
         owner = int(subprocess.check_output(
             ["/bin/ps", "-o", "ppid=", "-p", str(os.getppid())], text=True).strip())
         os.kill(owner, signal.SIGTERM)
@@ -141,6 +146,8 @@ elif tool in ("cat", "wc", "awk"):
     executable = "/bin/cat" if tool == "cat" else "/usr/bin/" + tool
 else:
     raise AssertionError("unexpected tool " + tool)
+import subprocess
+
 sys.exit(subprocess.call([executable, *args]))
 """
 

@@ -20,12 +20,9 @@ pytestmark = [pytest.mark.integration, pytest.mark.matrix("V75", evidence="host"
 # may be modified. Real host awk/wc/sh provide primitive evidence, while the
 # other tools model contracts (not router capability or firmware provenance).
 DISPATCHER = r"""
-import fcntl
 import json
 import os
 from pathlib import Path
-import signal
-import subprocess
 import sys
 
 settings = json.loads(Path(sys.argv[1]).read_text())
@@ -51,6 +48,8 @@ if behavior == "flood":
     sys.stdout.flush()
     sys.exit(0)
 if behavior.startswith("signal"):
+    import signal
+
     selected_signal = {"signal": signal.SIGTERM, "signal-hup": signal.SIGHUP,
                        "signal-int": signal.SIGINT}[behavior]
     os.killpg(os.getpgrp(), selected_signal)
@@ -71,11 +70,15 @@ if tool == "mkdir":
         path.mkdir(exist_ok=True)
         (path / "foreign").write_text("preserve")
         sys.exit(1)
+    import subprocess
+
     status = subprocess.call(["/bin/mkdir", *args])
     if behavior == "readonly-stage" and status == 0:
         path.chmod(0o500)
     sys.exit(status)
 if tool == "rm":
+    import subprocess
+
     assert len(args) == 2 and args[0] == "-rf"
     path = owned(args[1])
     assert path.name.startswith("cfmgr-diagnostic.")
@@ -93,20 +96,28 @@ elif tool == "sh":
                        'command -v printf >/dev/null 2>&1', 'exit 0')
     if behavior == "no-command-v" and args[1].startswith("command"):
         sys.exit(127)
+    import subprocess
+
     sys.exit(subprocess.call(["/bin/sh", *args]))
 elif tool == "printf":
     assert args == [r"%s:%x\n", "cfmgr", "65535"]
+    import subprocess
+
     sys.exit(subprocess.call(["/usr/bin/printf", *args]))
 elif tool in ("test", "["):
     assert args[0] == "2147483647" and args[1] in ("-eq", "-lt")
     assert args[2] == "2147483647"
     assert args[3:] == (["]"] if tool == "[" else [])
+    import subprocess
+
     sys.exit(subprocess.call(["/bin/" + tool, *args]))
 elif tool in ("awk", "wc"):
     if tool == "wc":
         assert args == ["-c"]
     else:
         assert len(args) == 1 and 'RS=sprintf("%c",28)' in args[0]
+    import subprocess
+
     sys.exit(subprocess.call(["/usr/bin/" + tool, *args]))
 elif tool == "openssl":
     if args == ["version"]:
@@ -133,6 +144,8 @@ elif tool == "busybox":
     assert not args
     print("BusyBox v1.25.1 synthetic banner\nUsage: not real BusyBox")
 elif tool == "flock":
+    import fcntl
+
     assert args[0] == "-n"
     if args[1] == "9":
         assert len(args) == 2
@@ -146,6 +159,8 @@ elif tool == "flock":
     except BlockingIOError:
         sys.exit(1)
     if args[1] != "9":
+        import subprocess
+
         sys.exit(subprocess.call([args[2], *args[3:]]))
 else:
     raise AssertionError("availability-only tool executed: " + tool)
@@ -190,7 +205,7 @@ class DiagnosticFixture:
         for tool in TOOLS:
             router.fake_tool(
                 tool,
-                f"exec {shlex.quote(sys.executable)} "
+                f"exec {shlex.quote(sys.executable)} -S "
                 f"{shlex.quote(str(router.path('work/dispatcher.py')))} "
                 f'{shlex.quote(str(self.settings_path))} {shlex.quote(tool)} "$@"\n',
             )

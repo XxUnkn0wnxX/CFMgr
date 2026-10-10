@@ -37,9 +37,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
-import signal
 import stat
-import subprocess
 import sys
 
 settings = json.loads(Path(sys.argv[1]).read_text())
@@ -67,6 +65,8 @@ if tool == "rm":
     assert args[0] == "-rf" and stage.parent == Path(settings["ram"])
     summary = {"files": sorted(path.name for path in stage.iterdir())}
     (log / "cleanup.observation").write_text(json.dumps(summary))
+    import subprocess
+
     sys.exit(subprocess.call(["/bin/rm", *args]))
 if tool == "readlink":
     assert args == ["-f", settings["target"]]
@@ -88,6 +88,8 @@ elif tool == "test":
         sys.exit(0 if stat.S_ISDIR(os.fstat(9).st_mode) else 1)
     assert args == [settings["target"], "-ef", "/proc/self/fd/9"]
     if settings.get("native_fdinfo"):
+        import subprocess
+
         sys.exit(subprocess.call(["/usr/bin/test", *args], pass_fds=(9,)))
     current, held = os.stat(args[0]), os.fstat(9)
     sys.exit(0 if (current.st_dev, current.st_ino) == (held.st_dev, held.st_ino) else 1)
@@ -134,6 +136,9 @@ elif tool == "hexdump":
         path.rename(path.with_name("original-block"))
         path.write_bytes(b"replacement")
     if fault == "signal":
+        import signal
+        import subprocess
+
         owner = int(subprocess.check_output(
             ["/bin/ps", "-o", "ppid=", "-p", str(os.getppid())], text=True).strip())
         os.kill(owner, signal.SIGTERM)
@@ -149,6 +154,8 @@ elif tool == "awk":
         if fault == "parser-zero": output = b""
         os.write(1, output)
     else:
+        import subprocess
+
         sys.exit(subprocess.call(settings["awk"] + args))
 else:
     raise AssertionError(tool)
