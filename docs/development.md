@@ -953,9 +953,13 @@ closure/size runtime regressions pass 15 tests with one local BusyBox skip in
 27.46s. After a path-with-spaces fixture correction, its focused regressions
 pass 2 tests in 0.84s. The full local rerun passes 1,843 tests with 38
 explicit platform skips in 571.13s, including all static checks. Exact-head
-Linux/BusyBox CI remains pending.
-Runtime source remains frozen at `018a616`; these host checks do not establish
-Merlin runtime acceptance.
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
+passes 1,881 tests with zero skips in 140.52s at `c9d531a`, six stripped-ash
+cases in 7.33s and all eleven kernel scenarios. The two existing Entware cases
+reviewed for local timing pass a focused follow-up in 23.09s; the CI suite is
+0.8% above the prior checkpoint. Runtime source `018a616` and fixture correction
+`1ae5160` are accepted at the 50% handoff. These checks do not establish Merlin
+runtime acceptance.
 
 ### Developer package inventory
 

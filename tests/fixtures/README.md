@@ -84,7 +84,10 @@ The focused package gate passes 14 tests with one missing-BusyBox skip in
 regressions pass 15 tests with one local BusyBox skip in 27.46s. After a
 path-with-spaces fixture correction, the focused regressions pass 2/2 in 0.84s.
 The full local 50% gate passes 1,843 tests with 38 platform skips in 571.13s,
-including all static checks; exact-head Linux/BusyBox CI remains pending.
+including all static checks. The [exact Linux/BusyBox checkpoint](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
+passes 1,881 tests with zero skips in 140.52s, six stripped-ash cases in 7.33s
+and all eleven kernel scenarios. The local cost review reran only two existing
+Entware cases (2 passed in 23.09s); no assertions or coverage were relaxed.
 These fixtures verify listed synthetic file bytes
 only; they do not authenticate the manifest,
 prove directory completeness or permissions, install code or establish Merlin

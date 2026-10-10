@@ -19,7 +19,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
-| Manifest reader and byte verification | In progress | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); final 50% gates underway |
+| Manifest reader and byte verification | Available to developers | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); host/CI checks passed |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -40,8 +40,10 @@ Source-only libraries validate configuration headers, catalogs and package
 manifests with shared safe-path checks. A host-only Python command generates a
 deterministic manifest from an explicit local Git commit. The native manifest
 reader emits a checked canonical ledger, and the new verifier compares each
-declared file's size and SHA-256 in a caller-prepared source tree. The full 50% local gate passes 1,843 tests with 38 platform skips;
-exact-head Linux/BusyBox CI remains pending.
+declared file's size and SHA-256 in a caller-prepared source tree. The accepted **50% checkpoint** passes 1,843 local tests with 38 platform
+skips and [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
+with 1,881 tests, zero skips, six stripped-ash checks and all eleven kernel
+scenarios.
 See [PLAN.md](PLAN.md) for checkpoint results and remaining work.
 
 These checks do not establish source authenticity, complete package inventory,
