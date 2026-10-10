@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Pure address normalization and coarse address scope classification; no route,
-# ownership or publish authority.
+# Pure address normalization, scope classification and supplied-observation
+# comparison; no route, ownership or publish authority.
 # Sourcing defines functions. Subshell bodies isolate caller state and scratch.
 
 cfmgr_ipv4_normalize() (
@@ -306,4 +306,71 @@ cfmgr_ipv6_classify() (
 		_cfmgr_ip6_scope=nonpublic
 	fi
 	printf '%s\n' "$_cfmgr_ip6_scope"
+)
+
+# Compare caller-supplied IPv4 observations; this does not establish freshness or reachability.
+cfmgr_ipv4_observation_report() (
+	[ "$#" -eq 2 ] || return 1
+
+	_cfmgr_ip4_obs_wan=$1
+	_cfmgr_ip4_obs_external=$2
+	_cfmgr_ip4_obs_wan_scope=
+	_cfmgr_ip4_obs_external_scope=
+	_cfmgr_ip4_obs_wan_valid=1
+	_cfmgr_ip4_obs_external_valid=1
+	if [ "$_cfmgr_ip4_obs_wan" != - ]; then
+		if _cfmgr_ip4_obs_wan_scope=$(cfmgr_ipv4_classify "$_cfmgr_ip4_obs_wan"); then
+			:
+		else
+			_cfmgr_ip4_obs_wan_valid=0
+		fi
+	fi
+	if [ "$_cfmgr_ip4_obs_external" != - ]; then
+		if _cfmgr_ip4_obs_external_scope=$(cfmgr_ipv4_classify "$_cfmgr_ip4_obs_external"); then
+			:
+		else
+			_cfmgr_ip4_obs_external_valid=0
+		fi
+	fi
+	[ "$_cfmgr_ip4_obs_wan_valid" -eq 1 ] &&
+		[ "$_cfmgr_ip4_obs_external_valid" -eq 1 ] || return 1
+
+	_cfmgr_ip4_obs_state=unknown
+	_cfmgr_ip4_obs_address=-
+	_cfmgr_ip4_obs_nat=unknown
+	if [ "$_cfmgr_ip4_obs_wan" = - ]; then
+		_cfmgr_ip4_obs_reason=wan-unavailable
+	elif [ "$_cfmgr_ip4_obs_wan_scope" = nonpublic ]; then
+		_cfmgr_ip4_obs_reason=wan-nonpublic
+	elif [ "$_cfmgr_ip4_obs_external" = - ]; then
+		_cfmgr_ip4_obs_reason=external-unavailable
+	elif [ "$_cfmgr_ip4_obs_external_scope" != global ]; then
+		_cfmgr_ip4_obs_reason=external-nonpublic
+	elif [ "$_cfmgr_ip4_obs_wan_scope" = global ]; then
+		_cfmgr_ip4_obs_state=active
+		if [ "$_cfmgr_ip4_obs_wan" = "$_cfmgr_ip4_obs_external" ]; then
+			_cfmgr_ip4_obs_address=$_cfmgr_ip4_obs_wan
+			_cfmgr_ip4_obs_nat=false
+			_cfmgr_ip4_obs_reason=address-match
+		else
+			_cfmgr_ip4_obs_address=$_cfmgr_ip4_obs_external
+			_cfmgr_ip4_obs_nat=true
+			_cfmgr_ip4_obs_reason=address-mismatch
+		fi
+	else
+		_cfmgr_ip4_obs_state=active
+		_cfmgr_ip4_obs_address=$_cfmgr_ip4_obs_external
+		_cfmgr_ip4_obs_nat=true
+		if [ "$_cfmgr_ip4_obs_wan_scope" = private ]; then
+			_cfmgr_ip4_obs_reason=private-wan
+		else
+			_cfmgr_ip4_obs_reason=shared-wan
+		fi
+	fi
+
+	_cfmgr_ip4_obs_row=$(printf 'ipv4-observation\t1\t%s\t%s\t%s\t%s' \
+		"$_cfmgr_ip4_obs_state" "$_cfmgr_ip4_obs_address" \
+		"$_cfmgr_ip4_obs_nat" "$_cfmgr_ip4_obs_reason") || return 1
+	_cfmgr_ip4_obs_body_bytes=$((${#_cfmgr_ip4_obs_row} + 1))
+	printf '%s\nend\t%s\n' "$_cfmgr_ip4_obs_row" "$_cfmgr_ip4_obs_body_bytes"
 )
