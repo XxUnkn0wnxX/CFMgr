@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Pure address syntax/normalization only; no public-address eligibility policy.
+# Pure address normalization and coarse IPv4 scope classification; no route,
+# ownership or publish authority.
 # Sourcing defines functions. Subshell bodies isolate caller state and scratch.
 
 cfmgr_ipv4_normalize() (
@@ -175,4 +176,65 @@ cfmgr_ipv6_normalize() (
 		_cfmgr_ip6_index=$((_cfmgr_ip6_index + 1))
 	done
 	printf '%s\n' "$_cfmgr_ip6_output"
+)
+
+# Address-scope classification only; `global` does not imply reachability or ownership.
+cfmgr_ipv4_classify() (
+	[ "$#" -eq 1 ] || return 1
+	_cfmgr_ip4_classified=$(cfmgr_ipv4_normalize "$1") || return 1
+	[ "$_cfmgr_ip4_classified" = "$1" ] || return 1
+	IFS=.
+	set -f
+	# The existing normalizer guarantees four canonical decimal octets.
+	# shellcheck disable=SC2086
+	set -- $_cfmgr_ip4_classified
+	_cfmgr_ip4_a=$1
+	_cfmgr_ip4_b=$2
+	_cfmgr_ip4_c=$3
+	_cfmgr_ip4_d=$4
+	_cfmgr_ip4_scope=global
+	case $_cfmgr_ip4_a in
+	0 | 127) _cfmgr_ip4_scope=nonpublic ;;
+	10) _cfmgr_ip4_scope=private ;;
+	100)
+		if [ "$_cfmgr_ip4_b" -ge 64 ] && [ "$_cfmgr_ip4_b" -le 127 ]; then
+			_cfmgr_ip4_scope=shared
+		fi
+		;;
+	169)
+		if [ "$_cfmgr_ip4_b" -eq 254 ]; then _cfmgr_ip4_scope=nonpublic; fi
+		;;
+	172)
+		if [ "$_cfmgr_ip4_b" -ge 16 ] && [ "$_cfmgr_ip4_b" -le 31 ]; then
+			_cfmgr_ip4_scope=private
+		fi
+		;;
+	192)
+		if [ "$_cfmgr_ip4_b" -eq 168 ]; then
+			_cfmgr_ip4_scope=private
+		elif [ "$_cfmgr_ip4_b" -eq 0 ] && [ "$_cfmgr_ip4_c" -eq 0 ] &&
+			[ "$_cfmgr_ip4_d" -ne 9 ] && [ "$_cfmgr_ip4_d" -ne 10 ]; then
+			_cfmgr_ip4_scope=nonpublic
+		elif [ "$_cfmgr_ip4_b" -eq 0 ] && [ "$_cfmgr_ip4_c" -eq 2 ]; then
+			_cfmgr_ip4_scope=nonpublic
+		elif [ "$_cfmgr_ip4_b" -eq 88 ] && [ "$_cfmgr_ip4_c" -eq 99 ]; then
+			_cfmgr_ip4_scope=nonpublic
+		fi
+		;;
+	198)
+		if { [ "$_cfmgr_ip4_b" -ge 18 ] && [ "$_cfmgr_ip4_b" -le 19 ]; } ||
+			{ [ "$_cfmgr_ip4_b" -eq 51 ] && [ "$_cfmgr_ip4_c" -eq 100 ]; }; then
+			_cfmgr_ip4_scope=nonpublic
+		fi
+		;;
+	203)
+		if [ "$_cfmgr_ip4_b" -eq 0 ] && [ "$_cfmgr_ip4_c" -eq 113 ]; then
+			_cfmgr_ip4_scope=nonpublic
+		fi
+		;;
+	*)
+		if [ "$_cfmgr_ip4_a" -ge 224 ]; then _cfmgr_ip4_scope=nonpublic; fi
+		;;
+	esac
+	printf '%s\n' "$_cfmgr_ip4_scope"
 )
