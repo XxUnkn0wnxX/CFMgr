@@ -13,6 +13,7 @@ import pytest
 from tests.harness import RouterHarness, ShellResult
 
 LIB = Path(__file__).resolve().parents[1] / "modules/lib"
+COMMON = LIB / "common.sh"
 IO = LIB / "io.sh"
 PACKAGE = LIB / "package.sh"
 NATIVE_DIGEST = LIB / "native_digest.sh"
@@ -98,6 +99,15 @@ def expected_version_report(data: bytes) -> bytes:
     return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
 
 
+def expected_policy_report(data: bytes) -> bytes:
+    """Independent package-policy oracle retaining canonical manifest records."""
+    ledger = expected_ledger(data)
+    old_body, footer = ledger.rsplit(b"end\t", 1)
+    count, total, _body_bytes = footer[:-1].decode("ascii").split("\t")
+    new_body = b"package-policy\t1\n" + old_body[len(b"manifest\t1\n") :]
+    return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
+
+
 def entry_source(version: str = "12.34.56") -> bytes:
     return f"#!/bin/sh\nCFMGR_VERSION={version}\nexit 0\n".encode("ascii")
 
@@ -148,6 +158,8 @@ class PackageFixture:
         else:
             pytest.fail("native hexdump is unavailable; it must be preinstalled")
         self.input = router.path("work/manifest.txt")
+        self.requirements = router.path("work/requirements.txt")
+        self.requirements.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\n")
         self.source_root = router.path("work/source-root")
         self.source_root.mkdir()
         self.payloads = {"cfmgr.sh": b"entry", "modules/z.sh": b"z"}
@@ -289,6 +301,59 @@ class PackageFixture:
                 else args
             )
         return self.router.run(self.verifier_source() + f'{function} "$@"\n', supplied)
+
+    def policy(
+        self,
+        *,
+        expected: str = "12.34.56",
+        installed: str = "12.34.55",
+        requirements: Path | str | None = None,
+        production: bool = False,
+        args: tuple[str, ...] | None = None,
+    ) -> ShellResult:
+        function = "cfmgr_package_policy_report" if production else "cfmgr_package_policy_test"
+        requirements_path = self.requirements if requirements is None else requirements
+        supplied = (
+            tuple(
+                map(
+                    str,
+                    (
+                        self.root,
+                        self.tools,
+                        self.source_root,
+                        self.input,
+                        self.helper,
+                        self.parser,
+                        self.entry_parser,
+                        expected,
+                        installed,
+                        requirements_path,
+                    ),
+                )
+            )
+            if args is None
+            else args
+        )
+        if production and args is None:
+            supplied = tuple(
+                map(
+                    str,
+                    (
+                        self.root,
+                        self.source_root,
+                        self.input,
+                        self.helper,
+                        self.parser,
+                        self.entry_parser,
+                        expected,
+                        installed,
+                        requirements_path,
+                    ),
+                )
+            )
+        return self.router.run(
+            f'. "{COMMON}"\n' + self.verifier_source() + f'{function} "$@"\n', supplied
+        )
 
     def public(
         self, *, production: bool = False, args: tuple[str, ...] | None = None
@@ -719,6 +784,230 @@ def test_version_reader_rejects_bad_entry_parser_outputs_and_statuses_as_a_group
     assert list(package.root.glob("cfmgr-io.*")) == []
 
 
+def policy_requirements_group(
+    package: PackageFixture, cases: tuple[tuple[int, str], ...]
+) -> ShellResult:
+    ledger_path = package.router.path("work/policy-accepted-ledger")
+    ledger_body = expected_ledger(package.input.read_bytes()).rsplit(b"end\t", 1)[0]
+    ledger_path.write_bytes(ledger_body)
+    script = (
+        package.verifier_source()
+        + "fixture_policy_requirements() {\n"
+        + "  shift\n"
+        + "  _package_verify_root=$1; _policy_ledger=$2; shift 2\n"
+        + '  _package_manifest_body=$(/bin/cat "$_policy_ledger")$_io_lf || return 1\n'
+        + "  _policy_results=\n"
+        + '  while [ "$#" -gt 1 ]; do\n'
+        + "    _policy_expected=$1; _policy_path=$2; shift 2\n"
+        + '    if _cfmgr_package_policy_requirements "$_policy_path"; then\n'
+        + "      _policy_actual=0\n"
+        + "    else\n"
+        + "      _policy_actual=$?\n"
+        + "    fi\n"
+        + '    [ "$_policy_actual" = "$_policy_expected" ] || return 1\n'
+        + '    _policy_results="$_policy_results$_policy_actual\n"\n'
+        + "  done\n"
+        + '  cfmgr_io_stage_report "$_policy_results"\n'
+        + "}\n"
+        + "policy_root=$1; policy_tools=$2; policy_source=$3; policy_ledger=$4; shift 4\n"
+        + 'cfmgr_io_test "$policy_root" "$policy_tools" report fixture_policy_requirements '
+        + '"$policy_source" "$policy_ledger" "$@"\n'
+    )
+    args = [str(package.root), str(package.tools), str(package.source_root), str(ledger_path)]
+    for expected, path in cases:
+        args.extend((str(expected), path))
+    return package.router.run(script, args)
+
+
+def test_policy_report_accepts_equal_and_newer_floor_and_recomputes_ledger(
+    package: PackageFixture,
+) -> None:
+    package.configure(
+        {
+            "cfmgr.sh": entry_source(),
+            "modules/z.sh": b"z",
+            "modules/optional.sh": b"extra declared files are allowed",
+        }
+    )
+    package.requirements.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\n")
+
+    newer = package.policy(expected="12.34.56", installed="12.34.55")
+    assert newer.returncode == 0 and newer.stderr == ""
+    assert newer.stdout.encode("ascii") == expected_policy_report(package.input.read_bytes())
+    equal = package.policy(expected="12.34.56", installed="12.34.56")
+    assert equal.returncode == 0 and equal.stderr == ""
+    assert equal.stdout.encode("ascii") == expected_policy_report(package.input.read_bytes())
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_policy_requires_independent_helper_even_when_tree_and_manifest_omit_it(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    package.requirements.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\nmodules/helper.sh: 0644\n")
+    assert "modules/helper.sh" not in package.payloads
+    assert not (package.source_root / "modules/helper.sh").exists()
+
+    quiet(package.policy())
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_policy_rejects_downgrade_and_manifest_mismatch_then_orders_long_components(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    quiet(package.policy(expected="12.34.56", installed="12.34.57"))
+    quiet(package.policy(expected="12.34.57", installed="12.34.56"))
+    quiet(package.policy(expected="01.34.56", installed="12.34.55"), 2)
+
+    expected = "9" * 120 + ".0.0"
+    installed = "8" * 120 + ".0.0"
+    package.payloads["cfmgr.sh"] = entry_source(expected)
+    package.source_root.joinpath("cfmgr.sh").write_bytes(package.payloads["cfmgr.sh"])
+    rows = tuple(
+        (path, data, 0o755 if path == "cfmgr.sh" else 0o644)
+        for path, data in package.payloads.items()
+    )
+    package.input.write_bytes(manifest(rows, version=expected))
+    result = package.policy(expected=expected, installed=installed)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout.encode("ascii") == expected_policy_report(package.input.read_bytes())
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_policy_rejects_bad_requirement_framing_modes_and_exact_rows_as_a_group(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    invalid = (
+        b"requirements: 1\nmodules/z.sh: 0644\n",  # Nonempty profile omits the required entry.
+        b"requirements: 2\ncfmgr.sh: 0755\n",  # Wrong header.
+        b"requirements: 1\ncfmgr.sh: 0755\ncfmgr.sh: 0755\n",  # Duplicate.
+        b"requirements: 1\ncfmgr.sh: 0644\n",  # Wrong required mode.
+        b"requirements: 1\ncfmgr.sh: 0755\nmodules/*.sh: 0644\n",  # Wildcard does not expand.
+        b"requirements: 1\ncfmgr.sh: 0755\nmodules/z.sh.extra: 0644\n",  # Prefix is not a row.
+        b"requirements: 1\ncfmgr.sh: 0755\nmodules/z.sh: 0755\n",  # Declared row has wrong mode.
+        b"requirements: 1\ncfmgr.sh: 0755",  # Partial final row.
+        b"requirements: 1\ncfmgr.sh: \x000755\n",  # NUL cannot be normalized away.
+        b"requirements:\x00 1\ncfmgr.sh: 0755\n",  # Header NUL cannot be normalized away.
+        b"requirements: 1\n\ncfmgr.sh: 0755\n",  # Blank row.
+        b"requirements: 1\ncfmgr.sh: 0755\r\n",  # CR is not canonical.
+    )
+    sibling = package.source_root.parent / "source-root-other"
+    sibling.mkdir()
+    sibling_requirements = sibling / "requirements.txt"
+    sibling_requirements.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\n")
+    cases = [(0, str(package.requirements)), (0, str(sibling_requirements))]
+    for index, contents in enumerate(invalid):
+        requirement_file = package.router.path(f"work/requirements-invalid-{index}")
+        requirement_file.write_bytes(contents)
+        cases.append((1, str(requirement_file)))
+    oversized = package.router.path("work/requirements-oversized")
+    oversized.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\n" + b"x" * 32768)
+    cases.append((1, str(oversized)))
+    result = policy_requirements_group(package, tuple(cases))
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "0\n0\n" + "1\n" * (len(cases) - 2)
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_policy_rejects_noncanonical_and_aliased_requirement_paths_as_a_group(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    inside = package.source_root / "requirements.txt"
+    inside.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\n")
+    linked = package.router.path("work/requirements-link")
+    linked.symlink_to(package.requirements)
+    missing = package.router.path("work/requirements-missing")
+    directory = package.router.path("work/requirements-directory")
+    directory.mkdir()
+    fifo = package.router.path("work/requirements-fifo")
+    os.mkfifo(fifo)
+    long_path = "/" + "/".join(["x" * 200] * 21)
+    malformed = (
+        "relative-requirements",
+        str(package.requirements).replace("/work/", "/work//"),
+        str(package.requirements).replace("/work/", "/work/./"),
+        str(package.requirements) + "/",
+        inside,
+        linked,
+        missing,
+        directory,
+        fifo,
+        long_path,
+    )
+    cases = ((0, str(package.requirements)),) + tuple((2, str(path)) for path in malformed)
+    result = policy_requirements_group(package, cases)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "0\n" + "2\n" * (len(cases) - 1)
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_policy_maps_comparator_failures_and_malformed_output_to_misuse(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    script = (
+        package.verifier_source()
+        + "cfmgr_version_compare() {\n"
+        + '  [ "$CFMGR_TEST_COMPARE_STATUS" = 0 ] || return "$CFMGR_TEST_COMPARE_STATUS"\n'
+        + '  printf "%s\\n" "$CFMGR_TEST_COMPARE_OUTPUT"\n'
+        + "}\n"
+        + "fixture_policy_comparator() {\n"
+        + "  _policy_stage=$1; shift\n"
+        + "  _policy_source=$1; _policy_manifest=$2; _policy_helper=$3; _policy_parser=$4\n"
+        + "  _policy_entry=$5; _policy_expected_version=$6\n"
+        + "  _policy_installed=$7; _policy_requirements=$8; shift 8\n"
+        + "  _policy_results=\n"
+        + '  while [ "$#" -gt 2 ]; do\n'
+        + "    CFMGR_TEST_COMPARE_STATUS=$1; CFMGR_TEST_COMPARE_OUTPUT=$2\n"
+        + "    _policy_expected=$3; shift 3\n"
+        + "    export CFMGR_TEST_COMPARE_STATUS CFMGR_TEST_COMPARE_OUTPUT\n"
+        + "    if _cfmgr_package_policy_action \\\n"
+        + '      "$_policy_stage" "$_policy_source" "$_policy_manifest" \\\n'
+        + '      "$_policy_helper" "$_policy_parser" "$_policy_entry" \\\n'
+        + '      "$_policy_expected_version" "$_policy_installed" \\\n'
+        + '      "$_policy_requirements"; then\n'
+        + "      _policy_actual=0\n"
+        + "    else\n"
+        + "      _policy_actual=$?\n"
+        + "    fi\n"
+        + '    [ "$_policy_actual" = "$_policy_expected" ] || return 1\n'
+        + '    _policy_results="$_policy_results$_policy_actual\n"\n'
+        + "  done\n"
+        + '  cfmgr_io_stage_report "$_policy_results"\n'
+        + "}\n"
+        + "policy_root=$1; policy_tools=$2; shift 2\n"
+        + 'cfmgr_io_test "$policy_root" "$policy_tools" report fixture_policy_comparator "$@"\n'
+    )
+    args = (
+        str(package.root),
+        str(package.tools),
+        str(package.source_root),
+        str(package.input),
+        str(package.helper),
+        str(package.parser),
+        str(package.entry_parser),
+        "12.34.56",
+        "12.34.55",
+        str(package.requirements),
+        "0",
+        "-1",
+        "1",
+        "0",
+        "01",
+        "2",
+        "1",
+        "",
+        "2",
+    )
+    result = package.router.run(script, args)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "1\n2\n2\n"
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
 def test_production_tree_report_uses_the_fixed_native_resolver(package: PackageFixture) -> None:
     native_tools = all(
         any(
@@ -1030,4 +1319,10 @@ def test_actual_busybox_composes_package_reader_and_io_owner(busybox_router: Rou
             [str(package.tools), str(len(source)), str(package.entry_parser), str(input_path)],
         )
         assert result.returncode == 1 and result.stdout == result.stderr == ""
+    package.requirements.write_bytes(b"requirements: 1\ncfmgr.sh: 0755\n")
+    policy = package.policy()
+    assert policy.returncode == 0 and policy.stderr == ""
+    assert policy.stdout.encode("ascii") == expected_policy_report(package.input.read_bytes())
+    package.requirements.write_bytes(b"requirements: 1\ncfmgr.sh: \x000755\n")
+    quiet(package.policy())
     assert list(package.root.glob("cfmgr-io.*")) == []

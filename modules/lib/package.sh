@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Owned native manifest reports; explicitly source trusted io.sh first.
 # Byte verification additionally requires explicitly sourced native_digest.sh.
+# Supplied version policy additionally requires explicitly sourced common.sh.
 # Input/code and their ancestors must be trusted, immutable and unaliased.
 # These path checks are not atomic hostile-filesystem admission or provenance.
 # Source loading only defines functions; public entries use the IO owner to
@@ -57,6 +58,18 @@ cfmgr_package_version_test() {
 	cfmgr_io_test "$1" "$2" report _cfmgr_package_version_action "$3" "$4" "$5" "$6" "$7"
 }
 
+# Caller independently selects the expected version, installed floor and minimum
+# requirements. These checks add no source trust or permission to install.
+cfmgr_package_policy_report() {
+	[ "$#" -eq 9 ] || return 2
+	cfmgr_io_with_report "$1" _cfmgr_package_policy_action "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"
+}
+
+cfmgr_package_policy_test() {
+	[ "$#" -eq 10 ] || return 2
+	cfmgr_io_test "$1" "$2" report _cfmgr_package_policy_action "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
+}
+
 _cfmgr_package_verify_action() {
 	[ "$#" -eq 5 ] && [ "${_io_active-}" = 1 ] || return 2
 	_cfmgr_package_verify_prepare "$2" "$3" "$4" "$5" || return "$?"
@@ -81,6 +94,74 @@ _cfmgr_package_version_action() {
 	_cfmgr_package_verify_bytes || return 1
 	_cfmgr_package_entry_capture "$6" || return "$?"
 	_cfmgr_package_verify_report package-version
+}
+
+_cfmgr_package_policy_action() {
+	[ "$#" -eq 9 ] && [ "${_io_active-}" = 1 ] || return 2
+	_package_policy_comparison=$(cfmgr_version_compare "$7" "$8") || return 2
+	case $_package_policy_comparison in -1) return 1 ;; 0 | 1) ;; *) return 2 ;; esac
+	case $6 in /*) ;; *) return 2 ;; esac
+	[ -f "$6" ] && [ ! -L "$6" ] && [ -r "$6" ] || return 2
+	_cfmgr_package_verify_prepare "$2" "$3" "$4" "$5" || return "$?"
+	[ "$_package_manifest_version" = "$7" ] || return 1
+	_cfmgr_package_policy_requirements "$9" || return "$?"
+	_cfmgr_package_tree_inventory || return 1
+	_cfmgr_package_verify_bytes || return 1
+	_cfmgr_package_entry_capture "$6" || return "$?"
+	_cfmgr_package_verify_report package-policy
+}
+
+# This lexical outside-root check is only a misuse guard: independent policy,
+# immutable unaliased ancestors and no hard-link alias are caller prerequisites.
+_cfmgr_package_policy_requirements() {
+	_package_policy_input=$1
+	[ "${#_package_policy_input}" -le 4096 ] || return 2
+	case $_package_policy_input in /*) ;; *) return 2 ;; esac
+	case $_package_policy_input in / | */ | *//* | */./* | */../* | */. | */.. | *[[:cntrl:]]*) return 2 ;; esac
+	case $_package_policy_input in "$_package_verify_root" | "$_package_verify_root"/*) return 2 ;; esac
+	[ -f "$_package_policy_input" ] && [ ! -L "$_package_policy_input" ] &&
+		[ -r "$_package_policy_input" ] || return 2
+	_package_policy_size=$(_cfmgr_native_size_owned "$_io_wc" "$_package_policy_input") || return 1
+	[ "$_package_policy_size" -gt 0 ] && [ "$_package_policy_size" -le 32768 ] || return 1
+	# The accepted manifest already proves safe destinations and modes. Retain
+	# complete canonical rows so prefix/glob-like policy values cannot match.
+	_package_policy_rows=$_io_lf
+	_package_policy_inventory=$_package_manifest_body
+	while [ -n "$_package_policy_inventory" ]; do
+		_package_policy_record=${_package_policy_inventory%%"$_io_lf"*}
+		_package_policy_inventory=${_package_policy_inventory#*"$_io_lf"}
+		case $_package_policy_record in "file$_io_tab"*) ;; *) continue ;; esac
+		_package_policy_destination=${_package_policy_record#*"$_io_tab"}
+		_package_policy_destination=${_package_policy_destination%%"$_io_tab"*}
+		_package_policy_mode=${_package_policy_record##*"$_io_tab"}
+		_package_policy_rows="$_package_policy_rows$_package_policy_destination: $_package_policy_mode$_io_lf"
+	done
+	_cfmgr_package_policy_records <"$_package_policy_input"
+}
+
+_cfmgr_package_policy_records() {
+	_package_policy_line=
+	IFS= read -r _package_policy_line || return 1
+	[ "$_package_policy_line" = 'requirements: 1' ] || return 1
+	_package_policy_read_bytes=$((${#_package_policy_line} + 1))
+	_package_policy_seen=$_io_lf
+	_package_policy_count=0
+	_package_policy_entry=0
+	_package_policy_line=
+	while IFS= read -r _package_policy_line; do
+		case $_package_policy_rows in *"$_io_lf$_package_policy_line$_io_lf"*) ;; *) return 1 ;; esac
+		case $_package_policy_seen in *"$_io_lf$_package_policy_line$_io_lf"*) return 1 ;; esac
+		_package_policy_seen=$_package_policy_seen$_package_policy_line$_io_lf
+		_package_policy_count=$((_package_policy_count + 1))
+		[ "$_package_policy_count" -le 128 ] || return 1
+		[ "$_package_policy_line" != 'cfmgr.sh: 0755' ] || _package_policy_entry=1
+		_package_policy_read_bytes=$((_package_policy_read_bytes + ${#_package_policy_line} + 1))
+		_package_policy_line=
+	done
+	# Read normalization cannot conceal NUL or partial final data: reconstruct
+	# each complete LF-framed row and compare the independently observed size.
+	[ -z "$_package_policy_line" ] && [ "$_package_policy_count" -gt 0 ] &&
+		[ "$_package_policy_entry" -eq 1 ] && [ "$_package_policy_read_bytes" -eq "$_package_policy_size" ]
 }
 
 # Independently remeasure the immutable entry after the D6 byte checks. This
