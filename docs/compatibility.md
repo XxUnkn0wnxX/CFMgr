@@ -311,9 +311,21 @@ or that installation is safe. Matching Merlin AWK behavior remains unproved.
 | Developer package inventory | Developer-host Python 3.11+ and local Git objects | Accepted 48%; host tool only, not a router dependency or Merlin compatibility claim. Trust and installation gates remain open. |
 | D4 native manifest report | BusyBox-compatible POSIX `sh`, existing IO owner, native `cat`/AWK, trusted immutable files | Accepted 49% host and Linux/BusyBox evidence; no deadline, authentication or Merlin runtime acceptance is established. |
 | D5 declared-file verifier | BusyBox-compatible POSIX `sh`, bounded pre-acquired immutable source, native `wc`, OpenSSL and `hexdump` | Focused package checks pass (14 passed /1 local BusyBox skip in 6.87s); path-with-spaces fixture regressions pass 2/2 in 0.84s. Accepted 50%: full local passes 1,843 tests /38 platform skips in 571.13s; exact-head Linux/BusyBox CI passes 1,881 tests /zero skips, six stripped-ash cases and all eleven kernel scenarios. Missing production `hexdump` fails closed. No source authentication, directory completeness, permission check or Merlin acceptance is established. |
+| D6 complete prepared-tree report | BusyBox-compatible POSIX `sh`, native `find`, the existing IO owner, native `wc`, OpenSSL and `hexdump` | Candidate source-tree check compares a manifest-derived expected namespace and declared bytes. Full local passes 1,848 tests /38 explicit platform skips in 678.39s; exact-head Linux/BusyBox CI is pending; matched Merlin traversal can silently omit paths on `readdir` error, so caller-owned healthy acquisition remains required. No authentication, semantic compatibility, installed-permission or router acceptance claim. |
 | Cloudflared | Verified mounted Entware storage, supported official binary ABI/kernel, integrity and version checks | Modern official assets do not cover MIPS; older ARM kernels may also fail the selected binary's minimum. |
 | Optional file logging | Mounted Entware plus configured Scribe/logrotate | Current Scribe/includes were inspected; no service or rotation was exercised. |
 | Backup/restore | Native archive/integrity tools plus an explicitly selected mounted drive | Planned for CFMgr-owned setup/data, including Cloudflared configuration, certificates and eligible logs; excludes whole-router/NVRAM, unrelated add-on/provider setup and displaced pre-CFMgr hooks. Runtime restore safety remains unproved. |
+
+For the D6 candidate, matched `3004.388.12_2` and `3006.102.9` source
+configurations enable BusyBox `find`, and the retained representative image
+inventories contain `/usr/bin/find` as a link to BusyBox. The pinned
+[3004 `find` implementation](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/findutils/find.c)
+supports the plain `find . -print` form used here without following links by
+default. Its
+[recursive traversal implementation](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/libbb/recursive_action.c)
+does not distinguish `readdir` error from EOF or report `closedir` failure.
+This is matched source/image capability evidence only; it does not establish
+the API's full checkpoint result or runtime acceptance on a router.
 
 For example, the inspected Cloudflared `2026.10.0` packaging uses Go 1.26,
 provides ARM/ARMHF/ARM64 and x86 builds, and has no MIPS asset. Go requires Linux

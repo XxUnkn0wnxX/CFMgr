@@ -229,8 +229,8 @@ retained-storage, native-config-root and dependency-backend paths, accepts only
 matching exact backend evidence plus checked root/storage cleanup and watchdog
 acknowledgement/reap, then releases only its own marker while still holding the
 lock. The existing opkg scratch and package-configuration policy is unchanged.
-The IO resolver adds a finite `rmdir` tool lookup; its capture allowlist is
-unchanged. See the [architecture contract](architecture.md#source-only-serialized-dependency-worker)
+The worker uses the IO resolver's finite `rmdir` lookup; `rmdir` is not a
+capture command. See the [architecture contract](architecture.md#source-only-serialized-dependency-worker)
 for argument, status and recovery details.
 
 The checkpoint also adds an eleventh genuine Linux fixture composition for the
@@ -960,6 +960,74 @@ reviewed for local timing pass a focused follow-up in 23.09s; the CI suite is
 0.8% above the prior checkpoint. Runtime source `018a616` and fixture correction
 `1ae5160` are accepted at the 50% handoff. These checks do not establish Merlin
 runtime acceptance.
+
+### Source-only complete-tree report
+
+The D6 candidate adds `cfmgr_package_tree_report RAM_ROOT SOURCE_ROOT
+MANIFEST PATH_HELPER PARSER` and the fixture-only
+`cfmgr_package_tree_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST PATH_HELPER
+PARSER`. Explicitly source trusted `io.sh`, `native_digest.sh`, and
+`package.sh` in that order. These APIs are not connected to the CLI, catalog,
+acquisition, installer, or activation path.
+
+The caller supplies the same private, immutable, unaliased, bounded source tree
+required by the declared-file verifier, plus its immutable manifest and
+trusted parser/helper. The manifest is parsed and checked inside this call. The report derives its expected namespace only from
+that manifest: the root, each declared file path, and the parent directories
+needed by those files. It captures one native `find . -print` listing from
+inside the source root, with link following disabled by the selected command's
+default behavior. The listing is limited to 65,536 stdout bytes and 4,096
+stderr bytes. The consumer requires a successful capture, producer status zero,
+empty stderr, complete LF framing, matching reconstructed byte count, and each
+expected path exactly once. Missing, duplicate, extra, empty-directory,
+hidden-file, link, or special-file entries are refused. Expected physical
+directories and files are also checked for readable/traversable or readable
+regular nonsymlink shape. Entry order does not affect acceptance.
+Keep the manifest and catalog outside this payload root: unlisted `.gitkeep`
+files, repository metadata and other development files are also refused. The
+64-KiB listing cap can reject an otherwise valid manifest with many deep
+directories. This API adds no traversal deadline.
+
+Only after namespace and all D5 size/SHA-256 checks succeed does the API emit
+the `package-tree<TAB>1` ledger, retaining manifest metadata and file records
+and recomputing the footer length. It uses the existing IO owner for all three
+captures and cleanup before report publication. The public entries preserve
+the D5 status classes: misuse returns 2, processing/input/tool/cleanup failure
+returns 1, and owner HUP/INT/TERM return 129/130/143.
+
+With the same trusted path variables used by the verifier above, a developer
+caller invokes the production library entry like this:
+
+```sh
+. "$CFMGR_LIB/io.sh"
+. "$CFMGR_LIB/native_digest.sh"
+. "$CFMGR_LIB/package.sh"
+cfmgr_package_tree_report "$RAM_ROOT" "$SOURCE_ROOT" "$MANIFEST" \
+  "$PATH_HELPER" "$PARSER"
+```
+
+Check the function status and complete `package-tree` ledger; stdout by itself
+does not prove success. The fixture API is `cfmgr_package_tree_test` and is
+only for developer tests.
+
+The namespace comparison is against the successful native listing. In matched
+Merlin BusyBox source, recursive traversal does not distinguish a `readdir`
+error from EOF or report `closedir` failure, so the report cannot rule out an
+undeclared path silently omitted by a traversal error. Consequently it is an
+additional check under the healthy private immutable-tree premise, not source
+acquisition or authority to adopt an arbitrary existing tree. A future owner
+must create exactly the accepted inventory. The API also does not authenticate
+source, check installed permissions/ownership, establish semantic module/API
+or version compatibility, acquire/download/install/activate code, or prove
+Merlin runtime acceptance.
+
+The three captures use nine scratch files; per-file digest and hex captures
+add at most 256, for 265 total. Accepted capture streams are bounded to 208,896
+bytes plus 12,288 digest/hex bytes; conservative file allocation is at most
+1,054,720 bytes plus status files. Caller input, shell/producer memory, and
+filesystem traversal remain additional. Source `4082a04` passes the full local
+checkpoint: 1,848 tests and 38 explicit platform skips in 678.39s. All static
+checks pass. Exact-head Linux/BusyBox CI is pending; this remains the 51% candidate.
 
 ### Developer package inventory
 

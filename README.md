@@ -20,6 +20,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
 | Manifest reader and byte verification | Available to developers | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); host/CI checks passed |
+| Prepared source-tree report | Source-only library; CI pending | [Manifest-derived namespace and byte check](docs/development.md#source-only-complete-tree-report); acquisition and acceptance gates remain open |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -39,19 +40,24 @@ operational CLI, menu and installer wiring remain pending.
 Source-only libraries validate configuration headers, catalogs and package
 manifests with shared safe-path checks. A host-only Python command generates a
 deterministic manifest from an explicit local Git commit. The native manifest
-reader emits a checked canonical ledger, and the new verifier compares each
-declared file's size and SHA-256 in a caller-prepared source tree. The accepted **50% checkpoint** passes 1,843 local tests with 38 platform
-skips and [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
+reader emits a checked canonical ledger, and the D5 verifier compares each
+declared file's size and SHA-256 in a caller-prepared source tree. D6 adds a
+candidate report that compares a bounded native namespace observation with the
+manifest-derived paths before applying those byte checks. Its local checkpoint
+passes 1,848 tests with 38 platform skips; exact-head CI is pending. The accepted **50% checkpoint** passes 1,843 local tests with 38
+platform skips and [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
 with 1,881 tests, zero skips, six stripped-ash checks and all eleven kernel
-scenarios.
-See [PLAN.md](PLAN.md) for checkpoint results and remaining work.
+scenarios. See [PLAN.md](PLAN.md) for checkpoint results and remaining work.
 
-These checks do not establish source authenticity, complete package inventory,
-compatibility, installed permissions or router acceptance. There is no
-integrated config reader, catalog/acquisition workflow or installer, and no
-catalog or manifest is shipped. Synthetic host/Linux evidence does not prove
-installed-opkg provenance or Merlin behavior. Routine Entware upgrades remain
-user-managed; normal repair installs only missing or unusable requirements.
+These checks do not establish source authenticity, required module/API
+compatibility, installed permissions or router acceptance. The tree report
+requires a caller-owned private immutable tree; its native traversal limits
+are documented in the [development guide](docs/development.md#source-only-complete-tree-report).
+There is no integrated config reader, catalog/acquisition workflow or installer,
+and no catalog or manifest is shipped. Synthetic host/Linux evidence does not
+prove installed-opkg provenance or Merlin behavior. Routine Entware upgrades
+remain user-managed; normal repair installs only missing or unusable
+requirements.
 
 Planned DDNS setup will replace Merlin's existing DDNS configuration and custom
 DDNS handler. See the [setup guide](docs/setup.md#-prepare-the-router-and-selected-features)

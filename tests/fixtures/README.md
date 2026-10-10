@@ -93,6 +93,27 @@ only; they do not authenticate the manifest,
 prove directory completeness or permissions, install code or establish Merlin
 runtime acceptance.
 
+### Candidate complete-tree report
+
+The D6 candidate cases in `tests/test_package.py` exercise
+`cfmgr_package_tree_test` with a prepared synthetic tree, explicit fixture
+tools, the real path helper/parser and the shared IO owner. They compare an
+independent `package-tree` ledger oracle and exercise order-independent native
+listing, exact expected paths and declared bytes. The contract also refuses
+missing, duplicate, malformed, truncated, oversized or failed listings and
+unexpected regular, hidden, empty-directory, link and special-file entries.
+The required native `find` composition is distinct from host-only doubles.
+
+The complete local checkpoint passes 1,848 tests with 38 explicit platform
+skips in 678.39s. All static checks pass. Exact-head Linux/BusyBox CI
+remains pending, so D6 is still the 51% candidate. The report compares with the namespace actually
+observed by `find`. Matched Merlin BusyBox traversal does not distinguish
+`readdir` error from EOF, so a silent omission remains possible. A future
+acquisition owner must create the exact accepted tree under the documented
+healthy private immutable premise. The fixture does not authenticate source,
+check installed permissions or ownership, establish semantic module/API
+compatibility, install code or prove router acceptance.
+
 ## Kernel fixtures
 
 `kernel/` contains controlled developer-only shell/C fixtures for the explicit
