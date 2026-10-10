@@ -25,6 +25,14 @@ caller-state preservation and representative BusyBox behavior. It does not
 collect network observations or establish that an active candidate is fresh or
 reachable.
 
+`tests/test_wan.py` checks the supplied selected-WAN and IPv4 source reports:
+primary and load-balance decisions, fail-closed ambiguity and unavailable
+inputs, source interface mapping and administrative-disable evidence, exact
+framing, malformed unused operands, formatter failures and caller-state
+preservation. Its BusyBox case composes both real helpers. The fixture does not
+collect firmware state or establish source identity, freshness, routes, egress
+or publication authority.
+
 `tests/test_config_header.py` runs the real JSON producer on synthetic inputs,
 then checks the source-only header projection and deliberately corrupted
 ledgers. It does not read live settings or expose credential values. The

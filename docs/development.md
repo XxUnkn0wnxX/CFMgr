@@ -652,6 +652,73 @@ prints the framed comparison report:
 sh -c '. ./modules/lib/ip.sh; cfmgr_ipv4_observation_report 10.0.0.1 8.8.8.8'
 ```
 
+### Supplied selected-WAN IPv4 reports
+
+`modules/lib/wan.sh` requires trusted `modules/lib/ip.sh` to be sourced first;
+sourcing either library defines functions only. These helpers consume values
+from one complete caller-acquired firmware, profile and configuration
+observation. The caller must bind the values to the selected-WAN/config
+generation and freshness, and verify IPv4 egress for the same WAN before using
+them operationally. The reports establish none of those prerequisites.
+
+`cfmgr_wan4_selection_report MODE PRIMARY0 PRIMARY1 DDNS_UNIT CONNECTED0
+CONNECTED1 ADDRESS0 ADDRESS1` emits
+`wan4-selection<TAB>1<TAB>selected|unknown<TAB>0|1|-<TAB>REASON` and an
+`end<TAB>BODY_BYTES` footer. All eight operands are validated before
+selection: mode is `off|fo|fb|lb|-`, flags are `0|1|-`, DDNS unit is `0|1|-1|-`
+(`-1` means explicitly automatic), and addresses are strict IPv4 or `-`.
+For `off`, `fo` and `fb`, exactly one primary flag must be `1` and the other
+`0`; unavailable flags report `primary-unavailable`, while every other
+combination fails closed as `primary-ambiguous`. In `lb`, explicit unit 0/1
+reports `ddns-unit` without checking readiness. Automatic selection requires
+known connected flags and addresses for every connected unit. It prefers the
+first connected unit with an IANA `global` address (`auto-global`), then the
+first connected unit (`auto-connected`); otherwise it reports the applicable
+unknown reason: `selector-unavailable`, `connection-unavailable`,
+`address-unavailable` or `no-connected-wan`. Missing mode reports
+`mode-unavailable`. This strict global preference deliberately replaces the
+firmware's broader private-subnet heuristic. A selected unit is a policy result,
+not proof of active state, Internet access or egress. `CONNECTED0/1` must be
+caller-normalized policy eligibility from complete evidence; they are not raw
+firmware `state_t` values or a claim of being online.
+
+`cfmgr_wan4_source_report ENABLE PROTOCOL IFNAME PPP_IFNAME IPADDR` emits
+`wan4-source<TAB>1<TAB>candidate|inactive|unknown<TAB>INTERFACE|-<TAB>ADDRESS|-<TAB>REASON`
+and the same byte-count footer. It accepts enable `0|1|-`, protocol
+`dhcp|static|pppoe|pptp|l2tp|disabled|unsupported|-`, validated interface names
+or `-` (1–15 ASCII characters, first alphanumeric, then alphanumeric, `_`, `.`
+or `-`), and strict IPv4 or `-`. Only explicit enable `0` reports
+`inactive/administratively-disabled`; unavailable enable reports
+`enable-unavailable`, and protocol `disabled`, `unsupported` or `-` reports
+`protocol-unavailable` without inferring administrative disablement.
+DHCP/static use `IFNAME`; PPPoE/PPTP/L2TP use `PPP_IFNAME`. A missing selected
+interface reports `interface-unavailable`; missing or `0.0.0.0` address reports
+`address-unavailable`; a `nonpublic` address reports `address-nonpublic`. A
+valid native address and interface produce `candidate/native-address`. Private
+and shared addresses remain candidates for later comparison or NAT handling. A
+candidate is not publication authority.
+
+Both reports validate every operand, including unused fields, and return status
+1 with no output for invalid input or arity. A valid report returns status 0;
+unknown reports use `-` for their unit or interface/address fields. Their ASCII
+records end in LF; the footer counts the complete data row including its LF.
+They use isolated POSIX-shell
+subshells and preserve caller state. This example uses supplied values only:
+
+```sh
+sh -c '
+. ./modules/lib/ip.sh
+. ./modules/lib/wan.sh
+cfmgr_wan4_selection_report fo 1 0 - - - - -
+cfmgr_wan4_source_report 1 dhcp eth0 ppp0 8.8.8.8
+'
+```
+
+The API supports the basic two-unit Ethernet DHCP/static/PPPoE/PPTP/L2TP
+profile. It does not acquire observations, normalize firmware state, verify
+identity or freshness, check routes or egress, or authorize a provider action.
+USB, softwire and model-specific overrides remain outside this interface.
+
 ## 📦 Source data and package reports
 
 The source-only `modules/lib/config_header.awk`, `catalog.awk` and

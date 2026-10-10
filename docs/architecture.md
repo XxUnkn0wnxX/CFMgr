@@ -34,6 +34,7 @@ flowchart LR
 | `cfmgr.sh` | Command dispatch and bounded module-path resolution | No operational startup or repair |
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Does not execute Entware tools or feature operations |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, IPv4/IPv6 normalization and scope classification, supplied IPv4 observation report, plus bounded JSON token framing | Libraries/parsers only; no observation collection, feature startup or provider calls |
+| `modules/lib/wan.sh` | Supplied selected-WAN policy and native IPv4 source-candidate reports | Pure reports over one caller-acquired basic two-unit Ethernet profile; no collection, identity/freshness, egress check or provider authority |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config header/lifecycle, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/json.sh`, `modules/lib/config.sh`, `modules/lib/setup_state.sh` | Fixed JSON-token capture, config-header/lifecycle projection, and supplied setup-state report through the IO owner | Returns saved projection fields only; credential values are not returned, and full settings validation or installed-config admission is outside these APIs |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
@@ -129,6 +130,16 @@ provider access. `active` is a candidate from the supplied comparison, not
 proof of address assignment, freshness or reachability; `unknown` never
 authorizes deletion. `nat=false` records matching supplied global addresses
 and is not universal proof that no upstream translation exists.
+
+`modules/lib/wan.sh` adds supplied-data selection for firmware modes `off`,
+`fo`, `fb` and `lb`, plus basic DHCP/static/PPPoE/PPTP/L2TP interface mapping.
+It emits framed selected/unknown policy and candidate/inactive/unknown source
+reports; only an explicit administrative enable flag of zero establishes
+inactivity. Automatic load-balance selection prefers IANA global addresses,
+and ambiguous primary selection fails closed. A connected flag is caller
+normalized eligibility from complete evidence, not raw `state_t` or online
+status. Collection, source identity, freshness and matching-family egress
+verification remain caller prerequisites and are not implemented here.
 
 `modules/lib/mountinfo.awk` chooses the deepest mount covering a canonical path
 and rejects ambiguous covering ancestors. It consumes a stable snapshot capped
