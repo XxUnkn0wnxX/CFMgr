@@ -809,8 +809,51 @@ package completeness, compare it with a catalog, or authorize compatibility,
 downgrade, activation or installation. The manifest must not contain the
 containing commit hash: that would create a self-reference. A future acquisition
 step must bind the manifest to a single already-resolved immutable revision.
-There is currently no generated root catalog, published manifest, downloader,
-hashing workflow or installed-package mapper.
+There is no generated root catalog, published manifest, downloader or
+installed-package mapper. The developer inventory below writes only to stdout;
+it does not publish or install the generated document.
+
+### Developer package inventory (48% candidate)
+
+`tools/package_manifest.py` is a host-only Python developer command. It reads
+the raw Git tree and blobs at one explicit local commit and prints a canonical
+package manifest to stdout. Resolve the commit once, then pass its full
+40-character SHA-1 ID:
+
+```sh
+commit_id=$(git rev-parse --verify 'HEAD^{commit}')
+.venv/bin/python tools/package_manifest.py --repo . --commit "$commit_id"
+```
+
+`--repo` may name an existing directory within the intended repository,
+including a bare repository; when omitted, the tool uses the checkout containing
+the script. It rejects non-commit or abbreviated IDs and does not follow later
+branch movement or dirty worktree contents. It performs no fetch, checkout,
+index update, build, Git-filter invocation or selected-commit code execution.
+Git selection refuses transports, disables replacement objects and lazy
+fetching, and ignores inherited repository/config redirection. Local Git objects
+must already be available.
+
+The inventory covers `cfmgr.sh` and regular files below `modules/`, preserving
+their Git executable modes and hashing their raw bytes with SHA-256. The only
+excluded module entries are empty, regular, nonexecutable `.gitkeep` blobs.
+Unsafe or reserved destinations, unsupported Git object types or modes,
+invalid package limits, and a missing or nonexecutable entry are errors. The
+tool extracts exactly one canonical, literal full-line `CFMGR_VERSION`
+declaration as data and validates the complete generated document with the
+trusted parsers in the tool's current checkout. It never sources or runs the
+selected snapshot's files.
+
+This deterministic local inventory is not origin or release authentication,
+trusted acquisition, proof of package completeness, verification of installed
+file bytes or ownership, compatibility approval, activation or installation.
+Future consumers must separately bind the result to an immutable revision and
+establish trust, acquisition, actual-file verification, completeness, lifecycle
+and router acceptance. The combined generator/manifest/catalog focused gate
+passes 49 tests with two local missing-BusyBox skips in 46.80s; the generator
+tests pass 10 cases in 7.95s. The resumed full local gate passes 1,829 tests with 37 explicit platform
+skips in 527.97s using two workers, including all static checks. Exact-head
+Linux/BusyBox CI remains pending.
 
 The accepted 47% D2 manifest/catalog focused gate passes 39 tests with two
 explicit missing-BusyBox skips in 5.78s. The slowest new group takes 1.32s.
@@ -820,8 +863,9 @@ platform skips in 1,159.49s. Exact head
 [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996):
 1,856 tests with zero skips in 116.52s, six stripped-ash checks in 7.07s and
 all eleven kernel scenarios. Native-root, native-probe and native-dependencies
-take 6.33s, 8.88s and 9.52s; namespace execution totals 29.53s. The user-requested
-pause is active at 47%.
+take 6.33s, 8.88s and 9.52s; namespace execution totals 29.53s. The 47%
+checkpoint remains the accepted baseline; implementation has resumed on the
+48% developer inventory candidate described above.
 
 Cost review is complete. An unchanged integration hit its 60s deadline in a
 Mac timing follow-up, then passed its isolated retry in 53.69s under the same

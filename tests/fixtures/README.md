@@ -29,13 +29,31 @@ full local gate passes 1,819 tests with 37 explicit platform skips in
 1,159.49s. Exact
 [47% Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
 passes all 1,856 tests with zero skips, six stripped-ash checks and all eleven
-kernel scenarios. Cost review is complete; the user-requested 47% pause is
-active. These parser checks
-do not download or authenticate a manifest, compare declared hashes with file
-bytes, establish inventory completeness, or exercise a config reader or
-writer. The manifest, catalog and config-header BusyBox cases pass in the
+kernel scenarios. Cost review for this accepted milestone is complete. These
+parser checks do not download or authenticate a manifest, compare declared
+hashes with file bytes, establish inventory completeness, or exercise a config
+reader or writer. The manifest, catalog and config-header BusyBox cases pass in the
 accepted 47% Linux suite; the Mac run explicitly skips them when BusyBox is
 unavailable.
+
+### Developer raw-commit inventory
+
+`tests/test_package_manifest.py` builds small disposable Git repositories during
+the test run rather than storing repository fixtures. Independent expected
+manifest bytes check raw blob hashes, Git modes and path ordering. The consumer
+cases exercise selection of an explicit commit despite dirty files and later
+ref movement, reject replacement-object or inherited repository redirection,
+and verify version extraction as data without executing the selected entry.
+Grouped invalid-object, path, mode, size, count, batch-response and parser-ledger
+cases check rejection and the CLI's stdout/status boundary. These are developer
+host tests; the Python inventory tool is not part of the router runtime.
+
+The combined generator/manifest/catalog focused gate passes 49 tests with two
+local missing-BusyBox skips in 46.80s; the inventory-specific cases pass 10
+tests in 7.95s. The full local two-worker suite passes 1,829 tests with 37 explicit platform
+skips in 527.97s; exact-head CI remains pending. This
+candidate does not establish trusted source acquisition, complete package
+coverage, installed-file verification or router acceptance.
 
 ## Kernel fixtures
 

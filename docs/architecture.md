@@ -27,6 +27,13 @@ There is no generated or compiled main script. The planned installed entry is
 The development entry supports help, version and the two equivalent health
 commands. It does not install CFMgr or start a feature.
 
+The host-only `tools/package_manifest.py` developer utility inventories raw
+Git blobs from one explicit full commit ID and validates its generated manifest
+with the trusted parsers in the current tool checkout. It is separate from the
+router command path: it does not execute files from the selected commit or
+make persistent repository changes, and its output grants no trust,
+completeness, acquisition or installation authority.
+
 ```mermaid
 flowchart LR
     CLI[cfmgr.sh] --> Help[Help / version]
@@ -552,9 +559,10 @@ tests with two explicit missing-BusyBox skips in 5.78s. The full local gate
 passes 1,819 tests with 37 explicit platform skips in 1,159.49s; exact
 [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38002057996)
 passes 1,856 tests with zero skips and all eleven kernel scenarios at
-`76fd146`. Cost review is complete and work is paused at 47%. Matching Merlin
-awk behavior, full config validity, trusted manifest acquisition and an
-integrated config/catalog runtime path remain unproved.
+`76fd146`. This remains the accepted 47% baseline; the 48% developer inventory
+candidate is in progress. Matching Merlin awk behavior, full config validity,
+trusted manifest acquisition and an integrated config/catalog runtime path
+remain unproved.
 
 `cfmgr_isolation_native_tmp_root_with` adds one private tmpfs child to the exact
 five-child layout: `/bin`, `/sbin`, `/lib`, `/usr`, and `/tmp`. Its production

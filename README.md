@@ -18,6 +18,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Health report | Partial | Native `--doctor` / `--diagnostic`; [current checks](docs/development.md#native-health-report) |
 | Dependency setup | In progress | Source-only repair/reinstall worker; operational wiring pending |
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
+| Developer package inventory | Candidate (48%) | Host-only [manifest command](docs/development.md#developer-package-inventory-48-candidate); trust gates remain open |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -36,8 +37,12 @@ reinstall backend inside an already admitted native root; it is not wired to an
 operational CLI, menu or installer. The accepted 47% checkpoint includes the
 source-only serialized dependency worker, configuration-header/catalog parsers,
 shared package-path checks and a bounded manifest parser. Full local and
-Linux/BusyBox checks pass, including all eleven kernel scenarios. Work is
-paused at the requested 47% boundary. These parsers do not
+Linux/BusyBox checks pass, including all eleven kernel scenarios. A host-only
+Python tool now generates a deterministic manifest from an explicit local Git
+commit; the 48% candidate passes its full local gate and awaits exact-head CI.
+Work continues through the authorized 50% handoff. The inventory is not an
+authenticated release, installer input, complete-package verifier or router
+acceptance result. These parsers do not
 provide an integrated config reader, manifest trust or package-download
 workflow, and no catalog or manifest is shipped. See [PLAN.md](PLAN.md) for
 exact results and progress. Synthetic host/Linux checks do not establish
