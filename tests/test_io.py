@@ -165,7 +165,7 @@ class IOFixture:
         for tool in ("mkdir", "rm", "cat", "awk"):
             router.fake_tool(
                 tool,
-                f"exec {shlex.quote(sys.executable)} "
+                f"exec {shlex.quote(sys.executable)} -S "
                 f"{shlex.quote(str(router.path('work/dispatcher.py')))} "
                 f'{shlex.quote(str(self.settings_path))} {tool} "$@"\n',
             )
@@ -185,7 +185,7 @@ class IOFixture:
     def _install_fast_tool(self, tool: str, native: str) -> None:
         marker = self.router.path(f"work/{tool}-fault")
         dispatcher = (
-            f"exec {shlex.quote(sys.executable)} "
+            f"exec {shlex.quote(sys.executable)} -S "
             f"{shlex.quote(str(self.router.path('work/dispatcher.py')))} "
             f'{shlex.quote(str(self.settings_path))} {tool} "$@"'
         )

@@ -39,19 +39,31 @@ def produce(router: RouterHarness, document: bytes) -> bytes:
 
 
 def exact_token_cap_document() -> bytes:
-    """Build bounded JSON whose real token ledger occupies exactly131072 bytes."""
-    value = {"schema": 1, "generation": 0, "developer": False, "opaque": [""] * 4, "padding": 1}
+    """Fill the token budget with short strings, separate from long-string tests."""
+    value = {
+        "schema": 1,
+        "generation": 0,
+        "developer": False,
+        "opaque": [""] * 128,
+        "padding": 1,
+    }
     document = json.dumps(value, separators=(",", ":")).encode()
     base = oracle(document).encode("ascii")
     body = base[: base.rfind(b"end\t")]
-    needed = 131072 - len(b"end\t10\t131072\n") - len(body)
+    node_count = len(base.splitlines()) - 1
+    assert node_count == 134
+    # The placeholder and actual body-byte fields both use six digits.
+    footer_bytes = len(f"end\t{node_count}\t131072\n".encode("ascii"))
+    needed = 131072 - footer_bytes - len(body)
     if needed % 2:
         value["padding"] = 10
         needed -= 1
-    for index in range(4):
-        length = min(16384, needed // 2)
+    string_bytes, remainder = divmod(needed // 2, len(value["opaque"]))
+    assert string_bytes + bool(remainder) <= 512
+    for index in range(len(value["opaque"])):
+        length = string_bytes + (index < remainder)
         value["opaque"][index] = "q" * length
-        needed -= 2 * length
+    needed -= 2 * (string_bytes * len(value["opaque"]) + remainder)
     assert needed == 0
     document = json.dumps(value, separators=(",", ":")).encode()
     assert len(document) <= 65536
@@ -312,13 +324,33 @@ def test_consumer_node_and_container_depth_caps(native_awk: RouterHarness) -> No
             rows.append(f"{node}\t{parent}\tk61\tobject\t-")
             parent = node
         cases.append((f"depth-{depth}", framed(rows)))
+    for size in (16384, 16385):
+        rows = [
+            *header,
+            f"5\t1\tk6f7061717565\tstring\tx{'61' * size}",
+        ]
+        cases.append((f"string-bytes-{size}", framed(rows)))
+        rows = [
+            *header,
+            "5\t1\tk6f7061717565\tobject\t-",
+            f"6\t5\tk{'61' * size}\tnull\t-",
+        ]
+        cases.append((f"object-key-bytes-{size}", framed(rows)))
     # Headers and exact footers remain valid at both boundaries. These are
     # consumer guards, without another producer JSON limit matrix.
     result = consume_group(native_awk, cases)
     assert result.returncode == 0 and result.stderr == "", result
     expected = "config-header\t1\t7\ttrue\nend\t23\n"
     assert result.stdout == (
-        expected + "nodes-4096\t0\nnodes-4097\t1\n" + expected + "depth-32\t0\ndepth-33\t1\n"
+        expected
+        + "nodes-4096\t0\nnodes-4097\t1\n"
+        + expected
+        + "depth-32\t0\ndepth-33\t1\n"
+        + expected
+        + "string-bytes-16384\t0\n"
+        + expected
+        + "object-key-bytes-16384\t0\n"
+        + "string-bytes-16385\t1\nobject-key-bytes-16385\t1\n"
     )
 
 

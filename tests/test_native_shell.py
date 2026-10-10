@@ -54,7 +54,6 @@ class NativeShellFixture:
             (self.tools / name).symlink_to(executable)
         test_script = """import os
 import stat
-import subprocess
 import sys
 
 args = sys.argv[1:]
@@ -69,6 +68,7 @@ if len(args) == 3 and args[1:] == ["-ef", "/proc/self/fd/6"]:
         sys.exit(0 if (left.st_dev, left.st_ino) == (right.st_dev, right.st_ino) else 1)
     except OSError:
         sys.exit(1)
+import subprocess
 sys.exit(subprocess.call(["/usr/bin/test", *args]))
 """
         self._write_python_tool("work/native-shell-test", test_script)
@@ -85,7 +85,6 @@ import os
 import signal
 import shlex
 import stat
-import subprocess
 import sys
 from pathlib import Path
 
@@ -183,6 +182,7 @@ else:
     busybox = fixture_root.joinpath("work/native-shell-busybox.py")
     adapted = script.replace("/bin/busybox", shlex.quote(str(busybox)))
     command = ["/bin/sh", "-c", adapted, *child_args]
+import subprocess
 result = subprocess.run(command, check=False, pass_fds=pass_fds)
 if mode == "dependencies-result-malformed":
     private_root.joinpath("result").write_bytes(b"CFMGR_DEPENDENCIES_V1 X\n")
@@ -198,7 +198,6 @@ raise SystemExit(result.returncode)
         self.router.write("work/native-shell-mode", self.mode + "\n")
         busybox_script = rf"""import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -227,6 +226,7 @@ if sys.argv[1:] == ["printf", "CFMGR_NATIVE_SHELL_V1\\n"]:
     sys.stdout.buffer.write(b"CFMGR_NATIVE_SHELL_V1\n")
     raise SystemExit(0)
 if sys.argv[1:2] == ["printf"]:
+    import subprocess
     raise SystemExit(subprocess.call(["/usr/bin/printf", *sys.argv[2:]]))
 raise SystemExit(91)
 """
@@ -239,7 +239,7 @@ raise SystemExit(91)
             relative,
             "#!/bin/sh\nunset PWD SHLVL __CF_USER_TEXT_ENCODING\nexec "
             + shlex.quote(sys.executable)
-            + " "
+            + " -S "
             + shlex.quote(str(self.router.path(relative + ".py")))
             + ' "$@"\n',
             executable=True,

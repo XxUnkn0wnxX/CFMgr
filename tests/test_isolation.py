@@ -358,7 +358,7 @@ if tool == "rm":
 # actual parser. Pass retained descriptors through this delegation explicitly.
 sys.exit(
     subprocess.call(
-        [sys.executable, settings["storage_dispatcher"], str(settings_file), tool, *args],
+        [sys.executable, "-S", settings["storage_dispatcher"], str(settings_file), tool, *args],
         pass_fds=tuple(fd for fd in (8, 9) if "fd" + str(fd) in record),
     )
 )
@@ -506,7 +506,7 @@ class IsolationFixture:
                 )
             router.fake_tool(
                 tool,
-                bypass + f"exec {shlex.quote(sys.executable)} "
+                bypass + f"exec {shlex.quote(sys.executable)} -S "
                 f"{shlex.quote(str(router.path('work/isolation-dispatcher.py')))} "
                 f"{shlex.quote(str(ROOT))} {shlex.quote(str(self.storage.settings_path))} "
                 f'{tool} "$@"\n',
@@ -563,7 +563,7 @@ class IsolationFixture:
             path.symlink_to(native_path(name, self.probe_busybox or self.router.busybox))
         self.router.fake_tool(
             "chroot",
-            f"exec {shlex.quote(sys.executable)} "
+            f"exec {shlex.quote(sys.executable)} -S "
             f"{shlex.quote(str(self.router.path('work/isolation-dispatcher.py')))} "
             f"{shlex.quote(str(ROOT))} {shlex.quote(str(self.storage.settings_path))} "
             'chroot "$@"\n',
@@ -673,7 +673,7 @@ class IsolationFixture:
             + prefix
             + "fixture_callback() {\n"
             + (self.overlap_body() if overlap else "")
-            + f"{shlex.quote(sys.executable)} "
+            + f"{shlex.quote(sys.executable)} -S "
             f"{shlex.quote(str(self.router.path('work/isolation-callback.py')))} "
             f'{shlex.quote(str(self.storage.settings_path))} "$@"\n'
             + ('exit "$?"\n' if callback_exit else 'return "$?"\n')

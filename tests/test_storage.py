@@ -231,7 +231,7 @@ class StorageFixture:
         for tool in ("rm", "readlink", "test", "cat", "ls", "hexdump", "awk"):
             router.fake_tool(
                 tool,
-                f"exec {shlex.quote(sys.executable)} "
+                f"exec {shlex.quote(sys.executable)} -S "
                 f"{shlex.quote(str(router.path('work/dispatcher.py')))} "
                 f'{shlex.quote(str(self.settings_path))} {tool} "$@"\n',
             )
@@ -244,7 +244,7 @@ class StorageFixture:
         self.router.write("work/callback.py", CALLBACK_PROBE)
         return (
             "fixture_callback() {\n"
-            f"{shlex.quote(sys.executable)} "
+            f"{shlex.quote(sys.executable)} -S "
             f"{shlex.quote(str(self.router.path('work/callback.py')))} "
             f'{shlex.quote(str(self.settings_path))} "$@"\n'
             'return "$?"\n}\n'
