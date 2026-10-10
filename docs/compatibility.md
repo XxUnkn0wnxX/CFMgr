@@ -201,7 +201,7 @@ ABI or router acceptance. See [PLAN.md](../PLAN.md) for validation records.
 
 | Feature | Required capability | Current boundary |
 | --- | --- | --- |
-| Address helpers | BusyBox-compatible POSIX `sh`, with native `printf`/`test` applets when the shell omits those builtins | Classifies one canonical IPv4 address by fixed scope ranges; this does not establish routing, assignment, ownership, freshness, NAT or reachability. IPv6 support is syntax normalization only. |
+| Address helpers | BusyBox-compatible POSIX `sh`, with native `printf`/`test` applets when the shell omits those builtins | Classifies one IPv4 or IPv6 address accepted by its normalizer using fixed scope ranges. Categories do not establish routing, assignment, ownership, freshness, NAT, reachability or publication eligibility. |
 | Native diagnostic | POSIX shell and native command checks | Read-only host report; it does not load Entware, read configuration, install packages or contact providers. |
 | Storage observation | Descriptor mount IDs, native numeric device listing, bounded hexdump and dynamic-revision ext2/ext3/ext4 primary-superblock layout | Read-only observation only; not persistent identity, writability or storage-loss containment. |
 | Integrity verification | `coreutils-sha256sum`; native OpenSSL fallback | Both can compare synthetic digests; fallback does not waive a failed required-package installation. |
