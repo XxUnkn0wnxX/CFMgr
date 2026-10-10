@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.package_manifest import ManifestError, generate_manifest, main
+from tools.package_manifest import ManifestError, _version, generate_manifest, main
 
 ROOT = Path(__file__).resolve().parents[1]
 GIT = shutil.which("git")
@@ -248,6 +248,26 @@ def test_version_is_read_as_data_and_must_be_one_literal_full_line(tmp_path: Pat
         with pytest.raises(ManifestError):
             generate_manifest(repository, commit)
         assert not marker.exists()
+
+
+def test_host_version_rejects_nul_and_ascii28_but_accepts_unrelated_bytes() -> None:
+    candidate = b"CFMGR_VERSION=1.2.3\n"
+    assert _version(b"\x80\r\nunrelated\n" + candidate) == "1.2.3"
+    for control in (b"\x00", b"\x1c"):
+        for entry in (
+            control + candidate,
+            candidate + control,
+            b"# unrelated " + control + b" byte\n" + candidate,
+        ):
+            with pytest.raises(ManifestError):
+                _version(entry)
+
+    version_128 = b"9" * 41 + b"." + b"8" * 42 + b"." + b"7" * 43
+    version_129 = b"9" * 43 + b"." + b"8" * 42 + b"." + b"7" * 42
+    assert len(version_128) == 128 and len(version_129) == 129
+    assert _version(b"CFMGR_VERSION=" + version_128) == version_128.decode("ascii")
+    with pytest.raises(ManifestError):
+        _version(b"CFMGR_VERSION=" + version_129)
 
 
 def test_rejects_noncommit_inputs_and_invalid_placeholder_records(tmp_path: Path) -> None:

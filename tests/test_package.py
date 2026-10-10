@@ -18,6 +18,7 @@ PACKAGE = LIB / "package.sh"
 NATIVE_DIGEST = LIB / "native_digest.sh"
 PATH_HELPER = LIB / "package_path.awk"
 PARSER = LIB / "manifest.awk"
+ENTRY_PARSER = LIB / "entry_version.awk"
 TOOL_NAMES = ("awk", "cat", "find", "mkdir", "printf", "rm", "wc")
 NATIVE_TOOL_NAMES = ("openssl", "env")
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
@@ -88,6 +89,43 @@ def expected_tree_report(data: bytes) -> bytes:
     return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
 
 
+def expected_version_report(data: bytes) -> bytes:
+    """Independent package-version oracle retaining canonical manifest records."""
+    ledger = expected_ledger(data)
+    old_body, footer = ledger.rsplit(b"end\t", 1)
+    count, total, _body_bytes = footer[:-1].decode("ascii").split("\t")
+    new_body = b"package-version\t1\n" + old_body[len(b"manifest\t1\n") :]
+    return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
+
+
+def entry_source(version: str = "12.34.56") -> bytes:
+    return f"#!/bin/sh\nCFMGR_VERSION={version}\nexit 0\n".encode("ascii")
+
+
+def install_entry_parser_stub(package: PackageFixture, mode_path: Path) -> None:
+    awk = shutil.which("awk")
+    assert awk is not None
+    package.replace_tool(
+        "awk",
+        f'case "$*" in *entry_version.awk*)\n'
+        f"  mode=$(/bin/cat {shlex.quote(str(mode_path))})\n"
+        '  case "$mode" in\n'
+        "    valid) printf 'entry-version\\t12.34.56\\nend\\t23\\n' ;;\n"
+        "    status-two) exit 2 ;;\n"
+        "    status-two-stderr) printf diagnostic >&2; exit 2 ;;\n"
+        "    status-other) exit 7 ;;\n"
+        "    stderr) printf diagnostic >&2; exit 0 ;;\n"
+        "    truncated) printf 'entry-version\\t12.34.56\\nend\\t23' ;;\n"
+        "    nul-output) printf 'entry-version\\t12.34.56\\n\\000end\\t23\\n' ;;\n"
+        "    extra) printf 'entry-version\\t12.34.56\\nend\\t23\\nextra\\n' ;;\n"
+        "    partial-extra) printf 'entry-version\\t12.34.56\\nend\\t23\\nx' ;;\n"
+        "    wrong-version) printf 'entry-version\\t9.9.9\\nend\\t20\\n' ;;\n"
+        "    bad-footer) printf 'entry-version\\t12.34.56\\nend\\t22\\n' ;;\n"
+        "  esac\n"
+        f'  exit 0 ;;\nesac\nexec {shlex.quote(awk)} "$@"\n',
+    )
+
+
 class PackageFixture:
     def __init__(self, router: RouterHarness, *, busybox: Path | None = None):
         self.router = router
@@ -117,6 +155,7 @@ class PackageFixture:
         self.input.chmod(0o600)
         self.helper = router.write("work/package_path.awk", PATH_HELPER.read_text())
         self.parser = router.write("work/manifest.awk", PARSER.read_text())
+        self.entry_parser = router.write("work/entry_version.awk", ENTRY_PARSER.read_text())
 
     @property
     def root(self) -> Path:
@@ -202,6 +241,48 @@ class PackageFixture:
                     map(
                         str,
                         (self.root, self.source_root, self.input, self.helper, self.parser),
+                    )
+                )
+                if args is None
+                else args
+            )
+        return self.router.run(self.verifier_source() + f'{function} "$@"\n', supplied)
+
+    def version(
+        self, *, production: bool = False, args: tuple[str, ...] | None = None
+    ) -> ShellResult:
+        function = "cfmgr_package_version_report" if production else "cfmgr_package_version_test"
+        supplied = (
+            tuple(
+                map(
+                    str,
+                    (
+                        self.root,
+                        self.tools,
+                        self.source_root,
+                        self.input,
+                        self.helper,
+                        self.parser,
+                        self.entry_parser,
+                    ),
+                )
+            )
+            if args is None
+            else args
+        )
+        if production:
+            supplied = (
+                tuple(
+                    map(
+                        str,
+                        (
+                            self.root,
+                            self.source_root,
+                            self.input,
+                            self.helper,
+                            self.parser,
+                            self.entry_parser,
+                        ),
                     )
                 )
                 if args is None
@@ -515,6 +596,129 @@ def test_tree_reader_reports_exact_nested_package_and_cleans_up(package: Package
     assert list(package.root.glob("cfmgr-io.*")) == []
 
 
+def test_version_reader_composes_tree_and_literal_entry_without_execution(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    marker = package.router.path("work/entry-was-executed")
+    touch_command = f"touch {shlex.quote(str(marker))}\n".encode("ascii")
+    package.source_root.joinpath("cfmgr.sh").write_bytes(
+        entry_source().replace(b"exit 0", touch_command + b"exit 0")
+    )
+    # Keep the manifest hash in sync with the inert but executable-looking data.
+    package.input.write_bytes(
+        manifest(
+            (
+                (
+                    "cfmgr.sh",
+                    package.source_root.joinpath("cfmgr.sh").read_bytes(),
+                    0o755,
+                ),
+                ("modules/z.sh", b"z", 0o644),
+            )
+        )
+    )
+    script = (
+        package.verifier_source()
+        + 'IFS=x; set -f; umask 027; trap ":" TERM\n'
+        + "before_trap=$(trap); before_options=$(set +o); before_umask=$(umask); before_pwd=$PWD\n"
+        + 'cfmgr_package_version_test "$@"\nstatus=$?\n'
+        + '[ "$IFS" = x ] && [ "$(trap)" = "$before_trap" ] && '
+        + '[ "$(set +o)" = "$before_options" ] && [ "$(umask)" = "$before_umask" ] && '
+        + '[ "$PWD" = "$before_pwd" ] || exit 71\n'
+        + 'exit "$status"\n'
+    )
+    args = tuple(
+        map(
+            str,
+            (
+                package.root,
+                package.tools,
+                package.source_root,
+                package.input,
+                package.helper,
+                package.parser,
+                package.entry_parser,
+            ),
+        )
+    )
+    result = package.router.run(script, args)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout.encode("ascii") == expected_version_report(package.input.read_bytes())
+    assert not marker.exists()
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_version_reader_rejects_source_manifest_mismatch(package: PackageFixture) -> None:
+    package.configure({"cfmgr.sh": entry_source("12.34.57"), "modules/z.sh": b"z"})
+    quiet(package.version())
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_version_reader_maps_parser_status_two_to_public_status_two(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    mode_path = package.router.path("work/entry-parser-mode")
+    mode_path.write_text("status-two")
+    install_entry_parser_stub(package, mode_path)
+    quiet(package.version(), 2)
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_version_reader_rejects_bad_entry_parser_outputs_and_statuses_as_a_group(
+    package: PackageFixture,
+) -> None:
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    mode_path = package.router.path("work/entry-parser-mode")
+    install_entry_parser_stub(package, mode_path)
+    calls = (
+        (0, "valid"),
+        (1, "status-other"),
+        (1, "status-two-stderr"),
+        (1, "stderr"),
+        (1, "truncated"),
+        (1, "nul-output"),
+        (1, "extra"),
+        (1, "partial-extra"),
+        (1, "wrong-version"),
+        (1, "bad-footer"),
+    )
+    invocations = []
+    for expected_status, mode in calls:
+        invocations.append(
+            "check " + str(expected_status) + " " + shlex.quote(mode) + " || exit 91"
+        )
+    script = (
+        package.verifier_source()
+        + f"tools={shlex.quote(str(package.tools))}\n"
+        + f"root={shlex.quote(str(package.root))}\n"
+        + f"source={shlex.quote(str(package.source_root))}\n"
+        + f"entry_parser={shlex.quote(str(package.entry_parser))}\n"
+        + "fixture_entry_capture() {\n"
+        + "  shift\n"
+        + "  _package_verify_root=$1; _package_manifest_version=$2\n"
+        + '  _cfmgr_package_entry_capture "$4"\n'
+        + "}\n"
+        + f"mode_file={shlex.quote(str(mode_path))}\n"
+        + "check() {\n"
+        + "  expected=$1; mode=$2\n"
+        + '  printf "%s" "$mode" > "$mode_file"\n'
+        + '  cfmgr_io_test "$root" "$tools" workspace fixture_entry_capture '
+        + '"$source" 12.34.56 "$tools" "$entry_parser"\n'
+        + "  actual=$?\n"
+        + '  [ "$actual" = "$expected" ] || return 1\n'
+        + '  printf "%s\\n" "$actual"\n'
+        + "}\n"
+        + "\n".join(invocations)
+        + "\n"
+    )
+    result = package.router.run(script)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout == "0\n" + "1\n" * (len(calls) - 1)
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
 def test_production_tree_report_uses_the_fixed_native_resolver(package: PackageFixture) -> None:
     native_tools = all(
         any(
@@ -813,4 +1017,17 @@ def test_actual_busybox_composes_package_reader_and_io_owner(busybox_router: Rou
     tree = package.tree()
     assert tree.returncode == 0 and tree.stderr == ""
     assert tree.stdout.encode("ascii") == expected_tree_report(package.input.read_bytes())
+    package.configure({"cfmgr.sh": entry_source(), "modules/z.sh": b"z"})
+    version = package.version()
+    assert version.returncode == 0 and version.stderr == ""
+    assert version.stdout.encode("ascii") == expected_version_report(package.input.read_bytes())
+    for index, control in enumerate((b"\x00", b"\x1c")):
+        source = b"# unrelated " + control + b" byte\n" + entry_source()
+        input_path = package.router.path(f"work/busybox-entry-control-{index}")
+        input_path.write_bytes(source)
+        result = package.router.run(
+            'LC_ALL=C; export LC_ALL\n"$1/awk" -v "cfmgr_entry_size=$2" -f "$3" < "$4"\n',
+            [str(package.tools), str(len(source)), str(package.entry_parser), str(input_path)],
+        )
+        assert result.returncode == 1 and result.stdout == result.stderr == ""
     assert list(package.root.glob("cfmgr-io.*")) == []

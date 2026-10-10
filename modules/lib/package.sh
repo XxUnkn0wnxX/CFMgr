@@ -45,6 +45,18 @@ cfmgr_package_tree_test() {
 	cfmgr_io_test "$1" "$2" report _cfmgr_package_tree_action "$3" "$4" "$5" "$6"
 }
 
+# Add literal entry/manifest version agreement to the complete observed tree.
+# ENTRY_PARSER is trusted external code; cfmgr.sh itself is only read as data.
+cfmgr_package_version_report() {
+	[ "$#" -eq 6 ] || return 2
+	cfmgr_io_with_report "$1" _cfmgr_package_version_action "$2" "$3" "$4" "$5" "$6"
+}
+
+cfmgr_package_version_test() {
+	[ "$#" -eq 7 ] || return 2
+	cfmgr_io_test "$1" "$2" report _cfmgr_package_version_action "$3" "$4" "$5" "$6" "$7"
+}
+
 _cfmgr_package_verify_action() {
 	[ "$#" -eq 5 ] && [ "${_io_active-}" = 1 ] || return 2
 	_cfmgr_package_verify_prepare "$2" "$3" "$4" "$5" || return "$?"
@@ -58,6 +70,42 @@ _cfmgr_package_tree_action() {
 	_cfmgr_package_tree_inventory || return 1
 	_cfmgr_package_verify_bytes || return 1
 	_cfmgr_package_verify_report package-tree
+}
+
+_cfmgr_package_version_action() {
+	[ "$#" -eq 6 ] && [ "${_io_active-}" = 1 ] || return 2
+	case $6 in /*) ;; *) return 2 ;; esac
+	[ -f "$6" ] && [ ! -L "$6" ] && [ -r "$6" ] || return 2
+	_cfmgr_package_verify_prepare "$2" "$3" "$4" "$5" || return "$?"
+	_cfmgr_package_tree_inventory || return 1
+	_cfmgr_package_verify_bytes || return 1
+	_cfmgr_package_entry_capture "$6" || return "$?"
+	_cfmgr_package_verify_report package-version
+}
+
+# Independently remeasure the immutable entry after the D6 byte checks. This
+# reads regular stdin to EOF and adds no source acquisition or runtime deadline.
+_cfmgr_package_entry_capture() {
+	_cfmgr_package_verify_member cfmgr.sh || return 1
+	_package_entry_size=$(_cfmgr_native_size_owned "$_io_wc" "$_package_verify_file") || return 1
+	[ "$_package_entry_size" -gt 0 ] && [ "$_package_entry_size" -le 1048576 ] || return 1
+	cfmgr_io_capture 3 256 4096 awk -v "cfmgr_entry_size=$_package_entry_size" \
+		-f "$1" <"$_package_verify_file" || return 1
+	_cfmgr_io_capture_status 3 || return 1
+	[ "$_io_err_bytes" -eq 0 ] || return 1
+	case $_io_producer in 0) ;; 2) return 2 ;; *) return 1 ;; esac
+	_package_entry_expected_body="entry-version$_io_tab$_package_manifest_version$_io_lf"
+	_package_entry_expected_footer="end$_io_tab${#_package_entry_expected_body}"
+	_package_entry_line=
+	_package_entry_footer=
+	_package_entry_extra=
+	{
+		IFS= read -r _package_entry_line && IFS= read -r _package_entry_footer &&
+			! IFS= read -r _package_entry_extra && [ -z "$_package_entry_extra" ]
+	} <"$_io_stage/3.out" || return 1
+	[ "$_package_entry_line$_io_lf" = "$_package_entry_expected_body" ] &&
+		[ "$_package_entry_footer" = "$_package_entry_expected_footer" ] &&
+		[ "$_io_out_bytes" -eq "$((${#_package_entry_expected_body} + ${#_package_entry_expected_footer} + 1))" ]
 }
 
 # One owner and one accepted manifest feed either report; no nested public IO.

@@ -177,6 +177,8 @@ def _blobs(raw: bytes, entries: list[_Entry]) -> list[bytes]:
 def _version(entry: bytes) -> str:
     # A metadata declaration convention, not shell interpretation. CR, quotes,
     # indentation, export/readonly and dynamic values are not literal metadata.
+    if b"\0" in entry or b"\x1c" in entry:
+        raise ManifestError("the entry contains forbidden version-parser framing bytes")
     candidates = [line for line in entry.split(b"\n") if DECLARATION.match(line)]
     if len(candidates) != 1:
         raise ManifestError("the entry must have exactly one literal version declaration")
