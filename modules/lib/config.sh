@@ -39,24 +39,32 @@ _cfmgr_config_lifecycle_action() {
 # Fixed internal projection selector; no ambient mode or operational callbacks.
 _cfmgr_config_projection_action() {
 	[ "$#" -eq 5 ] && [ "${_io_active-}" = 1 ] || return 2
+	_cfmgr_config_projection_capture "$1" "$3" "$4" "$5" || return "$?"
+	case $1 in
+	header) cfmgr_io_stage_report "$_config_header_ledger" ;;
+	lifecycle) cfmgr_io_stage_report "$_config_lifecycle_ledger" ;;
+	esac
+}
+
+# Same owner and fixed slots, with publication left to the composing action.
+_cfmgr_config_projection_capture() {
+	[ "$#" -eq 4 ] && [ "${_io_active-}" = 1 ] || return 2
 	case $1 in header | lifecycle) ;; *) return 2 ;; esac
 	_config_projection_mode=$1
-	case $5 in /*) ;; *) return 2 ;; esac
-	[ -f "$5" ] && [ ! -L "$5" ] && [ -r "$5" ] || return 2
-	_cfmgr_json_tokens_capture "$3" "$4" 0 1 || return "$?"
+	case $4 in /*) ;; *) return 2 ;; esac
+	[ -f "$4" ] && [ ! -L "$4" ] && [ -r "$4" ] || return 2
+	_cfmgr_json_tokens_capture "$2" "$3" 0 1 || return "$?"
 	cfmgr_io_capture 2 256 4096 awk -v "cfmgr_config_header_size=$_json_tokens_bytes" \
-		-v "cfmgr_config_header_mode=$_config_projection_mode" -f "$5" <"$_json_tokens_file" || return 1
+		-v "cfmgr_config_header_mode=$_config_projection_mode" -f "$4" <"$_json_tokens_file" || return 1
 	_cfmgr_io_capture_status 2 || return 1
 	[ "$_io_err_bytes" -eq 0 ] || return 1
 	case $_io_producer in 0) ;; 2) return 2 ;; *) return 1 ;; esac
 	case $_config_projection_mode in
 	header)
-		_cfmgr_config_header_decode "$_io_stage/2.out" "$_io_out_bytes" || return "$?"
-		cfmgr_io_stage_report "$_config_header_ledger"
+		_cfmgr_config_header_decode "$_io_stage/2.out" "$_io_out_bytes"
 		;;
 	lifecycle)
-		_cfmgr_config_lifecycle_decode "$_io_stage/2.out" "$_io_out_bytes" || return "$?"
-		cfmgr_io_stage_report "$_config_lifecycle_ledger"
+		_cfmgr_config_lifecycle_decode "$_io_stage/2.out" "$_io_out_bytes"
 		;;
 	esac
 }
