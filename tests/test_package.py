@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shlex
 import shutil
 from pathlib import Path
@@ -17,7 +18,7 @@ PACKAGE = LIB / "package.sh"
 NATIVE_DIGEST = LIB / "native_digest.sh"
 PATH_HELPER = LIB / "package_path.awk"
 PARSER = LIB / "manifest.awk"
-TOOL_NAMES = ("awk", "cat", "mkdir", "printf", "rm", "wc")
+TOOL_NAMES = ("awk", "cat", "find", "mkdir", "printf", "rm", "wc")
 NATIVE_TOOL_NAMES = ("openssl", "env")
 pytestmark = [pytest.mark.integration, pytest.mark.matrix("V74", evidence="host")]
 
@@ -75,6 +76,15 @@ def expected_bytes_report(data: bytes) -> bytes:
     old_body, footer = ledger.rsplit(b"end\t", 1)
     count, total, _body_bytes = footer[:-1].decode("ascii").split("\t")
     new_body = b"package-bytes\t1\n" + old_body[len(b"manifest\t1\n") :]
+    return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
+
+
+def expected_tree_report(data: bytes) -> bytes:
+    """Independent tree report oracle, retaining manifest order and totals."""
+    report = expected_bytes_report(data)
+    old_body, footer = report.rsplit(b"end\t", 1)
+    count, total, _body_bytes = footer[:-1].decode("ascii").split("\t")
+    new_body = b"package-tree\t1\n" + old_body[len(b"package-bytes\t1\n") :]
     return new_body + f"end\t{count}\t{total}\t{len(new_body)}\n".encode("ascii")
 
 
@@ -162,6 +172,38 @@ class PackageFixture:
         if production:
             supplied = (
                 tuple(map(str, (self.root, self.source_root, self.input, self.helper, self.parser)))
+                if args is None
+                else args
+            )
+        return self.router.run(self.verifier_source() + f'{function} "$@"\n', supplied)
+
+    def tree(self, *, production: bool = False, args: tuple[str, ...] | None = None) -> ShellResult:
+        function = "cfmgr_package_tree_report" if production else "cfmgr_package_tree_test"
+        supplied = (
+            tuple(
+                map(
+                    str,
+                    (
+                        self.root,
+                        self.tools,
+                        self.source_root,
+                        self.input,
+                        self.helper,
+                        self.parser,
+                    ),
+                )
+            )
+            if args is None
+            else args
+        )
+        if production:
+            supplied = (
+                tuple(
+                    map(
+                        str,
+                        (self.root, self.source_root, self.input, self.helper, self.parser),
+                    )
+                )
                 if args is None
                 else args
             )
@@ -445,9 +487,212 @@ def test_verifier_rejects_actual_size_before_invoking_openssl(package: PackageFi
 
 
 def test_later_same_size_hash_mismatch_prevents_report_publication(package: PackageFixture) -> None:
-    package.configure({"cfmgr.sh": b"entry", "modules/a.bin": b"first", "modules/z.bin": b"later"})
+    package.configure(
+        {
+            "cfmgr.sh": b"entry",
+            "modules/z.sh": b"z",
+            "modules/a.bin": b"first",
+            "modules/z.bin": b"later",
+        }
+    )
     package.source_root.joinpath("modules/z.bin").write_bytes(b"other")
     quiet(package.verify())
+    quiet(package.tree())
+
+
+def test_tree_reader_reports_exact_nested_package_and_cleans_up(package: PackageFixture) -> None:
+    package.configure(
+        {
+            "cfmgr.sh": b"entry",
+            "modules/z.sh": b"z",
+            "modules/nested/worker.sh": b"worker\n",
+            "modules/nested/lib/parser.awk": b"parser\x00bytes",
+        }
+    )
+    result = package.tree()
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout.encode("ascii") == expected_tree_report(package.input.read_bytes())
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def test_production_tree_report_uses_the_fixed_native_resolver(package: PackageFixture) -> None:
+    native_tools = all(
+        any(
+            (Path(directory) / tool).is_file() and (Path(directory) / tool).stat().st_mode & 0o111
+            for directory in ("/sbin", "/bin", "/usr/sbin", "/usr/bin")
+        )
+        for tool in ("find", "openssl", "hexdump")
+    )
+    result = package.tree(production=True)
+    if native_tools:
+        assert result.returncode == 0 and result.stderr == ""
+        assert result.stdout.encode("ascii") == expected_tree_report(package.input.read_bytes())
+    else:
+        quiet(result)
+
+
+def test_tree_reader_ignores_inventory_order_and_preserves_caller_state(
+    package: PackageFixture,
+) -> None:
+    # The producer's order is intentionally different from both find order and manifest order.
+    package.replace_tool(
+        "find",
+        "printf './modules/z.sh\\n./modules\\n.\\n./cfmgr.sh\\n'\n",
+    )
+    script = (
+        package.verifier_source()
+        + 'IFS=x; set -f; umask 027; trap ":" TERM\n'
+        + "before_trap=$(trap); before_options=$(set +o); before_umask=$(umask); before_pwd=$PWD\n"
+        + 'cfmgr_package_tree_test "$@"\nstatus=$?\n'
+        + '[ "$IFS" = x ] && [ "$(trap)" = "$before_trap" ] && '
+        + '[ "$(set +o)" = "$before_options" ] && [ "$(umask)" = "$before_umask" ] && '
+        + '[ "$PWD" = "$before_pwd" ] || exit 71\n'
+        + 'exit "$status"\n'
+    )
+    args = tuple(
+        map(
+            str,
+            (
+                package.root,
+                package.tools,
+                package.source_root,
+                package.input,
+                package.helper,
+                package.parser,
+            ),
+        )
+    )
+    result = package.router.run(script, args)
+    assert result.returncode == 0 and result.stderr == ""
+    assert result.stdout.encode("ascii") == expected_tree_report(package.input.read_bytes())
+    assert list(package.root.glob("cfmgr-io.*")) == []
+
+
+def tree_refusal_group(
+    package: PackageFixture,
+    cases: tuple[tuple[int, Path], ...],
+) -> ShellResult:
+    output_path = package.router.path("work/tree-output")
+    calls = []
+    for expected_status, source_root in cases:
+        args = (
+            package.root,
+            package.tools,
+            source_root,
+            package.input,
+            package.helper,
+            package.parser,
+        )
+        calls.append(
+            "check "
+            + str(expected_status)
+            + " "
+            + " ".join(shlex.quote(str(argument)) for argument in args)
+            + " || exit 91"
+        )
+    script = (
+        package.verifier_source()
+        + f"output={shlex.quote(str(output_path))}\n"
+        + "check() {\n"
+        + "  expected=$1; shift\n"
+        + '  cfmgr_package_tree_test "$@" > "$output" 2>&1\n'
+        + "  actual=$?\n"
+        + '  [ "$actual" = "$expected" ] && [ ! -s "$output" ] || return 1\n'
+        + "  printf '%s\\n' \"$actual\"\n"
+        + "}\n"
+        + "\n".join(calls)
+        + "\n"
+    )
+    return package.router.run(script)
+
+
+def test_tree_reader_rejects_unlisted_namespace_entries_as_a_group(
+    package: PackageFixture,
+) -> None:
+    def source_root(name: str, add_extra: str | None = None) -> Path:
+        root = package.router.path(f"work/tree-{name}")
+        root.mkdir()
+        (root / "cfmgr.sh").write_bytes(b"entry")
+        modules = root / "modules"
+        modules.mkdir()
+        (modules / "z.sh").write_bytes(b"z")
+        if add_extra == "file":
+            (modules / "extra").write_bytes(b"extra")
+        elif add_extra == "hidden":
+            (modules / ".private").write_bytes(b"hidden")
+        elif add_extra == "newline":
+            (modules / "bad\nname").write_bytes(b"framing")
+        elif add_extra == "empty-directory":
+            (modules / "empty").mkdir()
+        elif add_extra == "symlink":
+            (modules / "link").symlink_to(modules / "z.sh")
+        elif add_extra == "dangling":
+            (modules / "dangling").symlink_to(root / "absent")
+        elif add_extra == "fifo":
+            os.mkfifo(modules / "pipe")
+        elif add_extra == "missing":
+            (modules / "z.sh").unlink()
+        return root
+
+    cases = tuple(
+        (1, source_root(name, extra))
+        for name, extra in (
+            ("extra-file", "file"),
+            ("hidden", "hidden"),
+            ("newline", "newline"),
+            ("empty", "empty-directory"),
+            ("link", "symlink"),
+            ("dangling", "dangling"),
+            ("fifo", "fifo"),
+            ("missing", "missing"),
+        )
+    )
+    # Keep each full IO-owner batch comfortably within the harness deadline.
+    for start in range(0, len(cases), 4):
+        batch = cases[start : start + 4]
+        result = tree_refusal_group(package, batch)
+        assert result.returncode == 0 and result.stderr == ""
+        assert result.stdout == "1\n" * len(batch)
+
+
+def test_tree_reader_rejects_bad_find_framing_and_producers_as_a_group(
+    package: PackageFixture,
+) -> None:
+    exact = "printf '.\\n./cfmgr.sh\\n./modules\\n./modules/z.sh\\n'\n"
+    producers = (
+        "printf '.\\n./cfmgr.sh\\n./modules\\n'\n",  # Missing member.
+        exact + "printf './modules/z.sh\\n'\n",  # Duplicate member.
+        "printf '.\\n./cfmgr.sh\\n./modules\\n./modules/z.sh'\n",  # Missing final LF.
+        "printf '.\\n./cfmgr\\000.sh\\n./modules\\n./modules/z.sh\\n'\n",
+        "i=0; while [ \"$i\" -lt 7000 ]; do printf './unknown\\n'; i=$((i + 1)); done\n",
+        exact + "exit 7\n",
+        exact + "printf diagnostic >&2\n",
+    )
+    results: list[int] = []
+    output_path = package.router.path("work/tree-producer-output")
+    script_prefix = package.verifier_source() + f"output={shlex.quote(str(output_path))}\n"
+    for producer in producers:
+        package.replace_tool("find", producer)
+        result = package.router.run(
+            script_prefix
+            + 'cfmgr_package_tree_test "$@" > "$output" 2>&1\n'
+            + 'status=$?; [ ! -s "$output" ] || exit 92; exit "$status"\n',
+            tuple(
+                map(
+                    str,
+                    (
+                        package.root,
+                        package.tools,
+                        package.source_root,
+                        package.input,
+                        package.helper,
+                        package.parser,
+                    ),
+                )
+            ),
+        )
+        results.append(result.returncode)
+    assert results == [1] * len(producers)
 
 
 def test_native_digest_rejects_failed_short_and_bad_hex_tools(package: PackageFixture) -> None:
@@ -565,3 +810,7 @@ def test_actual_busybox_composes_package_reader_and_io_owner(busybox_router: Rou
     verifier = package.verify()
     assert verifier.returncode == 0 and verifier.stderr == ""
     assert verifier.stdout.encode("ascii") == expected_bytes_report(package.input.read_bytes())
+    tree = package.tree()
+    assert tree.returncode == 0 and tree.stderr == ""
+    assert tree.stdout.encode("ascii") == expected_tree_report(package.input.read_bytes())
+    assert list(package.root.glob("cfmgr-io.*")) == []

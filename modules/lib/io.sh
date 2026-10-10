@@ -49,7 +49,7 @@ cfmgr_io_test() {
 }
 
 _cfmgr_io_find() (
-	case $1 in awk | cat | wc | printf | test | '[' | mkdir | rmdir | rm | readlink | ls | hexdump) ;; *) return 2 ;; esac
+	case $1 in awk | cat | wc | printf | test | '[' | mkdir | rmdir | rm | readlink | ls | hexdump | find) ;; *) return 2 ;; esac
 	if [ -n "$_io_tools" ]; then
 		[ -x "$_io_tools/$1" ] && [ ! -d "$_io_tools/$1" ] || return 1
 		printf '%s\n' "$_io_tools/$1"
@@ -172,7 +172,7 @@ cfmgr_io_capture() (
 	_cfmgr_io_limit "$2" && _cfmgr_io_limit "$3" || return 2
 	_cap_out_limit=$2
 	_cap_err_limit=$3
-	case $4 in cat | awk | wc | printf | test | '[' | readlink | ls | hexdump) ;; *) return 2 ;; esac
+	case $4 in cat | awk | wc | printf | test | '[' | readlink | ls | hexdump | find) ;; *) return 2 ;; esac
 	_cap_command=$(_cfmgr_io_find "$4") || return 1
 	shift 4
 	_cap_ceiling=$_cap_out_limit

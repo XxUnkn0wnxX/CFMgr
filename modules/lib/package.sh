@@ -33,9 +33,36 @@ cfmgr_package_verify_test() {
 	cfmgr_io_test "$1" "$2" report _cfmgr_package_verify_action "$3" "$4" "$5" "$6"
 }
 
+# Check declared files/parents against a bounded native namespace observation.
+# This relies on native traversal accuracy, not provenance or hostile traversal.
+cfmgr_package_tree_report() {
+	[ "$#" -eq 5 ] || return 2
+	cfmgr_io_with_report "$1" _cfmgr_package_tree_action "$2" "$3" "$4" "$5"
+}
+
+cfmgr_package_tree_test() {
+	[ "$#" -eq 6 ] || return 2
+	cfmgr_io_test "$1" "$2" report _cfmgr_package_tree_action "$3" "$4" "$5" "$6"
+}
+
 _cfmgr_package_verify_action() {
 	[ "$#" -eq 5 ] && [ "${_io_active-}" = 1 ] || return 2
-	_package_verify_root=$2
+	_cfmgr_package_verify_prepare "$2" "$3" "$4" "$5" || return "$?"
+	_cfmgr_package_verify_bytes || return 1
+	_cfmgr_package_verify_report package-bytes
+}
+
+_cfmgr_package_tree_action() {
+	[ "$#" -eq 5 ] && [ "${_io_active-}" = 1 ] || return 2
+	_cfmgr_package_verify_prepare "$2" "$3" "$4" "$5" || return "$?"
+	_cfmgr_package_tree_inventory || return 1
+	_cfmgr_package_verify_bytes || return 1
+	_cfmgr_package_verify_report package-tree
+}
+
+# One owner and one accepted manifest feed either report; no nested public IO.
+_cfmgr_package_verify_prepare() {
+	_package_verify_root=$1
 	_package_verify_index=0
 	_package_verify_body=
 	_package_verify_ledger=
@@ -44,7 +71,10 @@ _cfmgr_package_verify_action() {
 	case $_package_verify_root in / | */ | *//* | */./* | */../* | */. | */.. | *[[:cntrl:]]*) return 2 ;; esac
 	[ -d "$_package_verify_root" ] && [ ! -L "$_package_verify_root" ] &&
 		[ -r "$_package_verify_root" ] && [ -x "$_package_verify_root" ] || return 2
-	_cfmgr_package_manifest_capture "$3" "$4" "$5" 0 1 || return "$?"
+	_cfmgr_package_manifest_capture "$2" "$3" "$4" 0 1
+}
+
+_cfmgr_package_verify_bytes() {
 	_package_verify_env=$(_cfmgr_package_verify_find env) || return 1
 	_package_verify_openssl=$(_cfmgr_package_verify_find openssl) || return 1
 	_package_verify_hexdump=$(_cfmgr_package_verify_find hexdump) || return 1
@@ -71,10 +101,69 @@ _cfmgr_package_verify_action() {
 			"$_package_verify_env" "$_package_verify_openssl" "$_package_verify_hexdump" || return 1
 	done
 	[ "$_package_verify_index" -eq "$_package_manifest_count" ] || return 1
+}
+
+_cfmgr_package_verify_report() {
 	_package_verify_header="manifest${_io_tab}1$_io_lf"
-	_package_verify_body="package-bytes${_io_tab}1$_io_lf${_package_manifest_body#"$_package_verify_header"}"
+	_package_verify_body="$1${_io_tab}1$_io_lf${_package_manifest_body#"$_package_verify_header"}"
 	_package_verify_ledger="${_package_verify_body}end$_io_tab$_package_manifest_count$_io_tab$_package_manifest_total$_io_tab${#_package_verify_body}$_io_lf"
 	cfmgr_io_stage_report "$_package_verify_ledger"
+}
+
+# Build the namespace solely from the accepted manifest, then consume one
+# fixed native listing. LF delimiters are safe because accepted paths are ASCII
+# without controls. Its finite 64 KiB cap also bounds the expected set.
+_cfmgr_package_tree_inventory() {
+	_package_tree_expected="$_io_lf.$_io_lf"
+	_package_tree_inventory=$_package_manifest_body
+	while [ -n "$_package_tree_inventory" ]; do
+		_package_tree_record=${_package_tree_inventory%%"$_io_lf"*}
+		_package_tree_inventory=${_package_tree_inventory#*"$_io_lf"}
+		case $_package_tree_record in "file$_io_tab"*) ;; *) continue ;; esac
+		_package_tree_relative=${_package_tree_record#*"$_io_tab"}
+		_package_tree_relative=${_package_tree_relative%%"$_io_tab"*}
+		_cfmgr_package_tree_expect "./$_package_tree_relative" || return 1
+		while :; do
+			case $_package_tree_relative in */*) ;; *) break ;; esac
+			_package_tree_relative=${_package_tree_relative%/*}
+			_package_tree_directory=$_package_verify_root/$_package_tree_relative
+			[ -d "$_package_tree_directory" ] && [ ! -L "$_package_tree_directory" ] &&
+				[ -r "$_package_tree_directory" ] && [ -x "$_package_tree_directory" ] || return 1
+			_cfmgr_package_tree_expect "./$_package_tree_relative" || return 1
+		done
+	done
+	# Keep the owner/caller cwd unchanged; find never follows links or executes
+	# prepared source. Capture owns all three slot2 files in the same IO stage.
+	(cd "$_package_verify_root" && cfmgr_io_capture 2 65536 4096 find . -print) || return 1
+	_cfmgr_io_capture_status 2 || return 1
+	[ "$_io_producer" -eq 0 ] && [ "$_io_err_bytes" -eq 0 ] || return 1
+	_package_tree_capture_bytes=$_io_out_bytes
+	[ "$_package_tree_capture_bytes" -gt 0 ] && [ "$_package_tree_capture_bytes" -le 65536 ] || return 1
+	_package_tree_remaining=$_package_tree_expected
+	_package_tree_read_bytes=0
+	_package_tree_line=
+	_cfmgr_package_tree_records <"$_io_stage/2.out"
+}
+
+_cfmgr_package_tree_expect() {
+	case $_package_tree_expected in *"$_io_lf$1$_io_lf"*) return 0 ;; esac
+	_package_tree_expected=$_package_tree_expected$1$_io_lf
+	[ "$((${#_package_tree_expected} - 1))" -le 65536 ]
+}
+
+# Never trust shell read normalization: reconstruct every LF and compare with
+# capture's original byte measurement, catching NUL stripping and partial rows.
+_cfmgr_package_tree_records() {
+	while IFS= read -r _package_tree_line; do
+		case $_package_tree_remaining in *"$_io_lf$_package_tree_line$_io_lf"*) ;; *) return 1 ;; esac
+		_package_tree_before=${_package_tree_remaining%%"$_io_lf$_package_tree_line$_io_lf"*}
+		_package_tree_after=${_package_tree_remaining#*"$_io_lf$_package_tree_line$_io_lf"}
+		_package_tree_remaining=$_package_tree_before$_io_lf$_package_tree_after
+		_package_tree_read_bytes=$((_package_tree_read_bytes + ${#_package_tree_line} + 1))
+		_package_tree_line=
+	done
+	[ -z "$_package_tree_line" ] && [ "$_package_tree_remaining" = "$_io_lf" ] &&
+		[ "$_package_tree_read_bytes" -eq "$_package_tree_capture_bytes" ]
 }
 
 # Native digest tools only. The IO owner fixes fixture selection/production PATH.
