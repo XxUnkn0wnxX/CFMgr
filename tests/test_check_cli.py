@@ -99,6 +99,7 @@ def test_runner_uses_relocated_fork_root(
         "-n",
         "2",
         "--dist=load",
+        "--maxschedchunk=1",
         "--max-worker-restart=0",
     ]
     assert not any(command[0] in {"git", "gh"} for command, _ in calls)
@@ -108,7 +109,7 @@ def test_runner_uses_relocated_fork_root(
     ("jobs", "pytest_options"),
     [
         ("1", []),
-        ("2", ["-n", "2", "--dist=load", "--max-worker-restart=0"]),
+        ("2", ["-n", "2", "--dist=load", "--maxschedchunk=1", "--max-worker-restart=0"]),
     ],
 )
 def test_jobs_builds_explicit_pytest_command(

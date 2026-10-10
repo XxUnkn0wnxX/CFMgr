@@ -92,7 +92,7 @@ def main() -> int:
         print("No .sh/.sh.in source files yet; shell source checks have no inputs.", flush=True)
     pytest = [sys.executable, "-m", "pytest"]
     if args.jobs == 2:
-        pytest.extend(["-n", "2", "--dist=load", "--max-worker-restart=0"])
+        pytest.extend(["-n", "2", "--dist=load", "--maxschedchunk=1", "--max-worker-restart=0"])
     if busybox:
         pytest.append(f"--busybox={busybox}")
         if busybox_flock:
