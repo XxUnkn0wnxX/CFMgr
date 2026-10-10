@@ -857,10 +857,12 @@ authentication, does not hash actual package files, prove package completeness,
 install anything or authorize a router workflow. No menu, catalog consumer or
 installer calls it.
 
-The D4 focused gate passes8 tests with one unavailable-BusyBox skip in3.06s.
-The full two-worker local gate passes1,837 tests with38 explicit platform skips
-in450.58s at source `d1bd99a`; all static checks pass. Exact-head Linux/BusyBox
-CI remains pending, and Merlin runtime acceptance is separate.
+The D4 focused gate passes 8 tests with one unavailable-BusyBox skip in 3.06s.
+The full two-worker local gate passes 1,837 tests with 38 explicit platform skips
+in 450.58s at source `d1bd99a`; all static checks pass. [Exact-head Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38047884781)
+passes all 1,875 tests with zero skips in 139.42s at `adf5f21`, six stripped-ash
+cases in 7.29s and all eleven kernel scenarios. This accepts 49%; Merlin
+runtime acceptance remains separate.
 
 ### Developer package inventory
 
