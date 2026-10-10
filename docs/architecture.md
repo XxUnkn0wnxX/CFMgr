@@ -35,6 +35,7 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Does not execute Entware tools or feature operations |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, IPv4/IPv6 normalization and scope classification, supplied IPv4 observation report, plus bounded JSON token framing | Libraries/parsers only; no observation collection, feature startup or provider calls |
 | `modules/lib/wan.sh` | Supplied selected-WAN policy and native IPv4 source-candidate reports | Pure reports over one caller-acquired basic two-unit Ethernet profile; no collection, identity/freshness, egress check or provider authority |
+| `modules/lib/observation.sh` | Supplied boot, generation and source-identity freshness report | Depends on `common.sh`; source-only report checks supplied IDs and monotonic age, without collecting, hashing, caching or authorizing evidence |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config header/lifecycle, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
 | `modules/lib/json.sh`, `modules/lib/config.sh`, `modules/lib/setup_state.sh` | Fixed JSON-token capture, config-header/lifecycle projection, and supplied setup-state report through the IO owner | Returns saved projection fields only; credential values are not returned, and full settings validation or installed-config admission is outside these APIs |
 | `modules/lib/entry_version.awk` | Bounded literal version extraction from immutable entry source data | Does not execute the entry or prove semantic module/API compatibility |
@@ -140,6 +141,14 @@ and ambiguous primary selection fails closed. A connected flag is caller
 normalized eligibility from complete evidence, not raw `state_t` or online
 status. Collection, source identity, freshness and matching-family egress
 verification remain caller prerequisites and are not implemented here.
+
+`modules/lib/observation.sh` checks caller-supplied boot, generation and source
+identity pairs before evaluating monotonic age against maximum and optional
+finite lifetime caps. A `current/fresh` result establishes only those supplied
+relationships. The caller must recompute the source ID for a coherent snapshot,
+including family intent and observation kind, then recheck identity and
+generation before consumption. Inactive/removal evidence uses the same check.
+The helper does not acquire data, verify egress or grant provider authority.
 
 `modules/lib/mountinfo.awk` chooses the deepest mount covering a canonical path
 and rejects ambiguous covering ancestors. It consumes a stable snapshot capped

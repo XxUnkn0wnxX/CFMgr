@@ -33,6 +33,13 @@ preservation. Its BusyBox case composes both real helpers. The fixture does not
 collect firmware state or establish source identity, freshness, routes, egress
 or publication authority.
 
+`tests/test_observation.py` checks the supplied freshness report's identity
+precedence, unknown inputs, monotonic ordering, strict maximum-age and lifetime
+boundaries, and exact byte framing. It also verifies invalid ignored operands,
+caller scratch/trap isolation, formatter failure handling and composition with
+`common.sh` under BusyBox. It proves no acquisition, source authenticity,
+snapshot completeness, egress or provider authority.
+
 `tests/test_config_header.py` runs the real JSON producer on synthetic inputs,
 then checks the source-only header projection and deliberately corrupted
 ledgers. It does not read live settings or expose credential values. The

@@ -416,6 +416,8 @@ compilation check validates developer tooling only. The entry point does not ins
 | `tests/test_ip.py` | Strict IPv4/IPv6 host syntax and deterministic canonical formatting |
 | `tests/test_ip_classify.py` | IPv4/IPv6 scope-range boundaries, quiet invalid-input refusal and caller-state preservation |
 | `tests/test_ip_observation.py` | Supplied IPv4 observation decisions, output framing, invalid-input refusal and caller-state preservation |
+| `tests/test_wan.py` | Supplied WAN selection and native IPv4 source policy, framing and refusal |
+| `tests/test_observation.py` | Supplied identity, monotonic age and lifetime policy, exact refusal and caller-state preservation |
 | `tests/test_json.py` | JSON grammar, Unicode, duplicate keys, exact limits and framed output |
 | `tests/test_diagnostic.py` | Diagnostic dispatch, command probes, redaction, private staging and failure cleanup |
 | `tests/test_mountinfo.py` | Mount snapshot framing, escaped paths, overmount ambiguity and bind-root selection |
@@ -718,6 +720,67 @@ The API supports the basic two-unit Ethernet DHCP/static/PPPoE/PPTP/L2TP
 profile. It does not acquire observations, normalize firmware state, verify
 identity or freshness, check routes or egress, or authorize a provider action.
 USB, softwire and model-specific overrides remain outside this interface.
+
+### Supplied observation identity and freshness
+
+Source trusted `modules/lib/common.sh` before `modules/lib/observation.sh`;
+sourcing these libraries defines functions only. The API is
+`cfmgr_observation_freshness_report OBS_BOOT CURRENT_BOOT OBS_GENERATION
+CURRENT_GENERATION OBS_ID CURRENT_ID OBSERVED NOW MAX_AGE VALID_FOR`. Boot IDs
+are `-` or lowercase UUID-shaped strings with 8-4-4-4-12 hexadecimal groups;
+generations are `-` or canonical uint31 decimals (0 through 2,147,483,647,
+without leading zeros). Source IDs are `-` or 64 lowercase hexadecimal
+characters. `OBSERVED` and `NOW` are `-` or canonical uint31 monotonic seconds. `MAX_AGE` is canonical uint31 from 1 through
+86,400; `VALID_FOR` is canonical uint31, `forever` or `-`. All ten operands,
+including values ignored by a decision branch, are validated first.
+
+The report is `observation-freshness<TAB>1<TAB>STATE<TAB>AGE<TAB>REASON`, followed
+by `end<TAB>BODY_BYTES`; state is `current|stale|unknown`. Both lines end in LF,
+and `BODY_BYTES` counts the first complete line including its LF. Invalid arity
+or input returns status 1 with no report; a complete report returns 0. The
+reason order is deliberate: known unequal boot, generation or source identity
+returns stale `boot-changed`, `generation-changed` or `source-changed`, in that
+order, before any missing identity is considered. Otherwise missing values
+return unknown `boot-unavailable`, `generation-unavailable` or
+`source-unavailable`. Then missing time gives `clock-unavailable`, and `NOW`
+before `OBSERVED` gives `clock-regressed`. `AGE` stays `-` through these checks.
+
+Once identities match and time is usable, `AGE = NOW - OBSERVED`. Age at or
+above `MAX_AGE` is stale `max-age-expired`; this precedes checking lifetime.
+With age below that cap, `VALID_FOR=-` gives unknown `lifetime-unavailable`;
+finite age at or above `VALID_FOR` gives stale `lifetime-expired`; otherwise
+the result is current `fresh`. Both expiry checks use strict age-less-than-cap
+validity. `forever` removes only the finite-lifetime cap; `MAX_AGE` still
+applies.
+
+The caller supplies a coherent current snapshot, with its source ID recomputed
+over the firmware/profile, selected unit, protocol, interface, address/prefix,
+family intent, observation kind/result and relevant configuration/source policy.
+Generations represent that observation's relevant policy/configuration context.
+Known not-applicable fields on an inactive observation differ from unavailable
+acquisition. `OBSERVED` is floored monotonic time no later than acquisition;
+`NOW` is sampled after collection using the same boot clock. `VALID_FOR` is
+measured from `OBSERVED`, conservatively including acquisition delay. The report checks only
+supplied relationships: ID shape/equality does not authenticate or prove
+complete acquisition. Recheck identity and generation before consuming the
+result; inactive/removal observations require the same freshness check. The
+helper does not collect or hash data, cache results, verify egress or authorize
+a provider action.
+
+From the repository root, this POSIX-shell example reports a fresh five-second
+observation using illustrative IDs:
+
+```sh
+sh -c '
+. ./modules/lib/common.sh
+. ./modules/lib/observation.sh
+ID=$(printf "%064d" 0)
+cfmgr_observation_freshness_report \
+  00000000-0000-0000-0000-000000000001 \
+  00000000-0000-0000-0000-000000000001 \
+  7 7 "$ID" "$ID" 100 105 10 6
+'
+```
 
 ## 📦 Source data and package reports
 
