@@ -1,10 +1,12 @@
-# CFMgr
+# ☁️ CFMgr
 
 Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manager.
 
 > [!WARNING]
 > **Work in progress — not ready for router use.** Do not install or run this
 > development version on a live router.
+
+## 🚧 Implementation checklist
 
 | Feature / milestone | Status | At a glance |
 | --- | --- | --- |
@@ -22,20 +24,20 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line manag
 | Logging | Planned | Optional feature logs and rotation |
 | Backup and restore | Planned | CFMgr-owned setup and data only |
 
-## Planned README
+## ✨ Planned README
 
 - Feature overview and supported router requirements.
 - Installation, first-time setup and a quick start.
 - Common menu and CLI workflows, updates, backup and restore.
 - Troubleshooting and links to detailed guides.
 
-## Documentation
+## 📚 Documentation
 
-- [Implementation plan and checklist](PLAN.md)
-- [User setup guide](docs/setup.md)
-- [Development setup and testing](docs/development.md)
-- [Architecture](docs/architecture.md)
-- [Health-report development](docs/development.md#native-health-report)
-- [Firmware compatibility](docs/compatibility.md)
-- [Contributing](CONTRIBUTING.md) — pull requests target `develop`.
-- [License: GPL-3.0-or-later](LICENSE.md) — Copyright (C) 2026 XxUnkn0wnxX.
+- 📋 [Implementation plan and checklist](PLAN.md)
+- ☁️ [User setup guide](docs/setup.md)
+- 🛠️ [Development setup and testing](docs/development.md)
+- 🧩 [Architecture](docs/architecture.md)
+- 🔎 [Health-report development](docs/development.md#native-health-report)
+- 🧭 [Firmware compatibility](docs/compatibility.md)
+- 🤝 [Contributing](CONTRIBUTING.md) — pull requests target `develop`.
+- ⚖️ [License: GPL-3.0-or-later](LICENSE.md) — Copyright (C) 2026 XxUnkn0wnxX.
