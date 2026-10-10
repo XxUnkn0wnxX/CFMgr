@@ -20,7 +20,7 @@ acceptance is still pending. See [PLAN.md](PLAN.md) for detailed progress.
 | Settings and module catalog | In progress | Source-only config checks, shared path checks and a manifest parser; integration pending |
 | Developer package inventory | Available to developers | Host-only [manifest command](docs/development.md#developer-package-inventory); trust gates remain open |
 | Manifest reader and byte verification | Available to developers | Source-only [library APIs](docs/development.md#source-only-declared-file-verifier); host/CI checks passed |
-| Prepared source-tree report | Source-only library; CI pending | [Manifest-derived namespace and byte check](docs/development.md#source-only-complete-tree-report); acquisition and acceptance gates remain open |
+| Prepared source-tree report | Available to developers | Source-only [namespace and byte check](docs/development.md#source-only-complete-tree-report); host/CI checks passed |
 | DDNS and IP-Sync | Planned | DNS updates and Cloudflare IP-list synchronization |
 | Cloudflared | Planned | Tunnel setup, service controls and updates |
 | Logging | Planned | Optional feature logs and rotation |
@@ -42,12 +42,13 @@ manifests with shared safe-path checks. A host-only Python command generates a
 deterministic manifest from an explicit local Git commit. The native manifest
 reader emits a checked canonical ledger, and the D5 verifier compares each
 declared file's size and SHA-256 in a caller-prepared source tree. D6 adds a
-candidate report that compares a bounded native namespace observation with the
+report that compares a bounded native namespace observation with the
 manifest-derived paths before applying those byte checks. Its local checkpoint
-passes 1,848 tests with 38 platform skips; exact-head CI is pending. The accepted **50% checkpoint** passes 1,843 local tests with 38
-platform skips and [Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38049707354)
-with 1,881 tests, zero skips, six stripped-ash checks and all eleven kernel
-scenarios. See [PLAN.md](PLAN.md) for checkpoint results and remaining work.
+passes 1,848 tests with 38 platform skips; exact-head
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38051496887)
+passes 1,886 tests, zero skips, six stripped-ash checks and all eleven kernel
+scenarios. The **51% checkpoint** also includes test-cost improvements; see
+[PLAN.md](PLAN.md) for their validation and remaining work.
 
 These checks do not establish source authenticity, required module/API
 compatibility, installed permissions or router acceptance. The tree report

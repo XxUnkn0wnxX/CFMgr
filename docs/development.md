@@ -41,6 +41,13 @@ full-suite times and coverage changes in [PLAN.md](../PLAN.md). Reuse existing
 measurements and time affected cases rather than running the full suite again
 just to gather timings.
 
+After completing milestone implementation at 60%, 70%, 80%, 90% and 100%,
+review every test, including parametrized cases and shared fixtures, for further
+optimization. Make justified improvements before the final full-suite,
+publication, green-CI and handoff gate. Record the reviewed inventory, preserved
+coverage, timing changes and reasons for retaining expensive cases in PLAN.md.
+This complete review supplements the cost review before every push.
+
 Investigate new ordinary tests taking over roughly two seconds, integration
 cases over five seconds, or a roughly 20% increase in comparable suite timings.
 These are review triggers, not automatic failures or reasons to increase
@@ -963,7 +970,7 @@ runtime acceptance.
 
 ### Source-only complete-tree report
 
-The D6 candidate adds `cfmgr_package_tree_report RAM_ROOT SOURCE_ROOT
+D6 adds `cfmgr_package_tree_report RAM_ROOT SOURCE_ROOT
 MANIFEST PATH_HELPER PARSER` and the fixture-only
 `cfmgr_package_tree_test RAM_ROOT TOOLS SOURCE_ROOT MANIFEST PATH_HELPER
 PARSER`. Explicitly source trusted `io.sh`, `native_digest.sh`, and
@@ -1025,9 +1032,17 @@ The three captures use nine scratch files; per-file digest and hex captures
 add at most 256, for 265 total. Accepted capture streams are bounded to 208,896
 bytes plus 12,288 digest/hex bytes; conservative file allocation is at most
 1,054,720 bytes plus status files. Caller input, shell/producer memory, and
-filesystem traversal remain additional. Source `4082a04` passes the full local
-checkpoint: 1,848 tests and 38 explicit platform skips in 678.39s. All static
-checks pass. Exact-head Linux/BusyBox CI is pending; this remains the 51% candidate.
+filesystem traversal remain additional. Runtime source `4082a04` with the
+test-cost follow-up `5f83f6f` passes the full local checkpoint: 1,848 tests and
+38 explicit platform skips in 500.19s. All static
+checks pass. Exact-head
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38051496887)
+passes 1,886 tests with zero skips in 123.19s at `5e40c6f`, six stripped-ash
+cases in 7.19s and all eleven kernel scenarios. That CI run precedes the
+test-only cost follow-up, which removes repeated Python launches for healthy
+IO fixture operations. The full local run improved from 678.39s to 500.19s;
+host load also affects timings. Exact CI for the follow-up and the complete
+duration record are tracked in PLAN.md.
 
 ### Developer package inventory
 

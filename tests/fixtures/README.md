@@ -93,9 +93,9 @@ only; they do not authenticate the manifest,
 prove directory completeness or permissions, install code or establish Merlin
 runtime acceptance.
 
-### Candidate complete-tree report
+### Complete-tree report
 
-The D6 candidate cases in `tests/test_package.py` exercise
+The D6 cases in `tests/test_package.py` exercise
 `cfmgr_package_tree_test` with a prepared synthetic tree, explicit fixture
 tools, the real path helper/parser and the shared IO owner. They compare an
 independent `package-tree` ledger oracle and exercise order-independent native
@@ -104,9 +104,11 @@ missing, duplicate, malformed, truncated, oversized or failed listings and
 unexpected regular, hidden, empty-directory, link and special-file entries.
 The required native `find` composition is distinct from host-only doubles.
 
-The complete local checkpoint passes 1,848 tests with 38 explicit platform
-skips in 678.39s. All static checks pass. Exact-head Linux/BusyBox CI
-remains pending, so D6 is still the 51% candidate. The report compares with the namespace actually
+The complete local checkpoint, including the IO fixture optimization, passes
+1,848 tests with 38 explicit platform skips in 500.19s. All static checks pass. The preceding exact-head
+[Linux/BusyBox CI](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38051496887)
+passes 1,886 tests with zero skips, six stripped-ash checks and all eleven
+kernel scenarios. The report compares with the namespace actually
 observed by `find`. Matched Merlin BusyBox traversal does not distinguish
 `readdir` error from EOF, so a silent omission remains possible. A future
 acquisition owner must create the exact accepted tree under the documented
@@ -314,3 +316,15 @@ The opkg fixture also starts its standard-library-only dispatcher with Python
 site initialization disabled. It loads hashing, shell quoting and subprocess
 helpers only for the actions that use them, while preserving fresh settings,
 call logs, real timeout-child execution and the original per-action deadline.
+
+The IO fixture invokes fixed native `wc` and `printf` directly when those tools
+have no selected fault. Private markers select the original Python dispatcher
+for fault injection; changing settings does not overwrite other tool overrides.
+The consumer still checks real byte counts, metadata, framing and cleanup.
+The four topology-reset cases improved from 13.08s to 3.19s, and the full IO
+module passed 133 host tests with one unavailable-BusyBox skip in 43.00s.
+The required full-checkpoint run passes 1,848 tests with 38 platform skips in
+500.19s, compared with 678.39s before the change; host load also affects that
+comparison. All per-case timings are retained for review. No extra timing-only
+suite was run. Review every test after each ten-point milestone's
+implementation, following the cadence in [PLAN.md](../../PLAN.md).

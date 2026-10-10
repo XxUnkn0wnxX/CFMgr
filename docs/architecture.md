@@ -48,7 +48,7 @@ flowchart LR
 | `modules/diagnostic.sh` | Native health report, private synthetic probes and cleanup | Entware execution and full runtime inventory remain incomplete |
 | `modules/lib/common.sh`, `modules/lib/ip.sh`, `modules/lib/json.awk` | Shared text validation, address normalization and bounded JSON token framing | Libraries/parsers only; no feature startup or provider calls |
 | `modules/lib/config_header.awk`, `modules/lib/catalog.awk`, `modules/lib/manifest.awk`, `modules/lib/package_path.awk` | Bounded config-header, source-catalog and package-manifest parsing with shared safe-path checks | Source-only functions/parsers; no complete config reader, manifest trust, downloader, writer or package/install authority |
-| `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification and the D6 candidate manifest-derived tree report | Source-only APIs require a caller-prepared immutable tree; no source authenticity, semantic compatibility, installation or activation authority |
+| `modules/lib/package.sh` | Owned native manifest capture, canonical reports, declared-byte verification and the manifest-derived tree report | Source-only APIs require a caller-prepared immutable tree; no source authenticity, semantic compatibility, installation or activation authority |
 | `modules/lib/native_digest.sh` | Shared bounded-size and native digest observations used by package verification and executable-closure checks | Caller owns bounded acquisition, scratch, cleanup and signals; no independent source trust or hard deadline |
 | `modules/lib/mountinfo.awk`, `modules/lib/storageinfo.awk` | Parse mount, device and primary-superblock observations | Snapshot facts do not establish persistent volume identity, writability or live mount stability |
 | `modules/lib/io.sh`, `modules/lib/storage.sh`, `modules/lib/entware.sh` | Bounded captures and retained-storage observation/admission; IO tool resolution includes `rmdir` and bounded captures allow native `find` | Internal callbacks; no operational package execution or CLI integration |
@@ -832,14 +832,14 @@ manifest parsers and native package reports are source-only checks. There is no
 integrated config reader/writer/generator, authenticated manifest acquisition,
 downloader, updater or installed-package mapper. No catalog or manifest is
 shipped. Parsing checks grammar and declared paths/records; the D5 verifier
-checks bytes for listed records, while the D6 candidate also compares the
+checks bytes for listed records, while D6 also compares the
 manifest-derived namespace with one bounded native `find` observation. Neither report
 establishes source trust, semantic API compatibility or installation authority.
 Modules remain readable source files.
 
 `modules/lib/package.sh` adds source-only manifest reporting and two verification
 reports around the existing IO owner. D5 checks every declared member's shape,
-size and SHA-256. The D6 candidate additionally derives the expected paths from
+size and SHA-256. D6 additionally derives the expected paths from
 the accepted manifest and compares them with one bounded native `find . -print`
 observation, rejecting unexpected and missing observed entries before applying
 the D5 byte checks. Both require caller-prepared bounded immutable inputs,
