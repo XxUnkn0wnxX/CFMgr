@@ -66,6 +66,7 @@ def consume(
     size: str | None = None,
     operands: tuple[str, ...] = (),
     locale: str = "C",
+    mode: str | None = None,
 ) -> ShellResult:
     # Explicit bounded fixture bytes include the ledger cap (above the generic
     # harness text limit) and one over-limit refusal; stdin stays a regular file.
@@ -78,6 +79,8 @@ def consume(
         args.extend(
             ["-v", "cfmgr_config_header_size=" + (str(len(tokens)) if size is None else size)]
         )
+    if mode is not None:
+        args.extend(["-v", "cfmgr_config_header_mode=" + mode])
     args.extend(["-f", str(SOURCE), *operands])
     return router.run('awk "$@" < "$RAM_ROOT/header-tokens"\n', args, env={"LC_ALL": locale})
 
@@ -115,6 +118,20 @@ def test_real_producer_projects_only_required_top_level_header(
     result = consume(native_awk, produce(native_awk, document))
     assert result.returncode == 0 and result.stderr == "", result
     assert result.stdout == expected
+
+
+def test_lifecycle_projection_is_explicit_and_header_keeps_ignoring_feature_shape(
+    native_awk: RouterHarness,
+) -> None:
+    document = b'{"schema":1,"generation":12,"developer":false,"features":"opaque"}'
+    tokens = produce(native_awk, document)
+    expected = "config-header\t1\t12\tfalse\nend\t25\n"
+    for mode in (None, "", "header"):
+        result = consume(native_awk, tokens, mode=mode)
+        assert result.returncode == 0 and result.stderr == "", result
+        assert result.stdout == expected
+    rejected(consume(native_awk, tokens, mode="lifecycle"))
+    rejected(consume(native_awk, tokens, mode="unknown"), 2)
 
 
 @pytest.mark.parametrize(
@@ -159,8 +176,10 @@ def framed(rows: list[str]) -> bytes:
     return body + f"end\t{len(rows)}\t{len(body)}\n".encode("ascii")
 
 
-def consume_group(router: RouterHarness, cases: list[tuple[str, bytes]]) -> ShellResult:
-    args = [str(SOURCE)]
+def consume_group(
+    router: RouterHarness, cases: list[tuple[str, bytes]], *, mode: str | None = None
+) -> ShellResult:
+    args = [str(SOURCE), "yes" if mode is not None else "no", mode or ""]
     for index, (label, data) in enumerate(cases):
         assert len(data) <= 131072
         path = router.path(f"ram/header-case-{index}")
@@ -170,9 +189,14 @@ def consume_group(router: RouterHarness, cases: list[tuple[str, bytes]]) -> Shel
     # One owned shell for independent immutable cases; every awk still reads
     # its own regular file. Exact output exposes even one partial ledger leak.
     return router.run(
-        "source=$1; shift\n"
+        "source=$1; mode_set=$2; mode=$3; shift 3\n"
         'while [ "$#" -gt 0 ]; do\n'
-        '    awk -v "cfmgr_config_header_size=$2" -f "$source" <"$3"\n'
+        '    if [ "$mode_set" = yes ]; then\n'
+        '        awk -v "cfmgr_config_header_size=$2" '
+        '-v "cfmgr_config_header_mode=$mode" -f "$source" <"$3"\n'
+        "    else\n"
+        '        awk -v "cfmgr_config_header_size=$2" -f "$source" <"$3"\n'
+        "    fi\n"
         "    status=$?\n"
         '    printf "%s\\t%s\\n" "$1" "$status"\n'
         "    shift 3\n"

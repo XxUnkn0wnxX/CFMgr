@@ -35,13 +35,16 @@ def projection(line: str) -> bytes:
     return body + f"end\t{len(body)}\n".encode("ascii")
 
 
+def runtime_source() -> str:
+    return f'. "{IO_RUNTIME}"\n' + f'. "{JSON_RUNTIME}"\n' + f'. "{CONFIG_RUNTIME}"\n'
+
+
 def source(package: PackageFixture) -> str:
-    return (
-        f'. "{IO_RUNTIME}"\n'
-        + f'. "{JSON_RUNTIME}"\n'
-        + f'. "{CONFIG_RUNTIME}"\n'
-        + 'cfmgr_config_header_test "$@"\n'
-    )
+    return runtime_source() + 'cfmgr_config_header_test "$@"\n'
+
+
+def lifecycle_source() -> str:
+    return runtime_source() + 'cfmgr_config_lifecycle_test "$@"\n'
 
 
 def configure_header_files(package: PackageFixture) -> tuple[Path, Path, Path]:
@@ -57,7 +60,11 @@ def configure_header_files(package: PackageFixture) -> tuple[Path, Path, Path]:
 
 @pytest.fixture
 def config_fixture(router: RouterHarness, pytestconfig: pytest.Config) -> ConfigFixture:
-    package = PackageFixture(router, busybox=pytestconfig._cfmgr_busybox)
+    return make_config_fixture(router, pytestconfig._cfmgr_busybox)
+
+
+def make_config_fixture(router: RouterHarness, busybox: Path | None = None) -> ConfigFixture:
+    package = PackageFixture(router, busybox=busybox)
     return (package, *configure_header_files(package))
 
 
@@ -66,6 +73,16 @@ def report(
 ) -> ShellResult:
     args = tuple(map(str, (package.root, package.tools, config, json_parser, header_parser)))
     return package.router.run(source(package), args)
+
+
+def lifecycle_report(
+    package: PackageFixture,
+    config: Path,
+    json_parser: Path,
+    header_parser: Path,
+) -> ShellResult:
+    args = tuple(map(str, (package.root, package.tools, config, json_parser, header_parser)))
+    return package.router.run(lifecycle_source(), args)
 
 
 def quiet(result: ShellResult, status: int = 1) -> None:
@@ -77,20 +94,37 @@ def assert_clean(package: PackageFixture) -> None:
     assert list(package.root.glob("cfmgr-io.*")) == []
 
 
-def decode_group(package: PackageFixture, cases: tuple[tuple[int, Path, int], ...]) -> ShellResult:
+def decode_group(
+    package: PackageFixture,
+    cases: tuple[tuple[int, Path, int], ...],
+    *,
+    lifecycle: bool = False,
+) -> ShellResult:
+    decoder = "_cfmgr_config_lifecycle_decode" if lifecycle else "_cfmgr_config_header_decode"
     script = (
-        source(package).split('cfmgr_config_header_test "$@"\n')[0]
+        runtime_source()
         + "fixture_header_decode() {\n"
         + "  _decode_stage=$1; shift\n"
         + "  _decode_results=\n"
         + '  while [ "$#" -ge 3 ]; do\n'
         + "    _decode_expected=$1; _decode_file=$2; _decode_bytes=$3; shift 3\n"
-        + '    if _cfmgr_config_header_decode "$_decode_file" "$_decode_bytes"; then\n'
+        + f'    if {decoder} "$_decode_file" "$_decode_bytes"; then\n'
         + "      _decode_actual=0\n"
         + "    else\n"
         + "      _decode_actual=$?\n"
         + "    fi\n"
         + '    [ "$_decode_actual" = "$_decode_expected" ] || return 1\n'
+        + (
+            '    if [ "$_decode_actual" != 0 ]; then\n'
+            + '      [ -z "$_config_lifecycle_ledger$_config_generation$_config_developer'
+            + "$_config_cloudflared_configured$_config_cloudflared_enabled"
+            + "$_config_cloudflared_maintenance_enabled$_config_cloudflared_mode"
+            + "$_config_ddns_configured$_config_ddns_enabled"
+            + '$_config_ip_sync_configured$_config_ip_sync_enabled" ] || return 1\n'
+            + "    fi\n"
+            if lifecycle
+            else ""
+        )
         + '    _decode_results="$_decode_results$_decode_actual\n"\n'
         + "  done\n"
         + '  cfmgr_io_stage_report "$_decode_results"\n'
