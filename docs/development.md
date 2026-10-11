@@ -61,18 +61,26 @@ compatible shell.
 
 ## BusyBox evidence
 
-The required Linux CI job installs BusyBox and runs the full suite in required
-mode. The runner preflights `busybox ash`, sets `CFMGR_REQUIRE_BUSYBOX=1`, and
+The required Linux CI job builds the pinned baseline vendor BusyBox for x86_64
+with the required `fsync` applet; Ubuntu's packaged BusyBox omits that applet.
+It then runs the full suite in required mode. The runner preflights `busybox ash`,
+sets `CFMGR_REQUIRE_BUSYBOX=1`, and
 fails if the BusyBox test target is absent or cannot start. The tests fail if
 required native Linux `/proc` or BusyBox `fsync` evidence is unavailable. This is
 Linux BusyBox evidence; it does not test the router firmware or live router
 state.
 
-To reproduce that CI check on a Linux host with BusyBox installed:
+To reproduce that CI check on Linux x86_64, provide GCC, Make, Git, `dpkg-query`
+and `libc6-dev`, then run:
 
 ```sh
-.venv/bin/python tools/test.py --require-busybox
+python3 tools/test_platforms.py --native-busybox
+PATH="$PWD/.tmp/native-busybox/bin:$PATH" .venv/bin/python tools/test.py --require-busybox
 ```
+
+This explicit build uses the shared vendor source/configuration and separate
+native compiler/cache identity. It does not require an ARM compiler, download
+kernel or Entware packages, or boot a guest.
 
 ## Kernel and Entware fixtures
 
@@ -108,8 +116,9 @@ The four-profile matrix runs at most two jobs concurrently. Compilation uses two
 jobs; each guest uses one virtual CPU and 256 MB RAM. Verified immutable binaries,
 kernel images and downloads are cached under `.tmp/platform-cache/`. Build trees
 and fresh guest logs remain under `.tmp/platform-builds/` and
-`.tmp/platform-runs/`; cache hits still verify artifact hashes. Guest/runtime test
-changes reuse compiled images when their build inputs are unchanged. Host focused
+`.tmp/platform-runs/`; cache hits still verify artifact hashes. Completed verified
+BusyBox/kernel builds remain cached even if later tests or a guest fail.
+Guest/runtime test changes reuse compiled images when their build inputs are unchanged. Host focused
 checks never invoke these builds or guests.
 
 ## CI gate

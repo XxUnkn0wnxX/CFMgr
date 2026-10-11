@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Explicit developer-only generic ARM kernel/Entware guest proof; never a router tool."""
+"""Explicit developer-only vendor BusyBox and ARM guest proof; never a router tool."""
 
 from __future__ import annotations
 
@@ -456,33 +456,42 @@ def check_configuration(path: Path, values: dict[str, str]) -> None:
             )
 
 
-@lru_cache(maxsize=1)
-def compiler_identity() -> bytes:
+@lru_cache(maxsize=2)
+def compiler_identity(target: str = "arm") -> bytes:
     """Include native Kconfig/dtc and cross-libc compiler package identities."""
-    packages = subprocess.check_output(
-        ["dpkg-query", "-W", "gcc", "gcc-arm-linux-gnueabi", "libc6-dev-armel-cross"]
-    )
-    return (
-        packages
-        + subprocess.check_output(["gcc", "--version"])
-        + subprocess.check_output(["arm-linux-gnueabi-gcc", "--version"])
-    )
+    _require(target in {"arm", "native"}, "unknown compiler target")
+    packages_required = ["gcc", "libc6-dev"]
+    if target == "arm":
+        packages_required = ["gcc", "gcc-arm-linux-gnueabi", "libc6-dev-armel-cross"]
+    packages = subprocess.check_output(["dpkg-query", "-W", *packages_required])
+    identity = packages + subprocess.check_output(["gcc", "--version"])
+    if target == "arm":
+        identity += subprocess.check_output(["arm-linux-gnueabi-gcc", "--version"])
+    return identity
 
 
 def build_key(
-    kind: str, item: dict[str, Any], toolchain: dict[str, Any] | None = None
+    kind: str,
+    item: dict[str, Any],
+    toolchain: dict[str, Any] | None = None,
+    *,
+    target: str = "arm",
 ) -> str:
     # Hash the actual builder/helper definitions, not guest tests or Entware pins.
     # This keeps runtime fixes from invalidating expensive immutable kernel work.
+    _require(target in {"arm", "native"}, "unknown build target")
+    _require(kind == "busybox" or target == "arm", "native target is BusyBox only")
     pins = (
         {"source": item["sha256"]}
         if kind == "kernel"
         else {key: item[key] for key in ("commit", "path", "repository", "version")}
     )
+    if kind == "busybox":
+        pins["target"] = target
     if toolchain is not None:
         pins["toolchain"] = toolchain["sha256"]
     digest = hashlib.sha256(json.dumps(pins, sort_keys=True).encode())
-    digest.update(compiler_identity())
+    digest.update(compiler_identity(target))
     digest.update((FIXTURES / (kind + ".config")).read_bytes())
     for function in (
         configuration,
@@ -497,21 +506,28 @@ def build_key(
         digest.update(inspect.getsource(function).encode())
     if kind == "busybox":
         digest.update(inspect.getsource(check_busybox_symbols).encode())
+        digest.update(inspect.getsource(verify_elf).encode())
+    else:
+        digest.update(inspect.getsource(kernel_configuration).encode())
     digest.update(str(RECIPE_VERSION).encode())
     return digest.hexdigest()
 
 
-def build_busybox(item: dict[str, str], cache: Path) -> Path:
-    prefix = "arm-linux-gnueabi-"
-    key = build_key("busybox", item)
+def build_busybox(item: dict[str, str], cache: Path, *, target: str = "arm") -> Path:
+    key = build_key("busybox", item, target=target)
+    prefix = "arm-linux-gnueabi-" if target == "arm" else ""
+    architecture = "armv7-3.2" if target == "arm" else "x86_64"
     output = cache / "busybox" / key
     binary = output / "busybox"
     receipt = output / "verified.json"
     if receipt.is_file() and binary.is_file():
         saved = json.loads(receipt.read_text())
+        verify_elf(binary, architecture)
         verify_hash(binary, saved["sha256"])
         _require(
-            saved["commit"] == item["commit"] and saved["recipe"] == key,
+            saved["commit"] == item["commit"]
+            and saved["recipe"] == key
+            and saved["target"] == target,
             "BusyBox cache receipt mismatch",
         )
         return binary
@@ -548,7 +564,7 @@ def build_busybox(item: dict[str, str], cache: Path) -> Path:
     source = checkout / item["path"]
     make = [
         "make",
-        "ARCH=arm",
+        "ARCH=" + ("arm" if target == "arm" else "x86_64"),
         "CROSS_COMPILE=" + prefix,
         "HOSTCFLAGS=-O2 -fcommon",
         "EXTRA_CFLAGS=-include sys/sysmacros.h",
@@ -562,12 +578,13 @@ def build_busybox(item: dict[str, str], cache: Path) -> Path:
     run([*make, "-j2"], cwd=source)
     output.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source / "busybox", binary)
-    verify_elf(binary, "armv7-3.2")
+    verify_elf(binary, architecture)
     receipt.write_text(
         json.dumps(
             {
                 "commit": actual,
                 "recipe": key,
+                "target": target,
                 "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
             },
             indent=2,
@@ -580,16 +597,16 @@ def build_busybox(item: dict[str, str], cache: Path) -> Path:
 def verify_elf(path: Path, architecture: str) -> None:
     _require(stat.S_ISREG(path.lstat().st_mode), "expected regular ABI executable")
     header = path.read_bytes()[:20]
-    expected_class, expected_machine = (
-        (2, 183) if architecture == "aarch64-3.10" else (1, 40)
-    )
+    abis = {"aarch64-3.10": (2, 183), "armv7-3.2": (1, 40), "x86_64": (2, 62)}
+    _require(architecture in abis, "unknown executable ABI")
+    expected_class, expected_machine = abis[architecture]
     _require(
         len(header) == 20
         and header[:4] == b"\x7fELF"
         and header[4] == expected_class
         and header[5] == 1
         and int.from_bytes(header[18:20], "little") == expected_machine,
-        "executable ARM ABI mismatch",
+        "executable ABI mismatch",
     )
 
 
@@ -764,6 +781,17 @@ def prepare_guest(
     return archive
 
 
+def kernel_configuration(version: str) -> dict[str, str]:
+    values = configuration(FIXTURES / "kernel.config")
+    if version.startswith("4.1."):
+        values["CONFIG_CC_STACKPROTECTOR_NONE"] = "y"
+    else:
+        # The 4.1 ARM64 sources build these unconditionally without Kconfig symbols.
+        values["CONFIG_POSIX_TIMERS"] = "y"
+        values["CONFIG_ARM_PSCI_FW"] = "y"
+    return values
+
+
 def build_kernel(
     kernel: dict[str, Any], compiler: str, downloads: Path, cache: Path, recipe: str
 ) -> Path:
@@ -797,9 +825,7 @@ def build_kernel(
         "HOSTCFLAGS=-O2 -fcommon",
     ]
     run([*make, "allnoconfig"], cwd=source)
-    values = configuration(FIXTURES / "kernel.config")
-    if version.startswith("4.1."):
-        values["CONFIG_CC_STACKPROTECTOR_NONE"] = "y"
+    values = kernel_configuration(version)
     apply_configuration(source / ".config", values)
     run([*make, "olddefconfig"], cwd=source)
     check_configuration(source / ".config", values)
@@ -919,11 +945,37 @@ def boot_guest(
     verify_guest_log(text, kernel, manifest)
 
 
-def execute(manifest: dict[str, Any], selected: str | None) -> None:
+def require_linux_host() -> None:
     _require(
         sys.platform == "linux" and os.uname().machine == "x86_64",
         "explicit platform builds require Linux x86_64 CI",
     )
+
+
+def execute_native_busybox(manifest: dict[str, Any]) -> None:
+    """Build only the pinned baseline applets for the required host Linux suite."""
+    require_linux_host()
+    for tool in ("make", "gcc", "git", "dpkg-query"):
+        _require(shutil.which(tool) is not None, f"missing native build tool: {tool}")
+    item = next(item for item in manifest["busyboxes"] if item["id"] == "baseline")
+    binary = build_busybox(item, ROOT / ".tmp/platform-cache", target="native")
+    verify_elf(binary, "x86_64")
+    expected = hashlib.sha256(binary.read_bytes()).hexdigest()
+    destination = _parents_safe(ROOT, PurePosixPath(".tmp/native-busybox/bin/busybox"))
+    _require(
+        not destination.is_symlink()
+        and (not destination.exists() or destination.is_file()),
+        "unsafe native BusyBox destination",
+    )
+    shutil.copyfile(binary, destination)
+    verify_hash(destination, expected)
+    verify_elf(destination, "x86_64")
+    destination.chmod(0o755)
+    print(f"Verified native vendor BusyBox staged at {destination.relative_to(ROOT)}")
+
+
+def execute(manifest: dict[str, Any], selected: str | None) -> None:
+    require_linux_host()
     for tool in (
         "make",
         "gcc",
@@ -988,14 +1040,32 @@ def main() -> int:
         help="one exact profile; default runs serially",
     )
     parser.add_argument(
+        "--native-busybox",
+        action="store_true",
+        help="explicit Linux x86_64 baseline BusyBox build only; no ARM guests or feeds",
+    )
+    parser.add_argument(
         "--cache-keys",
         action="store_true",
         help="CI cache keys only; probes local compiler package versions without builds or downloads",
     )
     args = parser.parse_args()
     try:
+        _require(
+            not (args.native_busybox and (args.run or args.kernel)),
+            "--native-busybox cannot be combined with --run or --kernel",
+        )
         manifest = load_manifest()
-        if args.cache_keys:
+        if args.native_busybox:
+            if args.cache_keys:
+                require_linux_host()
+                busybox = next(
+                    item for item in manifest["busyboxes"] if item["id"] == "baseline"
+                )
+                print("busybox=" + build_key("busybox", busybox, target="native"))
+            else:
+                execute_native_busybox(manifest)
+        elif args.cache_keys:
             _require(
                 not args.run and args.kernel is not None,
                 "cache keys require one --kernel without --run",

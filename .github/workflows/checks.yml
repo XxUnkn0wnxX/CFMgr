@@ -81,18 +81,46 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install BusyBox and ShellCheck
+      - name: Install ShellCheck
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes busybox shellcheck
+          sudo apt-get install --no-install-recommends --yes shellcheck
 
       - name: Install pinned developer tools
         run: |
           python3 -m venv .venv
           .venv/bin/python -m pip install --requirement requirements-dev.txt
 
+      - name: Identify native vendor BusyBox cache key
+        id: fixture
+        run: python3 tools/test_platforms.py --native-busybox --cache-keys >> "$GITHUB_OUTPUT"
+
+      - name: Restore verified native vendor BusyBox
+        id: busybox-cache
+        # actions/cache v4, official tag resolved 2026-10-12
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
+          key: platform-native-busybox-v1-${{ steps.fixture.outputs.busybox }}
+
+      - name: Build and stage native vendor BusyBox with fsync
+        run: python3 tools/test_platforms.py --native-busybox
+
       - name: Run full suite with mandatory BusyBox ash storage proof
-        run: .venv/bin/python tools/test.py --require-busybox
+        run: |
+          export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
+          .venv/bin/python tools/test.py --require-busybox
+
+      - name: Save completed native vendor BusyBox even after test failure
+        if: >-
+          ${{ always() && steps.fixture.outcome == 'success' &&
+              steps.busybox-cache.outputs.cache-hit != 'true' &&
+              hashFiles(format('.tmp/platform-cache/busybox/{0}/verified.json', steps.fixture.outputs.busybox)) != '' &&
+              hashFiles(format('.tmp/platform-cache/busybox/{0}/busybox', steps.fixture.outputs.busybox)) != '' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
+          key: platform-native-busybox-v1-${{ steps.fixture.outputs.busybox }}
 
   kernel-platforms:
     name: ARM guest kernel ${{ matrix.kernel }} / pinned vendor BusyBox
@@ -132,14 +160,16 @@ jobs:
             .tmp/platform-cache/toolchain
           key: platform-downloads-v1-${{ matrix.kernel }}-${{ hashFiles('tests/fixtures/platforms.json') }}
 
-      - name: Cache pinned vendor BusyBox builds
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      - name: Restore pinned vendor BusyBox builds
+        id: busybox-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
           key: platform-busybox-v1-${{ steps.fixture.outputs.busybox }}
 
-      - name: Cache verified generic kernel image
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+      - name: Restore verified generic kernel image
+        id: kernel-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: .tmp/platform-cache/kernels/${{ matrix.kernel }}/${{ steps.fixture.outputs.kernel }}
           key: platform-kernel-v1-${{ matrix.kernel }}-${{ steps.fixture.outputs.kernel }}
@@ -148,3 +178,25 @@ jobs:
         env:
           CFMGR_KERNEL: ${{ matrix.kernel }}
         run: python3 tools/test_platforms.py --run --kernel "$CFMGR_KERNEL"
+
+      - name: Save completed vendor BusyBox even after guest failure
+        if: >-
+          ${{ always() && steps.fixture.outcome == 'success' &&
+              steps.busybox-cache.outputs.cache-hit != 'true' &&
+              hashFiles(format('.tmp/platform-cache/busybox/{0}/verified.json', steps.fixture.outputs.busybox)) != '' &&
+              hashFiles(format('.tmp/platform-cache/busybox/{0}/busybox', steps.fixture.outputs.busybox)) != '' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
+          key: platform-busybox-v1-${{ steps.fixture.outputs.busybox }}
+
+      - name: Save completed kernel image even after guest failure
+        if: >-
+          ${{ always() && steps.fixture.outcome == 'success' &&
+              steps.kernel-cache.outputs.cache-hit != 'true' &&
+              hashFiles(format('.tmp/platform-cache/kernels/{0}/{1}/verified.json', matrix.kernel, steps.fixture.outputs.kernel)) != '' &&
+              hashFiles(format('.tmp/platform-cache/kernels/{0}/{1}/Image', matrix.kernel, steps.fixture.outputs.kernel)) != '' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .tmp/platform-cache/kernels/${{ matrix.kernel }}/${{ steps.fixture.outputs.kernel }}
+          key: platform-kernel-v1-${{ matrix.kernel }}-${{ steps.fixture.outputs.kernel }}

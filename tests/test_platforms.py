@@ -186,21 +186,28 @@ def test_guest_proof_requires_every_exact_marker(manifest: dict) -> None:
             platforms.verify_guest_log(failed, kernel, manifest)
 
 
-def test_elf_machine_and_class_must_match_each_arm_feed(tmp_path: Path) -> None:
+def elf_header(elf_class: int, machine: int) -> bytes:
+    header = bytearray(20)
+    header[:4] = b"\x7fELF"
+    header[4:6] = bytes((elf_class, 1))
+    header[18:20] = machine.to_bytes(2, "little")
+    return bytes(header)
+
+
+def test_elf_machine_and_class_must_match_each_target(tmp_path: Path) -> None:
     for architecture, elf_class, machine in (
         ("aarch64-3.10", 2, 183),
         ("armv7-3.2", 1, 40),
+        ("x86_64", 2, 62),
     ):
         executable = tmp_path / architecture
-        header = bytearray(20)
-        header[:4] = b"\x7fELF"
-        header[4:6] = bytes((elf_class, 1))
-        header[18:20] = machine.to_bytes(2, "little")
-        executable.write_bytes(header)
+        executable.write_bytes(elf_header(elf_class, machine))
         platforms.verify_elf(executable, architecture)
         other = "armv7-3.2" if elf_class == 2 else "aarch64-3.10"
         with pytest.raises(platforms.PlatformError, match="ABI"):
             platforms.verify_elf(executable, other)
+    with pytest.raises(platforms.PlatformError, match="unknown executable ABI"):
+        platforms.verify_elf(executable, "unknown")
 
 
 def test_initramfs_writer_preserves_links_and_root_owned_modes(tmp_path: Path) -> None:
@@ -253,7 +260,7 @@ def test_kernel_cache_key_tracks_build_inputs_without_guest_or_feed_changes(
     (fixtures / "init.sh").write_text("guest v1\n")
     monkeypatch.setattr(platforms, "FIXTURES", fixtures)
     monkeypatch.setattr(
-        platforms, "compiler_identity", lambda: b"fixed compiler packages"
+        platforms, "compiler_identity", lambda target="arm": b"fixed compiler packages"
     )
     kernel = copy.deepcopy(manifest["kernels"][0])
     toolchain = copy.deepcopy(manifest["toolchain"])
@@ -266,6 +273,120 @@ def test_kernel_cache_key_tracks_build_inputs_without_guest_or_feed_changes(
     toolchain = manifest["toolchain"]
     kernel_config.write_text(kernel_config.read_text() + "CONFIG_TEST_DIFFERENT=y\n")
     assert platforms.build_key("kernel", kernel, toolchain) != original
+
+
+def test_native_compiler_and_cache_identity_are_separate_from_arm(
+    manifest: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commands = []
+
+    def output(command: list[str]) -> bytes:
+        commands.append(command)
+        return b"compiler identity"
+
+    monkeypatch.setattr(platforms.subprocess, "check_output", output)
+    assert platforms.compiler_identity.__wrapped__("native")
+    assert commands == [["dpkg-query", "-W", "gcc", "libc6-dev"], ["gcc", "--version"]]
+    monkeypatch.setattr(
+        platforms, "compiler_identity", lambda target="arm": b"same compiler"
+    )
+    item = manifest["busyboxes"][0]
+    native = platforms.build_key("busybox", item, target="native")
+    assert native != platforms.build_key("busybox", item, target="arm")
+    monkeypatch.setattr(
+        platforms, "compiler_identity", lambda target="arm": b"changed compiler"
+    )
+    assert platforms.build_key("busybox", item, target="native") != native
+
+
+def test_native_cache_requires_native_elf_and_target_receipt(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platforms, "build_key", lambda *args, **kwargs: "native-key")
+    item = manifest["busyboxes"][0]
+    output = tmp_path / "busybox/native-key"
+    output.mkdir(parents=True)
+    binary = output / "busybox"
+    receipt = output / "verified.json"
+    binary.write_bytes(elf_header(1, 40))
+
+    def write_receipt(target: str) -> None:
+        receipt.write_text(
+            json.dumps(
+                {
+                    "commit": item["commit"],
+                    "recipe": "native-key",
+                    "target": target,
+                    "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+                }
+            )
+        )
+
+    write_receipt("native")
+    with pytest.raises(platforms.PlatformError, match="ABI mismatch"):
+        platforms.build_busybox(item, tmp_path, target="native")
+    binary.write_bytes(elf_header(2, 62))
+    write_receipt("arm")
+    with pytest.raises(platforms.PlatformError, match="receipt mismatch"):
+        platforms.build_busybox(item, tmp_path, target="native")
+    write_receipt("native")
+    assert platforms.build_busybox(item, tmp_path, target="native") == binary
+
+
+def test_native_mode_stages_only_verified_binary_and_refuses_symlinks(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platforms, "ROOT", tmp_path)
+    monkeypatch.setattr(platforms, "require_linux_host", lambda: None)
+    checked = []
+    monkeypatch.setattr(
+        platforms.shutil, "which", lambda tool: checked.append(tool) or tool
+    )
+    binary = tmp_path / "cached-busybox"
+    binary.write_bytes(elf_header(2, 62))
+
+    def build(item: dict, cache: Path, *, target: str) -> Path:
+        assert item["id"] == "baseline" and target == "native"
+        assert cache == tmp_path / ".tmp/platform-cache"
+        return binary
+
+    monkeypatch.setattr(platforms, "build_busybox", build)
+    platforms.execute_native_busybox(manifest)
+    assert checked == ["make", "gcc", "git", "dpkg-query"]
+    destination = tmp_path / ".tmp/native-busybox/bin/busybox"
+    assert destination.read_bytes() == binary.read_bytes()
+    assert destination.stat().st_mode & 0o777 == 0o755
+    destination.unlink()
+    untouched = tmp_path / "untouched"
+    untouched.write_text("preserve")
+    destination.symlink_to(untouched)
+    with pytest.raises(platforms.PlatformError, match="unsafe native"):
+        platforms.execute_native_busybox(manifest)
+    assert untouched.read_text() == "preserve"
+
+
+def test_native_cli_routing_rejects_guest_combinations_and_non_linux_host(
+    manifest: dict, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setattr(platforms, "load_manifest", lambda: manifest)
+    called = []
+    monkeypatch.setattr(
+        platforms, "execute_native_busybox", lambda data: called.append(data)
+    )
+    monkeypatch.setattr(platforms.sys, "argv", ["runner", "--native-busybox"])
+    assert platforms.main() == 0 and called == [manifest]
+    called.clear()
+    for extra in (["--run"], ["--kernel", "4.1.51"]):
+        monkeypatch.setattr(
+            platforms.sys, "argv", ["runner", "--native-busybox", *extra]
+        )
+        assert platforms.main() == 1 and not called
+    monkeypatch.setattr(platforms.sys, "platform", "darwin")
+    monkeypatch.setattr(
+        platforms.sys, "argv", ["runner", "--native-busybox", "--cache-keys"]
+    )
+    assert platforms.main() == 1
+    assert "Linux x86_64" in capsys.readouterr().err
 
 
 def test_busybox_fragment_rejects_unknown_enabled_and_disabled_symbols(
@@ -288,3 +409,34 @@ def test_busybox_fragment_rejects_unknown_enabled_and_disabled_symbols(
             platforms.check_busybox_symbols(
                 tmp_path, values | {"CONFIG_SH_IS_ASH": value}
             )
+
+
+def test_kernel_configuration_preserves_version_specific_required_symbols() -> None:
+    for version in sorted(platforms.VERSIONS):
+        values = platforms.kernel_configuration(version)
+        assert values["CONFIG_SMP"] == "y"
+        assert values["CONFIG_STACKPROTECTOR"] == "n"
+        if version.startswith("4.1."):
+            assert values["CONFIG_CC_STACKPROTECTOR_NONE"] == "y"
+            assert "CONFIG_ARM_PSCI_FW" not in values
+            assert "CONFIG_POSIX_TIMERS" not in values
+        else:
+            assert "CONFIG_CC_STACKPROTECTOR_NONE" not in values
+            assert values["CONFIG_ARM_PSCI_FW"] == "y"
+            assert values["CONFIG_POSIX_TIMERS"] == "y"
+
+
+def test_busybox_fragment_clears_allnoconfig_shell_none_choice(tmp_path: Path) -> None:
+    config = tmp_path / ".config"
+    config.write_text(
+        "# CONFIG_ASH is not set\n"
+        "# CONFIG_FEATURE_SH_IS_ASH is not set\n"
+        "CONFIG_FEATURE_SH_IS_NONE=y\n"
+    )
+    values = platforms.configuration(platforms.FIXTURES / "busybox.config")
+    platforms.apply_configuration(config, values)
+    lines = config.read_text().splitlines()
+    assert "CONFIG_ASH=y" in lines
+    assert "CONFIG_FEATURE_SH_IS_ASH=y" in lines
+    assert "# CONFIG_FEATURE_SH_IS_NONE is not set" in lines
+    assert "CONFIG_FEATURE_SH_IS_NONE=y" not in lines
