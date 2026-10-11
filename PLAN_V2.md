@@ -1335,6 +1335,36 @@ an accepted deliverable when the real installer and its download/permission/invo
 failure path are validated. Document practical current commands, exact minimum
 tools and kernel/userspace/ABI boundaries without claiming universal router support.
 
+### Documentation set
+
+The following set defines S16.03 coverage now; the full guides are written near
+product readiness. Paths name planned deliverables, not currently available
+pages. Keep README as the overview and the current development note compact.
+Describe actual delivered behavior and limits when writing each guide; shared
+facts have one authoritative home with links from related tasks.
+
+| Planned document | Required coverage | Product goals |
+| --- | --- | --- |
+| `README.md` | Product overview, intended versus implemented main goals, readiness and guide navigation. | All goals |
+| `docs/setup.md` | Verified installation/prerequisites, first launch, private defaults and independent DDNS, Cloudflared and IP-Sync setup. | 1–3, 5, 9–10 |
+| `docs/credentials.md` | Cloudflare account/domain/DNS prerequisites, minimum scoped permissions, token/JSON/certificate choices, policy wiring and safe credential handling. | 5, 9–11, 16 |
+| `docs/operation.md` | Menus and commands, Save/On/Off, dashboard/health, address evidence and normal DDNS/tunnel/IP-Sync operation. | 3–6, 8–10 |
+| `docs/maintenance.md` | Manager updates/reinstall and source/developer selection, Cloudflared binary maintenance and separate selected Entware repair/reinstall. | 2, 6–7 |
+| `docs/recovery.md` | Failed setup/save/update, missing storage/dependencies, outages, credential faults, damaged hook blocks, rollback and interrupted-operation recovery. | 2–4, 7–8, 11–12, 15 |
+| `docs/logging.md` | Native system messages, per-feature Scribe logging, /opt/var/log storage, owned logrotate policy, re-detection and truthful failure handling. | 12–13 |
+| `docs/backup-and-removal.md` | Manual archives, validated restore/migration, backup storage/retention, KEEP/WIPE uninstall, retained installation and scoped resets. | 14–15 |
+| `docs/compatibility.md` | Declared firmware/native-tool/ABI support, required capabilities, source/host/BusyBox/kernel/live evidence and provisional limitations. | 2, 8, 16 |
+| `docs/architecture.md` | Actual entry/module/shared-library interfaces, storage/state authority, ownership/locks, transactions, worker/lifecycle/resolver/provider flows and integration boundaries. | 1–15 |
+| `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools, package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
+| `CONTRIBUTING.md` | Concise change/review workflow, scope/checklist discipline, validation/privacy rules and links to development/architecture guidance. | 16 |
+
+Full-guide readiness requires verified commands and failure guidance, accurate
+scope/compatibility claims, sanitized examples, working links and agreement with
+the accepted runtime/tests. A small interim page does not complete its final-guide
+obligation. These documents are coverage within S16.03, not extra product goals or
+percentage points. Reassess grouping near completion if the implementation makes
+another arrangement clearer, preserving every required topic.
+
 The first release version is assigned when the product is ready to use, followed
 by beta. Version identity, manifest comparison and beta ordering must agree.
 Necessary library organization and practical documentation belong to functional

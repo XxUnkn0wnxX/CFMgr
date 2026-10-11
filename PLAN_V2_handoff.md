@@ -20,9 +20,10 @@ planning-only verification gate.
 No runtime subgoal or focused-complete tick is earned. S02.01 is deferred, not
 redefined as metadata verification. Goal 1 starts next session.
 
-The user has authorized a private history backup, fresh develop history and a
-push after cleanup/documentation checks. Final CI must describe this as planning
-validation, never full runtime or BusyBox acceptance. No main/tag promotion,
+The authorized private backup, develop history reset and guarded publication are
+complete. The parentless baseline passed exact planning CI; final documentation
+receipts use the same gate. CI describes this as planning validation, never full
+runtime or BusyBox acceptance. No main/tag promotion,
 router execution/install/service mutation or provider write is authorized.
 
 ## Decisions and ownership
@@ -55,10 +56,14 @@ document links/privacy, empty runtime inventory and rejection of unearned ticks.
 The documented python3 command passed in 0.40s elapsed (0.07s user + 0.02s system).
 Python compile/Ruff/format, workflow YAML and whitespace checks pass. Temporary
 fault checks reject accidental product ticks/runtime and ignore archive-internal
-links. Exact planning CI remains pending publication.
+links. Exact planning CI passed on root 9a58b52d8382508a7dbbd8f2f68887e70ad53382:
+[Planning-only checks, run 38178864431](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38178864431).
+The job completed successfully, including the documented checker command. The
+latest documentation-receipt commit/CI are recorded in the ignored private receipt
+below; verify current remote HEAD and its exact CI before resuming.
 
-Salvage cleanup is approximately 95% complete: reviewed local cleanup/docs are
-done; authorized history reset, publication and exact planning CI remain. Product completion stays
+The salvage audit and cleanup baseline are complete. Final documentation-only
+publication receipts must also pass the planning workflow before the session ends. Product completion stays
 **0/16 main goals = 0%**, with zero completed subgoals. Each completed main goal
 will add 6.25%. No percentage is awarded for auditing, deletion or planning checks.
 
@@ -82,13 +87,18 @@ That unrelated/prunable worktree metadata is untouched. The backup is ignored,
 never part of the shipped tree. Recovery, if requested, can import old develop
 from this bundle into a separate recovery branch without resetting new work.
 
-This checkpoint is prepared as a new develop root. Record generated old/new/tree
-IDs in ignored `.tmp/salvage-history-receipt.txt`; verify parentlessness, tree
-identity and clean worktree before the approved push. Use an explicit lease
-against the freshly observed remote develop ID above; stop if it changed. No
-main/tag rewrite. Exact planning CI must pass; repair failures within this checkpoint
-before finalizing the planning baseline. A final docs-only receipt may follow on
-the fresh history; it cannot tick any runtime subgoal.
+Published parentless root: `9a58b52d8382508a7dbbd8f2f68887e70ad53382`.
+Tree: `2b1a76f0370735028e749b2471462137d0d87925`.
+The explicit lease against the old remote develop succeeded. Server refs confirmed
+that root on develop and unchanged main. Develop's new history is independent of
+main; a future stable promotion needs its own explicit history decision.
+
+Local safety ref `refs/safety/salvage-before-e571555` also retains old develop;
+it is not pushed. Exact old/new/tree IDs, backup digest and final publication/CI
+receipts are in ignored `.tmp/salvage-history-receipt.txt`. Keep this receipt,
+bundle and private source evidence. No main/tag rewrite, unrelated worktree
+pruning or private artifact publication occurred. Follow-up documentation commits
+belong to the new history and cannot tick any runtime subgoal.
 
 ## Preserved product decisions and next session
 
@@ -96,6 +106,8 @@ README stays focused on implementation overview/status. Temporary developer note
 remain small and use the same GitHub documentation skill. Build the full guide
 set, including architecture, near completion of most/all implementation goals;
 finish required documentation before usable 100%. S16.03 mirrors this decision.
+The full planned guide inventory and topic/goal coverage are now listed in section
+16 and mirrored under S16.03 in the checklist; no empty guide pages were created.
 
 Hook ownership/repair and logging amendments remain mirrored in spec/checklist:
 paired owned CFMGR markers, preserve ambiguous foreign bytes, block affected work

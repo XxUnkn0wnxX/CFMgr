@@ -37,5 +37,5 @@ parent review. Keep fixtures isolated and CPU use modest. Follow the detailed
 [working rules](../AGENTS.md) and [checklist](../PLAN_V2_checklist.md).
 
 Keep these notes small until most or all implementation goals are met. Then
-prepare the full architecture, developer and operating guides required for the
-finished product. No live-router installation command is available yet.
+prepare the [planned documentation set](../PLAN_V2.md#documentation-set) for the
+finished product, including architecture, developer and operating guides.

@@ -15,7 +15,7 @@ subgoals and acceptance cases remain unchecked; the approved scope is unchanged.
 | [x] | G3 | Apply the final complete-subgoal retention rule: retain salvage only when it finishes at least one entire existing subgoal through a real consumer. No audited runtime area qualifies; remove partial runtime, wrappers and otherwise unsupported shared code. Preserve empty folder structure, the archived plan and private evidence. This cleanup tick is not product delivery. |
 | [x] | G4 | Remove old and replacement tests/fixtures/package tools for discarded runtime. Replace obsolete CI with a clearly labelled planning-only gate; no runtime, BusyBox or kernel acceptance is claimed. New runtime requires fresh meaningful tests and replacement of this temporary gate. |
 | [x] | G5 | Remove obsolete guides and update README/main-goal table and planning files to describe the actual planning-only baseline. Temporary developer instructions live outside README in docs/development.md. Full practical documentation remains required for usable 100%. |
-| [ ] | G6 | Parent review, local planning checks and exact CI confirm the cleaned planning baseline; preserve recovery backup, reset develop history and publish under the approved lease. No runtime gate or product tick can be awarded. Then resume ordered goal 1 work next session. |
+| [x] | G6 | Parent review and local planning checks passed. Verified private backup and develop history reset/publication completed; exact planning CI passed for root 9a58b52. Documentation receipts use the same gate. No runtime gate or product tick is awarded. Resume ordered goal 1 work next session. |
 
 ## Completion assessment
 
@@ -96,7 +96,7 @@ modules/hooks and tests. No old code/tests are staged under .old;
 | Full local runtime suite | Not applicable. Earlier 70-pass/four-skip results cover discarded code and supply no current acceptance. |
 | BusyBox/kernel/runtime CI | Not applicable: no retained runtime. No compatibility claim. |
 | Local planning checks | Passed: 156 exact aligned subgoals, 16 README goals, active links/privacy, empty runtime inventory and no product/focused ticks. Python/static/YAML/whitespace checks pass. |
-| Exact planning CI | Pending authorized publication. This is not full runtime CI. |
+| Exact planning CI | Passed for parentless root `9a58b52d8382508a7dbbd8f2f68887e70ad53382`, [run 38178864431](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38178864431). Final documentation receipts use the same gate. This is not full runtime CI. |
 
 Parent reviewed the diagnostic-removal package and independent S02.01 acceptance
 review before removing the unsupported distribution chain. The planning checker
@@ -359,6 +359,30 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [ ] | [ ] | S16.05 | **Safe reproducible delivery:** Sanitized examples/screenshots and validated real installer command/failure behavior. |
 | [ ] | [ ] | S16.06 | **Release readiness:** Coherent first version/beta semantics and required functionality/documentation before optional final polish. |
 
+
+### Planned documentation coverage for S16.03
+
+Keep interim developer notes small until most/all implementation goals are met.
+The following final-guide obligations mirror specification section 16; existing
+README and temporary developer notes do not complete them. These checks belong
+to S16.03 and do not change the 16-goal denominator. Final review checks actual
+commands/failure guidance, scope/compatibility, sanitized examples and links
+against accepted runtime/tests. Reassess grouping only while preserving coverage.
+
+| Ready | Planned document | Required coverage | Product goals |
+| --- | --- | --- | --- |
+| [ ] | `README.md` | Product overview, intended versus implemented main goals, readiness and guide navigation. | All goals |
+| [ ] | `docs/setup.md` | Verified installation/prerequisites, first launch, private defaults and independent DDNS, Cloudflared and IP-Sync setup. | 1–3, 5, 9–10 |
+| [ ] | `docs/credentials.md` | Cloudflare account/domain/DNS prerequisites, minimum scoped permissions, token/JSON/certificate choices, policy wiring and safe credential handling. | 5, 9–11, 16 |
+| [ ] | `docs/operation.md` | Menus and commands, Save/On/Off, dashboard/health, address evidence and normal DDNS/tunnel/IP-Sync operation. | 3–6, 8–10 |
+| [ ] | `docs/maintenance.md` | Manager updates/reinstall and source/developer selection, Cloudflared binary maintenance and separate selected Entware repair/reinstall. | 2, 6–7 |
+| [ ] | `docs/recovery.md` | Failed setup/save/update, missing storage/dependencies, outages, credential faults, damaged hook blocks, rollback and interrupted-operation recovery. | 2–4, 7–8, 11–12, 15 |
+| [ ] | `docs/logging.md` | Native system messages, per-feature Scribe logging, /opt/var/log storage, owned logrotate policy, re-detection and truthful failure handling. | 12–13 |
+| [ ] | `docs/backup-and-removal.md` | Manual archives, validated restore/migration, backup storage/retention, KEEP/WIPE uninstall, retained installation and scoped resets. | 14–15 |
+| [ ] | `docs/compatibility.md` | Declared firmware/native-tool/ABI support, required capabilities, source/host/BusyBox/kernel/live evidence and provisional limitations. | 2, 8, 16 |
+| [ ] | `docs/architecture.md` | Actual entry/module/shared-library interfaces, storage/state authority, ownership/locks, transactions, worker/lifecycle/resolver/provider flows and integration boundaries. | 1–15 |
+| [ ] | `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools, package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
+| [ ] | `CONTRIBUTING.md` | Concise change/review workflow, scope/checklist discipline, validation/privacy rules and links to development/architecture guidance. | 16 |
 
 ## Open product decisions
 
