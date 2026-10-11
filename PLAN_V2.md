@@ -320,7 +320,7 @@ authorization headers, account identifiers or unrelated device identifiers.
 | --- | --- | --- |
 | S04.01 | Safe data parsing | Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
 | S04.02 | Scoped concurrent Save | Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
-| S04.03 | Durable staged commit | Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling. |
+| S04.03 | Durable staged commit | Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | S04.04 | Native resumable drafts | Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
 | S04.05 | Cloudflared Save boundary | Pre-Save cancellation; mutation-time e disabled; signals honored with bounded cleanup and guarded recovery. |
 | S04.06 | Input/terminal handling | No EOF/default-yes or noninteractive prompting; restore echo, reject unsafe controls and preserve literal data. |
@@ -337,6 +337,8 @@ At reviewed Save, briefly lock and reread current valid authority. The wizard's 
 Check space, path ownership and ability to record intent before changing live state. Persist a small durable guard/journal and recovery copies before active mutation, stage validated data, commit one coherent generation and clear the guard only after verified completion. Prove write/rename/flush failure behavior; exit zero alone is not durability evidence. Cross-filesystem operations need explicit recoverable stages, not a false atomicity promise.
 
 Additional safeguards and rechecks are permitted to meet this contract, provided their conclusions are validated against both successful and failed transactions and do not produce false positives. A successful flush, cached readback or later unrelated write cannot establish persistence when it can also succeed after the transaction's data was lost. Preserve and report uncertainty rather than turn an inconclusive check into a claimed success or failure. An unproved workaround leaves the affected Save acceptance pending.
+
+On qualified Merlin firmware that hides internal JFFS2 flash-flush failures, acceptance requires checking every write, rename, flush and verification outcome exposed to CFMgr, with the staging and recovery protections above. Document the firmware limit: even when those checks pass, CFMgr cannot certify detection of hidden flash errors or guarantee that the new state survives a restart. No simple reliable workaround is established; a complex raw-flash verifier or disruptive filesystem operation is not required. This exception does not waive ordinary error detection, coherent publication, recovery tests or honest reporting, and does not make an inconclusive recheck independent durability proof.
 
 If a pre-change guard cannot be saved, abort mutation with the old valid state intact. An observed auth failure whose durable fault cannot be written uses a boot-local containment guard and reports the persistence limitation; never claim durable Off or reboot safety. Preserve unresolved recovery material and damaged user data instead of overwriting evidence or repeatedly retrying a destructive action.
 

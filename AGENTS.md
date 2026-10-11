@@ -188,6 +188,14 @@ defer or report a blocker, never sufficient evidence that the source is useless.
   all be complete before its main tick. Optional/out-of-scope items do not add
   goals. Partial subgoal work is visible but does not add product percentage.
   Task-workload estimates are separate and clearly labelled.
+- Progress updates must name the active main goal and give its estimated progress
+  toward **that goal's 100%**, with a short account of what is done and what remains.
+  Update the estimate at meaningful changes and in checkpoint/final reports;
+  explain stalls or revisions instead of manufacturing percentage gains. Keep it
+  distinct from the overall completed-goals/16 product percentage and from
+  package/task workload. Partial implementation may inform an explicitly labelled
+  estimate, but never an acceptance tick. Goal progress reaches 100% only after
+  every required subgoal, audit, local gate and exact full CI gate is accepted.
 - Main-goal checkpoints replace the former 1%/10% cadence; a completed goal is the
   new publication milestone, not an invented numeric 1% increment. At a subgoal
   use focused tests, relevant lint/static/whitespace checks and parent review;

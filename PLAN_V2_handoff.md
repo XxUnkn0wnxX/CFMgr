@@ -31,8 +31,13 @@ BusyBox/Linux/platform execution: explain the dependency, run full exact-commit
 CI and close only actually proved scope. A minority of platform cases does not
 qualify. The platform package is eligible under that conditional grant: most
 substantive S02.09 compatibility proof requires ARM kernel/BusyBox/Entware
-execution unavailable on this macOS host. Its first full CI push is being prepared;
-no push has occurred yet. This does not complete S02.09 or authorize deployment.
+execution unavailable on this macOS host. Its first full CI push is now published
+at `6b91cd82aad8feddcbde7e1d81a8f4e0c35174d8`; origin/develop was verified equal.
+Full [Checks run 38185361432](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38185361432)
+failed before behavioral proof: host/BusyBox jobs stopped at lint, and all four
+kernel jobs stopped at a vendor BusyBox configuration-name mismatch. Corrections
+are in progress within the same checkpoint. This does not complete S02.09 or
+authorize deployment.
 No current permission covers live installation/deployment, provider mutation or
 another history/reset operation.
 The user permits extracted Merlin firmware material or public source as CI test
@@ -64,9 +69,10 @@ This does not authorize another JFFS attempt, installs, service changes or stres
 - Reviewed local checkpoints: `3e164914ef23d6d021a9f8c03cf629903a44b75c`
   (initial native storage/runtime checks) and
   `6b411736c989d822e9ccad34eae111bd45bb64b8` (native probe correction, retained USB
-  scratch base and user compatibility amendment). Develop is two commits ahead
-  of last verified origin/develop; no push has occurred. Current handoff notes
-  track the next platform-fixture package and are documentation working state.
+  scratch base and user compatibility amendment), followed by
+  `6b91cd82aad8feddcbde7e1d81a8f4e0c35174d8` (platform fixtures). All three are
+  published on develop; remote SHA verified. Current dirty work fixes that first
+  CI run and records the latest Save fallback and per-goal progress rule.
 - Local and remote develop both started at
   `6dc6dbd5571beee037cf97949a449beff9dcd74d`, clean. Read-only remote inspection
   confirmed develop is advertised HEAD and remote main is absent.
@@ -121,7 +127,7 @@ these assumptions. Correct the probe using verified native facilities without
 weakening cleanup identity; this is no evidence of a JFFS flush failure.
 
 Further pinned kernel-source review found a separate S04.03 limitation. In the
-same release's `src-rt-5.02axhnd.675x/kernel/linux-4.1/fs/jffs2/`, `file.c:32-48`
+exact baseline `src-rt-5.02axhnd/kernel/linux-4.1/fs/jffs2/`, `file.c`
 discards `jffs2_flush_wbuf_gc`'s integer failure result and returns zero after a
 successful page-cache wait; `super.c:99-111` likewise discards the buffered-flush
 result in sync_fs. `wbuf.c:702-761` can return a flush error. Cached actual kernel
@@ -130,22 +136,22 @@ NAND, 2048-byte writes and 131072-byte erase blocks. This is source/config evide
 not an induced live fault or exact executable equivalence claim. Native syscall
 success/readback cannot establish detection of kernel-hidden flash errors; no
 wrapper/extra Entware fsync tool fixes that missing return. Parent notified the
-user immediately. Keep durable Save acceptance pending; no specification change
-or reduced guarantee is approved. Pinned source bytes/hashes are retained under
+user immediately. The latest user-directed firmware-limit amendment is recorded
+below; no complete Save implementation is accepted. Pinned source bytes/hashes are retained under
 `.tmp/storage-review/jffs2-source-provenance.json` for bounded review.
 
-**User decision: keep Save acceptance pending and investigate alternatives.**
-After the parent explained the discarded error result, the user explicitly chose
-not to adopt the proposed weaker firmware-limit guarantee. S04.03 remains
-unchanged. Do not re-ask this same question without new evidence or silently
-accept exposed-errors-only coverage. Investigate a supported reliable reporting
-or persistence-verification route, preserving the required GT-AX11000 baseline.
-The user additionally approves safeguards/rechecks as workarounds only if they do
-not cause false positives; this is mirrored in S04.03's detailed contract and V63.
-It does not approve cached-readback-only acceptance. Latest steering asks for
-a practical workaround with little complexity or extra user effort; otherwise
-the user is willing to consider accepting the limitation. Complete the bounded
-review and explain the result before changing Save acceptance or its guarantee.
+**Latest user direction: use a simple reliable workaround if possible; otherwise
+accept the firmware limitation.** The bounded review found no practical reliable
+alternative using the available interfaces. Parent explained that result and
+applied the user's conditional fallback in S04.03/V63: check every exposed
+write/rename/flush/verification outcome, retain staging and recovery protections,
+and document that hidden flash errors can escape detection and lose new state
+across restart. A custom raw-flash verifier or disruptive filesystem operation
+is not required. The previous decision to investigate before accepting the limit
+is superseded by this later fallback instruction after the investigation.
+Save itself remains unimplemented/unaccepted; no tick or tested behavior is
+inferred from this requirement amendment. Extra safeguards may not manufacture
+independent durability proof or misreport inconclusive evidence.
 
 Alternative-path review returned and parent checked the decisive source paths:
 O_SYNC/O_DSYNC route through the same fsync; no direct_IO callback exists; ioctl
@@ -163,22 +169,24 @@ package availability/usability on the model's firmware/kernel/userspace ABI. Kee
 GT-AX11000 as the required baseline and modern Merlin routers; exclude profiles
 whose dependencies are unavailable/incompatible, with concrete reasons. There is
 no obligation to support obsolete hardware for its own sake. This is mirrored in
-S02.09/V02 and does not approve weakening S04.03. Temporary Entware loss still
-requires native recovery. The durability guarantee remains unchanged and pending.
+S02.09/V02. Temporary Entware loss still requires native recovery. The separate
+latest Save decision above governs its firmware limit.
 Parent has now verified the same discarded flush return in the exact baseline
 4.1.51 tree and all three newer selected source versions, retained in ignored
 `.tmp/platform-review/source-index.json`. Official Merlin Addons API/User scripts
 and a bounded SNBForums search provided no verified alternate error-reporting
-interface. The explicit user decision above supersedes that pending question;
-source/CI-layout instructions do not alter it. No approval question is open now.
+interface. The latest conditional fallback above supersedes the prior pending question.
+No approval question is open now.
 
 ## Current ownership and contracts
 
 | Owner | Exclusive files/scope | State |
 | --- | --- | --- |
-| Parent | Planning files, docs, runtime/test integration and CI checkpoint | All implementation files returned. Final platform review and focused checks passed; preparing eligible early CI. |
-| persistence_review | Read-only positive raw-flash transaction-witness review; no writable files | Prior flush/raw-dump limitations returned. Final bounded review checks unique immutable records, positive evidence and practical existing-tool options. No router work, builds or acceptance. |
-| probe_compat, storage_flush, runtime_checks, source_parity | No active ownership | Packages/research returned and reviewed; no active writers or router sessions. |
+| Parent | Planning files, AGENTS.md, docs, router-storage-probe lint compatibility and CI integration | Initial CI failed in lint and BusyBox configuration before runtime proof. Fix/review within this checkpoint. Active goal 2 estimate ~10%; accepted product remains 0/16. |
+| probe_compat | No active ownership | Source-proven BusyBox configuration/guest lint fixes returned; parent reviewed and reran focused tests. |
+| ci_wait | No active ownership | Run 38185361432 finished failed: planning passed, six runtime/platform jobs failed before proof. Awaiting corrected checkpoint before reuse. |
+| persistence_review | No active ownership | Final review returned: no simple supported workaround established. Immutable positive records are a research candidate requiring a custom verifier and recovery design, not current proof. Logs provide failure hints only. |
+| storage_flush, runtime_checks, source_parity | No active ownership | Packages/research returned and reviewed; no active router sessions. |
 
 Shared interface: `cfmgr_storage_flush_fd ABSOLUTE_FSYNC_EXECUTABLE`; caller owns
 admitted target/storage and opens read-only fd 3. Library sourcing performs no
@@ -280,6 +288,12 @@ directly instead of executing package scripts that configure normal alternatives
    on dirty `6b411736`: **15 passed, zero skips in 0.21s**, with planning,
    whitespace, Ruff/format/compile, shell syntax, ShellCheck and shfmt passing.
    No full local suite was run. Offline tests do not execute ARM programs.
+   After initial CI failure, parent reviewed four corrected source-declared
+   BusyBox configuration names, unknown-symbol guard/regression, explicit guest
+   conditionals and scoped probe lint annotations. Focused platform rerun on dirty
+   `6b91cd8`: **16 passed, zero skips in 0.12s**, all static/planning checks passed.
+   Probe changes are comments only. All 45 BusyBox symbols were checked against
+   the three pinned sources; actual compilation/boot still awaits corrected CI.
 3. Parent independently staged all 36 actual hash-verified IPKs using the new
    extractor and checked required ELF class/machine for both feeds. Host
    libarchive read the resulting initramfs (175 entries). These are data-format
@@ -292,20 +306,20 @@ directly instead of executing package scripts that configure normal alternatives
    artifacts; runtime fixes reuse unchanged builds. Existing planning, full host
    and mandatory BusyBox jobs remain; docs-only exclusions remain. Updated
    developer commands describe generic-kernel and hardware evidence limits.
-5. Next: commit reviewed package, verify unchanged remote develop, explain the
-   eligible platform dependency and push under the user's conditional grant.
-   Require all seven required jobs green at that exact code SHA before further
-   implementation; fix/re-push failures within this checkpoint. Compilation,
+5. Initial eligible CI push completed; run 38185361432 failed as recorded above.
+   Review focused corrections, commit and re-push within the same authorized
+   checkpoint. Require all seven jobs green at the corrected exact SHA before
+   further implementation. Compilation,
    kernel config, boot and actual Entware execution remain pending until CI.
    No current subgoal or main goal is complete; TLS/firmware admission and actual
    production consumers remain missing even if these selected guests pass.
-6. S04.03 remains pending. Simple alternatives checked so far do not expose the
-   discarded JFFS2 flush error. Raw-dump tools do not provide a coherent live
-   filesystem snapshot; existing jffs2reader omits CRC checks. Final review asks
-   whether a narrow positive transaction witness avoids that limitation, while
-   respecting the user's preference against complex custom verification.
-   No router cache clear, remount, freeze, raw-flash scan or further write is
-   authorized/performed. Do not weaken the guarantee by an implementation edit.
+6. Save implementation/acceptance remains pending under the latest documented
+   firmware limitation. Practical alternative research is complete: extra writes,
+   flushes/rereads and logs cannot certify hidden-error detection. A narrow
+   immutable flash witness needs custom CRC/compression/inode/namespace logic
+   and recovery authority; it is outside the requested simple-workaround effort.
+   No router cache clear, remount, freeze, raw-flash scan or further write was
+   performed or authorized. The amendment grants no deployment permission.
 7. Continue goal 2's usable installation/storage/dependency workflow when the CI
    gate and Save design permit, then return towards goal 1. Another JFFS probe
    requires fresh permission. Router test writes remain confined to the retained
