@@ -12,10 +12,11 @@ session_meta id/cwd; no child IDs are included.
 ## Current boundary
 
 **CI triggers simplified; full implementation remains for the next session.**
-The user explicitly requested removing only the workflow path filters, retaining
-the planning checks and renaming the workflow to **Checks**. It now targets every
-develop push and pull request, including documentation-only changes. Agents must
-add CI coverage alongside new test packages. Parent review, local planning checks,
+The user requested removing the speculative code-path list, retaining the
+planning checks and renaming the workflow to **Checks**. The latest clarification
+keeps documentation-only changes excluded, along with images and placeholders.
+Agents must add relevant trigger paths and CI coverage as real tests grow.
+Parent review, local planning checks,
 workflow YAML/trigger checks and whitespace checks passed. The authorized push/CI
 result is recorded in the receipt below; no salvage restart or goal 1 work is included.
 The earlier cleanup, history reset, guarded publication and main deletion are
@@ -30,7 +31,7 @@ consistency and deliberately reject runtime until replaced alongside real tests.
 
 | Owner | Scope | State |
 | --- | --- | --- |
-| Parent | Workflow, AGENTS.md, developer note and this handoff | Edits and local review/checks complete; verify publication and exact CI in the receipt below. |
+| Parent | Workflow, AGENTS.md, developer note and this handoff | Simplified triggers with documentation exclusions; verify publication and exact CI in the receipt below. |
 | readiness_review | Read-only rules review; no owned files | Review and follow-up gate checks returned; parent addressed findings. Stopped. |
 
 The user also authorizes automatic handoff trimming/rebuilding under AGENTS.md.
@@ -54,8 +55,8 @@ response window, record the pending decision here and end the turn waiting;
 silence never authorizes the dependent work. No approval question is pending now.
 
 No runtime, tests, tools, README, global profile or agent configuration changes
-are included. The earlier documentation-only CI exclusion is superseded by the
-user's explicit no-path-filter selection. CI configuration alone may adapt to the
+are included. Documentation-only changes remain excluded under the latest user
+clarification; future code-path criteria follow actual tests. CI alone may adapt to the
 growing approved test suite; it cannot weaken required coverage or change agreed
 plan/goal/acceptance/agent/publication rules. All delegated work is complete.
 The preceding publication ended at `55e677bc405d43f39dd66e796d916fed2dcf521d`;
@@ -144,7 +145,7 @@ receipts are in ignored .tmp/salvage-history-receipt.txt and
 
 1. Read AGENTS.md and all three v2 documents; inspect current refs, working changes
    and actual worker/job state. Verify the published preparation checkpoint and
-   exact CI for subsequent changes; the Checks workflow now runs without path filters.
+   exact CI for subsequent code changes; documentation-only changes remain excluded.
 2. When implementation is authorized, start from goal 1 and map its first coherent
    workflow to existing subgoals and necessary dependencies. Goal 1 covers the
    combined product/source parity; neither a menu skeleton nor supporting helpers

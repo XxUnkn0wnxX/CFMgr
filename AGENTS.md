@@ -325,12 +325,14 @@ Use shell syntax, ShellCheck, shfmt, meaningful focused tests and required
 BusyBox/kernel proof for the code actually delivered. Use `zr0-test-efficiency`,
 modest worker counts and owned isolated fixtures. The full runner must not
 commit/push/watch CI.
-The **Checks** workflow runs on every develop push and pull request targeting
-develop, without path filters, including documentation-only changes. Keep the
-planning consistency job running. As real tests are written, add their commands,
-required dependencies and platform jobs to this workflow in the same package;
-do not defer CI wiring until a later goal. Authorized runtime pushes/PRs must run
-the full required suite. CI targets develop during implementation; any later
+The **Checks** workflow targets develop pushes and pull requests, excluding
+documentation, images and folder placeholders when they are the only changes.
+Keep the planning consistency job running. The speculative code-path list has
+been removed; add relevant trigger paths as actual tests grow. As real tests are
+written, add their commands, required dependencies and platform jobs in the same
+package; do not defer CI wiring until a later goal. Keep documentation-only
+changes excluded, and ensure code/test/tool/workflow changes run the required
+checks. Authorized runtime pushes/PRs must run the full required suite. Any later
 release-branch scope needs explicit review. Do not promote runtime for convenience.
 
 CI configuration may be adjusted as approved implementation and tests grow:

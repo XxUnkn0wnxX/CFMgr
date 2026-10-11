@@ -3,8 +3,20 @@ name: Checks
 on:
   push:
     branches: [develop]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.markdown'
+      - 'docs/**'
+      - '.images/**'
+      - '**/.gitkeep'
   pull_request:
     branches: [develop]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.markdown'
+      - 'docs/**'
+      - '.images/**'
+      - '**/.gitkeep'
 
 permissions:
   contents: read
