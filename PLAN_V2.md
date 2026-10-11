@@ -200,7 +200,7 @@ Detect retained setup and incomplete guards **before** generating defaults. Miss
 | Check for CFMgr updates | On. |
 | Auto-update CFMgr | Off; requires saved explicit opt-in. |
 | Developer mode | `developer=false`, manual config editing only. |
-| Manager source selection | Main config defaults to `main`; developer mode retains an explicitly selected branch/full immutable commit for testing. |
+| Manager source selection | Main config defaults to the approved normal branch (`develop` until reviewed 100%); developer mode retains an explicitly selected branch/full immutable commit for testing. |
 | External amtm update permission | Off if that optional supported integration is later selected. |
 
 `configured` means a complete validated setup, `enabled` is the user's saved On/Off intent, `installed` describes an owned binary/component installation, and `maintenance_enabled` separately authorizes Cloudflared maintenance. Running, connected, waiting, faulted and cleanup-required are observations/guards, not interchangeable flags. File presence, a draft or an updater preference never implies configured or enabled.
@@ -569,7 +569,7 @@ Idle Off/unconfigured maintenance completes verified artifact publication/recove
 | S07.04 | Unattended installation | Saved opt-in and source/ownership rechecked at switch; active transactions defer safely. |
 | S07.05 | Developer suppression | Manual-only flag suppresses checks/auto/external callbacks; confirmed force retains normal verification. |
 | S07.06 | Source selection and catalog | Main config selects repository/branch/full commit; snapshot catalog maps modules in one immutable complete package. |
-| S07.07 | Developer source retention | Developer keeps selected source; normal updates return the selector to main; every package replacement also replaces its catalog. |
+| S07.07 | Developer source retention | Developer keeps selected source; normal updates return the selector to the approved normal branch (develop until reviewed 100%); every package replacement also replaces its catalog. |
 | S07.08 | Trusted complete package | Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
 | S07.09 | State-preserving update | No healthy feature reinstall/restart/provider call or config loss; guarded actual owned drift only. |
 | S07.10 | Self-update failure recovery | Distinct transfer/storage/switch/hook-reinjection/overlap/opt-out/rollback boundaries preserve last trusted complete package and report incomplete integration honestly. |
@@ -597,7 +597,7 @@ Cache availability/due state in bounded RAM, not JFFS per tick. Coalesce launch/
 
 `developer` and manager source repository/branch/full-commit selection are manual-file-only main-config settings. True suppresses automatic/manual manager checks, offers, unattended installation and external check/update callbacks while preserving saved preferences. It does not alter Cloudflared update preferences. Explicit confirmed `uf` uses and retains the configured developer source, with a clear target warning and normal verification. Editing a selector alone fetches or activates nothing.
 
-With developer=false, effective manager update/reinstall selection is `main` in the configured repository; a successful transaction also resets the saved branch/commit selection to `main`, preserving unrelated settings. With developer=true, retain the selected branch or full immutable commit across reinstalls. Failed/cancelled transactions do not reset source settings or partially publish another source. Show the effective source before confirmation. There is no menu source setter or remote `catalog_url` indirection.
+With developer=false, effective manager update/reinstall selection is the code-defined approved normal branch in the configured repository: `develop` throughout implementation until reviewed 100%. A successful transaction also resets the saved branch/commit selection to that normal branch, preserving unrelated settings. The repository default remains `develop` over this period; `main` is removed. Choose the release-branch policy explicitly at readiness, with no automatic branch recreation or source change merely because a progress marker was reached. With developer=true, retain the selected branch or full immutable commit across reinstalls. Failed/cancelled transactions do not reset source settings or partially publish another source. Show the effective source before confirmation. There is no menu source setter or remote `catalog_url` indirection.
 
 `catalog.txt` remains in the repository root and installed manager directory. It is package data mapping named modules to validated paths/URLs, not the authority for branch/commit selection. Every successful package replacement, including developer `uf`, installs the catalog from that same verified snapshot with its matching entry/modules. Developer mode no longer preserves old catalog bytes. Validate bounded catalog grammar, approved HTTPS repository, commit binding and safe destinations before use; malformed installed catalog requires explicit verified repair, never a silent switch to another source.
 
@@ -1378,7 +1378,7 @@ These details need concrete supported decisions before their dependent product b
 | Area | Decision/proof required |
 | --- | --- |
 | Configuration/transactions | Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
-| Package distribution | Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, main-config source grammar/normal-main reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
+| Package distribution | Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, main-config source grammar/normal-branch reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
 | Supported platforms | Actual native paths/options/CA, minimal kernel/userspace ABI/capability profiles and official binary compatibility; no unsupported legacy promise based solely on feed names. |
 | Storage/processes | Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | Budgets/readiness | Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |

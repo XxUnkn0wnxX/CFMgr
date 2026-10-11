@@ -35,7 +35,9 @@ suites. These replace the former 1%/10% checkpoints; the full procedures are in
 reconciliation, private history backup, fresh develop history and guarded push.
 With no runtime retained, final checks validate only the planning baseline and
 absence of executable scaffolding. They cannot stand in for focused/full runtime
-or BusyBox proof. Main and tags are outside the history operation.
+or BusyBox proof. The user subsequently authorized local/origin main deletion and develop as
+default until reviewed 100%; release-branch policy is decided then. Tags remain
+outside these operations.
 
 **Session boundary:** finish this cleanup/publication checkpoint and stop. Goal 1
 implementation belongs to the next session. Do not add a small invented feature
@@ -220,7 +222,7 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [ ] | [ ] | S07.04 | **Unattended installation:** Saved opt-in and source/ownership rechecked at switch; active transactions defer safely. |
 | [ ] | [ ] | S07.05 | **Developer suppression:** Manual-only flag suppresses checks/auto/external callbacks; confirmed force retains normal verification. |
 | [ ] | [ ] | S07.06 | **Source selection and catalog:** Main config selects repository/branch/full commit; snapshot catalog maps modules in one immutable complete package. |
-| [ ] | [ ] | S07.07 | **Developer source retention:** Developer keeps selected source; normal updates return the selector to main; every package replacement also replaces its catalog. |
+| [ ] | [ ] | S07.07 | **Developer source retention:** Developer keeps selected source; normal updates return the selector to the approved normal branch (develop until reviewed 100%); every package replacement also replaces its catalog. |
 | [ ] | [ ] | S07.08 | **Trusted complete package:** Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
 | [ ] | [ ] | S07.09 | **State-preserving update:** No healthy feature reinstall/restart/provider call or config loss; guarded actual owned drift only. |
 | [ ] | [ ] | S07.10 | **Self-update failure recovery:** Distinct transfer/storage/switch/hook-reinjection/overlap/opt-out/rollback boundaries preserve last trusted complete package and report incomplete integration honestly. |
@@ -391,7 +393,7 @@ See specification section 17. These remain unresolved until their owning workflo
 | Status | Decision area |
 | --- | --- |
 | [ ] | **Configuration/transactions:** Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
-| [ ] | **Package distribution:** Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, main-config source grammar/normal-main reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
+| [ ] | **Package distribution:** Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, main-config source grammar/normal-branch reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
 | [ ] | **Supported platforms:** Actual native paths/options/CA, minimal kernel/userspace ABI/capability profiles and official binary compatibility; no unsupported legacy promise based solely on feed names. |
 | [ ] | **Storage/processes:** Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | [ ] | **Budgets/readiness:** Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |

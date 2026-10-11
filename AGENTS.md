@@ -67,7 +67,10 @@ the next session during the current pause.
 
 ## Real completion and publication
 
-- Develop on `develop`; reserve `main` for separately authorized stable releases.
+- `develop` is the only active branch and the repository default until the
+  project reaches reviewed 100%. The user removed local and origin `main`; do not
+  recreate it or change the default during implementation. Choose any later
+  release-branch policy explicitly at readiness; releases still need authorization.
 - Each subgoal requires written focused tests passing locally. If its proof needs
   BusyBox/Linux/kernel CI, keep it pending until the relevant exact-commit CI
   passes. An early push may be proposed for that concrete evidence need; it still
@@ -84,8 +87,9 @@ the next session during the current pause.
   make the recovered tree a new root. This session remains salvage-only; ordered
   goal 1 work is reserved for the next session. The user also authorizes publishing
   the recovered develop history after code/tests/docs pass, using an exact
-  force-with-lease guard. Main and tags are outside this operation. Record exact
-  old/new refs and recovery instructions in the handoff/private receipt.
+  force-with-lease guard. The subsequent user-authorized main deletion is recorded
+  in handoff; tags remain outside these operations. Record exact old/new refs and
+  recovery instructions in the handoff/private receipt.
 - Before that push, audit the complete publishable tree for superseded runtime,
   old test suites, obsolete tools/CI references and temporary `.old/` code/test
   copies; all must be gone. Retain only recovered/reworked current implementation
@@ -197,7 +201,8 @@ shell syntax, ShellCheck, shfmt, focused tests and required BusyBox/kernel proof
 for the code actually delivered. Use `zr0-test-efficiency`, modest worker counts
 and owned isolated fixtures. The full runner must not commit/push/watch CI.
 Eligible develop pushes/PRs require the applicable full CI; documentation-only
-work uses proportionate checks. Do not widen CI to main or promote runtime for
+work uses proportionate checks. CI targets develop during implementation; any
+later release-branch scope needs explicit review. Do not promote runtime for
 convenience.
 
 README summarizes **all main product implementation goals** covering the detailed

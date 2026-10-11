@@ -23,8 +23,10 @@ redefined as metadata verification. Goal 1 starts next session.
 The authorized private backup, develop history reset and guarded publication are
 complete. The parentless baseline passed exact planning CI; final documentation
 receipts use the same gate. CI describes this as planning validation, never full
-runtime or BusyBox acceptance. No main/tag promotion,
-router execution/install/service mutation or provider write is authorized.
+runtime or BusyBox acceptance. The user subsequently authorized removal of main
+locally and from origin. Develop is the repository default until reviewed 100%;
+no release/tag promotion, router execution/install/service mutation or provider
+write is authorized.
 
 ## Decisions and ownership
 
@@ -76,8 +78,9 @@ salvage tick carried forward.
 ## History reset and publication
 
 Pre-reset develop: e571555771abbe128102b2edda69014d37143d24. Freshly observed
-remote develop: debba577d43b2b20285d8226615c5e3ef7431ddb. Main remains
-f4b3136762bda6fb2f9c31796338ddc27444a403; no tags were returned.
+remote develop: debba577d43b2b20285d8226615c5e3ef7431ddb. The subsequently deleted
+main tip was f4b3136762bda6fb2f9c31796338ddc27444a403; it is preserved in the
+private bundle. No tags were returned.
 
 Before the local reset, a complete private bundle was created and verified:
 `.tmp/history-before-salvage-e571555.bundle` (mode600, about2.1MiB).
@@ -89,15 +92,20 @@ from this bundle into a separate recovery branch without resetting new work.
 
 Published parentless root: `9a58b52d8382508a7dbbd8f2f68887e70ad53382`.
 Tree: `2b1a76f0370735028e749b2471462137d0d87925`.
-The explicit lease against the old remote develop succeeded. Server refs confirmed
-that root on develop and unchanged main. Develop's new history is independent of
-main; a future stable promotion needs its own explicit history decision.
+The explicit lease against the old remote develop succeeded. At the user's
+subsequent request, GitHub default was changed to develop, origin/main was deleted
+with an exact lease against f4b3136762bda6fb2f9c31796338ddc27444a403, local main
+was deleted and origin/HEAD was set to origin/develop. Server refs confirm develop
+as the only branch and advertised HEAD. Develop stays default until reviewed
+100%; choose any later release-branch policy explicitly then. Do not recreate
+main during implementation. S07.07 and source defaults mirror this policy.
 
 Local safety ref `refs/safety/salvage-before-e571555` also retains old develop;
 it is not pushed. Exact old/new/tree IDs, backup digest and final publication/CI
 receipts are in ignored `.tmp/salvage-history-receipt.txt`. Keep this receipt,
-bundle and private source evidence. No main/tag rewrite, unrelated worktree
-pruning or private artifact publication occurred. Follow-up documentation commits
+bundle and private source evidence. The main deletion/default change and final
+validation are also recorded in ignored .tmp/main-removal-receipt.txt. No tag
+rewrite, unrelated worktree pruning or private artifact publication occurred. Follow-up documentation commits
 belong to the new history and cannot tick any runtime subgoal.
 
 ## Preserved product decisions and next session
