@@ -2,46 +2,26 @@
 
 [Product specification](PLAN_V2.md) · [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
 
-**The recovery audit is complete: no runtime area qualifies for a complete
-existing subgoal.** Partial implementations have been removed. All product
-subgoals and acceptance cases remain unchecked; the approved scope is unchanged.
-
-## Project preparation
-
-| Status | ID | Outcome |
-| --- | --- | --- |
-| [x] | G1 | Reviewed v2 product scope accepted. Latest user instruction authorizes starting runtime salvage first; tests/CI/developer tools follow, then the agreed documentation rewrite or cleanup. Documented open defaults/capability decisions remain open. |
-| [x] | G2 | Existing code is mapped to approved workflows with keep/adapt/replace/defer/remove findings and actual consumers. Source assessment completed against `e571555`; see the recovery assessment below. This is an audit result, not runtime acceptance. |
-| [x] | G3 | Apply the final complete-subgoal retention rule: retain salvage only when it finishes at least one entire existing subgoal through a real consumer. No audited runtime area qualifies; remove partial runtime, wrappers and otherwise unsupported shared code. Preserve empty folder structure, the archived plan and private evidence. This cleanup tick is not product delivery. |
-| [x] | G4 | Remove old and replacement tests/fixtures/package tools for discarded runtime. Replace obsolete CI with a clearly labelled planning-only gate; no runtime, BusyBox or kernel acceptance is claimed. New runtime requires fresh meaningful tests and replacement of this temporary gate. |
-| [x] | G5 | Remove obsolete guides and update README/main-goal table and planning files to describe the actual planning-only baseline. Temporary developer instructions live outside README in docs/development.md. Full practical documentation remains required for usable 100%. |
-| [x] | G6 | Parent review and local planning checks passed. Verified private backup and develop history reset/publication completed; exact planning CI passed for root 9a58b52. Documentation receipts use the same gate. No runtime gate or product tick is awarded. Resume ordered goal 1 work next session. |
+This checklist owns product acceptance and delivery status. The specification owns
+required behavior; the handoff owns current work and pending evidence; AGENTS.md
+owns execution and publication rules. Administrative preparation/cleanup does not
+earn product ticks.
 
 ## Completion assessment
 
 **0 of 16 main goals complete — 0% product completion.** The user-selected
 calculation is `completed main goals / 16 × 100`; every completed main goal adds
 6.25%. Partial subgoals remain visible without increasing this percentage.
-Salvage workload estimates are separate. No archived completion is imported.
+Task-workload estimates are separate. No archived completion is imported.
 
 **Subgoal gate:** write and pass focused local tests. Where BusyBox/Linux/kernel
 CI evidence is required, retain pending status until that exact-commit proof
 passes. Source review and preliminary smokes are not the focused-test gate.
 **Main-goal gate:** all required subgoals complete plus full local and full CI
-suites. These replace the former 1%/10% checkpoints; the full procedures are in
-[AGENTS.md](AGENTS.md). G1/G2 preparation checks are not product main goals.
-
-**Publication gate:** the user authorizes this salvage-only cleanup, documentation
-reconciliation, private history backup, fresh develop history and guarded push.
-With no runtime retained, final checks validate only the planning baseline and
-absence of executable scaffolding. They cannot stand in for focused/full runtime
-or BusyBox proof. The user subsequently authorized local/origin main deletion and develop as
-default until reviewed 100%; release-branch policy is decided then. Tags remain
-outside these operations.
-
-**Session boundary:** finish this cleanup/publication checkpoint and stop. Goal 1
-implementation belongs to the next session. Do not add a small invented feature
-or weaken an existing subgoal merely to earn a salvage tick.
+suites. The full procedures are in [AGENTS.md](AGENTS.md). Incomplete work remains
+unchecked; that status does not authorize deletion or reduction of its requirements.
+The main-goal box and README completion change only after that full evidence is
+accepted. A locally validated candidate awaiting required CI is still incomplete.
 
 ## Main-goal completion gates
 
@@ -73,51 +53,16 @@ out of 16. Optional/out-of-scope items cannot inflate this denominator.
 | 15 — Uninstall and reset | [ ] | [ ] | [ ] | [ ] |
 | 16 — Product readiness | [ ] | [ ] | [ ] | [ ] |
 
-## Recovery result and evidence
+## Accepted product evidence
 
-**No runtime subgoal survives the complete-subgoal audit.** This is a cleanup
-outcome, not implementation progress. The earlier tentative S02.01 completion
-claim and focused-local tick were withdrawn. Its acceptance text is unchanged.
+None yet: no runtime is present. All 156 subgoals and the acceptance cases below
+remain unchecked. Planning checks provide no runtime, BusyBox/kernel or live
+router acceptance.
 
-| Area | Decision | Reason / future work |
-| --- | --- | --- |
-| Native diagnostics and entry | Removed, including health/doctor aliases and fallback tests. | S03.09 needs configuration, storage, network, credential, service, integration and recovery interfaces. A native subset cannot complete it. S03.06 and S02.07 are also incomplete. |
-| Distribution and shared verifier libraries | Removed with catalog, manifest, package tool and tests. | Immutable export/content verification was a real developer workflow, but S02.01 also needs actual approved feature modules using explicit entry/shared interfaces. A help/version shell or synthetic module cannot close it. Rebuild with a delivered feature; installation and update transactions remain separate subgoals. |
-| Dependencies and execution/storage support | Removed. | S02.04–06 need real prerequisite/maintenance workflows, storage/capability authority and interruption/retry recovery; below the delegated 60–70% salvage threshold. |
-| WAN/address/source support | Removed. | S08.03/.04 need coherent current acquisition, selected-egress public verification and an actual resolver; below the same threshold. |
-| Tests, tools and CI | Removed runtime suites/fixtures/harness/package tools and obsolete dependency configuration. One planning checker and matching CI remain. | No helper/test count earns progress. Replace the planning-only gate with focused/full runtime checks and required platform proof when implementation resumes. |
-| Documentation | README summarizes implementation; a short temporary development note documents current checks. Planning files remain authoritative; obsolete guides removed. | All 16 main goals and their existing subgoals remain planned. Full practical guides remain required. |
-
-Only empty folder placeholders remain under modules/lib, modules/helpers,
-modules/hooks and tests. No old code/tests are staged under .old;
-.old/PLAN.md and ignored private evidence/history backup remain references.
-
-| Gate | Status |
-| --- | --- |
-| Runtime focused tests | Not applicable: no retained runtime. All subgoal focused boxes remain unchecked. |
-| Full local runtime suite | Not applicable. Earlier 70-pass/four-skip results cover discarded code and supply no current acceptance. |
-| BusyBox/kernel/runtime CI | Not applicable: no retained runtime. No compatibility claim. |
-| Local planning checks | Passed: 156 exact aligned subgoals, 16 README goals, active links/privacy, empty runtime inventory and no product/focused ticks. Python/static/YAML/whitespace checks pass. |
-| Exact planning CI | Passed for parentless root `9a58b52d8382508a7dbbd8f2f68887e70ad53382`, [run 38178864431](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38178864431). Final documentation receipts use the same gate. This is not full runtime CI. |
-
-Parent reviewed the diagnostic-removal package and independent S02.01 acceptance
-review before removing the unsupported distribution chain. The planning checker
-uses bounded repository file reads with no dependency installation, subprocess
-matrix, router access or network calls. No new runtime test framework is kept
-solely to test itself.
-
-### Next-session boundary
-
-This session completes cleanup and its authorized history-reset/publication gate
-only. Resume at main goal 1 next session with **zero completed subgoals**, unchanged
-product scope and the fixed 16-main-goal denominator. Rebuild the relevant runtime,
-shared libraries and tests around complete approved workflows. Existing private
-source references and the recovery bundle remain available for reference.
-
-Durable Save remains absent. Reviewed Merlin fsync/dd limitations and the open
-native persistence contract still gate dependent work. Hook ownership/repair,
-system-message routing and Scribe/logrotate amendments remain approved product
-requirements with no runtime implementation credit.
+For each future accepted subgoal, record its actual consumer, focused test
+references/command and result, tested revision, and required exact platform CI
+run. Main-goal evidence also records full local/full CI results and parent review.
+Current partial work, missing proof and next actions belong in the handoff.
 
 ## Product goals and subgoal evidence
 

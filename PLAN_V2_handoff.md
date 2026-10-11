@@ -11,144 +11,123 @@ session_meta id/cwd; no child IDs are included.
 
 ## Current boundary
 
-**Salvage only this session.** The final acceptance review found no existing
-runtime area that can close an entire approved subgoal without substantial new
-feature implementation. The user accepts only complete subgoals. All partial runtime, its tests and
-package tooling have been removed. The retained tree contains planning documents,
-README, a temporary development note, license, empty folder structure and a
-planning-only verification gate.
-No runtime subgoal or focused-complete tick is earned. S02.01 is deferred, not
-redefined as metadata verification. Goal 1 starts next session.
+**Implementation-readiness instructions only.** The user accepts the current
+empty-runtime baseline and requests corrected agent rules before full
+implementation resumes. No salvage restart or goal 1 implementation in this task.
+The earlier cleanup, history reset, guarded publication and main deletion are
+complete one-time actions, not reusable permission.
 
-The authorized private backup, develop history reset and guarded publication are
-complete. The parentless baseline passed exact planning CI; final documentation
-receipts use the same gate. CI describes this as planning validation, never full
-runtime or BusyBox acceptance. The user subsequently authorized removal of main
-locally and from origin. Develop is the repository default until reviewed 100%;
-no release/tag promotion, router execution/install/service mutation or provider
-write is authorized.
+Product status is **0/16 main goals = 0%**, zero completed subgoals. The working
+tree contains no CFMgr runtime, installer, package catalog or runtime tests.
+Only tools/check.py and the CI workflow execute; they validate planning
+consistency and deliberately reject runtime until replaced alongside real tests.
 
-## Decisions and ownership
+## Current work and ownership
 
-- Diagnostics cannot close S03.09: configuration/storage/network/auth/service,
-  integration and recovery interfaces are missing. Its native subset and aliases
-  are removed rather than retained as an unfinished feature.
-- S02.01 cannot close merely with an immutable exporter and content verifier:
-  there is no completed approved feature using explicit module/entry interfaces.
-  The previous tentative completion claim and focused tick are withdrawn.
-- Dependencies S02.04–06 and address S08.03/.04 were already below the delegated
-  60–70% salvage threshold. Their required workflows remain in the specification.
-- All runtime, tests/fixtures, package tools and obsolete guides are removed.
-  README stays an implementation overview; current checker/developer instructions
-  live in docs/development.md rather than expanding README.
-  Preserve .old/PLAN.md, ignored private references/evidence and the history
-  backup. Empty modules/lib, modules/helpers, modules/hooks and tests preserve
-  the agreed folder structure without executable scaffolding.
-- Parent reviewed each finished worker package before assigning the next task,
-  including the final planning checker/workflow. All workers are stopped; parent
-  owns final validation, history reset and publication. No background test jobs.
+| Owner | Scope | State |
+| --- | --- | --- |
+| Parent | AGENTS.md and all three PLAN_V2 files only | Rules corrected; independent findings reviewed and integrated; scope-preservation, planning and whitespace checks passed. |
+| readiness_review | Read-only rules review; no owned files | Review and follow-up gate checks returned; parent addressed findings. Stopped. |
 
-## Evidence and progress
+Latest user clarification is incorporated in AGENTS.md: main-goal checkpoints
+replace the old 1% rule; normally every subgoal's focused local checks precede the
+full local suite, push and exact full CI, then the goal/README completion. Earlier
+pushes need approval and are eligible only when most required subgoal proof needs
+Linux/BusyBox. The custom parallel-role setup is retained. Extensive feature
+rework or material plan/goal changes require user input first; explicit user scope
+amendments must not be weakened by an agent interpretation.
+Required approval uses a concrete question. If unanswered after a reasonable
+response window, record the pending decision here and end the turn waiting;
+silence never authorizes the dependent work. No approval question is pending now.
 
-The earlier 70-pass/four-skip local suite covered now-discarded partial code.
-It supplies no current acceptance. No focused runtime, full runtime, BusyBox,
-kernel or router gate can be marked passed for this planning-only tree.
-Local planning checks pass: 156 aligned subgoals, 16 README goal links, active
-document links/privacy, empty runtime inventory and rejection of unearned ticks.
-The documented python3 command passed in 0.40s elapsed (0.07s user + 0.02s system).
-Python compile/Ruff/format, workflow YAML and whitespace checks pass. Temporary
-fault checks reject accidental product ticks/runtime and ignore archive-internal
-links. Exact planning CI passed on root 9a58b52d8382508a7dbbd8f2f68887e70ad53382:
-[Planning-only checks, run 38178864431](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38178864431).
-The job completed successfully, including the documented checker command. The
-latest documentation-receipt commit/CI are recorded in the ignored private receipt
-below; verify current remote HEAD and its exact CI before resuming.
+No runtime, tests, tools, CI, README, global profile or agent configuration changes
+were made. All delegated work is complete; no test jobs remain. This preparation
+is saved locally on develop in the commit containing this handoff, titled
+Harden implementation rules and preserve unfinished work. Preserve that local
+checkpoint on resume and inspect git status/log for any later changes. No new
+push is authorized by this preparation request, and no new CI run is claimed.
 
-The salvage audit and cleanup baseline are complete. Final documentation-only
-publication receipts must also pass the planning workflow before the session ends. Product completion stays
-**0/16 main goals = 0%**, with zero completed subgoals. Each completed main goal
-will add 6.25%. No percentage is awarded for auditing, deletion or planning checks.
+## Verified baseline and evidence
 
-Subgoals require complete implemented behavior, written focused local tests and
-required exact platform CI. Main goals require every required subgoal plus full
-local/full CI suites, docs/cost review and parent scope-drift review. The former
-1%/10% cadence is superseded. Resume ordered goal 1 work next session, with no
-salvage tick carried forward.
+Published baseline and parent of this local readiness checkpoint:
+`4ce6a9aa521ac807c9934627592d5922cc83913c`.
+Its exact [Planning-only checks run 38179572930](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38179572930)
+completed successfully. This is the published baseline's evidence, not CI for
+these local instruction edits and not runtime/platform acceptance.
+GitHub default/advertised HEAD is develop; remote main is absent.
 
-## History reset and publication
+Local validation passed: python3 tools/check.py and git diff --check. A separate
+read-only comparison against the published baseline confirmed all 156 subgoal
+requirements, all 76 acceptance cases (including conditional items), the complete
+product/checklist detail, main-goal boxes, custom parallel role table and hidden
+session-ID block are unchanged. Only the four authorized Markdown files changed.
+Parent reviewed document separation, the revised publication/approval sequence
+and preservation rules, including the independent review corrections. These are
+documentation checks, not proof of runtime behavior or future agent compliance.
 
-Pre-reset develop: e571555771abbe128102b2edda69014d37143d24. Freshly observed
-remote develop: debba577d43b2b20285d8226615c5e3ef7431ddb. The subsequently deleted
-main tip was f4b3136762bda6fb2f9c31796338ddc27444a403; it is preserved in the
-private bundle. No tags were returned.
+## Recovery record and limits
 
-Before the local reset, a complete private bundle was created and verified:
-`.tmp/history-before-salvage-e571555.bundle` (mode600, about2.1MiB).
+The preceding operation produced a cleanup/reset with **no successful runtime
+salvage**. Useful verification, I/O, dependency and address logic existed, but
+whole workflows remained unfinished. The complete-or-drop rule was applied too
+broadly instead of finishing viable substantial salvage. The earlier S02.01
+completion/focused claim was withdrawn. The removed diagnostic subset did not
+complete S03.09. Neither decision reduces those approved requirements.
+
+The former 70-pass/four-skip suite covered discarded partial code. It provides no
+current acceptance. Do not repeat its result as a pass for this tree or reinstate
+old completion percentages. Future incomplete implementation remains preserved
+work in progress under AGENTS.md, with no unearned product tick.
+
+Original committed history remains in verified private
+`.tmp/history-before-salvage-e571555.bundle`.
 SHA256: `3e5599dcc3c531a1c61edb0c891526c5ebf290e976349c001af3a68918e32365`.
-It contains old heads/remotes/HEAD plus a preserved stale detached worktree HEAD.
-That unrelated/prunable worktree metadata is untouched. The backup is ignored,
-never part of the shipped tree. Recovery, if requested, can import old develop
-from this bundle into a separate recovery branch without resetting new work.
+The bundle was reverified during this audit and contains old local develop
+`e571555771abbe128102b2edda69014d37143d24`, old remote develop
+`debba577d43b2b20285d8226615c5e3ef7431ddb`, deleted main
+`f4b3136762bda6fb2f9c31796338ddc27444a403` and the retained detached worktree ref.
+Local `refs/safety/salvage-before-e571555` also retains old develop.
+**The bundle does not preserve the uncommitted salvage rewrites; no complete
+snapshot of those rewrites was verified.** Do not promise full recovery of them.
 
-Published parentless root: `9a58b52d8382508a7dbbd8f2f68887e70ad53382`.
-Tree: `2b1a76f0370735028e749b2471462137d0d87925`.
-The explicit lease against the old remote develop succeeded. At the user's
-subsequent request, GitHub default was changed to develop, origin/main was deleted
-with an exact lease against f4b3136762bda6fb2f9c31796338ddc27444a403, local main
-was deleted and origin/HEAD was set to origin/develop. Server refs confirm develop
-as the only branch and advertised HEAD. Develop stays default until reviewed
-100%; the planned return to main is an explicit readiness-time action. Do not
-recreate main during implementation. S07.07 and source defaults mirror this policy.
+If original-source recovery is requested, import old develop from the bundle into
+a separate recovery branch or private inspection checkout without resetting new
+work. Keep the bundle, ignored references/firmware evidence and .old/PLAN.md.
+Do not prune the unrelated detached-worktree metadata. Historical reset/main
+receipts are in ignored .tmp/salvage-history-receipt.txt and
+.tmp/main-removal-receipt.txt. The new history began at parentless
+`9a58b52d8382508a7dbbd8f2f68887e70ad53382`; those actions are finished.
 
-Local safety ref `refs/safety/salvage-before-e571555` also retains old develop;
-it is not pushed. Exact old/new/tree IDs, backup digest and final publication/CI
-receipts are in ignored `.tmp/salvage-history-receipt.txt`. Keep this receipt,
-bundle and private source evidence. The main deletion/default change and final
-validation are also recorded in ignored .tmp/main-removal-receipt.txt. No tag
-rewrite, unrelated worktree pruning or private artifact publication occurred. Follow-up documentation commits
-belong to the new history and cannot tick any runtime subgoal.
+## Open implementation blockers
 
-## Preserved product decisions and next session
+- Durable Save is unimplemented. Previous source review found Merlin fsync may
+  report zero on a failed flush and dd count=0 skips its in-loop fsync. Revalidate
+  the matched source/capabilities and resolve reliable persistence/failure
+  reporting before dependent mutations; do not weaken the contract or silently
+  add a mandatory dependency.
+- Other product/default/capability decisions remain in specification section 17
+  and the matching checklist. No proposed default became approved during cleanup.
+- Source selection, hook ownership/repair and logging amendments remain in
+  specification sections 7, 12 and 13 with matching acceptance. None is implemented.
+  Prior Scribe/Entware evidence is source-only; use the pinned authorities there
+  and check actual supported versions when implementing.
+- README remains an overview; the small development note describes the current
+  checker. Section 16 and S16.03 hold the full future guide inventory.
 
-Source selection amendment: one code-defined repository/branch pair in the future
-trusted entry serves fresh install, module fetches and self-update. Use develop
-for now, then change that one branch default to main at the approved readiness
-switch. Only developer=true honors configured repository/branch/full-commit
-selectors. Normal operation ignores those overrides; successful authorized
-replacement resets source fields, while status/checks and failed/cancelled work
-preserve config. Derive every fetch URL from the effective repository and one pin;
-no per-module/catalog default copies. S07.06/.07 and V46 mirror this contract.
+## Next session
 
-Retained-code audit: there is no active installer/updater/module-fetch runtime.
-The only remaining code files are tools/check.py and the CI workflow. The only
-branch literals in them are the workflow's two develop event filters; these are
-CI routing, not runtime fetch defaults. Python main() and “main goals” text are
-not branch settings. Empty module/test placeholders and the archived plan remain;
-no runtime hardcode patch or new scaffolding was needed.
-
-README stays focused on implementation overview/status. Temporary developer notes
-remain small and use the same GitHub documentation skill. Build the full guide
-set, including architecture, near completion of most/all implementation goals;
-finish required documentation before usable 100%. S16.03 mirrors this decision.
-The full planned guide inventory and topic/goal coverage are now listed in section
-16 and mirrored under S16.03 in the checklist; no empty guide pages were created.
-
-Hook ownership/repair and logging amendments remain mirrored in spec/checklist:
-paired owned CFMGR markers, preserve ambiguous foreign bytes, block affected work
-and expose repair; default native logger routes to existing system messages plus
-eligible feature logs directly under /opt/var/log. Owned logrotate fragments are
-reread on normal runs through the valid include; no Scribe reload/forced rotation.
-Research used Scribe 53dee6e97c2d6aa4f656c68c18fa1f2c499042f7 and Entware
-b6a6f2962f62882b76dfe45f9f9e1238cd9b74fd plus official Merlin guidance. This is
-source evidence, not implemented logging/hook acceptance.
-
-Durable Save remains absent. Reviewed Merlin fsync may return zero on failed
-flush and dd count=0 does not perform the in-loop conv=fsync. Resolve reliable
-native persistence/failure reporting before dependent mutations; do not silently
-introduce a mandatory dependency or weaker contract.
-
-Next session: read all three v2 files and verify current develop/CI. Resume
-ordered delivery at main goal 1, preserving the unchanged scope and the
-16-goal denominator. Main goal 1 spans all independent product features/source
-parity; a menu skeleton cannot complete it. Use necessary dependencies without
-crediting unfinished workflows. Preserve open product/default decision gates.
+1. Read AGENTS.md and all three v2 documents; inspect current refs, working changes
+   and actual worker/job state. Preserve this local preparation checkpoint and verify the
+   exact CI for any subsequently published head.
+2. When implementation is authorized, start from goal 1 and map its first coherent
+   workflow to existing subgoals and necessary dependencies. Goal 1 covers the
+   combined product/source parity; neither a menu skeleton nor supporting helpers
+   complete it. Follow dependency order without reducing scope or inventing ticks.
+3. Settle that package's concrete consumer/interfaces, relevant open decisions,
+   owned files and tests before delegation. Replace the temporary empty-runtime
+   gate with focused/full testing and applicable BusyBox/kernel CI alongside the
+   first runtime package; preserve useful planning consistency checks.
+4. Parent reviews each completed package before assigning the next. Preserve
+   partial work in local checkpoints and pending proof here. Apply the existing
+   subgoal/main-goal gates in AGENTS.md; an early CI push needs its stated approval.
+   Full implementation begins in that next session, not as part of this audit.

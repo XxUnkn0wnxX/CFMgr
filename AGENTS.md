@@ -8,13 +8,25 @@ instructions take precedence.
 
 Read these on session start and resume:
 
-1. [PLAN_V2.md](PLAN_V2.md): product scope, main goals, subgoal tables and edge cases.
-2. [PLAN_V2_checklist.md](PLAN_V2_checklist.md): matching goals/subgoal IDs, acceptance and delivery status.
-3. [PLAN_V2_handoff.md](PLAN_V2_handoff.md): concise current notes, exact resumable state, active ownership and next actions.
+1. [PLAN_V2.md](PLAN_V2.md): what the product must do, with stable goal/subgoal
+   IDs, behavior, edge cases and explicitly open product decisions. No current
+   progress, worker assignments, test receipts or session instructions.
+2. [PLAN_V2_checklist.md](PLAN_V2_checklist.md): the matching requirements,
+   acceptance cases, completion boxes and concise accepted evidence. No execution
+   diary, active worker queue, historical cleanup story or publication permission.
+3. [PLAN_V2_handoff.md](PLAN_V2_handoff.md): current task and authorization limits,
+   exact resumable state, active ownership, pending proof, blockers and next steps.
+   Replace stale working notes instead of accumulating another specification.
 
 The **parent exclusively maintains all three files**. Workers return findings and
-evidence for parent integration; they do not edit these documents. Keep workflow,
-coordination and publication rules here, not duplicated throughout the plan.
+evidence for parent integration; they do not edit these documents. AGENTS.md owns
+standing workflow, coordination, validation and publication rules. Keep each fact
+in its owning document and link to it; do not create a competing plan or handoff.
+Current explicit user instructions override stale file text and memory. Reconcile
+conflicts before affected work; a worker report or handoff cannot invent approval.
+Explicit user decisions about the plan, goals and checklist are binding project
+requirements. Preserve their full meaning when recording them; do not dilute an
+amendment through an agent interpretation, implementation shortcut or test change.
 
 Every approved plan addition, removal or change must update the matching checklist
 sections/subgoal IDs and acceptance in the **same edit**. Update handoff when it
@@ -23,7 +35,8 @@ stale or contradictory items. Mark proposed scope changes as proposed until the
 user approves them; never silently rewrite scope to match a deviation in code.
 
 **A significant change to an objective, feature behavior, scope or accepted edge
-case requires user approval before the parent or any worker applies it.** Explain
+case, or extensive feature rework, requires user
+input and approval before the parent or any worker applies it.** Explain
 what would change, why it is needed, its impact/tradeoffs and the proposed plan/
 checklist adjustment. Do not treat a material behavior change as a minor internal
 detail or rewrite acceptance to avoid that approval.
@@ -36,6 +49,17 @@ those requested X/Y/Z changes without asking again. Routine status/evidence note
 formatting and link corrections also need no repeat approval. Keep proposals that
 do need approval separate from accepted scope until the user decides.
 
+For required approval, ask one clear question showing the concrete proposed
+change, reason, tradeoffs and affected plan/checklist IDs. Use the available
+question/input tool when suitable. Prepare the reviewable proposal first, but
+do not apply the gated change while waiting. Continue only independent work that
+is already authorized. Allow a reasonable response window (about a minute for a
+simple choice, longer for a complex proposal); if unanswered, record the pending
+question and safe resume point in handoff and end the turn waiting for the user.
+Silence, elapsed time, an empty tool response or a preselected option is never
+approval. Resume the affected work only after an explicit answer authorizes it;
+do not repeat an already answered permission question.
+
 Keep the specification free of progression diaries/checkpoint receipts. Checklist
 mirrors its main-goal/subgoal table structure; handoff is current working notes,
 not another specification or accumulating transcript. Git retains old snapshots.
@@ -46,84 +70,128 @@ actual verified new session there and preserves the accumulated IDs when refresh
 handoff notes. Do not import the old session list or invent IDs. Keep these IDs in
 Markdown comments in handoff, never in the specification or checklist.
 
-Follow the authorization and current stage in handoff. For authorized recovery,
-use this sequence: **salvage useful behavior into the new shared runtime in the
-existing folder structure; remove superseded code and finish selected checklist
-requirements; then rebuild tests, CI and developer tools; reconcile documentation;
-validate and record the baseline before ordered feature implementation**.
-Rewrite the entry as needed. Temporary staging of legacy modules under `.old/`
-is permitted, but remove those modules before the recovery completion pass;
-preserve `.old/PLAN.md` and retained private evidence. Do not leave compatibility
-wrappers or unused old libraries simply to preserve old tests. Full test/tool/CI
-reconstruction follows runtime salvage; keep focused safety/static checks with
-runtime changes without maintaining obsolete test interfaces.
-Do not ask again for permission already recorded in the handoff. Open product
-defaults/capability proofs and significant feature changes retain their normal
-decision gates. During salvage, retain code only when it completes an entire existing subgoal
-through a real consumer; shared support needs a completed retained consumer.
-Drop partial features, even if their isolated tests pass. Existing components/tests
-receive acceptance or completion credit only from verified complete behavior. A handoff request does not start work reserved for
-the next session during the current pause.
+## Implementation sequence and preservation
+
+Follow the active task and session boundary in handoff. Preparing instructions or
+writing a handoff does not start implementation reserved for the next session.
+Do not repeat completed cleanup, history resets or branch deletion from old notes;
+those were one-time actions, not standing permissions. Do not ask again for an
+action still covered by the user's current authorization.
+
+Before each implementation package, identify its existing Sxx.yy requirements,
+observable entry/consumer, dependencies, missing behavior and focused acceptance
+checks in handoff. Start with the requested main goal and follow the necessary
+dependency order. Goal 1 includes all three features and source parity: it cannot
+be completed by a menu skeleton, and its dependencies must not be blocked until
+goal 1 is ticked. Working on those dependencies earns only their verified credit;
+it does not silently reorder product priorities or broaden scope.
+
+Build coherent workflows with only the shared support they need. Group libraries
+by reused responsibility under the specification's folder layout; do not grow an
+unconnected helper catalogue or a monolithic entry. A partial implementation is
+**work in progress**, not a completed subgoal and not a deletion instruction.
+Preserve useful work and record the concrete remaining integration/tests. Complete
+the missing behavior before seeking its tick. Do not invent smaller product
+subgoals, weaken acceptance or call a scaffold a feature to manufacture progress.
+
+Review and checkpoint each coherent package locally before advancing. A passing
+package may be committed as partial work with an honest message and unchecked
+product status. Interrupted work must remain recoverable with its known failures;
+never delete it just to leave a clean tree or passing gate.
+
+Before any authorized destructive replacement, bulk code/test deletion or history
+rewrite, stop affected writers and preserve the **actual current work**: committed
+history plus affected staged, unstaged and untracked source/tests and any needed
+ignored artifacts. Verify the saved file inventory and content against the working
+tree, and record the private recovery location and restore method in handoff.
+A Git bundle/ref protects commits only;
+it does not back up uncommitted rewrites or untracked new files. Keep private
+snapshots ignored and protect existing reference/firmware evidence. If a complete
+snapshot cannot be verified, do not proceed with destruction.
+
+Ordinary reviewed replacement/removal of superseded files within an authorized
+package may proceed after preserving the affected work and verifying consumers
+and meaningful regression coverage. Abandoning a feature, deleting an unfinished
+subsystem wholesale, changing the accepted delivery objective, or another history
+reset requires explicit authorization covering that concrete action. Prior
+salvage permission cannot supply it. Missing acceptance is a reason to finish,
+defer or report a blocker, never sufficient evidence that the source is useless.
+
+## Evidence and truthful reporting
+
+- Treat specifications as requirements, source inspection as source evidence,
+  worker reports as claims to review, and executed tests as evidence limited to
+  their actual inputs/platform. Never substitute one for another.
+- Before calling a workflow implemented, trace its real entry through shared
+  code to the observable result and inspect its failure paths. Before a tick,
+  confirm every clause of that subgoal, relevant acceptance cases and integrated
+  tests. Helper presence, mocks, test totals and static checks cannot prove an
+  absent production consumer.
+- Record exact commands, tested revision or dirty-tree state, pass/fail/skip
+  results and platform limits. Verify a CI run's full head SHA and all required
+  jobs; queued, skipped, cancelled, old or failed runs are not a current pass.
+  Later relevant edits invalidate affected earlier proof and require rechecking.
+- Distinguish planned, implemented-but-unverified, focused-local-passed,
+  platform-pending and accepted. Keep uncertain facts explicitly unverified;
+  investigate source/tool contracts rather than inventing commands or defaults.
+- Report loss, regression, drift and unfulfilled outcomes immediately. A task
+  completed administratively is not a successfully delivered feature or salvage.
+  Never describe a backup as preserving work outside its verified contents.
 
 ## Real completion and publication
 
 - `develop` is the only active branch and the repository default until the
-  project reaches reviewed 100%. The user removed local and origin `main`; do not
-  recreate it or change the default during implementation. The planned return to
+  project reaches reviewed 100%. Do not recreate local/origin `main` or change
+  the default during implementation. The planned return to
   main is an explicit readiness-time action; releases still need authorization.
 - Each subgoal requires written focused tests passing locally. If its proof needs
   BusyBox/Linux/kernel CI, keep it pending until the relevant exact-commit CI
-  passes. An early push may be proposed for that concrete evidence need; it still
-  needs explicit user approval outside an already eligible main-goal checkpoint.
-- The recovery publication requires the complete-subgoal audit, removal of
-  rejected runtime/tests/tools, documentation reconciliation and reviewed local
-  checks. No runtime area met the final retention rule: this baseline is planning
-  only, so its local/CI checks confer no product acceptance. The user authorized
-  publishing this cleanup after history reset. Normal implementation publication
-  follows main-goal checkpoints or an explicitly approved earlier subgoal CI gate.
-  Local reviewed commits are permitted. Exact full green CI gates product ticks.
-- The user authorizes recovery to reset **local develop history** after the
-  reviewed salvage baseline: preserve a verified private recovery bundle and
-  make the recovered tree a new root. This session remains salvage-only; ordered
-  goal 1 work is reserved for the next session. The user also authorizes publishing
-  the recovered develop history after code/tests/docs pass, using an exact
-  force-with-lease guard. The subsequent user-authorized main deletion is recorded
-  in handoff; tags remain outside these operations. Record exact old/new refs and
-  recovery instructions in the handoff/private receipt.
-- Before that push, audit the complete publishable tree for superseded runtime,
-  old test suites, obsolete tools/CI references and temporary `.old/` code/test
-  copies; all must be gone. Retain only recovered/reworked current implementation
-  and its new tests/tools/CI. The explicitly preserved archived plan and private
-  ignored evidence are references, not shipped legacy code. History rewriting
-  remains a separate decision and cannot substitute for this tree cleanup.
+  passes. Local proof that cannot run on this host stays explicitly pending;
+  do not call a platform skip a focused pass.
+- Publication follows an eligible main-goal checkpoint or an explicitly approved
+  earlier CI gate. Reviewed local commits do not imply push permission. Do not
+  carry one-time cleanup/publication grants into unrelated later work. Verify
+  exact remote state after an authorized push; never rewrite history or recreate
+  main as an incidental implementation or CI repair.
 - 100% means the approved CLI product is implemented, integrated, validated and
-  ready to use within declared support. Library merging/consolidation belongs to
-  the authorized recovery stage. Optional final documentation polish and broad
-  optimization may follow 100%. The user permits either a recovery guide rewrite
-  or removal of stale guides while retaining an accurate README/main-goal table
-  and planning files; full practical guides remain required for usable 100%.
-  Efficient tests and required safety validation precede ordered feature work.
+  ready to use within declared support. Coherent shared libraries, efficient tests,
+  required safety validation and practical guides are part of delivery. Optional
+  final documentation polish and broad optimization may follow 100%.
 - Product completion is **completed main goals / 16 × 100**: each fully completed
   approved main goal contributes 6.25%. Required subgoals and their evidence must
   all be complete before its main tick. Optional/out-of-scope items do not add
   goals. Partial subgoal work is visible but does not add product percentage.
-  Salvage workload percentage is a separate temporary estimate.
-- Main-goal checkpoints replace the former 1%/10% cadence. At a subgoal use focused
-  tests, relevant lint/static/whitespace checks and parent integration/review;
+  Task-workload estimates are separate and clearly labelled.
+- Main-goal checkpoints replace the former 1%/10% cadence; a completed goal is the
+  new publication milestone, not an invented numeric 1% increment. At a subgoal
+  use focused tests, relevant lint/static/whitespace checks and parent review;
   local commits may follow. Do not run full suites for each helper, worker or
   subgoal merely because it finished.
-- A main-goal completion candidate requires **full local and full CI suites**,
-  review of accumulated cases/parameters/fixtures/runners and test cost, relevant
-  documentation updates and the scope-drift review below. Run full CI on every
-  eligible checkpoint push and require green for that exact commit before its
-  main tick or further implementation; fix/re-push failures within the checkpoint.
-- For an explicitly approved earlier subgoal CI push, relevant BusyBox/kernel
-  evidence must pass before the subgoal tick. The workflow may still run the full
-  CI suite. This does not require a full local suite for an otherwise focused
-  subgoal, and does not earn an incomplete main-goal tick.
+- Normal publication order is mandatory: **implement every required subgoal and
+  pass its runnable focused local tests → review accumulated tests/cost, docs and
+  scope → pass the full applicable local suite → push → pass full CI for that
+  exact commit → award final subgoal/main-goal ticks and README completion**.
+  Explicitly list any platform-only proof pending for that CI run. A candidate
+  may be ready to push before those CI-dependent boxes can be ticked; this is not
+  a circular requirement to obtain CI before the push that runs it. Keep the
+  main goal and README incomplete until all required evidence is green.
+- An earlier subgoal push is eligible **only when most of that subgoal's required
+  behavioral proof needs Linux/BusyBox/kernel execution unavailable locally**.
+  Explain that concrete dependency and obtain explicit user approval; a minority
+  of platform cases, convenience or finishing a helper is insufficient. Otherwise
+  wait for the full main-goal candidate and local gate above. Judge substantive
+  proof, not a padded test count. An approved earlier push runs full CI and can
+  close only the fully proved subgoal; it needs no additional full local run just
+  for publication and cannot complete an unfinished main goal.
+- After any authorized runtime checkpoint push, require its exact prescribed CI
+  to pass before further implementation; fix/re-push failures within that same
+  checkpoint. This does not prevent dependency work before a goal is ready.
+  Record accepted test/run SHAs with the ticks. A later checklist/README-only
+  receipt references the tested code commit and remains documentation evidence;
+  never imply its new SHA was already tested. Such receipts may follow within the
+  same approved checkpoint using proportionate documentation checks.
 - Use the `zr0-test-efficiency` skill for low CPU/load, meaningful coverage, fixture
-  reuse and cost decisions during recovery and normal work. Pass it to each
-  test-writing agent. Recovery retains its one reviewed final full local baseline.
+  reuse and cost decisions. Pass it to each test-writing agent.
 - After each completed main-goal checkpoint, record a clean handoff with exact
   evidence, completed/16 percentage, remaining requirements and rough next scope.
   Continue authorized work subject to explicit pause/session/publication gates;
@@ -172,6 +240,14 @@ The parent must review each finished package and its validation before assigning
 the next task/worker. Review and integrate the combined active set before starting
 the dependent next stage; do not let a worker self-advance through pending work.
 
+Every brief names the Sxx.yy scope, actual consumer, allowed files, agreed
+interfaces, exclusions, focused checks and stop condition. Workers return changed
+files, implemented versus remaining behavior, exact validation/skips and risks;
+they cannot award ticks, expand scope, discard another package or publish work.
+The parent reads the diff and relevant call paths, checks the evidence and resolves
+discrepancies before accepting a result. Record that review and the next owner in
+handoff; a worker's completion message alone does not close the package.
+
 The parent reconciles code/test discrepancies against approved behavior and source
 evidence, never by assuming one is right or weakening assertions to fit code. Tiny
 understood fixes may be parent-owned after explicit ownership transfer; broader
@@ -189,19 +265,21 @@ coverage. Historical test counts are not targets. Review cost before each develo
 push and after roughly three batches using existing timings; no extra full run
 solely to measure cost. Do not claim skips/timeouts as passes or mask faulty code.
 
-The current recovery baseline contains no runtime or runtime test suite.
-`python3 tools/check.py` and CI validate planning documents only; they deliberately
-reject newly added runtime until the gate is replaced. Do not report them as full
-local/runtime/BusyBox passes or use them to tick a product subgoal.
+At the first runtime package, replace the temporary planning-only inventory ban
+with meaningful focused/full runtime checks and required platform coverage; keep
+the useful specification/checklist/link checks. Never delete valid implementation
+to satisfy the temporary empty-tree rule, or bypass it without replacement tests.
+Update the runner, CI and concise developer command notes together. Planning-only
+CI cannot be called full runtime CI or used for product acceptance.
 
-When implementation resumes, reuse `.venv` if suitable and recreate the required
-pinned developer dependencies and focused/full runner alongside the first real
-workflow. Python/pytest/lint/format tools remain developer-only. Restore meaningful
-shell syntax, ShellCheck, shfmt, focused tests and required BusyBox/kernel proof
-for the code actually delivered. Use `zr0-test-efficiency`, modest worker counts
-and owned isolated fixtures. The full runner must not commit/push/watch CI.
-Eligible develop pushes/PRs require the applicable full CI; documentation-only
-work uses proportionate checks. CI targets develop during implementation; any
+Reuse `.venv` if suitable and provide the required pinned developer dependencies
+with the focused/full runner. Python/pytest/lint/format tools remain developer-only.
+Use shell syntax, ShellCheck, shfmt, meaningful focused tests and required
+BusyBox/kernel proof for the code actually delivered. Use `zr0-test-efficiency`,
+modest worker counts and owned isolated fixtures. The full runner must not
+commit/push/watch CI.
+Authorized runtime pushes/PRs run full CI; documentation-only work uses
+proportionate checks. CI targets develop during implementation; any
 later release-branch scope needs explicit review. Do not promote runtime for
 convenience.
 
@@ -211,10 +289,9 @@ links with tasteful visual polish. Distinguish intended from available behavior;
 no helper-based progress, unsupported installer or unearned completion labels.
 CFMgr WebUI is optional future work, outside current scope/checklist/percentage.
 
-Follow the recovery documentation option recorded in handoff. Maintain accurate
-README scope and status throughout; link only to retained guides. If stale guides
-are removed, keep interim developer/tool notes small until most or all goals are
-met. README remains the implementation overview. Build full architecture,
+Maintain accurate README scope and status throughout; link only to available
+guides. Keep interim developer/tool notes small until most or all goals are met.
+README remains the implementation overview. Build full architecture,
 developer and operating guides near product readiness, before claiming 100%;
 do not preserve outdated guidance simply to satisfy a file list. Apply the same
 GitHub documentation skill to temporary notes and full guides. Review
@@ -222,14 +299,11 @@ retained README/guides at each main-goal checkpoint, recording deferred or justi
 files in handoff. No checkpoint/test/commit history in operating guides. Apply the
 documentation skill and sanitized examples/screenshots.
 
-During recovery, keep focused validation with each coherent code/test change;
-complete the test-cost review and test rework before running the full local suite.
-Apply the agreed documentation rewrite/cleanup after code/tests/CI/tools stabilize,
-then finish the applicable local baseline and documentation checks. With all
-runtime discarded, the current gate is planning-only; previous tests for removed
-code supply no acceptance. Required BusyBox/kernel/full runtime proof must return
-with new runtime work. Never invent a completed main goal merely to publish
-recovery work. Follow the current publication authorization in handoff.
+Write behavioral tests with each coherent implementation package; the salvage-only
+tests-last exception has ended. Finalize code and tests before describing their
+behavior in guides. At each main-goal candidate review test cost and documentation
+before the full local gate, then require the exact full CI gate. A documentation
+consistency check cannot establish semantic correctness or runtime safety.
 
 ## Runtime and safety boundaries
 
@@ -275,7 +349,8 @@ recovery work. Follow the current publication authorization in handoff.
 ## Pause and handoff
 
 On pause/stop, start no new package. Finish only the agreed safe current boundary,
-stop required work and record exact commits, checks/skips, uncommitted files,
-agent/command state, unresolved findings and next actions in checklist/handoff.
+stop required work and record exact commits, checks/skips, uncommitted/untracked
+work, recovery locations, agent/command state, unresolved findings and next actions
+in handoff. Checklist receives only justified acceptance/evidence updates.
 Leave no required worker/job active at completed handoff. Resume only within the
 user's instruction and current gate.

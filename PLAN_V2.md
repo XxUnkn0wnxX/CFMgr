@@ -1,6 +1,6 @@
 # CFMgr — product and implementation plan v2
 
-> **Reviewed scope and recovery baseline.** This plan describes the complete intended CFMgr product. Delivery and acceptance items live in [PLAN_V2_checklist.md](PLAN_V2_checklist.md); product acceptance remains unassessed. Recovery authorization, sequencing and current coordination belong in [PLAN_V2_handoff.md](PLAN_V2_handoff.md) and [AGENTS.md](AGENTS.md). Existing code must be audited and validated against these requirements before receiving completion credit. Open decisions remain explicitly identified.
+> **Product specification.** This plan defines the intended CFMgr behavior, requirements and open product decisions. Delivery status and acceptance evidence live in [PLAN_V2_checklist.md](PLAN_V2_checklist.md). Current authorization, ownership and next actions belong in [PLAN_V2_handoff.md](PLAN_V2_handoff.md); standing implementation rules belong in [AGENTS.md](AGENTS.md).
 
 CFMgr is a terminal menu and command-line manager for Cloudflare DDNS, one Cloudflared tunnel, and Cloudflare IP-Sync on Asuswrt-Merlin. Each feature has its own setup and saved activation state, with shared infrastructure where their requirements overlap.
 
@@ -107,15 +107,6 @@ features should extend explicit module interfaces with thin menu/dispatch change
 without repeatedly rewriting a monolithic entry. Consolidation must preserve
 explicit consumers, feature isolation and the safety contracts of reused code;
 fewer files alone do not establish a coherent architecture or delivered feature.
-
-Recovery retains code only where it can finish at least one entire existing
-subgoal through a real consumer. Most of that substantive requirement should be
-salvageable, with the remaining behavior completed before retention is accepted.
-Partial feature implementations and disconnected scaffolding are removed and
-rebuilt in their checklist turn. Shared support stays only when consumed by a
-fully completed retained subgoal. Written focused tests and required exact CI
-must pass before the final tick. Recovery selection and proof status are tracked
-in the checklist/handoff and do not reduce the product scope below.
 
 The package manifest must enumerate safe nested relative paths. Install the entry at `/jffs/scripts/cfmgr.sh`; keep its verified modules, support files and separate catalog under `/jffs/addons/CFMgr.d/`, preserving responsibility categories. Freeze the exact source-to-installed mapping before installer implementation and use it consistently in imports, manifests, hooks and recovery.
 
