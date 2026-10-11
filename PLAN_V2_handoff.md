@@ -97,8 +97,8 @@ subsequent request, GitHub default was changed to develop, origin/main was delet
 with an exact lease against f4b3136762bda6fb2f9c31796338ddc27444a403, local main
 was deleted and origin/HEAD was set to origin/develop. Server refs confirm develop
 as the only branch and advertised HEAD. Develop stays default until reviewed
-100%; choose any later release-branch policy explicitly then. Do not recreate
-main during implementation. S07.07 and source defaults mirror this policy.
+100%; the planned return to main is an explicit readiness-time action. Do not
+recreate main during implementation. S07.07 and source defaults mirror this policy.
 
 Local safety ref `refs/safety/salvage-before-e571555` also retains old develop;
 it is not pushed. Exact old/new/tree IDs, backup digest and final publication/CI
@@ -109,6 +109,22 @@ rewrite, unrelated worktree pruning or private artifact publication occurred. Fo
 belong to the new history and cannot tick any runtime subgoal.
 
 ## Preserved product decisions and next session
+
+Source selection amendment: one code-defined repository/branch pair in the future
+trusted entry serves fresh install, module fetches and self-update. Use develop
+for now, then change that one branch default to main at the approved readiness
+switch. Only developer=true honors configured repository/branch/full-commit
+selectors. Normal operation ignores those overrides; successful authorized
+replacement resets source fields, while status/checks and failed/cancelled work
+preserve config. Derive every fetch URL from the effective repository and one pin;
+no per-module/catalog default copies. S07.06/.07 and V46 mirror this contract.
+
+Retained-code audit: there is no active installer/updater/module-fetch runtime.
+The only remaining code files are tools/check.py and the CI workflow. The only
+branch literals in them are the workflow's two develop event filters; these are
+CI routing, not runtime fetch defaults. Python main() and “main goals” text are
+not branch settings. Empty module/test placeholders and the archived plan remain;
+no runtime hardcode patch or new scaffolding was needed.
 
 README stays focused on implementation overview/status. Temporary developer notes
 remain small and use the same GitHub documentation skill. Build the full guide

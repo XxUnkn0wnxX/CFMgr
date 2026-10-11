@@ -123,7 +123,7 @@ The package manifest must enumerate safe nested relative paths. Install the entr
 | --- | --- |
 | `/jffs/scripts/cfmgr.sh` | Small executable entry, mode `755`; installed package generation must match its modules. |
 | `/jffs/addons/CFMgr.d/config` | Extensionless, versioned, private main settings and typed credential authority; root-owned `600`, never executable/sourced. Defaults are generated from code on a genuinely fresh installation. Ship no public config/template containing these settings. |
-| `/jffs/addons/CFMgr.d/catalog.txt` | Separate snapshot-supplied module catalog; replaced with the selected verified package. Source repository/branch/full-commit selection and developer flag belong in main config, never catalog authority. |
+| `/jffs/addons/CFMgr.d/catalog.txt` | Separate snapshot-supplied module catalog; replaced with the selected verified package. One code-defined default repository/branch serves normal operation; main-config repository/branch/full-commit overrides apply only in developer mode, never through catalog authority. |
 | `/jffs/addons/CFMgr.d/setup-drafts` | Inert private DDNS/IP-Sync completed-input drafts, validation metadata and resume stage. |
 | `/jffs/addons/CFMgr.d/setup-state` | Independently readable non-secret installation/generation and incomplete-operation/removal/reset guards; not an archive-restored execution authority. |
 | `/jffs/addons/CFMgr.d/recovery/` | Small bounded private transaction metadata and recovery copies; available without Entware; retained while recovery is unresolved. |
@@ -200,7 +200,7 @@ Detect retained setup and incomplete guards **before** generating defaults. Miss
 | Check for CFMgr updates | On. |
 | Auto-update CFMgr | Off; requires saved explicit opt-in. |
 | Developer mode | `developer=false`, manual config editing only. |
-| Manager source selection | Main config defaults to the approved normal branch (`develop` until reviewed 100%); developer mode retains an explicitly selected branch/full immutable commit for testing. |
+| Manager source selection | One code-defined repository/branch pair supplies normal defaults (`develop` temporarily, `main` on the approved return); only developer mode honors configured repository/branch/full-commit overrides. |
 | External amtm update permission | Off if that optional supported integration is later selected. |
 
 `configured` means a complete validated setup, `enabled` is the user's saved On/Off intent, `installed` describes an owned binary/component installation, and `maintenance_enabled` separately authorizes Cloudflared maintenance. Running, connected, waiting, faulted and cleanup-required are observations/guards, not interchangeable flags. File presence, a draft or an updater preference never implies configured or enabled.
@@ -568,8 +568,8 @@ Idle Off/unconfigured maintenance completes verified artifact publication/recove
 | S07.03 | Manual update/force | Explicit revalidation/confirmation, current skip or complete reinstall; compatible older manager snapshot only through confirmed developer force. |
 | S07.04 | Unattended installation | Saved opt-in and source/ownership rechecked at switch; active transactions defer safely. |
 | S07.05 | Developer suppression | Manual-only flag suppresses checks/auto/external callbacks; confirmed force retains normal verification. |
-| S07.06 | Source selection and catalog | Main config selects repository/branch/full commit; snapshot catalog maps modules in one immutable complete package. |
-| S07.07 | Developer source retention | Developer keeps selected source; normal updates return the selector to the approved normal branch (develop until reviewed 100%); every package replacement also replaces its catalog. |
+| S07.06 | Source selection and catalog | One code-defined repository/branch default serves install and self-update; only developer mode permits config source overrides; catalog maps one immutable package. |
+| S07.07 | Developer source retention | Developer retains configured source; normal operations use the shared code defaults (temporarily develop, later main); successful replacement resets source fields and replaces its catalog. |
 | S07.08 | Trusted complete package | Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
 | S07.09 | State-preserving update | No healthy feature reinstall/restart/provider call or config loss; guarded actual owned drift only. |
 | S07.10 | Self-update failure recovery | Distinct transfer/storage/switch/hook-reinjection/overlap/opt-out/rollback boundaries preserve last trusted complete package and report incomplete integration honestly. |
@@ -591,15 +591,40 @@ Group **Check for updates** (On by default) and **Auto-update CFMgr** (Off by de
 
 A launch offer needs current matching source/version evidence; stale metadata, a changed source or developer mode cannot authorize it. Saved unattended auto-update remains a separate opt-in path; coalesce ownership with foreground offers and never replace code beneath an active menu/confirmation. Declining the foreground offer does not silently change saved check/auto preferences.
 
-Cache availability/due state in bounded RAM, not JFFS per tick. Coalesce launch/timer/manual overlap; use main-config source selection under the developer policy below and retain the action's resolved commit pin. For development branches compare verified commit identity coherently even when a development version string is unchanged. Defer a switch while interactive/mutation owners or recovery would make it unsafe; do not replace modules beneath an invocation using another generation.
+Cache availability/due state in bounded RAM, not JFFS per tick. Coalesce launch/timer/manual overlap; use the shared effective-source selection under the developer policy below and retain the action's resolved commit pin. For development branches compare verified commit identity coherently even when a development version string is unchanged. Defer a switch while interactive/mutation owners or recovery would make it unsafe; do not replace modules beneath an invocation using another generation.
 
 ### Catalog and developer behavior
 
 `developer` and manager source repository/branch/full-commit selection are manual-file-only main-config settings. True suppresses automatic/manual manager checks, offers, unattended installation and external check/update callbacks while preserving saved preferences. It does not alter Cloudflared update preferences. Explicit confirmed `uf` uses and retains the configured developer source, with a clear target warning and normal verification. Editing a selector alone fetches or activates nothing.
 
-With developer=false, effective manager update/reinstall selection is the code-defined approved normal branch in the configured repository: `develop` throughout implementation until reviewed 100%. A successful transaction also resets the saved branch/commit selection to that normal branch, preserving unrelated settings. The repository default remains `develop` over this period; `main` is removed. Choose the release-branch policy explicitly at readiness, with no automatic branch recreation or source change merely because a progress marker was reached. With developer=true, retain the selected branch or full immutable commit across reinstalls. Failed/cancelled transactions do not reset source settings or partially publish another source. Show the effective source before confirmation. There is no menu source setter or remote `catalog_url` indirection.
+Define the manager's default repository and branch together in **one small
+code-defined block in the trusted entry**, available before modules are fetched.
+The normal repository is `https://github.com/XxUnkn0wnxX/CFMgr`; its branch is
+`develop` during implementation. On the approved return to `main` at readiness,
+change only that central branch value. Do not duplicate these defaults in the
+installer, update checker, force/reinstall path, libraries or catalog, or infer
+runtime source authority from GitHub's current default-branch setting.
 
-`catalog.txt` remains in the repository root and installed manager directory. It is package data mapping named modules to validated paths/URLs, not the authority for branch/commit selection. Every successful package replacement, including developer `uf`, installs the catalog from that same verified snapshot with its matching entry/modules. Developer mode no longer preserves old catalog bytes. Validate bounded catalog grammar, approved HTTPS repository, commit binding and safe destinations before use; malformed installed catalog requires explicit verified repair, never a silent switch to another source.
+Fresh installation without config uses that same pair. Install-time module
+fetches and self-update checks/downloads consume one shared effective-source
+selection, resolve a branch once to a full commit and derive manifest/catalog/
+module URLs from that repository, pin and validated relative paths. The catalog
+must not introduce independently hardcoded repository/branch URLs or overrides.
+
+With developer=false, both repository and branch come from the code defaults;
+ignore saved repository/branch/full-commit overrides. A successful authorized
+update/reinstall also resets the saved source fields to the default repository
+and branch and clears a saved commit pin, preserving unrelated settings. Merely
+checking/status-reading does not rewrite config. With developer=true, validated
+main-config repository and branch/full-commit selectors control the effective
+source and survive reinstalls. Developer suppression and explicit confirmed force
+still follow the policy above. Failed/cancelled transactions do not reset source
+settings or partially publish another source. Show the effective source before
+confirmation. There is no menu source setter or remote `catalog_url` indirection.
+GitHub stays on develop until reviewed 100%; branch recreation/default changes at
+readiness are explicit repository actions, not automatic runtime behavior.
+
+`catalog.txt` remains in the repository root and installed manager directory. It is package data mapping named modules to validated source-relative paths and destinations; fetch URLs are derived from the selected repository/commit, never independent source authority. Every successful package replacement, including developer `uf`, installs the catalog from that same verified snapshot with its matching entry/modules. Developer mode no longer preserves old catalog bytes. Validate bounded catalog grammar, approved HTTPS repository, commit binding and safe destinations before use; malformed installed catalog requires explicit verified repair, never a silent switch to another source.
 
 Resolve a selected branch once to an immutable full commit; acquire its manifest, catalog and complete required tree from that snapshot. The tree already includes unchanged files last edited before the selected commit. Do not resurrect files deleted by that commit, invent modules absent from its tree, scan history to fill gaps or mix in current modules. Retain the action's pin and recheck main-config source/intent before activation. Unsupported old package/schema formats fail with a concrete compatibility explanation.
 
@@ -1378,7 +1403,7 @@ These details need concrete supported decisions before their dependent product b
 | Area | Decision/proof required |
 | --- | --- |
 | Configuration/transactions | Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
-| Package distribution | Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, main-config source grammar/normal-branch reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
+| Package distribution | Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, developer-only config source grammar/shared-default reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
 | Supported platforms | Actual native paths/options/CA, minimal kernel/userspace ABI/capability profiles and official binary compatibility; no unsupported legacy promise based solely on feed names. |
 | Storage/processes | Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | Budgets/readiness | Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |

@@ -69,8 +69,8 @@ the next session during the current pause.
 
 - `develop` is the only active branch and the repository default until the
   project reaches reviewed 100%. The user removed local and origin `main`; do not
-  recreate it or change the default during implementation. Choose any later
-  release-branch policy explicitly at readiness; releases still need authorization.
+  recreate it or change the default during implementation. The planned return to
+  main is an explicit readiness-time action; releases still need authorization.
 - Each subgoal requires written focused tests passing locally. If its proof needs
   BusyBox/Linux/kernel CI, keep it pending until the relevant exact-commit CI
   passes. An early push may be proposed for that concrete evidence need; it still
@@ -243,9 +243,11 @@ recovery work. Follow the current publication authorization in handoff.
   `/jffs/scripts/cfmgr.sh`, modules/support/catalog under `/jffs/addons/CFMgr.d/`.
   Generate private extensionless config from code-defined defaults only after
   retained setup checks; no public config/template. Preserve complete verified
-  package generations and settings under v2 contracts. Source selection belongs in
-  main config; developer mode preserves that selection, while catalog is replaced
-  with the selected verified package. Group shared code by reused responsibility;
+  package generations and settings under v2 contracts. Follow section 7: one
+  trusted-entry repository/branch default serves install and self-update; config
+  overrides apply only in developer mode. Derive module URLs from that effective
+  source and one commit pin; catalog is replaced with the verified package.
+  Group shared code by reused responsibility;
   do not turn each helper into a separate library or expand a monolithic entry.
 - Use normal installed opkg for missing/unusable mapped requirements, preserving
   healthy tools; routine upgrades are user-managed. Selected force reinstall is
