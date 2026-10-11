@@ -4,6 +4,8 @@
 # Stream verified storage.sh followed by this script through router /bin/sh.
 # --define only defines developer-test functions and performs no filesystem work.
 # Native flush/rename/readback evidence is not power-loss or Save acceptance.
+# Native BusyBox test -ef is required and verified by the descriptor fixtures.
+# shellcheck disable=SC3013
 
 cfmgr_probe_root_uid() {
 	awk '$1 == "Uid:" { n++; if (NF != 5 || $2 != "0" || $3 != "0" || $4 != "0" || $5 != "0") bad=1 }
@@ -65,7 +67,8 @@ cfmgr_probe_write() (
 	cfmgr_probe_result=1
 	umask 077
 
-	# shellcheck disable=SC2329
+	# Invoked by the EXIT trap; older ShellCheck cannot trace that callback.
+	# shellcheck disable=SC2329,SC2317
 	cfmgr_probe_cleanup() {
 		exec 3<&-
 		if [ "$cfmgr_probe_root_created" = 1 ]; then

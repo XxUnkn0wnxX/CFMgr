@@ -424,6 +424,24 @@ def apply_configuration(path: Path, values: dict[str, str]) -> None:
     path.write_text("\n".join(lines) + "\n")
 
 
+def check_busybox_symbols(source: Path, values: dict[str, str]) -> None:
+    # allnoconfig generates each Config.in from the pinned vendor Config.src
+    # and embedded applet declarations. Reject typos even in disabled options.
+    symbols: set[str] = set()
+    for path in source.rglob("Config.in"):
+        symbols.update(
+            "CONFIG_" + symbol
+            for symbol in re.findall(
+                r"^\s*(?:menu)?config\s+(\w+)\b", path.read_text(), re.MULTILINE
+            )
+        )
+    unknown = set(values) - symbols
+    _require(
+        not unknown,
+        "unknown vendor BusyBox configuration: " + ", ".join(sorted(unknown)),
+    )
+
+
 def check_configuration(path: Path, values: dict[str, str]) -> None:
     lines = set(path.read_text().splitlines())
     for key, value in values.items():
@@ -477,6 +495,8 @@ def build_key(
         build_kernel if kind == "kernel" else build_busybox,
     ):
         digest.update(inspect.getsource(function).encode())
+    if kind == "busybox":
+        digest.update(inspect.getsource(check_busybox_symbols).encode())
     digest.update(str(RECIPE_VERSION).encode())
     return digest.hexdigest()
 
@@ -535,6 +555,7 @@ def build_busybox(item: dict[str, str], cache: Path) -> Path:
     ]
     run([*make, "allnoconfig"], cwd=source)
     values = configuration(FIXTURES / "busybox.config")
+    check_busybox_symbols(source, values)
     apply_configuration(source / ".config", values)
     run([*make, "oldconfig"], cwd=source, input_data=b"\n" * 2048)
     check_configuration(source / ".config", values)

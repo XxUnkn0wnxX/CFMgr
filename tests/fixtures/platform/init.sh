@@ -30,11 +30,15 @@ set -- --define
 . /cfmgr/probe.sh || fail definitions
 [ "$(ls -A /mnt/MERLIN)" = lost+found ] || fail source-mutation
 /bin/sh /cfmgr/probe.sh --run /mnt/MERLIN/tmp || fail native-probe
-[ -d /mnt/MERLIN/tmp ] && [ -z "$(ls -A /mnt/MERLIN/tmp)" ] || fail probe-cleanup
+if [ ! -d /mnt/MERLIN/tmp ] || [ -n "$(ls -A /mnt/MERLIN/tmp)" ]; then
+	fail probe-cleanup
+fi
 exec 3</dev/null
 fsync_diagnostic=$(/bin/fsync /proc/self/fd/3 2>&1)
 fsync_result=$?
-[ "$fsync_result" = 0 ] && [ -n "$fsync_diagnostic" ] || fail native-error-fixture
+if [ "$fsync_result" != 0 ] || [ -z "$fsync_diagnostic" ]; then
+	fail native-error-fixture
+fi
 case $fsync_diagnostic in
 "/proc/self/fd/3: "*) ;;
 *) fail native-error-diagnostic ;;

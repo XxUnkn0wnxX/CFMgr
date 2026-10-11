@@ -266,3 +266,25 @@ def test_kernel_cache_key_tracks_build_inputs_without_guest_or_feed_changes(
     toolchain = manifest["toolchain"]
     kernel_config.write_text(kernel_config.read_text() + "CONFIG_TEST_DIFFERENT=y\n")
     assert platforms.build_key("kernel", kernel, toolchain) != original
+
+
+def test_busybox_fragment_rejects_unknown_enabled_and_disabled_symbols(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "Config.in").write_text("config STATIC\n\tbool\n")
+    shell = tmp_path / "shell"
+    shell.mkdir()
+    (shell / "Config.in").write_text(
+        "config FEATURE_SH_IS_ASH\n\tbool\nconfig ASH_BUILTIN_TEST\n\tbool\n"
+    )
+    values = {
+        "CONFIG_STATIC": "y",
+        "CONFIG_FEATURE_SH_IS_ASH": "y",
+        "CONFIG_ASH_BUILTIN_TEST": "n",
+    }
+    platforms.check_busybox_symbols(tmp_path, values)
+    for value in ("y", "n"):
+        with pytest.raises(platforms.PlatformError, match="CONFIG_SH_IS_ASH"):
+            platforms.check_busybox_symbols(
+                tmp_path, values | {"CONFIG_SH_IS_ASH": value}
+            )
