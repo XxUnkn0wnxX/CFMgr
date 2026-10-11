@@ -63,12 +63,32 @@ do not repeat an already answered permission question.
 Keep the specification free of progression diaries/checkpoint receipts. Checklist
 mirrors its main-goal/subgoal table structure; handoff is current working notes,
 not another specification or accumulating transcript. Git retains old snapshots.
+The parent may automatically trim, reorganize or rebuild a messy/stale handoff
+without separate approval for that housekeeping. PLAN_V2.md and its checklist
+remain the sources of truth for requirements and accepted status, subject to the
+latest explicit user amendments. A handoff refresh cannot redefine them, invent
+approval, award ticks or discard work. Preserve current authorization limits,
+unanswered questions, unresolved blockers/proof, active owners/jobs, uncommitted
+work and necessary recovery references while removing superseded narrative.
+
+If context is lost or the handoff conflicts with evidence, pause affected changes
+and re-audit the relevant codebase before rebuilding it: read the specification
+and checklist, inspect actual entry/consumer paths, Git refs/diffs and unfinished
+files, and verify the relevant tests/CI receipts and worker/job state. Run focused
+checks only where needed to resolve uncertainty; do not launch a full suite just
+to reconstruct notes. Rebuild the handoff from verified findings, mark unresolved
+facts unknown and report any scope/status discrepancy. Do not silently rewrite
+the plan/checklist to fit code or copy stale completion claims into the new notes.
+
 Preserve [.old/PLAN.md](.old/PLAN.md) as reference, never an active roadmap or reason
 to resume archived milestones. Only `PLAN_V2_handoff.md` stores the hidden session-ID
 record, beginning with the verified v2 starting session. The parent appends each
 actual verified new session there and preserves the accumulated IDs when refreshing
 handoff notes. Do not import the old session list or invent IDs. Keep these IDs in
-Markdown comments in handoff, never in the specification or checklist.
+one HTML comment block immediately below the handoff title, hidden in rendered
+Markdown, never in the specification or checklist. Preserve that entire existing
+block through every trim/rewrite, and append only newly verified actual parent
+session IDs; child IDs or a new turn/compaction do not establish a new session.
 
 ## Implementation sequence and preservation
 

@@ -29,6 +29,11 @@ consistency and deliberately reject runtime until replaced alongside real tests.
 | Parent | AGENTS.md and all three PLAN_V2 files only | Rules corrected; independent findings reviewed and integrated; scope-preservation, planning and whitespace checks passed. |
 | readiness_review | Read-only rules review; no owned files | Review and follow-up gate checks returned; parent addressed findings. Stopped. |
 
+The user also authorizes automatic handoff trimming/rebuilding under AGENTS.md.
+The specification/checklist remain authoritative; lost context requires a code
+and evidence audit before reconstructing notes. Preserve the hidden session-ID
+block above and all unresolved work/approval boundaries through every refresh.
+
 Latest user clarification is incorporated in AGENTS.md: main-goal checkpoints
 replace the old 1% rule; normally every subgoal's focused local checks precede the
 full local suite, push and exact full CI, then the goal/README completion. Earlier
@@ -42,14 +47,15 @@ silence never authorizes the dependent work. No approval question is pending now
 
 No runtime, tests, tools, CI, README, global profile or agent configuration changes
 were made. All delegated work is complete; no test jobs remain. This preparation
-is saved locally on develop in the commit containing this handoff, titled
-Harden implementation rules and preserve unfinished work. Preserve that local
-checkpoint on resume and inspect git status/log for any later changes. No new
+was saved locally on develop in readiness commit
+`13faab20265c817552e3ac2cf823211ea5badf2b`; the handoff-refresh amendment is a
+subsequent local documentation checkpoint. Preserve both on resume and inspect
+git status/log for any later changes. No new
 push is authorized by this preparation request, and no new CI run is claimed.
 
 ## Verified baseline and evidence
 
-Published baseline and parent of this local readiness checkpoint:
+Published baseline, before the local instruction checkpoints:
 `4ce6a9aa521ac807c9934627592d5922cc83913c`.
 Its exact [Planning-only checks run 38179572930](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38179572930)
 completed successfully. This is the published baseline's evidence, not CI for
