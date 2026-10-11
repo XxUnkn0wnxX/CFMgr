@@ -93,3 +93,58 @@ jobs:
 
       - name: Run full suite with mandatory BusyBox ash storage proof
         run: .venv/bin/python tools/test.py --require-busybox
+
+  kernel-platforms:
+    name: ARM guest kernel ${{ matrix.kernel }} / pinned vendor BusyBox
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        kernel: ['4.1.51', '4.1.52', '4.19.183', '4.19.294']
+
+    steps:
+      - name: Check out source
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install bounded guest build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes gcc-arm-linux-gnueabi libc6-dev-armel-cross qemu-system-arm bc bison flex libssl-dev e2fsprogs
+
+      - name: Identify immutable build cache keys
+        id: fixture
+        env:
+          CFMGR_KERNEL: ${{ matrix.kernel }}
+        run: |
+          python3 tools/test_platforms.py --cache-keys --kernel "$CFMGR_KERNEL" >> "$GITHUB_OUTPUT"
+
+      - name: Cache verified downloads and legacy kernel compiler
+        # actions/cache v4, official tag resolved 2026-10-12
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            .tmp/platform-cache/downloads
+            .tmp/platform-cache/toolchain
+          key: platform-downloads-v1-${{ matrix.kernel }}-${{ hashFiles('tests/fixtures/platforms.json') }}
+
+      - name: Cache pinned vendor BusyBox builds
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
+          key: platform-busybox-v1-${{ steps.fixture.outputs.busybox }}
+
+      - name: Cache verified generic kernel image
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .tmp/platform-cache/kernels/${{ matrix.kernel }}/${{ steps.fixture.outputs.kernel }}
+          key: platform-kernel-v1-${{ matrix.kernel }}-${{ steps.fixture.outputs.kernel }}
+
+      - name: Boot actual kernel and execute both Entware ARM ABIs
+        env:
+          CFMGR_KERNEL: ${{ matrix.kernel }}
+        run: python3 tools/test_platforms.py --run --kernel "$CFMGR_KERNEL"

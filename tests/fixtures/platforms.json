@@ -1,0 +1,544 @@
+{
+  "schema": 1,
+  "evidence": "Pinned test inputs only; no model acceptance. Rebuilt upstream kernels are not exact Merlin firmware kernels. Entware index metadata is not executable usability proof.",
+  "sources": [
+    "https://github.com/RMerl/asuswrt-merlin.ng/wiki/Supported-Devices",
+    "https://github.com/Entware/Entware/wiki",
+    "https://github.com/Entware/Entware/wiki/Using-GCC-for-native-compilation"
+  ],
+  "kernels": [
+    {
+      "version": "4.1.51",
+      "url": "https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.1.51.tar.xz",
+      "sha256": "02285752a9da7a2e05c2a0fc8def00d73088bd3018ad3d7de876a1b81b382a11",
+      "busybox": "baseline",
+      "models": [
+        "GT-AX11000",
+        "RT-AX88U"
+      ],
+      "firmware_reference": "3004.388.12_2 baseline source",
+      "merlin": {
+        "commit": "433fc608f5fc1689f3d3c3ab5cd2a7d57102260f",
+        "path": "release/src-rt-5.02axhnd/kernel/linux-4.1"
+      }
+    },
+    {
+      "version": "4.1.52",
+      "url": "https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.1.52.tar.xz",
+      "sha256": "6ad9389e55e0ea57768eae173747058a4487fa3630e10a7999cfec9f945e559c",
+      "busybox": "ax-current",
+      "models": [
+        "RT-AX58U V1",
+        "RT-AX3000 V1"
+      ],
+      "firmware_reference": "pinned main source; model image acceptance pending",
+      "merlin": {
+        "commit": "b053ba701af02e46a86d465d82cc2a7891a288a7",
+        "path": "release/src-rt-5.02axhnd.675x/kernel/linux-4.1"
+      }
+    },
+    {
+      "version": "4.19.183",
+      "url": "https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.19.183.tar.xz",
+      "sha256": "bacfd95ddf51df70b2962fc685b5217fc449e644f16996e49d87eb259b84a5f5",
+      "busybox": "ax-current",
+      "models": [
+        "RT-AX88U_PRO",
+        "GT-AX6000",
+        "GT-AX11000_PRO"
+      ],
+      "firmware_reference": "pinned main source; model image acceptance pending",
+      "merlin": {
+        "commit": "b053ba701af02e46a86d465d82cc2a7891a288a7",
+        "path": "release/src-rt-5.04axhnd.675x/kernel/linux-4.19"
+      }
+    },
+    {
+      "version": "4.19.294",
+      "url": "https://www.kernel.org/pub/linux/kernel/v4.x/linux-4.19.294.tar.xz",
+      "sha256": "ccadbde939a788934436125a1ecd4464175b68ebe6c18072fbc90c8596eea00f",
+      "busybox": "be-current",
+      "models": [
+        "RT-BE96U",
+        "GT-BE19000AI"
+      ],
+      "firmware_reference": "pinned asuswrt6 source; model image acceptance pending",
+      "merlin": {
+        "commit": "5ae56b079dd89ed5108b1ccdbb835ee0779444b9",
+        "path": "release/src-rt-5.04behnd.4916/kernel/linux-4.19"
+      }
+    }
+  ],
+  "busyboxes": [
+    {
+      "id": "baseline",
+      "version": "1.25.1",
+      "repository": "https://github.com/RMerl/asuswrt-merlin.ng.git",
+      "commit": "433fc608f5fc1689f3d3c3ab5cd2a7d57102260f",
+      "path": "release/src/router/busybox"
+    },
+    {
+      "id": "ax-current",
+      "version": "1.25.1",
+      "repository": "https://github.com/RMerl/asuswrt-merlin.ng.git",
+      "commit": "b053ba701af02e46a86d465d82cc2a7891a288a7",
+      "path": "release/src/router/busybox"
+    },
+    {
+      "id": "be-current",
+      "version": "1.25.1",
+      "repository": "https://github.com/RMerl/asuswrt-merlin.ng.git",
+      "commit": "5ae56b079dd89ed5108b1ccdbb835ee0779444b9",
+      "path": "release/src/router/busybox"
+    }
+  ],
+  "toolchain": {
+    "url": "https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/4.9.4/x86_64-gcc-4.9.4-nolibc-aarch64-linux.tar.xz",
+    "sha256": "d9037bedbc526ffd2fc03f7a4641f3d9f68dc4a48252192bc088a0e8d997dbcd",
+    "prefix": "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-"
+  },
+  "dependency_sets": {
+    "shared": [
+      "jq",
+      "coreutils-timeout",
+      "coreutils-sha256sum"
+    ],
+    "conditional": [
+      "flock",
+      "bind-dig"
+    ]
+  },
+  "feeds": [
+    {
+      "id": "aarch64-k3.10",
+      "architecture": "aarch64-3.10",
+      "kernel_floor": "3.10",
+      "index": {
+        "url": "https://bin.entware.net/aarch64-k3.10/Packages.gz",
+        "sha256": "3e8ce5633dcfacaae96b625b0f568c606c85b88d28c2fef8fc99671a7c8320ee"
+      },
+      "packages": [
+        {
+          "name": "bind-dig",
+          "version": "9.20.18-2",
+          "filename": "bind-dig_9.20.18-2_aarch64-3.10.ipk",
+          "sha256": "6dfadce0967852b81ad197de6f5d6573955e0894825ee8cf5c3abd59b30c39fc",
+          "depends": [
+            "bind-libs",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "bind-libs",
+          "version": "9.20.18-2",
+          "filename": "bind-libs_9.20.18-2_aarch64-3.10.ipk",
+          "sha256": "87956c600e3b9ea496fc8c4c1382bae0444a6859936d270401faa19b6426cafa",
+          "depends": [
+            "libatomic",
+            "libc",
+            "libnghttp2",
+            "libopenssl",
+            "libpthread",
+            "librt",
+            "libssp",
+            "liburcu",
+            "libuv",
+            "zlib"
+          ]
+        },
+        {
+          "name": "coreutils",
+          "version": "9.9-2",
+          "filename": "coreutils_9.9-2_aarch64-3.10.ipk",
+          "sha256": "80f5d41f3073aba2ea2b83bd863fdee90ff201bed6283f3a7222a864fd60c815",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "coreutils-sha256sum",
+          "version": "9.9-2",
+          "filename": "coreutils-sha256sum_9.9-2_aarch64-3.10.ipk",
+          "sha256": "61039284e8d0c9024e331faff415e380fe9e377799586f2aee8411c0ee6e3faf",
+          "depends": [
+            "coreutils",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "coreutils-timeout",
+          "version": "9.9-2",
+          "filename": "coreutils-timeout_9.9-2_aarch64-3.10.ipk",
+          "sha256": "8fd7f1f3c291b8556ca5cc77a55f16f656630ebc0af42ba879f0b62b35584516",
+          "depends": [
+            "coreutils",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "flock",
+          "version": "2.41.3-1",
+          "filename": "flock_2.41.3-1_aarch64-3.10.ipk",
+          "sha256": "8291d1f20b224d2aa8fc270c39eb57816d10fb618b58e57ebc8ac0a1ef1d5181",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "jq",
+          "version": "1.8.1-2",
+          "filename": "jq_1.8.1-2_aarch64-3.10.ipk",
+          "sha256": "1bdc2fd362b22f85a5186e69f9c205aed23ec3db2697e2e701c9de34109617d3",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "libatomic",
+          "version": "8.4.0-12",
+          "filename": "libatomic_8.4.0-12_aarch64-3.10.ipk",
+          "sha256": "2a3ab50ae1173bc85d16fe17cfff87f3e983f87beecb11a13c15775d9e9bedb4",
+          "depends": [
+            "libgcc"
+          ]
+        },
+        {
+          "name": "libc",
+          "version": "2.27-12",
+          "filename": "libc_2.27-12_aarch64-3.10.ipk",
+          "sha256": "4d7825a9ddf7a382a985a44ec85c4ab458f8ebe12c3e3b5fb25da814f71167bb",
+          "depends": [
+            "libgcc"
+          ]
+        },
+        {
+          "name": "libgcc",
+          "version": "8.4.0-12",
+          "filename": "libgcc_8.4.0-12_aarch64-3.10.ipk",
+          "sha256": "123882cd0063342b8cd058ea97541601d793ef1f847920e1da6be4c3a0b8da8b",
+          "depends": []
+        },
+        {
+          "name": "libnghttp2",
+          "version": "1.66.0-1",
+          "filename": "libnghttp2_1.66.0-1_aarch64-3.10.ipk",
+          "sha256": "2739a9f955baf30fe3559512dd9ea8b5295ddb752748c287f9f2f8ea8037f8fe",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "libopenssl",
+          "version": "3.5.5-1",
+          "filename": "libopenssl_3.5.5-1_aarch64-3.10.ipk",
+          "sha256": "d1b3738612336121d5510eb5f212f1154e30db1653be827bc09721a53ac2d260",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp",
+            "zlib"
+          ]
+        },
+        {
+          "name": "libpthread",
+          "version": "2.27-12",
+          "filename": "libpthread_2.27-12_aarch64-3.10.ipk",
+          "sha256": "a2af364e6e139069f8b37dd9e7f2accaf529efd35738c6d381d2e43e78b876d4",
+          "depends": [
+            "libgcc"
+          ]
+        },
+        {
+          "name": "librt",
+          "version": "2.27-12",
+          "filename": "librt_2.27-12_aarch64-3.10.ipk",
+          "sha256": "86d4adc05b939793f4fb7d54ecc6c34b867a1fe9c449983393f708f245b72b43",
+          "depends": [
+            "libpthread"
+          ]
+        },
+        {
+          "name": "libssp",
+          "version": "8.4.0-12",
+          "filename": "libssp_8.4.0-12_aarch64-3.10.ipk",
+          "sha256": "8d85e466962569005ec604a64b2ffa739454a9db017a9a5e8dbe23b3c4bf2c25",
+          "depends": []
+        },
+        {
+          "name": "liburcu",
+          "version": "0.15.6-1",
+          "filename": "liburcu_0.15.6-1_aarch64-3.10.ipk",
+          "sha256": "ba15e71a7d0488b68adda16aed015e444f33153d258716a5d76487ee106cde96",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "libuv",
+          "version": "1.48.0-1",
+          "filename": "libuv_1.48.0-1_aarch64-3.10.ipk",
+          "sha256": "e1ffa3f77c61d727e09f59a4276003e5fc6064a24ba5308db3cb3689f8b1508b",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "zlib",
+          "version": "1.3.1-1",
+          "filename": "zlib_1.3.1-1_aarch64-3.10.ipk",
+          "sha256": "30470ce83557e2438cac7a0a874a1fb7e50570c4a7cbbe3f2ac1b4a2d1efb372",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "armv7sf-k3.2",
+      "architecture": "armv7-3.2",
+      "kernel_floor": "3.2",
+      "index": {
+        "url": "https://bin.entware.net/armv7sf-k3.2/Packages.gz",
+        "sha256": "1d4010a6e054552b4d5d8c8ce8b53bd2d22bb0c085d43e197cede440d49be0f6"
+      },
+      "packages": [
+        {
+          "name": "bind-dig",
+          "version": "9.20.18-2",
+          "filename": "bind-dig_9.20.18-2_armv7-3.2.ipk",
+          "sha256": "3d84f2a5117500c494e9d3cfcad7c9abf5061cf19baf2dd0bb29a2cf904f0ea6",
+          "depends": [
+            "bind-libs",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "bind-libs",
+          "version": "9.20.18-2",
+          "filename": "bind-libs_9.20.18-2_armv7-3.2.ipk",
+          "sha256": "05683b507e1403f59a11f6f8f11b448d965c0a06350f4d28f14cf8ec13946f8f",
+          "depends": [
+            "libatomic",
+            "libc",
+            "libnghttp2",
+            "libopenssl",
+            "libpthread",
+            "librt",
+            "libssp",
+            "liburcu",
+            "libuv",
+            "zlib"
+          ]
+        },
+        {
+          "name": "coreutils",
+          "version": "9.9-2",
+          "filename": "coreutils_9.9-2_armv7-3.2.ipk",
+          "sha256": "03caf27713c4df3e95030062e27d446e3138be8ccb305482782ecab678e97667",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "coreutils-sha256sum",
+          "version": "9.9-2",
+          "filename": "coreutils-sha256sum_9.9-2_armv7-3.2.ipk",
+          "sha256": "836517ddbd54ecd783756a395157b738bb9a4381baa4b5eda8ddabb644c95158",
+          "depends": [
+            "coreutils",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "coreutils-timeout",
+          "version": "9.9-2",
+          "filename": "coreutils-timeout_9.9-2_armv7-3.2.ipk",
+          "sha256": "26e52e7bba8dc7c8eee82be87ae1abd92fd924b5c86b1ac5f6ddaeb4e0d56157",
+          "depends": [
+            "coreutils",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "flock",
+          "version": "2.41.3-1",
+          "filename": "flock_2.41.3-1_armv7-3.2.ipk",
+          "sha256": "cdf46244b3fa0e7e44351aac19c1c33934a9147aaaa4d8ba01ceefbc91bc6bf9",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "jq",
+          "version": "1.8.1-2",
+          "filename": "jq_1.8.1-2_armv7-3.2.ipk",
+          "sha256": "61ec9f983049b9c51afe1b56f5f3fb1212dd8528502c3d1b8f25442d751654c7",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "libatomic",
+          "version": "8.4.0-12",
+          "filename": "libatomic_8.4.0-12_armv7-3.2.ipk",
+          "sha256": "f26ddb8e697dfc9de628452c794ee93c87fc648ef490c5cf970bb458f024956c",
+          "depends": [
+            "libgcc"
+          ]
+        },
+        {
+          "name": "libc",
+          "version": "2.27-12",
+          "filename": "libc_2.27-12_armv7-3.2.ipk",
+          "sha256": "9804543763cac74b46ef12b667c346bb4639bb9db2f8a4946da848cc76d126ad",
+          "depends": [
+            "libgcc"
+          ]
+        },
+        {
+          "name": "libgcc",
+          "version": "8.4.0-12",
+          "filename": "libgcc_8.4.0-12_armv7-3.2.ipk",
+          "sha256": "7020bb4a3e39cf5ad590148504c3c7106c8736172725e3f34dff64168ddcf71f",
+          "depends": []
+        },
+        {
+          "name": "libnghttp2",
+          "version": "1.66.0-1",
+          "filename": "libnghttp2_1.66.0-1_armv7-3.2.ipk",
+          "sha256": "8158d5e5e1bdfec5b6e28635d4d8e5c4629923cc0650fdbfe61dace3eeea04b9",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "libopenssl",
+          "version": "3.5.5-1",
+          "filename": "libopenssl_3.5.5-1_armv7-3.2.ipk",
+          "sha256": "96f9fc0c1e9829b04defd1a26c9b6d0bf7c7424e067116b5d0c972d311432fde",
+          "depends": [
+            "libatomic",
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp",
+            "zlib"
+          ]
+        },
+        {
+          "name": "libpthread",
+          "version": "2.27-12",
+          "filename": "libpthread_2.27-12_armv7-3.2.ipk",
+          "sha256": "03192e5c3a9e91c37ce0c756343fdc1b4caa079a897f726ce5df151a606f5de1",
+          "depends": [
+            "libgcc"
+          ]
+        },
+        {
+          "name": "librt",
+          "version": "2.27-12",
+          "filename": "librt_2.27-12_armv7-3.2.ipk",
+          "sha256": "84482e1946131949e28eddf17a75ac00053d0ebd6db098c31bb8858e8e58809e",
+          "depends": [
+            "libpthread"
+          ]
+        },
+        {
+          "name": "libssp",
+          "version": "8.4.0-12",
+          "filename": "libssp_8.4.0-12_armv7-3.2.ipk",
+          "sha256": "5c967d29d059e89514c6d20875a1da36fdaae28983b329123b5c57c7fbc12a33",
+          "depends": []
+        },
+        {
+          "name": "liburcu",
+          "version": "0.15.6-1",
+          "filename": "liburcu_0.15.6-1_armv7-3.2.ipk",
+          "sha256": "407b89a6d24e79c3760afb50b6088ce0783f246153855bfd178811d9b38f16c2",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "libuv",
+          "version": "1.48.0-1",
+          "filename": "libuv_1.48.0-1_armv7-3.2.ipk",
+          "sha256": "f8c3a99014611dcc6791f7e6015236c5979f91a89e0746eda8d7acec1026826c",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        },
+        {
+          "name": "zlib",
+          "version": "1.3.1-1",
+          "filename": "zlib_1.3.1-1_armv7-3.2.ipk",
+          "sha256": "8cca514bb067aa4c03155c609a916cf0036afc2919eac3957079668d10991c5e",
+          "depends": [
+            "libc",
+            "libpthread",
+            "librt",
+            "libssp"
+          ]
+        }
+      ]
+    }
+  ]
+}

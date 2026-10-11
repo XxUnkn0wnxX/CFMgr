@@ -29,9 +29,16 @@ checkpoints are authorized. The user now conditionally authorizes earlier CI
 pushes when most meaningful focused subgoal proof requires unavailable
 BusyBox/Linux/platform execution: explain the dependency, run full exact-commit
 CI and close only actually proved scope. A minority of platform cases does not
-qualify. This storage-helper package has not been judged eligible or pushed.
+qualify. The platform package is eligible under that conditional grant: most
+substantive S02.09 compatibility proof requires ARM kernel/BusyBox/Entware
+execution unavailable on this macOS host. Its first full CI push is being prepared;
+no push has occurred yet. This does not complete S02.09 or authorize deployment.
 No current permission covers live installation/deployment, provider mutation or
 another history/reset operation.
+The user permits extracted Merlin firmware material or public source as CI test
+fixtures and leaves workflow organization to the parent. This package uses public
+source with one Checks workflow and a four-profile matrix capped at two concurrent
+jobs. It does not authorize execution/deployment of firmware on the live router.
 The prior cleanup/publication/main-deletion grants are completed one-time actions.
 Significant product/scope changes still require the user's concrete decision.
 
@@ -54,11 +61,12 @@ This does not authorize another JFFS attempt, installs, service changes or stres
 
 ## Verified starting state
 
-- Reviewed local checkpoint: `3e164914ef23d6d021a9f8c03cf629903a44b75c`
-  (`Start native storage validation and runtime checks`). It contains the tested
-  partial package and current instructions; develop is one commit ahead of the
-  last verified origin/develop. No push has occurred. The current correction and user-amendment diff is locally validated and awaiting
-  its reviewed local checkpoint.
+- Reviewed local checkpoints: `3e164914ef23d6d021a9f8c03cf629903a44b75c`
+  (initial native storage/runtime checks) and
+  `6b411736c989d822e9ccad34eae111bd45bb64b8` (native probe correction, retained USB
+  scratch base and user compatibility amendment). Develop is two commits ahead
+  of last verified origin/develop; no push has occurred. Current handoff notes
+  track the next platform-fixture package and are documentation working state.
 - Local and remote develop both started at
   `6dc6dbd5571beee037cf97949a449beff9dcd74d`, clean. Read-only remote inspection
   confirmed develop is advertised HEAD and remote main is absent.
@@ -126,31 +134,51 @@ user immediately. Keep durable Save acceptance pending; no specification change
 or reduced guarantee is approved. Pinned source bytes/hashes are retained under
 `.tmp/storage-review/jffs2-source-provenance.json` for bounded review.
 
-**Proposed, not approved:** clarify S02.09/S04.03 to retain JFFS support with an
-explicit firmware error-reporting limit: CFMgr checks every exposed write/flush/
-rename error and retains staged generations, intent/guards, readback and recovery;
-it cannot promise detection of failures the kernel reports as success. Mirror the
-capability limit in the checklist and test reported-failure handling, without
-claiming a normal probe proves hidden-error detection. Alternative: leave the
-stronger guarantee unchanged and keep affected durable Save support unaccepted
-until a verified error-reporting route exists. No runtime support/acceptance or
-specification change is authorized by this proposal alone.
-The user answered by reaffirming support for Merlin's full supported kernel range,
-using their router firmware as the baseline. That compatibility requirement is
-accepted and mirrored in S02.09 in specification/checklist. It is not approval to
-weaken S04.03. Map official supported generations and their native error paths;
-the durability guarantee remains unchanged and its affected acceptance pending.
+**User decision: keep Save acceptance pending and investigate alternatives.**
+After the parent explained the discarded error result, the user explicitly chose
+not to adopt the proposed weaker firmware-limit guarantee. S04.03 remains
+unchanged. Do not re-ask this same question without new evidence or silently
+accept exposed-errors-only coverage. Investigate a supported reliable reporting
+or persistence-verification route, preserving the required GT-AX11000 baseline.
+The user additionally approves safeguards/rechecks as workarounds only if they do
+not cause false positives; this is mirrored in S04.03's detailed contract and V63.
+It does not approve cached-readback-only acceptance. Latest steering asks for
+a practical workaround with little complexity or extra user effort; otherwise
+the user is willing to consider accepting the limitation. Complete the bounded
+review and explain the result before changing Save acceptance or its guarantee.
+
+Alternative-path review returned and parent checked the decisive source paths:
+O_SYNC/O_DSYNC route through the same fsync; no direct_IO callback exists; ioctl
+returns ENOTTY; page-cache reread can still use JFFS2's write buffer. A checked
+padding write can force buffer rollover, but `jffs2_wbuf_recover` may drop earlier
+data after a recovery read/allocation failure and then allow the new node's retry
+to succeed. Thus a successful write barrier does not certify earlier transaction
+data. Baseline `wbuf.c:318-348` and `write.c:363-371` establish this counterexample;
+latest source has the same path. No reliable alternative is established yet.
+Direct raw-flash verification would need a coherent namespace/data reconstruction
+under GC; current Entware indexes have nand/ubi tools but no selected JFFS2 reader.
+This remains investigation, not an approved runtime design or live experiment.
+The user's latest amendment qualifies that range by Entware support and required
+package availability/usability on the model's firmware/kernel/userspace ABI. Keep
+GT-AX11000 as the required baseline and modern Merlin routers; exclude profiles
+whose dependencies are unavailable/incompatible, with concrete reasons. There is
+no obligation to support obsolete hardware for its own sake. This is mirrored in
+S02.09/V02 and does not approve weakening S04.03. Temporary Entware loss still
+requires native recovery. The durability guarantee remains unchanged and pending.
+Parent has now verified the same discarded flush return in the exact baseline
+4.1.51 tree and all three newer selected source versions, retained in ignored
+`.tmp/platform-review/source-index.json`. Official Merlin Addons API/User scripts
+and a bounded SNBForums search provided no verified alternate error-reporting
+interface. The explicit user decision above supersedes that pending question;
+source/CI-layout instructions do not alter it. No approval question is open now.
 
 ## Current ownership and contracts
 
 | Owner | Exclusive files/scope | State |
 | --- | --- | --- |
-| Parent | PLAN_V2.md, checklist, handoff, AGENTS.md, README; architecture and integration | Native descriptor correction approved within probe scope; review and authorized USB execution after focused proof. |
-| probe_compat | tools/router-storage-probe.sh; tests/test_storage.py | Returned: native admission/cleanup correction and explicit USB mode, 22 host passes/9 Linux skips. Parent reviewed code/test diff; ownership returned to parent for integration and permitted USB verification. |
-| storage_flush | modules/lib/storage.sh; tests/test_storage.py; tests/fixtures/fsync_legacy.c; tools/router-storage-probe.sh | Returned; parent reviewed and reran focused tests. Ownership returned to parent. |
-| runtime_checks | tools/check.py; tools/test.py; requirements-dev.txt; .github/workflows/checks.yml; docs/development.md | Returned and parent-reviewed; original workflow preserved, focused/full runner and required BusyBox job wired. Ownership returned to parent. |
-| source_parity | Read-only supported-model/kernel mapping; no writable files | Map current official supported devices to pinned release source kernel families; do not infer coverage from the three cached images. |
-| persistence_review | Read-only native probe identity and kernel-error review | Both returned and parent-reviewed; kernel reporting blind spot confirmed as source evidence, no observed live loss. No router execution. |
+| Parent | Planning files, docs, runtime/test integration and CI checkpoint | All implementation files returned. Final platform review and focused checks passed; preparing eligible early CI. |
+| persistence_review | Read-only positive raw-flash transaction-witness review; no writable files | Prior flush/raw-dump limitations returned. Final bounded review checks unique immutable records, positive evidence and practical existing-tool options. No router work, builds or acceptance. |
+| probe_compat, storage_flush, runtime_checks, source_parity | No active ownership | Packages/research returned and reviewed; no active writers or router sessions. |
 
 Shared interface: `cfmgr_storage_flush_fd ABSOLUTE_FSYNC_EXECUTABLE`; caller owns
 admitted target/storage and opens read-only fd 3. Library sourcing performs no
@@ -205,6 +233,34 @@ actual BusyBox ash. `CFMGR_REQUIRE_BUSYBOX=1` makes absent required platform pro
 a failure, not a green skip. Parent reviews both packages and their combined
 checks before the next dependent package.
 
+Platform package contract (S02.04/S02.09, V02; current consumers are the native
+storage probe and required dependency command checks): boot rebuilt upstream
+ARM64 4.1.51/4.1.52/4.19.183/4.19.294 kernels, using a pinned legacy kernel
+compiler; compile vendor BusyBox 1.25.1 separately with a libc-equipped compiler.
+Use one vCPU and bounded memory per guest, at most two compiler jobs per runner,
+and a kernel matrix capped at two concurrent CI jobs.
+Pin current aarch64-k3.10 and armv7sf-k3.2 package versions/hashes, including
+transitive dependencies. ARM32 compatibility must really execute, not be inferred
+from ARM64 success. Downloads/builds run only in explicit Linux CI tooling, never
+the host focused suite or router. Guest tests verify version identity, real
+storage-wrapper/probe behavior and required JSON/timeout/SHA tools. Test scripts
+must fail missing/mismatched proof and check an exact completion marker, not only
+QEMU exit zero. No package maintainer scripts or router firmware are executed.
+Generic same-version kernel execution is ABI/behavior evidence, not an exact
+Merlin vendor kernel, NAND/JFFS2 failure test or model support tick. Preserve the
+existing full CI jobs and documentation-only exclusions; add this required job
+and focused offline tool tests in the same package. Parent reviews source, tests,
+cost and focused local checks before an eligible platform CI push.
+
+Parent verified both official package indexes and all 18 selected IPK hashes per
+feed (about 11.3 MB total compressed), including the transitive closure. Baseline
+read-only native SSH metadata selects aarch64-k3.10 with jq 1.8.1-2, timeout/SHA
+9.9-2, bind-dig 9.20.18-2 and Entware libc 2.27-12. Static jq ELF inspection confirms
+ELF64/AArch64 with `/opt/lib/ld-linux-aarch64.so.1`, and ELF32/ARM for armv7sf-k3.2
+with `/opt/lib/ld-linux.so.3`. This is availability/ABI metadata, not execution.
+Coreutils payloads install under `/opt/libexec/*-coreutils`; CI calls those files
+directly instead of executing package scripts that configure normal alternatives.
+
 ## Evidence pending and next actions
 
 1. Parent reviewed/integrated the probe correction and ran
@@ -217,27 +273,43 @@ checks before the next dependent package.
    host evidence is superseded for changed probe behavior. No full local suite
    was run for this correction. The USB receipt above is separate native happy
    path evidence and does not replace the skipped Linux fault cases.
-2. Existing full host/required BusyBox CI already collects the changed storage
-   tests and needs no new dependency for this correction. It has not run for
-   current code. Keep documentation-only exclusions, planning checks, original
-   trigger/checkout settings and modest resource bounds. Parent corrected an
-   initial worker draft's unrelated workflow drift before the first commit.
-3. The user's next instruction is to obtain fixtures spanning Merlin's oldest
-   through current supported kernel/BusyBox generations and exercise unavailable
-   platform checks through CI. Map official supported devices to pinned source
-   versions/configs first; three cached images do not establish the endpoints.
-   Add focused versioned fixtures and CI in one coherent package. Kernel-sensitive
-   proof must actually boot/run the selected kernel or stay explicitly pending;
-   changing a userspace container does not change its host kernel. Respect the
-   approved earlier platform-CI publication gate; no extra full local run.
-4. Preserve the S04.03 kernel error-reporting limitation and pending scope
-   decision. The user's response reaffirmed full supported-range compatibility;
-   no reduced durability guarantee was approved. Reconcile the native route
-   across that range before accepting or changing the Save contract.
-5. Continue goal 2's usable installation/storage/dependency workflow, then return
-   towards goal 1. Keep incomplete subgoals unchecked and preserve useful work.
-   Another JFFS probe requires fresh permission. Router test writes are confined
-   to the retained `/mnt/MERLIN/tmp`; cleanup its test contents, never that base.
+2. The platform package is implemented and parent-reviewed: runner/manifest,
+   three pinned vendor BusyBox sources, four upstream kernel versions, both
+   Entware feeds, guest fixtures, focused tests and the four-job workflow matrix.
+   Parent ran `.venv/bin/python tools/test.py --focused tests/test_platforms.py`
+   on dirty `6b411736`: **15 passed, zero skips in 0.21s**, with planning,
+   whitespace, Ruff/format/compile, shell syntax, ShellCheck and shfmt passing.
+   No full local suite was run. Offline tests do not execute ARM programs.
+3. Parent independently staged all 36 actual hash-verified IPKs using the new
+   extractor and checked required ELF class/machine for both feeds. Host
+   libarchive read the resulting initramfs (175 entries). These are data-format
+   checks, not execution. Private artifact:
+   `.tmp/platform-review/feed-stage-briuimcw/feeds.cpio.gz`.
+   Corrected actual flock payload path, ext4 lost+found/options, kernel config
+   dependencies and cache scope during review. No maintainer scripts executed.
+4. Package cost review: serial host tests; up to two CI kernel jobs, two compiler
+   jobs per runner, one CPU/256 MB per guest. Caches keep verified immutable
+   artifacts; runtime fixes reuse unchanged builds. Existing planning, full host
+   and mandatory BusyBox jobs remain; docs-only exclusions remain. Updated
+   developer commands describe generic-kernel and hardware evidence limits.
+5. Next: commit reviewed package, verify unchanged remote develop, explain the
+   eligible platform dependency and push under the user's conditional grant.
+   Require all seven required jobs green at that exact code SHA before further
+   implementation; fix/re-push failures within this checkpoint. Compilation,
+   kernel config, boot and actual Entware execution remain pending until CI.
+   No current subgoal or main goal is complete; TLS/firmware admission and actual
+   production consumers remain missing even if these selected guests pass.
+6. S04.03 remains pending. Simple alternatives checked so far do not expose the
+   discarded JFFS2 flush error. Raw-dump tools do not provide a coherent live
+   filesystem snapshot; existing jffs2reader omits CRC checks. Final review asks
+   whether a narrow positive transaction witness avoids that limitation, while
+   respecting the user's preference against complex custom verification.
+   No router cache clear, remount, freeze, raw-flash scan or further write is
+   authorized/performed. Do not weaken the guarantee by an implementation edit.
+7. Continue goal 2's usable installation/storage/dependency workflow when the CI
+   gate and Save design permit, then return towards goal 1. Another JFFS probe
+   requires fresh permission. Router test writes remain confined to the retained
+   `/mnt/MERLIN/tmp`; remove owned test artifacts, never that base.
 
 Other unresolved schema, storage, supervision, package, provider and default
 choices remain in specification section 17 and checklist. No proposed logging,

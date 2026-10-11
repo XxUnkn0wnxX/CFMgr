@@ -1,0 +1,1017 @@
+#!/usr/bin/env python3
+"""Explicit developer-only generic ARM kernel/Entware guest proof; never a router tool."""
+
+from __future__ import annotations
+
+import argparse
+import gzip
+import hashlib
+import inspect
+import io
+import json
+import os
+import posixpath
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tarfile
+import urllib.parse
+import urllib.request
+from functools import lru_cache
+from pathlib import Path, PurePosixPath
+from typing import Any, BinaryIO
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURES = ROOT / "tests/fixtures/platform"
+MANIFEST = ROOT / "tests/fixtures/platforms.json"
+VERSIONS = {"4.1.51", "4.1.52", "4.19.183", "4.19.294"}
+MAX_DOWNLOAD = 256 * 1024 * 1024
+MAX_PACKAGE = 32 * 1024 * 1024
+RECIPE_VERSION = 1
+
+
+class PlatformError(Exception):
+    """Missing, malformed or failed platform evidence."""
+
+
+def _require(condition: bool, message: str) -> None:
+    if not condition:
+        raise PlatformError(message)
+
+
+def _token(value: Any, label: str) -> str:
+    _require(
+        isinstance(value, str) and bool(re.fullmatch(r"[A-Za-z0-9_.+-]+", value)), label
+    )
+    return value
+
+
+def _pin(value: Any, length: int = 64) -> str:
+    _require(
+        isinstance(value, str) and bool(re.fullmatch(rf"[0-9a-f]{{{length}}}", value)),
+        "invalid source digest",
+    )
+    return value
+
+
+def _relative(value: str) -> PurePosixPath:
+    _require(
+        isinstance(value, str) and "\x00" not in value and "\n" not in value,
+        "invalid archive path",
+    )
+    path = PurePosixPath(value)
+    _require(
+        not path.is_absolute() and ".." not in path.parts,
+        f"unsafe archive path: {value}",
+    )
+    return path
+
+
+def _https(value: str, hosts: set[str]) -> str:
+    parsed = urllib.parse.urlsplit(value)
+    _require(
+        parsed.scheme == "https"
+        and parsed.hostname in hosts
+        and not parsed.username
+        and not parsed.password
+        and not parsed.query
+        and not parsed.fragment,
+        "untrusted source URL",
+    )
+    return value
+
+
+def load_manifest(path: Path = MANIFEST) -> dict[str, Any]:
+    manifest = json.loads(path.read_text())
+    _require(manifest.get("schema") == 1, "unsupported platform schema")
+    busyboxes = manifest["busyboxes"]
+    ids = [_token(item["id"], "invalid BusyBox id") for item in busyboxes]
+    _require(
+        len(ids) == len(set(ids)) and bool(ids), "duplicate or absent BusyBox sources"
+    )
+    for item in busyboxes:
+        _require(
+            item["version"] == "1.25.1"
+            and item["repository"] == "https://github.com/RMerl/asuswrt-merlin.ng.git",
+            "vendor BusyBox source mismatch",
+        )
+        _pin(item["commit"], 40)
+        _require(
+            item["path"] == "release/src/router/busybox",
+            "unexpected vendor source path",
+        )
+    kernels = manifest["kernels"]
+    _require(
+        {item["version"] for item in kernels} == VERSIONS
+        and len(kernels) == len(VERSIONS),
+        "four exact kernel profiles required",
+    )
+    for item in kernels:
+        _require(item["busybox"] in ids, "missing kernel BusyBox source")
+        expected = f"https://www.kernel.org/pub/linux/kernel/v4.x/linux-{item['version']}.tar.xz"
+        _require(item["url"] == expected, "kernel archive identity mismatch")
+        _pin(item["sha256"])
+        _pin(item["merlin"]["commit"], 40)
+        _relative(item["merlin"]["path"])
+    toolchain = manifest["toolchain"]
+    _https(toolchain["url"], {"mirrors.edge.kernel.org", "www.kernel.org"})
+    _pin(toolchain["sha256"])
+    _require(
+        toolchain["prefix"] == "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-",
+        "kernel compiler prefix mismatch",
+    )
+    _require(
+        manifest["dependency_sets"]
+        == {
+            "shared": ["jq", "coreutils-timeout", "coreutils-sha256sum"],
+            "conditional": ["flock", "bind-dig"],
+        },
+        "dependency command contract mismatch",
+    )
+    feeds = manifest["feeds"]
+    _require(
+        {item["id"] for item in feeds} == {"aarch64-k3.10", "armv7sf-k3.2"}
+        and len(feeds) == 2,
+        "both ARM Entware feeds required",
+    )
+    for feed in feeds:
+        expected_arch = "aarch64-3.10" if feed["id"] == "aarch64-k3.10" else "armv7-3.2"
+        _require(feed["architecture"] == expected_arch, "feed ABI mismatch")
+        names = [
+            _token(item["name"], "invalid package name") for item in feed["packages"]
+        ]
+        _require(len(names) == len(set(names)), "duplicate package pins")
+        required = set(
+            manifest["dependency_sets"]["shared"]
+            + manifest["dependency_sets"]["conditional"]
+        )
+        _require(required <= set(names), "missing dependency command package")
+        for package in feed["packages"]:
+            _token(package["version"], "invalid package version")
+            _require(
+                package["filename"]
+                == f"{package['name']}_{package['version']}_{expected_arch}.ipk",
+                "package filename identity mismatch",
+            )
+            _pin(package["sha256"])
+            _require(
+                set(package["depends"]) <= set(names),
+                "incomplete pinned dependency closure",
+            )
+    return manifest
+
+
+def verify_hash(path: Path, expected: str) -> None:
+    _pin(expected)
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    _require(digest.hexdigest() == expected, f"SHA256 mismatch: {path.name}")
+
+
+def download(
+    url: str, expected: str, destination: Path, *, limit: int = MAX_DOWNLOAD
+) -> Path:
+    _https(
+        url,
+        {
+            "www.kernel.org",
+            "mirrors.edge.kernel.org",
+            "cdn.kernel.org",
+            "bin.entware.net",
+        },
+    )
+    if destination.exists():
+        verify_hash(destination, expected)
+        return destination
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_suffix(destination.suffix + ".part")
+    try:
+        request = urllib.request.Request(
+            url, headers={"User-Agent": "CFMgr-platform-CI/1"}
+        )
+        with (
+            urllib.request.urlopen(request, timeout=60) as source,
+            temporary.open("xb") as target,
+        ):
+            _https(
+                source.geturl(),
+                {
+                    "www.kernel.org",
+                    "mirrors.edge.kernel.org",
+                    "cdn.kernel.org",
+                    "bin.entware.net",
+                },
+            )
+            total = 0
+            while chunk := source.read(1024 * 1024):
+                total += len(chunk)
+                _require(total <= limit, "download size bound exceeded")
+                target.write(chunk)
+        verify_hash(temporary, expected)
+        temporary.replace(destination)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return destination
+
+
+def _parents_safe(root: Path, relative: PurePosixPath) -> Path:
+    cursor = root
+    _require(root.is_dir() and not root.is_symlink(), "unsafe extraction root")
+    for part in relative.parts[:-1]:
+        cursor /= part
+        _require(not cursor.is_symlink(), "archive traverses existing symlink")
+        cursor.mkdir(exist_ok=True)
+        _require(cursor.is_dir(), "archive parent is not a directory")
+    return root.joinpath(*relative.parts)
+
+
+def extract_tar(
+    source: Path | BinaryIO,
+    root: Path,
+    *,
+    package: bool = False,
+    limit: int = 1536 * 1024 * 1024,
+) -> None:
+    """Never follow archive symlinks; absolute /opt links are staged inertly last."""
+    root.mkdir(parents=True, exist_ok=True)
+    links: list[tuple[tarfile.TarInfo, PurePosixPath]] = []
+    count = total = 0
+    arguments = (
+        {"name": str(source)} if isinstance(source, Path) else {"fileobj": source}
+    )
+    with tarfile.open(mode="r:*", **arguments) as archive:
+        for member in archive:
+            count += 1
+            total += member.size
+            _require(
+                count <= (8192 if package else 100000)
+                and total <= limit
+                and member.size <= MAX_DOWNLOAD,
+                "archive expansion bound exceeded",
+            )
+            relative = _relative(member.name)
+            if not relative.parts:
+                _require(member.isdir(), "invalid archive root entry")
+                continue
+            if package:
+                _require(relative.parts[0] == "opt", "package writes outside opt")
+            destination = _parents_safe(root, relative)
+            if member.issym() or member.islnk():
+                _require(
+                    "\x00" not in member.linkname and "\n" not in member.linkname,
+                    "invalid archive link",
+                )
+                target = PurePosixPath(member.linkname)
+                if target.is_absolute():
+                    _require(
+                        package and member.issym() and target.parts[:2] == ("/", "opt"),
+                        "unsafe absolute archive link",
+                    )
+                    normalized = posixpath.normpath(member.linkname)
+                    _require(
+                        normalized == "/opt" or normalized.startswith("/opt/"),
+                        "archive link escapes opt",
+                    )
+                else:
+                    combined = (
+                        member.linkname
+                        if member.islnk()
+                        else posixpath.join(str(relative.parent), member.linkname)
+                    )
+                    normalized = posixpath.normpath(combined)
+                    _require(
+                        normalized != ".." and not normalized.startswith("../"),
+                        "archive link escapes root",
+                    )
+                    if package:
+                        _require(
+                            normalized == "opt" or normalized.startswith("opt/"),
+                            "archive link escapes opt",
+                        )
+                links.append((member, relative))
+            elif member.isdir():
+                _require(
+                    not destination.is_symlink(), "archive directory overwrites symlink"
+                )
+                destination.mkdir(exist_ok=True)
+                _require(destination.is_dir(), "archive directory collision")
+            elif member.isfile():
+                _require(
+                    not destination.exists() and not destination.is_symlink(),
+                    "duplicate archive file or symlink collision",
+                )
+                stream = archive.extractfile(member)
+                _require(stream is not None, "missing archive member data")
+                with stream, destination.open("xb") as output:
+                    shutil.copyfileobj(stream, output, length=1024 * 1024)
+                destination.chmod(member.mode & 0o777)
+            else:
+                raise PlatformError("archive special file is not permitted")
+    for member, relative in links:
+        destination = _parents_safe(root, relative)
+        if (
+            destination.is_symlink()
+            and member.issym()
+            and os.readlink(destination) == member.linkname
+        ):
+            continue
+        _require(
+            not destination.exists() and not destination.is_symlink(),
+            "archive link collision",
+        )
+        if member.issym():
+            destination.symlink_to(member.linkname)
+        else:
+            target = _relative(member.linkname)
+            target_path = _parents_safe(root, target)
+            _require(
+                target_path.is_file() and not target_path.is_symlink(),
+                "invalid archive hardlink",
+            )
+            os.link(target_path, destination)
+
+
+def ipk_data(path: Path) -> io.BytesIO:
+    """Read only data.tar.* from tar or ar containers, never maintainer scripts."""
+    _require(path.stat().st_size <= MAX_PACKAGE, "package container too large")
+    data = path.read_bytes()
+    members: list[tuple[str, bytes]] = []
+    if data.startswith(b"!<arch>\n"):
+        offset = 8
+        while offset < len(data):
+            header = data[offset : offset + 60]
+            _require(
+                len(header) == 60 and header[58:60] == b"`\n",
+                "invalid ar package header",
+            )
+            name = header[:16].decode("ascii").rstrip().rstrip("/")
+            size = int(header[48:58])
+            _require(
+                0 <= size <= MAX_PACKAGE and offset + 60 + size <= len(data),
+                "invalid ar package size",
+            )
+            members.append((name, data[offset + 60 : offset + 60 + size]))
+            offset += 60 + size + size % 2
+            _require(len(members) <= 8, "too many ar package members")
+    else:
+        with tarfile.open(fileobj=io.BytesIO(data), mode="r:*") as outer:
+            for member in outer:
+                _require(
+                    member.isfile() and member.size <= MAX_PACKAGE and len(members) < 8,
+                    "invalid tar package member",
+                )
+                stream = outer.extractfile(member)
+                _require(stream is not None, "missing package member")
+                with stream:
+                    members.append((str(_relative(member.name)), stream.read()))
+    payloads = [
+        contents
+        for name, contents in members
+        if re.fullmatch(r"data\.tar\.(gz|xz|bz2)", name)
+    ]
+    _require(len(payloads) == 1, "one package data archive required")
+    return io.BytesIO(payloads[0])
+
+
+def run(
+    command: list[str],
+    *,
+    cwd: Path | None = None,
+    timeout: int = 900,
+    input_data: bytes | None = None,
+) -> None:
+    print("+ " + " ".join(command), flush=True)
+    environment = os.environ.copy()
+    environment.update(
+        LC_ALL="C",
+        GIT_TERMINAL_PROMPT="0",
+        GIT_CONFIG_GLOBAL="/dev/null",
+        GIT_CONFIG_SYSTEM="/dev/null",
+    )
+    subprocess.run(
+        command, cwd=cwd, env=environment, input=input_data, check=True, timeout=timeout
+    )
+
+
+def configuration(fragment: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in fragment.read_text().splitlines():
+        if line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            _require(
+                key.startswith("CONFIG_") and key not in values,
+                "invalid configuration fragment",
+            )
+            values[key] = value
+    return values
+
+
+def apply_configuration(path: Path, values: dict[str, str]) -> None:
+    pattern = re.compile(r"^(CONFIG_[A-Z0-9_]+)=|^# (CONFIG_[A-Z0-9_]+) is not set$")
+    lines = []
+    for line in path.read_text().splitlines():
+        match = pattern.match(line)
+        key = (match[1] or match[2]) if match else None
+        if key not in values:
+            lines.append(line)
+    for key, value in values.items():
+        lines.append(f"# {key} is not set" if value == "n" else f"{key}={value}")
+    path.write_text("\n".join(lines) + "\n")
+
+
+def check_configuration(path: Path, values: dict[str, str]) -> None:
+    lines = set(path.read_text().splitlines())
+    for key, value in values.items():
+        expected = f"# {key} is not set" if value == "n" else f"{key}={value}"
+        # Optional version-specific disabled symbols may not exist at all.
+        if value != "n":
+            _require(expected in lines, f"required configuration absent: {key}")
+        else:
+            _require(
+                f"{key}=y" not in lines and f"{key}=m" not in lines,
+                f"forbidden configuration enabled: {key}",
+            )
+
+
+@lru_cache(maxsize=1)
+def compiler_identity() -> bytes:
+    """Include native Kconfig/dtc and cross-libc compiler package identities."""
+    packages = subprocess.check_output(
+        ["dpkg-query", "-W", "gcc", "gcc-arm-linux-gnueabi", "libc6-dev-armel-cross"]
+    )
+    return (
+        packages
+        + subprocess.check_output(["gcc", "--version"])
+        + subprocess.check_output(["arm-linux-gnueabi-gcc", "--version"])
+    )
+
+
+def build_key(
+    kind: str, item: dict[str, Any], toolchain: dict[str, Any] | None = None
+) -> str:
+    # Hash the actual builder/helper definitions, not guest tests or Entware pins.
+    # This keeps runtime fixes from invalidating expensive immutable kernel work.
+    pins = (
+        {"source": item["sha256"]}
+        if kind == "kernel"
+        else {key: item[key] for key in ("commit", "path", "repository", "version")}
+    )
+    if toolchain is not None:
+        pins["toolchain"] = toolchain["sha256"]
+    digest = hashlib.sha256(json.dumps(pins, sort_keys=True).encode())
+    digest.update(compiler_identity())
+    digest.update((FIXTURES / (kind + ".config")).read_bytes())
+    for function in (
+        configuration,
+        apply_configuration,
+        check_configuration,
+        run,
+        extract_tar,
+        _parents_safe,
+        _relative,
+        build_kernel if kind == "kernel" else build_busybox,
+    ):
+        digest.update(inspect.getsource(function).encode())
+    digest.update(str(RECIPE_VERSION).encode())
+    return digest.hexdigest()
+
+
+def build_busybox(item: dict[str, str], cache: Path) -> Path:
+    prefix = "arm-linux-gnueabi-"
+    key = build_key("busybox", item)
+    output = cache / "busybox" / key
+    binary = output / "busybox"
+    receipt = output / "verified.json"
+    if receipt.is_file() and binary.is_file():
+        saved = json.loads(receipt.read_text())
+        verify_hash(binary, saved["sha256"])
+        _require(
+            saved["commit"] == item["commit"] and saved["recipe"] == key,
+            "BusyBox cache receipt mismatch",
+        )
+        return binary
+    build = ROOT / ".tmp/platform-builds/busybox" / key
+    _require(
+        not build.exists(),
+        "unfinished BusyBox build; inspect retained cache before retry",
+    )
+    build.mkdir(parents=True)
+    checkout = build / "vendor"
+    run(["git", "init", str(checkout)])
+    run(["git", "-C", str(checkout), "remote", "add", "origin", item["repository"]])
+    run(["git", "-C", str(checkout), "sparse-checkout", "init", "--cone"])
+    run(["git", "-C", str(checkout), "sparse-checkout", "set", item["path"]])
+    run(
+        [
+            "git",
+            "-c",
+            "protocol.version=2",
+            "-C",
+            str(checkout),
+            "fetch",
+            "--depth=1",
+            "--filter=blob:none",
+            "origin",
+            item["commit"],
+        ]
+    )
+    run(["git", "-C", str(checkout), "checkout", "--detach", "FETCH_HEAD"])
+    actual = subprocess.check_output(
+        ["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True
+    ).strip()
+    _require(actual == item["commit"], "vendor checkout commit mismatch")
+    source = checkout / item["path"]
+    make = [
+        "make",
+        "ARCH=arm",
+        "CROSS_COMPILE=" + prefix,
+        "HOSTCFLAGS=-O2 -fcommon",
+        "EXTRA_CFLAGS=-include sys/sysmacros.h",
+    ]
+    run([*make, "allnoconfig"], cwd=source)
+    values = configuration(FIXTURES / "busybox.config")
+    apply_configuration(source / ".config", values)
+    run([*make, "oldconfig"], cwd=source, input_data=b"\n" * 2048)
+    check_configuration(source / ".config", values)
+    run([*make, "-j2"], cwd=source)
+    output.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source / "busybox", binary)
+    verify_elf(binary, "armv7-3.2")
+    receipt.write_text(
+        json.dumps(
+            {
+                "commit": actual,
+                "recipe": key,
+                "sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    return binary
+
+
+def verify_elf(path: Path, architecture: str) -> None:
+    _require(stat.S_ISREG(path.lstat().st_mode), "expected regular ABI executable")
+    header = path.read_bytes()[:20]
+    expected_class, expected_machine = (
+        (2, 183) if architecture == "aarch64-3.10" else (1, 40)
+    )
+    _require(
+        len(header) == 20
+        and header[:4] == b"\x7fELF"
+        and header[4] == expected_class
+        and header[5] == 1
+        and int.from_bytes(header[18:20], "little") == expected_machine,
+        "executable ARM ABI mismatch",
+    )
+
+
+def stage_feeds(manifest: dict[str, Any], downloads: Path, root: Path) -> None:
+    for feed in manifest["feeds"]:
+        destination = root / "feeds" / feed["id"]
+        for package in feed["packages"]:
+            url = f"https://bin.entware.net/{feed['id']}/{package['filename']}"
+            archive = download(
+                url,
+                package["sha256"],
+                downloads / feed["id"] / package["filename"],
+                limit=MAX_PACKAGE,
+            )
+            extract_tar(
+                ipk_data(archive), destination, package=True, limit=128 * 1024 * 1024
+            )
+        for name in (
+            "bin/jq",
+            "libexec/timeout-coreutils",
+            "libexec/sha256sum-coreutils",
+            "bin/util-linux-flock",
+            "bin/dig",
+        ):
+            verify_elf(destination / "opt" / name, feed["architecture"])
+
+
+def newc_archive(root: Path, destination: Path) -> None:
+    """Small deterministic newc writer; preserves inert links without host traversal."""
+    with (
+        destination.open("wb") as output,
+        gzip.GzipFile(filename="", mode="wb", fileobj=output, mtime=0) as compressed,
+    ):
+        inode = 1
+
+        def entry(name: str, mode: int, data: bytes, links: int = 1) -> None:
+            nonlocal inode
+            encoded = name.encode() + b"\x00"
+            fields = [
+                inode,
+                mode,
+                0,
+                0,
+                links,
+                0,
+                len(data),
+                0,
+                0,
+                0,
+                0,
+                len(encoded),
+                0,
+            ]
+            header = b"070701" + b"".join(f"{field:08x}".encode() for field in fields)
+            compressed.write(header + encoded)
+            compressed.write(b"\x00" * (-(len(header) + len(encoded)) % 4))
+            compressed.write(data)
+            compressed.write(b"\x00" * (-len(data) % 4))
+            inode += 1
+
+        for directory, children, files in os.walk(root, followlinks=False):
+            children.sort()
+            files.sort()
+            for name in [*children, *files]:
+                path = Path(directory) / name
+                info = path.lstat()
+                relative = path.relative_to(root).as_posix()
+                if stat.S_ISLNK(info.st_mode):
+                    data = os.readlink(path).encode()
+                    mode = stat.S_IFLNK | 0o777
+                elif stat.S_ISDIR(info.st_mode):
+                    data = b""
+                    mode = info.st_mode & ~0o6000
+                elif stat.S_ISREG(info.st_mode):
+                    data = path.read_bytes()
+                    mode = info.st_mode & ~0o6000
+                else:
+                    raise PlatformError("unexpected initramfs special file")
+                entry(
+                    relative,
+                    mode,
+                    data,
+                    2 if stat.S_ISDIR(info.st_mode) else 1,
+                )
+        entry("TRAILER!!!", 0, b"")
+
+
+def prepare_guest(
+    manifest: dict[str, Any],
+    kernel: dict[str, Any],
+    busybox: Path,
+    downloads: Path,
+    work: Path,
+) -> Path:
+    root = work / "root"
+    _require(not root.exists(), "guest root must be fresh")
+    root.mkdir()
+    for name in (
+        "bin",
+        "sbin",
+        "usr/bin",
+        "usr/sbin",
+        "proc",
+        "sys",
+        "dev",
+        "cfmgr",
+        "opt",
+        "tmp/mnt/MERLIN",
+    ):
+        (root / name).mkdir(parents=True, exist_ok=True)
+    shutil.copy2(busybox, root / "bin/busybox")
+    bin_applets = [
+        "sh",
+        "cat",
+        "echo",
+        "ls",
+        "mkdir",
+        "mv",
+        "rm",
+        "rmdir",
+        "fsync",
+        "readlink",
+        "pwd",
+        "test",
+        "[",
+        "uname",
+        "sleep",
+        "mount",
+        "umount",
+    ]
+    for name in bin_applets:
+        (root / "bin" / name).symlink_to("busybox")
+    for name in ("awk", "cmp", "env", "printf"):
+        (root / "usr/bin" / name).symlink_to("../../bin/busybox")
+    (root / "sbin/poweroff").symlink_to("../bin/busybox")
+    (root / "mnt").symlink_to("tmp/mnt")
+    shutil.copy2(FIXTURES / "init.sh", root / "init")
+    (root / "init").chmod(0o755)
+    library = (ROOT / "modules/lib/storage.sh").read_bytes()
+    (root / "cfmgr/probe.sh").write_bytes(
+        library + (ROOT / "tools/router-storage-probe.sh").read_bytes()
+    )
+    item = next(
+        item for item in manifest["busyboxes"] if item["id"] == kernel["busybox"]
+    )
+    (root / "cfmgr/identity").write_text(
+        f"{kernel['version']} {item['id']} {item['version']}\n"
+    )
+    (root / "cfmgr/sha-input").write_bytes(b"abc")
+    feed_lines = []
+    for feed in manifest["feeds"]:
+        packages = {
+            package["name"]: package["version"].rsplit("-", 1)[0]
+            for package in feed["packages"]
+        }
+        feed_lines.append(
+            " ".join(
+                [
+                    feed["id"],
+                    feed["architecture"],
+                    packages["jq"],
+                    packages["coreutils-timeout"],
+                    packages["flock"],
+                    packages["bind-dig"],
+                ]
+            )
+        )
+    (root / "cfmgr/feeds").write_text("\n".join(feed_lines) + "\n")
+    stage_feeds(manifest, downloads, root)
+    archive = work / "initramfs.cpio.gz"
+    newc_archive(root, archive)
+    return archive
+
+
+def build_kernel(
+    kernel: dict[str, Any], compiler: str, downloads: Path, cache: Path, recipe: str
+) -> Path:
+    version = kernel["version"]
+    output = cache / "kernels" / version / recipe
+    image = output / "Image"
+    receipt = output / "verified.json"
+    if image.is_file() and receipt.is_file():
+        saved = json.loads(receipt.read_text())
+        _require(
+            saved["source"] == kernel["sha256"] and saved["recipe"] == recipe,
+            "kernel cache receipt mismatch",
+        )
+        verify_hash(image, saved["sha256"])
+        return image
+    archive = download(
+        kernel["url"], kernel["sha256"], downloads / f"linux-{version}.tar.xz"
+    )
+    build = ROOT / ".tmp/platform-builds/kernels" / version / recipe
+    _require(
+        not build.exists(),
+        "unfinished kernel build; inspect retained cache before retry",
+    )
+    build.mkdir(parents=True)
+    extract_tar(archive, build / "linux")
+    source = build / "linux" / f"linux-{version}"
+    make = [
+        "make",
+        "ARCH=arm64",
+        "CROSS_COMPILE=" + compiler,
+        "HOSTCFLAGS=-O2 -fcommon",
+    ]
+    run([*make, "allnoconfig"], cwd=source)
+    values = configuration(FIXTURES / "kernel.config")
+    if version.startswith("4.1."):
+        values["CONFIG_CC_STACKPROTECTOR_NONE"] = "y"
+    apply_configuration(source / ".config", values)
+    run([*make, "olddefconfig"], cwd=source)
+    check_configuration(source / ".config", values)
+    release = subprocess.check_output(
+        [*make, "-s", "kernelrelease"], cwd=source, text=True
+    ).strip()
+    _require(release == version, "built kernel release mismatch")
+    run([*make, "-j2", "Image"], cwd=source, timeout=1800)
+    output.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source / "arch/arm64/boot/Image", image)
+    receipt.write_text(
+        json.dumps(
+            {
+                "source": kernel["sha256"],
+                "recipe": recipe,
+                "sha256": hashlib.sha256(image.read_bytes()).hexdigest(),
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    return image
+
+
+def verify_guest_log(
+    log: str, kernel: dict[str, Any], manifest: dict[str, Any]
+) -> None:
+    lines = log.replace("\r", "").splitlines()
+    item = next(
+        item for item in manifest["busyboxes"] if item["id"] == kernel["busybox"]
+    )
+    required = [
+        f"CFMGR_KERNEL={kernel['version']}",
+        f"CFMGR_BUSYBOX={item['id']}:{item['version']}",
+        "CFMGR_STORAGE=OK",
+        f"CFMGR_PLATFORM_OK_v1:{kernel['version']}:{item['id']}",
+    ]
+    required.extend(
+        f"CFMGR_FEED={feed['id']}:{feed['architecture']}:OK"
+        for feed in manifest["feeds"]
+    )
+    _require(
+        not any("CFMGR_PLATFORM_FAIL:" in line for line in lines),
+        "guest explicitly reported failure",
+    )
+    for marker in required:
+        _require(
+            lines.count(marker) == 1, f"missing or duplicate guest proof: {marker}"
+        )
+
+
+def boot_guest(
+    image: Path,
+    initramfs: Path,
+    kernel: dict[str, Any],
+    manifest: dict[str, Any],
+    work: Path,
+) -> None:
+    disk = work / "scratch.ext4"
+    with disk.open("xb") as output:
+        output.truncate(64 * 1024 * 1024)
+    run(
+        [
+            "mke2fs",
+            "-q",
+            "-F",
+            "-t",
+            "ext4",
+            "-b",
+            "1024",
+            "-O",
+            "^64bit,^metadata_csum,^orphan_file,^metadata_csum_seed",
+            str(disk),
+        ]
+    )
+    command = [
+        "qemu-system-aarch64",
+        "-machine",
+        "virt,gic-version=2,highmem=off",
+        "-cpu",
+        "cortex-a53",
+        "-accel",
+        "tcg",
+        "-smp",
+        "1",
+        "-m",
+        "256M",
+        "-nographic",
+        "-no-reboot",
+        "-net",
+        "none",
+        "-kernel",
+        str(image),
+        "-initrd",
+        str(initramfs),
+        "-append",
+        "console=ttyAMA0 rdinit=/init panic=1",
+        "-drive",
+        f"file={disk},format=raw,if=none,id=scratch",
+        "-device",
+        "virtio-blk-device,drive=scratch",
+    ]
+    log = work / "guest.log"
+    try:
+        with log.open("wb") as output:
+            result = subprocess.run(
+                command,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                check=False,
+                timeout=180,
+            )
+    finally:
+        text = log.read_text(errors="replace")
+        print(text, end="", flush=True)
+    _require(result.returncode == 0, f"QEMU exited {result.returncode}")
+    verify_guest_log(text, kernel, manifest)
+
+
+def execute(manifest: dict[str, Any], selected: str | None) -> None:
+    _require(
+        sys.platform == "linux" and os.uname().machine == "x86_64",
+        "explicit platform builds require Linux x86_64 CI",
+    )
+    for tool in (
+        "make",
+        "gcc",
+        "git",
+        "arm-linux-gnueabi-gcc",
+        "qemu-system-aarch64",
+        "mke2fs",
+        "bc",
+        "bison",
+        "flex",
+    ):
+        _require(shutil.which(tool) is not None, f"missing platform tool: {tool}")
+    cache = ROOT / ".tmp/platform-cache"
+    downloads = cache / "downloads"
+    compiler_archive = download(
+        manifest["toolchain"]["url"],
+        manifest["toolchain"]["sha256"],
+        downloads / "kernel-compiler.tar.xz",
+    )
+    compiler_root = cache / "toolchain" / manifest["toolchain"]["sha256"]
+    if not compiler_root.exists():
+        extract_tar(compiler_archive, compiler_root)
+    compiler = str(compiler_root / manifest["toolchain"]["prefix"])
+    _require(Path(compiler + "gcc").is_file(), "pinned kernel compiler is absent")
+    version = subprocess.check_output(
+        [compiler + "gcc", "-dumpversion"], text=True
+    ).strip()
+    _require(version == "4.9.4", "pinned kernel compiler version mismatch")
+    work_root = ROOT / ".tmp/platform-runs"
+    work_root.mkdir(parents=True, exist_ok=True)
+    for kernel in manifest["kernels"]:
+        if selected and kernel["version"] != selected:
+            continue
+        busybox_item = next(
+            item for item in manifest["busyboxes"] if item["id"] == kernel["busybox"]
+        )
+        binary = build_busybox(busybox_item, cache)
+        recipe = build_key("kernel", kernel, manifest["toolchain"])
+        image = build_kernel(kernel, compiler, downloads, cache, recipe)
+        # New mutable filesystem for every boot; cached immutable inputs only.
+        import tempfile
+
+        work = Path(tempfile.mkdtemp(prefix=kernel["version"] + "-", dir=work_root))
+        initramfs = prepare_guest(manifest, kernel, binary, downloads, work)
+        boot_guest(image, initramfs, kernel, manifest, work)
+        print(
+            f"Accepted generic guest proof: {kernel['version']} / {kernel['busybox']}; logs retained at {work.relative_to(ROOT)}",
+            flush=True,
+        )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        help="explicit Linux CI downloads, builds and disposable guests",
+    )
+    parser.add_argument(
+        "--kernel",
+        choices=sorted(VERSIONS),
+        help="one exact profile; default runs serially",
+    )
+    parser.add_argument(
+        "--cache-keys",
+        action="store_true",
+        help="CI cache keys only; probes local compiler package versions without builds or downloads",
+    )
+    args = parser.parse_args()
+    try:
+        manifest = load_manifest()
+        if args.cache_keys:
+            _require(
+                not args.run and args.kernel is not None,
+                "cache keys require one --kernel without --run",
+            )
+            kernel = next(
+                item for item in manifest["kernels"] if item["version"] == args.kernel
+            )
+            busybox = next(
+                item
+                for item in manifest["busyboxes"]
+                if item["id"] == kernel["busybox"]
+            )
+            print("kernel=" + build_key("kernel", kernel, manifest["toolchain"]))
+            print("busybox=" + build_key("busybox", busybox))
+        elif args.run:
+            execute(manifest, args.kernel)
+        else:
+            for kernel in manifest["kernels"]:
+                if not args.kernel or kernel["version"] == args.kernel:
+                    print(
+                        f"{kernel['version']}: vendor BusyBox {kernel['busybox']}; both ARM Entware feeds; execution pending"
+                    )
+            print(
+                "Manifest validated offline; no downloads, builds or guest execution."
+            )
+        return 0
+    except (
+        PlatformError,
+        KeyError,
+        ValueError,
+        OSError,
+        tarfile.TarError,
+        subprocess.SubprocessError,
+    ) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
