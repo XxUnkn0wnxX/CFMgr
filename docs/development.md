@@ -1,43 +1,84 @@
-# Temporary development notes
+# Development checks
 
 [Project overview](../README.md) · [Current handoff](../PLAN_V2_handoff.md)
 
-This tree is a planning baseline. There is no shipped runtime, installer, runtime
-test suite or BusyBox acceptance. Read the [current handoff](../PLAN_V2_handoff.md)
-before implementing the next approved workflow.
+CFMgr runtime code targets BusyBox-compatible POSIX shell. Python and the tools
+below are for developer and CI checks only; they are not copied to or run on a
+router by these commands.
 
-## Current checks
+## Set up developer tools
 
-From the repository root, use Python 3.11 or newer. No dependency installation
-is needed:
+Use Python 3.11 or newer and a project-local virtual environment. Install the
+pinned developer requirements and make ShellCheck available on `PATH` using the
+host's package manager. The shell runner also requires `shfmt` from the pinned
+Python requirements. Storage tests compile a small C99 fixture with `cc`; a
+working C99 compiler is required for that suite.
 
-```sh
-python3 tools/check.py
+```zsh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
-The checker verifies specification/checklist agreement, README goal coverage,
-active document links/privacy and the absence of unvalidated runtime. Success
-prints `Planning consistency passed` and exits zero. Failure lists the affected
-files or requirements and exits nonzero; correct those findings before proceeding.
+## Run checks
 
-The **Checks** CI workflow runs the same command for develop pushes and pull
-requests, skipping changes limited to documentation, images and folder
-placeholders. Add relevant trigger paths and CI coverage alongside each new test
-package as implementation grows. The current planning checks do not earn product
-completion ticks or prove router compatibility.
+During an implementation package or subgoal, use focused checks:
 
-## When implementation resumes
+```zsh
+.venv/bin/python tools/test.py --focused tests/test_storage.py
+```
 
-Replace the planning-only gate alongside the first real workflow. It deliberately
-rejects new runtime until meaningful focused/full tests and required platform
-coverage are provided. Reuse a suitable existing local venv and recreate pinned
-developer dependencies as needed; Python and test tools never ship to the router.
+Reserve the full local suite for the main-goal checkpoint. From the repository
+root, the default command runs the full pytest suite,
+Python lint/format/compile checks, and ShellCheck/shfmt checks for runtime shell
+files. It also runs the planning checker, selected-shell syntax checks, and
+`git diff --check`. It runs serially, disables pytest plugin autoload, and rejects
+nonempty `PYTEST_ADDOPTS` so ambient settings cannot silently alter selection.
+The runner does not install dependencies, access a router, or publish changes.
 
-Subgoals require complete behavior, written focused tests and applicable exact CI
-proof. Main goals also require the full local and CI suites, documentation and
-parent review. Keep fixtures isolated and CPU use modest. Follow the detailed
-[working rules](../AGENTS.md) and [checklist](../PLAN_V2_checklist.md).
+```zsh
+.venv/bin/python tools/check.py
+.venv/bin/python tools/test.py
+```
 
-Keep these notes small until most or all implementation goals are met. Then
-prepare the [planned documentation set](../PLAN_V2.md#documentation-set) for the
-finished product, including architecture, developer and operating guides.
+The planning checker verifies all 156 specification/checklist subgoals, the 16
+README goal links, active Markdown links and personal-path privacy. It makes no
+runtime claim. The runtime runner fails if a required tool or test target is
+missing; an empty or fully deselected pytest run is not accepted as proof.
+
+Use `--focused` with an optional test path and `-k` for a narrower pytest run.
+Static checks still cover runtime Python and shell files.
+
+```zsh
+.venv/bin/python tools/test.py --focused
+.venv/bin/python tools/test.py --focused tests/test_storage.py -k fsync
+```
+
+On macOS, the runner selects `/usr/local/bin/bash --posix` as the host test
+shell; it deliberately does not use macOS `/bin/sh`. This is host-shell evidence,
+not BusyBox or router evidence. On Linux, it defaults to `/bin/sh`. Set
+`CFMGR_TEST_SHELL` to a shell command when a focused local check needs another
+compatible shell.
+
+## BusyBox evidence
+
+The required Linux CI job installs BusyBox and runs the full suite in required
+mode. The runner preflights `busybox ash`, sets `CFMGR_REQUIRE_BUSYBOX=1`, and
+fails if the BusyBox test target is absent or cannot start. The tests fail if
+required native Linux `/proc` or BusyBox `fsync` evidence is unavailable. This is
+Linux BusyBox evidence; it does not test the router firmware or live router
+state.
+
+To reproduce that CI check on a Linux host with BusyBox installed:
+
+```sh
+.venv/bin/python tools/test.py --require-busybox
+```
+
+The **Checks** workflow runs planning consistency, the full host suite and
+static checks, plus the full suite with required Linux BusyBox storage coverage for `develop`
+pushes and pull requests. It excludes changes limited to Markdown, images and
+`.gitkeep` placeholders. Keep test commands, developer dependencies and any
+required platform proof in the same package as the tests they support.
+An eligible earlier push for predominantly unavailable platform proof runs full
+CI, without adding a full local run solely for publication; follow the current
+authorization and gates in [AGENTS.md](../AGENTS.md).

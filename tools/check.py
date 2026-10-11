@@ -20,9 +20,6 @@ SPEC_ID_ROW = re.compile(r"^\|\s*S[0-9]{2}\.[0-9]{2}\s*\|")
 CHECKLIST_ID_ROW = re.compile(
     r"^\|\s*\[[ xX]\]\s*\|\s*\[[ xX]\]\s*\|\s*S[0-9]{2}\.[0-9]{2}\s*\|"
 )
-CHECKED_SUBGOAL = re.compile(
-    r"^\|\s*\[([xX ])\]\s*\|\s*\[([xX ])\]\s*\|\s*(S[0-9]{2}\.[0-9]{2})\s*\|"
-)
 GOAL_HEADING = re.compile(r"^##\s+(\d{1,2})\.\s+(.+?)\s*$")
 CHECK_GOAL_HEADING = re.compile(r"^###\s+(\d{1,2})\.\s+(.+?)\s*$")
 INLINE_LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>\n]+>|[^)\s]+)(?:\s+[^)]*)?\)")
@@ -37,13 +34,6 @@ IGNORED_DIRS = {
     "__pycache__",
     "node_modules",
 }
-PLACEHOLDERS = {
-    "modules/helpers/.gitkeep",
-    "modules/hooks/.gitkeep",
-    "modules/lib/.gitkeep",
-    "tests/.gitkeep",
-}
-FORBIDDEN_RUNTIME_PATHS = ("cfmgr.sh", "catalog.txt", "package.manifest")
 
 
 def _read(root: Path, relative: str, errors: list[str]) -> str | None:
@@ -191,58 +181,8 @@ def _markdown_checks(root: Path, errors: list[str]) -> None:
         )
 
 
-def _current_code(root: Path, errors: list[str]) -> bool:
-    found = False
-    for relative in FORBIDDEN_RUNTIME_PATHS:
-        path = root / relative
-        if path.exists() or path.is_symlink():
-            errors.append(
-                f"{relative}: runtime/package entry is not allowed in the planning-only baseline"
-            )
-            found = True
-    for relative in ("modules", "tests"):
-        directory = root / relative
-        if not directory.exists():
-            continue
-        if directory.is_symlink() or not directory.is_dir():
-            errors.append(
-                f"{relative}: expected a real directory containing placeholders only"
-            )
-            found = True
-            continue
-        for current, names, filenames in os.walk(directory):
-            parent = Path(current)
-            names[:] = sorted(
-                name for name in names if name not in {"__pycache__", ".pytest_cache"}
-            )
-            for name in names:
-                child = parent / name
-                if child.is_symlink():
-                    errors.append(
-                        f"{child.relative_to(root)}: runtime symlink is not allowed"
-                    )
-                    found = True
-            for name in filenames:
-                child = parent / name
-                path_name = child.relative_to(root).as_posix()
-                if name == ".DS_Store" or name.endswith((".pyc", ".pyo")):
-                    continue
-                if (
-                    path_name in PLACEHOLDERS
-                    and child.is_file()
-                    and not child.is_symlink()
-                    and child.stat().st_size == 0
-                ):
-                    continue
-                errors.append(
-                    f"{path_name}: non-placeholder code/data is not allowed in the planning-only baseline"
-                )
-                found = True
-    return found
-
-
 def validate(root: Path) -> list[str]:
-    """Return planning-only contract failures without invoking external tools."""
+    """Return planning consistency failures without runtime acceptance claims."""
     errors: list[str] = []
     specification = _read(root, "PLAN_V2.md", errors)
     checklist = _read(root, "PLAN_V2_checklist.md", errors)
@@ -265,13 +205,6 @@ def validate(root: Path) -> list[str]:
             checklist, CHECKLIST_ROW, CHECKLIST_ID_ROW, "PLAN_V2_checklist.md"
         )
         errors.extend(row_errors)
-        for number, line in enumerate(checklist.splitlines(), 1):
-            match = CHECKED_SUBGOAL.match(line.strip())
-            if match and (match.group(1).strip() or match.group(2).strip()):
-                errors.append(
-                    f"PLAN_V2_checklist.md:{number}: product subgoals must remain unchecked "
-                    "while this planning-only baseline contains no runtime"
-                )
         if len(checklist_rows) != 156:
             errors.append(
                 f"PLAN_V2_checklist.md: expected 156 unique subgoals, found {len(checklist_rows)}"
@@ -290,12 +223,6 @@ def validate(root: Path) -> list[str]:
                 )
     if readme is not None:
         _markdown_checks(root, errors)
-    code_found = _current_code(root, errors)
-    if code_found:
-        errors.append(
-            "Before delivering code, replace this planning-only gate with meaningful focused and full "
-            "runtime tests, including required BusyBox/platform coverage."
-        )
     return errors
 
 
@@ -311,7 +238,7 @@ def main() -> int:
         return 1
     print(
         "Planning consistency passed: 156 aligned subgoals, 16 README goal links, "
-        "active document links/privacy, and planning-only inventory. No runtime acceptance was performed."
+        "and active document links/privacy. No runtime acceptance was performed."
     )
     return 0
 

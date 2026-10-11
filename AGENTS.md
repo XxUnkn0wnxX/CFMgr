@@ -102,11 +102,15 @@ Before each implementation package, identify its existing Sxx.yy requirements,
 observable entry/consumer, dependencies, missing behavior and focused acceptance
 checks in handoff. Inspect existing code/tests and current worker ownership first
 so the package reuses relevant work instead of recreating it. Start with the
-requested main goal and follow the necessary
-dependency order. Goal 1 includes all three features and source parity: it cannot
+requested main goal and follow the necessary dependency order. If completing a
+goal or point requires another goal first, notify the user of that dependency
+and the new focus before switching to the prerequisite main goal. This
+dependency-driven switch is authorized without repeat approval; record the
+active focus and return path in handoff. Goal numbers do not impose an impossible
+execution order. Goal 1 includes all three features and source parity: it cannot
 be completed by a menu skeleton, and its dependencies must not be blocked until
-goal 1 is ticked. Working on those dependencies earns only their verified credit;
-it does not silently reorder product priorities or broaden scope.
+goal 1 is ticked. Dependency work earns only its verified credit and does not
+broaden product scope or weaken any completion/publication gate.
 
 Build coherent workflows with only the shared support they need. Group libraries
 by reused responsibility under the specification's folder layout; do not grow an
@@ -199,7 +203,10 @@ defer or report a blocker, never sufficient evidence that the source is useless.
   main goal and README incomplete until all required evidence is green.
 - An earlier subgoal push is eligible **only when most of that subgoal's required
   behavioral proof needs Linux/BusyBox/kernel execution unavailable locally**.
-  Explain that concrete dependency and obtain explicit user approval; a minority
+  Explain that concrete dependency and obtain explicit user approval unless the
+  current user has already authorized early CI pushes under this condition;
+  an existing conditional authorization needs no repeat permission question.
+  Judge the meaningful focused proof, not a padded test count. A minority
   of platform cases, convenience or finishing a helper is insufficient. Otherwise
   wait for the full main-goal candidate and local gate above. Judge substantive
   proof, not a padded test count. An approved earlier push runs full CI and can
@@ -405,10 +412,20 @@ consistency check cannot establish semantic correctness or runtime safety.
   hash/cache/scope. Never commit firmware/extracted/raw audit/provenance or execute/
   flash it. Static images/source, host/BusyBox CI and live acceptance stay distinct.
   Completion does not authorize deletion of retained evidence.
-- Standing router access is brief, lightweight and read-only via native `/bin/sh`;
-  close sessions after reads. No live install/package execution, mount/chroot,
-  stress/pytest, service/settings change, deployment or provider write without
-  explicit separate authorization. Preserve unrelated integrations and secrets.
+- Standing router access via `ssh router` is authorized for brief, lightweight
+  read-only inspection. Single SSH commands or a background interactive terminal
+  are permitted; close the session when its inspection work finishes. The router's
+  default login shell is zsh: explicitly invoke `/bin/sh` for all BusyBox/POSIX
+  commands and any separately authorized tests; never rely on the login shell.
+  Workstation shell sessions remain `/usr/local/bin/zsh`; do not substitute the
+  macOS `/bin/sh` for router validation. Host shell fixtures use a suitable
+  resolved Homebrew shell, with host evidence distinct from BusyBox/Linux and
+  actual router evidence. Read-only commands may
+  inspect existing files, capabilities and runtime state.
+  Router writes, test execution (including temporary fixtures), live package/code
+  execution, install, mount/chroot, service/settings changes, deployment and
+  provider writes require explicit user permission before execution. Preserve
+  unrelated integrations and secrets.
 
 ## Pause and handoff
 

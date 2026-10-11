@@ -43,3 +43,53 @@ jobs:
           python3 --version
           python3 tools/check.py
           git diff --check
+
+  host-runtime:
+    name: Host runtime and static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes shellcheck
+
+      - name: Install pinned developer tools
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --requirement requirements-dev.txt
+
+      - name: Run full host suite and static checks
+        run: .venv/bin/python tools/test.py
+
+  busybox:
+    name: Linux BusyBox ash runtime suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install BusyBox and ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes busybox shellcheck
+
+      - name: Install pinned developer tools
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --requirement requirements-dev.txt
+
+      - name: Run full suite with mandatory BusyBox ash storage proof
+        run: .venv/bin/python tools/test.py --require-busybox

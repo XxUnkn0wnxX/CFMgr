@@ -1,0 +1,4 @@
+# Developer-only host and CI test tools. Nothing here is installed on routers.
+pytest==9.1.1
+ruff==0.16.10
+shfmt_py==3.7.0.1

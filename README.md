@@ -10,9 +10,11 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete.** This is a planning baseline with no shipped
-runtime, installer or working commands. Partial implementations were removed;
-the approved requirements remain in the [v2 plan](PLAN_V2.md).
+**0 of 16 main goals complete.** Implementation has begun with the native
+storage safeguards needed for reviewed settings saves. There is no installer
+or usable feature workflow yet. The [v2 plan](PLAN_V2.md) retains the complete
+requirements; [current work and pending evidence](PLAN_V2_handoff.md) are recorded
+separately from accepted product completion.
 
 ## 🧭 Planned product goals
 

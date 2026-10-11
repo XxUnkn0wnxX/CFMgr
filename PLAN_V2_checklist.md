@@ -57,9 +57,10 @@ denominator.
 
 ## Accepted product evidence
 
-None yet: no runtime is present. All 156 subgoals and the acceptance cases below
-remain unchecked. Planning checks provide no runtime, BusyBox/kernel or live
-router acceptance.
+None yet: native storage prerequisites are being implemented, with current work
+and pending proof in the handoff. All 156 subgoals and the acceptance cases below
+remain unchecked. Partial helpers and planning checks do not establish complete
+Save, feature, BusyBox/kernel or live router acceptance.
 
 For each future accepted subgoal, record its actual consumer, focused test
 references/command and result, tested revision, and required exact platform CI
