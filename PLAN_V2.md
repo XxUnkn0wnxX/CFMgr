@@ -93,7 +93,7 @@ Remove every router Python call path, including DDNS record parsing, Access disp
 | S02.06 | Selected dependency reinstall | Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | S02.07 | Native recovery access | Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | S02.08 | Storage identity and loss | Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
-| S02.09 | Capability-based support | Actual native options, TLS trust, userspace ABI and bounded platform profiles; no inferred universal compatibility. |
+| S02.09 | Capability-based support | Cover Merlin's full supported kernel range using the GT-AX11000 firmware as baseline; verify actual native options, TLS trust, userspace ABI and platform profiles. |
 
 ### Package and directory layout
 
@@ -160,7 +160,7 @@ Before affected work verify root/JFFS/script support, safely parsed state, actua
 
 Mount loss cancels/reaps only the action's verified owned children within a bounded cleanup policy, retains guards/recovery and reports unavailable storage. Never write into a leftover mountpoint, silently select another drive or wait in boot for the drive. A confirmed returning mount resumes only already configured eligible work, never an interrupted fresh tunnel creation. Software deadlines must not claim guaranteed termination of uninterruptible kernel I/O; retain unresolved ownership and prevent overlapping replacement work.
 
-Native tool paths, curl TLS trust, loader/CA/proxy environment, kernel/userspace ABI and actual options must be proved for each supported capability profile. Target broad practical Merlin coverage, including older machines where requirements can be met, without inventing universal model/kernel support or an upper bound. Static firmware/feed evidence, host fixtures, BusyBox execution and live router acceptance are separate evidence classes. Downloaded firmware and raw private evidence remain ignored and must never be executed/flashed as part of an audit.
+Native tool paths, curl TLS trust, loader/CA/proxy environment, kernel/userspace ABI and actual options must be proved for each supported capability profile. Cover the full kernel range supported by Asuswrt-Merlin, from its oldest supported kernel generation through its newest; use the user's GT-AX11000 firmware as the baseline for implementation and live validation. Build and verify the range from official supported-device/release sources rather than restricting support to the baseline or the three cached representative firmware images. Do not invent a numeric upper bound or claim that one model/kernel proves the others. Keep gaps pending until their required capability evidence exists. Static firmware/feed evidence, host fixtures, BusyBox execution and live router acceptance are separate evidence classes. Downloaded firmware and raw private evidence remain ignored and must never be executed/flashed as part of an audit.
 
 ## 3. Configuration, menus and status
 

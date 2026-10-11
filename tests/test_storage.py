@@ -266,3 +266,225 @@ def test_linux_native_proc_reopen(
         before.st_mtime_ns,
     )
     assert list(tmp_path.iterdir()) == [target]
+
+
+def invoke_probe(
+    shell: list[str],
+    script: str,
+    *,
+    environment: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[bytes]:
+    """Source the complete inert interface, then exercise its actual functions."""
+    env = os.environ.copy()
+    env.update(
+        CFMGR_PROBE_LIBRARY=str(LIBRARY),
+        CFMGR_PROBE_SOURCE=str(PROBE),
+        LC_ALL="C",
+        LANGUAGE="",
+    )
+    env.pop("CFMGR_FSYNC_TRACE", None)
+    if environment:
+        env.update(environment)
+    return subprocess.run(
+        [
+            *shell,
+            "-c",
+            '. "$CFMGR_PROBE_LIBRARY"; set -- --define; '
+            '. "$CFMGR_PROBE_SOURCE"; ' + script,
+        ],
+        env=env,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+
+
+def test_probe_uid_and_mount_admission(shell: list[str], tmp_path: Path) -> None:
+    status = tmp_path / "status"
+    mounts = tmp_path / "mounts"
+    for rows, accepted in (
+        ("Name:\tsh\nUid:\t0\t0\t0\t0\n", True),
+        ("Uid:\t0\t1000\t0\t0\n", False),
+        ("Uid:\t0\t0\t0\n", False),
+        ("Uid:\t0\t0\t0\t0\nUid:\t0\t0\t0\t0\n", False),
+        ("Name:\tsh\n", False),
+    ):
+        status.write_text(rows)
+        result = invoke_probe(
+            shell,
+            'cfmgr_probe_root_uid "$CFMGR_STATUS"',
+            environment={"CFMGR_STATUS": str(status)},
+        )
+        assert (result.returncode == 0) is accepted, rows
+    for rows, accepted in (
+        ("/dev/test /jffs jffs2 rw,noatime 0 0\n", True),
+        ("/dev/test /jffs jffs2 ro,noatime 0 0\n", False),
+        ("/dev/test /jffs ext4 rw 0 0\n", False),
+        ("/dev/test /elsewhere jffs2 rw 0 0\n", False),
+        (
+            "/dev/test /jffs jffs2 rw 0 0\n/dev/other /jffs jffs2 ro 0 0\n",
+            False,
+        ),
+    ):
+        mounts.write_text(rows)
+        result = invoke_probe(
+            shell,
+            'cfmgr_probe_mounted /jffs jffs2 "$CFMGR_MOUNTS"',
+            environment={"CFMGR_MOUNTS": str(mounts)},
+        )
+        assert (result.returncode == 0) is accepted, rows
+
+
+def test_probe_metadata_requires_exact_owner_mode_and_one_row(
+    shell: list[str], tmp_path: Path
+) -> None:
+    target = tmp_path / "owned file"
+    target.write_bytes(b"unchanged")
+    target.chmod(0o600)
+    env = {"CFMGR_TARGET": str(target), "CFMGR_OWNER": str(os.getuid())}
+    result = invoke_probe(
+        shell,
+        'cfmgr_probe_metadata "$CFMGR_TARGET" -rw------- "$CFMGR_OWNER"',
+        environment=env,
+    )
+    assert result.returncode == 0
+    for body in (
+        'cfmgr_probe_metadata "$CFMGR_TARGET" -rw-r--r-- "$CFMGR_OWNER"',
+        'cfmgr_probe_metadata "$CFMGR_TARGET" -rw------- 999999',
+        (
+            'ls() { printf "%s\\n" "-rw------- 1 0 0 30 Jan 1 00:00 stage" '
+            '"-rw------- 1 0 0 30 Jan 1 00:00 stage"; }; '
+            'cfmgr_probe_metadata "$CFMGR_TARGET" -rw-------'
+        ),
+    ):
+        assert invoke_probe(shell, body, environment=env).returncode == 1
+    assert target.read_bytes() == b"unchanged"
+
+
+def test_probe_missing_native_command_fails_before_writes(
+    shell: list[str], tmp_path: Path
+) -> None:
+    commands = tmp_path / "commands"
+    commands.mkdir()
+    # An incomplete native-style PATH deliberately lacks mv, id and stat.
+    for name in ("awk", "ls", "mkdir"):
+        executable = shutil.which(name)
+        assert executable
+        (commands / name).symlink_to(executable)
+    before = sorted(tmp_path.rglob("*"))
+    result = invoke_probe(
+        shell,
+        "PATH=$CFMGR_COMMANDS; cfmgr_probe_preflight "
+        '"$CFMGR_MISSING" "$CFMGR_MISSING" "$CFMGR_MISSING"',
+        environment={
+            "CFMGR_COMMANDS": str(commands),
+            "CFMGR_MISSING": str(tmp_path / "missing"),
+        },
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (2, b"", b"")
+    assert sorted(tmp_path.rglob("*")) == before
+
+
+@pytest.fixture(scope="module")
+def linux_proc() -> None:
+    if sys.platform != "linux" or not Path("/proc/self/fd").is_dir():
+        if REQUIRE_BUSYBOX:
+            pytest.fail("Required probe descriptor ownership needs Linux /proc")
+        pytest.skip("Probe held-descriptor cleanup requires Linux /proc")
+
+
+def test_linux_probe_preflight_without_id_or_stat(
+    shell: list[str], legacy_fsync: Path, linux_proc: None, tmp_path: Path
+) -> None:
+    commands = tmp_path / "commands"
+    commands.mkdir()
+    for name in ("awk", "ls", "mkdir", "mv", "rm", "rmdir", "cmp", "readlink"):
+        executable = shutil.which(name)
+        assert executable
+        (commands / name).symlink_to(executable)
+    # [ and printf/pwd may be shell builtins, or external native applets.
+    for name in ("[", "printf", "pwd"):
+        executable = shutil.which(name)
+        if executable:
+            (commands / name).symlink_to(executable)
+    status = tmp_path / "root status"
+    status.write_text("Uid:\t0\t0\t0\t0\n")
+    result = invoke_probe(
+        shell,
+        "PATH=$CFMGR_COMMANDS; cfmgr_probe_preflight "
+        '"$CFMGR_STATUS" /proc/mounts "$CFMGR_BACKEND"',
+        environment={
+            "CFMGR_COMMANDS": str(commands),
+            "CFMGR_STATUS": str(status),
+            "CFMGR_BACKEND": str(legacy_fsync),
+        },
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    assert not (commands / "id").exists()
+    assert not (commands / "stat").exists()
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    ["clean", "new-parent", "flush-failure", "signal", "replaced-file", "moved-root"],
+)
+def test_linux_probe_cleanup_and_identity(
+    shell: list[str],
+    legacy_fsync: Path,
+    linux_proc: None,
+    tmp_path: Path,
+    scenario: str,
+) -> None:
+    parent = tmp_path / "tmp"
+    if scenario != "new-parent":
+        parent.mkdir(mode=0o755)
+        (parent / "pre-existing").write_bytes(b"preserved")
+        before = parent.stat()
+    hooks = {
+        "signal": "cfmgr_storage_flush_fd() { read -r cfmgr_test_pid cfmgr_test_rest "
+        '</proc/self/stat; kill -TERM "$cfmgr_test_pid"; }; ',
+        "replaced-file": "cfmgr_storage_flush_fd() { rm stage; "
+        'printf "%s" foreign >stage; return 1; }; ',
+        "moved-root": 'cfmgr_storage_flush_fd() { mv "$cfmgr_probe_root" '
+        '"$cfmgr_probe_root.moved"; mkdir "$cfmgr_probe_root"; return 1; }; ',
+    }
+    setup = 'exec 7<"$CFMGR_MOUNT"; cd /proc/self/fd/7; '
+    result = invoke_probe(
+        shell,
+        hooks.get(scenario, "")
+        + setup
+        + 'cfmgr_probe_write "$CFMGR_PARENT" "$CFMGR_BACKEND" '
+        '"$CFMGR_PARENT_MISSING" "$CFMGR_OWNER"',
+        environment={
+            "CFMGR_MOUNT": str(tmp_path),
+            "CFMGR_PARENT": str(parent),
+            "CFMGR_BACKEND": str(legacy_fsync),
+            "CFMGR_PARENT_MISSING": "1" if scenario == "new-parent" else "0",
+            "CFMGR_OWNER": str(os.getuid()),
+            "CFMGR_FSYNC_FAULT": "fsync" if scenario == "flush-failure" else "clean",
+        },
+    )
+    assert result.returncode == (0 if scenario in ("clean", "new-parent") else 1)
+    assert parent.is_dir(), "The user's USB tmp base must remain"
+    if scenario == "new-parent":
+        assert parent.stat().st_mode & 0o777 == 0o700
+        assert list(parent.iterdir()) == []
+    else:
+        assert parent.stat().st_mode == before.st_mode
+        assert (parent / "pre-existing").read_bytes() == b"preserved"
+    scratch = [path for path in parent.iterdir() if path.name.startswith(".cfmgr-")]
+    if scenario == "replaced-file":
+        assert len(scratch) == 1
+        assert (scratch[0] / "stage").read_bytes() == b"foreign"
+        assert b"ownership uncertain; retain" in result.stderr
+    elif scenario == "moved-root":
+        assert len(scratch) == 2
+        moved = next(path for path in scratch if path.name.endswith(".moved"))
+        assert (moved / "stage").read_bytes() == b"CFMgr native storage probe v1\n"
+        assert b"ownership uncertain; retain" in result.stderr
+    else:
+        assert scratch == []
+        assert b"Probe cleanup verified:" in result.stdout
+        assert result.stderr == b""
+    if scenario in ("clean", "new-parent"):
+        assert b"staged rename/readback passed" in result.stdout

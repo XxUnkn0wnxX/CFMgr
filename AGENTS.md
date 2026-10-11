@@ -422,7 +422,17 @@ consistency check cannot establish semantic correctness or runtime safety.
   resolved Homebrew shell, with host evidence distinct from BusyBox/Linux and
   actual router evidence. Read-only commands may
   inspect existing files, capabilities and runtime state.
-  Router writes, test execution (including temporary fixtures), live package/code
+  The user permits small, non-destructive command tests and their own temporary
+  files under `/mnt/MERLIN/tmp`, with verified cleanup. Keep the `tmp` directory
+  itself; create it if absent, but never remove it. Test writes must stay inside
+  it. Its contents may be removed as needed for these tests; avoid unrelated
+  removal when it serves no test purpose. This narrow exception
+  does not cover JFFS or writes elsewhere, settings, services, installed files,
+  package operations or stress tests. Preserve existing directory permissions
+  and unrelated content outside the permitted test directory. Probe cleanup
+  should still target its verified artifacts. Pass this boundary to any agent
+  assigned router work.
+  Other router writes, test execution, live package/code
   execution, install, mount/chroot, service/settings changes, deployment and
   provider writes require explicit user permission before execution. Preserve
   unrelated integrations and secrets.

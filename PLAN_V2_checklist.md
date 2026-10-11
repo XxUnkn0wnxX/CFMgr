@@ -96,7 +96,7 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [ ] | [ ] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | [ ] | [ ] | S02.07 | **Native recovery access:** Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | [ ] | [ ] | S02.08 | **Storage identity and loss:** Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
-| [ ] | [ ] | S02.09 | **Capability-based support:** Actual native options, TLS trust, userspace ABI and bounded platform profiles; no inferred universal compatibility. |
+| [ ] | [ ] | S02.09 | **Capability-based support:** Cover Merlin's full supported kernel range using the GT-AX11000 firmware as baseline; verify actual native options, TLS trust, userspace ABI and platform profiles. |
 
 ### 3. Configuration, menus and status
 
@@ -363,7 +363,7 @@ IDs identify behavior, **not a required test count**. One meaningful test may co
 | Status | Case | Required evidence |
 | --- | --- | --- |
 | [ ] | V01 | absent/read-only/wrong/lost Entware blocks dependent operation without stale writes or resetting intent; native diagnostic/recovery/Off remains available; optional logging failure alone does not block otherwise-ready APIs. |
-| [ ] | V02 | supported native/Entware command, parser and ABI capabilities succeed; unsupported/missing requirements fail before activation; no router Python/venv/picker dependency. |
+| [ ] | V02 | map the full officially supported Merlin kernel range and verify native/Entware command, parser and ABI capabilities for each required profile, using GT-AX11000 firmware as baseline; versioned kernel/BusyBox fixtures and actual platform execution remain distinct from source evidence; three representative images cannot close range gaps; unsupported/missing requirements fail before activation; no router Python/venv/picker dependency. |
 | [ ] | V03 | overlapping boot/WAN/watchdog/manual starts admit one owned connector and leave firmware/foreign hooks responsive. |
 | [ ] | V04 | all three features use shared NTP plus independent family-aware reachability after failure; IPv6 transport is not blocked by IPv4-only probes; readiness precedes ordinary tunnel stop/restart, outage checks follow 1/2/4/5-minute capped due state, and longer provider cooldown still wins. |
 | [ ] | V09 | repeated install/repair/hook-code update converges exact owned hooks/jobs; dedicated paired CFMGR BEGIN/END blocks with stable IDs and DO NOT EDIT labels replace only recognized current/older owned bodies, preserve unrelated bytes/control flow/arguments/mode and concurrent edits, and pass whole-hook syntax. Only explicit DDNS Save/Enable may replace a foreign provider without displaced-provider backup; its generated handler is marked for later maintenance. |
