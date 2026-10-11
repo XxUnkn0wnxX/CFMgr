@@ -11,10 +11,13 @@ session_meta id/cwd; no child IDs are included.
 
 ## Current boundary
 
-**Instructions published; full implementation remains for the next session.**
-The user-approved rules and CI trigger update passed parent review, local checks
-and exact-commit planning CI. No salvage restart or goal 1 implementation was
-performed. CI is restricted to code/test/tool/configuration changes.
+**CI triggers simplified; full implementation remains for the next session.**
+The user explicitly requested removing only the workflow path filters, retaining
+the planning checks and renaming the workflow to **Checks**. It now targets every
+develop push and pull request, including documentation-only changes. Agents must
+add CI coverage alongside new test packages. Parent review, local planning checks,
+workflow YAML/trigger checks and whitespace checks passed. The authorized push/CI
+result is recorded in the receipt below; no salvage restart or goal 1 work is included.
 The earlier cleanup, history reset, guarded publication and main deletion are
 complete one-time actions, not reusable permission.
 
@@ -27,7 +30,7 @@ consistency and deliberately reject runtime until replaced alongside real tests.
 
 | Owner | Scope | State |
 | --- | --- | --- |
-| Parent | Rules/planning files, CI trigger filters and developer note | Review, local validation and publication complete; exact planning CI passed. |
+| Parent | Workflow, AGENTS.md, developer note and this handoff | Edits and local review/checks complete; verify publication and exact CI in the receipt below. |
 | readiness_review | Read-only rules review; no owned files | Review and follow-up gate checks returned; parent addressed findings. Stopped. |
 
 The user also authorizes automatic handoff trimming/rebuilding under AGENTS.md.
@@ -51,27 +54,24 @@ response window, record the pending decision here and end the turn waiting;
 silence never authorizes the dependent work. No approval question is pending now.
 
 No runtime, tests, tools, README, global profile or agent configuration changes
-were made. The CI trigger filters and their developer instructions were updated
-to skip documentation-only changes; workflow changes themselves remain covered.
-The applicable skills and local checks still apply to documentation. Existing CI
-runs are retained as audit evidence. CI configuration alone may adapt to the
+are included. The earlier documentation-only CI exclusion is superseded by the
+user's explicit no-path-filter selection. CI configuration alone may adapt to the
 growing approved test suite; it cannot weaken required coverage or change agreed
-plan/goal/acceptance/agent/publication rules. All delegated work is complete and
-no background jobs remain. The reviewed changes were published on develop at
-`747137d7f0d594f951dff22d8d242c602cce6211`. This handoff receipt changes only
-documentation and uses local checks, without another CI run. Final publication
-refs are recorded in ignored .tmp/readiness-publication-receipt.txt and the final
-response. On resume verify the actual current remote head and applicable CI;
-the completed publication grant does not start further implementation.
+plan/goal/acceptance/agent/publication rules. All delegated work is complete.
+The preceding publication ended at `55e677bc405d43f39dd66e796d916fed2dcf521d`;
+its ignored receipt is .tmp/readiness-publication-receipt.txt. The current CI-only
+amendment has explicit push authorization. Record its final commit/run in ignored
+.tmp/checks-publication-receipt.txt and the final response, then verify them on
+resume. This publication does not start further implementation.
 
 ## Verified baseline and evidence
 
-Reviewed code/workflow revision:
+Previously reviewed code/workflow revision:
 `747137d7f0d594f951dff22d8d242c602cce6211`.
 Its exact [Planning-only checks run 38180651867](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38180651867)
-completed successfully. The later handoff-only receipt does not change that
-tested code/workflow state; it has local documentation validation, not a new CI
-pass. Neither result is runtime/platform acceptance.
+completed successfully. The subsequent handoff-only commit 55e677b had local
+documentation validation under the former path filters. Neither result validates
+the current trigger amendment or provides runtime/platform acceptance.
 GitHub default/advertised HEAD is develop; remote main is absent.
 
 Local validation passed: python3 tools/check.py and git diff --check. A separate
@@ -144,7 +144,7 @@ receipts are in ignored .tmp/salvage-history-receipt.txt and
 
 1. Read AGENTS.md and all three v2 documents; inspect current refs, working changes
    and actual worker/job state. Verify the published preparation checkpoint and
-   exact CI for subsequent code changes; documentation-only receipts use local checks.
+   exact CI for subsequent changes; the Checks workflow now runs without path filters.
 2. When implementation is authorized, start from goal 1 and map its first coherent
    workflow to existing subgoals and necessary dependencies. Goal 1 covers the
    combined product/source parity; neither a menu skeleton nor supporting helpers
