@@ -36,9 +36,13 @@ block above and all unresolved work/approval boundaries through every refresh.
 
 Latest user clarification is incorporated in AGENTS.md: main-goal checkpoints
 replace the old 1% rule; normally every subgoal's focused local checks precede the
-full local suite, push and exact full CI, then the goal/README completion. Earlier
-pushes need approval and are eligible only when most required subgoal proof needs
-Linux/BusyBox. The custom parallel-role setup is retained. Extensive feature
+full local suite, push and exact full CI, then the goal/README completion.
+Each main-goal candidate also requires the accumulated-codebase audit in AGENTS.md
+before that full local gate: check duplication, real reuse, unused paths and
+test/tool/CI overlap. The checklist now has an explicit audit box for every main
+goal; all remain unchecked because no runtime audit has been performed.
+Earlier pushes need approval and are eligible only when most required subgoal
+proof needs Linux/BusyBox. The custom parallel-role setup is retained. Extensive feature
 rework or material plan/goal changes require user input first; explicit user scope
 amendments must not be weakened by an agent interpretation.
 Required approval uses a concrete question. If unanswered after a reasonable
@@ -48,10 +52,10 @@ silence never authorizes the dependent work. No approval question is pending now
 No runtime, tests, tools, CI, README, global profile or agent configuration changes
 were made. All delegated work is complete; no test jobs remain. This preparation
 was saved locally on develop in readiness commit
-`13faab20265c817552e3ac2cf823211ea5badf2b`; the handoff-refresh amendment is a
-subsequent local documentation checkpoint. Preserve both on resume and inspect
-git status/log for any later changes. No new
-push is authorized by this preparation request, and no new CI run is claimed.
+`13faab20265c817552e3ac2cf823211ea5badf2b`; handoff-refresh and codebase-audit
+amendments are subsequent local documentation checkpoints. Preserve them on resume
+and inspect git status/log for any later changes. No new push is authorized by
+this preparation request, and no new CI run is claimed.
 
 ## Verified baseline and evidence
 
@@ -65,11 +69,14 @@ GitHub default/advertised HEAD is develop; remote main is absent.
 Local validation passed: python3 tools/check.py and git diff --check. A separate
 read-only comparison against the published baseline confirmed all 156 subgoal
 requirements, all 76 acceptance cases (including conditional items), the complete
-product/checklist detail, main-goal boxes, custom parallel role table and hidden
-session-ID block are unchanged. Only the four authorized Markdown files changed.
+product/checklist detail, existing completion states, custom parallel role table
+and hidden session-ID block are unchanged. The new main-goal audit boxes remain
+unchecked. Only the four authorized Markdown files changed across preparation.
 Parent reviewed document separation, the revised publication/approval sequence
 and preservation rules, including the independent review corrections. These are
 documentation checks, not proof of runtime behavior or future agent compliance.
+The same GitHub documentation skill was applied to AGENTS.md and the planning
+documents, including the audit amendment.
 
 ## Recovery record and limits
 

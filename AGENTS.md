@@ -100,7 +100,9 @@ action still covered by the user's current authorization.
 
 Before each implementation package, identify its existing Sxx.yy requirements,
 observable entry/consumer, dependencies, missing behavior and focused acceptance
-checks in handoff. Start with the requested main goal and follow the necessary
+checks in handoff. Inspect existing code/tests and current worker ownership first
+so the package reuses relevant work instead of recreating it. Start with the
+requested main goal and follow the necessary
 dependency order. Goal 1 includes all three features and source parity: it cannot
 be completed by a menu skeleton, and its dependencies must not be blocked until
 goal 1 is ticked. Working on those dependencies earns only their verified credit;
@@ -188,9 +190,9 @@ defer or report a blocker, never sufficient evidence that the source is useless.
   local commits may follow. Do not run full suites for each helper, worker or
   subgoal merely because it finished.
 - Normal publication order is mandatory: **implement every required subgoal and
-  pass its runnable focused local tests → review accumulated tests/cost, docs and
-  scope → pass the full applicable local suite → push → pass full CI for that
-  exact commit → award final subgoal/main-goal ticks and README completion**.
+  pass its runnable focused local tests → audit the codebase, scope, accumulated
+  tests/cost and docs → pass the full applicable local suite → push → pass full CI
+  for that exact commit → award final subgoal/main-goal ticks and README completion**.
   Explicitly list any platform-only proof pending for that CI run. A candidate
   may be ready to push before those CI-dependent boxes can be ticked; this is not
   a circular requirement to obtain CI before the push that runs it. Keep the
@@ -220,11 +222,36 @@ defer or report a blocker, never sufficient evidence that the source is useless.
   bumps; settle beta ordering/upgrade rules before packaging. Stable promotion,
   release publication and live deployment require separate authorization.
 
-## Mandatory scope-drift check
+## Mandatory codebase and scope audit
 
-At **every main-goal completion checkpoint**, the parent must fact-check actual user entry paths,
-runtime behavior/integration, test assertions, documentation, checklist acceptance
-and the completion claim against `PLAN_V2.md` and explicit accepted user amendments.
+At **every main-goal completion checkpoint**, audit the accumulated active
+codebase, not only the latest diff. This carries forward the former 10% audit
+requirement at each full-goal gate, without adding a separate percentage trigger.
+Complete the audit and its required corrections before the full local suite/push;
+the main-goal tick and README completion still wait for exact full CI.
+
+The parent must:
+
+- Inventory implemented entry paths, feature modules, shared libraries, workers,
+  hooks, tests/fixtures, tools and CI against existing requirements and consumers.
+  Look for overlapping implementations, copied shared logic, duplicate worker
+  effort, unused wrappers/helpers, abandoned paths and redundant test setup.
+- Check that each responsibility has a clear owner and that real callers reuse
+  the appropriate implementation. Similar names/text alone do not prove duplicate
+  behavior; preserve intentional differences and distinct safety/platform proof.
+  Do not force unrelated behavior into an abstraction just to reduce file count.
+- Repair unjustified duplication or integration drift within approved scope,
+  preserving current work and regression coverage. Extensive rework or a material
+  plan/goal change requires the user's decision before applying it; keep the
+  affected goal pending rather than deleting its unfinished implementation.
+- Record concise audit scope, findings, fixes or justified retained differences
+  in handoff. Put the accepted audit result/tested revision with the main-goal
+  evidence in checklist. An unperformed audit cannot receive its checkbox.
+
+Fact-check actual user entry paths, runtime behavior/integration, test assertions,
+documentation, checklist acceptance and the completion claim against PLAN_V2.md
+and explicit accepted user amendments. Reuse the already-required focused/full
+gates to validate corrections; do not add a second full suite merely for the audit.
 Helper existence, test totals and commits do not establish a delivered workflow.
 
 If drift is found, **immediately notify the user where it happened, what differs,
@@ -318,6 +345,11 @@ GitHub documentation skill to temporary notes and full guides. Review
 retained README/guides at each main-goal checkpoint, recording deferred or justified unchanged
 files in handoff. No checkpoint/test/commit history in operating guides. Apply the
 documentation skill and sanitized examples/screenshots.
+
+Apply the same GitHub documentation skill to AGENTS.md and all three v2 planning
+documents: clear headings, proportional detail, accurate claims, working links
+and sanitized paths. Keep standing rules here, product contracts in the plan,
+accepted status/evidence in the checklist and current notes in handoff.
 
 Write behavioral tests with each coherent implementation package; the salvage-only
 tests-last exception has ended. Finalize code and tests before describing their

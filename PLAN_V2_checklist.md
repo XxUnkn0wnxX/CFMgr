@@ -17,9 +17,10 @@ Task-workload estimates are separate. No archived completion is imported.
 **Subgoal gate:** write and pass focused local tests. Where BusyBox/Linux/kernel
 CI evidence is required, retain pending status until that exact-commit proof
 passes. Source review and preliminary smokes are not the focused-test gate.
-**Main-goal gate:** all required subgoals complete plus full local and full CI
-suites. The full procedures are in [AGENTS.md](AGENTS.md). Incomplete work remains
-unchecked; that status does not authorize deletion or reduction of its requirements.
+**Main-goal gate:** all required subgoals complete, parent codebase/scope audit,
+and full local/full CI suites. The full procedures are in [AGENTS.md](AGENTS.md).
+Incomplete work remains unchecked; that status does not authorize deletion or
+reduction of its requirements.
 The main-goal box and README completion change only after that full evidence is
 accepted. A locally validated candidate awaiting required CI is still incomplete.
 
@@ -30,28 +31,29 @@ status**. Focused evidence means the relevant written tests passed, not merely
 syntax or smoke checks. Final subgoal status also requires any specific platform
 proof; BusyBox-dependent subgoals remain pending until exact-commit CI.
 
-A main goal needs every required subgoal complete, full local and full CI suites
-before its final tick. Product completion is the number of completed main goals
-out of 16. Optional/out-of-scope items cannot inflate this denominator.
+A main goal needs every required subgoal complete, the codebase audit, and full
+local/full CI suites before its final tick. Product completion is the number of
+completed main goals out of 16. Optional/out-of-scope items cannot inflate this
+denominator.
 
-| Main goal | Required subgoals complete | Full local suite | Full CI | Final goal |
-| --- | --- | --- | --- | --- |
-| 1 — Product scope | [ ] | [ ] | [ ] | [ ] |
-| 2 — Installation and dependencies | [ ] | [ ] | [ ] | [ ] |
-| 3 — Configuration, menus and status | [ ] | [ ] | [ ] | [ ] |
-| 4 — Save and recovery | [ ] | [ ] | [ ] | [ ] |
-| 5 — Cloudflared setup | [ ] | [ ] | [ ] | [ ] |
-| 6 — Tunnel lifecycle | [ ] | [ ] | [ ] | [ ] |
-| 7 — CFMgr updates | [ ] | [ ] | [ ] | [ ] |
-| 8 — Shared addresses | [ ] | [ ] | [ ] | [ ] |
-| 9 — DDNS | [ ] | [ ] | [ ] | [ ] |
-| 10 — IP-Sync | [ ] | [ ] | [ ] | [ ] |
-| 11 — Provider failures | [ ] | [ ] | [ ] | [ ] |
-| 12 — Hooks and schedules | [ ] | [ ] | [ ] | [ ] |
-| 13 — Logging | [ ] | [ ] | [ ] | [ ] |
-| 14 — Backup and restore | [ ] | [ ] | [ ] | [ ] |
-| 15 — Uninstall and reset | [ ] | [ ] | [ ] | [ ] |
-| 16 — Product readiness | [ ] | [ ] | [ ] | [ ] |
+| Main goal | Required subgoals complete | Codebase audit | Full local suite | Full CI | Final goal |
+| --- | --- | --- | --- | --- | --- |
+| 1 — Product scope | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 2 — Installation and dependencies | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 3 — Configuration, menus and status | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 4 — Save and recovery | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 5 — Cloudflared setup | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 6 — Tunnel lifecycle | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 7 — CFMgr updates | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 8 — Shared addresses | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 9 — DDNS | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 10 — IP-Sync | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 11 — Provider failures | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 12 — Hooks and schedules | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 13 — Logging | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 14 — Backup and restore | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 15 — Uninstall and reset | [ ] | [ ] | [ ] | [ ] | [ ] |
+| 16 — Product readiness | [ ] | [ ] | [ ] | [ ] | [ ] |
 
 ## Accepted product evidence
 
@@ -61,7 +63,8 @@ router acceptance.
 
 For each future accepted subgoal, record its actual consumer, focused test
 references/command and result, tested revision, and required exact platform CI
-run. Main-goal evidence also records full local/full CI results and parent review.
+run. Main-goal evidence also records the codebase audit, full local/full CI results
+and parent review, with the accepted revision.
 Current partial work, missing proof and next actions belong in the handoff.
 
 ## Product goals and subgoal evidence
