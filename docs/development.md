@@ -20,9 +20,11 @@ active document links/privacy and the absence of unvalidated runtime. Success
 prints `Planning consistency passed` and exits zero. Failure lists the affected
 files or requirements and exits nonzero; correct those findings before proceeding.
 
-The **Planning-only checks** CI workflow runs the same command on develop pushes
-and pull requests targeting develop. These checks do not earn product completion
-ticks or prove router compatibility.
+The **Planning-only checks** CI workflow runs the same command for relevant develop
+pushes and pull requests targeting develop: runtime/package files, tests,
+developer tools and CI/test configuration. Documentation-only changes use the
+local check above and skip CI. These checks do not earn product completion ticks
+or prove router compatibility.
 
 ## When implementation resumes
 

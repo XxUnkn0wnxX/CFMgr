@@ -11,9 +11,10 @@ session_meta id/cwd; no child IDs are included.
 
 ## Current boundary
 
-**Implementation-readiness instructions only.** The user accepts the current
-empty-runtime baseline and requests corrected agent rules before full
-implementation resumes. No salvage restart or goal 1 implementation in this task.
+**Publish the reviewed implementation-readiness instructions.** The user has
+approved pushing this checkpoint after parent review, with CI restricted to
+code/test/tool/configuration changes. No salvage restart or goal 1 implementation
+in this task; full implementation remains for the next session.
 The earlier cleanup, history reset, guarded publication and main deletion are
 complete one-time actions, not reusable permission.
 
@@ -49,17 +50,26 @@ Required approval uses a concrete question. If unanswered after a reasonable
 response window, record the pending decision here and end the turn waiting;
 silence never authorizes the dependent work. No approval question is pending now.
 
-No runtime, tests, tools, CI, README, global profile or agent configuration changes
-were made. All delegated work is complete; no test jobs remain. This preparation
+No runtime, tests, tools, README, global profile or agent configuration changes
+were made. The CI trigger filters and their developer instructions were updated
+to skip documentation-only changes; workflow changes themselves remain covered.
+The applicable skills and local checks still apply to documentation. Existing CI
+runs are retained as audit evidence. CI configuration alone may adapt to the
+growing approved test suite; it cannot weaken required coverage or change agreed
+plan/goal/acceptance/agent/publication rules. All delegated work is complete. This preparation
 was saved locally on develop in readiness commit
 `13faab20265c817552e3ac2cf823211ea5badf2b`; handoff-refresh and codebase-audit
 amendments are subsequent local documentation checkpoints. Preserve them on resume
-and inspect git status/log for any later changes. No new push is authorized by
-this preparation request, and no new CI run is claimed.
+and inspect git status/log for any later changes. The latest user instruction
+authorizes a normal develop push of these reviewed changes. Verify the resulting
+exact-head CI before finishing publication; no historical pass covers this push.
+Record the final head/run in ignored .tmp/readiness-publication-receipt.txt and
+the final response. On resume verify the current remote head and its applicable
+CI directly; a documentation-only follow-up need not create another CI run.
 
 ## Verified baseline and evidence
 
-Published baseline, before the local instruction checkpoints:
+Historical published baseline, before these instruction checkpoints:
 `4ce6a9aa521ac807c9934627592d5922cc83913c`.
 Its exact [Planning-only checks run 38179572930](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38179572930)
 completed successfully. This is the published baseline's evidence, not CI for
@@ -76,7 +86,12 @@ Parent reviewed document separation, the revised publication/approval sequence
 and preservation rules, including the independent review corrections. These are
 documentation checks, not proof of runtime behavior or future agent compliance.
 The same GitHub documentation skill was applied to AGENTS.md and the planning
-documents, including the audit amendment.
+documents, including the audit amendment. The final publication also changes
+the CI workflow/development note. Workflow YAML and representative trigger checks
+passed locally: 14 code/configuration paths selected, 14 documentation/placeholder
+paths excluded, plus mixed and documentation-only change sets. A CI run for the
+changed workflow still supplies planning-only
+evidence until the runtime gate is replaced.
 
 ## Recovery record and limits
 

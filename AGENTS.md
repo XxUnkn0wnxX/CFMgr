@@ -325,10 +325,21 @@ Use shell syntax, ShellCheck, shfmt, meaningful focused tests and required
 BusyBox/kernel proof for the code actually delivered. Use `zr0-test-efficiency`,
 modest worker counts and owned isolated fixtures. The full runner must not
 commit/push/watch CI.
-Authorized runtime pushes/PRs run full CI; documentation-only work uses
-proportionate checks. CI targets develop during implementation; any
+Authorized runtime pushes/PRs run full CI. CI path filters include runtime,
+package metadata, tests, developer tools and CI/test configuration; keep them
+aligned with actual files as implementation grows. Documentation-only changes
+use proportionate local checks and do not trigger CI. This exception does not
+relax the exact full-CI gate for a runtime main-goal candidate. CI targets develop
+during implementation; any
 later release-branch scope needs explicit review. Do not promote runtime for
 convenience.
+
+CI configuration may be adjusted as approved implementation and tests grow:
+maintain relevant triggers, jobs, supported platform coverage and modest resource
+limits, validating each change. This adaptive permission is limited to CI; it
+does not authorize changing agreed agent rules, plan/goals, checklist acceptance,
+completion/publication gates or reducing required proof. Ordinary authorized
+implementation and evidence/status updates continue under their existing rules.
 
 README summarizes **all main product implementation goals** covering the detailed
 subgoals in v2. Keep a concise warning, main-goal table, quick scope points and guide

@@ -3,8 +3,44 @@ name: Planning-only checks
 on:
   push:
     branches: [develop]
+    paths:
+      - '**/*.sh'
+      - '**/*.awk'
+      - 'modules/**'
+      - 'tests/**'
+      - 'tools/**'
+      - 'catalog.txt'
+      - 'package.manifest'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+      - 'pytest.ini'
+      - 'ruff.toml'
+      - '.ruff.toml'
+      - '.shellcheckrc'
+      - '.github/workflows/**'
+      - '!**/*.md'
+      - '!**/*.markdown'
+      - '!**/.gitkeep'
   pull_request:
     branches: [develop]
+    paths:
+      - '**/*.sh'
+      - '**/*.awk'
+      - 'modules/**'
+      - 'tests/**'
+      - 'tools/**'
+      - 'catalog.txt'
+      - 'package.manifest'
+      - 'requirements*.txt'
+      - 'pyproject.toml'
+      - 'pytest.ini'
+      - 'ruff.toml'
+      - '.ruff.toml'
+      - '.shellcheckrc'
+      - '.github/workflows/**'
+      - '!**/*.md'
+      - '!**/*.markdown'
+      - '!**/.gitkeep'
 
 permissions:
   contents: read
