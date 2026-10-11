@@ -11,14 +11,15 @@ session_meta id/cwd; no child IDs are included.
 
 ## Current boundary
 
-**CI triggers simplified; full implementation remains for the next session.**
+**CI changes published; full implementation remains for the next session.**
 The user requested removing the speculative code-path list, retaining the
 planning checks and renaming the workflow to **Checks**. The latest clarification
 keeps documentation-only changes excluded, along with images and placeholders.
 Agents must add relevant trigger paths and CI coverage as real tests grow.
-Parent review, local planning checks,
-workflow YAML/trigger checks and whitespace checks passed. The authorized push/CI
-result is recorded in the receipt below; no salvage restart or goal 1 work is included.
+Parent review, local planning checks, workflow YAML/trigger checks and whitespace
+checks passed. Commit 13ffcfc passed exact planning CI. All 93 historical Actions
+runs were deleted at the user's request; the remote inventory now contains only
+this latest successful run. No salvage restart or goal 1 work is included.
 The earlier cleanup, history reset, guarded publication and main deletion are
 complete one-time actions, not reusable permission.
 
@@ -31,7 +32,7 @@ consistency and deliberately reject runtime until replaced alongside real tests.
 
 | Owner | Scope | State |
 | --- | --- | --- |
-| Parent | Workflow, AGENTS.md, developer note and this handoff | Simplified triggers with documentation exclusions; verify publication and exact CI in the receipt below. |
+| Parent | Workflow, AGENTS.md, developer note, handoff and remote verification | CI amendment and historical-run cleanup verified; final documentation receipt recorded below. |
 | readiness_review | Read-only rules review; no owned files | Review and follow-up gate checks returned; parent addressed findings. Stopped. |
 
 The user also authorizes automatic handoff trimming/rebuilding under AGENTS.md.
@@ -58,7 +59,8 @@ No runtime, tests, tools, README, global profile or agent configuration changes
 are included. Documentation-only changes remain excluded under the latest user
 clarification; future code-path criteria follow actual tests. CI alone may adapt to the
 growing approved test suite; it cannot weaken required coverage or change agreed
-plan/goal/acceptance/agent/publication rules. All delegated work is complete.
+plan/goal/acceptance/agent/publication rules. All delegated work is stopped and no
+background jobs remain.
 The preceding publication ended at `55e677bc405d43f39dd66e796d916fed2dcf521d`;
 its ignored receipt is .tmp/readiness-publication-receipt.txt. The current CI-only
 amendment has explicit push authorization. Record its final commit/run in ignored
@@ -67,12 +69,14 @@ resume. This publication does not start further implementation.
 
 ## Verified baseline and evidence
 
-Previously reviewed code/workflow revision:
-`747137d7f0d594f951dff22d8d242c602cce6211`.
-Its exact [Planning-only checks run 38180651867](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38180651867)
-completed successfully. The subsequent handoff-only commit 55e677b had local
-documentation validation under the former path filters. Neither result validates
-the current trigger amendment or provides runtime/platform acceptance.
+Reviewed code/workflow revision:
+`13ffcfc94a88c7f2dd70be382ced5a18fe60f3ff`.
+Its exact [Checks run 38180965914](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38180965914)
+completed successfully, including the retained planning consistency job.
+The final handoff-only receipt uses local validation and does not need another CI
+run. Neither result is runtime/platform acceptance. Earlier run results remain
+historical receipts only; their remote runs were deleted at the user's request.
+The ignored .tmp/actions-cleanup-inventory.txt records the 93 removed run IDs.
 GitHub default/advertised HEAD is develop; remote main is absent.
 
 Local validation passed: python3 tools/check.py and git diff --check. A separate
@@ -85,12 +89,11 @@ Parent reviewed document separation, the revised publication/approval sequence
 and preservation rules, including the independent review corrections. These are
 documentation checks, not proof of runtime behavior or future agent compliance.
 The same GitHub documentation skill was applied to AGENTS.md and the planning
-documents, including the audit amendment. The final publication also changes
-the CI workflow/development note. Workflow YAML and representative trigger checks
-passed locally: 14 code/configuration paths selected, 14 documentation/placeholder
-paths excluded, plus mixed and documentation-only change sets. A CI run for the
-changed workflow still supplies planning-only
-evidence until the runtime gate is replaced.
+documents, including the audit amendment. The latest CI amendment preserves the
+planning job, permissions and concurrency settings. Local YAML/trigger checks
+confirmed identical develop push/PR exclusions: seven documentation/placeholder
+paths skipped, seven code/configuration paths selected, and mixed changes selected.
+CI remains planning-only evidence until meaningful runtime tests are added.
 
 ## Recovery record and limits
 
