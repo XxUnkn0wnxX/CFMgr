@@ -11,10 +11,10 @@ session_meta id/cwd; no child IDs are included.
 
 ## Current boundary
 
-**Publish the reviewed implementation-readiness instructions.** The user has
-approved pushing this checkpoint after parent review, with CI restricted to
-code/test/tool/configuration changes. No salvage restart or goal 1 implementation
-in this task; full implementation remains for the next session.
+**Instructions published; full implementation remains for the next session.**
+The user-approved rules and CI trigger update passed parent review, local checks
+and exact-commit planning CI. No salvage restart or goal 1 implementation was
+performed. CI is restricted to code/test/tool/configuration changes.
 The earlier cleanup, history reset, guarded publication and main deletion are
 complete one-time actions, not reusable permission.
 
@@ -27,7 +27,7 @@ consistency and deliberately reject runtime until replaced alongside real tests.
 
 | Owner | Scope | State |
 | --- | --- | --- |
-| Parent | AGENTS.md and all three PLAN_V2 files only | Rules corrected; independent findings reviewed and integrated; scope-preservation, planning and whitespace checks passed. |
+| Parent | Rules/planning files, CI trigger filters and developer note | Review, local validation and publication complete; exact planning CI passed. |
 | readiness_review | Read-only rules review; no owned files | Review and follow-up gate checks returned; parent addressed findings. Stopped. |
 
 The user also authorizes automatic handoff trimming/rebuilding under AGENTS.md.
@@ -56,28 +56,26 @@ to skip documentation-only changes; workflow changes themselves remain covered.
 The applicable skills and local checks still apply to documentation. Existing CI
 runs are retained as audit evidence. CI configuration alone may adapt to the
 growing approved test suite; it cannot weaken required coverage or change agreed
-plan/goal/acceptance/agent/publication rules. All delegated work is complete. This preparation
-was saved locally on develop in readiness commit
-`13faab20265c817552e3ac2cf823211ea5badf2b`; handoff-refresh and codebase-audit
-amendments are subsequent local documentation checkpoints. Preserve them on resume
-and inspect git status/log for any later changes. The latest user instruction
-authorizes a normal develop push of these reviewed changes. Verify the resulting
-exact-head CI before finishing publication; no historical pass covers this push.
-Record the final head/run in ignored .tmp/readiness-publication-receipt.txt and
-the final response. On resume verify the current remote head and its applicable
-CI directly; a documentation-only follow-up need not create another CI run.
+plan/goal/acceptance/agent/publication rules. All delegated work is complete and
+no background jobs remain. The reviewed changes were published on develop at
+`747137d7f0d594f951dff22d8d242c602cce6211`. This handoff receipt changes only
+documentation and uses local checks, without another CI run. Final publication
+refs are recorded in ignored .tmp/readiness-publication-receipt.txt and the final
+response. On resume verify the actual current remote head and applicable CI;
+the completed publication grant does not start further implementation.
 
 ## Verified baseline and evidence
 
-Historical published baseline, before these instruction checkpoints:
-`4ce6a9aa521ac807c9934627592d5922cc83913c`.
-Its exact [Planning-only checks run 38179572930](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38179572930)
-completed successfully. This is the published baseline's evidence, not CI for
-these local instruction edits and not runtime/platform acceptance.
+Reviewed code/workflow revision:
+`747137d7f0d594f951dff22d8d242c602cce6211`.
+Its exact [Planning-only checks run 38180651867](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38180651867)
+completed successfully. The later handoff-only receipt does not change that
+tested code/workflow state; it has local documentation validation, not a new CI
+pass. Neither result is runtime/platform acceptance.
 GitHub default/advertised HEAD is develop; remote main is absent.
 
 Local validation passed: python3 tools/check.py and git diff --check. A separate
-read-only comparison against the published baseline confirmed all 156 subgoal
+read-only comparison against the pre-review baseline 4ce6a9a confirmed all 156 subgoal
 requirements, all 76 acceptance cases (including conditional items), the complete
 product/checklist detail, existing completion states, custom parallel role table
 and hidden session-ID block are unchanged. The new main-goal audit boxes remain
@@ -145,8 +143,8 @@ receipts are in ignored .tmp/salvage-history-receipt.txt and
 ## Next session
 
 1. Read AGENTS.md and all three v2 documents; inspect current refs, working changes
-   and actual worker/job state. Preserve this local preparation checkpoint and verify the
-   exact CI for any subsequently published head.
+   and actual worker/job state. Verify the published preparation checkpoint and
+   exact CI for subsequent code changes; documentation-only receipts use local checks.
 2. When implementation is authorized, start from goal 1 and map its first coherent
    workflow to existing subgoals and necessary dependencies. Goal 1 covers the
    combined product/source parity; neither a menu skeleton nor supporting helpers
