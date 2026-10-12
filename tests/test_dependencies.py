@@ -168,6 +168,13 @@ def run_dependency_case(
     unshare = shutil.which("unshare")
     assert sudo and unshare, "Already admitted namespace tools disappeared"
     os.chmod(tmp_path, 0o700)
+    # The product action, cancellation and normal release retain their own
+    # 120/10/60-second budgets. This outer fixture guard must let them report.
+    # Retry performs two complete attempts; mixed roots require explicit isolated
+    # recovery after the first honest ownership refusal. No inner limit changes.
+    attempts = 2 if case == "dependency_retry" else 1
+    recovery = 10 + 60 if case == "dependency_mixed" else 0
+    watchdog = attempts * (120 + 10 + 60) + recovery + 30
     result = subprocess.run(
         [
             sudo,
@@ -182,7 +189,7 @@ def run_dependency_case(
             timeout,
             "--signal=TERM",
             "--kill-after=2",
-            "45",
+            str(watchdog),
             *shell,
             str(FIXTURE),
             str(ROOT),
@@ -200,7 +207,7 @@ def run_dependency_case(
         env={**os.environ, "LC_ALL": "C"},
         capture_output=True,
         check=False,
-        timeout=50,
+        timeout=watchdog + 5,
     )
     if result.returncode:
         # Private fixture evidence contains finite phase labels only. Root-owned

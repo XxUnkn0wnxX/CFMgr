@@ -14,12 +14,16 @@ view_prepare
 	: >"$fixture/dependency.trace"
 ) || fail 'could not exclusively create fixture trace'
 dependency_trace_count=0
+IFS=' ' read -r dependency_trace_clock dependency_trace_idle </proc/uptime || fail 'could not read diagnostic clock'
+dependency_trace_started=${dependency_trace_clock%%.*}
 dependency_trace() {
 	[ -f "$fixture/dependency.trace" ] && [ ! -L "$fixture/dependency.trace" ] || return 1
 	[ "$dependency_trace_count" -lt 999999 ] || return 1
 	dependency_trace_count=$((dependency_trace_count + 1))
-	printf 'counter=%s stage=%s mode=%s code=%s phase=%s view=%s sequence=%s pending=%s keeper=%s pins=%s probe=%s status=%s reason=%s exit=%s\n' \
-		"$dependency_trace_count" "$1" "$2" "${3:-unset}" "${cfmgr_dependencies_phase:-unset}" \
+	IFS=' ' read -r dependency_trace_clock dependency_trace_idle </proc/uptime || return 1
+	dependency_trace_elapsed=$((${dependency_trace_clock%%.*} - dependency_trace_started))
+	printf 'elapsed=%s probes=%s counter=%s stage=%s mode=%s code=%s phase=%s view=%s sequence=%s pending=%s keeper=%s pins=%s probe=%s status=%s reason=%s exit=%s\n' \
+		"$dependency_trace_elapsed" "${cfmgr_probe_serial:-0}" "$dependency_trace_count" "$1" "$2" "${3:-unset}" "${cfmgr_dependencies_phase:-unset}" \
 		"${cfmgr_view_state:-unset}" "${cfmgr_view_sequence:-0}" "${cfmgr_view_pending:-none}" \
 		"${cfmgr_keeper_state:-unset}" "${cfmgr_keeper_count:-0}" "${cfmgr_probe_mode:-unset}" \
 		"${cfmgr_probe_status:-unset}" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" >"$fixture/dependency.trace"
@@ -27,7 +31,6 @@ dependency_trace() {
 # Only fixture callbacks add phase evidence; native dispatch and supervision body
 # remain unchanged. Tool selection also covers the first direct snapshot copies.
 dependency_native() {
-	dependency_trace START "$1" || return 3
 	if cfmgr_dependencies_native "$@"; then dependency_native_code=0; else dependency_native_code=$?; fi
 	dependency_trace END "$1" "$dependency_native_code" || return 3
 	return "$dependency_native_code"

@@ -46,6 +46,26 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
+- Current candidate: `e480822eb42933ae9c0a6dd6c4eec35b89b7199c`, pushed and
+  remote-verified. [Checks 38240094327](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38240094327)
+  failed first vendor repair case after **1 passed/1 failed**, 48.12s; host/static
+  passed. Receipt `.tmp/dependency-repair-ci-failed-5.log`. Diagnostic proves view
+  construction reached sequence 24/13 pins and 1,351 finite phase markers before
+  the fixture's 45s timeout, inside identity parsing. Runtime action budget is
+  120s plus separately bounded cleanup; audit the mismatched outer fixture budget.
+  `prerequisite_inventory` owns `test_dependencies.py` and dependency/storage
+  fixture budget/cost review only; no runtime edits without parent agreement.
+  No CI remains active. Require exact green before retained runtime implementation.
+  Parent/worker finite-loop audit found no loop bug: full source checks repeat
+  8+2N supervised calls per bind, explaining hundreds of progressing probes.
+  The outer fixture guard now covers unchanged 120s action/10s cancellation/60s
+  release budgets plus 30s setup/teardown: 220s normal, 410s retry, 290s mixed-root
+  recovery. Trace adds elapsed/probe counts; duplicate START writes removed.
+  Focused dependency **13 passed/7 Linux skips**, affected static/syntax/format
+  checks passed. Files released and parent-reviewed; runtime fit remains CI-pending.
+  While CI runs, `next_subgoal_review` may read only the retained-launch bootstrap
+  interfaces and return a bounded factoring map. No implementation/file ownership
+  is granted; parent reviews the design after the current gate.
 - Current candidate: `64085a10f9efffa06621068125f4e94e7fd23bc4`, pushed and
   remote-verified. [Checks 38237947152](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38237947152)
   failed: host/static passed; vendor BusyBox **266 passed/1 skip/8 failed**.
