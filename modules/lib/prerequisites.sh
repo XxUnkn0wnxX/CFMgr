@@ -7,9 +7,11 @@
 # 3 unresolved ownership. Result variables are capability evidence, never readiness.
 
 cfmgr_prerequisites_identity() {
+	cfmgr_identity_read=0
 	case "$1" in '' | *[!0-9]*) return 1 ;; esac
 	# A task can disappear before open; callers classify absence themselves.
 	IFS= read -r cfmgr_identity_line 2>/dev/null <"/proc/$1/stat" || return 1
+	cfmgr_identity_read=1
 	[ "${cfmgr_identity_line%% *}" = "$1" ] || return 1
 	cfmgr_identity_tail=${cfmgr_identity_line##*) }
 	cfmgr_identity_ifs=$IFS
@@ -27,11 +29,29 @@ cfmgr_prerequisites_identity() {
 }
 
 cfmgr_prerequisites_owned() {
-	cfmgr_prerequisites_identity "$cfmgr_probe_pid" || return 1
+	# A failed read may mean this exact direct child was already reaped by ash.
+	# A positively read mismatch remains unknown even if the task then vanishes.
+	if ! cfmgr_prerequisites_identity "$cfmgr_probe_pid"; then
+		if [ "$cfmgr_identity_read" -eq 0 ] && [ ! -e "/proc/$cfmgr_probe_pid" ] && [ ! -L "/proc/$cfmgr_probe_pid" ]; then return 1; fi
+		return 3
+	fi
 	[ "$cfmgr_identity_start" = "$cfmgr_probe_start" ] &&
 		[ "$cfmgr_identity_parent" = "$cfmgr_probe_owner" ] &&
 		IFS= read -r cfmgr_probe_current_boot </proc/sys/kernel/random/boot_id &&
-		[ "$cfmgr_probe_current_boot" = "$cfmgr_probe_boot" ]
+		[ "$cfmgr_probe_current_boot" = "$cfmgr_probe_boot" ] || return 3
+}
+
+# Observe only the launched direct child. Absence allows its exact wait; unknown
+# ownership retains evidence and never authorizes signalling or a blocking wait.
+_cfmgr_prerequisites_observe() {
+	if cfmgr_prerequisites_owned; then cfmgr_probe_observation=0; else cfmgr_probe_observation=$?; fi
+	case "$cfmgr_probe_observation" in
+	0 | 1) return 0 ;;
+	*)
+		cfmgr_probe_status=unresolved
+		return 3
+		;;
+	esac
 }
 
 cfmgr_prerequisites_child() {
@@ -189,18 +209,16 @@ cfmgr_prerequisites_run() {
 			cfmgr_probe_status=unresolved
 			return 3
 		}
-	elif [ -d "/proc/$cfmgr_probe_pid" ]; then
+	elif [ "$cfmgr_identity_read" -eq 0 ] && [ ! -e "/proc/$cfmgr_probe_pid" ] && [ ! -L "/proc/$cfmgr_probe_pid" ]; then
+		cfmgr_probe_start=
+	else
 		cfmgr_probe_status=unresolved
 		return 3
-	else
-		cfmgr_probe_start=
 	fi
 	cfmgr_probe_reason=
-	while [ -d "/proc/$cfmgr_probe_pid" ]; do
-		cfmgr_prerequisites_owned || {
-			cfmgr_probe_status=unresolved
-			return 3
-		}
+	while :; do
+		_cfmgr_prerequisites_observe || return 3
+		[ "$cfmgr_probe_observation" -eq 1 ] && break
 		[ "$cfmgr_identity_state" = Z ] && break
 		if ! _cfmgr_prerequisites_attachment; then cfmgr_probe_reason=attachment; fi
 		cfmgr_prerequisites_now || cfmgr_probe_reason=clock
@@ -219,11 +237,8 @@ cfmgr_prerequisites_run() {
 				}
 				kill -TERM "$cfmgr_probe_child_pid" || :
 			fi
-			cfmgr_prerequisites_owned || {
-				cfmgr_probe_status=unresolved
-				return 3
-			}
-			kill -TERM "$cfmgr_probe_pid" || :
+			_cfmgr_prerequisites_observe || return 3
+			if [ "$cfmgr_probe_observation" -eq 0 ] && [ "$cfmgr_identity_state" != Z ]; then kill -TERM "$cfmgr_probe_pid" || :; fi
 			break
 		fi
 		cfmgr_prerequisites_pause || {
@@ -233,11 +248,9 @@ cfmgr_prerequisites_run() {
 	done
 	if [ -n "$cfmgr_probe_reason" ]; then
 		cfmgr_probe_attempt=0
-		while [ "$cfmgr_probe_attempt" -lt 10 ] && [ -d "/proc/$cfmgr_probe_pid" ]; do
-			cfmgr_prerequisites_owned || {
-				cfmgr_probe_status=unresolved
-				return 3
-			}
+		while [ "$cfmgr_probe_attempt" -lt 10 ]; do
+			_cfmgr_prerequisites_observe || return 3
+			[ "$cfmgr_probe_observation" -eq 1 ] && break
 			[ "$cfmgr_identity_state" = Z ] && break
 			cfmgr_prerequisites_pause || {
 				cfmgr_probe_status=unresolved
@@ -245,7 +258,8 @@ cfmgr_prerequisites_run() {
 			}
 			cfmgr_probe_attempt=$((cfmgr_probe_attempt + 1))
 		done
-		if [ -d "/proc/$cfmgr_probe_pid" ] && [ "$cfmgr_identity_state" != Z ]; then
+		_cfmgr_prerequisites_observe || return 3
+		if [ "$cfmgr_probe_observation" -eq 0 ] && [ "$cfmgr_identity_state" != Z ]; then
 			# Never force the parent out before it has reaped the tracked child.
 			cfmgr_prerequisites_child || {
 				cfmgr_probe_status=unresolved
@@ -256,19 +270,17 @@ cfmgr_prerequisites_run() {
 				cfmgr_probe_status=unresolved
 				return 3
 			fi
-			cfmgr_prerequisites_owned || {
-				cfmgr_probe_status=unresolved
-				return 3
-			}
-			kill -KILL "$cfmgr_probe_pid" || :
-			cfmgr_prerequisites_pause || :
+			_cfmgr_prerequisites_observe || return 3
+			if [ "$cfmgr_probe_observation" -eq 0 ] && [ "$cfmgr_identity_state" != Z ]; then
+				kill -KILL "$cfmgr_probe_pid" || :
+				cfmgr_prerequisites_pause || :
+			fi
 		fi
 	fi
-	if [ -d "/proc/$cfmgr_probe_pid" ]; then
-		if ! cfmgr_prerequisites_owned || [ "$cfmgr_identity_state" != Z ]; then
-			cfmgr_probe_status=unresolved
-			return 3
-		fi
+	_cfmgr_prerequisites_observe || return 3
+	if [ "$cfmgr_probe_observation" -eq 0 ] && [ "$cfmgr_identity_state" != Z ]; then
+		cfmgr_probe_status=unresolved
+		return 3
 	fi
 	if wait "$cfmgr_probe_pid"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
 	if [ "$cfmgr_probe_mode" = timeout-expiry ]; then

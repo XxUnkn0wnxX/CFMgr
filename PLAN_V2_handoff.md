@@ -47,6 +47,32 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
+- Current candidate `0851c1c5a5012ddaceaabfa2583aaffda48e7dd7` is pushed and
+  remote-verified. [Quick Checks 38247678272](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38247678272)
+  **passed 5 tests in 122.87s**, including real normal opkg repair/cleanup
+  (121.74s) and four retirement cases. Verified BusyBox warm preparation took 1s;
+  the full quick job took about 2m22s. Full Checks manually dispatched at this
+  candidate: [Checks 38248007991](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38248007991).
+  Full Checks failed: host/statics passed; BusyBox **12 passed/1 failed, 134.58s**.
+  Actual opkg completed successfully (`complete 0 END`); view/keeper released.
+  A short cleanup probe became unresolved with a tracked PID/start and no other
+  refusal reason. `.tmp/dependency-repair-full-failed-1.log`. The short supervisor
+  has a confirmed source race: proc directory can disappear between its existence
+  check and owned-identity read, which currently reports unresolved. No job remains
+  active. `prerequisite_inventory` owns prerequisites-only lifecycle correction;
+  `dependency_fixture` owns prerequisite tests with deterministic disappearance and
+  still-visible unknown/reused identity cases. Preserve ownership proof before any
+  signal; only positively absent direct children may proceed to their exact wait.
+  Parent reviews; quick lifecycle/normal-repair proof then exact full CI.
+  Retained-launch native logging review completed read-only; no implementation yet.
+  The direct-child correction is implemented and parent-reviewed. A failed identity
+  read plus confirmed absence allows exact wait; any successful-but-invalid read or
+  ownership mismatch remains unknown, even after disappearance. Fresh identity
+  remains required before signals; timeout-child proof/deadlines are unchanged.
+  Five deterministic Linux regressions are added, with private process-group
+  teardown; local prerequisite tests **20 passed/8 Linux skips**, affected statics
+  passed. Writers released files; metadata regenerated. Quick selection includes
+  these races, existing flock/output-limit supervision and real normal repair.
 - Quick candidate `e2ae0df5aa3346853ac7f27e69f55e506db8e0db` is pushed and
   remote-verified. [Quick Checks 38246627323](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38246627323)
   passed all four terminal-retirement cases but failed normal repair during bounded

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -341,6 +342,203 @@ def test_linux_supervisor_bounds_output_and_denies_detached_launch(
     assert 0 < (attached / "jq-good.out").stat().st_size <= 8192
     assert (attached / "jq-good.err").stat().st_size <= 8192
     assert list(detached.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("scenario", "expected"),
+    [
+        (
+            "vanished-read",
+            "code=0 status=reaped exit=0 signaled=no exists=no",
+        ),
+        (
+            "visible-read-failure",
+            "code=3 status=unresolved exit=unset signaled=no exists=yes",
+        ),
+        (
+            "visible-mismatch",
+            "code=3 status=unresolved exit=unset signaled=no exists=yes",
+        ),
+        (
+            "vanished-mismatch",
+            "code=3 status=unresolved exit=unset signaled=no exists=no",
+        ),
+        (
+            "vanished-invalid-record",
+            "code=3 status=unresolved exit=unset signaled=no exists=no",
+        ),
+    ],
+)
+def test_linux_supervisor_distinguishes_reaped_child_from_unknown_identity(
+    shell: list[str],
+    tools: dict[str, str],
+    tmp_path: Path,
+    scenario: str,
+    expected: str,
+) -> None:
+    if sys.platform != "linux":
+        pytest.skip("direct-child proc disappearance and exact wait require Linux")
+
+    source = LIBRARY.read_text()
+    identity_definition = "cfmgr_prerequisites_identity() {"
+    test_identity_definition = "cfmgr_test_real_identity() {"
+    assert source.count(identity_definition) == 1
+    instrumented = source.replace(identity_definition, test_identity_definition, 1)
+    assert (
+        instrumented.replace(test_identity_definition, identity_definition, 1) == source
+    )
+    library = tmp_path / "prerequisites-identity-hook.sh"
+    library.write_text(instrumented)
+
+    context = tmp_path / "identity observation context"
+    context.mkdir(mode=0o700)
+    (context / "json.good").write_text('{"answer":[1,2],"ok":true}\n')
+    os.mkfifo(context / "release")
+    tool = tmp_path / "blocking jq adapter"
+    tool.write_text(
+        "#!/bin/sh\n"
+        f"context={shlex.quote(str(context))}\n"
+        ': >"$context/child-started"\n'
+        "trap ': >\"$context/child-signaled\"' TERM\n"
+        'IFS= read -r release <"$context/release" || exit 91\n'
+        "printf 'true\\n'\n"
+    )
+    tool.chmod(0o700)
+
+    script = (
+        '. "$1"; '
+        + pause_definition(shell)
+        + r"""
+context=$2 scenario=$3
+cfmgr_test_identity_reads=0
+cfmgr_prerequisites_attachment_ok() { return 0; }
+cfmgr_prerequisites_admit_tool() { [ -f "$1" ] && [ -x "$1" ]; }
+cfmgr_test_wait_marker() {
+    cfmgr_test_wait_count=0
+    while [ ! -e "$context/child-started" ]; do
+        [ "$cfmgr_test_wait_count" -lt 40 ] || return 1
+        cfmgr_prerequisites_pause || return 1
+        cfmgr_test_wait_count=$((cfmgr_test_wait_count + 1))
+    done
+}
+cfmgr_test_release_child() { printf 'release\n' >"$context/release"; }
+cfmgr_test_wait_absent() {
+    cfmgr_test_wait_count=0
+    while [ -e "/proc/$1" ] || [ -L "/proc/$1" ]; do
+        [ "$cfmgr_test_wait_count" -lt 40 ] || return 1
+        cfmgr_prerequisites_pause || return 1
+        cfmgr_test_wait_count=$((cfmgr_test_wait_count + 1))
+    done
+}
+cfmgr_prerequisites_identity() {
+    if [ "$1" = "${cfmgr_probe_pid:-}" ]; then
+        cfmgr_test_identity_reads=$((cfmgr_test_identity_reads + 1))
+        if [ "$cfmgr_test_identity_reads" -eq 2 ]; then
+            case $scenario in
+                vanished-read)
+                    cfmgr_test_wait_marker && cfmgr_test_release_child &&
+                        cfmgr_test_wait_absent "$1" || return 1
+                    cfmgr_test_real_identity "$@"
+                    return $?
+                    ;;
+                visible-read-failure)
+                    cfmgr_test_wait_marker || return 1
+                    cfmgr_identity_read=0
+                    return 1
+                    ;;
+                visible-mismatch | vanished-mismatch | vanished-invalid-record)
+                    cfmgr_test_real_identity "$@" || return 1
+                    cfmgr_test_wait_marker || return 1
+                    case $scenario in
+                        visible-mismatch | vanished-mismatch)
+                            cfmgr_identity_start=$((cfmgr_identity_start + 1))
+                            ;;
+                        vanished-invalid-record)
+                            cfmgr_identity_line=malformed-pid-header
+                            cfmgr_identity_read=1
+                            ;;
+                    esac
+                    if [ "$scenario" = vanished-mismatch ] || [ "$scenario" = vanished-invalid-record ]; then
+                        cfmgr_test_release_child && cfmgr_test_wait_absent "$1" || return 1
+                    fi
+                    [ "$scenario" != vanished-invalid-record ] || return 1
+                    return 0
+                    ;;
+            esac
+        fi
+    fi
+    cfmgr_test_real_identity "$@"
+}
+if cfmgr_prerequisites_run jq-good "$context" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"; then
+    cfmgr_test_code=0
+else
+    cfmgr_test_code=$?
+fi
+cfmgr_test_probe_pid=${cfmgr_probe_pid:-}
+if [ -e "/proc/$cfmgr_test_probe_pid" ]; then exists_at_return=yes; else exists_at_return=no; fi
+if [ -n "$cfmgr_test_probe_pid" ] &&
+    [ ! -e "$context/child-signaled" ] && [ "$scenario" != vanished-read ] &&
+    [ "$scenario" != vanished-mismatch ] && [ "$scenario" != vanished-invalid-record ]; then
+    cfmgr_test_release_child || exit 92
+fi
+if [ -n "$cfmgr_test_probe_pid" ]; then wait "$cfmgr_test_probe_pid" 2>/dev/null || :; fi
+if [ -e "$context/child-signaled" ]; then signaled=yes; else signaled=no; fi
+printf 'code=%s status=%s exit=%s signaled=%s exists=%s\n' \
+    "$cfmgr_test_code" "${cfmgr_probe_status:-unset}" "${cfmgr_probe_exit:-unset}" "$signaled" "$exists_at_return"
+"""
+    )
+    executable = "/bin/sh" if REQUIRE_BUSYBOX else shell[0]
+    process = subprocess.Popen(
+        [
+            *shell,
+            "-c",
+            script,
+            "prerequisite-identity-race",
+            str(library),
+            str(context),
+            scenario,
+            executable,
+            str(PROBE),
+            tools["env"],
+            tools["awk"],
+            tools["sleep"],
+            tools["wc"],
+            str(tool),
+        ],
+        env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    try:
+        try:
+            stdout, stderr = process.communicate(timeout=8)
+        except subprocess.TimeoutExpired as error:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                stdout, stderr = process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                stdout = error.stdout or b""
+                stderr = error.stderr or b""
+            raise AssertionError(
+                "identity race fixture exceeded its bound; "
+                f"stdout={stdout[-2048:]!r} stderr={stderr[-2048:]!r}"
+            ) from error
+    finally:
+        if process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                pass
+    assert process.returncode == 0, stderr.decode(errors="replace")
+    assert stdout.decode().strip() == expected
 
 
 # This private workstation adapter proves inventory/control flow with actual fixed
