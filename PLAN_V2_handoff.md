@@ -22,7 +22,7 @@ update acceptance/README/handoff and pause. The earlier pause-every-subgoal over
 was revoked. Recent workflow/doc corrections were not pause requests.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
-Goal 1. Finish validation of the current S02.05/S02.08 keeper package, then apply
+Goal 1. S02.05/S02.08 keeper validation passed; apply
 the user's order: smallest independently completable subgoals first, linked
 module/framework batches second, remaining main-goal work last. Read-only closure
 mapping selected **S02.09 capability-based support** as the next smallest independent
@@ -45,7 +45,12 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
-- Branch: `develop`; local/remote verified at documentation receipt
+- Branch: `develop`; local/remote verified at runtime `a7fe16ce2503cf34920efe5034a22d319e54f948`.
+  [Checks 38216515648](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38216515648)
+  passed all required steps: host 135/21 skips, vendor 155/1 workstation-only skip;
+  job 94s, vendor behavior 50.90s. Keeper lifetime and real mount failure cases passed.
+  Receipts `.tmp/mount-keeper-ci.{json,log}`. No new subgoal acceptance; S02.09 is next.
+- Previous documentation receipt:
   `f0f35a0a5c339ffa669987b43a68ff2b687aafd0`; tested guarded-view runtime is
   `ad28a3abf4ced1f74a8bcf42b89e9ba4994704b0`. Exact
   [Checks 38211199161](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38211199161)
@@ -85,7 +90,7 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 | --- | --- | --- |
 | Parent | Three plans, architecture, integration, metadata and CI config | Review mount-reference lifetime and descriptor contracts; add only source-qualified MKNOD fixture applet. No acceptance for a helper alone. |
 | `opkg_supervision_review` analyst | Completed read-only ownership review | Keeper, dynamic roots, mixed threadgroups and numeric-signal evidence limits recorded below; no implementation. |
-| `inventory_ci_wait` awaiter | Completed failed-run monitoring; reuse after repair push | Wait/report only; no active job currently. |
+| `inventory_ci_wait` awaiter | Completed exact repaired-run monitoring | Checks 38216515648 green; no active job. |
 | `prerequisite_inventory` worker_strong | Completed implementation and bounded review | Files released; parent owns corrected runtime/fixtures and final CI integration. |
 | `next_subgoal_review` explorer | Completed read-only closure map | S02.09 is next independent target. Later linked batch: S02.04/.05/.06/.08, requiring tunnel DNS, confirmed reinstall, saved identity and return-eligibility consumers as well as repair. |
 
@@ -107,8 +112,8 @@ already-open mount reference. Verify incremental ACK plus complete held mount ID
 PID/start/boot and resource headroom. Parent loss/EOF must not silently unwind pins.
 Release only after independently proved quiescence, then normal view unmount.
 Focused tests add `test_mount_keeper.py` to storage/view coverage; Linux proof needs CI.
-Keeper implementation is reviewed and focused-local-passed, with Linux proof pending
-and no acceptance credit. No worker remains active.
+Keeper implementation is reviewed and focused-local/CI-passed, with no complete
+subgoal credit. No worker remains active.
 Pinned ash `shellexec` calls `clearredir(drop=1)`, closing saved redirection copies
 before external exec; verify that behavior in the vendor fixture. Current review
 fixes cover glob-disabled callers, canonical numeric protocol, uncertain-release
