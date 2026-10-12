@@ -14,11 +14,15 @@ calculation is `completed main goals / 16 × 100`; every completed main goal add
 6.25%. Partial subgoals remain visible without increasing this percentage.
 Task-workload estimates are separate. No archived completion is imported.
 
-**Subgoal gate:** write and pass focused local tests. Where BusyBox/Linux
-CI evidence is required, retain pending status until that exact-commit proof
-passes. Source review and preliminary smokes are not the focused-test gate.
+**Subgoal gate:** write and pass focused local tests, relevant static/lint checks
+and parent review. Where required focused proof needs CI rather than the local
+host, retain pending status until that exact-commit focused CI passes; an early
+push for that focused proof remains authorized under [AGENTS.md](AGENTS.md).
+Track results and outstanding gates here. Source review and preliminary smokes
+are not the focused-test gate. A subgoal does not trigger full local/full CI suites.
 **Main-goal gate:** all required subgoals complete, parent codebase/scope audit,
-and full local/full CI suites. The full procedures are in [AGENTS.md](AGENTS.md).
+and full local/full CI suites **when the whole main goal is ready for its publication
+checkpoint**. The full procedures are in [AGENTS.md](AGENTS.md).
 Incomplete work remains unchecked; that status does not authorize deletion or
 reduction of its requirements.
 The main-goal box and README completion change only after that full evidence is
@@ -37,7 +41,8 @@ Cancelled/optional guest runs are never labelled passed.
 Each product subgoal below has separate **focused local** evidence and **final
 status**. Focused evidence means the relevant written tests passed, not merely
 syntax or smoke checks. Final subgoal status also requires any specific platform
-proof; BusyBox-dependent subgoals remain pending until exact-commit CI.
+proof; unavailable BusyBox-dependent focused evidence remains pending until
+exact-commit focused CI (or the full main-goal CI gate) supplies that proof.
 
 A main goal needs every required subgoal complete, the codebase audit, and full
 local/full CI suites before its final tick. Product completion is the number of
@@ -89,9 +94,35 @@ static gates. The exact CI above then passed the complete corrected suite. Earli
 focused package/tool tests are recorded in handoff. No full local suite or main-
 goal audit is claimed for this authorized early checkpoint.
 
-Goal 2: **1/9 accepted = 11.1%**. Other product subgoals and multi-goal acceptance
-cases remain unchecked; none of the 16 main goals is complete. A later documentation
-receipt references this tested code revision and does not claim new runtime proof.
+**S03.01 accepted:** reviewed the same installed-config consumer against every
+passive fresh-state clause. `tests/test_config.py` checks the complete generated
+document: three unconfigured/Off features, tunnel installation/maintenance Off,
+empty typed credentials, Auto address-family defaults, inactive/unconfigured
+logging without opt-out, unset backup destination and manager checks On with
+auto-install/developer mode Off. `tests/test_install.py` verifies its private
+publication, the installed feature states, empty Entware destination and retained/
+repeated/corrupt/interrupted refusal. Parent traced the fixed installer actions;
+fresh installation has no feature setup, provider, hook, logging or backup action.
+
+Fresh focused verification on `bc49cf54831e8b7099aad3aee9ba8e75fbcae137` plus
+handoff-only edits used `.venv/bin/python tools/test.py --focused tests -k 'test_config or test_install'`:
+**24 passed, 1 Linux-only skip, 142 deselected**, 26.62s. Planning/links, package
+metadata, Ruff lint/format, compilation, shell syntax, ShellCheck, shfmt and
+whitespace checks passed. The skipped owned-copy signal/FD test ran in the exact
+Ubuntu CI above. Runtime, tests, tools, dependencies, package metadata and workflow
+are unchanged from that tested SHA; its full job conclusion/logs were reverified.
+No new full suite, runtime change or hardware qualification is claimed.
+
+Required CI uses representative component/transaction tests with labelled host
+attachment/supervision adapters plus real Linux/BusyBox process/FD tests. The exact
+root/JFFS2 `--install` path remains optional guest/live proof, not a prescribed
+development gate. S03.01 acceptance covers passive fresh installation only;
+settings do not establish implemented update scheduling or feature workflows.
+
+Goal 2: **1/9 accepted = 11.1%**. Goal 3: **1/10 accepted = 10%**. All other product
+subgoals and multi-goal acceptance cases remain unchecked; none of the 16 main
+goals is complete. Documentation receipts reference the tested runtime revision
+and do not claim new runtime proof.
 
 ## Product goals and subgoal evidence
 
@@ -133,7 +164,7 @@ are distinct from still-required remote acquisition/update-source proof.
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S03.01 | **Passive fresh state:** All three unconfigured/Off; no tunnel/logging/backup setup; manager check On and auto-install Off. |
+| [x] | [x] | S03.01 | **Passive fresh state:** All three unconfigured/Off; no tunnel/logging/backup setup; manager check On and auto-install Off. |
 | [ ] | [ ] | S03.02 | **Distinct state and settings:** Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
 | [ ] | [ ] | S03.03 | **Main menu and navigation:** 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects. |
 | [ ] | [ ] | S03.04 | **Feature submenus:** Own setup, On/Off, explicit operation, status and scoped logging/repair; only relevant options. |

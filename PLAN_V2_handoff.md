@@ -8,38 +8,130 @@ session_meta id/cwd; no child IDs are included.
 Codex Session: 01a12d2e-4093-74b3-a13a-5be95ceaa965
 Third ID verified 2026-10-12 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a12e40-f76a-7710-9c55-a4b89970cbd2
+Fourth ID verified 2026-10-12 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Working rules](AGENTS.md)
 
-## Paused checkpoint
+## Paused checkpoint: S03.01 accepted
 
-**Active goal 2: installation, storage and dependencies — 1/9 accepted = 11.1%.**
-S02.03 now has accepted focused local and exact Ubuntu/BusyBox CI proof. Overall
-product completion remains **0/16 = 0%**. Goal 2 is the announced prerequisite for
-original goal 1; S02.04/S02.08/S02.09 supporting work remains partial and unchecked.
+The requested one-further-subgoal boundary is reached. **S03.01 passive fresh
+state is accepted. Pause now; do not start another package without resume.**
+For this session, the user wants a pause after every accepted subgoal until they
+say otherwise. The standing rule remains to pause after each completed main goal.
 
-The user requested one completed subgoal plus supporting tools, accepted CI and
-receipt, then **pause for the day**. This boundary is reached: do not start another
-package until resume. No main-goal audit/full local gate or README update belongs
-to this early checkpoint. No unanswered approval remains. All workers returned;
-no required CI, local test process or router session remains active.
+The user explicitly permits subgoals from different main goals in any dependency-
+appropriate order: **build foundations and prerequisites first, then the workflows
+that depend on them**. Record each selected subgoal, its consumers/dependencies and
+return path before implementation. This sequencing permission does not change
+product requirements, evidence, publication gates or progress calculations.
 
-Tested code is `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, published to `develop`.
+The user also clarified the validation cadence: keep focused tests/static checks,
+parent review and outstanding gates in the checklist for each subgoal. **Full local
+and full CI gates run only when a complete main goal is ready for its checkpoint.**
+The early-push exception remains when CI is needed for unavailable focused proof:
+run available local checks, push the reviewed package, run only the required
+focused CI, wait for its exact-SHA result and then resume/pause as agreed. This is
+recorded in AGENTS.md and the checklist; it replaces the older early-push full-CI
+requirement. No relevant missing proof may be counted as a pass.
+
+CI routing follow-up: current `Checks` still runs full suites on runtime pushes
+and has no focused-only route. No workflow changed or push occurred here. Before
+using the early exception, implement/review its explicit focused routing in that
+same package while preserving the full main-goal gate. Do not trigger the current
+full workflow and mislabel it focused or silently omit required main-goal checks.
+
+- Session focus, Goal 3: **1/10 accepted = 10%** (S03.01).
+- Return focus, Goal 2: **1/9 accepted = 11.1%** (S02.03).
+- Product: **0/16 main goals = 0%**. No main-goal/README completion earned.
+
+The parent selected S03.01 as the direct companion to the already delivered
+S02.03 defaults installer, notified the user before switching and reviewed every
+passive-state clause. This was acceptance of existing implementation, not a new
+runtime package. Only checklist/handoff receipts and the clarified standing test
+cadence changed. No unanswered approval, required worker, test process, CI job or
+router connection remains active.
+
+## Current refs and evidence
+
+Resume started on clean local/remote `develop` at
+`bc49cf54831e8b7099aad3aee9ba8e75fbcae137`. The current acceptance receipt is local
+only, titled `docs: accept passive fresh state and clarify checkpoint gates`;
+no push occurred this session. Verify `HEAD` and status on resume. Tested
+runtime remains `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, already published.
 [Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754)
-passed its sole Ubuntu 24.04 job in **50 seconds**. Acceptance receipt
-`02063a4e40764d682dcdd917fa550ad0251a4f63` records the S02.03/tool ticks and pause.
-This subsequent handoff refresh records Actions cleanup only; documentation
-revisions are not new runtime-tested commits. Verify clean status, current `HEAD`
-and remote `develop` on resume, using the explicit tested/receipt SHAs above.
-No `main`, release, deployment or provider action was performed.
+was reverified at that full SHA: its sole Ubuntu job passed in **50 seconds**.
+Runtime, tests, tools, dependency inputs, package metadata and workflows have no
+diff from that tested revision. Subsequent documentation receipts are not new
+runtime-tested commits. Earlier S02.03/tool receipt:
+`02063a4e40764d682dcdd917fa550ad0251a4f63`.
 
-At the user's request, **14 failed/cancelled kernel-CI runs were deleted** after
-acceptance. The successful approximate-machine run above, older successful runs
-and shared caches were preserved. Private deletion inventory/receipt:
-`.tmp/actions-cleanup-20261012.json`. Superseded failed-run URLs are no longer
-available; retained local diagnostics remain under `.tmp/platform-review/`.
-Do not recreate deleted runs or restart the obsolete matrix to rebuild history.
+Fresh focused command on the starting HEAD plus handoff-only edits:
+
+```sh
+.venv/bin/python tools/test.py --focused tests -k 'test_config or test_install'
+```
+
+**24 passed, 1 Linux-only skip, 142 deselected**, 26.62s. All planning/links,
+package metadata, Ruff lint/format, compilation, shell syntax, ShellCheck, shfmt
+and whitespace gates passed. The skipped identified-copy signal/FD test ran in
+the accepted Linux CI. Private receipts: `.tmp/s03-01-focused.log` and freshly
+retrieved `.tmp/s03-01-existing-ci.log`. No full local/CI rerun was needed for
+unchanged code/tests; no main-goal audit or hardware acceptance is claimed.
+
+Actual consumer: `cfmgr.sh --install` → `cfmgr_bootstrap_native_work` →
+`cfmgr_bootstrap_transaction` → fixed `install-config` probe →
+`cfmgr_config_defaults_exec`, followed by checked passive-config publication.
+The complete-default test covers all initial flags, credentials, family policy,
+logging/backup and manager preferences. The transaction test covers publication,
+private modes, passive states, an empty Entware destination and repeated-install
+refusal; retained/corrupt/interrupted cases preserve setup. Parent traced fixed
+installer actions: no feature/provider/hook/logging/backup setup runs at install.
+No missing S03.01 behavior remained, so no duplicate lifecycle tests were added.
+
+Required Ubuntu/vendor-BusyBox evidence is representative component/transaction
+execution with labelled attachment/supervision adapters plus real Linux process/FD
+cases. Exact root/JFFS2 `--install` runs in the optional guest fixture; it was not
+rerun or newly accepted. Merlin/ARM/flash/provider qualification remains beta work.
+Manager defaults do not establish update scheduling or other feature workflows.
+
+`next_subgoal_review` explorer returned a read-only consumer/acceptance review;
+parent integrated its findings and reviewed the existing tests/source. No worker
+edited files or ran tests. Parent exclusively owned planning receipts and the
+focused gate. No ongoing ownership/job remains.
+
+## Pending foundation findings
+
+Use approved dependencies to select the next coherent package; numeric subgoal
+order is not mandatory. Goal 2 still supports original Goal 1. Preserve partial
+work and keep these gaps visible:
+
+- **S02.04:** shared probes have an installer consumer, but tunnel DNS remains
+  `dig -v` with no real tunnel consumer. Also, `cfmgr_bootstrap_native_work` admits
+  optional Entware flock before native capability testing; an unsafe fallback can
+  block usable native flock. Fix/prove native-first ordering and complete the
+  scoped DNS consumer before accepting the subgoal.
+- **S02.08:** fresh UUID storage and current invocation pins exist; retained
+  expected-identity comparison and returning-work eligibility do not. Production
+  pin/lazy-unmount/substitution loss needs written representative proof; boolean
+  attachment adapters cannot establish those behaviors.
+- **S02.05:** installer-backed normal dependency repair is a viable foundation
+  package to assess next. Missing work includes installed-opkg admission,
+  missing/unusable-only selection, healthy no-op, bounded serialized repair,
+  post-probes and bounded later-launch retry. It is not yet assigned or started.
+
+The official Merlin Addons API, User scripts and Custom config files authorities
+were consulted during scope review; no new firmware compatibility claim or
+storage/hook behavior was implemented. Existing raw firmware evidence was not
+requalified or executed. These findings do not close S02.04/S02.08/S02.09 or Vxx.
+
+Prior authorized Actions cleanup is complete: **14 failed/cancelled kernel-CI
+runs were deleted**, preserving successful runs and shared caches. Private receipt:
+`.tmp/actions-cleanup-20261012.json`; retained diagnostics:
+`.tmp/platform-review/`. Do not recreate removed runs or restart the obsolete
+matrix to reconstruct history. No new deletion/publication grant is implied.
 
 ## Accepted platform and logging decisions
 
@@ -108,7 +200,7 @@ skip is specifically the workstation-without-`/proc` boundary, exercised locally
 Private receipts: `.tmp/platform-review/s02-03-ubuntu-run.json` and
 `.tmp/platform-review/s02-03-ubuntu-ci.log`.
 
-Latest focused local integration used:
+Earlier S02.03 focused local integration used:
 
 ```sh
 .venv/bin/python tools/test.py --focused tests -k 'test_config or test_install or test_dev_runners or test_platforms'
@@ -148,14 +240,16 @@ runtime source changes. Regular Finder metadata is excluded; unsafe objects fail
 
 ## Resume path
 
-1. Verify this receipt, clean Git/remote state and no active worker/job. Do not
-   rerun the finished checkpoint or restart the optional kernel matrix.
-2. Resume remaining Goal 2 requirements using the plan/checklist and real consumers;
-   inspect S02.04/S02.08 foundations before selecting the next coherent package.
-   Record exact missing behavior and focused tests before assigning a writer.
-3. Keep S02.03/tool ticks scoped to the accepted development evidence. Goal 2,
-   multi-goal Vxx cases, all other subgoals and README remain incomplete. At a full
-   main-goal boundary follow audit → full local → exact full CI → ticks/README →
+1. Verify the local-only acceptance receipt, Git/remote state and no active jobs.
+   Do not repeat finished proof or restart the optional kernel matrix.
+2. Resume foundation-first work, normally remaining Goal 2 requirements; use the
+   findings above and actual consumers to choose a complete dependency package.
+   Cross-goal prerequisite work is explicitly permitted. Record scope, ownership
+   and focused checks before assigning a writer.
+3. Keep S02.03/S03.01/tool ticks scoped to their accepted development evidence.
+   All main goals, remaining product subgoals, Vxx cases and README remain incomplete.
+   Preserve this session's subgoal pause until the user changes it. At a full
+   main-goal boundary follow audit → full local → exact full CI → main tick/README →
    handoff/pause. Actual router/provider beta follows complete implementation.
 
 ## Retained evidence and limits

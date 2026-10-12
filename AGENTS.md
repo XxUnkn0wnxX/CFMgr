@@ -155,9 +155,11 @@ separate authorization.
 
 Each subgoal requires written focused tests passing locally, relevant static/lint
 checks and parent review; required unavailable platform proof remains pending until
-exact CI. Reviewed subgoals/partial packages may be committed after their focused
-gate, but **local commits do not grant push permission**. Use main-goal checkpoints,
-not the retired 1%/10% cadence; do not run full suites per helper/worker/subgoal.
+exact focused CI. Keep focused-test results and outstanding acceptance gates in the
+checklist. Reviewed subgoals/partial packages may be committed after their focused
+gate, but **local commits do not grant push permission**. Full local and full CI
+gates trigger only when a complete main goal is ready for its publication checkpoint,
+not per helper/worker/subgoal or the retired 1%/10% cadence.
 
 Mandatory normal checkpoint sequence:
 
@@ -165,19 +167,22 @@ Mandatory normal checkpoint sequence:
    platform-only proof pending CI.
 2. Complete the accumulated codebase/scope/test-cost/documentation audit below.
 3. Pass the full applicable local suite, then push the candidate.
-4. Pass full required CI for that **exact commit**, then award final subgoal/main
-   ticks. CI-dependent boxes may wait for this push; it is not a circular gate.
+4. Pass full required CI for that **exact commit**, close remaining CI-dependent
+   boxes and award the main-goal tick. Pending platform boxes may wait for this
+   push; already accepted focused subgoals do not trigger full suites themselves.
 5. Update and push README completion, fully refresh handoff for a new session and
    **pause**. Record exact evidence, completed/16 percentage, remaining work and rough
    next scope; do not start another main goal in that session.
 
-Earlier subgoal commit/push/wait is already authorized **only when most meaningful
-behavioral proof needs Linux/BusyBox execution unavailable locally**. Explain
-that dependency; push the reviewed focused-tested package and require full CI.
-Convenience, a minority of platform cases, helper completion or padded test counts
-do not qualify. Such a push needs no extra full local run solely for publication,
-closes only fully proved subgoals and cannot complete an unfinished main goal.
-Otherwise wait for the normal main-goal candidate gate.
+An earlier subgoal commit/push/wait is authorized when required **focused behavioral
+proof needs CI execution unavailable locally**, such as Linux/BusyBox. Explain the
+dependency, review/run available focused local checks, route that exception to the
+required focused CI checks and wait for their exact-commit result. Do not trigger
+full local/full CI suites merely to accept a subgoal. The exception closes only
+fully proved subgoals and cannot complete an unfinished main goal. Otherwise wait
+for the normal main-goal candidate gate; convenience/helper completion is not a
+push grant. If CI lacks the needed focused route, add and validate it in the same
+approved package before using the exception.
 
 After **any authorized runtime checkpoint push**, wait for its exact prescribed CI
 before further implementation. On failure, fix, focused-test, commit/re-push and wait
@@ -191,8 +196,8 @@ During tracing or repair of a shared CI failure, retrieve the first useful faile
 log and cancel remaining redundant work promptly. This also applies if optional
 kernel diagnostics are explicitly run; keep multiple profiles only to investigate
 profile-specific differences. Optional kernel runs are not the acceptance gate.
-Cancelled jobs supply no proof; acceptance requires the prescribed Ubuntu checks
-green at the exact repaired SHA.
+Cancelled jobs supply no proof; acceptance requires the prescribed focused or full
+Ubuntu checks green at the exact repaired SHA, according to the current gate.
 
 ## Mandatory main-goal audit
 
@@ -223,8 +228,10 @@ user approval and record the review/correction in checklist and handoff.
 Keep **Checks** on develop pushes/PRs; exclude documentation, images and placeholders
 when they are the only changes. Retain planning consistency. Add actual code/test/
 tool/workflow paths, commands and dependencies **in the same
-package as new tests**. Authorized runtime pushes/PRs run the full required suite;
-later release-branch scope requires review.
+package as new tests**. Main-goal runtime checkpoints run the full required suite;
+the early platform-proof exception runs its prescribed focused CI only. Preserve
+explicit, reviewable selection so a focused pass cannot be mistaken for the full
+main-goal gate. Later release-branch scope requires review.
 
 Use one Ubuntu CI runner for full host integration and cached native-host vendor
 BusyBox checks, including planning and static gates. These are representative
