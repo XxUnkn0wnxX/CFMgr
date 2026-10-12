@@ -284,6 +284,23 @@ cfmgr_execution_tasks_native() {
 	return "$dependency_native_status"
 }
 case $case_name in
+dependency_update_failure)
+	: >"$cfmgr_storage_opt/fail-update"
+	if dependency_attempt update-failure; then fail 'failed opkg update reported repair success'; else dependency_status=$?; fi
+	[ "$dependency_status" = 1 ] || fail "failed opkg update returned unexpected status=$dependency_status"
+	[ "$cfmgr_dependencies_code:$cfmgr_dependencies_result:$cfmgr_dependencies_state:$cfmgr_dependencies_claimed:$cfmgr_dependencies_native_unresolved" = 1:failed:complete:0:0 ] ||
+		fail 'failed update did not finish with a resolved failed result'
+	[ "$cfmgr_tasks_state:$cfmgr_view_state:$cfmgr_view_pin_state:$cfmgr_keeper_state" = quiescent:released:retired:released ] ||
+		fail 'failed update did not quiesce and release task/view/keeper ownership'
+	[ ! -e "$view_ram/dependencies" ] || fail 'failed update left its repair claim'
+	[ -z "$cfmgr_dependencies_operation_deadline" ] && [ -z "$cfmgr_keeper_outer_deadline" ] || fail 'failed update retained an operation deadline'
+	[ ! -e /proc/self/fd/5 ] || fail 'failed update left the repair claim descriptor open'
+	[ "$(cat "$cfmgr_storage_opt/operations")" = update ] && [ ! -e "$cfmgr_storage_opt/bin/flock" ] ||
+		fail 'failed update proceeded to installation'
+	exec 0<&- 9<&-
+	printf 'PASS: production dependency update failure retires ownership without installation\n'
+	return 0
+	;;
 dependency_retry)
 	: >"$cfmgr_storage_opt/fail-update"
 	if dependency_attempt failed; then fail 'failed update reported repair success'; else dependency_status=$?; fi

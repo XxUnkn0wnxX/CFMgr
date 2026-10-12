@@ -17,6 +17,42 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and route
 
+**Latest user direction:** cancel full Checks `38267375410` for excessive duration
+(sent at about 12m30s). Diagnose each remaining stage separately through Quick
+Checks before another full attempt. No cancellation supplies acceptance. Keep
+S02.05/S02.08 unchecked and finish optimization, quick proof and exact full CI
+before the agreed final pause. Parent owns stage coverage and publication; the
+existing quick workflow currently accepts individual test nodes, not modules.
+Cancellation is terminal (15:17:08 UTC); force-cancel raced with completion and
+returned already-completed. Host **353 passed, 26 skipped, 3 deselected in 27.41s**;
+host/statics total 108.71s. BusyBox reached 18% after 10m40s, then 75% about a minute
+later: the early dependency integration block dominates. No final BusyBox pass.
+Receipt `.tmp/optimized-full-cancelled.log`.
+Next bounded owners: `focused_ci` owns only quick module-group selection/timing
+in `tools/test.py`, `tests/test_dev_runners.py`, `.github/workflows/quick-checks.yml`;
+`dependency_fixture` owns only the retry consolidation in
+`tests/fixtures/{dependencies,storage_mounts}.sh` and `tests/test_dependencies.py`.
+No runtime edits. Parent integrates focused/static proof, documents reduced
+same-process retry coverage, then runs separate Quick batches for parsers/tools,
+native/prerequisites, storage/ownership, and each costly repair consumer. No overlap
+or full gate until stage costs are understood and bounded. User now authorizes
+separate concurrent manual Quick runs for stage 3, after a separate setup/full-host
+baseline check. Five disjoint groups cover all 18 modules: parsers/tools (8),
+native/prerequisites/consumer (3), install/package/storage/keeper (5), dependencies
+(1), retained launch (1). Manual run concurrency must not cancel sibling groups;
+push cancellation stays unchanged. Every job uses one serial pytest invocation.
+Both workers have released the package. Quick now supports the separate manual
+host baseline and whole-module groups with verbose names, durations and CPU/wall
+accounting. Required `dependency_update_failure` proves real failed-update terminal
+state/ownership/descriptor/deadline cleanup; old consecutive two-repair retry is
+optional. The fast later-retry consumer plus required real fresh/retained successes
+provide the remaining retry evidence; the composition limit is in review notes.
+No runtime change. Worker focused/static gates passed; parent integration review
+passed. Combined focused gate: **60 passed, 15 Linux skips, 4 optional diagnostics
+excluded in 4.43s** across runners/dependency/consumer modules; affected statics,
+planning/package and whitespace pass. Standing subgroup diagnosis rule
+and optional-light-Mac suite interaction rule are now in AGENTS below 26 KB.
+
 **Finish and pause:** the user now explicitly requests completion of **S02.05 and
 S02.08**, their focused local and exact full CI gates, commit/push and a refreshed
 handoff, then pause. Do not start another target afterward. The latest user rule
@@ -70,6 +106,12 @@ cannot isolate the remaining cost. Not triggered yet: the cancelled CI host suit
 passed 351 tests in 27.81s; Linux-only integration dominates and concrete reductions
 are implemented. A macOS run skips those mount cases, so it cannot replace Linux
 timing or acceptance proof.
+
+Latest optional diagnostic permission: a known-light full Mac suite taking about
+one minute may help optimization or focused-pass/full-suite-fail diagnosis, with
+Linux-only skips explicit. CI-dependent Quick Checks followed by full Checks still
+apply. It is optional, not a new per-subgoal gate; AGENTS records the rule. Ubuntu's 28s behavioral timing
+does not establish total Mac cost, and earlier Mac static gates took longer.
 
 Latest user direction: practical acceptance, no hours-long pursuit of rare edges.
 Use judgement to relax incidental test details or defer rare low-risk diagnostics
@@ -126,376 +168,36 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current optimized candidate `2085e324f54885305f9849c5ad26e0d926fef492` is pushed
-  and remote-verified (`c7574df` implementation plus corrected selection receipt).
-  Whole-suite review and focused gates passed before publication. [Quick Checks 38265673929](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38265673929)
-  passed: **4 tests in 248.95s**, actual retained repair (140.16s, previously
-  165.50s), drive loss (99.95s), unchanged full view compatibility (5.42s) and
-  runner gate reuse. Parent verified exact SHA and sole job success; receipt
-  `.tmp/optimized-quick-pass.log`. No invalid selector was executed. Runtime remains
-  unchanged from `9e2563d`. [Full Checks 38266754900](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38266754900)
-  failed at the same candidate: runner unit test inherited outer
-  `CFMGR_TEST_SHELL=/bin/sh` instead of its fake default. All statics passed;
-  BusyBox was skipped. Parent reproduced the assertion locally with that environment
-  and owns only `tests/test_dev_runners.py` fixture isolation, focused tests/statics,
-  quick diagnostic and subsequent full CI. Receipt `.tmp/optimized-full-failed.log`.
-  The one-line fixture isolation fix passes all **30 runner tests** under each
-  inherited environment (`/bin/sh` and `busybox ash` with required-BusyBox mode).
-  Relevant Ruff/format/compile, planning/package and whitespace checks passed.
-  Production runner/runtime behavior is unchanged; only the unit harness clears
-  ambient shell selection before individual tests set their explicit inputs.
-  No job remains active. Exact full acceptance and overall cost remain pending.
-  User requests another safe
-  saving if practical, ideally one minute, but accepts stopping if further cuts
-  would weaken necessary proof. `next_subgoal_review` completed a bounded read-only
-  follow-up: no further justified minute-scale cut. Remaining work is real guarded
-  view construction, checks and cleanup, without fixed long sleeps; removing the
-  absent/return launch or proc/dev mounts loses distinct required proof. No writer
-  or new product scope is authorized.
-- Previous candidate `9e2563da53b836a9a51cedc66b94f7287af8f548` is pushed and
-  remote-verified. It pins CI ShellCheck 0.11.0 to match the workstation and contains
-  the reviewed shell annotation/conditional fixes below. [Quick Checks 38261906544](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38261906544)
-  passed **14 tests in 8.97s** and verified the pinned ShellCheck binary. Receipt
-  `.tmp/retained-shellcheck-quick-pass.log`. [Full Checks 38262065257](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38262065257)
-  was cancelled on user instruction after about 20 minutes; host/static passed,
-  BusyBox supplied no final pass. No CI, local tests or writers remain active.
-- Previous runtime candidate `cffc1a541a73d177ec216746a3351433ce136d94` is committed,
-  pushed and remote-verified, including the practical CI and review-note commits.
-  [Quick Checks 38260092807](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38260092807)
-  passed **17 tests in 344.93s**, including actual retained repair/return and fresh
-  installer repair. Receipt `.tmp/retained-quick-pass.log`. Parent verified exact
-  SHA/job success. [Full Checks 38261015597](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38261015597)
-  failed in Ubuntu ShellCheck before behavioral tests: SC3013 needs narrowly
-  scoped annotations for intentional BusyBox/Linux descriptor `-ef` checks;
-  three fixture SC2015 expressions need explicit conditionals. Receipt
-  `.tmp/retained-full-failed-1.log`. No CI is active. `focused_ci` owns only these
-  annotations/conditionals in `modules/helpers/{bootstrap,launch,probe}.sh` and
-  `tests/fixtures/{dependencies,retained_launch}.sh`; no runtime contract changes.
-  These shell edits are released and pass targeted lint/syntax/format plus 15
-  focused host tests. The user additionally requested CI ShellCheck match the
-  workstation: **0.11.0** verified locally. Shared setup now installs the official
-  pinned Linux x86_64 archive after SHA-256 verification; both workflows removed
-  APT ShellCheck. YAML parsing, extracted Bash syntax, planning and package checks
-  passed. Worker released all files; parent review passed. Quick proof will verify
-  CI setup and selected short regressions, then full Checks supplies acceptance.
-  Parent owns metadata, review and publication. Focused checks then exact full
-  Checks remain required before accepting S02.05/S02.08 and pausing; full local
-  is not due. The marker-push Checks skip supplies no acceptance.
-- Latest pushed/remote-verified candidate: `8dfa47753860667f71aecb7710007559c61d5617`.
-  [Quick Checks 38253817799](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253817799)
-  passed at that exact SHA; selected mixed/loss/installer tests ran
-  13:10:37–13:19:12 UTC. `inventory_ci_wait` finished and owns no work.
-  Only the exact mixed stderr expectation changed. Local dependency tests
-  **13 passed/11 Linux skips**; affected Ruff/format/compile/planning/whitespace
-  passed. Quick proof permits continued work on the same pair; full required
-  acceptance CI still waits for the completed candidate.
-- Previous candidate: `bf2da3e40f8b42c61e9e73ad8a0361b497f81fe1`.
-  [Quick Checks 38253187477](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253187477)
-  failed the Python stderr expectation after **160.30s**. The mixed-root shell
-  fixture exited zero: actual foreign/owned roots, retained state, no signals,
-  explicit fixture recovery and final cleanup assertions all passed. It correctly
-  emitted cleanup-pending plus unavailable-native-log messages, matching the source
-  contract; the outer test incorrectly expected empty stderr. Receipt
-  `.tmp/dependency-repair-quick-failed-2.log`. Parent owns the exact expected-message
-  correction in `tests/test_dependencies.py`; runtime unchanged. Repeat the same
-  three quick cases. No CI/workers active. README contains accepted counts only.
-- Previous candidate: `31d3c78d0fc0b0891625aeffb9ee59c88c45b284`.
-  [Quick Checks 38249697814](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38249697814)
-  **passed 9 tests in 134.93s**: five deterministic short-child observations,
-  existing supervision and real normal repair. Receipt
-  `.tmp/dependency-repair-quick-pass-2.log`.
-  [Full Checks 38250075180](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38250075180)
-  failed at that same SHA: host/statics passed; BusyBox **16 passed/1 failed,
-  975.40s**. Mixed-root fixture expected retained ownership but cleanup completed;
-  `.tmp/dependency-repair-full-failed-2.log`. No CI job remains active. Its foreign
-  observer starts before view construction but waits only 10s for the later action
-  receipt; loss observer likewise waits only 20s. Parent is tracing that fixture
-  timing against the actual phase, preserving all runtime ownership assertions.
-  `dependency_fixture` owns only `tests/fixtures/dependencies.sh` and
-  `tests/test_dependencies.py`: start observers at the actual task-gate phase,
-  bounded by the product action window; prove readiness/liveness and retain
-  mixed-root/no-signal/loss assertions. Focused local/statics, then quick mixed,
-  loss and installer cases before full CI. No retained-launch implementation yet.
-  Fixture correction is implemented and parent-reviewed; writer released files.
-  Observers start after actual gate creation, wait at most the 120s action window,
-  and record finite phase diagnostics. Mixed actor waits for opkg's explicit test
-  request after selected-tool installation; assertions prove distinct live TIDs,
-  actual foreign/owned roots and no product signals. Local dependency tests
-  **13 passed/11 Linux skips**; affected statics, package/planning checks passed.
-  Runtime code and deadlines are unchanged. Quick mixed/loss/installer proof pending.
-- Previous candidate `0851c1c5a5012ddaceaabfa2583aaffda48e7dd7` is pushed and
-  remote-verified. [Quick Checks 38247678272](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38247678272)
-  **passed 5 tests in 122.87s**, including real normal opkg repair/cleanup
-  (121.74s) and four retirement cases. Verified BusyBox warm preparation took 1s;
-  the full quick job took about 2m22s. Full Checks manually dispatched at this
-  candidate: [Checks 38248007991](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38248007991).
-  Full Checks failed: host/statics passed; BusyBox **12 passed/1 failed, 134.58s**.
-  Actual opkg completed successfully (`complete 0 END`); view/keeper released.
-  A short cleanup probe became unresolved with a tracked PID/start and no other
-  refusal reason. `.tmp/dependency-repair-full-failed-1.log`. The short supervisor
-  has a confirmed source race: proc directory can disappear between its existence
-  check and owned-identity read, which currently reports unresolved. No job remains
-  active. `prerequisite_inventory` owns prerequisites-only lifecycle correction;
-  `dependency_fixture` owns prerequisite tests with deterministic disappearance and
-  still-visible unknown/reused identity cases. Preserve ownership proof before any
-  signal; only positively absent direct children may proceed to their exact wait.
-  Parent reviews; quick lifecycle/normal-repair proof then exact full CI.
-  Retained-launch native logging review completed read-only; no implementation yet.
-  The direct-child correction is implemented and parent-reviewed. A failed identity
-  read plus confirmed absence allows exact wait; any successful-but-invalid read or
-  ownership mismatch remains unknown, even after disappearance. Fresh identity
-  remains required before signals; timeout-child proof/deadlines are unchanged.
-  Five deterministic Linux regressions are added, with private process-group
-  teardown; local prerequisite tests **20 passed/8 Linux skips**, affected statics
-  passed. Writers released files; metadata regenerated. Quick selection includes
-  these races, existing flock/output-limit supervision and real normal repair.
-- Quick candidate `e2ae0df5aa3346853ac7f27e69f55e506db8e0db` is pushed and
-  remote-verified. [Quick Checks 38246627323](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38246627323)
-  passed all four terminal-retirement cases but failed normal repair during bounded
-  cleanup: **4 passed/1 failed, 157.62s**. View and keeper were released; removal
-  reached the unchanged cleanup deadline. `.tmp/dependency-repair-quick-failed-1.log`.
-  No CI remains active; skipped Checks supplies no acceptance. The eight-file
-  cleanup batches still multiply supervised probes over thousands of receipt files.
-  `prerequisite_inventory` owns bootstrap/prerequisites/probe only: widen finite
-  cleanup batches to at most 64 operands and at most 8192 pathname bytes including
-  NUL delimiters, preserving all prevalidation, guards, owner-last and deadlines.
-  `dependency_fixture` owns matching consumer/probe regressions and the bounded
-  dependency outcome sidecar, including oversized argv rejection and partial
-  failure. Capture the pre-cleanup result even after opkg success so cleanup-only
-  failures retain its receipt. Parent owns metadata/plans/review.
-  Re-run these same quick cases before any new retained-launch implementation.
-  The 64/8192 refinement is implemented and parent-reviewed; both writers released
-  files. Consumer/dependency tests **28 passed/18 Linux skips**, prerequisite
-  regressions **20 passed/3 Linux skips**, affected statics passed. No deadline,
-  ownership or prevalidation reduction. Metadata regenerated; next quick candidate
-  rechecks terminal retirement and actual normal repair.
-- Local runtime correction: `c086f66970c93355b7e7316c679c36c2214fd832`, committed
-  after focused checks and included in the quick candidate above. Prerequisite
-  regressions also passed: **20 passed/3 Linux skips**.
-- Last remote candidate: `d809f5b3e7f3326428e98b4daf3a90695a0a7966`, pushed and
-  remote-verified. [Checks 38242571950](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38242571950)
-  failed vendor repair (**1 passed/1 failed**, 121.34s); host/static passed.
-  Receipt `.tmp/dependency-repair-ci-failed-7.log`: batching reached final claim
-  rmdir, whose successful removal invalidates the supervisor's own pathname
-  attachment check. No job remains active. The terminal `repair-retire` correction
-  is implemented and parent-reviewed: ordinary prelaunch admission remains; only
-  the launched final removal may accept deleted pinned FD5 with zero links, valid
-  preflight FD9 and the original RAM mount. Both runtime/test writers released
-  files. Consumer/dependency tests: **27 passed/18 Linux skips**; affected statics
-  pass. Platform tests: **40 passed**. Fixture `ls -L` now matches the hash-verified
-  baseline source config. Bounded failure receipts survive cleanup. New quick CI
-  below will first run retirement cases and the actual normal-repair case.
-- The user now authorizes a separate fast CI loop: an explicit quick-test push
-  runs only selected BusyBox test nodes using the existing verified cache, without
-  duplicating the host/acceptance run. Quick results are diagnostic, not subgoal
-  acceptance. The user clarified that normal Checks must run the **full suite**
-  before accepting CI-dependent subgoals or pausing; ordinary local-focused work
-  still commits and continues. Main Checks gains manual full-suite dispatch at the
-  candidate ref; the older focused-trailer route is retired. `focused_ci` completed
-  and released both workflows, shared verified BusyBox setup and bounded runner
-  selection/tests. Parent reviewed the changes. Direct runner tests: **26 passed**;
-  affected Ruff/format/compile, package/whitespace and YAML parsing passed
-  (`.tmp/quick-ci-validation.log`). Integrated runner attempts were interrupted in
-  all-tree ShellCheck before pytest; they supply no full-run receipt. Actionlint
-  is unavailable. No worker or local test remains active. Parent owns planning,
-  metadata and publication. Finish this CI prerequisite, then return to the same
-  S02.05/S02.08 repair tests and the agreed finish-and-pause boundary.
-- Previous candidate: `060583128c750c3cf1f2baf13c0ca961396ee085`, pushed and
-  remote-verified. [Checks 38241095159](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38241095159)
-  failed first vendor repair after **1 passed/1 failed**, 143.89s; host/static passed.
-  Receipt `.tmp/dependency-repair-ci-failed-6.log`: view/keeper released, but individual
-  receipt-file deletion exhausted the 60s cleanup deadline (1,635 probes at 142s).
-  Parent approved bounded batches of at most eight existing cleanup operands,
-  retaining quiescence, full tree/FD/mount checks, owner-last removal and all deadlines.
-  `prerequisite_inventory` owns bootstrap/prerequisites/probe runtime changes only;
-  `dependency_fixture` owns consumer tests and their finite native adapter. Parent
-  owns metadata/plans/integration. No CI is active; require exact green before new work.
-  Batched cleanup is now implemented and parent-reviewed. Actual portable probe
-  dispatch proves <=8 quoted operands, partial failure/evidence retention and
-  owner-last ordering; consumer **14 passed/7 Linux skips**. Prerequisite/dependency
-  regressions **33 passed/10 Linux skips** (4.19s); affected lint/format/compile,
-  shell syntax, metadata/planning and whitespace pass. Both writers released files.
-  Cost fix removes redundant per-file supervision without changing deadlines or
-  mount/ownership gates; exact Linux timing and behavior remain pending.
-- Previous candidate: `e480822eb42933ae9c0a6dd6c4eec35b89b7199c`, pushed and
-  remote-verified. [Checks 38240094327](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38240094327)
-  failed first vendor repair case after **1 passed/1 failed**, 48.12s; host/static
-  passed. Receipt `.tmp/dependency-repair-ci-failed-5.log`. Diagnostic proves view
-  construction reached sequence 24/13 pins and 1,351 finite phase markers before
-  the fixture's 45s timeout, inside identity parsing. Runtime action budget is
-  120s plus separately bounded cleanup; audit the mismatched outer fixture budget.
-  `prerequisite_inventory` owns `test_dependencies.py` and dependency/storage
-  fixture budget/cost review only; no runtime edits without parent agreement.
-  No CI remains active. Require exact green before retained runtime implementation.
-  Parent/worker finite-loop audit found no loop bug: full source checks repeat
-  8+2N supervised calls per bind, explaining hundreds of progressing probes.
-  The outer fixture guard now covers unchanged 120s action/10s cancellation/60s
-  release budgets plus 30s setup/teardown: 220s normal, 410s retry, 290s mixed-root
-  recovery. Trace adds elapsed/probe counts; duplicate START writes removed.
-  Focused dependency **13 passed/7 Linux skips**, affected static/syntax/format
-  checks passed. Files released and parent-reviewed; runtime fit remains CI-pending.
-  While CI runs, `next_subgoal_review` may read only the retained-launch bootstrap
-  interfaces and return a bounded factoring map. No implementation/file ownership
-  is granted; parent reviews the design after the current gate.
-- Previous candidate: `64085a10f9efffa06621068125f4e94e7fd23bc4`, pushed and
-  remote-verified. [Checks 38237947152](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38237947152)
-  failed: host/static passed; vendor BusyBox **266 passed/1 skip/8 failed**.
-  Six real repair cases hit their 45s outer watchdog; installer fixture re-imports
-  the default `/bin/usleep` callback, unavailable on Ubuntu; coalescence has an
-  intermittent waiter failure. Receipt `.tmp/dependency-repair-ci-failed-4.log`.
-  No CI remains active. Repair ownership: `prerequisite_inventory` owns the
-  dependency/storage shell fixtures and `test_dependencies.py` for bounded timeout
-  diagnostics and installer callback correction; runtime changes require parent
-  agreement. `dependency_fixture` owns only `test_dependency_consumer.py` for the
-  coalescence fixture race; report production findings to parent. Parent owns
-  runtime race review, runner fail-fast and planning/metadata. Preserve all
-  assertions and deadlines unless execution evidence justifies a change. Focused
-  modules stay the prior selection, plus developer-runner checks for CI edits;
-  require exact green before implementing retained-manager behavior.
-  Parent fixed waiter observation/removal races: only complete claim disappearance
-  permits coalescence and fresh caller probes; retained bad claims remain blocked.
-  Portable regressions pass (consumer **11 passed/7 Linux skips**). Runner now
-  stops after the first failed test, retaining complete selection for successful
-  gates; developer-runner **24 passed**, selection/package **47 passed**. Affected
-  static/planning/package checks pass. Installer callback correction and bounded
-  timeout diagnostics are the next exact focused CI candidate; no acceptance yet.
-  Fixtures are released and parent-reviewed: dependency **13 passed/7 Linux skips**,
-  affected shell/Python lint/format/compile/syntax and whitespace passed. Runtime
-  metadata regenerated. No worker remains active. Cost review: the last vendor
-  behavior run took 366.64s, dominated by repeated known watchdog failures; first-
-  failure termination avoids that repetition without reducing successful coverage.
-- Previous candidate: `91cdfb1e511f2cc8f89b1d8d6cb5c832edaa4d43`, pushed and
-  remote-verified. [Checks 38236908142](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38236908142)
-  failed BusyBox: **267 passed/1 skip/6 failures/1 fixture error**; host/static
-  passed. Receipt `.tmp/dependency-repair-ci-failed-3.log`. All six repair cases
-  exit before view construction (`status=3`, phase unset); installer lacks its
-  imported `shell` fixture. No job remains active. Parent owns that Python fixture
-  registration; `prerequisite_inventory` owns bounded investigation/correction of
-  early repair setup in the runtime libraries/bootstrap/probe and dependency/storage
-  shell fixtures, with focused regression proof. No edits to the three plans,
-  metadata, CI, entry or Python test modules without transferring ownership.
-  Preserve all behavior/assertions; re-push the same focused selection and require
-  exact green before implementing the retained-manager consumer.
-  Source review proved fixture mode names were incorrectly used as executable
-  names: `copy/link/remove/signal` now map to `cp/ln/rm/kill`. Parent imported the
-  missing shell fixture and exercises adapter construction in portable syntax
-  coverage. Bounded failure diagnostics retain unknown ownership. Runtime bytes
-  are unchanged. Combined dependency/storage fixture checks: **20 passed/15 Linux
-  skips**; affected lint/format/compile/syntax, planning and whitespace passed.
-  Parent review passed and files are released. Cost review reuses required CI:
-  vendor behavior 81.74s; retain distinct mount/process cases, no full rerun due.
-- Previous candidate: `f99853c8fe39a34870875664b844711bfd69d290`, pushed and
-  remote-verified. [Checks 38236283307](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38236283307)
-  failed after statics and 246 host passes/28 skips: concurrency fixture controller
-  exited 83 before its marker. BusyBox was skipped. Receipt
-  `.tmp/dependency-repair-ci-failed-2.log`. Parent reproduced CPython rejecting
-  directory stdin. The fixture now uses the parent UID, supplies the finite query
-  receipt consumed by the real selector and reports bounded child diagnostics.
-  Parent review passed; module pytest: **8 passed/7 Linux skips**, Ruff lint/format,
-  Python compilation and embedded-shell syntax passed. File ownership is released.
-  No CI job is active. Re-push the same focused selection and require exact green
-  before advancing runtime implementation.
-- Active repair candidate: `b85df486221a519cd291ebe31a1d92d50d7dfa7c`, committed,
-  pushed and remote-verified on `develop`. Exact focused
-  [Checks 38235446674](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38235446674)
-  failed Ubuntu ShellCheck before behavior; BusyBox checks were skipped. Receipt:
-  `.tmp/dependency-repair-ci-failed.log`. The two dependency shell fixtures now use
-  explicit conditionals and direct `tail`, preserving every assertion. Parent diff
-  review passed; `.venv/bin/pytest -q tests/test_dependencies.py`: **13 passed/7
-  Linux skips**. Relevant shell syntax, ShellCheck/shfmt, planning and whitespace
-  checks passed. Worker files are released; runtime bytes remain unchanged.
-  Re-push the same focused selection and require exact green before new runtime work.
-  No job is active or subgoal acceptance awarded.
-- Previous branch/local/remote receipt: `develop` at
-  `008ad84d5e64592b9462af501b33d0b2aa714284`. The integrated repair package below
-  is now in progress; prior failed runs and candidate instructions in this section
-  are historical. No CI is active or owed for the accepted S02.09 runtime.
-- Current repair dirty-tree proof: parent ran `.venv/bin/pytest -q
-  tests/test_dependency_selection.py tests/test_execution_tasks.py`: **48 passed**
-  in 1.18s. This proves portable selection/stat parsing only; integrated repair,
-  loss/cancellation, descriptor phases and Linux mount/process proof remain pending.
-  Latest AGENTS finish-before-switch amendment passes planning/whitespace checks;
-  AGENTS is 29,062 bytes, including the user's 3–5 minute unanswered hard-blocker
-  pause rule. No additional acceptance, commit or push yet.
-- Repair runtime/tests are now frozen after parent/analyst review. Worker targeted
-  regressions pass **70 tests/14 explicit Linux skips**, 5.80s. Parent regenerated
-  metadata and launched the combined focused runner on dependency, consumer,
-  selection, task, install, prerequisite, native, storage/mount/keeper, package and
-  platform modules. Command `7445` finished: **228 passed/46 platform skips/1 failed**,
-  behavior 100.32s; all statics passed. Receipt `.tmp/dependency-repair-focused.log`.
-  Failure is the existing native-admission/full-transaction fixture's 15s outer
-  deadline during normal file publication (253 bounded probes completed), not a
-  runtime hang. A narrow reproduction completed 213 probes before the same deadline;
-  receipt intervals stayed below 0.20s, with normal copies/real fsync progressing.
-  Immutable setup is already shared and these publication checks are required.
-  Parent made only the outer fixture budget scale with payload count; per-operation
-  2s supervision and all publication/failure assertions remain. Narrow proof passed:
-  native/install consumer **1 passed**, 20.02s call; installer regression module
-  **18 passed/1 Linux skip**, 75.88s. Receipts
-  `.tmp/dependency-repair-native-budget.log` and `.tmp/dependency-repair-install-budget.log`.
-  Relevant Python lint/format/compile and whitespace passed after that fixture-only
-  change; prior shell/static evidence remains applicable. No local command remains.
-  Required Linux proof still awaits the next exact focused CI; no full suite is due.
-- Pre-push cost review: immutable package/tool/C builds are module-scoped; mutation,
-  interruption and ownership cases retain fresh state. Real fsync/publication now
-  costs 15–20s in the largest workstation cases; distinct failure proof is retained.
-  ShellCheck was the largest local static step (over two minutes); avoid duplicate
-  invocations and inspect the required CI timing before further cost changes.
+- Candidate **`885dc5c1c15881c634c7420a42301394a7306f5c`** is committed, pushed
+  and remote-verified on `develop`. Runtime is unchanged from `9e2563d`; subsequent
+  code changes optimize tests/runner/workflows and isolate unit-test environment.
+- [Full Checks 38267375410](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38267375410)
+  is running at that exact candidate. Host/static passed in 1m49s; BusyBox started
+  15:05:15 UTC. `inventory_ci_wait` monitors only. Full acceptance remains pending.
+- [Quick Checks 38267255894](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38267255894)
+  passed **3 runner tests in 0.06s**, job 17s; parent verified exact SHA/job.
+  Receipt `.tmp/optimized-runner-quick-pass.log`. All 30 runner tests also pass
+  locally under each inherited shell environment (`/bin/sh` and `busybox ash`).
+- Optimized integration [Quick Checks 38265673929](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38265673929)
+  passed at `2085e324f54885305f9849c5ad26e0d926fef492`: **4 tests in 248.95s**.
+  Retained repair/return 140.16s (previously 165.50s), real drive loss 99.95s,
+  full view compatibility 5.42s, plus runner reuse. Receipt
+  `.tmp/optimized-quick-pass.log`. No Linux fixture/runtime changes since that pass.
+- The first optimized full run `38266754900` failed only a runner unit assertion:
+  inherited outer `CFMGR_TEST_SHELL` bypassed the fake default. Parent reproduced
+  it locally and fixed the harness in `885dc5c`; production behavior unchanged.
+  All statics passed; BusyBox was skipped. Receipt `.tmp/optimized-full-failed.log`.
+- Previous full `38262065257` was cancelled on user instruction after about
+  20 minutes. Host behavior passed 351 tests in 27.81s; BusyBox supplied no pass.
+  Receipt `.tmp/retained-full-cancelled-cost.log`. No acceptance from cancellation.
+- Only parent-owned documentation changes are uncommitted: optional-light-Mac
+  diagnosis rule in AGENTS and this handoff. No runtime/test writer or local
+  command remains active. No unchecked product target may start before pause.
 
-- Latest accepted runtime: `2c6dfe16ab02d3e8c005851fbab2c7e67d4afeb8`, exact
-  [Checks 38222000119](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38222000119).
-  Parent verified all required job steps and focused selection: host **117 passed/1
-  workstation-only skip**, vendor BusyBox **117 passed/1 same skip**; native loader,
-  real TLS and mutation cases ran. Job 101s, host behavior 20.21s/vendor 45.21s.
-  Receipts `.tmp/native-admission-ci.{json,log}`. S02.09 accepted; README/checklist
-  receipt follows without claiming a separate runtime test for the docs commit.
-
-- S02.09 `f9eb6b5acdeb2abbc8a70cc2c8d8c99d5c916ee7`, [Checks 38221588897](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38221588897): host/static green; vendor failed before probe execution because fixture symlinks resolved bare `busybox` against the checkout instead of the selected executable. Parent now derives every applet from the already-resolved shell fixture and asserts each is executable. Native focused local gate: 23 passed/1 Linux skip, 19.76s plus statics; `.tmp/native-admission-vendor-path-fix.log`. Failed receipt `.tmp/native-admission-ci-failed-3.log`; re-push same focused selection. Runtime admission is unchanged.
-
-- S02.09 candidate `a0fdb2a6c33a68738e528c67769fc5d0ce39387b` was pushed/remote-verified; [Checks 38220282450](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38220282450) failed Ubuntu ShellCheck SC2015 before behavior, with BusyBox skipped. Parent changed the owned-context guard to an explicit conditional; semantics are unchanged. Corrective `tools/test.py --focused tests/test_native.py`: **22 passed/1 Linux skip**, 14.38s plus all statics; `.tmp/native-admission-lint-fix.log`. Failed receipt `.tmp/native-admission-ci-failed.log`. Re-push the same complete focused selection and wait for exact green.
-
-- S02.09 final integrated local gate: `.venv/bin/python tools/test.py --focused tests/test_native.py tests/test_install.py tests/test_prerequisites.py tests/test_package.py tests/test_platforms.py` passed **112 tests/5 explicit Linux skips**, 56.47s, plus all static/planning/package checks on the reviewed dirty tree based on `ac6cb89`. Receipt `.tmp/native-admission-focused.log`. Runtime/tests are frozen and parent-reviewed; worker files released. Package metadata is regenerated. Commit with the matching focused-test trailer and push for required Linux supervision/loader and vendor applet proof; wait for exact green before more implementation. No full gate is due. Cost review: previous required job 94s; TLS setup is module-scoped with fresh mutable contexts and bounded requests, no duplicate full run.
-
-- Branch: `develop`; current work is based on local/remote documentation receipt
-  `ac6cb89643f2d689763c3eff57bd7bc42091e4bc`; tested keeper runtime is
-  `a7fe16ce2503cf34920efe5034a22d319e54f948`.
-  [Checks 38216515648](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38216515648)
-  passed all required steps: host 135/21 skips, vendor 155/1 workstation-only skip;
-  job 94s, vendor behavior 50.90s. Keeper lifetime and real mount failure cases passed.
-  Receipts `.tmp/mount-keeper-ci.{json,log}`. No new subgoal acceptance; S02.09 is next.
-- Previous documentation receipt:
-  `f0f35a0a5c339ffa669987b43a68ff2b687aafd0`; tested guarded-view runtime is
-  `ad28a3abf4ced1f74a8bcf42b89e9ba4994704b0`. Exact
-  [Checks 38211199161](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38211199161)
-  passed host 111/11 skips and vendor BusyBox 122/0 skips, including all eight real
-  mount cases. All required steps passed; job 62s, BusyBox behavior 22.84s.
-  Receipts: `.tmp/execution-view-ci.{json,log}`. README/checklist receipt is committed;
-  it does not claim its own runtime test SHA.
-- Guarded-view package is implemented and parent-reviewed. Combined local command
-  below passed **103 tests,
-  19 platform skips**, pytest 32.73s; all statics/planning/package checks passed.
-  Receipt: `.tmp/execution-view-focused.log`. Fixture corrections passed 7/8 skips
-  plus statics; `.tmp/execution-view-applet-fix-local.log`. Native fixture rebuild
-  is cached. Cost remains proportionate; no extra full measurement run is required.
-  Acceptance counts are unchanged; supervision and the real repair consumer remain.
-- Prior storage runtime: `423dd14a5b35c295f07aed0d9e1225a10a8a15df`, exact
-  [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856)
-  green. Selection: `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`,
-  `test_install.py`. Host 65 passed/8 skips; vendor BusyBox 73 passed/0 skips,
-  including all five real ext4 cases. Statics/planning passed; job 48 seconds.
-  Receipts: `.tmp/storage-mount-ci.json` and `.log`.
-- Combined local gate: `.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py`
-  returned 57 passed/16 platform-mode skips, 48.01s, all statics passed;
-  `.tmp/storage-mount-focused.log`. Subsequent fixture-only portable lint correction
-  passed 2 guards/5 explicit skips plus statics; `.tmp/storage-mount-ci-fix-local.log`.
-- Inventory/routing proof and S02.03/S03.01 full-baseline evidence are in the
-  checklist. Receipts remain `.tmp/prerequisite-inventory-ci.{json,log}`,
-  `.tmp/s03-01-focused.log`, `.tmp/s03-01-existing-ci.log` and
-  `.tmp/platform-review/s02-03-ubuntu-{run.json,ci.log}`. Historical failures were
-  corrected before their green runs; retained logs are diagnostic history only.
-- Current keeper combined gate passed: `.venv/bin/python tools/test.py --focused tests/test_mount_keeper.py tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py` — **104 passed, 28 platform skips**, 51.29s, all statics/planning/package checks green on the dirty tree based on `f0f35a0`; `.tmp/mount-keeper-focused.log`. Parent review fixed a fixture literal-quoting warning. Exact focused CI is next; no main-goal/full-suite gate is due. Cost review: prior view CI job 62s; new Linux failure/deadline cases and one fixture applet rebuild are necessary proof, not duplicate full runs.
-- Final fixture review corrected swallowed fixture-definition quoting and an unset CPU-budget value before push. Portable fixture construction/shell syntax now runs despite Linux skips. `tools/test.py --focused tests/test_mount_keeper.py` passed 2/9 skips, 0.26s, including all statics; `.tmp/mount-keeper-fixture-fix-local.log`. Runtime bytes remain those from local `92ad1c1`; both commits will use one focused CI push.
-- Keeper candidate `8b99d0bb62bf115812f625ae401eee17f6593c03` is pushed/remote-verified. [Focused Checks 38215534245](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38215534245) failed vendor checks (126 passed/7 failed); host/static passed. Receipts `.tmp/mount-keeper-ci-failed.{json,log}`. Parent verified three causes: native `ASH_CMDCMD=n` rejects `command -v` (use unconditional `type`); pinned ash ignores `-n` on `-c` (parse a script file); normal vanished-proc identity reads need quiet failure. Rollback fixture now proves the injected bind7 branch was reached. Correction gate `tools/test.py --focused tests/test_mount_keeper.py tests/test_prerequisites.py tests/test_storage_mounts.py`: **29 passed/20 skips**, 5.16s plus statics; `.tmp/mount-keeper-compat-local.log`. Re-push with prerequisite tests added to focused selection; await exact green before implementation. No router action occurred.
+Earlier candidate/failure chronology is historical and preserved in
+`885dc5c:PLAN_V2_handoff.md` and its ignored local log receipts. The section was
+consolidated because superseded entries still described old work as active.
+Current acceptance is only the checklist; old counts/runs do not award new credit.
 
 ## Ownership and implemented boundary
 

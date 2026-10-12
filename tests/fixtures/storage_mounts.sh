@@ -24,7 +24,7 @@ dependency_process=${10:-}
 # shellcheck disable=SC2034 # Installer fixture extension consumes this private adapter.
 dependency_install_adapter=${11:-}
 case "$case_name" in
-valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | view_compat | view_detach | view_cleanup | dependency_repair | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer) ;;
+valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | view_compat | view_detach | view_cleanup | dependency_repair | dependency_update_failure | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer) ;;
 *)
 	printf 'storage mount fixture: invalid case\n' >&2
 	exit 2
@@ -443,7 +443,7 @@ view_chroot() {
 # Globals below are outputs from cfmgr_storage_pin in the sourced library.
 # shellcheck disable=SC2154
 case "$case_name" in
-dependency_repair | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer)
+dependency_repair | dependency_update_failure | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer)
 	# shellcheck disable=SC1091 # Fixed repository fixture extension, no user input.
 	. "$root/tests/fixtures/dependencies.sh"
 	;;

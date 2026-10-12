@@ -1,4 +1,5 @@
 name: Quick Checks
+run-name: "Quick Checks: ${{ inputs.label || 'selected diagnostics' }}"
 
 on:
   push:
@@ -11,16 +12,25 @@ on:
       - '**/.gitkeep'
   workflow_dispatch:
     inputs:
+      label:
+        description: Short name for this diagnostic group
+        required: false
+        type: string
+      host_baseline:
+        description: Run the complete host suite and common checks without BusyBox selection
+        required: false
+        default: false
+        type: boolean
       test_nodes:
-        description: Space-separated pytest node IDs (up to eight)
-        required: true
+        description: Space-separated test modules or pytest node IDs (up to eight)
+        required: false
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -28,7 +38,7 @@ jobs:
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
           contains(github.event.head_commit.message, 'CFMgr-Quick-Tests') }}
-    name: Ubuntu 24.04 BusyBox diagnostics
+    name: Ubuntu 24.04 CI diagnostics
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -39,6 +49,7 @@ jobs:
           persist-credentials: false
 
       - name: Select and validate quick test nodes
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
         id: selection
         env:
           CFMGR_EVENT_NAME: ${{ github.event_name }}
@@ -67,6 +78,7 @@ jobs:
           PY
 
       - name: Run lightweight planning and package checks
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
         run: |
           python3 tools/check.py
           python3 tools/package.py --check
@@ -79,9 +91,19 @@ jobs:
           python-tools: 'true'
 
       - name: Prepare verified native vendor BusyBox
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
         uses: ./.github/actions/setup-busybox
 
+      - name: Run diagnostic full host baseline
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.host_baseline == true }}
+        env:
+          CFMGR_TESTED_SHA: ${{ github.sha }}
+        run: |
+          echo "DIAGNOSTIC HOST BASELINE ONLY — not main acceptance for $CFMGR_TESTED_SHA"
+          /usr/bin/time -v .venv/bin/python tools/test.py
+
       - name: Run selected pytest nodes (diagnostic only)
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
         env:
           CFMGR_QUICK_NODES: ${{ steps.selection.outputs.nodes }}
           CFMGR_TESTED_SHA: ${{ github.sha }}
@@ -95,30 +117,35 @@ jobs:
           if os.environ.get("PYTEST_ADDOPTS", "").strip():
               raise SystemExit("PYTEST_ADDOPTS must be empty for visible quick-test selection")
           try:
-              from tools.test import validate_quick_nodes
+              from tools.test import quick_pytest_selection_args, validate_quick_nodes
 
               nodes = validate_quick_nodes(os.environ.get("CFMGR_QUICK_NODES", ""))
+              selection_args = quick_pytest_selection_args(nodes)
           except ValueError as error:
               raise SystemExit(f"Invalid validated quick-test output: {error}")
 
           print("DIAGNOSTIC ONLY — not main acceptance", flush=True)
           print(f"Tested SHA: {os.environ['CFMGR_TESTED_SHA']}", flush=True)
-          print("Selected nodes: " + " ".join(nodes), flush=True)
+          print("Selected targets: " + " ".join(nodes), flush=True)
+          if selection_args[:2] == ["-m", "not diagnostic"]:
+              print("Whole-module selection excludes optional diagnostic cases.", flush=True)
           environment = os.environ.copy()
           environment["CFMGR_TEST_SHELL"] = "busybox ash"
           environment["CFMGR_REQUIRE_BUSYBOX"] = "1"
           environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
           command = [
+              "/usr/bin/time",
+              "-v",
               sys.executable,
               "-m",
               "pytest",
-              "-q",
+              "-vv",
               "-ra",
               "--strict-config",
               "--strict-markers",
               "--maxfail=1",
-              "--durations=5",
-              *nodes,
+              "--durations=10",
+              *selection_args,
           ]
           raise SystemExit(subprocess.run(command, check=False, env=environment).returncode)
           PY

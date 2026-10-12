@@ -20,6 +20,7 @@ QUICK_NODE = re.compile(
     r"(?:\[[A-Za-z0-9_.-]{1,64}\])?",
     re.ASCII,
 )
+QUICK_MODULE = re.compile(r"tests/test_[A-Za-z0-9_]+\.py", re.ASCII)
 
 
 def validate_focused_paths(paths: str, *, root: Path | None = None) -> list[str]:
@@ -48,19 +49,48 @@ def validate_focused_paths(paths: str, *, root: Path | None = None) -> list[str]
 
 
 def validate_quick_nodes(nodes: str, *, root: Path | None = None) -> list[str]:
-    """Validate a bounded list of pytest node IDs and their regular test modules."""
+    """Validate bounded whole-module selectors or pytest node IDs."""
     root = ROOT if root is None else root
     if not nodes:
-        raise ValueError("one to eight pytest node IDs are required")
+        raise ValueError("one to eight test modules or pytest node IDs are required")
     selected = nodes.split(" ")
-    if len(selected) > 8 or any(not QUICK_NODE.fullmatch(node) for node in selected):
-        raise ValueError("expected 1 to 8 tests/test_NAME.py::test_NAME node IDs")
+    if len(selected) > 8:
+        raise ValueError("expected 1 to 8 test modules or pytest node IDs")
     if len(set(selected)) != len(selected):
-        raise ValueError("quick test node IDs must be distinct")
+        raise ValueError("quick selection targets must be distinct")
+
+    module_selection = all(QUICK_MODULE.fullmatch(item) for item in selected)
+    node_selection = all(QUICK_NODE.fullmatch(item) for item in selected)
+    if not module_selection and not node_selection:
+        if any(QUICK_MODULE.fullmatch(item) for item in selected):
+            raise ValueError(
+                "whole-module selectors cannot be mixed with pytest node IDs"
+            )
+        raise ValueError(
+            "expected 1 to 8 tests/test_NAME.py modules or "
+            "tests/test_NAME.py::test_NAME node IDs"
+        )
+
+    if module_selection:
+        validate_focused_paths(" ".join(selected), root=root)
+        return selected
 
     for module in dict.fromkeys(node.split("::", 1)[0] for node in selected):
         validate_focused_paths(module, root=root)
     return selected
+
+
+def quick_pytest_selection_args(selection: list[str]) -> list[str]:
+    """Exclude optional diagnostics for whole-module selections, not named nodes."""
+    if not selection:
+        raise ValueError("quick pytest selection cannot be empty")
+    module_selection = all(QUICK_MODULE.fullmatch(item) for item in selection)
+    node_selection = all(QUICK_NODE.fullmatch(item) for item in selection)
+    if module_selection:
+        return ["-m", "not diagnostic", *selection]
+    if node_selection:
+        return list(selection)
+    raise ValueError("quick pytest selection cannot mix modules and node IDs")
 
 
 def quick_selection(

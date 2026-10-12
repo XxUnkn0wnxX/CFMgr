@@ -391,7 +391,8 @@ def test_linux_terminal_retirement_requires_the_pinned_claim_inode(
     "case",
     [
         pytest.param("dependency_repair", marks=pytest.mark.diagnostic),
-        "dependency_retry",
+        "dependency_update_failure",
+        pytest.param("dependency_retry", marks=pytest.mark.diagnostic),
         "dependency_daemon",
         pytest.param("dependency_threads", marks=pytest.mark.diagnostic),
         pytest.param("dependency_mixed", marks=pytest.mark.diagnostic),
@@ -427,6 +428,8 @@ def test_normal_repair_and_owned_cleanup(
     expected = (
         b"PASS: production loss cancellation with readonly fallback\n"
         if case == "dependency_loss"
+        else b"PASS: production dependency update failure retires ownership without installation\n"
+        if case == "dependency_update_failure"
         else b"PASS: production dependency repair and normal ownership cleanup\n"
     )
     assert expected in result.stdout, diagnostic

@@ -146,6 +146,12 @@ Full CI, including setup, targets 10–15 minutes with a hard 20-minute ceiling,
 through product 100%. Remove redundant work and costly low-value variants before
 adding coverage; retain representative core safety proof. Do not raise the ceiling
 or hide a failure to meet it. Record measured cost using the required acceptance run.
+If a full run becomes unexpectedly slow or obscures the culprit, stop repeating
+it: use meaningful, disjoint Quick Checks groups with visible test names and
+wall/CPU timings to locate the cost. Isolated CI groups may run concurrently;
+avoid duplicating heavy work already running. Optimize the slow groups, preserve
+required coverage, then pass exact full Checks before acceptance. Do not keep
+rerunning the whole suite to diagnose one slow group.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
 format, Python compile, shell syntax, ShellCheck, shfmt, planning/link/whitespace
@@ -183,12 +189,21 @@ candidate SHA. Local commits do not authorize pushes. Checkpoint routes:
 | Complete main-goal marker | All subgoals → accumulated audit → full local suite → push → exact full CI → acceptance/README/handoff and pause. |
 
 Full local suites are main-goal gates; CI-dependent subgoal or pause pushes do
-not trigger an extra full local run.
+not trigger a mandatory extra full local run. When existing timings show the full
+macOS suite is light and about one minute, use it optionally for optimization or
+focused-pass/full-suite-fail interactions, with Linux-only skips explicit. This
+does not replace CI-dependent Quick Checks followed by exact full Checks. Do not
+assume Ubuntu timings establish Mac cost or rerun a full suite just to measure
+eligibility. A full local diagnostic run is also allowed when a slow CI cause
+cannot be isolated otherwise.
 
 A Quick Checks pass is diagnostic only: no tick, acceptance, or focused-complete
-credit. The Quick workflow accepts one to eight validated pytest node IDs in a
-final `CFMgr-Quick-Tests:` push trailer or manual dispatch; it runs only those
-BusyBox checks, and the broad Checks job skips that quick-marker push. To accept
+credit. Quick accepts one to eight validated pytest nodes or whole test modules
+(never mixed) in a final `CFMgr-Quick-Tests:` trailer or manual dispatch. Module
+groups exclude optional diagnostics; explicit nodes can target them. Manual
+host-baseline mode runs setup and full host/statics without BusyBox. Manual runs
+have separate concurrency groups; pushes cancel superseded same-ref quick runs.
+The broad Checks job skips quick-marker pushes. To accept
 a CI-dependent subgoal or pause, run full Checks at the candidate SHA. The retired
 `CFMgr-Focused-Tests:` selector never narrows Checks: ordinary pushes, PRs and
 manual Checks always run the full required suite. Invalid/ambiguous quick selection

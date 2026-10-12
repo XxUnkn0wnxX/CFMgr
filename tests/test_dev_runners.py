@@ -330,6 +330,43 @@ def test_quick_selection_accepts_final_push_trailer_and_manual_nodes(
     ) == nodes.split(" ")
 
 
+def test_quick_module_groups_exclude_diagnostics_but_named_nodes_do_not(
+    tmp_path: Path,
+) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_sample.py").write_text("", encoding="utf-8")
+    (tests / "test_other.py").write_text("", encoding="utf-8")
+    modules = "tests/test_sample.py tests/test_other.py"
+    selected_modules = runner.quick_selection(
+        "workflow_dispatch", dispatch_nodes=modules, root=tmp_path
+    )
+    assert selected_modules == modules.split(" ")
+    assert runner.quick_pytest_selection_args(selected_modules) == [
+        "-m",
+        "not diagnostic",
+        *modules.split(" "),
+    ]
+    assert (
+        runner.quick_selection(
+            "push", f"diagnose modules\n\nCFMgr-Quick-Tests: {modules}", root=tmp_path
+        )
+        == selected_modules
+    )
+
+    named_diagnostic = "tests/test_sample.py::test_thread_case"
+    selected_node = runner.quick_selection(
+        "workflow_dispatch", dispatch_nodes=named_diagnostic, root=tmp_path
+    )
+    assert runner.quick_pytest_selection_args(selected_node) == [named_diagnostic]
+    with pytest.raises(ValueError, match="cannot be mixed"):
+        runner.quick_selection(
+            "workflow_dispatch",
+            dispatch_nodes=f"{modules.split()[0]} {named_diagnostic}",
+            root=tmp_path,
+        )
+
+
 @pytest.mark.parametrize(
     "message",
     [
@@ -341,6 +378,7 @@ def test_quick_selection_accepts_final_push_trailer_and_manual_nodes(
         ),
         "CFMgr-Quick-Tests: tests/test_sample.py::test_sample; echo unsafe",
         "CFMgr-Quick-Tests: tests/../test_sample.py::test_sample",
+        "CFMgr-Quick-Tests: tests/test_sample.py tests/test_sample.py::test_sample",
         "CFMgr-Quick-Tests: tests/test_missing.py::test_sample",
         "CFMgr-Quick-Tests: -k",
         (
@@ -398,6 +436,11 @@ def test_quick_selection_rejects_empty_or_oversized_lists(
     nodes = " ".join(f"{path}::test_case" for path in paths[:9])
     with pytest.raises(ValueError, match="1 to 8"):
         runner.quick_selection("workflow_dispatch", dispatch_nodes=nodes, root=tmp_path)
+    modules = " ".join(paths[:9])
+    with pytest.raises(ValueError, match="1 to 8"):
+        runner.quick_selection(
+            "workflow_dispatch", dispatch_nodes=modules, root=tmp_path
+        )
 
 
 def test_runner_selects_full_busybox_suite_without_executing_it(
