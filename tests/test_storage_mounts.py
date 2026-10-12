@@ -445,7 +445,8 @@ def test_unresolved_native_operation_preserves_intent_and_blocks_release(
             "-c",
             (
                 '. "$1"; cfmgr_view_context=$2; cfmgr_view_sequence=0; '
-                "cfmgr_view_pending=; cfmgr_view_state=building; "
+                "cfmgr_view_pending=; cfmgr_view_state=building; cfmgr_view_pin_state=active; "
+                "cfmgr_execution_view_keeper() { return 0; }; "
                 "cfmgr_execution_view_native() { "
                 'case $1 in inventory) : >"$3" ;; awk) return 0 ;; '
                 "root) return 3 ;; *) echo unexpected; return 2 ;; esac; }; "

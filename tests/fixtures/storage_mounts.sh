@@ -102,6 +102,7 @@ release_loop() {
 	[ -z "$associated" ] || cleanup_issue "owned loop remains attached to $loop_image"
 }
 
+# shellcheck disable=SC2154 # Fixed keeper identity utility exports these fields.
 cleanup() {
 	original_status=$?
 	trap - EXIT HUP INT TERM
@@ -113,7 +114,38 @@ cleanup() {
 	if [ "$view_loaded" -eq 1 ]; then
 		cfmgr_view_test_quiet=1
 		case ${cfmgr_view_state:-invalid} in building | ready | retained)
-			cfmgr_execution_view_release || cleanup_issue 'guarded view could not be normally released'
+			if ! cfmgr_execution_view_release; then
+				cleanup_issue 'guarded view could not be normally released'
+				# Test owns this exact fixed keeper, and never launches package writers.
+				# Failure fallback is recorded as failure, never product cleanup proof.
+				if [ -n "${cfmgr_keeper_pid:-}" ]; then
+					if cfmgr_prerequisites_identity "$cfmgr_keeper_pid"; then
+						if [ "$cfmgr_identity_start" = "$cfmgr_keeper_start" ] && [ "$cfmgr_identity_parent" = "$cfmgr_keeper_owner" ]; then
+							kill -KILL "$cfmgr_keeper_pid" 2>/dev/null || :
+						else cleanup_issue 'keeper identity changed; refusing failure signal'; fi
+					fi
+					wait "$cfmgr_keeper_pid" 2>/dev/null || :
+					cfmgr_keeper_state='fixture-reaped'
+				fi
+				exec 3<&-
+				# Independent isolated-fixture authority only, with no live writers.
+				cfmgr_view_pin_state=retired cfmgr_view_pending=''
+				cfmgr_execution_view_release || cleanup_issue 'isolated view mounts remain after keeper reap'
+			fi
+			;;
+		esac
+		# Startup may have left an exact keeper before a usable view state exists.
+		case ${cfmgr_keeper_state:-invalid} in active | retained)
+			if [ -n "${cfmgr_keeper_pid:-}" ]; then
+				cleanup_issue 'startup keeper remained; reaping exact test-owned helper'
+				if cfmgr_prerequisites_identity "$cfmgr_keeper_pid"; then
+					if [ "$cfmgr_identity_start" = "$cfmgr_keeper_start" ] && [ "$cfmgr_identity_parent" = "$cfmgr_keeper_owner" ]; then
+						kill -KILL "$cfmgr_keeper_pid" 2>/dev/null || :
+					else cleanup_issue 'startup keeper identity changed; refusing signal'; fi
+				fi
+				wait "$cfmgr_keeper_pid" 2>/dev/null || :
+				exec 3<&-
+			fi
 			;;
 		esac
 	fi
@@ -265,6 +297,29 @@ cfmgr_execution_view_native() {
 	else return $?; fi
 }
 
+# Fixed test adapter only: production callbacks require native supervision.
+cfmgr_mount_keeper_native() {
+	[ "$1" = fifo ] || return 2
+	(
+		umask 077
+		"$2" "$3" p
+	)
+}
+
+cfmgr_execution_view_keeper() {
+	case $1 in
+	start)
+		mkdir -m 700 "$2/keeper" || return 1
+		cfmgr_mount_keeper_start "$2/keeper" "$view_ram/ash" "$root/modules/helpers/mount_keeper.sh" \
+			"$root/modules/lib/prerequisites.sh" "$view_ram/env" "$view_ram/mknod" "$view_ram/awk" "$view_ram/usleep"
+		;;
+	retain) cfmgr_mount_keeper_retain "$2" ;;
+	check) cfmgr_mount_keeper_check "$2" "$3" ;;
+	release) cfmgr_mount_keeper_release ;;
+	*) return 2 ;;
+	esac
+}
+
 cfmgr_execution_view_quiescent() {
 	# This package never launches package writers. All chroot checks run/reap in
 	# foreground. A separate test-owned read-only observer can prove kernel EBUSY.
@@ -293,6 +348,7 @@ view_prepare() {
 	done
 	ln -s /tmp/etc "$view_native_root/etc"
 	ln -s /tmp/mnt/usb/entware "$view_native_root/opt"
+	printf 'native regular file\n' >"$view_native_root/native-file"
 	printf 'configured file feed\n' >"$view_native_root/tmp/feed/Packages"
 	printf 'nameserver 127.0.0.1\n' >"$view_native_root/tmp/etc/resolv.conf"
 	mount --bind /dev "$view_native_root/dev"
@@ -306,7 +362,13 @@ view_prepare() {
 	pin || fail 'execution fixture storage pin failed'
 	cfmgr_storage_uuid "$fixture/blkid-main" || fail 'execution fixture UUID failed'
 	# Native execution helper tool is a symlink invoking the actual vendor awk.
-	ln -s "$view_busybox" "$view_ram/awk"
+	for view_keeper_applet in ash awk env mknod usleep '[' printf; do
+		ln -s "$view_busybox" "$view_ram/$view_keeper_applet"
+	done
+	# shellcheck disable=SC1091 # Trusted repository source; no import execution.
+	. "$root/modules/lib/prerequisites.sh"
+	# shellcheck disable=SC1091
+	. "$root/modules/lib/mount_keeper.sh"
 	# shellcheck disable=SC1091 # Trusted repository source; no execution on import.
 	. "$root/modules/lib/execution_view.sh"
 	view_loaded=1
@@ -422,6 +484,7 @@ view_compat)
 	[ "$cfmgr_view_state" = ready ] || fail 'view was not ready'
 	# shellcheck disable=SC2016 # Literal commands execute inside the chroot.
 	view_chroot '[ "$(/bin/busybox readlink /etc)" = /tmp/etc ] &&
+		[ "$(/bin/busybox cat /native-file)" = "native regular file" ] &&
 		[ "$(/bin/busybox cat /tmp/feed/Packages)" = "configured file feed" ] &&
 		[ "$(/bin/busybox cat /etc/resolv.conf)" = "nameserver 127.0.0.1" ] &&
 		[ "$(/bin/busybox cat /opt/nested/marker)" = "nested mount data" ] &&
@@ -446,6 +509,8 @@ view_detach)
 	if [ "$(cat "$mount_dir/entware/write-control")" != before-unplug ] || [ "$(cat "$mount_dir/write-control")" != before-unplug ]; then
 		fail 'healthy guarded writes did not reach the original volume'
 	fi
+	_cfmgr_view_call awk top "$cfmgr_view_root/opt" "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/opt.pin"
+	IFS= read -r view_opt_pin <"$cfmgr_view_context/opt.pin"
 	# Simulate Merlin USB removal by matching the actual device across ALL binds.
 	# External lazy detach is fault injection only; view release never uses it.
 	"$view_busybox" awk -f "$root/modules/lib/mountinfo.awk" inventory-v1 / /proc/self/mountinfo >"$fixture/device-mounts"
@@ -458,6 +523,11 @@ view_detach)
 	while IFS= read -r view_detach_point; do umount -l "$view_detach_point" || fail 'simulated device detach failed'; done <"$fixture/device-points"
 	view_chroot 'printf still-running >/tmp/detach-control' || fail 'native view execution failed after unplug'
 	[ "$(cat "$view_native_root/tmp/detach-control")" = still-running ] || fail 'native temporary writes stopped after unplug'
+	cfmgr_mount_keeper_check || fail 'lazy detach lost keeper mount references'
+	# The detached leaf has vanished from namespace inventory but remains held.
+	"$view_busybox" awk -f "$root/modules/lib/mountinfo.awk" inventory-v1 / /proc/self/mountinfo >"$fixture/after-detach"
+	# shellcheck disable=SC2016
+	"$view_busybox" awk -F '\t' -v id="$view_opt_pin" '$1==id { found=1 } END { exit found ? 1 : 0 }' "$fixture/after-detach" || fail 'device leaf stayed namespace-visible'
 	if view_chroot 'printf forbidden >/opt/blocked' 2>/dev/null; then fail 'detached /opt fallback accepted a write'; fi
 	if view_chroot 'printf forbidden >/tmp/mnt/usb/blocked' 2>/dev/null; then fail 'detached canonical fallback accepted a write'; fi
 	[ ! -e "$view_native_root/tmp/mnt/usb/blocked" ] || fail 'canonical bare path was changed'

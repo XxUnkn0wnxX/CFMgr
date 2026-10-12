@@ -57,9 +57,16 @@ Follow the active handoff task/session boundary. Writing instructions or a hando
 does not start work reserved for a later session. Past cleanup, branch deletion,
 history resets and publication grants are not recurring permissions.
 
-Before each package, inspect existing code/tests and ownership; record its Sxx.yy
-scope, actual entry/consumer, dependencies, missing behavior and focused checks in
-handoff. Start with the requested main goal. When another goal is a prerequisite,
+Order work where dependencies allow: smallest independently completable subgoals,
+then batches tied to a shared module/framework, then remaining work to close a full
+main goal. Name every affected ID and target complete workflows in each batch.
+Write focused tests, align CI test paths, pass
+available local and required focused CI gates, update checklist/README, then advance.
+Award each tick only for its fully proved requirements. Before each package, inspect code,
+tests and ownership; record its Sxx.yy, actual consumer, missing acceptance and
+focused checks in handoff. Start with the requested main goal. If a prerequisite
+framework belongs to another subgoal, name that dependency and its return path;
+avoid accumulating unrelated partial frameworks. When another goal is a prerequisite,
 **notify the user before switching**, then record the focus and return path; this
 switch is authorized without repeat approval. Goal 1 requires all three complete
 features and source parity, not a menu skeleton. Dependency work earns only its

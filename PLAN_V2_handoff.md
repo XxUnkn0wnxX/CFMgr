@@ -22,7 +22,15 @@ update acceptance/README/handoff and pause. The earlier pause-every-subgoal over
 was revoked. Recent workflow/doc corrections were not pause requests.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
-Goal 1. Current S02.05/S02.08 work covers safe normal-opkg repair and storage.
+Goal 1. Finish validation of the current S02.05/S02.08 keeper package, then apply
+the user's order: smallest independently completable subgoals first, linked
+module/framework batches second, remaining main-goal work last. Read-only closure
+mapping selected **S02.09 capability-based support** as the next smallest independent
+Goal 2 target. Enforce native capabilities/TLS/ABI through installer admission;
+source/profile metadata alone is not completion. Keeper/storage is a necessary
+repair prerequisite, not a completed subgoal. The eventual S02.05 batch must include
+the normal-opkg consumer, healthy no-op, missing/unusable selection, post-probes and
+bounded later retry, with focused workflow paths and complete acceptance gates.
 Goal 3 contributes accepted S03.01; Goal 4 S04.01/S04.07–S04.09 may supply parsing,
 guards, ownership and resource bounds. Notify the user before an actual cross-goal
 switch and record its consumer/return path. Dependency-first ordering is authorized.
@@ -37,13 +45,14 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
-- Branch: `develop`; local/remote verified at guarded-view runtime
+- Branch: `develop`; local/remote verified at documentation receipt
+  `f0f35a0a5c339ffa669987b43a68ff2b687aafd0`; tested guarded-view runtime is
   `ad28a3abf4ced1f74a8bcf42b89e9ba4994704b0`. Exact
   [Checks 38211199161](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38211199161)
   passed host 111/11 skips and vendor BusyBox 122/0 skips, including all eight real
   mount cases. All required steps passed; job 62s, BusyBox behavior 22.84s.
-  Receipts: `.tmp/execution-view-ci.{json,log}`. README/checklist receipt follows
-  within this checkpoint; it does not claim its own runtime test SHA.
+  Receipts: `.tmp/execution-view-ci.{json,log}`. README/checklist receipt is committed;
+  it does not claim its own runtime test SHA.
 - Guarded-view package is implemented and parent-reviewed. Combined local command
   below passed **103 tests,
   19 platform skips**, pytest 32.73s; all statics/planning/package checks passed.
@@ -66,16 +75,18 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
   `.tmp/s03-01-focused.log`, `.tmp/s03-01-existing-ci.log` and
   `.tmp/platform-review/s02-03-ubuntu-{run.json,ci.log}`. Historical failures were
   corrected before their green runs; retained logs are diagnostic history only.
+- Current keeper combined gate passed: `.venv/bin/python tools/test.py --focused tests/test_mount_keeper.py tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py` — **104 passed, 28 platform skips**, 51.29s, all statics/planning/package checks green on the dirty tree based on `f0f35a0`; `.tmp/mount-keeper-focused.log`. Parent review fixed a fixture literal-quoting warning. Exact focused CI is next; no main-goal/full-suite gate is due. Cost review: prior view CI job 62s; new Linux failure/deadline cases and one fixture applet rebuild are necessary proof, not duplicate full runs.
 - No CI or router job is currently active. No router action occurred in this package.
 
 ## Ownership and next package
 
 | Owner | Exclusive scope | Gate / stop condition |
 | --- | --- | --- |
-| Parent | Three plans, architecture, integration, metadata and CI config | Review storage-view contract, consumer boundary and focused evidence. No acceptance for a helper alone. |
+| Parent | Three plans, architecture, integration, metadata and CI config | Review mount-reference lifetime and descriptor contracts; add only source-qualified MKNOD fixture applet. No acceptance for a helper alone. |
 | `opkg_supervision_review` analyst | Completed read-only ownership review | Keeper, dynamic roots, mixed threadgroups and numeric-signal evidence limits recorded below; no implementation. |
 | `inventory_ci_wait` awaiter | Completed | Exact corrected CI passed; no job remains active. |
-| `prerequisite_inventory` worker_strong | Completed; files released to parent | S02.05/S02.08 guarded-view construction/recheck/cleanup and Linux fixtures passed parent review, local and exact CI gates. No opkg launch or supervision consumer. |
+| `prerequisite_inventory` worker_strong | Completed; files released to parent | Keeper/view implementation and focused tests reviewed; combined local gate passed, Linux proof pending CI. No writer/opkg consumer implemented. |
+| `next_subgoal_review` explorer | Completed read-only closure map | S02.09 is next independent target. Later linked batch: S02.04/.05/.06/.08, requiring tunnel DNS, confirmed reinstall, saved identity and return-eligibility consumers as well as repair. |
 
 Consumer route: future installed-opkg repair from the existing installer/prerequisite
 controller, using already admitted storage FDs 6/7. This package deliberately stops
@@ -86,6 +97,32 @@ Linux mount cases require focused CI. Parent owns workflow requirements and meta
 All other workers finished and released files; filesystem architecture review is integrated.
 Parent added matching-native BusyBox CHROOT/LN fixture applets for the actual view tests;
 cache identity already includes this config. No new APT requirement or full run is needed.
+
+Next package retains every owned mount before it is overlaid, using one ash child
+with active function-redirection frames. Fixed FIFO requests use native `mknod ... p`
+(pinned source verified); Linux O_RDWR FIFO opens do not block. Parent FD3 owns the
+channel; scoped function redirection borrows/restores FD4 while transferring its
+already-open mount reference. Verify incremental ACK plus complete held mount IDs,
+PID/start/boot and resource headroom. Parent loss/EOF must not silently unwind pins.
+Release only after independently proved quiescence, then normal view unmount.
+Focused tests add `test_mount_keeper.py` to storage/view coverage; Linux proof needs CI.
+Keeper implementation is reviewed and focused-local-passed, with Linux proof pending
+and no acceptance credit. No worker remains active.
+Pinned ash `shellexec` calls `clearredir(drop=1)`, closing saved redirection copies
+before external exec; verify that behavior in the vendor fixture. Current review
+fixes cover glob-disabled callers, canonical numeric protocol, uncertain-release
+lockout, malformed/EOF retention and fixture-child cleanup.
+
+After keeper integration, production native-operation wiring belongs in
+`prerequisites.sh`, `helpers/probe.sh`, bootstrap and explicit entry imports.
+Reuse raw `cfmgr_prerequisites_run`, not flock-owning `check`; zero means reaped,
+so inspect command exit separately. Add finite mode argc/forwarding, serial output
+names and justified bounds. Preserve single-child supervision: no copied `ls|awk`
+pipeline or non-exec AWK wrapper. Pass globals explicitly across env-i; do not
+recursively run view checks inside the probe attachment callback. Native cleanup
+needs its own admitted context policy after Entware loss, and flat bootstrap cleanup
+must preserve view/FIFO/keeper state until proved releasable. Source helpers on a
+lost Entware source are not automatically available merely because native tools are.
 
 ## Implemented foundation and remaining consumer gaps
 

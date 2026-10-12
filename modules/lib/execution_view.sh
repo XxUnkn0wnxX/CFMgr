@@ -6,6 +6,11 @@
 # 0 success, 1 ordinary failure, 2 invalid, 3 unresolved child/operation.
 # Modes: inventory, list, identity, readlink, mkdir, file, link, chmod, copy,
 # root, guard-root, bind4, bind7, private, unbindable, seal, unmount, awk.
+# Required cfmgr_execution_view_keeper: start CONTEXT; check ADDITION LEDGER;
+# retain ID (borrowed FD4); release. It uses admitted mount_keeper tools/code.
+# FD3 is reserved FIFO control until keeper release/reap. No keeper FD may reach
+# a future package process. cfmgr_view_pin_state=retired forbids using ledger IDs
+# for later task signalling; it permits only rechecked normal mount cleanup.
 # Observation output files are fixed private-context operands. `awk` invokes
 # cfmgr_execution_view_awk with its finite mode, never arbitrary program text.
 # cfmgr_execution_view_quiescent: independently qualified task/root quiescence;
@@ -26,6 +31,23 @@ _cfmgr_view_call() {
 			;;
 		esac
 	fi
+}
+
+_cfmgr_view_keeper() {
+	if cfmgr_execution_view_keeper "$@"; then return 0; else
+		cfmgr_view_keeper_code=$?
+		if [ "$cfmgr_view_keeper_code" -eq 1 ]; then return 1; fi
+		cfmgr_view_pending=keeper-unresolved
+		return 3
+	fi
+}
+
+_cfmgr_view_pin() {
+	# Called with the actual newly observed target borrowed on FD4. Parent source
+	# FD4 is saved/restored by function-call redirection, never globally replaced.
+	_cfmgr_view_call awk top "$1" "$2" "$cfmgr_view_context/pin.id" || return 3
+	IFS= read -r cfmgr_view_pin_id <"$cfmgr_view_context/pin.id" || return 3
+	_cfmgr_view_keeper retain "$cfmgr_view_pin_id"
 }
 
 # Fixed bounded data transformations for the trusted native callback.
@@ -182,6 +204,11 @@ _cfmgr_view_source_check() {
 
 _cfmgr_view_exact() {
 	[ -z "$cfmgr_view_pending" ] || return 3
+	case ${cfmgr_view_pin_state:-none} in
+	active) _cfmgr_view_keeper check 0 "$cfmgr_view_context/expected.mounts" || return $? ;;
+	retired) ;;
+	*) return 3 ;;
+	esac
 	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/current.mounts" || return $?
 	_cfmgr_view_call awk same "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/current.mounts"
 }
@@ -201,6 +228,11 @@ _cfmgr_view_target() {
 _cfmgr_view_mutate() {
 	# MODE TARGET; source bind descriptor is inherited, never reopened by name.
 	_cfmgr_view_exact || return $?
+	case $1 in root | guard-root | bind4 | bind7)
+		[ "$cfmgr_view_pin_state" = active ] || return 3
+		_cfmgr_view_keeper check 1 "$cfmgr_view_context/expected.mounts" || return $?
+		;;
+	esac
 	[ "$cfmgr_view_sequence" -lt 4096 ] || return 3
 	cfmgr_view_sequence=$((cfmgr_view_sequence + 1))
 	cfmgr_view_pending=$cfmgr_view_sequence
@@ -218,6 +250,14 @@ _cfmgr_view_mutate() {
 	_cfmgr_view_call awk change "$1" "$2" "${cfmgr_view_remove_id:-0}" "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/observed.mounts" || return 3
 	case $1 in root | guard-root | private | unbindable | seal)
 		_cfmgr_view_call awk properties "$1" "$2" "$cfmgr_view_context/observed.mounts" || return 3
+		;;
+	esac
+	case $1 in root | guard-root | bind4 | bind7)
+		# Keep each mount before any overlay can hide it or a writer can enter.
+		# shellcheck disable=SC2094 # Borrow only new mount FD; ledger files are distinct.
+		_cfmgr_view_pin "$2" "$cfmgr_view_context/observed.mounts" 4<"$2" || return 3
+		_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/pinned.mounts" || return 3
+		_cfmgr_view_call awk same "$cfmgr_view_context/observed.mounts" "$cfmgr_view_context/pinned.mounts" || return 3
 		;;
 	esac
 	_cfmgr_view_call copy "$cfmgr_view_context/observed.mounts" "$cfmgr_view_context/expected.mounts" || return 3
@@ -275,16 +315,23 @@ _cfmgr_view_guarded_bind() {
 # The context and its ancestry must already be admitted/pinned by the controller.
 # shellcheck disable=SC2034,SC2154
 cfmgr_execution_view_create() {
+	# Failed admission must not discard the still-live keeper/view's recovery data.
+	case ${cfmgr_keeper_state:-invalid} in active | retained)
+		[ -z "${cfmgr_keeper_pid:-}" ] || return 3
+		;;
+	esac
 	cfmgr_view_state=invalid
 	[ "$#" -eq 5 ] || return 2
 	for cfmgr_view_argument; do _cfmgr_storage_path "$cfmgr_view_argument" || return 2; done
 	cfmgr_view_native_root=$1 cfmgr_view_context=$2 cfmgr_view_awk=$3 cfmgr_view_readlink=$4 cfmgr_view_parser=$5
 	[ -d "$1" ] && [ ! -L "$1" ] && [ -d "$2" ] && [ ! -L "$2" ] || return 2
 	if (: <&4) 2>/dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null; then return 2; fi
+	command -v cfmgr_execution_view_keeper >/dev/null 2>&1 || return 2
 	cfmgr_storage_attached && [ -n "${cfmgr_storage_uuid_value:-}" ] || return 2
 	case $1 in "$2" | "$2"/*) return 2 ;; esac
 	cfmgr_view_root=$2/view cfmgr_view_guard=$2/guard
-	cfmgr_view_sequence=0 cfmgr_view_pending='' cfmgr_view_remove_id=0
+	cfmgr_view_sequence=0 cfmgr_view_pending='' cfmgr_view_remove_id=0 cfmgr_view_pin_state=starting
 	# Exclusive fresh claim. Existing evidence is never overwritten or removed.
 	(
 		umask 077
@@ -313,6 +360,8 @@ cfmgr_execution_view_create() {
 		[ "$cfmgr_view_source_index" -le 256 ] || return 2
 		_cfmgr_view_call identity "${1%/}/$cfmgr_view_name" "$2/source.$cfmgr_view_source_index" || return $?
 	done <"$2/top.names"
+	_cfmgr_view_keeper start "$cfmgr_view_context" || return $?
+	cfmgr_view_pin_state=active
 	_cfmgr_view_call mkdir "$cfmgr_view_guard" 700 || return $?
 	_cfmgr_view_mutate guard-root "$cfmgr_view_guard" || return $?
 	_cfmgr_view_call file "$cfmgr_view_guard/empty" || return $?
@@ -400,6 +449,17 @@ cfmgr_execution_view_release() {
 	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/current.mounts" || return $?
 	_cfmgr_view_call awk recover "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/all.mounts" "$cfmgr_view_context/current.mounts" "$cfmgr_view_context/recovered.mounts" || return 3
 	_cfmgr_view_call copy "$cfmgr_view_context/recovered.mounts" "$cfmgr_view_context/expected.mounts" || return 3
+	# Ledger reconciles while all retained IDs remain lifetime-pinned. Only then
+	# retire reference authority, release/reap keeper, and recheck every unmount.
+	case $cfmgr_view_pin_state in
+	active)
+		_cfmgr_view_exact || return 3
+		_cfmgr_view_keeper release || return 3
+		cfmgr_view_pin_state=retired
+		;;
+	retired) ;;
+	*) return 3 ;;
+	esac
 	cfmgr_view_release_sequence=$cfmgr_view_sequence
 	while [ "$cfmgr_view_release_sequence" -gt 0 ]; do
 		if [ -f "$cfmgr_view_context/done.$cfmgr_view_release_sequence" ]; then
