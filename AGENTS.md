@@ -11,7 +11,7 @@ Read on session start and resume:
 | Document | Sole purpose |
 | --- | --- |
 | [PLAN_V2.md](PLAN_V2.md) | Product requirements, stable goal/subgoal IDs, behavior, edge cases and open decisions; no progress or session diary. |
-| [PLAN_V2_checklist.md](PLAN_V2_checklist.md) | Matching requirements/acceptance, completion boxes and concise accepted evidence; no worker queue or publication authority. |
+| [PLAN_V2_checklist.md](PLAN_V2_checklist.md) | Matching requirements/acceptance, completion totals/boxes, focused-test results, outstanding gates and concise accepted evidence. No handoff notes, session narrative, ownership, work queue, completion route, next actions or publication authority. |
 | [PLAN_V2_handoff.md](PLAN_V2_handoff.md) | Current task, permissions, exact resumable state, ownership/jobs, pending proof, blockers and next steps; replace stale notes. |
 
 Checklist mirrors the specification's main-goal/subgoal table structure.
@@ -98,11 +98,18 @@ of inventing commands/defaults. Report loss, regression, drift or unfulfilled ou
 immediately; administrative completion is not delivery and backups protect only
 verified contents.
 
-Use two separate progress measures:
+Use three separate progress measures:
 
 - **Product:** completed main goals / 16 × 100; each contributes 6.25%. Every required
   subgoal/evidence must pass before its main tick. Partial/optional work adds no
   product percentage.
+- **Overall subgoals:** accepted product subgoals / total approved product subgoals
+  × 100, equally weighted across all main goals. Derive both counts from the
+  matching Sxx.yy specification/checklist rows (currently 157 total); count each ID
+  once regardless of dependency order. Report fully focused-tested subgoals still
+  awaiting required CI separately, without adding them to the accepted count.
+  Helpers, partial packages, developer tools and optional future features earn no
+  subgoal credit. Change the denominator only with an approved scope change.
 - **Active goal:** fully implemented subgoals with passing written focused tests /
   required subgoals × 100, equally weighted. Name the goal, count, percentage and
   remaining work in meaningful updates and checkpoint/final reports. A focused local
@@ -111,6 +118,15 @@ Use two separate progress measures:
   focused execution is unavailable locally, wait for focused CI. Cap at **99%** until
   all subgoals, audit, full local and exact full CI gates pass. Explain regressions;
   keep acceptance ticks and labelled package/workload estimates separate.
+
+Meaningful progress updates and checkpoint/final reports include both main-goal
+and overall-subgoal counts/percentages. Name the changed Sxx.yy IDs and their main
+goals, what changed (implementation, focused proof, pending CI or acceptance), and
+remaining proof. State the main goal currently being aimed for completion, the
+supporting main goals/subgoals being worked through and the return path after a
+prerequisite switch. Keep that route approximate when dependencies are unsettled;
+do not imply every supporting main goal must finish first. Update checklist totals
+and current handoff focus/route when acceptance or sequencing changes.
 
 100% means the approved CLI is implemented, integrated and ready for controlled
 beta, with coherent libraries, automated safety tests and practical guides. The
@@ -171,8 +187,8 @@ Mandatory normal checkpoint sequence:
    boxes and award the main-goal tick. Pending platform boxes may wait for this
    push; already accepted focused subgoals do not trigger full suites themselves.
 5. Update and push README completion, fully refresh handoff for a new session and
-   **pause**. Record exact evidence, completed/16 percentage, remaining work and rough
-   next scope; do not start another main goal in that session.
+   **pause**. Record exact evidence, main-goal and overall-subgoal counts/percentages,
+   remaining work and rough next scope; do not start another main goal in that session.
 
 An earlier subgoal commit/push/wait is authorized when required **focused behavioral
 proof needs CI execution unavailable locally**, such as Linux/BusyBox. Explain the

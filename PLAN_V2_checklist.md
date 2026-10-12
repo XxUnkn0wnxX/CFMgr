@@ -9,32 +9,25 @@ earn product ticks.
 
 ## Completion assessment
 
-**0 of 16 main goals complete — 0% product completion.** The user-selected
-calculation is `completed main goals / 16 × 100`; every completed main goal adds
-6.25%. Partial subgoals remain visible without increasing this percentage.
-Task-workload estimates are separate. No archived completion is imported.
+**0 of 16 main goals complete — 0% product completion.**
 
-**Subgoal gate:** write and pass focused local tests, relevant static/lint checks
-and parent review. Where required focused proof needs CI rather than the local
-host, retain pending status until that exact-commit focused CI passes; an early
-push for that focused proof remains authorized under [AGENTS.md](AGENTS.md).
-Track results and outstanding gates here. Source review and preliminary smokes
-are not the focused-test gate. A subgoal does not trigger full local/full CI suites.
-**Main-goal gate:** all required subgoals complete, parent codebase/scope audit,
-and full local/full CI suites **when the whole main goal is ready for its publication
-checkpoint**. The full procedures are in [AGENTS.md](AGENTS.md).
-Incomplete work remains unchecked; that status does not authorize deletion or
-reduction of its requirements.
-The main-goal box and README completion change only after that full evidence is
-accepted. A locally validated candidate awaiting required CI is still incomplete.
+**2 of 157 product subgoals accepted — 1.3% overall subgoal completion.**
+Accepted IDs: S02.03 (Goal 2) and S03.01 (Goal 3). Focused-complete: **2/157**;
+no additional fully implemented subgoal is awaiting CI.
+Goal 2: **1/9 accepted (11.1%)**. Goal 3: **1/10 accepted (10%)**.
+All other product subgoals remain unchecked.
+Counting rules: [AGENTS.md](AGENTS.md#evidence-and-progress).
 
-**Development platform gate:** one Ubuntu CI runner executes the full host and
-native-host vendor BusyBox suites. Representative fixtures approximate router
-behavior; exact firmware/ARM/kernel-VM execution is not required for development
-ticks. Real Merlin/flash/hooks/TLS/provider qualification follows during an extended
-beta after implementation completion, with deployment separately authorized.
-At 100%, the implementation is ready for beta, not verified stable router support.
-Cancelled/optional guest runs are never labelled passed.
+**Subgoal gate:** complete implementation, written focused local tests, relevant
+static checks, parent review and any required exact-commit focused CI.
+**Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
+local suite and exact full CI at the complete main-goal checkpoint. Subgoals do
+not trigger full suites. Publication and execution rules: [AGENTS.md](AGENTS.md).
+
+**Development platform gate:** representative Ubuntu integration and native-host
+vendor BusyBox execution. Exact firmware/ARM/kernel-VM execution is not a required
+development gate. Merlin/flash/hooks/TLS/provider qualification remains deferred
+to separately authorized real-router beta; support stays provisional.
 
 ## Main-goal completion gates
 
@@ -70,59 +63,29 @@ denominator.
 
 ## Accepted product evidence
 
-**S02.03 accepted:** the real `cfmgr.sh --install` → bootstrap transaction →
-config generator creates a private extensionless config only for fresh setup.
-Written config/installer/package tests cover passive defaults, mode/byte checks,
-retained/repeated/corrupt/incomplete refusal and interrupted publication. This is
-trusted-local installation; remote acquisition, complete dependency repair and
-other installation subgoals remain incomplete.
+| Accepted subgoal | Verified consumer and behavior |
+| --- | --- |
+| S02.03 | `cfmgr.sh --install` → bootstrap → config generator: private extensionless fresh-only defaults, modes/bytes, retained/repeated/corrupt/incomplete refusal and interrupted publication. Trusted-local package only. |
+| S03.01 | Same installed-config consumer: complete passive feature/tunnel/logging/backup/manager defaults checked by `test_config.py`; private publication, empty Entware destination and refusal cases checked by `test_install.py`. No feature/provider/hook/logging/backup setup during installation. |
 
 Tested code: `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`,
 [Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754).
-The single Ubuntu job passed planning/static checks, full host tests (**163 passed,
-4 platform skips**) and required vendor BusyBox tests (**166 passed, 1 skip**).
-The latter skip is the workstation-without-`/proc` boundary, covered locally;
-required native fsync, supervision and cleanup cases ran. Host tests approximate
-mount/transaction behavior; these results do not qualify Merlin/ARM/physical flash.
+Single Ubuntu job: planning/static gates passed; host **163 passed, 4 platform
+skips**; vendor BusyBox **166 passed, 1 workstation-without-proc skip**. Required
+native fsync, process/FD supervision and cleanup cases ran. Parent review passed.
 
-Focused local command:
-`tools/test.py --focused tests -k 'test_config or test_install or test_dev_runners or test_platforms'`
-ran through `.venv/bin/python`: **73 passed, 1 Linux-only skip**, plus one planning
-fixture count failure. Correcting its old 156 count for approved S13.14 produced
-**10/10 passed** with `tools/test.py --focused tests/test_dev_runners.py` and all
-static gates. The exact CI above then passed the complete corrected suite. Earlier
-focused package/tool tests are recorded in handoff. No full local suite or main-
-goal audit is claimed for this authorized early checkpoint.
+Focused defaults/install proof on `bc49cf54831e8b7099aad3aee9ba8e75fbcae137`
+with handoff-only edits and unchanged tested runtime:
+`.venv/bin/python tools/test.py --focused tests -k 'test_config or test_install'`
+— **24 passed, 1 Linux-only skip**, 26.62s; all static/planning gates passed.
+The skipped owned-copy signal/FD case is covered by the exact Ubuntu CI above.
 
-**S03.01 accepted:** reviewed the same installed-config consumer against every
-passive fresh-state clause. `tests/test_config.py` checks the complete generated
-document: three unconfigured/Off features, tunnel installation/maintenance Off,
-empty typed credentials, Auto address-family defaults, inactive/unconfigured
-logging without opt-out, unset backup destination and manager checks On with
-auto-install/developer mode Off. `tests/test_install.py` verifies its private
-publication, the installed feature states, empty Entware destination and retained/
-repeated/corrupt/interrupted refusal. Parent traced the fixed installer actions;
-fresh installation has no feature setup, provider, hook, logging or backup action.
-
-Fresh focused verification on `bc49cf54831e8b7099aad3aee9ba8e75fbcae137` plus
-handoff-only edits used `.venv/bin/python tools/test.py --focused tests -k 'test_config or test_install'`:
-**24 passed, 1 Linux-only skip, 142 deselected**, 26.62s. Planning/links, package
-metadata, Ruff lint/format, compilation, shell syntax, ShellCheck, shfmt and
-whitespace checks passed. The skipped owned-copy signal/FD test ran in the exact
-Ubuntu CI above. Runtime, tests, tools, dependencies, package metadata and workflow
-are unchanged from that tested SHA; its full job conclusion/logs were reverified.
-No new full suite, runtime change or hardware qualification is claimed.
-
-Required CI uses representative component/transaction tests with labelled host
-attachment/supervision adapters plus real Linux/BusyBox process/FD tests. The exact
-root/JFFS2 `--install` path remains optional guest/live proof, not a prescribed
-development gate. S03.01 acceptance covers passive fresh installation only;
-settings do not establish implemented update scheduling or feature workflows.
-
-Goal 2: **1/9 accepted = 11.1%**. Goal 3: **1/10 accepted = 10%**. All other product
-subgoals and multi-goal acceptance cases remain unchecked; none of the 16 main
-goals is complete. Documentation receipts reference the tested runtime revision
-and do not claim new runtime proof.
+Evidence boundary: representative component/transaction execution with labelled
+attachment/supervision adapters plus real Linux process/FD cases. Exact root/JFFS2
+installation and Merlin/ARM/flash qualification remain optional guest/live proof.
+These ticks establish passive fresh installation, not remote acquisition,
+dependency repair, feature workflows or update scheduling. No main-goal audit or
+full local gate is accepted.
 
 ## Product goals and subgoal evidence
 
@@ -160,43 +123,14 @@ snapshot's root catalog and manifest. No package config/setup-guard payload is
 accepted. Trusted-local fresh installation and its generated private defaults
 are distinct from still-required remote acquisition/update-source proof.
 
-S02.04/S02.05 partial foundation: the installer now obtains an ordered inventory
-of ordinary missing/unusable shared packages, checks native flock before admitting
-an Entware fallback, and aborts unsafe admission, absent native supervision or
-unresolved ownership. No opkg writer or live tunnel DNS consumer is implemented.
-Parent reviewed the actual installer/check callback, failure propagation and FD
-cleanup; regenerated package metadata. On the dirty tree based on `4a50dd0`,
-`.venv/bin/python tools/test.py --focused tests/test_prerequisites.py tests/test_install.py tests/test_dev_runners.py`
-passed **62 tests, 4 Linux-only skips**, 31.26s, plus all planning/package/static
-gates. Parent corrected Ubuntu ShellCheck compatibility and a Bash-specific test
-diagnostic assumption; the final focused prerequisite/static gate passed **20
-tests, 3 Linux-only skips**, 2.95s. Recheck tests retain failure status, no further
-probes, identified-file diagnostics and byte-for-byte evidence preservation.
+| Scope | Focused local/static evidence | Required CI gate | Subgoal acceptance |
+| --- | --- | --- | --- |
+| S02.04/S02.05 prerequisite inventory | `test_prerequisites.py`, `test_install.py`, `test_dev_runners.py`: 62 passed, 4 Linux skips on the initial dirty package; final prerequisite correction: 20 passed, 3 Linux skips. Static gates and parent review passed. | Passed at `b64a00b349935dc45aa518214d8aefa34456bb46`: [Checks 38204206519](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38204206519), host and vendor BusyBox each 65 passed, 1 workstation-only skip. | Partial. Inventory/native-first flock proved; normal opkg repair and the tunnel DNS consumer remain incomplete. |
+| S02.05/S02.08 storage proof | `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`, `test_install.py`: 57 passed, 16 platform/mode skips, 48.01s on the dirty tree based on `b64a00b`; static gates and parent review passed. | Pending. Five real Linux mount cases and BusyBox regressions require exact focused CI; candidate `78f7a025a3e556155101df39f63a40f3ad6d417a` failed the CI static gate. | Partial. Existing installer pin/UUID checks and parser tested locally; expected saved identity, owned-writer containment and returning-work eligibility remain incomplete. |
 
-Exact focused CI at `b64a00b349935dc45aa518214d8aefa34456bb46`,
-[Checks 38204206519](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38204206519),
-passed the three selected files under both host (**65 passed, 1 skip**, 5.57s) and
-vendor BusyBox (**65 passed, 1 skip**, 16.68s), plus all static/planning gates.
-The skip is the workstation-without-proc boundary already covered locally; all
-required Linux ownership/locking/FD cases passed. Parent verified the full SHA,
-sole job and focused selection. This proves the partial inventory/routing package,
-not complete S02.04/S02.05, and earns no subgoal box. Full local/full CI remain
-reserved for the complete main-goal checkpoint.
-
-S02.05/S02.08 storage foundation, pending focused CI: the existing installer storage
-consumer now has written real ext4 tests for attachment/UUID/FD lifetime, alias
-substitution, lazy detach with a different replacement volume, bind-root identity
-and read-only/noexec rejection. The shared parser adds bounded `subtree-v1`
-inventory/propagation output for planned owned-mount verification while preserving
-its legacy covering lookup. The new mode has no execution-view consumer yet.
-Parent reviewed guards, cleanup retention, parser framing/ambiguity and package
-metadata. On the dirty tree based on `b64a00b`,
-`.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py`
-passed **57 tests, 16 explicit platform/mode skips**, 48.01s, with all integrated
-static/planning gates. The five new real mount cases require Linux and run only in
-explicit required BusyBox mode; unavailable fixture capabilities must fail that
-mode. Their exact focused CI, plus existing Linux/BusyBox regressions, remains
-pending. This partial package earns no subgoal tick or full-suite claim.
+Focused commands use `.venv/bin/python tools/test.py --focused` followed by the
+listed modules under `tests/`. No partial row earns a focused-complete or accepted
+subgoal tick. Full local/full CI remain main-goal gates.
 
 ### 3. Configuration, menus and status
 

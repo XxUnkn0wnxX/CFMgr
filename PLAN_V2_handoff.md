@@ -30,6 +30,28 @@ that depend on them**. Record each selected subgoal, its consumers/dependencies 
 return path before implementation. This sequencing permission does not change
 product requirements, evidence, publication gates or progress calculations.
 
+The user now also requires total subgoal progress across all main goals, plus
+updates naming the changed IDs/main goals and their role in the completion route.
+Current totals: **2/157 accepted subgoals = 1.3%**, **2/157 focused-complete**,
+**0/16 main goals = 0%**. No additional complete subgoal is awaiting CI; current
+CI is partial foundation proof. AGENTS.md owns the counting/reporting rules.
+The user reiterated that the checklist must contain no handoff notes. Parent
+condensed it to requirements/counts/checkboxes, test outcomes, outstanding gates
+and concise accepted evidence; all requirement/status rows were byte-preserved.
+Working route, owners, failure diagnosis and next steps remain in this handoff.
+README now includes the same subgoal total and corrects the stale no-installer
+claim: trusted-local passive installation exists, complete installation and all
+feature workflows remain unfinished. No acceptance was added by these edits.
+
+Approximate completion route: aim for **Goal 2 — Installation and dependencies**.
+Current S02.05 repair and S02.08 storage work supports its remaining prerequisite,
+reinstall and native recovery workflows. Goal 3 contributes already accepted
+S03.01 passive defaults. Goal 4's native parsing/guards/ownership/resource bounds
+(S04.01/S04.07–S04.09) are likely supporting prerequisites; select and record each
+actual package before switching. Supporting work does not require claiming those
+whole goals complete. Original Goal 1 remains the downstream feature objective;
+pause after the first completed main-goal checkpoint before starting the next.
+
 The user also clarified the validation cadence: keep focused tests/static checks,
 parent review and outstanding gates in the checklist for each subgoal. **Full local
 and full CI gates run only when a complete main goal is ready for its checkpoint.**
@@ -44,9 +66,8 @@ Current integration set (previous checkpoint accepted; next package active):
 | Owner | Exclusive files / scope | Contracts, dependencies and gates |
 | --- | --- | --- |
 | Parent | Three plans; architecture, integration and package metadata | S02.05/S02.08 private execution/storage design for installed-opkg consumers. Review tests against real entry paths; no acceptance for helpers alone. |
-| Parent reviewing completed `storage_mount_proof` package | `tests/test_storage_mounts.py`, `tests/fixtures/storage_mounts.sh`; parent also owns workflow/setup documentation integration | Exercise existing install-consumed storage pin/attachment/UUID functions with real private Linux ext4 mounts, alias substitution, lazy detach, replacement volume and bind-root identity. Privileged fixtures run only in explicit required BusyBox mode; host guard tests run without privilege. No runtime edits. |
-| `prerequisite_inventory` worker_strong | `modules/lib/mountinfo.awk`, `tests/test_mountinfo.py` only | S02.05/S02.08 prerequisite: preserve the existing nine-field covering-mount interface and add an explicit bounded subtree inventory with propagation fields for the planned execution view. No execution-root construction or opkg launch yet. Parent owns manifest regeneration and combined focused integration. |
-| `opkg_supervision_review` analyst, read-only | Pinned Entware/opkg package-script and native-path evidence | Bound the compatibility requirements for the proposed execution view; identify script/native-path conflicts before construction. No edits, package execution, installation or router work. Parent retains architecture decisions. |
+| Parent integrating completed worker packages | Storage fixture correction, parser/package metadata, workflow/docs and plans | S02.05/S02.08 focused CI correction only. Both writing workers finished and released files; no execution-root construction or opkg launch yet. |
+| `opkg_supervision_review` analyst, completed | Read-only pinned Entware/opkg source findings returned | Minimal native views are not yet shown compatible with normal configured opkg/scripts. Parent owns the architecture decision below; no edits, package execution, installation or router work occurred. |
 
 The completed inventory package connects `--install` → native-work → check. It
 preserves the 15-argument interface, aggregates ordinary missing/unusable tools
@@ -108,6 +129,26 @@ five serial bounded cases use 32 MiB sparse images (one case uses a second image
 only explicit BusyBox mode runs them, avoiding duplicate privileged host setup.
 One Ubuntu job and existing validated caches remain; added base APT requirements
 change only that package-set cache key. Read-only opkg source review may finish.
+
+Published candidate: `78f7a025a3e556155101df39f63a40f3ad6d417a`, origin/develop
+verified after push. Focused [Checks 38205719462](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38205719462)
+failed before behavior: older Ubuntu ShellCheck reported SC2015 on six compound
+fixture guards and SC3013 on intentional Linux/BusyBox descriptor `-ef` assertions.
+BusyBox tests were skipped, not passed. The sole job has ended; no redundant work
+remains. Parent retrieved `.tmp/storage-mount-ci-failed.log` and assigned the
+bounded fixture-only correction above. Keep assertions/cleanup intact, then
+focused-test and re-push the same selection; no further feature implementation
+until exact focused CI passes. The user-requested progress-document update is
+independent of this failed gate and changes no product acceptance.
+
+Correction returned and parent reviewed: six guards use explicit conditions,
+three unchanged `-ef` assertions carry narrow Linux/BusyBox-extension annotations.
+Local ShellCheck is 0.11.0; Ubuntu's older lint behavior required these compatible
+forms. `.venv/bin/python tools/test.py --focused tests/test_storage_mounts.py`
+passed **2 guard tests, 5 explicit Linux/mode skips**, plus all static/planning
+gates. Receipt: `.tmp/storage-mount-ci-fix-local.log`. Only the fixture changed;
+the previous parser/install/storage local evidence remains applicable. Re-push
+the four-file focused selection and wait. No workers or CI jobs are now active.
 
 - Active Goal 2: **1/9 accepted = 11.1%** (S02.03).
 - Supporting Goal 3: **1/10 accepted = 10%** (S03.01).

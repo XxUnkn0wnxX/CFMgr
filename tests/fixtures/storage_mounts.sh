@@ -30,19 +30,35 @@ fail() {
 	exit 1
 }
 
-[ -d "$workdir" ] && [ ! -L "$workdir" ] || fail 'workdir must be a real directory'
-[ "$($readlink -f "$workdir")" = "$workdir" ] || fail 'workdir must be canonical'
-[ "$(stat -c %u "$workdir")" = "$owner_uid" ] || fail 'workdir owner changed'
-[ "$(stat -c %a "$workdir")" = 700 ] || fail 'workdir must have mode 700'
-[ "$(id -u)" = 0 ] || fail 'fixture requires its explicit privileged test invocation'
-[ -f "$root/modules/lib/storage.sh" ] && [ -f "$root/modules/lib/mountinfo.awk" ] ||
+if [ ! -d "$workdir" ] || [ -L "$workdir" ]; then
+	fail 'workdir must be a real directory'
+fi
+if [ "$("$readlink" -f "$workdir")" != "$workdir" ]; then
+	fail 'workdir must be canonical'
+fi
+if [ "$(stat -c %u "$workdir")" != "$owner_uid" ]; then
+	fail 'workdir owner changed'
+fi
+if [ "$(stat -c %a "$workdir")" != 700 ]; then
+	fail 'workdir must have mode 700'
+fi
+if [ "$(id -u)" != 0 ]; then
+	fail 'fixture requires its explicit privileged test invocation'
+fi
+if [ ! -f "$root/modules/lib/storage.sh" ] || [ ! -f "$root/modules/lib/mountinfo.awk" ]; then
 	fail 'repository storage library is missing'
-[ -x "$readlink" ] && [ -x "$awk" ] || fail 'selected native tools are unavailable'
-[ "$($readlink /proc/self/ns/mnt)" != "$parent_namespace" ] ||
+fi
+if [ ! -x "$readlink" ] || [ ! -x "$awk" ]; then
+	fail 'selected native tools are unavailable'
+fi
+if [ "$("$readlink" /proc/self/ns/mnt)" = "$parent_namespace" ]; then
 	fail 'fixture is not in a distinct mount namespace'
+fi
 
 fixture=$workdir/cfmgr-storage-mount-fixture
-[ ! -e "$fixture" ] && [ ! -L "$fixture" ] || fail 'owned fixture path already exists'
+if [ -e "$fixture" ] || [ -L "$fixture" ]; then
+	fail 'owned fixture path already exists'
+fi
 mount_dir=$fixture/volume
 bind_dir=$fixture/bind
 alias=$fixture/opt
@@ -107,10 +123,10 @@ cleanup() {
 		printf 'storage mount fixture: preserving owned evidence at %s\n' "$fixture" >&2
 		exit 1
 	fi
-	[ ! -e "$fixture" ] && [ ! -L "$fixture" ] || {
+	if [ -e "$fixture" ] || [ -L "$fixture" ]; then
 		printf 'storage mount fixture: owned evidence remains at %s\n' "$fixture" >&2
 		exit 1
-	}
+	fi
 	exit "$original_status"
 }
 trap cleanup EXIT
@@ -135,7 +151,9 @@ if [ "$case_name" = lazy_replacement ]; then
 		fail 'could not allocate replacement loop device'
 	blkid "$replacement_device" >"$fixture/blkid-replacement"
 	replacement_uuid=$(blkid -s UUID -o value "$replacement_device")
-	[ -n "$replacement_uuid" ] && [ "$replacement_uuid" != "$main_uuid" ] || fail 'replacement ext4 UUID was not distinct'
+	if [ -z "$replacement_uuid" ] || [ "$replacement_uuid" = "$main_uuid" ]; then
+		fail 'replacement ext4 UUID was not distinct'
+	fi
 fi
 
 # shellcheck disable=SC1091 # Source is the repository library selected by root.
@@ -163,7 +181,9 @@ valid)
 	pin || fail 'valid ext4 attachment was rejected'
 	[ "$cfmgr_storage_relative" = entware ] || fail 'wrong volume-relative path'
 	[ "$cfmgr_storage_fsroot" = / ] || fail 'wrong filesystem root'
+	# shellcheck disable=SC3013 # Required Linux/BusyBox fixture verifies production storage.sh descriptor -ef behavior.
 	[ "$cfmgr_storage_mount" -ef /proc/self/fd/6 ] || fail 'mount descriptor identity did not match'
+	# shellcheck disable=SC3013 # Required Linux/BusyBox fixture verifies production storage.sh descriptor -ef behavior.
 	[ "$cfmgr_storage_opt" -ef /proc/self/fd/7 ] || fail 'opt descriptor identity did not match'
 	cfmgr_storage_attached || fail 'valid pinned attachment did not remain attached'
 	cfmgr_storage_uuid "$fixture/blkid-main" || fail 'valid ext4 UUID was rejected'
@@ -221,6 +241,7 @@ bind_identity)
 	[ "$cfmgr_storage_mount" = "$bind_dir" ] || fail 'bind mountpoint was not retained'
 	[ "$cfmgr_storage_fsroot" = /entware ] || fail 'bind filesystem root was not retained'
 	[ "$cfmgr_storage_relative" = . ] || fail 'bind mount relative path was not retained'
+	# shellcheck disable=SC3013 # Required Linux/BusyBox fixture verifies production storage.sh descriptor -ef behavior.
 	[ "$cfmgr_storage_mount" -ef /proc/self/fd/6 ] || fail 'bind mount descriptor identity did not match'
 	cfmgr_storage_attached || fail 'valid bind-mounted attachment did not remain attached'
 	cfmgr_storage_uuid "$fixture/blkid-main" || fail 'bind mount volume UUID was rejected'
