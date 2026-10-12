@@ -92,11 +92,79 @@ EOV
 	rm /mnt/cfmgr-scratch/tmp/owned-lock || fail flock-cleanup
 	[ "$(/opt/bin/dig -v)" = "DiG $dig_version" ] || fail dig-version
 	unset LD_LIBRARY_PATH
-	if ! install_output=$(/bin/sh /cfmgr/package/cfmgr.sh --install 2>&1); then
-		printf '%s\n' "$install_output"
+	/bin/sh /cfmgr/package/cfmgr.sh --install </dev/null >/cfmgr/install-output 2>&1 &
+	installer_pid=$!
+	install_elapsed=0
+	install_last_action=none.0
+	install_unchanged=0
+	while :; do
+		if [ ! -r "/proc/$installer_pid/stat" ]; then break; fi
+		IFS= read -r installer_stat <"/proc/$installer_pid/stat" || installer_stat=
+		installer_rest=${installer_stat##*) }
+		installer_state=${installer_rest%% *}
+		[ "$installer_state" = Z ] && break
+		/bin/sleep 1 || fail install-monitor-sleep
+		install_elapsed=$((install_elapsed + 1))
+		if [ $((install_elapsed % 10)) -eq 0 ]; then
+			install_action_count=0
+			install_latest_serial=0
+			install_latest_action=none
+			for install_action_file in /tmp/cfmgr/install/install-*.out; do
+				[ -f "$install_action_file" ] || continue
+				install_action_count=$((install_action_count + 1))
+				install_action_name=${install_action_file##*/}
+				install_action_name=${install_action_name#install-}
+				install_action_name=${install_action_name%.out}
+				install_action_serial=${install_action_name##*.}
+				case $install_action_serial in '' | *[!0-9]*) continue ;; esac
+				if [ "$install_action_serial" -gt "$install_latest_serial" ]; then
+					install_latest_serial=$install_action_serial
+					install_latest_action=${install_action_name%.*}
+				fi
+			done
+			install_action_key=$install_latest_action.$install_latest_serial
+			printf '%s\n' "CFMGR_INSTALL_PROGRESS elapsed=${install_elapsed}s actions=$install_action_count latest=$install_action_key pid=$installer_pid"
+			if [ "$install_action_key" = "$install_last_action" ]; then
+				install_unchanged=$((install_unchanged + 10))
+			else
+				install_unchanged=0
+				install_last_action=$install_action_key
+			fi
+			if [ "$install_unchanged" -ge 20 ] && [ $((install_unchanged % 20)) -eq 0 ]; then
+				installer_wchan=unknown
+				IFS= read -r installer_wchan </proc/$installer_pid/wchan || :
+				printf '%s\n' "CFMGR_INSTALL_STALL pid=$installer_pid state=$installer_state wchan=$installer_wchan latest=$install_action_key"
+				for child_stat_file in /proc/[0-9]*/stat; do
+					[ -r "$child_stat_file" ] || continue
+					IFS= read -r child_stat <"$child_stat_file" || continue
+					child_rest=${child_stat##*) }
+					child_state=${child_rest%% *}
+					child_parent=${child_rest#* }
+					child_parent=${child_parent%% *}
+					[ "$child_parent" = "$installer_pid" ] || continue
+					child_pid=${child_stat%% *}
+					child_name=${child_stat#* (}
+					child_name=${child_name%%)*}
+					child_wchan=unknown
+					IFS= read -r child_wchan </proc/"$child_pid"/wchan || :
+					printf '%s\n' "CFMGR_INSTALL_CHILD pid=$child_pid name=$child_name state=$child_state wchan=$child_wchan"
+				done
+			fi
+		fi
+	done
+	if wait "$installer_pid"; then
+		install_status=0
+	else
+		install_status=$?
+	fi
+	if [ "$install_status" -ne 0 ]; then
+		/bin/cat /cfmgr/install-output
 		fail install-command
 	fi
+	install_output=$(/bin/cat /cfmgr/install-output) || fail install-output-read
 	case $install_output in *'CFMgr fresh installation complete.'*) ;; *) fail install-message ;; esac
+	if [ -e /tmp/cfmgr/install ] || [ -L /tmp/cfmgr/install ]; then fail install-ram-cleanup; fi
+	cfmgr_install_metadata /tmp/cfmgr drwx------ || fail install-ram-parent-mode
 	[ "$(/jffs/scripts/cfmgr.sh --version)" = 'CFMgr 0.1.0 (development placeholder)' ] || fail installed-version
 	[ "$(
 		IFS= read -r cfmgr_setup_state </jffs/addons/CFMgr.d/setup-state

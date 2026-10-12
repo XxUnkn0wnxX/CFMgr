@@ -81,6 +81,22 @@ reviewed diffs and acceptance boundaries. No worker may publish or award ticks.
 
 ## Latest repair and ownership
 
+Current exact run `38197550576` at `5b1d1aef45146dd8fb8fdfe62810e06fbe11336e`
+finished with host/BusyBox/planning green and all four kernel guests timing out
+at 180 seconds during the first install. Even 4.19 times out; legacy entropy alone
+does not explain it. Independent source review found no proved loop/collision;
+the native attachment checks have substantial synchronous process overhead.
+Parent owns diagnosis. `ci_tools` returned narrow disposable-guest progress
+diagnostics in `tests/fixtures/platform/init.sh`, preserving the unmodified
+packaged entry and all acceptance assertions. Parent reviewed the diff and real
+child exit handling. Focused platform gate: **36 passed**, plus all static gates.
+The diagnostic candidate is ready for the authorized exact CI run.
+Do not increase the guest budget without forward-progress evidence. No router
+execution, product behavior change or new tool scope is authorized by this work.
+User amendment: for trace-only diagnosis, collect the first kernel failure/log
+and cancel the remaining run promptly; do not wait for every kernel to fail.
+The repaired acceptance candidate still needs all required exact-commit CI jobs.
+
 All worker ownership is returned. Parent reviewed the native timer correction:
 fixed `/bin/usleep 50000` supplies three short supervision waits, bootstrap admits
 it, and the timeout child uses whole-second sleep. Guest fixture stages native
