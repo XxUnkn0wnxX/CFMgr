@@ -326,7 +326,8 @@ cfmgr_install_mkdir=/bin/mkdir cfmgr_install_cp=/bin/cp cfmgr_install_chmod=/bin
 cfmgr_dependencies_usleep=$CFMGR_TEST_USLEEP
 cfmgr_dependencies_wc=/usr/bin/wc
 cfmgr_dependencies_state=complete
-cfmgr_test_uid=$("$CFMGR_TEST_PYTHON" -c 'import os; print(os.getuid())') || exit 83
+case $CFMGR_TEST_UID in '' | *[!0-9]*) exit 83 ;; esac
+cfmgr_test_uid=$CFMGR_TEST_UID
 cfmgr_dependencies_admit() { return 0; }
 cfmgr_dependencies_claim_admit() {
     [ -d "$1" ] && [ ! -L "$1" ] || return 2
@@ -360,8 +361,23 @@ cfmgr_dependencies_inside_tools() {
 }
 cfmgr_execution_view_create() { cfmgr_view_state=active cfmgr_keeper_state=quiescent; return 0; }
 cfmgr_execution_view_release() { cfmgr_view_state=released cfmgr_keeper_state=released; return 0; }
-cfmgr_execution_tasks_start() { cfmgr_tasks_state=running; return 0; }
+cfmgr_execution_tasks_start() {
+    {
+        printf 'ready END\n'
+        for cfmgr_test_package in jq jq-full coreutils-timeout coreutils-sha256sum flock bind-dig; do
+            printf 'status %s BEGIN\n' "$cfmgr_test_package"
+            printf 'Package: %s\n' "$cfmgr_test_package"
+            printf 'Status: unknown ok not-installed\n'
+            printf 'Version: fixture-1\n'
+            printf 'status %s 0 END\n' "$cfmgr_test_package"
+        done
+        printf 'queried 0 END\n'
+    } >"$cfmgr_dependencies_context/receipt" || return 3
+    cfmgr_tasks_state=running
+    return 0
+}
 cfmgr_execution_tasks_run() {
+    [ "$1" = i-jq ] || return 2
     /bin/mkdir "$cfmgr_test_marker/repair-once" || return 3
     echo "$$" >"$cfmgr_test_marker/repair-owner" || return 3
     cfmgr_test_wait_count=0
@@ -402,7 +418,8 @@ LINUX_WAIT_STALE = r"""
 . "$CFMGR_TEST_ROOT/modules/helpers/bootstrap.sh"
 cfmgr_dependencies_context=$1 cfmgr_dependencies_usleep=/bin/sleep
 cfmgr_dependencies_wc=/usr/bin/wc
-cfmgr_test_uid=$("$CFMGR_TEST_PYTHON" -c 'import os; print(os.getuid())') || exit 81
+case $CFMGR_TEST_UID in '' | *[!0-9]*) exit 81 ;; esac
+cfmgr_test_uid=$CFMGR_TEST_UID
 cfmgr_dependencies_claim_admit() {
     [ -d "$1" ] && [ ! -L "$1" ] || return 2
     [ "$(/usr/bin/stat -c '%a:%u' "$1")" = "700:$cfmgr_test_uid" ] || return 2
@@ -473,6 +490,25 @@ def test_linux_cleanup_retains_unresolved_repair_context_only(
     }
 
 
+def process_output_snapshot(process: subprocess.Popen[bytes], limit: int = 2048) -> str:
+    sections: list[str] = []
+    for label, stream in (("stdout", process.stdout), ("stderr", process.stderr)):
+        if stream is None:
+            continue
+        descriptor = stream.fileno()
+        was_blocking = os.get_blocking(descriptor)
+        try:
+            os.set_blocking(descriptor, False)
+            content = os.read(descriptor, limit)
+        except BlockingIOError:
+            content = b""
+        finally:
+            os.set_blocking(descriptor, was_blocking)
+        if content:
+            sections.append(f"{label}={content.decode(errors='replace')[-limit:]}")
+    return "\n".join(sections) or "no buffered output"
+
+
 def wait_for_path(
     path: Path, processes: list[subprocess.Popen[bytes]], timeout: float = 4.0
 ) -> None:
@@ -480,10 +516,21 @@ def wait_for_path(
     while time.monotonic() < deadline:
         if path.exists():
             return
-        if any(process.poll() is not None for process in processes):
-            break
+        exited = [process for process in processes if process.poll() is not None]
+        if exited:
+            details = "; ".join(
+                f"pid={process.pid} rc={process.returncode} {process_output_snapshot(process)}"
+                for process in exited
+            )
+            raise AssertionError(f"process exited before marker {path}: {details}")
         time.sleep(0.01)
-    raise AssertionError(f"timed out waiting for owned-process marker: {path}")
+    details = "; ".join(
+        f"pid={process.pid} rc={process.poll()} {process_output_snapshot(process)}"
+        for process in processes
+    )
+    raise AssertionError(
+        f"timed out waiting for owned-process marker {path}: {details}"
+    )
 
 
 def linux_process_start(pid: int) -> str:
@@ -519,7 +566,7 @@ def test_linux_dependency_repair_coalesces_two_live_controller_processes(
         "CFMGR_TEST_PARENT": str(parent),
         "CFMGR_TEST_MARKER": str(marker),
         "CFMGR_TEST_USLEEP": str(usleep),
-        "CFMGR_TEST_PYTHON": sys.executable,
+        "CFMGR_TEST_UID": str(os.getuid()),
     }
 
     def launch(role: str) -> subprocess.Popen[bytes]:
@@ -639,7 +686,7 @@ def test_linux_dependency_wait_preserves_untrusted_or_stale_claims(
             **os.environ,
             "LC_ALL": "C",
             "CFMGR_TEST_ROOT": str(ROOT),
-            "CFMGR_TEST_PYTHON": sys.executable,
+            "CFMGR_TEST_UID": str(os.getuid()),
         },
         check=False,
         capture_output=True,

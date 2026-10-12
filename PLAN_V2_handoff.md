@@ -46,6 +46,17 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
+- Current candidate: `f99853c8fe39a34870875664b844711bfd69d290`, pushed and
+  remote-verified. [Checks 38236283307](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38236283307)
+  failed after statics and 246 host passes/28 skips: concurrency fixture controller
+  exited 83 before its marker. BusyBox was skipped. Receipt
+  `.tmp/dependency-repair-ci-failed-2.log`. Parent reproduced CPython rejecting
+  directory stdin. The fixture now uses the parent UID, supplies the finite query
+  receipt consumed by the real selector and reports bounded child diagnostics.
+  Parent review passed; module pytest: **8 passed/7 Linux skips**, Ruff lint/format,
+  Python compilation and embedded-shell syntax passed. File ownership is released.
+  No CI job is active. Re-push the same focused selection and require exact green
+  before advancing runtime implementation.
 - Active repair candidate: `b85df486221a519cd291ebe31a1d92d50d7dfa7c`, committed,
   pushed and remote-verified on `develop`. Exact focused
   [Checks 38235446674](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38235446674)
