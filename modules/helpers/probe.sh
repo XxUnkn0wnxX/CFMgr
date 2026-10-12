@@ -81,6 +81,8 @@ launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-reado
 		exec "$tool" "$1"
 		;;
 	launch-rmdir)
+		# Native BusyBox -ef verifies the exact held Linux directory inode.
+		# shellcheck disable=SC3013
 		[ -d "$1" ] && [ ! -L "$1" ] && [ "$1" -ef /proc/self/fd/4 ] || exit 2
 		exec "$tool" "$1"
 		;;

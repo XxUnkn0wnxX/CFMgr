@@ -186,10 +186,12 @@ fi
 
 dependency_observer=''
 dependency_observer_detail() {
-	[ -f "$view_ram/dependency-observer.status" ] && [ ! -L "$view_ram/dependency-observer.status" ] || {
+	if [ -f "$view_ram/dependency-observer.status" ] && [ ! -L "$view_ram/dependency-observer.status" ]; then
+		:
+	else
 		printf 'not-started'
 		return
-	}
+	fi
 	IFS= read -r dependency_observer_state <"$view_ram/dependency-observer.status" || dependency_observer_state=unreadable
 	printf '%s' "$dependency_observer_state"
 }

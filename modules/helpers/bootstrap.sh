@@ -363,13 +363,13 @@ cfmgr_bootstrap_signals() {
 	trap 'cfmgr_install_interrupted=1' HUP INT TERM
 }
 
-# Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
-# shellcheck disable=SC3013
 cfmgr_bootstrap_attached() {
 	cfmgr_storage_attached && cfmgr_bootstrap_native_attached
 }
 
 # Native-only admission is reserved for finite launch-* pre-storage probes.
+# Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
+# shellcheck disable=SC3013
 cfmgr_bootstrap_native_attached() {
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
 	if [ "${cfmgr_launch_guard_owned:-0}" = 1 ]; then cfmgr_launch_guard_attachment || return 1; fi

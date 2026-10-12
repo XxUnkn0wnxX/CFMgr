@@ -10,6 +10,7 @@ cfmgr_launch_attachment_ok() {
 	if [ "${cfmgr_launch_migrating:-0}" = 1 ]; then cfmgr_launch_original_attached || return 1; fi
 }
 
+# shellcheck disable=SC3013 # Native BusyBox -ef compares the pinned Linux FD inode.
 cfmgr_launch_guard_attachment() {
 	if [ "${cfmgr_launch_guard_owned:-0}" = 1 ]; then
 		if [ ! -L "$cfmgr_launch_guard" ] && [ "$cfmgr_launch_guard" -ef /proc/self/fd/4 ]; then :; else
@@ -188,6 +189,7 @@ cfmgr_launch_package_structure() {
 	cfmgr_launch_generation=$cfmgr_launch_oldgen cfmgr_launch_snapshot_bytes=$cfmgr_launch_in
 }
 
+# shellcheck disable=SC3013 # Native BusyBox -ef verifies the original pinned FD.
 cfmgr_launch_original_attached() {
 	[ ! -L "$cfmgr_install_original_context" ] && [ "$cfmgr_install_original_context" -ef /proc/self/fd/3 ] || return 1
 	[ "$("$cfmgr_install_awk" -f "$cfmgr_install_source/modules/lib/mountinfo.awk" "$cfmgr_install_original_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ]

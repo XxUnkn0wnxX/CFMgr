@@ -70,9 +70,13 @@ chmod 755 "$retained_fixture_logger"
 # Alias source defines only the renamed public pin; restore selected callback.
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'actual retained launch repair failed'
-[ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ] || fail 'retained launch did not repair and fully re-probe'
+if [ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ]; then :; else
+	fail 'retained launch did not repair and fully re-probe'
+fi
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'retained repair changed passive settings'
-[ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state" = released:released ] || fail 'retained repair did not normally release protection'
+if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state" = released:released ]; then :; else
+	fail 'retained repair did not normally release protection'
+fi
 retained_operations=$(cat "$cfmgr_storage_opt/operations")
 retained_absent=1
 if cfmgr_launch_native /jffs/addons/CFMgr.d; then fail 'absent later attachment was accepted'; fi

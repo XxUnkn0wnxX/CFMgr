@@ -50,8 +50,8 @@ tests/test_config_observation.py tests/test_retained_launch.py
 tests/test_dependency_consumer.py tests/test_install.py tests/test_prerequisites.py
 tests/test_dev_runners.py`; receipt `.tmp/retained-local-focused.log`.
 This was focused behavior plus common static checks, not a full local suite.
-Parent owns the final commit/push, quick BusyBox proof, then full required Checks
-at the same candidate. No worker or local test remains active.
+Parent owns quick BusyBox proof, then full required Checks at the same candidate.
+Runtime/parser are committed and pushed; no writer or local test remains active.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
 Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
@@ -78,14 +78,28 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Local commits after the last push: `bc4b275` (practical required/optional CI),
-  `87656e7` (fourth review-notes document), and `b90eb6e` (checklist notes moved).
-  The reviewed runtime/parser package and regenerated catalog/manifest passed
-  focused local validation on this dirty tree; commit and quick push are next.
-  No CI currently runs. Quick targets retained repair/return, retained-state
-  refusal/publication, installed entry routing, native config parsing and the
-  existing fresh-installer regression. Full required Checks must follow before
-  accepting S02.05/S02.08 and the requested pause. Full local is not due.
+- Current runtime candidate `cffc1a541a73d177ec216746a3351433ce136d94` is committed,
+  pushed and remote-verified, including the practical CI and review-note commits.
+  [Quick Checks 38260092807](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38260092807)
+  passed **17 tests in 344.93s**, including actual retained repair/return and fresh
+  installer repair. Receipt `.tmp/retained-quick-pass.log`. Parent verified exact
+  SHA/job success. [Full Checks 38261015597](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38261015597)
+  failed in Ubuntu ShellCheck before behavioral tests: SC3013 needs narrowly
+  scoped annotations for intentional BusyBox/Linux descriptor `-ef` checks;
+  three fixture SC2015 expressions need explicit conditionals. Receipt
+  `.tmp/retained-full-failed-1.log`. No CI is active. `focused_ci` owns only these
+  annotations/conditionals in `modules/helpers/{bootstrap,launch,probe}.sh` and
+  `tests/fixtures/{dependencies,retained_launch}.sh`; no runtime contract changes.
+  These shell edits are released and pass targeted lint/syntax/format plus 15
+  focused host tests. The user additionally requested CI ShellCheck match the
+  workstation: **0.11.0** verified locally. Shared setup now installs the official
+  pinned Linux x86_64 archive after SHA-256 verification; both workflows removed
+  APT ShellCheck. YAML parsing, extracted Bash syntax, planning and package checks
+  passed. Worker released all files; parent review passed. Quick proof will verify
+  CI setup and selected short regressions, then full Checks supplies acceptance.
+  Parent owns metadata, review and publication. Focused checks then exact full
+  Checks remain required before accepting S02.05/S02.08 and pausing; full local
+  is not due. The marker-push Checks skip supplies no acceptance.
 - Latest pushed/remote-verified candidate: `8dfa47753860667f71aecb7710007559c61d5617`.
   [Quick Checks 38253817799](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253817799)
   passed at that exact SHA; selected mixed/loss/installer tests ran
@@ -402,221 +416,68 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 - Final fixture review corrected swallowed fixture-definition quoting and an unset CPU-budget value before push. Portable fixture construction/shell syntax now runs despite Linux skips. `tools/test.py --focused tests/test_mount_keeper.py` passed 2/9 skips, 0.26s, including all statics; `.tmp/mount-keeper-fixture-fix-local.log`. Runtime bytes remain those from local `92ad1c1`; both commits will use one focused CI push.
 - Keeper candidate `8b99d0bb62bf115812f625ae401eee17f6593c03` is pushed/remote-verified. [Focused Checks 38215534245](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38215534245) failed vendor checks (126 passed/7 failed); host/static passed. Receipts `.tmp/mount-keeper-ci-failed.{json,log}`. Parent verified three causes: native `ASH_CMDCMD=n` rejects `command -v` (use unconditional `type`); pinned ash ignores `-n` on `-c` (parse a script file); normal vanished-proc identity reads need quiet failure. Rollback fixture now proves the injected bind7 branch was reached. Correction gate `tools/test.py --focused tests/test_mount_keeper.py tests/test_prerequisites.py tests/test_storage_mounts.py`: **29 passed/20 skips**, 5.16s plus statics; `.tmp/mount-keeper-compat-local.log`. Re-push with prerequisite tests added to focused selection; await exact green before implementation. No router action occurred.
 
-## Ownership and next package
+## Ownership and implemented boundary
 
-S02.09 files are released and accepted; no CI job is active. `prerequisite_inventory`
-now owns one coherent **S02.05/S02.08 integrated repair** assignment; do not start
-an unrelated helper package. Actual consumer: `cfmgr.sh --install` → bootstrap
-prerequisite inventory → healthy no-op or bounded installed-opkg repair → fresh
-post-inventory → existing installation transaction. The wider linked batch adds
-S02.04 tunnel DNS, S02.06 selected reinstall and S02.08 saved identity/return cases.
+All runtime/test/parser workers have released their files. Parent owns the four
+planning files, integration, CI decisions and acceptance. `inventory_ci_wait` only
+monitors the current job. No new implementation target is authorized before the
+requested pause; S02.04/S02.06 and other independent work wait for resume.
 
-Reuse guarded execution view and lifetime keeper. Parent/analyst design review:
-- Parent approved PID/start-specific private preflight contexts so concurrent
-  installers can reach shared repair coalescence; keep the exclusive JFFS claim,
-  strict FD/path ownership and legacy retained `/tmp/cfmgr/install` blocker.
-- Parent/analyst approved a repair-phase low-FD swap: source pin on FD0, preflight
-  RAM pin on FD9, shared claim on FD5. After snapshots, native callbacks use stable
-  RAM/claim pins and never require source FD0 inside read loops. Restore the same
-  refs only after scratch FD4 is safely free; unresolved work preserves its phase.
-  Once keeper release/reap frees FD3, hold the original context there across fresh
-  post-inventory flock probes on FD4/5. Do not add a colliding high descriptor.
-- No eval for descriptor closure. Use literal closure of known FDs, a regular
-  copied-helper FD9 handoff closed after ash opens it, gate stdin then `/dev/null`,
-  and admitted output only. Unexpected high non-CLOEXEC descriptors reject launch;
-  positively identified CLOEXEC bookkeeping must disappear across exec. Recheck
-  helper descriptors before ready/opkg. Source-proof any native ash uncertainty.
-- Launch via fixed chroot/ready/gate helper; record direct PID/start/boot and verify
-  rooted view plus closure of outside directory FDs/cwd before release to opkg.
-- Scan every task/thread root through an opened FD and rechecked identity. Retained
-  owned IDs and verified visible dynamic descendants are ownership evidence;
-  unknown/detached/unreadable roots retain protection. Foreign-root lifetime pins
-  require positive outside ancestry, are deduplicated, and never authorize cleanup.
-- Reconcile **all** visible dynamic view mounts, including script mounts without a
-  chroot. Pin verified ancestry/root before registration, preserve immutable guard
-  layers, record ordered cleanup, and retain unknown substitutions/foreign layers.
-- Keep long-action PID/deadline state separate from `cfmgr_probe_*` native probes.
-  Verify all live threads before group signalling. Numeric kill is observational,
-  not an atomic identity guarantee. Empty sweeps still need normal unmount proof.
-- Direct opkg success with surviving script daemons is not quiescence. Bound cleanup;
-  unresolved work retains claim/keeper/storage and prevents overlap. Completed
-  ordinary failures release the claim and allow a bounded later-launch retry.
-- Preserve normal configured feeds/resolution/scripts and active provider choice.
-  Plain install may not repair an already-installed unusable tool; use scoped
-  reinstall only for failed mapped requirements, preserving healthy tools.
-  Pinned opkg `opkg_info_status_cmd` consumes only `argv[0]`; fixed per-package
-  status queries are required (the test double must not invent multi-name support).
-- No package-wide tiny file-size limit: normal transitive/package writes may be
-  large. Discard opkg output to `/dev/null` and retain concise phase/exit receipts;
-  do not create unbounded RAM diagnostics. Native probe bounds remain separate.
-- Ensure required helper/parser code remains available from admitted private RAM
-  if the original source or Entware volume disappears; never infer this from using
-  native tool binaries alone.
+Implemented consumers:
 
-Parent owns architecture, three plans, entry/metadata/CI integration and acceptance.
-`opkg_supervision_review` is assigned a final read-only check of its five prior
-findings plus loss-before-success ordering in the provisional runtime freeze;
-no writes, tests or scope expansion. Parent integrates any material findings before
-the combined focused local/CI gate. The runtime writer retains exclusive ownership.
-That review is complete: the prior five fixes are present; writer corrected
-fresh interrupt/deadline/storage admission before query/repair gates, cancellation
-preservation when direct exit is zero, and unresolved optional-logger ownership.
-Re-record action expiry before accepting terminal status, not after separate cleanup
-consumes its own budget. Targeted regressions pass; parent reviewed these corrections.
-`opkg_supervision_review` returned five material task-lifecycle findings; the writer
-is fixing them. A short read-only follow-up checks the stable descriptor allocation
-for read-loop callbacks and fresh post-inventory. Parent owns the final contract.
-Worker exclusive files: new `modules/lib/dependencies.sh`, shared root/task
-supervision in `modules/lib/execution_tasks.sh` when needed, and narrow
-`modules/helpers/dependencies.sh`; existing bootstrap/probe/prerequisites/view/keeper
-libraries; their dependency/install/storage/keeper tests and fixture files, plus
-necessary native fixture config. Preserve accepted native admission behavior/tests.
-Parent exclusive: `cfmgr.sh`, package metadata, workflow, `tests/test_package.py`,
-all Markdown and acceptance. No overlapping writers. Worker must deliver the real
-installer repair integration and focused tests, then stop/release files; no commits,
-pushes, ticks, unrelated refactor or router execution. Notify parent before any
-interface change outside this ownership. Focused integration gate will include new
-dependency tests, prerequisites, install, native admission, storage/view/keeper and
-platform metadata. The latest CI rule above supersedes this package's older
-focused-only publication gate: quick diagnostics, then full CI before acceptance.
-Native helper operations retain finite argv and separate long-action
-state. Parent reviews source/call/failure paths before publication or next scope.
-No router execution or release/version/default-branch change is authorized here.
-`dependency_fixture` exclusively owns new `tests/test_dependency_consumer.py` for
-portable native-work routing and descriptor/post-inventory regressions, using
-explicit adapters for unavailable Linux admission. The runtime writer retains
-`test_install.py`, real PID/mount-isolated repair/process tests and fixture changes.
-The consumer worker also adds real Linux process/claim-wait coalescence proof in
-that file; it owns no runtime or mount-fixture files. Existing consumer tests pass
-8 cases locally; three actual cleanup/FD cases require Linux and remain pending.
+- Fresh `cfmgr.sh --install` shares native admission and prerequisite inventory/
+  normal repair, then uses its existing fresh-only publication transaction.
+- Installed default `cfmgr.sh` (absolute or relative invocation) dispatches the
+  isolated retained-launch controller. Explicit help/source-copy defaults remain
+  harmless. A bounded immutable private config snapshot and complete setup/layout
+  are checked before repair; full package digests follow healthy SHA admission.
+- Shared missing/unusable-only repair uses installed opkg, selected direct packages,
+  normal feeds/scripts/resolution, bounded coalescence and fresh post-probes. Healthy
+  tools are preserved; resolved failure permits later retry. Unresolved children
+  retain contexts/guards and prevent overlap.
+- Each operation resolves actual `/opt`. Saved UUID/filesystem/root/relative fields
+  are advisory observations, not a drive allowlist. Changed observations use a
+  guarded raw-preserving config patch and decimal generation increment; unchanged
+  observations do not write JFFS. Settings, history and feature Off states survive.
+- Missing/lost storage stops dependent work and emits the bounded native message.
+  A later invocation re-admits current storage and performs eligible dependency
+  work. No feature setup/activation or interrupted fresh tunnel is resumed.
 
-`next_subgoal_review` returned a future closure map. The user's later boundary
-supersedes its execution order: finish S02.05/S02.08, then pause; S02.04/S02.06
-and other independent targets wait for resume. Bounded prerequisites are allowed
-where needed to complete these two, without awarding unrelated subgoal credit.
-Its current read-only follow-up assesses the smallest actual retained-operation
-consumer needed for S02.08, using existing entry/config/storage/bootstrap contracts;
-no edits, tests or new implementation target. Parent decides the integration design
-after the repair gate. Writer ownership remains unchanged.
+Parent review integrated post-repair record/snapshot migration, live-old/candidate
+hash checks, native logger symlink admission and storage-loss reporting outside
+opkg. Failed publication retains recovery evidence. Final guard-removal durability
+failure retains RAM evidence; do not invent an automatic recovery/adoption subsystem.
 
-The user answered the repeated storage question by reiterating the required
-mount/read test and saved reference. This settles the implementation direction;
-no approval question remains pending. S02.08/S12.05 and section 2 now specify:
-resolve current `/opt` every new operation; saved identity/location is a last-known
-observation, not a permanent UUID/label lock. Re-admit rebuilt/replaced Entware,
-report changes, preserve settings and validate required existing data. Pin one
-identity during active work; recheck attachment/readability and cancel/report loss
-through native system messages, with truthful cleanup-pending/delivery limits.
-Completed bounded opkg status/config initialization supplies repair read evidence.
-CFMgr writes use admitted guarded paths; normal installed-opkg scripts remain
-enabled. Read checks and cancellation do not promise atomic prevention of fallback
-writes through new aliases those scripts create. Do not restart an enforcement
-redesign or repeat this question; finish implementation and the required proof.
+Keep these settled contracts:
 
-After the repair gate, finish the retained-launch consumer as one coupled package.
-Separate native/JFFS/RAM admission from storage admission so missing `/opt` can be
-reported by a bounded optional native logger; keep ordinary storage-dependent
-callbacks strict. Validate complete setup and a private bounded config snapshot
-before repair. Reuse the audited historical native JSON parser with a current-schema
-consumer; preserve raw unrelated config bytes when replacing the four storage
-observations and advancing generation. No-change means no JFFS write. Require an
-exclusive durable config guard, old-copy preservation, unchanged input, validated
-candidate, guarded rename/flush and verified completion. Reuse current dependency
-inventory/repair/post-probes and FD protocol; no fresh transaction/defaults, feature
-creation or fake auto-resume. Source preparation/design only; no retained code is
-implemented yet and no supporting Goal 4 subgoal credit is awarded.
+- The user reiterated mount/read checks and saved references; no storage question
+  remains pending. CFMgr paths are guarded. Normal scripts remain enabled; the
+  dynamic-alias limitation is tracked solely in the review-notes document.
+- Native source/JFFS/storage pins use FDs 9/8/6/7; context starts at 0. Repair swaps
+  source to 0 and preflight context to 9; its claim uses 5. Unresolved return 3
+  retains that phase. Resolved return restores source9/context0. Post-probes retain
+  original context3/new context0; migration copies config, records and passive
+  manifest/catalog snapshots before retiring the old context. Final read loops
+  move context0 to5. Keep scratch4 and native flush3 lifetimes separate.
+- Native probes have fixed argv, isolated environments, bounded output and one
+  tracked direct child. Long opkg work has separate task/deadline state. Never
+  overwrite unresolved supervision to run another probe or optional logger.
+- The view/keeper own admitted mount references; validate rooted tasks and threads
+  before signalling/releasing guards. Ordinary exit with a surviving daemon is not
+  quiescence. Unknown ownership retains evidence; normal cleanup is never lazy.
+- Host fixtures label firmware/mount adapters. Retained Linux proof uses actual
+  repair, migration and later no-op; its absent-volume phase is a pin-adapter
+  refusal. Separate real detach/cancellation coverage supplies mount-loss proof.
 
-`dependency_fixture` exclusively owns new `tests/fixtures/dependency_process.c`;
-`prerequisite_inventory` released this file and retains all fixture build/integration
-tests. Host-only static pthread helper modes: hold, TERM-ignoring daemon,
-leader-exit with live thread, and mixed roots via a thread's `unshare(CLONE_FS)`.
-CLI `MODE PID_RECEIPT [VIEW_ROOT]`; one canonical `TGID TID\n` receipt after state
-is ready, no retained receipt/unrelated descriptors. Parent reviews C source;
-Linux PID/mount-isolated integration is the required behavioral gate. Never run
-this helper or mount tests on a router. No worker publication or acceptance.
-Initial source review passed; parent requested bounded direct-child cleanup on
-daemon setup failure before file release. Static Linux build/execution remain CI-only.
-That fix is reviewed and the C file is now released to integration.
-`dependency_fixture` released both portable test modules. Selection now passes
-35 tests, including real opkg Conffiles/Description continuations and strict query
-framing; Ruff passes. Task parsing initially passed 12/13; the final-LF correction
-passes the two affected cases, with combined validation pending. Runtime
-fixes and `test_dependencies.py`/Linux integration remain exclusively
-with `prerequisite_inventory`; do not duplicate selector cases or overlap writers.
-`opkg_supervision_review` performs read-only review of the implemented task/view
-lifecycle and signalling paths while fixtures are written. Parent reviews controller,
-bootstrap and selection; runtime edits stay with the implementation owner.
+No normal feature menus, remote package acquisition/update, selected reinstall,
+complete native recovery/safe Off, provider activation or general Save workflow is
+accepted. Goal 4 foundations earn no separate credit. Detailed prior design and
+worker history remain recoverable from `b90eb6e:PLAN_V2_handoff.md`.
 
-The prior guarded-view construction package used admitted storage FDs 6/7 and
-the real ext4 fixture; its Linux proof is recorded in the checklist. The current
-package adds the actual writer launch/supervision consumer. Preserve existing parser
-interfaces. Filesystem architecture review is integrated.
-Parent added matching-native BusyBox CHROOT/LN fixture applets for the actual view tests;
-cache identity already includes this config. No new APT requirement or full run is needed.
+## Retained execution/storage design evidence
 
-The completed keeper package retains every owned mount before it is overlaid, using one ash child
-with active function-redirection frames. Fixed FIFO requests use native `mknod ... p`
-(pinned source verified); Linux O_RDWR FIFO opens do not block. Parent FD3 owns the
-channel; scoped function redirection borrows/restores FD4 while transferring its
-already-open mount reference. Verify incremental ACK plus complete held mount IDs,
-PID/start/boot and resource headroom. Parent loss/EOF must not silently unwind pins.
-Release only after independently proved quiescence, then normal view unmount.
-Focused tests add `test_mount_keeper.py` to storage/view coverage; Linux proof needs CI.
-Keeper implementation is reviewed and focused-local/CI-passed, with no complete
-subgoal credit. Current integrated repair ownership is above.
-Pinned ash `shellexec` calls `clearredir(drop=1)`, closing saved redirection copies
-before external exec; verify that behavior in the vendor fixture. Current review
-fixes cover glob-disabled callers, canonical numeric protocol, uncertain-release
-lockout, malformed/EOF retention and fixture-child cleanup.
-
-After keeper integration, production native-operation wiring belongs in
-`prerequisites.sh`, `helpers/probe.sh`, bootstrap and explicit entry imports.
-Reuse raw `cfmgr_prerequisites_run`, not flock-owning `check`; zero means reaped,
-so inspect command exit separately. Add finite mode argc/forwarding, serial output
-names and justified bounds. Preserve single-child supervision: no copied `ls|awk`
-pipeline or non-exec AWK wrapper. Pass globals explicitly across env-i; do not
-recursively run view checks inside the probe attachment callback. Native cleanup
-needs its own admitted context policy after Entware loss, and flat bootstrap cleanup
-must preserve view/FIFO/keeper state until proved releasable. Source helpers on a
-lost Entware source are not automatically available merely because native tools are.
-
-## Implemented foundation and remaining consumer gaps
-
-- `cfmgr.sh --install` → `cfmgr_bootstrap_native_work` → prerequisite checks and
-  bootstrap transaction. It accepts a trusted complete local package, verifies
-  root/JFFS2/script support, actual mounted ext2/3/4 Entware identity/UUID, tools,
-  private paths/free space and manifest/catalog. It creates private passive config
-  and publishes entry/completion last. Retained/corrupt/interrupted setup is preserved.
-- Shared prerequisite inventory retains its 15-argument API, aggregates ordinary
-  missing/unusable mapped tools and admits fallback flock only after native failure.
-  Unsafe paths/storage/supervisor ownership remain fatal. Fresh private check/recheck
-  contexts preserve evidence. There is still no normal opkg repair consumer.
-- `cfmgr_storage_pin`/`cfmgr_storage_attached` hold/recheck FDs 6/7, mount IDs,
-  canonical alias, filesystem root and UUID. Real ext4 CI now covers attachment,
-  alias substitution, lazy detach/replacement, bind-root identity, RO/noexec and
-  descriptor lifetime. **Saved identity comparison, returning-work eligibility and
-  owned-writer containment remain missing.** Boolean adapters alone are not proof.
-- `mountinfo.awk subtree-v1 TARGET INPUT` validates all bounded input before output;
-  returns the legacy nine fields plus propagation for target/subtree, rejecting
-  unexpected stacked points and conflicting unbindable tags. Legacy interface stays
-  unchanged. New inventory mode has no production execution-view consumer yet.
-- S02.04 tunnel DNS is only `dig -v`, with no real readiness consumer. S02.05 still
-  needs installed-opkg admission, serialized bounded repair, healthy no-op, post-
-  probes and bounded later-launch retry. S02.06 reinstall and S02.07 native recovery/safe Off remain unfinished.
-  S02.09 capability/TLS/ABI admission is accepted; exact receipt is above.
-- No remote package acquisition, menus/features/provider activation, retained
-  recovery/update or Save exists. Defaults and helper proof do not complete goals.
-
-Runtime descriptor contracts: source 9, JFFS 8, mount 6, Entware 7; context uses 0
-then moves to 5 after flock probes before manifest loops. Do not collide with this
-when designing execution-root descriptors. Short native waits use `/bin/usleep`.
-The existing 2-second single-child prerequisite supervisor/output limit is unsuitable
-for normal opkg/script trees and package writes. Extend coherently; do not blindly reuse.
-
-## Unresolved execution/storage design
-
-The private descriptor-bound view with read-only fallback guards is **focused local/CI
-tested, but not integrated with opkg**. Do not assume router cgroups/namespaces
+The private descriptor-bound view and fallback guards are integrated with normal
+opkg repair; final acceptance follows the current CI receipt above. Do not assume router cgroups/namespaces
 or a new resident daemon; Linux test namespaces only isolate fixtures. Polling
 `/opt` alone cannot prevent stale-path writes.
 
@@ -627,8 +488,7 @@ Opkg invokes `wget` through PATH; curl admission alone does not qualify transpor
 Account for native `/etc`→`/tmp` symlinks, devices/procfs and service IPC. Normal
 `dest root /` is valid; Entware patches free-space checks to `/opt`.
 
-Writer supervision remains unresolved and is outside this construction package.
-Track direct PID/start/boot before release and rooted tasks across threads/daemonization;
+The implemented writer supervisor tracks direct PID/start/boot before release and rooted tasks across threads/daemonization;
 close outside directory descriptors/cwd. The view hides its controller context, so
 handshake needs narrowly admitted FIFO descriptors closed before opkg exec.
 
@@ -638,8 +498,7 @@ candidate: one native ash child holds directory references in active recursive
 function-redirection frames. ACK only after each open; verify its PID/start/boot
 and complete held fdinfo mount-ID set before overmounting. Reserve FD/stack headroom;
 EOF, unwind, keeper loss or missing pins closes ownership admission. Release pins
-only after quiescence, then never signal from that retired ledger. This ash/Linux contract now has keeper implementation and focused CI proof;
-actual opkg ownership/supervision remains pending.
+only after quiescence, then never signal from that retired ledger. This ash/Linux contract is implemented and exercised by the keeper and repair fixtures.
 Pinned `shell/ash.c` SHA256 `28fcb7d7f9428e44bad4299bffdc7c30c8c83468c479305b60f0c690e57b7b09`
 matches cached provenance: `openredirect`, `REDIR_PUSH`, `evalfun`, `popredir`.
 
@@ -665,7 +524,7 @@ claim normal service-success compatibility without review. Unknown ownership or
 busy normal unmount retains evidence and prevents overlap; never lazy cleanup.
 Later recovery requires proved quiescence; a completed ordinary failure must not
 permanently latch. External host services requested through IPC are not inherited
-owned children. No supervisor/repair success or scope restriction is yet approved.
+owned children. Required representative repair/cancellation proof is part of the current full CI gate.
 
 Concrete Merlin hotplug finding: at pinned firmware source below,
 `rc/usb.c` unmounts the device from **all** matching mounts, including private bind
@@ -686,8 +545,8 @@ ordinary hotplug. Scope remains the action’s verified owned children: host ser
 asked to act through IPC are not owned children, and independent root dismantling
 of guards is not prevented. CFMgr itself must never remove a busy leaf while writers
 survive. These are evidence limits, not restrictions on normal feeds/scripts. Actual
-construction/failure/cleanup now has representative Linux proof; owned-writer
-containment is still unimplemented and unclaimed.
+construction/failure/cleanup has representative Linux proof; the integrated writer
+consumer is included in the current required CI gate.
 
 Source pins and evidence for that decision:
 
@@ -709,17 +568,13 @@ Source pins and evidence for that decision:
 
 ## Validation and resume
 
-1. Finish the active real installer/repair integration fixture and parent review.
-   Runtime metadata was regenerated after the provisional runtime freeze; rerun
-   generation if later reviewed runtime changes invalidate it.
-2. Complete S02.08 saved-observation revalidation and eligible returning-work
-   behavior through actual consumers. Preserve the settled storage policy above.
-3. Run focused local/statics, parent-review, commit/push. Use Quick Checks for rapid
-   Linux/BusyBox debugging, then full Checks at the final candidate before acceptance
-   or pause. Full local execution and a main-goal tick are not due. Update
-   checklist/README gate status.
-4. Once both agreed subgoals pass, update acceptance/README and the handoff, ensure
-   no required worker or job remains active, and pause. Start no further target.
+1. Wait for the current full Checks candidate above; quick proof passed. On a
+   concrete failure, inspect its first useful log and repair only the affected
+   practical acceptance case, then repeat focused quick/full CI as required.
+2. No full local suite is due; the focused local gate already passed.
+3. After full required CI and parent acceptance, tick S02.05/S02.08, update concise
+   checklist/README counts and this handoff, then commit/push the docs receipt.
+4. Verify no required worker/job remains active and pause. Start no further target.
 
 Required development CI is one Ubuntu host/vendor-BusyBox job, not exact firmware
 emulation. Real Merlin/ARM/flash/hooks/TLS/provider qualification remains beta work.
