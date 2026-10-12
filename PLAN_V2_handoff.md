@@ -79,6 +79,28 @@ platform fixtures and package tests; portable_tools returned launcher/runner
 checks; platform_audit independently confirmed the signal/FD correction. Parent
 reviewed diffs and acceptance boundaries. No worker may publish or award ticks.
 
+## Latest repair and ownership
+
+All worker ownership is returned. Parent reviewed the native timer correction:
+fixed `/bin/usleep 50000` supplies three short supervision waits, bootstrap admits
+it, and the timeout child uses whole-second sleep. Guest fixture stages native
+usleep while explicitly disabling FLOAT_SLEEP. Required BusyBox tests call the
+actual vendor applet and assert fractional-sleep rejection; host adapter is
+labelled. Source-only imports and argument counts remain unchanged.
+Worker focused installer/prerequisite/platform gate: **63 passed, 4 Linux-only
+skips in 28.50s**, plus lint/format/compile/shell/whitespace checks. Parent regenerated
+metadata and ran the prerequisite runner/static gate. Corrected exact CI is still
+required. Fourth run `38196992713` at `0c44d04` completed with host/BusyBox/planning
+success and all kernel guests failing at this same native fractional-sleep gap.
+Read-only router metadata confirmed native `/bin/usleep`; no router write occurred.
+
+Cost review: Linux host suites were roughly 7s and mandatory BusyBox roughly 14s;
+local combined focused work was roughly 32s. Current changed kernel builds took
+about two minutes each before guest execution. Required caches survived failures.
+The timer repair changes BusyBox configuration only, so compiled kernels/compiler/
+feed/source inputs should restore. No full local suite, extra boot per ABI or
+unrelated benchmark run was added.
+
 ## Current validation and next actions
 
 Combined focused command on the current dirty tree:

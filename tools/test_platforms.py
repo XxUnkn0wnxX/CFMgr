@@ -1039,6 +1039,7 @@ def prepare_guest(
         "printf",
         "uname",
         "sleep",
+        "usleep",
         "wc",
         "flock",
         "blkid",

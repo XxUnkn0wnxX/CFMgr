@@ -54,9 +54,24 @@ def context(tmp_path: Path) -> Path:
     return private
 
 
+def pause_definition(shell: list[str]) -> str:
+    """Private host adapter; mandatory CI executes the real selected vendor applet."""
+    if REQUIRE_BUSYBOX:
+        executable = shutil.which(shell[0])
+        assert executable, "Required vendor BusyBox executable is missing"
+        command = f"{shlex.quote(executable)} usleep 50000"
+    else:
+        executable = shutil.which("sleep")
+        assert executable, "Actual host sleep adapter is missing"
+        command = f"{shlex.quote(executable)} 0.05"
+    return f"cfmgr_prerequisites_pause() {{ {command}; }}; "
+
+
 def invoke(
-    shell: list[str], script: str, *arguments: str | Path
+    shell: list[str], script: str, *arguments: str | Path, pause: bool = False
 ) -> subprocess.CompletedProcess[bytes]:
+    if pause:
+        script = script.replace('. "$1";', '. "$1"; ' + pause_definition(shell), 1)
     return subprocess.run(
         [*shell, "-c", script, "prerequisite-test", str(LIBRARY), *map(str, arguments)],
         env={**os.environ, "LC_ALL": "POSIX", "LANGUAGE": "foreign-language"},
@@ -88,6 +103,22 @@ def test_library_source_is_inert_and_preserves_caller(
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_pause_uses_actual_vendor_microseconds_or_labelled_host_adapter(
+    shell: list[str],
+) -> None:
+    result = invoke(
+        shell, '. "$1"; ' + pause_definition(shell) + "cfmgr_prerequisites_pause"
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    if REQUIRE_BUSYBOX:
+        rejected = subprocess.run(
+            [shell[0], "sleep", "0.05"], capture_output=True, check=False, timeout=2
+        )
+        assert rejected.returncode != 0, (
+            "Required firmware fixture must reject float sleep"
+        )
 
 
 def test_jq_parses_values_and_rejects_malformed_input(
@@ -265,6 +296,7 @@ def test_linux_supervisor_and_real_flock_capabilities(
         tools["timeout"],
         tools["sha"],
         tools["flock"],
+        pause=True,
     )
     provider = b"native\n" if native_usable else b"entware\n"
     assert (result.returncode, result.stdout, result.stderr) == (0, provider, b"")
@@ -303,6 +335,7 @@ def test_linux_supervisor_bounds_output_and_denies_detached_launch(
         tools["sleep"],
         tools["wc"],
         noisy,
+        pause=True,
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
     assert 0 < (attached / "jq-good.out").stat().st_size <= 8192

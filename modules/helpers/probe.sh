@@ -13,7 +13,7 @@ sleep-short)
 	[ "$#" -eq 2 ] || exit 2
 	# Direct workstation tests can exercise GNU timeout, but cannot prove
 	# Linux ownership. The production supervisor rejects hosts without proc.
-	[ -r /proc/self/stat ] || exec "$1" 0.3
+	[ -r /proc/self/stat ] || exec "$1" 1
 	# Before exec, record the one child GNU timeout owns. No child commands here.
 	IFS= read -r boot </proc/sys/kernel/random/boot_id || exit 2
 	IFS= read -r identity </proc/self/stat || exit 2
@@ -33,7 +33,7 @@ sleep-short)
 	start=$1
 	set -C
 	printf '%s %s %s %s\n' "$pid" "$ppid" "$start" "$boot" >"$context/timeout.child" || exit 2
-	exec "$native_sleep" 0.3
+	exec "$native_sleep" 1
 	;;
 esac
 [ "$#" -ge 2 ] || exit 2

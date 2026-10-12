@@ -439,7 +439,7 @@ cfmgr_bootstrap_native() {
 	cfmgr_install_cp=/bin/cp cfmgr_install_chmod=/bin/chmod cfmgr_install_mv=/bin/mv
 	cfmgr_install_df=/bin/df cfmgr_install_nvram=/bin/nvram
 	cfmgr_install_sha=/opt/bin/sha256sum cfmgr_install_jq=/opt/bin/jq
-	for cfmgr_install_argument in /bin/sh /usr/bin/env /usr/bin/awk /usr/bin/readlink /bin/sleep /usr/bin/wc /bin/ls /bin/fsync /bin/mkdir /bin/cp /bin/chmod /bin/mv /bin/df /bin/nvram /bin/rm /bin/rmdir /sbin/blkid; do
+	for cfmgr_install_argument in /bin/sh /usr/bin/env /usr/bin/awk /usr/bin/readlink /bin/sleep /bin/usleep /usr/bin/wc /bin/ls /bin/fsync /bin/mkdir /bin/cp /bin/chmod /bin/mv /bin/df /bin/nvram /bin/rm /bin/rmdir /sbin/blkid; do
 		[ -f "$cfmgr_install_argument" ] && [ -x "$cfmgr_install_argument" ] || return 2
 	done
 	# The native proc UID record proves all four credential IDs are root.

@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 import pytest
+from test_prerequisites import pause_definition
 from test_storage import legacy_fsync as storage_fsync
 from test_storage import shell as storage_shell
 
@@ -442,6 +443,11 @@ while IFS= read -r record; do
     printf '%s\n' "$cfmgr_probe_status"
 done <"$cfmgr_install_context/records"
 """
+    script = script.replace(
+        '. "$1/modules/helpers/bootstrap.sh"\n',
+        '. "$1/modules/helpers/bootstrap.sh"\n' + pause_definition(shell) + "\n",
+        1,
+    )
     arguments = [
         ROOT,
         context,

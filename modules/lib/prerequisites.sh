@@ -54,6 +54,12 @@ cfmgr_prerequisites_now() {
 	case "$cfmgr_probe_now" in '' | *[!0-9]*) return 1 ;; esac
 }
 
+# Firmware sleep accepts whole seconds. The admitted native usleep applet keeps
+# supervision responsive without requiring FEATURE_FLOAT_SLEEP or Entware.
+cfmgr_prerequisites_pause() {
+	/bin/usleep 50000
+}
+
 # Exports cfmgr_probe_* results for the admitted controller.
 # shellcheck disable=SC2034
 cfmgr_prerequisites_run() {
@@ -174,7 +180,7 @@ cfmgr_prerequisites_run() {
 			kill -TERM "$cfmgr_probe_pid" || :
 			break
 		fi
-		"$cfmgr_probe_sleep" 0.05 || {
+		cfmgr_prerequisites_pause || {
 			cfmgr_probe_status=unresolved
 			return 3
 		}
@@ -187,7 +193,7 @@ cfmgr_prerequisites_run() {
 				return 3
 			}
 			[ "$cfmgr_identity_state" = Z ] && break
-			"$cfmgr_probe_sleep" 0.05 || {
+			cfmgr_prerequisites_pause || {
 				cfmgr_probe_status=unresolved
 				return 3
 			}
@@ -209,7 +215,7 @@ cfmgr_prerequisites_run() {
 				return 3
 			}
 			kill -KILL "$cfmgr_probe_pid" || :
-			"$cfmgr_probe_sleep" 0.05 || :
+			cfmgr_prerequisites_pause || :
 		fi
 	fi
 	if [ -d "/proc/$cfmgr_probe_pid" ]; then
