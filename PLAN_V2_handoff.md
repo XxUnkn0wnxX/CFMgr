@@ -37,19 +37,21 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
-- Branch: `develop`; local/remote verified at guarded-view candidate
-  `793957b3ee80604cb25270d658db330eed1efd31`. Its focused
-  [Checks 38210733787](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38210733787)
-  failed on two Ubuntu ShellCheck SC2015 fixture conditions before behavior ran.
-  Explicit-condition correction passed the focused fixture runner (7 passed,
-  8 platform skips plus all statics); `.tmp/execution-view-ci-fix-local.log`.
-  Failed receipt: `.tmp/execution-view-ci-failed.log`. Re-push the correction with
-  the same five focused modules; no new implementation until exact CI passes.
+- Branch: `develop`; local/remote last verified at guarded-view candidate
+  `819f4fdb2bae83117a2881abc412761b1bcb6949`. Its focused
+  [Checks 38210954706](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38210954706)
+  passed host/statics but failed BusyBox compatibility because the synthetic root
+  lacked external `[`/`printf` applet links. Parent added both plus positive write
+  controls before/after simulated unplug. Correction passed focused fixture local
+  gate (7 passed/8 platform skips, all statics); `.tmp/execution-view-applet-fix-local.log`.
+  Prior SC2015 correction is included. Failed receipts: `.tmp/execution-view-ci-busybox-failed.{json,log}`.
+  Re-push with the same five modules; no new implementation until exact CI passes.
 - Guarded-view package is implemented and parent-reviewed. Combined local command
   below passed **103 tests,
   19 platform skips**, pytest 32.73s; all statics/planning/package checks passed.
-  Receipt: `.tmp/execution-view-focused.log`. The fixture applet config changes
-  the BusyBox cache key; existing warm CI was 48s, so this run includes a rebuild.
+  Receipt: `.tmp/execution-view-focused.log`. Native fixture rebuild is cached;
+  latest warm job took 57s (BusyBox behavior 20.99s). Cost remains proportionate;
+  no extra full run is required for measurement.
   Current docs record that pending gate; acceptance counts are unchanged.
 - Latest runtime: `423dd14a5b35c295f07aed0d9e1225a10a8a15df`, exact
   [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856)

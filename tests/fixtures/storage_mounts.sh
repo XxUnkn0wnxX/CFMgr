@@ -287,6 +287,10 @@ view_prepare() {
 	mkdir -m 700 "$view_ram"
 	mount -t tmpfs -o size=16m,mode=700 tmpfs "$view_ram" || fail 'private RAM context setup failed'
 	cp "$view_busybox" "$view_native_root/bin/busybox"
+	# This vendor ash uses external test/printf applets, as the router does.
+	for view_applet in '[' printf; do
+		ln -s busybox "$view_native_root/bin/$view_applet"
+	done
 	ln -s /tmp/etc "$view_native_root/etc"
 	ln -s /tmp/mnt/usb/entware "$view_native_root/opt"
 	printf 'configured file feed\n' >"$view_native_root/tmp/feed/Packages"
@@ -438,6 +442,10 @@ view_compat)
 view_detach)
 	view_prepare
 	view_create || fail 'guarded detach view construction failed'
+	view_chroot 'printf before-unplug >/opt/write-control && printf before-unplug >/tmp/mnt/usb/write-control' || fail 'healthy guarded writes failed before unplug'
+	if [ "$(cat "$mount_dir/entware/write-control")" != before-unplug ] || [ "$(cat "$mount_dir/write-control")" != before-unplug ]; then
+		fail 'healthy guarded writes did not reach the original volume'
+	fi
 	# Simulate Merlin USB removal by matching the actual device across ALL binds.
 	# External lazy detach is fault injection only; view release never uses it.
 	"$view_busybox" awk -f "$root/modules/lib/mountinfo.awk" inventory-v1 / /proc/self/mountinfo >"$fixture/device-mounts"
@@ -448,6 +456,8 @@ view_detach)
 		END { for (i=n;i>0;i--) print point[i] }
 	' "$cfmgr_storage_device" "$fixture/device-mounts" >"$fixture/device-points"
 	while IFS= read -r view_detach_point; do umount -l "$view_detach_point" || fail 'simulated device detach failed'; done <"$fixture/device-points"
+	view_chroot 'printf still-running >/tmp/detach-control' || fail 'native view execution failed after unplug'
+	[ "$(cat "$view_native_root/tmp/detach-control")" = still-running ] || fail 'native temporary writes stopped after unplug'
 	if view_chroot 'printf forbidden >/opt/blocked' 2>/dev/null; then fail 'detached /opt fallback accepted a write'; fi
 	if view_chroot 'printf forbidden >/tmp/mnt/usb/blocked' 2>/dev/null; then fail 'detached canonical fallback accepted a write'; fi
 	[ ! -e "$view_native_root/tmp/mnt/usb/blocked" ] || fail 'canonical bare path was changed'
