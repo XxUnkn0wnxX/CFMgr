@@ -136,6 +136,19 @@ and [4.19](https://raw.githubusercontent.com/torvalds/linux/v4.19/fs/Kconfig) re
 `MISC_FILESYSTEMS` before the JFFS2 option can remain enabled. Parent added that
 fixture dependency; its configuration regression passes. No guard was relaxed.
 Preserve restored/saved source/compiler/feed/BusyBox caches for the next attempt.
+Third candidate `8a6caf1dd1adb5297cb32dbde9a4ba50d383c6b1`,
+[Checks 38196576936](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38196576936),
+passed Linux host/static (158 passed, 4 platform-specific skips) and required
+BusyBox (161 passed, one host-without-proc case intentionally skipped; all native
+ownership/fsync/cleanup cases ran). Kernel guests reached storage probe success
+then rejected absent `/dev/mtdblock0`: `MTD_RAM` is not the RAM-backed test driver.
+Parent corrected to `MTD_MTDRAM` with Kconfig 8192 KiB/128 KiB geometry. Source
+shows module-only sizing arguments cannot configure the built-in 4.1 driver;
+no-op boot arguments were removed. Independent read-only review found legacy
+ABS_POS exists only in 4.1; it is now version-scoped. No other concrete guest
+plumbing blocker found. Platform focused/static gate: **36 passed, 0.62s**,
+`.tmp/s02-03-mtd-focused.log`; actual corrected guest execution remains pending.
+
 Full exact CI remains pending; raw logs are `.tmp/platform-review/s02-03-*.log`.
 
 ## Retained evidence and known limits

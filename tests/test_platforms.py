@@ -1052,17 +1052,27 @@ def test_kernel_configuration_preserves_version_specific_required_symbols() -> N
         values = platforms.kernel_configuration(version)
         assert values["CONFIG_SMP"] == "y"
         assert values["CONFIG_FILE_LOCKING"] == "y"
-        for symbol in ("MTD", "MTD_BLOCK", "MTD_RAM", "MISC_FILESYSTEMS", "JFFS2_FS"):
+        for symbol in (
+            "MTD",
+            "MTD_BLOCK",
+            "MTD_MTDRAM",
+            "MISC_FILESYSTEMS",
+            "JFFS2_FS",
+        ):
             assert values[f"CONFIG_{symbol}"] == "y"
+        assert values["CONFIG_MTDRAM_TOTAL_SIZE"] == "8192"
+        assert values["CONFIG_MTDRAM_ERASE_SIZE"] == "128"
         assert values["CONFIG_HW_RANDOM"] == "y"
         assert values["CONFIG_HW_RANDOM_VIRTIO"] == "y"
         assert values["CONFIG_STACKPROTECTOR"] == "n"
         if version.startswith("4.1."):
+            assert values["CONFIG_MTDRAM_ABS_POS"] == "0x0"
             assert values["CONFIG_CC_STACKPROTECTOR_NONE"] == "y"
             assert "CONFIG_ARM_PSCI_FW" not in values
             assert "CONFIG_POSIX_TIMERS" not in values
             assert "CONFIG_VIRTIO_MENU" not in values
         else:
+            assert "CONFIG_MTDRAM_ABS_POS" not in values
             assert "CONFIG_CC_STACKPROTECTOR_NONE" not in values
             assert values["CONFIG_ARM_PSCI_FW"] == "y"
             assert values["CONFIG_POSIX_TIMERS"] == "y"

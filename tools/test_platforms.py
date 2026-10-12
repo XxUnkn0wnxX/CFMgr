@@ -1120,6 +1120,8 @@ def kernel_configuration(version: str) -> dict[str, str]:
     values = configuration(FIXTURES / "kernel.config")
     if version.startswith("4.1."):
         values["CONFIG_CC_STACKPROTECTOR_NONE"] = "y"
+        # This legacy absolute-address option was removed before 4.19.
+        values["CONFIG_MTDRAM_ABS_POS"] = "0x0"
     else:
         # The 4.1 ARM64 sources build these unconditionally without Kconfig symbols.
         values["CONFIG_POSIX_TIMERS"] = "y"
@@ -1277,7 +1279,7 @@ def boot_guest(
         "-initrd",
         str(initramfs),
         "-append",
-        "console=ttyAMA0 rdinit=/init panic=1 mtdram.total_size=8192 mtdram.erase_size=128",
+        "console=ttyAMA0 rdinit=/init panic=1",
         "-drive",
         f"file={disk},format=raw,if=none,id=scratch",
         "-device",
