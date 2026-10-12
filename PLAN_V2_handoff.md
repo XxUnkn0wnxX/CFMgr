@@ -126,11 +126,32 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Optimization implementation is committed locally as `c7574df`; whole-suite
-  review and focused gates are complete. Publication selects retained repair,
-  drive loss, unchanged full view compatibility and runner gate reuse. A following
-  handoff/selection receipt supplies the corrected quick trailer; no invalid
-  selection was pushed or executed. Runtime remains unchanged from `9e2563d`.
+- Current optimized candidate `2085e324f54885305f9849c5ad26e0d926fef492` is pushed
+  and remote-verified (`c7574df` implementation plus corrected selection receipt).
+  Whole-suite review and focused gates passed before publication. [Quick Checks 38265673929](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38265673929)
+  passed: **4 tests in 248.95s**, actual retained repair (140.16s, previously
+  165.50s), drive loss (99.95s), unchanged full view compatibility (5.42s) and
+  runner gate reuse. Parent verified exact SHA and sole job success; receipt
+  `.tmp/optimized-quick-pass.log`. No invalid selector was executed. Runtime remains
+  unchanged from `9e2563d`. [Full Checks 38266754900](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38266754900)
+  failed at the same candidate: runner unit test inherited outer
+  `CFMGR_TEST_SHELL=/bin/sh` instead of its fake default. All statics passed;
+  BusyBox was skipped. Parent reproduced the assertion locally with that environment
+  and owns only `tests/test_dev_runners.py` fixture isolation, focused tests/statics,
+  quick diagnostic and subsequent full CI. Receipt `.tmp/optimized-full-failed.log`.
+  The one-line fixture isolation fix passes all **30 runner tests** under each
+  inherited environment (`/bin/sh` and `busybox ash` with required-BusyBox mode).
+  Relevant Ruff/format/compile, planning/package and whitespace checks passed.
+  Production runner/runtime behavior is unchanged; only the unit harness clears
+  ambient shell selection before individual tests set their explicit inputs.
+  No job remains active. Exact full acceptance and overall cost remain pending.
+  User requests another safe
+  saving if practical, ideally one minute, but accepts stopping if further cuts
+  would weaken necessary proof. `next_subgoal_review` completed a bounded read-only
+  follow-up: no further justified minute-scale cut. Remaining work is real guarded
+  view construction, checks and cleanup, without fixed long sleeps; removing the
+  absent/return launch or proc/dev mounts loses distinct required proof. No writer
+  or new product scope is authorized.
 - Previous candidate `9e2563da53b836a9a51cedc66b94f7287af8f548` is pushed and
   remote-verified. It pins CI ShellCheck 0.11.0 to match the workstation and contains
   the reviewed shell annotation/conditional fixes below. [Quick Checks 38261906544](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38261906544)
@@ -645,13 +666,13 @@ Use `.venv` and pinned dependencies. CI ShellCheck is now pinned to local 0.11.0
 older-version annotations remain narrow. Regenerate changed runtime metadata with
 `.venv/bin/python tools/package.py --write`, then `--check`.
 
-Cost follow-up after the agreed pause: quick receipt `38260092807` took 344.93s;
-fresh repair 170.28s and retained repair/return 165.50s consumed about 97%. Repeated
-real mount-view admission, process supervision and cleanup dominate; immutable tool
-setup is cached/fast. Full CI also repeats static checks across host/BusyBox stages.
-Inspect reuse and redundant validation from existing timings before adding cases;
-preserve fresh mutable state and actual safety assertions. No optimization package
-or extra timing-only suite is started at this checkpoint.
+The suite-wide cost review and optimization are complete at `2085e32`: common
+statics now run once; unused dependency topology and duplicate successful-repair
+coverage were removed from required CI, with dedicated compatibility and retry/
+consumer proof retained. Retained repair/return improved from 165.50s to 140.16s
+in the passing quick run (not a controlled CPU benchmark). Current full Checks
+reports wall/CPU and slowest-test timings; record that receipt before pause.
+Further minute-scale fixture cuts were not justified by the bounded follow-up.
 
 ## Permissions, retained evidence and recovery
 

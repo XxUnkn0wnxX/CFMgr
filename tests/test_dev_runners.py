@@ -95,6 +95,7 @@ def _capture_runner(
     monkeypatch.setattr(runner, "_static_checks", fake_static)
     monkeypatch.setattr(runner, "_shell_syntax_checks", fake_syntax)
     monkeypatch.setattr(runner, "_default_shell", lambda: ["/bin/test-shell"])
+    monkeypatch.delenv("CFMGR_TEST_SHELL", raising=False)
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
     return commands, static_shells
 
