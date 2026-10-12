@@ -126,13 +126,18 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current candidate `9e2563da53b836a9a51cedc66b94f7287af8f548` is pushed and
+- Optimization implementation is committed locally as `c7574df`; whole-suite
+  review and focused gates are complete. Publication selects retained repair,
+  drive loss, unchanged full view compatibility and runner gate reuse. A following
+  handoff/selection receipt supplies the corrected quick trailer; no invalid
+  selection was pushed or executed. Runtime remains unchanged from `9e2563d`.
+- Previous candidate `9e2563da53b836a9a51cedc66b94f7287af8f548` is pushed and
   remote-verified. It pins CI ShellCheck 0.11.0 to match the workstation and contains
   the reviewed shell annotation/conditional fixes below. [Quick Checks 38261906544](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38261906544)
   passed **14 tests in 8.97s** and verified the pinned ShellCheck binary. Receipt
   `.tmp/retained-shellcheck-quick-pass.log`. [Full Checks 38262065257](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38262065257)
-  is now running at this exact SHA; `inventory_ci_wait` only monitors it. No local
-  tests or writers are active. Wait for its final result before ticks/pause.
+  was cancelled on user instruction after about 20 minutes; host/static passed,
+  BusyBox supplied no final pass. No CI, local tests or writers remain active.
 - Previous runtime candidate `cffc1a541a73d177ec216746a3351433ce136d94` is committed,
   pushed and remote-verified, including the practical CI and review-note commits.
   [Quick Checks 38260092807](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38260092807)
