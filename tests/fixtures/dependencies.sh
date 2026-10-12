@@ -33,7 +33,6 @@ dependency_trace() {
 # never package arguments or configuration. It is read only on fixture failure.
 dependency_outcome_capture() {
 	[ "${cfmgr_dependencies_phase:-none}" = cleanup ] || return 0
-	case ${cfmgr_dependencies_code:-0} in '' | 0) return 0 ;; esac
 	case ${dependency_attempt_count:-0} in 1 | 2) ;; *) return 0 ;; esac
 	dependency_outcome_path=$fixture/dependency.outcome.$dependency_attempt_count
 	[ ! -e "$dependency_outcome_path" ] && [ ! -L "$dependency_outcome_path" ] || return 0

@@ -92,7 +92,8 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_child_start='' cfmgr_probe_child_parent='' cfmgr_probe_child_boot=''
 	cfmgr_probe_stdout='' cfmgr_probe_stderr=''
 	cfmgr_probe_reason=arguments
-	[ "$#" -ge 9 ] && [ "$#" -le 22 ] || return 2
+	[ "$#" -ge 9 ] || return 2
+	if [ "$1" != repair-remove ]; then [ "$#" -le 22 ] || return 2; fi
 	cfmgr_probe_mode=$1 cfmgr_probe_context=$2 cfmgr_probe_shell=$3
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
@@ -100,7 +101,7 @@ cfmgr_prerequisites_run() {
 	repair-awk) [ "$#" -ge 14 ] && [ "$#" -le 22 ] || return 2 ;;
 	repair-inventory) [ "$#" -eq 12 ] || return 2 ;;
 	repair-identity-parse | repair-readlink | repair-list | repair-copy | repair-mkdir | repair-chmod | repair-link | repair-signal) [ "$#" -eq 11 ] || return 2 ;;
-	repair-remove) [ "$#" -ge 10 ] && [ "$#" -le 17 ] || return 2 ;;
+	repair-remove) [ "$#" -ge 10 ] && [ "$#" -le 73 ] || return 2 ;;
 	repair-report | repair-identity | repair-file | repair-root | repair-guard-root | repair-bind4 | repair-bind7 | repair-private | repair-unbindable | repair-seal | repair-unmount | repair-fifo | repair-rmdir | repair-retire) [ "$#" -eq 10 ] || return 2 ;;
 	native-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
 	native-curl-https) [ "$#" -eq 12 ] || return 2 ;;

@@ -47,9 +47,29 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
+- Quick candidate `e2ae0df5aa3346853ac7f27e69f55e506db8e0db` is pushed and
+  remote-verified. [Quick Checks 38246627323](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38246627323)
+  passed all four terminal-retirement cases but failed normal repair during bounded
+  cleanup: **4 passed/1 failed, 157.62s**. View and keeper were released; removal
+  reached the unchanged cleanup deadline. `.tmp/dependency-repair-quick-failed-1.log`.
+  No CI remains active; skipped Checks supplies no acceptance. The eight-file
+  cleanup batches still multiply supervised probes over thousands of receipt files.
+  `prerequisite_inventory` owns bootstrap/prerequisites/probe only: widen finite
+  cleanup batches to at most 64 operands and at most 8192 pathname bytes including
+  NUL delimiters, preserving all prevalidation, guards, owner-last and deadlines.
+  `dependency_fixture` owns matching consumer/probe regressions and the bounded
+  dependency outcome sidecar, including oversized argv rejection and partial
+  failure. Capture the pre-cleanup result even after opkg success so cleanup-only
+  failures retain its receipt. Parent owns metadata/plans/review.
+  Re-run these same quick cases before any new retained-launch implementation.
+  The 64/8192 refinement is implemented and parent-reviewed; both writers released
+  files. Consumer/dependency tests **28 passed/18 Linux skips**, prerequisite
+  regressions **20 passed/3 Linux skips**, affected statics passed. No deadline,
+  ownership or prevalidation reduction. Metadata regenerated; next quick candidate
+  rechecks terminal retirement and actual normal repair.
 - Local runtime correction: `c086f66970c93355b7e7316c679c36c2214fd832`, committed
-  after focused checks; not pushed alone. The rapid/full CI workflow package below
-  will accompany it. Prerequisite regressions also passed: **20 passed/3 Linux skips**.
+  after focused checks and included in the quick candidate above. Prerequisite
+  regressions also passed: **20 passed/3 Linux skips**.
 - Last remote candidate: `d809f5b3e7f3326428e98b4daf3a90695a0a7966`, pushed and
   remote-verified. [Checks 38242571950](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38242571950)
   failed vendor repair (**1 passed/1 failed**, 121.34s); host/static passed.

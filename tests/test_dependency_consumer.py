@@ -7,6 +7,7 @@ import shlex
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -314,7 +315,7 @@ DEPENDENCY_BATCH_CLEANUP = r"""
 cfmgr_dependencies_context=$1 cfmgr_install_context=$2 cfmgr_test_log=$3
 cfmgr_dependencies_phase=cleanup cfmgr_view_state=released cfmgr_keeper_state=released cfmgr_tasks_state=quiescent
 cfmgr_dependencies_state=retained cfmgr_install_private_context=$cfmgr_dependencies_context
-cfmgr_dependencies_cleanup_count=0 cfmgr_test_batches=0 cfmgr_test_max_batch=0 cfmgr_test_rmdirs=0
+cfmgr_dependencies_cleanup_count=0 cfmgr_test_batches=0 cfmgr_test_max_batch=0 cfmgr_test_max_bytes=0 cfmgr_test_rmdirs=0
 cfmgr_test_fail_batch=$4 cfmgr_test_symlink=$5
 cfmgr_dependencies_attachment_ok() { return 0; }
 cfmgr_dependencies_native() {
@@ -323,12 +324,15 @@ cfmgr_dependencies_native() {
     case $cfmgr_test_operation in
         inventory) : >"$2" ;;
         remove)
-            [ "$#" -ge 1 ] && [ "$#" -le 8 ] || return 91
+            [ "$#" -ge 1 ] && [ "$#" -le 64 ] || return 91
             cfmgr_test_batches=$((cfmgr_test_batches + 1))
             [ "$#" -le "$cfmgr_test_max_batch" ] || cfmgr_test_max_batch=$#
+            cfmgr_test_bytes=0
             printf 'batch=%s count=%s\n' "$cfmgr_test_batches" "$#" >>"$cfmgr_test_log"
             for cfmgr_test_path do
                 case $cfmgr_test_path in "$cfmgr_dependencies_context"/*) ;; *) return 93 ;; esac
+                cfmgr_test_bytes=$((cfmgr_test_bytes + ${#cfmgr_test_path} + 1))
+                [ "$cfmgr_test_bytes" -le 8192 ] || return 99
                 if [ "$cfmgr_test_path" = "$cfmgr_dependencies_context/owner" ]; then
                     for cfmgr_test_left in "$cfmgr_dependencies_context"/* \
                         "$cfmgr_dependencies_context"/.[!.]* "$cfmgr_dependencies_context"/..?*; do
@@ -338,6 +342,7 @@ cfmgr_dependencies_native() {
                     echo owner-last >>"$cfmgr_test_log"
                 fi
             done
+            [ "$cfmgr_test_bytes" -le "$cfmgr_test_max_bytes" ] || cfmgr_test_max_bytes=$cfmgr_test_bytes
             if [ "$cfmgr_test_fail_batch" -eq "$cfmgr_test_batches" ]; then
                 "$CFMGR_TEST_PROBE_RUNNER" repair-remove /bin/rm \
                     "$cfmgr_dependencies_context" "$1" || return 95
@@ -371,8 +376,8 @@ if [ -L "$cfmgr_test_symlink" ]; then cfmgr_test_symlink=present
 else cfmgr_test_symlink=absent; fi
 printf 'result=%s\ncontext=%s\nowner=%s\nsymlink=%s\n' \
     "$cfmgr_test_result" "$cfmgr_test_context" "$cfmgr_test_owner" "$cfmgr_test_symlink"
-printf 'batches=%s\nmax-batch=%s\nrmdirs=%s\n' \
-    "$cfmgr_test_batches" "$cfmgr_test_max_batch" "$cfmgr_test_rmdirs"
+printf 'batches=%s\nmax-batch=%s\nmax-bytes=%s\nrmdirs=%s\n' \
+    "$cfmgr_test_batches" "$cfmgr_test_max_batch" "$cfmgr_test_max_bytes" "$cfmgr_test_rmdirs"
 exit 0
 """
 
@@ -596,8 +601,8 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
     context.mkdir(mode=0o700)
     (context / "owner").write_text("fixture owner\n")
     (context / "owner").chmod(0o600)
-    for index in range(24):
-        (context / f"item {index:02d}").write_text(f"data {index}\n")
+    for index in range(145):
+        (context / f"item {index:03d}").write_text(f"data {index}\n")
     nested = context / "nested" / "inner"
     nested.mkdir(parents=True)
     for index in range(6):
@@ -650,8 +655,9 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
     if case == "complete":
         assert observed["result"] == "0"
         assert observed["context"] == observed["owner"] == "absent"
-        assert 5 <= int(observed["batches"]) <= 6
-        assert 2 <= int(observed["max-batch"]) <= 8
+        assert 5 <= int(observed["batches"]) <= 8
+        assert 8 < int(observed["max-batch"]) <= 64
+        assert 0 < int(observed["max-bytes"]) <= 8192
         assert int(observed["rmdirs"]) == 4
         assert log.read_text().splitlines()[-2:] == ["owner-last", "retire-root"]
         assert marker.read_text() == "outside the claim\n"
@@ -659,10 +665,11 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
         assert observed["result"] == "3"
         assert observed["context"] == observed["owner"] == "present"
         assert observed["batches"] == "2"
-        assert observed["max-batch"] == "8"
+        assert 8 < int(observed["max-batch"]) <= 64
+        assert int(observed["max-bytes"]) <= 8192
         assert int(observed["rmdirs"]) == 0
         assert (context / "owner").read_text() == "fixture owner\n"
-        assert len(list(context.glob("item *"))) < 24
+        assert len(list(context.glob("item *"))) < 145
         assert len(list(context.glob("item *"))) > 0
         assert log.read_text().splitlines()[-1] == "partial-failure"
     else:
@@ -672,6 +679,69 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
         assert observed["batches"] == observed["max-batch"] == "0"
         assert not log.exists()
         assert marker.read_text() == "outside the claim\n"
+
+
+def test_repair_remove_enforces_operand_and_pathname_byte_bounds(
+    shell: list[str], tmp_path: Path
+) -> None:
+    probe = ROOT / "modules/helpers/probe.sh"
+
+    def fixed_byte_paths(directory: Path, aggregate: int) -> list[Path]:
+        directory.mkdir(mode=0o700)
+        count = 64
+        lengths = [aggregate // count] * count
+        for index in range(aggregate % count):
+            lengths[index] += 1
+        result: list[Path] = []
+        for index, argument_bytes in enumerate(lengths):
+            name_length = argument_bytes - 1 - len(os.fsencode(directory)) - 1
+            name = f"{index:02d}" + ("x" * (name_length - 2))
+            path = directory / name
+            path.write_text("owned\n")
+            result.append(path)
+        assert sum(len(os.fsencode(path)) + 1 for path in result) == aggregate
+        return result
+
+    def run_remove(
+        directory: Path, paths: list[Path]
+    ) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.run(
+            [
+                *shell,
+                str(probe),
+                "repair-remove",
+                "/bin/rm",
+                str(directory),
+                *(str(path) for path in paths),
+            ],
+            env={**os.environ, "LC_ALL": "C"},
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+
+    with tempfile.TemporaryDirectory(dir="/tmp", prefix="cfmgr-probe-") as temporary:
+        base = Path(temporary)
+        exact_dir = base / "exact"
+        exact_paths = fixed_byte_paths(exact_dir, 8192)
+        exact = run_remove(exact_dir, exact_paths)
+        assert (exact.returncode, exact.stdout, exact.stderr) == (0, b"", b"")
+        assert not any(path.exists() for path in exact_paths)
+
+        count_dir = base / "count"
+        count_dir.mkdir(mode=0o700)
+        count_paths = [count_dir / f"item-{index:02d}" for index in range(65)]
+        for path in count_paths:
+            path.write_text("owned\n")
+        count = run_remove(count_dir, count_paths)
+        assert count.returncode == 2
+        assert all(path.is_file() for path in count_paths)
+
+        overflow_dir = base / "overflow"
+        overflow_paths = fixed_byte_paths(overflow_dir, 8193)
+        overflow = run_remove(overflow_dir, overflow_paths)
+        assert overflow.returncode == 2
+        assert all(path.is_file() for path in overflow_paths)
 
 
 def process_output_snapshot(process: subprocess.Popen[bytes], limit: int = 2048) -> str:

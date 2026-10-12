@@ -811,22 +811,24 @@ cfmgr_dependencies_cleanup() {
 	cfmgr_dependencies_cleanup_count=0 cfmgr_dependencies_cleaning=1
 	cfmgr_dependencies_native inventory "$cfmgr_dependencies_context" "$cfmgr_install_context/repair-empty.mounts" || return 3
 	[ ! -s "$cfmgr_install_context/repair-empty.mounts" ] || return 3
-	_cfmgr_dependencies_tree_check "$cfmgr_dependencies_context" 0 || return 3
+	LC_ALL=C _cfmgr_dependencies_tree_check "$cfmgr_dependencies_context" 0 || return 3
 	cfmgr_dependencies_cleanup_count=0
-	_cfmgr_dependencies_remove_tree "$cfmgr_dependencies_context" 0 || return 3
+	LC_ALL=C _cfmgr_dependencies_remove_tree "$cfmgr_dependencies_context" 0 || return 3
 }
 
-# DIR and depth remain the first two arguments while the recursive caller keeps
-# up to eight exact owned file/FIFO operands in its own positional frame.
+# DIR/depth/byte count stay in each recursive positional frame; remaining args
+# are at most 64 owned file/FIFO paths and 8192 bytes including their NULs.
 _cfmgr_dependencies_remove_batch() {
-	shift 2
+	[ "$3" -le 8192 ] || return 3
+	shift 3
 	[ "$#" -gt 0 ] || return 0
-	[ "$#" -le 8 ] || return 3
+	[ "$#" -le 64 ] || return 3
 	cfmgr_dependencies_native remove "$@"
 }
 
 _cfmgr_dependencies_remove_tree() {
 	[ "$2" -le 3 ] && [ -d "$1" ] && [ ! -L "$1" ] || return 3
+	set -- "$1" "$2" 0
 	for cfmgr_dependencies_cleanup_item in "$1"/* "$1"/.[!.]* "$1"/..?*; do
 		[ -e "$cfmgr_dependencies_cleanup_item" ] || [ -L "$cfmgr_dependencies_cleanup_item" ] || continue
 		[ "$cfmgr_dependencies_cleanup_item" != "$cfmgr_dependencies_context/owner" ] || continue
@@ -834,16 +836,24 @@ _cfmgr_dependencies_remove_tree() {
 		[ "$cfmgr_dependencies_cleanup_count" -le 4096 ] && [ ! -L "$cfmgr_dependencies_cleanup_item" ] || return 3
 		if [ -d "$cfmgr_dependencies_cleanup_item" ]; then
 			_cfmgr_dependencies_remove_tree "$cfmgr_dependencies_cleanup_item" "$(($2 + 1))" || return 3
+			continue
 		elif [ -f "$cfmgr_dependencies_cleanup_item" ]; then
-			set -- "$@" "$cfmgr_dependencies_cleanup_item"
+			:
 		elif [ -p "$cfmgr_dependencies_cleanup_item" ]; then
 			case $cfmgr_dependencies_cleanup_item in "$cfmgr_dependencies_context/keeper/control" | "$cfmgr_dependencies_context/gate") ;; *) return 3 ;; esac
-			set -- "$@" "$cfmgr_dependencies_cleanup_item"
 		else return 3; fi
-		if [ "$#" -eq 10 ]; then
+		# LC_ALL=C on the root call makes shell lengths byte counts. Recompute
+		# candidate length after any recursion; only positionals retain batch size.
+		cfmgr_dependencies_cleanup_bytes=$((${#cfmgr_dependencies_cleanup_item} + 1))
+		[ "$cfmgr_dependencies_cleanup_bytes" -le 8192 ] || return 3
+		if [ "$#" -eq 67 ] || [ "$(($3 + cfmgr_dependencies_cleanup_bytes))" -gt 8192 ]; then
 			_cfmgr_dependencies_remove_batch "$@" || return 3
-			set -- "$1" "$2"
+			set -- "$1" "$2" 0
 		fi
+		cfmgr_dependencies_batch_dir=$1 cfmgr_dependencies_batch_depth=$2
+		cfmgr_dependencies_batch_bytes=$(($3 + cfmgr_dependencies_cleanup_bytes))
+		shift 3
+		set -- "$cfmgr_dependencies_batch_dir" "$cfmgr_dependencies_batch_depth" "$cfmgr_dependencies_batch_bytes" "$@" "$cfmgr_dependencies_cleanup_item"
 	done
 	_cfmgr_dependencies_remove_batch "$@" || return 3
 	# Failed file batches/child directories preserve the owner for recovery. The
@@ -860,6 +870,7 @@ _cfmgr_dependencies_tree_check() {
 		[ -e "$cfmgr_dependencies_check_item" ] || [ -L "$cfmgr_dependencies_check_item" ] || continue
 		cfmgr_dependencies_cleanup_count=$((cfmgr_dependencies_cleanup_count + 1))
 		[ "$cfmgr_dependencies_cleanup_count" -le 4096 ] && [ ! -L "$cfmgr_dependencies_check_item" ] || return 3
+		[ "$((${#cfmgr_dependencies_check_item} + 1))" -le 8192 ] || return 3
 		if [ -d "$cfmgr_dependencies_check_item" ]; then
 			_cfmgr_dependencies_tree_check "$cfmgr_dependencies_check_item" "$(($2 + 1))" || return 3
 		elif [ -f "$cfmgr_dependencies_check_item" ]; then

@@ -142,9 +142,14 @@ repair-fifo)
 	exec "$tool" "$1" p
 	;;
 repair-remove)
-	[ "$#" -ge 1 ] && [ "$#" -le 8 ] || exit 2
+	[ "$#" -ge 1 ] && [ "$#" -le 64 ] || exit 2
+	LC_ALL=C
+	export LC_ALL
+	remove_bytes=0
 	for remove_path; do
 		case $remove_path in /*) ;; *) exit 2 ;; esac
+		remove_bytes=$((remove_bytes + ${#remove_path} + 1))
+		[ "$remove_bytes" -le 8192 ] || exit 2
 	done
 	exec "$tool" "$@"
 	;;
