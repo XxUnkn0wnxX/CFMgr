@@ -15,16 +15,7 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Final checkpoint — focused policy CI pending
-
-Final user amendment is being integrated before publication: complete exact-SHA
-focused CI groups accept subgoals, including all affected shared foundations.
-Full local/CI suites occur only at complete main-goal markers. Rules, specification
-and checklist are reconciled. Both workflow edits are released and reviewed:
-Quick labels grouped focused proof; full Checks is manual-only. Existing runner
-tests passed (32), with workflow YAML/Bash/Python syntax checks. One exact focused
-runner CI batch remains before the final receipt; no new full run.
-Product acceptance below remains based on the already completed full pass.
+## Paused — ready for the next session
 
 The requested **S02.05 normal dependency repair** and **S02.08 storage identity/loss**
 are complete and accepted after focused tests, parent review and exact full CI.
@@ -35,6 +26,12 @@ completion is claimed. No new product package has started. **Resume only on requ
 
 ## Verified checkpoint
 
+- Latest policy/workflow checkpoint: **`3d47219d6f3c93f0152d7b812830067f8290a000`**,
+  committed, pushed and remote-verified. [Focused CI 38276757146](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38276757146)
+  passed all **32 runner tests** at that exact SHA in 0.13s, job **20 seconds**;
+  workflow syntax and local runner tests also passed. Full Checks is now manual
+  for main-goal completion; complete focused groups accept subgoals. No additional
+  full suite ran. Receipt: `.tmp/focused-policy-ci.log`.
 - Tested code/test/workflow commit: **`81d2b29fa42374283f3b18d9de37e32f2880628e`**,
   pushed and remote-verified on develop. Runtime is unchanged from `9e2563d`;
   subsequent code changes optimized tests/runners/workflows.
@@ -70,14 +67,15 @@ permissions and recovery references are preserved. The completed 18-module cost
 review and required core edge coverage are retained; actual test composition/
 optional diagnostic limits are in [review notes](PLAN_V2_review_notes.md).
 
-All workers released their files; no product work or blocked question remains.
-The user-requested workflow policy update needs its focused runner CI, then the
-final documentation receipt. Runtime acceptance remains at the full-tested
-candidate above; no new full run is due. Publication is authorized: focused checks,
-commit/push, focused CI, then documentation receipt and verified clean refs. Before new work,
-verify `git status --short` and `git rev-parse HEAD origin/develop`; if receipt
-publication was interrupted, finish that boundary first. No destructive cleanup,
-new target or router action is authorized by this record.
+All workers released their files; no required CI job, local test, unanswered
+question or unfinished active package remains. Only this final documentation
+receipt follows the tested checkpoints. Its commit is not claimed runtime-tested.
+Planning/link/privacy, accepted-count/session-record and whitespace checks passed.
+Publication is authorized: commit/push this receipt, verify clean local/remote
+state, then remain paused. Before new work, verify `git status --short` and
+`git rev-parse HEAD origin/develop`; if receipt publication was interrupted,
+finish that boundary first. No destructive cleanup, new target or router action
+is authorized by this record.
 
 AGENTS owns standing routes: focused local work commits/continues; required Linux
 proof uses small repair selections followed by all applicable grouped focused CI;
