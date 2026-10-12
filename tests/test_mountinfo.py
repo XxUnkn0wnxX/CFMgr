@@ -67,12 +67,12 @@ def mount_record(
 
 
 def run_parser(
-    awk: list[str], target: str, records: str
+    awk: list[str], target: str, records: str, *, subtree: bool = False
 ) -> subprocess.CompletedProcess[bytes]:
     environment = os.environ.copy()
     environment["LC_ALL"] = "C"
     return subprocess.run(
-        [*awk, "-f", str(PARSER), target, "-"],
+        [*awk, "-f", str(PARSER), *(["subtree-v1"] if subtree else []), target, "-"],
         input=records.encode("utf-8"),
         capture_output=True,
         check=False,
@@ -81,8 +81,10 @@ def run_parser(
     )
 
 
-def assert_rejected(awk: list[str], target: str, records: str) -> None:
-    result = run_parser(awk, target, records)
+def assert_rejected(
+    awk: list[str], target: str, records: str, *, subtree: bool = False
+) -> None:
+    result = run_parser(awk, target, records, subtree=subtree)
     assert result.returncode != 0
     assert result.stdout == b""
     assert result.stderr.startswith(b"mountinfo: ")
@@ -214,6 +216,7 @@ def test_target_paths_must_be_canonical_and_absent_target_fails(
         )
         for target in invalid_targets:
             assert_rejected(awk, target, records)
+            assert_rejected(awk, target, records, subtree=True)
 
 
 def test_line_and_record_limits_are_enforced(
@@ -226,3 +229,177 @@ def test_line_and_record_limits_are_enforced(
     for name, awk in awk_programs:
         assert_rejected(awk, "/opt/CFMgr", oversized)
         assert_rejected(awk, "/opt/CFMgr", too_many_records)
+
+
+def test_subtree_selects_exact_descendants_in_input_order_and_decodes_literals(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    target = "/opt/CFMgr data\\literal"
+    records = (
+        "\n".join(
+            (
+                mount_record(1, 1),
+                mount_record(2, 1, mountpoint=target + "-sibling"),
+                mount_record(
+                    3,
+                    1,
+                    root="/cache\\data",
+                    mountpoint=target + "/cache",
+                    source="volume backup\\set",
+                    optional=("master:4", "propagate_from:2"),
+                ),
+                mount_record(4, 1, mountpoint=target),
+                mount_record(5, 4, mountpoint=target + "/later"),
+            )
+        )
+        + "\n"
+    )
+    expected = (
+        f"3\t1\t8:1\t/cache\\data\t{target}/cache\text4\tvolume backup\\set\trw\trw\tmaster:4,propagate_from:2\n"
+        f"4\t1\t8:1\t/\t{target}\text4\t/dev/root\trw\trw\tprivate\n"
+        f"5\t4\t8:1\t/\t{target}/later\text4\t/dev/root\trw\trw\tprivate\n"
+    ).encode()
+    for name, awk in awk_programs:
+        result = run_parser(awk, target, records, subtree=True)
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            expected,
+            b"",
+        ), name
+
+
+def test_subtree_root_and_propagation_order_are_deterministic(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    records = (
+        "\n".join(
+            (
+                mount_record(
+                    1,
+                    1,
+                    optional=("propagate_from:3", "master:2", "shared:1"),
+                ),
+                mount_record(2, 1, mountpoint="/opt", optional=("shared:4",)),
+                mount_record(3, 1, mountpoint="/tmp", optional=("unbindable",)),
+                mount_record(4, 1, mountpoint="/private"),
+            )
+        )
+        + "\n"
+    )
+    for name, awk in awk_programs:
+        result = run_parser(awk, "/", records, subtree=True)
+        assert result.returncode == 0 and result.stderr == b"", (name, result.stderr)
+        rows = [line.split("\t") for line in result.stdout.decode().splitlines()]
+        assert [row[0] for row in rows] == ["1", "2", "3", "4"]
+        assert all(len(row) == 10 for row in rows)
+        assert [row[-1] for row in rows] == [
+            "shared:1,master:2,propagate_from:3",
+            "shared:4",
+            "unbindable",
+            "private",
+        ]
+        # The existing interface still selects the root and emits precisely its
+        # historical nine fields, independent of propagation/input ordering.
+        legacy = run_parser(awk, "/", records)
+        assert (legacy.returncode, legacy.stdout, legacy.stderr) == (
+            0,
+            b"1\t1\t8:1\t/\t/\text4\t/dev/root\trw\trw\n",
+            b"",
+        )
+
+
+def test_subtree_no_matches_and_empty_input_succeed_without_covering_lookup(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    for name, awk in awk_programs:
+        for records in ("", mount_record(1, 1) + "\n"):
+            result = run_parser(awk, "/missing", records, subtree=True)
+            assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), (
+                name
+            )
+
+
+def test_subtree_validates_entire_input_before_any_output(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    good = mount_record(1, 1, mountpoint="/owned") + "\n"
+    invalid_tails = (
+        "2 1 8:1 / /outside rw - ext4\n",
+        mount_record(2, 1, mountpoint="/outside", optional=("shared:0",)) + "\n",
+        mount_record(2, 1, mountpoint="/outside", optional=("master:1", "master:2"))
+        + "\n",
+        mount_record(2, 1, mountpoint="/outside", optional=("propagate_from:1",))
+        + "\n",
+        mount_record(2, 1, mountpoint="/outside", optional=("unbindable", "shared:1"))
+        + "\n",
+    )
+    for name, awk in awk_programs:
+        for bad in invalid_tails:
+            assert_rejected(awk, "/owned", good + bad, subtree=True)
+        # No matches still requires valid data, rather than returning early.
+        assert_rejected(awk, "/missing", invalid_tails[0], subtree=True)
+        # Keep the legacy lookup's historical optional-tag acceptance unchanged.
+        legacy = run_parser(awk, "/owned", good + invalid_tails[-1])
+        assert (legacy.returncode, legacy.stdout, legacy.stderr) == (
+            0,
+            b"1\t1\t8:1\t/\t/owned\text4\t/dev/root\trw\trw\n",
+            b"",
+        ), name
+
+
+def test_subtree_rejects_stacked_points_only_inside_requested_tree(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    inside = (
+        mount_record(1, 1, mountpoint="/owned")
+        + "\n"
+        + mount_record(2, 1, mountpoint="/owned/nested")
+        + "\n"
+        + mount_record(3, 1, mountpoint="/owned/nested")
+        + "\n"
+    )
+    outside = (
+        mount_record(1, 1, mountpoint="/outside")
+        + "\n"
+        + mount_record(2, 1, mountpoint="/outside")
+        + "\n"
+        + mount_record(3, 1, mountpoint="/owned")
+        + "\n"
+    )
+    for name, awk in awk_programs:
+        assert_rejected(awk, "/owned", inside, subtree=True)
+        result = run_parser(awk, "/owned", outside, subtree=True)
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            b"3\t1\t8:1\t/\t/owned\text4\t/dev/root\trw\trw\tprivate\n",
+            b"",
+        ), name
+
+
+def test_subtree_enforces_exact_bounds_without_partial_output(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    records = "".join(
+        mount_record(mount_id, 1, mountpoint=f"/owned/{mount_id}") + "\n"
+        for mount_id in range(1, 4097)
+    )
+    line_prefix = mount_record(1, 1, mountpoint="/owned", source="x")
+    boundary = mount_record(
+        1, 1, mountpoint="/owned", source="x" * (8192 - len(line_prefix) + 1)
+    )
+    assert len(boundary) == 8192
+    oversized = boundary + "x\n"
+    for name, awk in awk_programs:
+        result = run_parser(awk, "/owned", records, subtree=True)
+        assert result.returncode == 0 and result.stderr == b"", (name, result.stderr)
+        assert len(result.stdout.splitlines()) == 4096
+        result = run_parser(awk, "/owned", boundary + "\n", subtree=True)
+        assert result.returncode == 0 and result.stderr == b"", (name, result.stderr)
+        assert len(result.stdout.splitlines()) == 1
+        assert_rejected(
+            awk,
+            "/owned",
+            records + mount_record(4097, 1, mountpoint="/last") + "\n",
+            subtree=True,
+        )
+        assert_rejected(awk, "/owned", oversized, subtree=True)

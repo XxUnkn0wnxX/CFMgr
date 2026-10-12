@@ -47,7 +47,7 @@ jobs:
       - name: Restore and verify developer tools
         uses: ./.github/actions/setup-tools
         with:
-          apt-packages: jq shellcheck
+          apt-packages: coreutils e2fsprogs jq mount shellcheck sudo util-linux
           python-tools: 'true'
 
       - name: Select full or authorized focused test paths

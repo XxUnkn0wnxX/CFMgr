@@ -39,57 +39,75 @@ focused CI, wait for its exact-SHA result and then resume/pause as agreed. This 
 recorded in AGENTS.md and the checklist; it replaces the older early-push full-CI
 requirement. No relevant missing proof may be counted as a pass.
 
-Current integration set:
+Current integration set (previous checkpoint accepted; next package active):
 
 | Owner | Exclusive files / scope | Contracts, dependencies and gates |
 | --- | --- | --- |
-| Parent | Three plans; architecture and integration; package metadata | S02.04/S02.05 admission/repair design through installer; review stored-state/ownership dependencies before opkg writer delegation. |
-| Parent | Returned CI/runtime files and integrated focused gate | Both workers finished and released their files. Parent reviews admission/failure paths, regenerates metadata, records evidence and publishes only for required focused Linux/BusyBox proof. |
-| `focused_ci` worker (complete) | `.github/workflows/checks.yml`, `tools/test.py`, `tests/test_dev_runners.py`, `docs/development.md` | Validated final `CFMgr-Focused-Tests:` commit trailer lists explicit test files; ordinary pushes/PRs remain full. Local files/directories and keyword filters remain supported; full BusyBox storage-suite guard retained. 24 runner tests and static gates passed. |
-| `prerequisite_inventory` worker_strong (complete) | `modules/lib/prerequisites.sh`, `modules/helpers/bootstrap.sh`, `tests/test_prerequisites.py`, `tests/test_install.py` | S02.04/S02.05 prerequisite inventory consumed by fresh installer. 21 focused passes, 3 Linux-only skips; source statics passed. Probe helper unchanged. No opkg mutation or subgoal tick. |
-| Process design analyst (complete) | Read-only native/old-reference/source review | Confirmed cron process-group launch, baseline absence of namespaces/cgroups, and private execution-root ownership considerations. Parent owns the design below. No edits/tests/router work. |
+| Parent | Three plans; architecture, integration and package metadata | S02.05/S02.08 private execution/storage design for installed-opkg consumers. Review tests against real entry paths; no acceptance for helpers alone. |
+| Parent reviewing completed `storage_mount_proof` package | `tests/test_storage_mounts.py`, `tests/fixtures/storage_mounts.sh`; parent also owns workflow/setup documentation integration | Exercise existing install-consumed storage pin/attachment/UUID functions with real private Linux ext4 mounts, alias substitution, lazy detach, replacement volume and bind-root identity. Privileged fixtures run only in explicit required BusyBox mode; host guard tests run without privilege. No runtime edits. |
+| `prerequisite_inventory` worker_strong | `modules/lib/mountinfo.awk`, `tests/test_mountinfo.py` only | S02.05/S02.08 prerequisite: preserve the existing nine-field covering-mount interface and add an explicit bounded subtree inventory with propagation fields for the planned execution view. No execution-root construction or opkg launch yet. Parent owns manifest regeneration and combined focused integration. |
+| `opkg_supervision_review` analyst, read-only | Pinned Entware/opkg package-script and native-path evidence | Bound the compatibility requirements for the proposed execution view; identify script/native-path conflicts before construction. No edits, package execution, installation or router work. Parent retains architecture decisions. |
 
-Prerequisite package entry is the existing `--install` → native-work → check call.
-Missing behavior: first-failure probes cannot select all missing/unusable packages;
-eager fallback admission violates native-first locking. Preserve the 15-argument
-check interface and output fields, add only a fixed-list deficiency result, and
-admit optional fallback only when selected. Fatal mount/ownership/native-supervisor
-failure aborts; ordinary completed negative capability probes may be aggregated.
-Check/recheck calls use separate fresh private contexts. DNS version-only evidence
-remains partial, and no tunnel/readiness claim is awarded. Parent regenerated the
-manifest and reviewed both returned packages. The integrated command
+The completed inventory package connects `--install` → native-work → check. It
+preserves the 15-argument interface, aggregates ordinary missing/unusable tools
+into a fixed package list and admits fallback flock only after native failure.
+Fatal mount/ownership/native-supervisor failure aborts; separate fresh private
+contexts preserve check/recheck evidence. DNS version-only evidence remains
+partial, with no tunnel/readiness claim. Parent reviewed runtime, tests, focused
+CI routing and regenerated metadata. The integrated command
 `.venv/bin/python tools/test.py --focused tests/test_prerequisites.py tests/test_install.py tests/test_dev_runners.py`
 passed **62 tests, 4 Linux-only skips**, 31.26s, plus all planning/package/static
 gates on the dirty tree based on `4a50dd0`. Receipt:
-`.tmp/prerequisite-inventory-focused.log`. Remaining proof is exact focused
-Linux/BusyBox CI for ownership/locking/FD cases. The authorized early push uses
-those same three files in its final `CFMgr-Focused-Tests:` trailer; wait for that
-exact run before further implementation. No full suite/main-goal gate is claimed.
-Cost review uses the preceding 50-second warm Ubuntu job and current focused
-timings; caches/resources are unchanged, no extra measurement suite was run.
+`.tmp/prerequisite-inventory-focused.log`.
 
-Published foundation SHA: `470e65046263f4eaad395858a9e20e572cd67652`;
-remote `develop` matched after push. Focused [Checks 38203771391](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203771391)
-failed in the host static stage before behavioral tests: Ubuntu ShellCheck raised
-SC2015 on the new flock-output `A && B || { ...; }` condition. BusyBox tests were
-skipped, not passed. Parent owns the tiny explicit-if correction and regenerated
-manifest; focused prerequisite/static verification precedes a correction push with
-the same three-file CI selection. Failure log:
-`.tmp/prerequisite-inventory-ci-failed.log`. No redundant job remains running.
-Correction gate: `.venv/bin/python tools/test.py --focused tests/test_prerequisites.py`
-passed **20 tests, 3 Linux-only skips**, 2.49s, and all integrated static checks.
-Receipt: `.tmp/prerequisite-inventory-ci-fix-local.log`.
-Second published SHA: `a6facabb49d2ed4ca9475555f720dfe20782a82e`, remote verified.
-[Checks 38203907818](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203907818)
-passed statics and **64 host tests**, with one workstation-only skip, but one
-new test incorrectly required Bash's noclobber error text. Dash correctly refused
-the existing file with `File exists`. Parent changed that test to require the
-identified file, full failure/no-probe result and unchanged bytes. No runtime
-behavior changed. Focused prerequisites/static checks: **20 passed, 3 Linux-only
-skips**, 2.95s; `.tmp/prerequisite-inventory-portable-local.log`. BusyBox proof still
-pending; third focused push uses the same selection. Failure receipt:
-`.tmp/prerequisite-inventory-ci-failed-2.log`. Cost remains one serial focused job
-per correction, with no full-suite reruns or extra measurements.
+Two failed focused attempts were corrected before acceptance: `470e650` /
+[38203771391](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203771391)
+hit Ubuntu ShellCheck SC2015; `a6facab` /
+[38203907818](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203907818)
+hit a Bash-specific noclobber diagnostic assertion. Parent used an explicit if,
+then retained the identified-file/failure/no-probe/unchanged-byte assertions
+without requiring Bash wording. Each correction passed **20 focused local tests,
+3 Linux skips**, plus static gates (2.49s and 2.95s). Logs remain at
+`.tmp/prerequisite-inventory-ci-failed.log`, `-ci-failed-2.log`,
+`-ci-fix-local.log` and `-portable-local.log`. No failed/skipped run supplied
+BusyBox acceptance. Cost review used existing timings across these three batches;
+one serial Ubuntu job per attempt, unchanged caches and no measurement/full run.
+
+**Checkpoint now passed:** `b64a00b349935dc45aa518214d8aefa34456bb46`, remote
+verified, [Checks 38204206519](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38204206519).
+Parent reverified full head SHA, sole job, selection and logs. Host focused tests:
+**65 passed, 1 workstation-only skip**, 5.57s. Vendor BusyBox: **65 passed, the same
+skip**, 16.68s. All static/planning gates passed; job took 44s. Receipts:
+`.tmp/prerequisite-inventory-ci.json` and `.log`. This proves the inventory and
+focused routing package, not complete S02.04/S02.05. No CI job remains active;
+current package ownership is above. No full suite was run.
+
+The next S02.08 test package proves the existing real `--install` →
+`cfmgr_storage_pin`/`cfmgr_storage_attached` path rather than its boolean adapters.
+The Linux fixture uses a private host mount namespace solely for test isolation,
+not as a router-runtime capability. It must fail required CI if privileged fixture
+setup is unavailable, explicitly skip unsupported macOS execution, and preserve
+independent ownership/cleanup checks. No claim yet for expected saved identity,
+returning eligibility, or race-free writer containment. Parent integrates focused
+tests and relevant workflow requirements in the same package before publication.
+
+Parent integrated both returned packages and reviewed the real pin/UUID consumer,
+fixture privilege/namespace/path guards, normal cleanup with evidence retention,
+legacy parser compatibility and full-input validation. Fixed fixture diagnostics
+so retained cleanup evidence does not hide its original failure. Added the required
+Ubuntu packages and a concise developer setup note. Parser propagation tests now
+use possible kernel states; conflicting unbindable tags fail the new interface.
+Manifest regenerated. Combined focused command:
+`.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py`
+passed **57 tests, 16 platform/mode skips**, 48.01s, with all static/planning gates
+on the dirty tree based on `b64a00b`. Receipt: `.tmp/storage-mount-focused.log`.
+The early push is authorized for the five unavailable real Linux mount cases and
+required BusyBox proof; select the same four files with the focused trailer and
+wait for exact CI before further implementation. No full suite is due. Cost review:
+five serial bounded cases use 32 MiB sparse images (one case uses a second image);
+only explicit BusyBox mode runs them, avoiding duplicate privileged host setup.
+One Ubuntu job and existing validated caches remain; added base APT requirements
+change only that package-set cache key. Read-only opkg source review may finish.
 
 - Active Goal 2: **1/9 accepted = 11.1%** (S02.03).
 - Supporting Goal 3: **1/10 accepted = 10%** (S03.01).
@@ -100,22 +118,23 @@ S02.03 defaults installer, notified the user before switching and reviewed every
 passive-state clause. This was acceptance of existing implementation, not a new
 runtime package. Only checklist/handoff receipts and the clarified standing test
 cadence changed. That package is committed as
-`4a50dd0d6ddbd18a906e0a870c8d4ca592148a33`, one local commit ahead of origin.
-No unanswered approval or inherited CI/router job remains. Active ownership
+`4a50dd0d6ddbd18a906e0a870c8d4ca592148a33`.
+It was subsequently published with the foundation checkpoint. No unanswered
+approval or inherited CI/router job remains. Active ownership
 is listed above; do not interpret the preceding pause as current permission state.
 
 ## Current refs and evidence
 
 Resume started on clean local/remote `develop` at
-`bc49cf54831e8b7099aad3aee9ba8e75fbcae137`. The current acceptance receipt is local
-only, titled `docs: accept passive fresh state and clarify checkpoint gates`;
-no push occurred this session. Verify `HEAD` and status on resume. Tested
-runtime remains `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, already published.
+`bc49cf54831e8b7099aad3aee9ba8e75fbcae137`. Current published local/remote head is
+`b64a00b349935dc45aa518214d8aefa34456bb46`, with exact focused evidence above.
+Verify HEAD and status on resume; the active storage/parser package is dirty and
+not covered by that receipt. The preceding full-suite runtime baseline was
+`7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, already published.
 [Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754)
 was reverified at that full SHA: its sole Ubuntu job passed in **50 seconds**.
-That was the unchanged runtime at session start. The current inventory/runner
-changes and regenerated manifest now require their own focused evidence; the old
-CI does not prove these edits. Subsequent documentation receipts are not new
+That was the unchanged runtime at session start. The inventory/runner changes
+subsequently passed their own focused evidence above. Documentation receipts are not new
 runtime-tested commits. Earlier S02.03/tool receipt:
 `02063a4e40764d682dcdd917fa550ad0251a4f63`.
 
@@ -163,7 +182,7 @@ work and keep these gaps visible:
   `dig -v` with no real tunnel consumer. The current package fixes native-first
   locking and inventories every ordinary missing/unusable direct requirement;
   unsafe admission, absent supervision and unresolved ownership remain fatal.
-  Focused Linux/BusyBox proof and the scoped DNS consumer remain pending.
+  Inventory Linux/BusyBox proof passed at `b64a00b`; the scoped DNS consumer remains pending.
 - **S02.08:** fresh UUID storage and current invocation pins exist; retained
   expected-identity comparison and returning-work eligibility do not. Production
   pin/lazy-unmount/substitution loss needs written representative proof; boolean
@@ -196,6 +215,13 @@ with cgroups and namespaces disabled. Other cached firmware evidence was not
 requalified. No firmware or router execution occurred. Historical committed
 dependency/isolation source is retained read-only under `.tmp/previous-*-reference.sh`;
 it supplies patterns only, not acceptance or permission for a wholesale restore.
+
+Parent also reverified pinned native `mount.c` SHA256
+`b6a23a99f6564b332ad5f7ae418b5ffaa1c6afe424eac9a5cf2620ada8144803`:
+explicit bind operands reach the mount syscall unchanged; canonicalization occurs
+only afterward for optional mtab updates. The pinned `get_devname.c` source shows
+`resolve_mount_spec` changes only UUID=/LABEL= operands. Descriptor bind behavior
+still needs execution proof; source review alone does not qualify the future view.
 
 The official Merlin Addons API, User scripts and Custom config files authorities
 were consulted during scope review; no new firmware compatibility claim or
@@ -315,7 +341,7 @@ runtime source changes. Regular Finder metadata is excluded; unsafe objects fail
 
 ## Resume path
 
-1. Verify the local-only acceptance receipt, Git/remote state and no active jobs.
+1. Verify current Git/remote state, dirty package ownership and active jobs.
    Do not repeat finished proof or restart the optional kernel matrix.
 2. Resume foundation-first work, normally remaining Goal 2 requirements; use the
    findings above and actual consumers to choose a complete dependency package.

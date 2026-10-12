@@ -1,5 +1,8 @@
 # Read-only parser for /proc/self/mountinfo.
 # Usage: LC_ALL=C awk -f modules/lib/mountinfo.awk "$canonical_target" /proc/self/mountinfo
+# Subtree usage: awk -f modules/lib/mountinfo.awk subtree-v1 "$canonical_target" INPUT
+# Subtree output adds propagation as field 10 and preserves input order. All
+# records must validate before either interface emits output.
 # The target is a literal ARGV operand so backslashes are not reinterpreted by awk.
 # Input is bounded to 4096 records of at most 8192 bytes each. Escapes are decoded
 # only in root, mountpoint, and source; tabs, newlines, controls, and unknown
@@ -9,8 +12,14 @@
 BEGIN {
 	MAX_RECORDS = 4096
 	MAX_LINE = 8192
-	target = ARGV[1]
-	ARGV[1] = ""
+	if (ARGV[1] == "subtree-v1") {
+		subtree = 1
+		target = ARGV[2]
+		ARGV[1] = ARGV[2] = ""
+	} else {
+		target = ARGV[1]
+		ARGV[1] = ""
+	}
 	if (!canonical_path(target)) {
 		fail("invalid target")
 	}
@@ -161,14 +170,17 @@ function path_contains(path, point) {
 			fail("invalid optional field")
 		}
 		if (tag == "shared") {
+			shared_group = group_id
 			if (seen_shared++) {
 				fail("invalid optional field")
 			}
 		} else if (tag == "master") {
+			master_group = group_id
 			if (seen_master++) {
 				fail("invalid optional field")
 			}
 		} else if (tag == "propagate_from") {
+			propagate_group = group_id
 			if (seen_propagate_from++) {
 				fail("invalid optional field")
 			}
@@ -177,6 +189,39 @@ function path_contains(path, point) {
 	if (seen_propagate_from && !seen_master) {
 		fail("invalid optional field")
 	}
+	if (subtree && seen_unbindable && (seen_shared || seen_master || seen_propagate_from)) {
+		fail("invalid optional field")
+	}
+
+	record = fields[1] "\t" fields[2] "\t" fields[3] "\t" root "\t" \
+		mountpoint "\t" fields[separator + 1] "\t" source "\t" fields[6] "\t" \
+		fields[field_count]
+	if (subtree) {
+		if (!path_contains(mountpoint, target)) {
+			next
+		}
+		if (seen_subtree_point[mountpoint]++) {
+			fail("ambiguous mount")
+		}
+		propagation = ""
+		if (seen_shared) {
+			propagation = "shared:" shared_group
+		}
+		if (seen_master) {
+			propagation = propagation (propagation == "" ? "" : ",") "master:" master_group
+		}
+		if (seen_propagate_from) {
+			propagation = propagation (propagation == "" ? "" : ",") "propagate_from:" propagate_group
+		}
+		if (seen_unbindable) {
+			propagation = propagation (propagation == "" ? "" : ",") "unbindable"
+		}
+		if (propagation == "") {
+			propagation = "private"
+		}
+		subtree_records[++subtree_count] = record "\t" propagation
+		next
+	}
 
 	if (!path_contains(target, mountpoint)) {
 		next
@@ -184,9 +229,7 @@ function path_contains(path, point) {
 	if (length(mountpoint) > best_length) {
 		best_length = length(mountpoint)
 		best_count = 1
-		best_record = fields[1] "\t" fields[2] "\t" fields[3] "\t" root "\t" \
-			mountpoint "\t" fields[separator + 1] "\t" source "\t" fields[6] "\t" \
-			fields[field_count]
+		best_record = record
 	} else if (length(mountpoint) == best_length) {
 		best_count++
 	}
@@ -195,6 +238,12 @@ function path_contains(path, point) {
 END {
 	if (failed) {
 		exit 1
+	}
+	if (subtree) {
+		for (record_index = 1; record_index <= subtree_count; record_index++) {
+			print subtree_records[record_index]
+		}
+		exit 0
 	}
 	if (record_count == 0 || best_count == 0) {
 		fail("target not found")

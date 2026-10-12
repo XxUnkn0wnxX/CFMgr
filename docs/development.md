@@ -34,6 +34,12 @@ Bare `--focused` selects `tests/`; otherwise it accepts existing test files or
 directories under `tests/`, including `--focused tests -k expression` for a
 keyword-filtered run. Add `--require-busybox` to run that same selection with
 required BusyBox ash evidence. Keep `PYTEST_ADDOPTS` empty.
+On Linux, that explicit BusyBox mode also runs the selected real ext4 mount tests
+using passwordless `sudo`, private mount namespaces, loop devices and temporary
+images. They require Ubuntu's `coreutils`, `e2fsprogs`, `mount`, `sudo` and
+`util-linux` packages. Normal host runs skip those privileged cases; required
+BusyBox runs fail if their setup is unavailable. These are developer-host
+requirements, not router dependencies.
 For documentation-only changes:
 
 ```zsh

@@ -7,6 +7,6 @@ CFMGR-MANIFEST 1 0.1.0
 0644	0	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855	modules/hooks/.gitkeep
 0644	0	e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855	modules/lib/.gitkeep
 0644	5805	662bc48d5d5118150c85beaafbbbe363433202517d5b1801776dc0b6c2496edf	modules/lib/config.sh
-0644	5140	36672feccaab5b8b4bf1e67dafb3501e50feb3abfaa1c14c62ca01e70486eeea	modules/lib/mountinfo.awk
+0644	6537	1fb88adc1816ab9d29ae970ab402550d0352e7adb9a3b9ee8ed94ea84fdea0e3	modules/lib/mountinfo.awk
 0644	20796	1e6a321c44d8c922810bfdbf9b5d44686c71aece5dd8d4baf3cea2f4696eb598	modules/lib/prerequisites.sh
 0644	8005	01d4c8e22b84b6b3022affd2256c8378be15a49e356c3081b17c8fa01dc0f379	modules/lib/storage.sh

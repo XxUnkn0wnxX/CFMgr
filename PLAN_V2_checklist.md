@@ -168,21 +168,35 @@ Parent reviewed the actual installer/check callback, failure propagation and FD
 cleanup; regenerated package metadata. On the dirty tree based on `4a50dd0`,
 `.venv/bin/python tools/test.py --focused tests/test_prerequisites.py tests/test_install.py tests/test_dev_runners.py`
 passed **62 tests, 4 Linux-only skips**, 31.26s, plus all planning/package/static
-gates. The four skipped process/FD/locking cases require exact focused CI; this
-package earns no complete-subgoal box. Focused CI routing is tested separately
-from product behavior and preserves the full main-goal gate.
-Initial focused CI at `470e65046263f4eaad395858a9e20e572cd67652`,
-[Checks 38203771391](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203771391),
-failed before behavior on ShellCheck SC2015; BusyBox was skipped. Parent is
-correcting the condition without changing its behavior; exact corrected proof
-remains pending.
-The correction at `a6facabb49d2ed4ca9475555f720dfe20782a82e` passed CI statics and
-64 host tests, but a Bash-specific diagnostic assertion failed under dash;
-[Checks 38203907818](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203907818)
-did not run BusyBox. The portable test retains failure status, no further probes,
-identified-file diagnostics and byte-for-byte evidence preservation. Its focused
-local/static gate passed **20 tests, 3 Linux-only skips**; exact focused CI remains
-pending. No acceptance credit is added.
+gates. Parent corrected Ubuntu ShellCheck compatibility and a Bash-specific test
+diagnostic assumption; the final focused prerequisite/static gate passed **20
+tests, 3 Linux-only skips**, 2.95s. Recheck tests retain failure status, no further
+probes, identified-file diagnostics and byte-for-byte evidence preservation.
+
+Exact focused CI at `b64a00b349935dc45aa518214d8aefa34456bb46`,
+[Checks 38204206519](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38204206519),
+passed the three selected files under both host (**65 passed, 1 skip**, 5.57s) and
+vendor BusyBox (**65 passed, 1 skip**, 16.68s), plus all static/planning gates.
+The skip is the workstation-without-proc boundary already covered locally; all
+required Linux ownership/locking/FD cases passed. Parent verified the full SHA,
+sole job and focused selection. This proves the partial inventory/routing package,
+not complete S02.04/S02.05, and earns no subgoal box. Full local/full CI remain
+reserved for the complete main-goal checkpoint.
+
+S02.05/S02.08 storage foundation, pending focused CI: the existing installer storage
+consumer now has written real ext4 tests for attachment/UUID/FD lifetime, alias
+substitution, lazy detach with a different replacement volume, bind-root identity
+and read-only/noexec rejection. The shared parser adds bounded `subtree-v1`
+inventory/propagation output for planned owned-mount verification while preserving
+its legacy covering lookup. The new mode has no execution-view consumer yet.
+Parent reviewed guards, cleanup retention, parser framing/ambiguity and package
+metadata. On the dirty tree based on `b64a00b`,
+`.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py`
+passed **57 tests, 16 explicit platform/mode skips**, 48.01s, with all integrated
+static/planning gates. The five new real mount cases require Linux and run only in
+explicit required BusyBox mode; unavailable fixture capabilities must fail that
+mode. Their exact focused CI, plus existing Linux/BusyBox regressions, remains
+pending. This partial package earns no subgoal tick or full-suite claim.
 
 ### 3. Configuration, menus and status
 
