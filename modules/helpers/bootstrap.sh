@@ -789,6 +789,15 @@ cfmgr_dependencies_cleanup() {
 	_cfmgr_dependencies_remove_tree "$cfmgr_dependencies_context" 0 || return 3
 }
 
+# DIR and depth remain the first two arguments while the recursive caller keeps
+# up to eight exact owned file/FIFO operands in its own positional frame.
+_cfmgr_dependencies_remove_batch() {
+	shift 2
+	[ "$#" -gt 0 ] || return 0
+	[ "$#" -le 8 ] || return 3
+	cfmgr_dependencies_native remove "$@"
+}
+
 _cfmgr_dependencies_remove_tree() {
 	[ "$2" -le 3 ] && [ -d "$1" ] && [ ! -L "$1" ] || return 3
 	for cfmgr_dependencies_cleanup_item in "$1"/* "$1"/.[!.]* "$1"/..?*; do
@@ -799,12 +808,19 @@ _cfmgr_dependencies_remove_tree() {
 		if [ -d "$cfmgr_dependencies_cleanup_item" ]; then
 			_cfmgr_dependencies_remove_tree "$cfmgr_dependencies_cleanup_item" "$(($2 + 1))" || return 3
 		elif [ -f "$cfmgr_dependencies_cleanup_item" ]; then
-			cfmgr_dependencies_native remove "$cfmgr_dependencies_cleanup_item" || return 3
+			set -- "$@" "$cfmgr_dependencies_cleanup_item"
 		elif [ -p "$cfmgr_dependencies_cleanup_item" ]; then
 			case $cfmgr_dependencies_cleanup_item in "$cfmgr_dependencies_context/keeper/control" | "$cfmgr_dependencies_context/gate") ;; *) return 3 ;; esac
-			cfmgr_dependencies_native remove "$cfmgr_dependencies_cleanup_item" || return 3
+			set -- "$@" "$cfmgr_dependencies_cleanup_item"
 		else return 3; fi
+		if [ "$#" -eq 10 ]; then
+			_cfmgr_dependencies_remove_batch "$@" || return 3
+			set -- "$1" "$2"
+		fi
 	done
+	_cfmgr_dependencies_remove_batch "$@" || return 3
+	# Failed file batches/child directories preserve the owner for recovery. The
+	# owner is never mixed into a batch whose other removals could partly fail.
 	if [ "$1" = "$cfmgr_dependencies_context" ]; then cfmgr_dependencies_native remove "$1/owner" || return 3; fi
 	cfmgr_dependencies_native rmdir "$1"
 }

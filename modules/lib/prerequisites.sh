@@ -100,7 +100,8 @@ cfmgr_prerequisites_run() {
 	repair-awk) [ "$#" -ge 14 ] && [ "$#" -le 22 ] || return 2 ;;
 	repair-inventory) [ "$#" -eq 12 ] || return 2 ;;
 	repair-identity-parse | repair-readlink | repair-list | repair-copy | repair-mkdir | repair-chmod | repair-link | repair-signal) [ "$#" -eq 11 ] || return 2 ;;
-	repair-report | repair-identity | repair-file | repair-root | repair-guard-root | repair-bind4 | repair-bind7 | repair-private | repair-unbindable | repair-seal | repair-unmount | repair-fifo | repair-remove | repair-rmdir) [ "$#" -eq 10 ] || return 2 ;;
+	repair-remove) [ "$#" -ge 10 ] && [ "$#" -le 17 ] || return 2 ;;
+	repair-report | repair-identity | repair-file | repair-root | repair-guard-root | repair-bind4 | repair-bind7 | repair-private | repair-unbindable | repair-seal | repair-unmount | repair-fifo | repair-rmdir) [ "$#" -eq 10 ] || return 2 ;;
 	native-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
 	native-curl-https) [ "$#" -eq 12 ] || return 2 ;;
 	native-curl-version) [ "$#" -eq 9 ] || return 2 ;;

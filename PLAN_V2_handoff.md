@@ -46,7 +46,24 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current candidate: `e480822eb42933ae9c0a6dd6c4eec35b89b7199c`, pushed and
+- Current candidate: `060583128c750c3cf1f2baf13c0ca961396ee085`, pushed and
+  remote-verified. [Checks 38241095159](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38241095159)
+  failed first vendor repair after **1 passed/1 failed**, 143.89s; host/static passed.
+  Receipt `.tmp/dependency-repair-ci-failed-6.log`: view/keeper released, but individual
+  receipt-file deletion exhausted the 60s cleanup deadline (1,635 probes at 142s).
+  Parent approved bounded batches of at most eight existing cleanup operands,
+  retaining quiescence, full tree/FD/mount checks, owner-last removal and all deadlines.
+  `prerequisite_inventory` owns bootstrap/prerequisites/probe runtime changes only;
+  `dependency_fixture` owns consumer tests and their finite native adapter. Parent
+  owns metadata/plans/integration. No CI is active; require exact green before new work.
+  Batched cleanup is now implemented and parent-reviewed. Actual portable probe
+  dispatch proves <=8 quoted operands, partial failure/evidence retention and
+  owner-last ordering; consumer **14 passed/7 Linux skips**. Prerequisite/dependency
+  regressions **33 passed/10 Linux skips** (4.19s); affected lint/format/compile,
+  shell syntax, metadata/planning and whitespace pass. Both writers released files.
+  Cost fix removes redundant per-file supervision without changing deadlines or
+  mount/ownership gates; exact Linux timing and behavior remain pending.
+- Previous candidate: `e480822eb42933ae9c0a6dd6c4eec35b89b7199c`, pushed and
   remote-verified. [Checks 38240094327](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38240094327)
   failed first vendor repair case after **1 passed/1 failed**, 48.12s; host/static
   passed. Receipt `.tmp/dependency-repair-ci-failed-5.log`. Diagnostic proves view
@@ -66,7 +83,7 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
   While CI runs, `next_subgoal_review` may read only the retained-launch bootstrap
   interfaces and return a bounded factoring map. No implementation/file ownership
   is granted; parent reviews the design after the current gate.
-- Current candidate: `64085a10f9efffa06621068125f4e94e7fd23bc4`, pushed and
+- Previous candidate: `64085a10f9efffa06621068125f4e94e7fd23bc4`, pushed and
   remote-verified. [Checks 38237947152](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38237947152)
   failed: host/static passed; vendor BusyBox **266 passed/1 skip/8 failed**.
   Six real repair cases hit their 45s outer watchdog; installer fixture re-imports

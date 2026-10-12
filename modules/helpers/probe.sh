@@ -141,7 +141,14 @@ repair-fifo)
 	umask 077
 	exec "$tool" "$1" p
 	;;
-repair-remove | repair-rmdir)
+repair-remove)
+	[ "$#" -ge 1 ] && [ "$#" -le 8 ] || exit 2
+	for remove_path; do
+		case $remove_path in /*) ;; *) exit 2 ;; esac
+	done
+	exec "$tool" "$@"
+	;;
+repair-rmdir)
 	[ "$#" -eq 1 ] || exit 2
 	exec "$tool" "$1"
 	;;

@@ -309,6 +309,68 @@ exit 0
 """
 
 
+DEPENDENCY_BATCH_CLEANUP = r"""
+. "$CFMGR_TEST_ROOT/modules/helpers/bootstrap.sh"
+cfmgr_dependencies_context=$1 cfmgr_install_context=$2 cfmgr_test_log=$3
+cfmgr_dependencies_phase=cleanup cfmgr_view_state=released cfmgr_keeper_state=released cfmgr_tasks_state=quiescent
+cfmgr_dependencies_state=retained cfmgr_install_private_context=$cfmgr_dependencies_context
+cfmgr_dependencies_cleanup_count=0 cfmgr_test_batches=0 cfmgr_test_max_batch=0 cfmgr_test_rmdirs=0
+cfmgr_test_fail_batch=$4 cfmgr_test_symlink=$5
+cfmgr_dependencies_attachment_ok() { return 0; }
+cfmgr_dependencies_native() {
+    cfmgr_test_operation=$1
+    shift
+    case $cfmgr_test_operation in
+        inventory) : >"$2" ;;
+        remove)
+            [ "$#" -ge 1 ] && [ "$#" -le 8 ] || return 91
+            cfmgr_test_batches=$((cfmgr_test_batches + 1))
+            [ "$#" -le "$cfmgr_test_max_batch" ] || cfmgr_test_max_batch=$#
+            printf 'batch=%s count=%s\n' "$cfmgr_test_batches" "$#" >>"$cfmgr_test_log"
+            for cfmgr_test_path do
+                case $cfmgr_test_path in "$cfmgr_dependencies_context"/*) ;; *) return 93 ;; esac
+                if [ "$cfmgr_test_path" = "$cfmgr_dependencies_context/owner" ]; then
+                    for cfmgr_test_left in "$cfmgr_dependencies_context"/* \
+                        "$cfmgr_dependencies_context"/.[!.]* "$cfmgr_dependencies_context"/..?*; do
+                        [ -e "$cfmgr_test_left" ] || [ -L "$cfmgr_test_left" ] || continue
+                        [ "$cfmgr_test_left" = "$cfmgr_dependencies_context/owner" ] || return 94
+                    done
+                    echo owner-last >>"$cfmgr_test_log"
+                fi
+            done
+            if [ "$cfmgr_test_fail_batch" -eq "$cfmgr_test_batches" ]; then
+                "$CFMGR_TEST_PROBE_RUNNER" repair-remove /bin/rm \
+                    "$cfmgr_dependencies_context" "$1" || return 95
+                echo partial-failure >>"$cfmgr_test_log"
+                return 92
+            fi
+            "$CFMGR_TEST_PROBE_RUNNER" repair-remove /bin/rm \
+                "$cfmgr_dependencies_context" "$@" || return 95
+            ;;
+        rmdir)
+            [ "$#" -eq 1 ] || return 96
+            cfmgr_test_rmdirs=$((cfmgr_test_rmdirs + 1))
+            /bin/rmdir "$1"
+            ;;
+        *) return 97 ;;
+    esac
+}
+if cfmgr_dependencies_cleanup; then cfmgr_test_result=0
+else cfmgr_test_result=$?; fi
+if [ -d "$cfmgr_dependencies_context" ]; then cfmgr_test_context=present
+else cfmgr_test_context=absent; fi
+if [ -e "$cfmgr_dependencies_context/owner" ]; then cfmgr_test_owner=present
+else cfmgr_test_owner=absent; fi
+if [ -L "$cfmgr_test_symlink" ]; then cfmgr_test_symlink=present
+else cfmgr_test_symlink=absent; fi
+printf 'result=%s\ncontext=%s\nowner=%s\nsymlink=%s\n' \
+    "$cfmgr_test_result" "$cfmgr_test_context" "$cfmgr_test_owner" "$cfmgr_test_symlink"
+printf 'batches=%s\nmax-batch=%s\nrmdirs=%s\n' \
+    "$cfmgr_test_batches" "$cfmgr_test_max_batch" "$cfmgr_test_rmdirs"
+exit 0
+"""
+
+
 LINUX_REPAIR_CONTROLLER = r"""
 . "$CFMGR_TEST_ROOT/modules/lib/execution_tasks.sh"
 . "$CFMGR_TEST_ROOT/modules/lib/prerequisites.sh"
@@ -351,7 +413,7 @@ cfmgr_dependencies_native() {
         chmod) /bin/chmod "$2" "$1" ;;
         mkdir) /bin/mkdir -m "$2" "$1" ;;
         inventory) : >"$2" ;;
-        remove) /bin/rm -f "$1" ;;
+        remove) /bin/rm -f "$@" ;;
         rmdir) /bin/rmdir "$1" ;;
         *) return 2 ;;
     esac
@@ -518,6 +580,92 @@ def test_linux_cleanup_retains_unresolved_repair_context_only(
         "helper": expected_helper,
         "fd9": expected_fd9,
     }
+
+
+@pytest.mark.parametrize("case", ["complete", "batch-failure", "symlink"])
+def test_dependency_cleanup_batches_only_prechecked_owned_tree(
+    shell: list[str], tmp_path: Path, case: str
+) -> None:
+    context = tmp_path / "private dependency claim"
+    context.mkdir(mode=0o700)
+    (context / "owner").write_text("fixture owner\n")
+    (context / "owner").chmod(0o600)
+    for index in range(24):
+        (context / f"item {index:02d}").write_text(f"data {index}\n")
+    nested = context / "nested" / "inner"
+    nested.mkdir(parents=True)
+    for index in range(6):
+        (nested / f"nested {index:02d}").write_text(f"nested {index}\n")
+    fifo_dir = context / "keeper"
+    fifo_dir.mkdir()
+    os.mkfifo(fifo_dir / "control")
+
+    marker = tmp_path / "external evidence"
+    marker.write_text("outside the claim\n")
+    symlink = context / "untrusted-link"
+    if case == "symlink":
+        symlink.symlink_to(marker)
+
+    install_context = tmp_path / "install-private"
+    install_context.mkdir(mode=0o700)
+    log = tmp_path / "native-operations"
+    fail_batch = "2" if case == "batch-failure" else "0"
+    probe_runner = tmp_path / "selected-shell-probe"
+    probe_runner.write_text(
+        f'#!/bin/sh\nexec {shlex.join(shell)} "$CFMGR_TEST_PROBE" "$@"\n'
+    )
+    probe_runner.chmod(0o700)
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            DEPENDENCY_BATCH_CLEANUP,
+            "dependency-batched-cleanup",
+            str(context),
+            str(install_context),
+            str(log),
+            fail_batch,
+            str(symlink),
+        ],
+        env={
+            **os.environ,
+            "LC_ALL": "C",
+            "CFMGR_TEST_ROOT": str(ROOT),
+            "CFMGR_TEST_PROBE": str(ROOT / "modules/helpers/probe.sh"),
+            "CFMGR_TEST_PROBE_RUNNER": str(probe_runner),
+        },
+        check=False,
+        capture_output=True,
+        timeout=5,
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    observed = report(result)
+
+    if case == "complete":
+        assert observed["result"] == "0"
+        assert observed["context"] == observed["owner"] == "absent"
+        assert 5 <= int(observed["batches"]) <= 6
+        assert 2 <= int(observed["max-batch"]) <= 8
+        assert int(observed["rmdirs"]) == 4
+        assert log.read_text().splitlines()[-1] == "owner-last"
+        assert marker.read_text() == "outside the claim\n"
+    elif case == "batch-failure":
+        assert observed["result"] == "3"
+        assert observed["context"] == observed["owner"] == "present"
+        assert observed["batches"] == "2"
+        assert observed["max-batch"] == "8"
+        assert int(observed["rmdirs"]) == 0
+        assert (context / "owner").read_text() == "fixture owner\n"
+        assert len(list(context.glob("item *"))) < 24
+        assert len(list(context.glob("item *"))) > 0
+        assert log.read_text().splitlines()[-1] == "partial-failure"
+    else:
+        assert observed["result"] == "3"
+        assert observed["context"] == observed["owner"] == "present"
+        assert observed["symlink"] == "present"
+        assert observed["batches"] == observed["max-batch"] == "0"
+        assert not log.exists()
+        assert marker.read_text() == "outside the claim\n"
 
 
 def process_output_snapshot(process: subprocess.Popen[bytes], limit: int = 2048) -> str:
