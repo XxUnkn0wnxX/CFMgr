@@ -101,6 +101,7 @@ install)
         done
     fi
     if [ -e /opt/launch-mixed ]; then
+        printf 'requested\n' >/opt/mixed.request || exit 1
         tries=0
         while [ ! -f /opt/mixed.receipt ]; do
             [ "$tries" -lt 100 ] || exit 1
@@ -184,35 +185,79 @@ if [ "$case_name" = dependency_installer ]; then
 fi
 
 dependency_observer=''
+dependency_observer_detail() {
+	[ -f "$view_ram/dependency-observer.status" ] && [ ! -L "$view_ram/dependency-observer.status" ] || {
+		printf 'not-started'
+		return
+	}
+	IFS= read -r dependency_observer_state <"$view_ram/dependency-observer.status" || dependency_observer_state=unreadable
+	printf '%s' "$dependency_observer_state"
+}
+dependency_observer_status() {
+	printf '%s\n' "$1" >"$view_ram/dependency-observer.status"
+}
+# The observer starts at the task gate, just before the product action window;
+# the outer test watchdog still bounds teardown if the action is interrupted.
+dependency_wait_receipt() {
+	dependency_wait_path=$1
+	IFS=' ' read -r dependency_wait_uptime dependency_wait_idle </proc/uptime || return 1
+	dependency_wait_started=${dependency_wait_uptime%%.*}
+	case $dependency_wait_started in '' | *[!0-9]*) return 1 ;; esac
+	while [ ! -f "$dependency_wait_path" ]; do
+		IFS=' ' read -r dependency_wait_uptime dependency_wait_idle </proc/uptime || return 1
+		dependency_wait_now=${dependency_wait_uptime%%.*}
+		case $dependency_wait_now in '' | *[!0-9]*) return 1 ;; esac
+		[ "$((dependency_wait_now - dependency_wait_started))" -lt 120 ] || return 1
+		"$view_ram/usleep" 50000 || return 1
+	done
+}
 dependency_start_observer() {
+	[ -z "$dependency_observer" ] || return 1
 	# Separate fixture-owned actor, positively outside the view. Product must
 	# neither signal it nor claim ownership of services requested over IPC.
 	(
 		exec 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9<&-
 		if [ "$case_name" = dependency_mixed ]; then
-			tries=0
-			while [ ! -f "$view_ram/dependencies/receipt" ]; do
-				[ "$tries" -lt 200 ] || exit 1
-				"$view_ram/usleep" 50000
-				tries=$((tries + 1))
-			done
+			dependency_observer_status waiting-mixed-request
+			if dependency_wait_receipt "$cfmgr_storage_opt/mixed.request"; then :; else
+				dependency_observer_status failed-mixed-request-timeout
+				exit 1
+			fi
+			dependency_observer_status launching-mixed-process
 			exec "$dependency_process" mixed "$cfmgr_storage_opt/mixed.receipt" "$view_ram/dependencies/view"
 		fi
-		tries=0
-		while [ ! -f "$cfmgr_storage_opt/loss.receipt" ]; do
-			[ "$tries" -lt 400 ] || exit 1
-			"$view_ram/usleep" 50000
-			tries=$((tries + 1))
-		done
+		dependency_observer_status waiting-opkg-receipt
+		if dependency_wait_receipt "$cfmgr_storage_opt/loss.receipt"; then :; else
+			dependency_observer_status failed-opkg-receipt-timeout
+			exit 1
+		fi
+		dependency_observer_status detaching-guards
 		# Simulate device-matched USB detach of the two guarded execution aliases
 		# plus the admitted original canonical attachment. These are owned mounts.
-		umount -l "$view_ram/dependencies/view/opt" || exit 1
-		umount -l "$view_ram/dependencies/view/tmp/mnt/usb" || exit 1
+		umount -l "$view_ram/dependencies/view/opt" || {
+			dependency_observer_status failed-detach-opt
+			exit 1
+		}
+		umount -l "$view_ram/dependencies/view/tmp/mnt/usb" || {
+			dependency_observer_status failed-detach-usb
+			exit 1
+		}
 		for target in "$view_ram/dependencies/view/opt/fallback" "$view_ram/dependencies/view/tmp/mnt/usb/fallback"; do
-			if (printf 'must fail\n' >"$target") 2>/dev/null; then exit 1; fi
+			if (printf 'must fail\n' >"$target") 2>/dev/null; then
+				dependency_observer_status failed-writable-fallback
+				exit 1
+			fi
 		done
-		printf 'guarded\n' >"$view_ram/loss.guards"
-		umount -l "$cfmgr_storage_mount" || exit 1
+		printf 'guarded\n' >"$view_ram/loss.guards" || {
+			dependency_observer_status failed-guard-proof
+			exit 1
+		}
+		dependency_observer_status detaching-storage
+		umount -l "$cfmgr_storage_mount" || {
+			dependency_observer_status failed-detach-storage
+			exit 1
+		}
+		dependency_observer_status complete
 	) &
 	dependency_observer=$!
 }
@@ -230,7 +275,11 @@ cfmgr_execution_tasks_native() {
 			fi
 		fi
 	fi
-	dependency_native "$@"
+	if dependency_native "$@"; then dependency_native_status=0; else dependency_native_status=$?; fi
+	if [ "$dependency_native_status" -eq 0 ] && [ "$1" = fifo ] && [ "$2" = "$cfmgr_tasks_context/gate" ]; then
+		case $case_name in dependency_mixed | dependency_loss) dependency_start_observer || return 3 ;; esac
+	fi
+	return "$dependency_native_status"
 }
 case $case_name in
 dependency_retry)
@@ -243,19 +292,20 @@ dependency_daemon) : >"$cfmgr_storage_opt/launch-daemon" ;;
 dependency_threads) : >"$cfmgr_storage_opt/launch-thread" ;;
 dependency_mixed)
 	: >"$cfmgr_storage_opt/launch-mixed"
-	dependency_start_observer
 	;;
 dependency_loss)
 	: >"$cfmgr_storage_opt/launch-loss"
-	dependency_start_observer
 	;;
 esac
 if dependency_attempt final; then dependency_status=0; else dependency_status=$?; fi
 case $case_name in
 dependency_mixed)
-	if [ "$dependency_status" = 3 ] && [ -d "$view_ram/dependencies" ] && [ "$cfmgr_view_pin_state" = active ]; then :; else fail 'mixed roots were not retained'; fi
-	IFS=' ' read -r mixed_pid mixed_tid <"$cfmgr_storage_opt/mixed.receipt"
-	if [ "$mixed_pid" = "$dependency_observer" ] && [ -d "/proc/$mixed_pid/task/$mixed_tid" ]; then :; else fail 'foreign/mixed process was signalled'; fi
+	if [ "$dependency_status" = 3 ] && [ -d "$view_ram/dependencies" ] && [ "$cfmgr_view_pin_state" = active ]; then :; else fail "mixed roots were not retained; observer=$(dependency_observer_detail)"; fi
+	if IFS=' ' read -r mixed_pid mixed_tid <"$cfmgr_storage_opt/mixed.receipt"; then :; else fail "mixed observer did not publish readiness; observer=$(dependency_observer_detail)"; fi
+	if [ "$(dependency_observer_detail)" = launching-mixed-process ] && [ "$mixed_pid" = "$dependency_observer" ] &&
+		[ "$mixed_pid" != "$mixed_tid" ] && [ -d "/proc/$mixed_pid/task/$mixed_tid" ] &&
+		[ "/proc/$mixed_pid/root" -ef / ] && [ "/proc/$mixed_pid/task/$mixed_tid/root" -ef "$cfmgr_view_root" ] &&
+		kill -0 "$mixed_pid" 2>/dev/null; then :; else fail "foreign/mixed process root/liveness proof failed; observer=$(dependency_observer_detail)"; fi
 	[ ! -e "$view_ram/signals" ] || fail 'mixed-root uncertainty admitted a signal'
 	# Isolated test recovery owns this exact unreaped direct fixture child. This
 	# is not product authority to kill a mixed-root/service task.
@@ -287,8 +337,12 @@ dependency_daemon | dependency_threads)
 	fi
 	;;
 dependency_loss)
-	[ "$dependency_status" = 1 ] || fail 'lost attachment did not stop repair with resolved failure'
-	wait "$dependency_observer" || fail 'detach actor did not prove readonly fallbacks'
+	[ "$dependency_status" = 1 ] || fail "lost attachment did not stop repair with resolved failure; observer=$(dependency_observer_detail)"
+	if wait "$dependency_observer"; then :; else
+		dependency_observer_exit=$?
+		fail "detach actor failed exit=$dependency_observer_exit; observer=$(dependency_observer_detail)"
+	fi
+	[ "$(dependency_observer_detail)" = complete ] || fail "detach actor did not complete; observer=$(dependency_observer_detail)"
 	if [ -f "$view_ram/loss.guards" ] && [ "$cfmgr_dependencies_reason" = storage-lost ]; then :; else fail 'loss reason/guard proof absent'; fi
 	if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_keeper_state" = released ]; then :; else fail 'loss cleanup retained live protection unexpectedly'; fi
 	exec 0<&- 9<&-

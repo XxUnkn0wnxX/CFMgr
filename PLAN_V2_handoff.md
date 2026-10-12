@@ -47,7 +47,31 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current candidate `0851c1c5a5012ddaceaabfa2583aaffda48e7dd7` is pushed and
+- Latest pushed/remote-verified candidate: `31d3c78d0fc0b0891625aeffb9ee59c88c45b284`.
+  [Quick Checks 38249697814](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38249697814)
+  **passed 9 tests in 134.93s**: five deterministic short-child observations,
+  existing supervision and real normal repair. Receipt
+  `.tmp/dependency-repair-quick-pass-2.log`.
+  [Full Checks 38250075180](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38250075180)
+  failed at that same SHA: host/statics passed; BusyBox **16 passed/1 failed,
+  975.40s**. Mixed-root fixture expected retained ownership but cleanup completed;
+  `.tmp/dependency-repair-full-failed-2.log`. No CI job remains active. Its foreign
+  observer starts before view construction but waits only 10s for the later action
+  receipt; loss observer likewise waits only 20s. Parent is tracing that fixture
+  timing against the actual phase, preserving all runtime ownership assertions.
+  `dependency_fixture` owns only `tests/fixtures/dependencies.sh` and
+  `tests/test_dependencies.py`: start observers at the actual task-gate phase,
+  bounded by the product action window; prove readiness/liveness and retain
+  mixed-root/no-signal/loss assertions. Focused local/statics, then quick mixed,
+  loss and installer cases before full CI. No retained-launch implementation yet.
+  Fixture correction is implemented and parent-reviewed; writer released files.
+  Observers start after actual gate creation, wait at most the 120s action window,
+  and record finite phase diagnostics. Mixed actor waits for opkg's explicit test
+  request after selected-tool installation; assertions prove distinct live TIDs,
+  actual foreign/owned roots and no product signals. Local dependency tests
+  **13 passed/11 Linux skips**; affected statics, package/planning checks passed.
+  Runtime code and deadlines are unchanged. Quick mixed/loss/installer proof pending.
+- Previous candidate `0851c1c5a5012ddaceaabfa2583aaffda48e7dd7` is pushed and
   remote-verified. [Quick Checks 38247678272](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38247678272)
   **passed 5 tests in 122.87s**, including real normal opkg repair/cleanup
   (121.74s) and four retirement cases. Verified BusyBox warm preparation took 1s;
@@ -431,6 +455,19 @@ CFMgr writes use admitted guarded paths; normal installed-opkg scripts remain
 enabled. Read checks and cancellation do not promise atomic prevention of fallback
 writes through new aliases those scripts create. Do not restart an enforcement
 redesign or repeat this question; finish implementation and the required proof.
+
+After the repair gate, finish the retained-launch consumer as one coupled package.
+Separate native/JFFS/RAM admission from storage admission so missing `/opt` can be
+reported by a bounded optional native logger; keep ordinary storage-dependent
+callbacks strict. Validate complete setup and a private bounded config snapshot
+before repair. Reuse the audited historical native JSON parser with a current-schema
+consumer; preserve raw unrelated config bytes when replacing the four storage
+observations and advancing generation. No-change means no JFFS write. Require an
+exclusive durable config guard, old-copy preservation, unchanged input, validated
+candidate, guarded rename/flush and verified completion. Reuse current dependency
+inventory/repair/post-probes and FD protocol; no fresh transaction/defaults, feature
+creation or fake auto-resume. Source preparation/design only; no retained code is
+implemented yet and no supporting Goal 4 subgoal credit is awarded.
 
 `dependency_fixture` exclusively owns new `tests/fixtures/dependency_process.c`;
 `prerequisite_inventory` released this file and retains all fixture build/integration

@@ -65,7 +65,7 @@ main goal. Do not start a large target while smaller independent ones remain.
 Once a library, subgoal or shared batch is underway, finish its implementation,
 integration and required focused local/CI validation before moving to another target;
 do not leave it half-finished to chase easier ticks. Name every affected ID, align
-test paths and update checklist/README after validated gates, then advance.
+test paths and update checklist gates and README accepted counts, then advance.
 Award each tick only for its fully proved requirements. Before each package, inspect code,
 tests and ownership; record its Sxx.yy, actual consumer, missing acceptance and
 focused checks in handoff. Start with the requested main goal. If a prerequisite
@@ -333,13 +333,12 @@ goals covering their subgoals, scope points and links to existing guides. Separa
 from available behavior; no helper-based progress, unsupported installer or unearned
 completion. WebUI is optional future work outside scope/checklist/percentage.
 
-Update the README table as each subgoal's focused-test, required CI or acceptance
-gate is validated; do not wait for a whole main goal to update subgoal progress.
-Show in-progress status and accepted subgoals/total, distinguishing fully focused-
-tested subgoals awaiting CI when applicable. Partial packages may remain visibly
-in progress but never increase completed-subgoal counts. Keep rows concise and
-put detailed evidence in the checklist. Mark a main goal complete only after its
-full audit/local/CI checkpoint. Parent verifies worker evidence before these updates.
+Keep README progress cells to accepted subgoals/total (for example, `2/9 accepted`)
+or planned/completed status. Update counts after subgoal acceptance; do not add
+partial focused-test passes, quick diagnostics, pending gates or implementation
+notes. Keep that evidence in the checklist/handoff. A full CI pass may support an
+update but cannot increase counts for incomplete subgoals. Mark a main goal complete
+only after its full audit/local/CI checkpoint and parent review.
 
 Keep `docs/development.md` short throughout implementation: essential required
 tools, setup and built-in check commands only. Do not append progress, test-run
