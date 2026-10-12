@@ -142,7 +142,7 @@ jobs:
       - name: Install bounded guest build tools
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes gcc-arm-linux-gnueabi libc6-dev-armel-cross qemu-system-arm bc bison flex libssl-dev e2fsprogs
+          sudo apt-get install --no-install-recommends --yes gcc-arm-linux-gnueabi libc6-dev-armel-cross qemu-system-arm bc bison flex libssl-dev e2fsprogs libmpc3 libgmp10
 
       - name: Identify immutable build cache keys
         id: fixture

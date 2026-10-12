@@ -17,6 +17,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 import urllib.parse
 import urllib.request
 from functools import lru_cache
@@ -122,6 +123,19 @@ def load_manifest(path: Path = MANIFEST) -> dict[str, Any]:
         toolchain["prefix"] == "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-",
         "kernel compiler prefix mismatch",
     )
+    runtime = toolchain["runtime"]
+    _require(
+        runtime["url"]
+        == "https://archive.debian.org/debian/pool/main/m/mpfr4/libmpfr4_3.1.5-1_amd64.deb"
+        and runtime["package"] == "libmpfr4"
+        and runtime["version"] == "3.1.5-1"
+        and runtime["architecture"] == "amd64"
+        and runtime["library"] == "usr/lib/x86_64-linux-gnu/libmpfr.so.4.1.5"
+        and runtime["soname"] == "libmpfr.so.4",
+        "kernel compiler runtime identity mismatch",
+    )
+    _pin(runtime["sha256"])
+    _pin(runtime["library_sha256"])
     _require(
         manifest["dependency_sets"]
         == {
@@ -182,6 +196,7 @@ def download(
             "mirrors.edge.kernel.org",
             "cdn.kernel.org",
             "bin.entware.net",
+            "archive.debian.org",
         },
     )
     if destination.exists():
@@ -204,6 +219,7 @@ def download(
                     "mirrors.edge.kernel.org",
                     "cdn.kernel.org",
                     "bin.entware.net",
+                    "archive.debian.org",
                 },
             )
             total = 0
@@ -489,7 +505,8 @@ def build_key(
     if kind == "busybox":
         pins["target"] = target
     if toolchain is not None:
-        pins["toolchain"] = toolchain["sha256"]
+        # The archive pins compiler binaries and built-in headers together.
+        pins["toolchain"] = toolchain
     digest = hashlib.sha256(json.dumps(pins, sort_keys=True).encode())
     digest.update(compiler_identity(target))
     digest.update((FIXTURES / (kind + ".config")).read_bytes())
@@ -511,6 +528,15 @@ def build_key(
         digest.update((FIXTURES / "busybox-support/rtconfig.h").read_bytes())
     else:
         digest.update(inspect.getsource(kernel_configuration).encode())
+        digest.update(kernel_runtime_identity())
+        for function in (
+            stage_kernel_runtime,
+            kernel_command,
+            compiler_preflight,
+            verify_elf,
+            ipk_data,
+        ):
+            digest.update(inspect.getsource(function).encode())
     digest.update(str(RECIPE_VERSION).encode())
     return digest.hexdigest()
 
@@ -622,6 +648,89 @@ def verify_elf(path: Path, architecture: str) -> None:
         and int.from_bytes(header[18:20], "little") == expected_machine,
         "executable ABI mismatch",
     )
+
+
+@lru_cache(maxsize=1)
+def kernel_runtime_identity() -> bytes:
+    """Host ABI providers for the pinned legacy compiler, never BusyBox inputs."""
+    return subprocess.check_output(["dpkg-query", "-W", "libmpc3", "libgmp10"])
+
+
+def stage_kernel_runtime(runtime: dict[str, str], downloads: Path, cache: Path) -> Path:
+    archive = download(
+        runtime["url"],
+        runtime["sha256"],
+        downloads / "libmpfr4_3.1.5-1_amd64.deb",
+        limit=MAX_PACKAGE,
+    )
+    root = cache / "toolchain/runtime" / runtime["sha256"]
+    if not root.exists():
+        # Only data.tar.*: no dpkg install or maintainer script execution.
+        extract_tar(ipk_data(archive), root, limit=8 * 1024 * 1024)
+    library = _parents_safe(root, _relative(runtime["library"]))
+    verify_elf(library, "x86_64")
+    _require(
+        int.from_bytes(library.read_bytes()[16:18], "little") == 3,
+        "compiler runtime must be an ELF shared object",
+    )
+    verify_hash(library, runtime["library_sha256"])
+    soname = library.parent / runtime["soname"]
+    _require(
+        soname.is_symlink() and os.readlink(soname) == library.name,
+        "compiler runtime SONAME link mismatch",
+    )
+    _require(
+        {path.name for path in library.parent.iterdir()} == {library.name, soname.name},
+        "unexpected private compiler runtime library",
+    )
+    return library.parent
+
+
+def kernel_command(command: list[str], runtime: Path) -> list[str]:
+    # Replace, rather than append to, ambient paths; never mutate os.environ.
+    return ["env", "LD_LIBRARY_PATH=" + str(runtime.resolve()), *command]
+
+
+def compiler_preflight(compiler: str, runtime: Path, cache: Path) -> None:
+    _require(Path(compiler + "gcc").is_file(), "pinned kernel compiler is absent")
+    version = subprocess.check_output(
+        kernel_command([compiler + "gcc", "-dumpversion"], runtime),
+        text=True,
+        timeout=30,
+    ).strip()
+    _require(version == "4.9.4", "pinned kernel compiler version mismatch")
+    work = cache / "toolchain/preflight"
+    work.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="compile-", dir=work) as directory:
+        root = Path(directory)
+        source = root / "probe.c"
+        object_file = root / "probe.o"
+        source.write_text(
+            "#include <stddef.h>\n"
+            "size_t cfmgr_compiler_probe(size_t value) { return value + 1; }\n"
+        )
+        # -c exercises cc1, the compiler's own headers and the AArch64 assembler.
+        # No target libc, linking, guest execution or expensive kernel build.
+        run(
+            kernel_command(
+                [
+                    compiler + "gcc",
+                    "-O2",
+                    "-ffreestanding",
+                    "-c",
+                    str(source),
+                    "-o",
+                    str(object_file),
+                ],
+                runtime,
+            ),
+            timeout=30,
+        )
+        verify_elf(object_file, "aarch64-3.10")
+        _require(
+            int.from_bytes(object_file.read_bytes()[16:18], "little") == 1,
+            "compiler preflight must produce an ELF relocatable object",
+        )
 
 
 def stage_feeds(manifest: dict[str, Any], downloads: Path, root: Path) -> None:
@@ -807,7 +916,12 @@ def kernel_configuration(version: str) -> dict[str, str]:
 
 
 def build_kernel(
-    kernel: dict[str, Any], compiler: str, downloads: Path, cache: Path, recipe: str
+    kernel: dict[str, Any],
+    compiler: str,
+    downloads: Path,
+    cache: Path,
+    recipe: str,
+    runtime: Path,
 ) -> Path:
     version = kernel["version"]
     output = cache / "kernels" / version / recipe
@@ -832,12 +946,15 @@ def build_kernel(
     build.mkdir(parents=True)
     extract_tar(archive, build / "linux")
     source = build / "linux" / f"linux-{version}"
-    make = [
-        "make",
-        "ARCH=arm64",
-        "CROSS_COMPILE=" + compiler,
-        "HOSTCFLAGS=-O2 -fcommon",
-    ]
+    make = kernel_command(
+        [
+            "make",
+            "ARCH=arm64",
+            "CROSS_COMPILE=" + compiler,
+            "HOSTCFLAGS=-O2 -fcommon",
+        ],
+        runtime,
+    )
     run([*make, "allnoconfig"], cwd=source)
     values = kernel_configuration(version)
     apply_configuration(source / ".config", values)
@@ -1013,11 +1130,8 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
     if not compiler_root.exists():
         extract_tar(compiler_archive, compiler_root)
     compiler = str(compiler_root / manifest["toolchain"]["prefix"])
-    _require(Path(compiler + "gcc").is_file(), "pinned kernel compiler is absent")
-    version = subprocess.check_output(
-        [compiler + "gcc", "-dumpversion"], text=True
-    ).strip()
-    _require(version == "4.9.4", "pinned kernel compiler version mismatch")
+    runtime = stage_kernel_runtime(manifest["toolchain"]["runtime"], downloads, cache)
+    compiler_preflight(compiler, runtime, cache)
     work_root = ROOT / ".tmp/platform-runs"
     work_root.mkdir(parents=True, exist_ok=True)
     for kernel in manifest["kernels"]:
@@ -1028,10 +1142,8 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
         )
         binary = build_busybox(busybox_item, cache)
         recipe = build_key("kernel", kernel, manifest["toolchain"])
-        image = build_kernel(kernel, compiler, downloads, cache, recipe)
+        image = build_kernel(kernel, compiler, downloads, cache, recipe, runtime)
         # New mutable filesystem for every boot; cached immutable inputs only.
-        import tempfile
-
         work = Path(tempfile.mkdtemp(prefix=kernel["version"] + "-", dir=work_root))
         initramfs = prepare_guest(manifest, kernel, binary, downloads, work)
         boot_guest(image, initramfs, kernel, manifest, work)

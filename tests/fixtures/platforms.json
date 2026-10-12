@@ -95,7 +95,17 @@
   "toolchain": {
     "url": "https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/4.9.4/x86_64-gcc-4.9.4-nolibc-aarch64-linux.tar.xz",
     "sha256": "d9037bedbc526ffd2fc03f7a4641f3d9f68dc4a48252192bc088a0e8d997dbcd",
-    "prefix": "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-"
+    "prefix": "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-",
+    "runtime": {
+      "package": "libmpfr4",
+      "version": "3.1.5-1",
+      "architecture": "amd64",
+      "url": "https://archive.debian.org/debian/pool/main/m/mpfr4/libmpfr4_3.1.5-1_amd64.deb",
+      "sha256": "95730a4709b898ffaf677f9b3ab6f6ebef5a96866589a8cf5f775448b3413a98",
+      "library": "usr/lib/x86_64-linux-gnu/libmpfr.so.4.1.5",
+      "library_sha256": "50997740cd2446f7f0ee0f4abbde81cd3f9c040dc895120876dcf30b0ef2d278",
+      "soname": "libmpfr.so.4"
+    }
   },
   "dependency_sets": {
     "shared": [

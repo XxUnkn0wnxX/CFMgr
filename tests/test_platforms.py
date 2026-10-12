@@ -7,7 +7,9 @@ import gzip
 import hashlib
 import io
 import json
+import os
 import re
+import subprocess
 import tarfile
 from pathlib import Path
 
@@ -19,6 +21,13 @@ from tools import test_platforms as platforms
 @pytest.fixture(scope="module")
 def manifest() -> dict:
     return platforms.load_manifest()
+
+
+@pytest.fixture(autouse=True)
+def offline_kernel_runtime_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        platforms, "kernel_runtime_identity", lambda: b"fixed host runtime packages"
+    )
 
 
 def archive_bytes(entries: list[tuple[str, bytes | str, bytes]]) -> bytes:
@@ -48,6 +57,16 @@ def test_manifest_rejects_missing_profile_closure_or_digest(
     wrong_hash = copy.deepcopy(manifest)
     wrong_hash["toolchain"]["sha256"] = "guess"
     cases.append(wrong_hash)
+    for field, value in (
+        ("url", "https://example.com/libmpfr4.deb"),
+        ("architecture", "arm64"),
+        ("soname", "libmpfr.so.6"),
+        ("sha256", "guess"),
+        ("library_sha256", "guess"),
+    ):
+        wrong_runtime = copy.deepcopy(manifest)
+        wrong_runtime["toolchain"]["runtime"][field] = value
+        cases.append(wrong_runtime)
     missing_dependency = copy.deepcopy(manifest)
     missing_dependency["feeds"][0]["packages"].pop()
     cases.append(missing_dependency)
@@ -272,8 +291,234 @@ def test_kernel_cache_key_tracks_build_inputs_without_guest_or_feed_changes(
     toolchain["sha256"] = "0" * 64
     assert platforms.build_key("kernel", kernel, toolchain) != original
     toolchain = manifest["toolchain"]
+    changed_runtime = copy.deepcopy(toolchain)
+    changed_runtime["runtime"]["sha256"] = "0" * 64
+    assert platforms.build_key("kernel", kernel, changed_runtime) != original
     kernel_config.write_text(kernel_config.read_text() + "CONFIG_TEST_DIFFERENT=y\n")
     assert platforms.build_key("kernel", kernel, toolchain) != original
+
+
+def test_kernel_runtime_package_identity_invalidates_only_kernel(
+    manifest: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platforms, "compiler_identity", lambda target="arm": b"gcc")
+    item = manifest["busyboxes"][0]
+    keys = {
+        target: platforms.build_key("busybox", item, target=target)
+        for target in ("arm", "native")
+    }
+    kernel = manifest["kernels"][0]
+    original = platforms.build_key("kernel", kernel, manifest["toolchain"])
+    monkeypatch.setattr(platforms, "kernel_runtime_identity", lambda: b"changed mpc")
+    assert platforms.build_key("kernel", kernel, manifest["toolchain"]) != original
+    for target, key in keys.items():
+        assert platforms.build_key("busybox", item, target=target) == key
+
+
+def test_private_compiler_runtime_is_hash_verified_data_only(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runtime = copy.deepcopy(manifest["toolchain"]["runtime"])
+    library_bytes = bytearray(elf_header(2, 62))
+    library_bytes[16:18] = (3).to_bytes(2, "little")
+    data = archive_bytes(
+        [
+            (runtime["library"], bytes(library_bytes), tarfile.REGTYPE),
+            (
+                "usr/lib/x86_64-linux-gnu/libmpfr.so.4",
+                "libmpfr.so.4.1.5",
+                tarfile.SYMTYPE,
+            ),
+        ]
+    )
+    package_bytes = archive_bytes(
+        [
+            ("data.tar.gz", data, tarfile.REGTYPE),
+            (
+                "control.tar.gz",
+                archive_bytes([("postinst", b"DO NOT RUN", tarfile.REGTYPE)]),
+                tarfile.REGTYPE,
+            ),
+        ]
+    )
+    downloads = tmp_path / "downloads"
+    downloads.mkdir()
+    package = downloads / "libmpfr4_3.1.5-1_amd64.deb"
+    package.write_bytes(package_bytes)
+    runtime["sha256"] = hashlib.sha256(package_bytes).hexdigest()
+    runtime["library_sha256"] = hashlib.sha256(library_bytes).hexdigest()
+
+    def forbidden_network(*args: object, **kwargs: object) -> None:
+        pytest.fail("Private runtime regression attempted a network request")
+
+    monkeypatch.setattr(platforms.urllib.request, "urlopen", forbidden_network)
+    cache = tmp_path / "cache"
+    directory = platforms.stage_kernel_runtime(runtime, downloads, cache)
+    assert (
+        directory
+        == cache / "toolchain/runtime" / runtime["sha256"] / "usr/lib/x86_64-linux-gnu"
+    )
+    root = cache / "toolchain/runtime" / runtime["sha256"]
+    assert not (root / "postinst").exists()
+    assert platforms.stage_kernel_runtime(runtime, downloads, cache) == directory
+    extra = directory / "libgmp.so.10"
+    extra.write_bytes(b"unverified loader input")
+    with pytest.raises(platforms.PlatformError, match="unexpected private"):
+        platforms.stage_kernel_runtime(runtime, downloads, cache)
+    extra.unlink()
+    library = directory / "libmpfr.so.4.1.5"
+    library.write_bytes(bytes(library_bytes) + b"corruption")
+    with pytest.raises(platforms.PlatformError, match="SHA256 mismatch"):
+        platforms.stage_kernel_runtime(runtime, downloads, cache)
+    library.write_bytes(elf_header(1, 40))
+    with pytest.raises(platforms.PlatformError, match="ABI"):
+        platforms.stage_kernel_runtime(runtime, downloads, cache)
+    library.write_bytes(library_bytes)
+    soname = directory / "libmpfr.so.4"
+    soname.unlink()
+    soname.symlink_to("/unrelated/libmpfr.so.6")
+    with pytest.raises(platforms.PlatformError, match="SONAME"):
+        platforms.stage_kernel_runtime(runtime, downloads, cache)
+    package.write_bytes(b"corrupted package")
+    with pytest.raises(platforms.PlatformError, match="SHA256 mismatch"):
+        platforms.stage_kernel_runtime(runtime, downloads, cache)
+    for index, entries in enumerate(
+        (
+            [("control.tar.gz", b"no data", tarfile.REGTYPE)],
+            [
+                (
+                    "data.tar.gz",
+                    archive_bytes([("../escape", b"bad", tarfile.REGTYPE)]),
+                    tarfile.REGTYPE,
+                )
+            ],
+        )
+    ):
+        package.write_bytes(archive_bytes(entries))
+        runtime["sha256"] = hashlib.sha256(package.read_bytes()).hexdigest()
+        with pytest.raises(platforms.PlatformError):
+            platforms.stage_kernel_runtime(
+                runtime, downloads, tmp_path / f"bad-{index}"
+            )
+    assert not (tmp_path / "escape").exists()
+
+
+def test_compiler_preflight_exercises_cc1_headers_and_assembler_with_scoped_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    compiler = str(tmp_path / "aarch64-linux-")
+    Path(compiler + "gcc").touch()
+    runtime = tmp_path / "private runtime"
+    runtime.mkdir()
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/ambient/runtime")
+    commands = []
+
+    def version(command: list[str], **kwargs: object) -> str:
+        commands.append(command)
+        assert kwargs == {"text": True, "timeout": 30}
+        return "4.9.4\n"
+
+    def compile_object(command: list[str], **kwargs: object) -> None:
+        commands.append(command)
+        assert kwargs == {"timeout": 30}
+        assert "-c" in command and "-ffreestanding" in command
+        source = Path(command[command.index("-c") + 1])
+        assert "#include <stddef.h>" in source.read_text()
+        output = Path(command[command.index("-o") + 1])
+        header = bytearray(elf_header(2, 183))
+        header[16:18] = (1).to_bytes(2, "little")
+        output.write_bytes(header)
+
+    monkeypatch.setattr(platforms.subprocess, "check_output", version)
+    monkeypatch.setattr(platforms, "run", compile_object)
+    platforms.compiler_preflight(compiler, runtime, tmp_path / "cache")
+    assert len(commands) == 2
+    for command in commands:
+        assert command[:2] == ["env", "LD_LIBRARY_PATH=" + str(runtime)]
+    assert os.environ["LD_LIBRARY_PATH"] == "/ambient/runtime"
+    assert not list((tmp_path / "cache/toolchain/preflight").iterdir())
+
+    def broken_cc1(command: list[str], **kwargs: object) -> None:
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(platforms, "run", broken_cc1)
+    with pytest.raises(subprocess.CalledProcessError):
+        platforms.compiler_preflight(compiler, runtime, tmp_path / "cache")
+    assert not list((tmp_path / "cache/toolchain/preflight").iterdir())
+
+
+def test_every_kernel_make_phase_has_private_runtime_environment(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platforms, "ROOT", tmp_path)
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/ambient/runtime")
+    kernel = manifest["kernels"][0]
+    version = kernel["version"]
+    runtime = tmp_path / "private runtime"
+    runtime.mkdir()
+    commands = []
+    monkeypatch.setattr(platforms, "download", lambda *args: tmp_path / "archive")
+
+    def stage(source: Path, root: Path) -> None:
+        (root / f"linux-{version}").mkdir(parents=True)
+
+    def make(command: list[str], *, cwd: Path, **kwargs: object) -> None:
+        commands.append(command)
+        if command[-1] == "allnoconfig":
+            (cwd / ".config").write_text("")
+        if command[-1] == "Image":
+            image = cwd / "arch/arm64/boot/Image"
+            image.parent.mkdir(parents=True)
+            image.write_bytes(b"mock kernel image")
+
+    def release(command: list[str], **kwargs: object) -> str:
+        commands.append(command)
+        return version + "\n"
+
+    monkeypatch.setattr(platforms, "extract_tar", stage)
+    monkeypatch.setattr(platforms, "run", make)
+    monkeypatch.setattr(platforms.subprocess, "check_output", release)
+    platforms.build_kernel(
+        kernel,
+        "compiler-",
+        tmp_path / "downloads",
+        tmp_path / "cache",
+        "recipe",
+        runtime,
+    )
+    assert [command[-1] for command in commands] == [
+        "allnoconfig",
+        "olddefconfig",
+        "kernelrelease",
+        "Image",
+    ]
+    for command in commands:
+        assert command[:3] == ["env", "LD_LIBRARY_PATH=" + str(runtime), "make"]
+    assert os.environ["LD_LIBRARY_PATH"] == "/ambient/runtime"
+
+
+def test_platform_execution_stops_at_failed_compiler_preflight(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platforms, "ROOT", tmp_path)
+    monkeypatch.setattr(platforms, "require_linux_host", lambda: None)
+    monkeypatch.setattr(platforms.shutil, "which", lambda tool: tool)
+    monkeypatch.setattr(platforms, "download", lambda *args: tmp_path / "archive")
+    monkeypatch.setattr(platforms, "extract_tar", lambda *args: None)
+    monkeypatch.setattr(platforms, "stage_kernel_runtime", lambda *args: tmp_path)
+
+    def fail_preflight(*args: object) -> None:
+        raise platforms.PlatformError("compiler preflight failed")
+
+    def forbidden_build(*args: object) -> None:
+        pytest.fail("Platform build or boot proceeded after failed compiler preflight")
+
+    monkeypatch.setattr(platforms, "compiler_preflight", fail_preflight)
+    monkeypatch.setattr(platforms, "build_busybox", forbidden_build)
+    monkeypatch.setattr(platforms, "build_kernel", forbidden_build)
+    monkeypatch.setattr(platforms, "boot_guest", forbidden_build)
+    with pytest.raises(platforms.PlatformError, match="compiler preflight failed"):
+        platforms.execute(manifest, "4.1.51")
 
 
 def test_native_compiler_and_cache_identity_are_separate_from_arm(
@@ -380,6 +625,14 @@ def test_native_mode_stages_only_verified_binary_and_refuses_symlinks(
 ) -> None:
     monkeypatch.setattr(platforms, "ROOT", tmp_path)
     monkeypatch.setattr(platforms, "require_linux_host", lambda: None)
+
+    def forbidden_kernel_prerequisite(*args: object) -> None:
+        pytest.fail("Native BusyBox attempted to acquire kernel compiler prerequisites")
+
+    monkeypatch.setattr(
+        platforms, "stage_kernel_runtime", forbidden_kernel_prerequisite
+    )
+    monkeypatch.setattr(platforms, "compiler_preflight", forbidden_kernel_prerequisite)
     checked = []
     monkeypatch.setattr(
         platforms.shutil, "which", lambda tool: checked.append(tool) or tool

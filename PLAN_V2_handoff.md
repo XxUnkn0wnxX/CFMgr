@@ -14,19 +14,23 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and progress
 
-**Paused at the user's explicit request to restart the session.** Start no new
-package until the user resumes. The latest runtime repair is committed/pushed;
-its CI was cancelled for this pause and must be rerun before further implementation.
-Cancellation is verified terminal with no active jobs; all child agents are
-completed. No router session, local test/build or background command remains active.
+**Resumed by the user.** The resumed full CI failed on two fixture prerequisites;
+their reviewed repair is ready for the next authorized push. No new runtime
+package may start before this exact-SHA gate passes. Resume inspection found a
+clean tree at `5853701dfbd5b00e5746f83a2b6da13e8349e94f`, matching origin/develop,
+and no existing child agents. Parent session identity remains the already-recorded
+third ID; this resume does not establish a new ID. No router work is running.
 
 **Active main goal: 2 — installation, prerequisites and supported platforms.**
-Estimated progress toward goal 2: **about 10%**, not an acceptance percentage.
+Goal 2 progress: **0/9 focused-passed subgoals = 0%**. The user replaced the former
+about-10% workload estimate with equal subgoal-based credit. Partial fixture work
+is retained but earns no whole-subgoal credit. AGENTS.md records the new formula;
+focused passes increment it while final CI acceptance remains separate, and 100%
+still requires all main-goal gates.
 Product completion remains **0/16 = 0%**; no subgoal is accepted. Goal 2 is the
 announced prerequisite for the user's requested goal 1: complete independent
 DDNS, tunnel and IP-Sync workflows with original-source parity. Return to goal 1
 when its foundation is ready; announce any further necessary goal switch first.
-The user now requires per-goal percentage updates; the standing rule is in AGENTS.md.
 
 Local implementation, focused checks and matching CI are authorized. The user
 conditionally authorized earlier develop pushes when most substantive subgoal
@@ -43,6 +47,13 @@ paths current. At the main-goal boundary, pass all focused checks, complete the
 audit, pass the full local suite and full exact-SHA CI before final ticks; then
 update/push README, fully refresh this handoff for a new session and **pause**.
 Do not continue to the next main goal after that boundary.
+
+The user reiterated that interim development notes must stay minimal: required
+tooling/setup and built-in check commands only. Parent trimmed development.md to
+that scope; detailed fixture/source/CI progress stays here, with the standing
+documentation boundary recorded in AGENTS.md. The user explicitly authorized its
+separate documentation push: `ae594bf4f44c6bfc34b3eee88997bf644ccc1515`, verified
+equal to origin/develop. That receipt is not runtime CI evidence.
 
 ## Router boundary
 
@@ -102,20 +113,21 @@ No approval question is currently open.
 
 Latest published runtime revision, verified on local/origin develop after push:
 `9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`.
-The documentation-only pause receipt may sit above this revision; its SHA is not
-a runtime-tested revision. Inspect current refs on resume.
+Documentation receipts `5853701` and `ae594bf` sit above this revision; their SHAs
+are not runtime-tested revisions. Inspect current refs on resume.
 Earlier partial checkpoints remain in ancestry: native helper `3e164914`, probe
 correction `6b411736`, platform fixtures `6b91cd8`, policy amendment `b73b9bb`.
-No main branch was recreated. All source/tests, generic BusyBox header/build repair,
-developer notes, Goal 6 amendment and the user's checkpoint/pause rules in AGENTS.md
-are committed/pushed. Only this documentation pause receipt is being finalized;
-there are no uncommitted runtime files or unfinished local tests.
+No main branch was recreated. The next repair changes the platform runner/tests,
+manifest, BusyBox config and workflow, plus this handoff. Parent reviewed all
+returned changes and reran their focused/static gate; actual Linux execution is
+pending the next full CI run.
 
 | Owner | Exclusive scope | Current state |
 | --- | --- | --- |
 | Parent | Planning files, AGENTS.md, docs, integration and final review | Own all accepted requirements and CI gate; inspect every returned change. |
-| probe_compat | No active ownership; returned to parent | Generic BusyBox header/build repair reviewed; focused/static checks passed. Source audit found no further firmware assumptions in selected applets and 271 shared/build files per pin. |
-| ci_wait | No active job | Previous run terminal; latest run cancelled for user pause. Resume monitoring only after an explicitly resumed CI rerun. |
+| kernel_compiler | Returned; no active ownership | Private compiler-runtime package completed and parent-reviewed. |
+| Parent | Platform runner/tests/manifest/workflow and BusyBox config | Integrate verified MPFR4 data, compiler preflight and source-declared BUSYBOX applet; preserve all kernel pins and proof. |
+| ci_resume_wait | Read-only monitoring only; currently completed | Attempt 2 terminal failure confirmed; reusable for the next exact-SHA run. |
 | Other agents | No active ownership | Source/parity/persistence/runtime/probe packages returned. No router work. |
 
 Current S02.04/S02.07–S02.09/S04.03 consumers are developer probes/tests, not a
@@ -138,10 +150,27 @@ before accepting ownership or publishing.
 ## CI gate and local evidence
 
 - [Run 38186542110](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186542110),
-  exact `9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`: cancelled for the user's session
-  restart pause. This is not a pass or a diagnosed failure of the generic-header
-  repair. Rerun its **full workflow**, not only failed jobs, after resume and require
-  all seven jobs green before further runtime implementation.
+  exact `9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`: attempt 1 cancelled for the
+  pause; resumed **attempt 2 failed**. Host/static and planning passed. Native
+  vendor BusyBox compiled and ran 52 tests, but two native-fsync setup cases errored
+  because the minimal config omitted BUSYBOX's --list applet. All four generic
+  kernel jobs were blocked by GCC 4.9.4's missing host libmpfr.so.4 dependency
+  (on 4.19 this also produces secondary Kconfig errors). No kernel boot proof yet.
+  Parent enabled the source-declared BUSYBOX option; the private pinned compiler
+  runtime and actual compilation preflight are implemented and locally reviewed.
+  The user reiterated Ruff and ShellCheck: the focused/full runner retains Ruff
+  check/format, compileall, ShellCheck, shfmt and shell syntax; developer notes now
+  name Ruff explicitly. No required check is bypassed.
+- Current repair on dirty `ae594bf`: parent ran
+  `.venv/bin/python tools/test.py --focused tests/test_platforms.py` — **28 passed,
+  zero skips, 0.27s**; planning/links/privacy, whitespace, Ruff check/format,
+  compileall, Homebrew POSIX syntax, ShellCheck and shfmt passed. Review covered
+  actual consumer/failure paths, private library hash/ABI/link/cache validation,
+  child-scoped compiler environment, compile/header/assembler preflight, native
+  mode isolation, unchanged kernel/compiler source pins and all four workflow
+  jobs. Added tests reuse immutable fixtures and complete serially in under one
+  second; no full local suite or router work. Actual compiler/kernel execution
+  remains CI-only proof.
 - [Run 38186228388](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186228388),
   exact `c8e93c42aaef8216c6cabee2a3c175e74b7552d0`: planning and host/static passed;
   required native BusyBox and all four ARM jobs failed building vendor rm because
@@ -186,7 +215,7 @@ before accepting ownership or publishing.
   executed. Private `.tmp/platform-review/feed-stage-briuimcw/feeds.cpio.gz`.
 - Current host .venv: Python 3.14.0, pytest 9.1.1, Ruff 0.16.10, shfmt 3.7.0.1;
   Homebrew bash 5.3.3 and ShellCheck. No host dependencies installed this session.
-  CI installs its declared tools. Developer docs track the native-builder fix.
+  CI installs its declared tools. Developer docs contain tooling/check commands.
 
 No kernel has successfully built/booted in current CI yet. Exact generic-kernel
 execution, vendor BusyBox and both ARM Entware command sets are required before
@@ -206,6 +235,12 @@ parsing/schedules do not supersede v2.
 `tests/fixtures/platforms.json` owns public pins: upstream ARM64 kernels 4.1.51,
 4.1.52, 4.19.183 and 4.19.294; three distinct vendor BusyBox 1.25.1 source commits;
 GCC 4.9.4 kernel compiler; both aarch64-k3.10 and armv7sf-k3.2 Entware closures.
+The compiler needs legacy host MPFR4. Official Debian Stretch metadata and actual
+package bytes independently verify `libmpfr4` 3.1.5-1 amd64; both package and library
+hashes are pinned in the manifest. Only data is extracted into a private cache;
+no install/maintainer script is run. Its library path is passed only to compiler
+and kernel-make children. CI declares libmpc3/libgmp10; their identities affect
+kernel cache keys. This is build-host support, not a router dependency.
 All 18 selected IPKs per feed were hash-verified (about 11.3 MB compressed total).
 Coreutils payloads use `/opt/libexec/*-coreutils`, flock uses
 `/opt/bin/util-linux-flock`; CI must call real payloads without package scripts.
@@ -254,11 +289,10 @@ setting, package or Cloudflare data was changed.
 
 ## Next actions
 
-1. Wait for the user to resume in the new session. Read the three planning files,
-   current AGENTS.md, Git refs/diff and worker/job state. Preserve this hidden
+1. Resume inspection and CI repair are authorized. Preserve the hidden
    session block; append only a verified actual new parent session ID.
-2. Rerun full Checks workflow 38186542110 at runtime revision `9ab6f62b` using
-   `gh run rerun 38186542110`, then monitor all seven exact-SHA jobs. Fix actual
+2. Commit/push the reviewed platform repair and monitor its full Checks workflow,
+   all seven exact-SHA jobs. Fix actual
    build/boot/command failures within this checkpoint, focused-test, commit/push
    and wait again. No new runtime package before full required CI passes; no full
    local suite solely for this earlier platform checkpoint.
