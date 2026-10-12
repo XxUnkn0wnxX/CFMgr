@@ -127,10 +127,13 @@ def assert_keeper_passed(result: subprocess.CompletedProcess[bytes]) -> None:
 
 
 def test_keeper_fixture_shell_syntax(
-    selected_shell: list[str], keeper_script: str
+    selected_shell: list[str], keeper_script: str, tmp_path: Path
 ) -> None:
+    # Pinned ash evaluates -c strings even with -n; cmdloop honors -n for files.
+    script = tmp_path / "keeper-fixture.sh"
+    script.write_text(keeper_script)
     result = subprocess.run(
-        [*selected_shell, "-n", "-c", keeper_script],
+        [*selected_shell, "-n", str(script)],
         check=False,
         capture_output=True,
         timeout=5,

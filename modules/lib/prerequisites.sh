@@ -8,7 +8,8 @@
 
 cfmgr_prerequisites_identity() {
 	case "$1" in '' | *[!0-9]*) return 1 ;; esac
-	IFS= read -r cfmgr_identity_line <"/proc/$1/stat" || return 1
+	# A task can disappear before open; callers classify absence themselves.
+	IFS= read -r cfmgr_identity_line 2>/dev/null <"/proc/$1/stat" || return 1
 	[ "${cfmgr_identity_line%% *}" = "$1" ] || return 1
 	cfmgr_identity_tail=${cfmgr_identity_line##*) }
 	cfmgr_identity_ifs=$IFS

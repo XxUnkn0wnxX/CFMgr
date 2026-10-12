@@ -77,7 +77,7 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
   corrected before their green runs; retained logs are diagnostic history only.
 - Current keeper combined gate passed: `.venv/bin/python tools/test.py --focused tests/test_mount_keeper.py tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py` — **104 passed, 28 platform skips**, 51.29s, all statics/planning/package checks green on the dirty tree based on `f0f35a0`; `.tmp/mount-keeper-focused.log`. Parent review fixed a fixture literal-quoting warning. Exact focused CI is next; no main-goal/full-suite gate is due. Cost review: prior view CI job 62s; new Linux failure/deadline cases and one fixture applet rebuild are necessary proof, not duplicate full runs.
 - Final fixture review corrected swallowed fixture-definition quoting and an unset CPU-budget value before push. Portable fixture construction/shell syntax now runs despite Linux skips. `tools/test.py --focused tests/test_mount_keeper.py` passed 2/9 skips, 0.26s, including all statics; `.tmp/mount-keeper-fixture-fix-local.log`. Runtime bytes remain those from local `92ad1c1`; both commits will use one focused CI push.
-- No CI or router job is currently active. No router action occurred in this package.
+- Keeper candidate `8b99d0bb62bf115812f625ae401eee17f6593c03` is pushed/remote-verified. [Focused Checks 38215534245](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38215534245) failed vendor checks (126 passed/7 failed); host/static passed. Receipts `.tmp/mount-keeper-ci-failed.{json,log}`. Parent verified three causes: native `ASH_CMDCMD=n` rejects `command -v` (use unconditional `type`); pinned ash ignores `-n` on `-c` (parse a script file); normal vanished-proc identity reads need quiet failure. Rollback fixture now proves the injected bind7 branch was reached. Correction gate `tools/test.py --focused tests/test_mount_keeper.py tests/test_prerequisites.py tests/test_storage_mounts.py`: **29 passed/20 skips**, 5.16s plus statics; `.tmp/mount-keeper-compat-local.log`. Re-push with prerequisite tests added to focused selection; await exact green before implementation. No router action occurred.
 
 ## Ownership and next package
 
@@ -85,8 +85,8 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 | --- | --- | --- |
 | Parent | Three plans, architecture, integration, metadata and CI config | Review mount-reference lifetime and descriptor contracts; add only source-qualified MKNOD fixture applet. No acceptance for a helper alone. |
 | `opkg_supervision_review` analyst | Completed read-only ownership review | Keeper, dynamic roots, mixed threadgroups and numeric-signal evidence limits recorded below; no implementation. |
-| `inventory_ci_wait` awaiter | Completed | Exact corrected CI passed; no job remains active. |
-| `prerequisite_inventory` worker_strong | Completed; files released to parent | Keeper/view implementation and focused tests reviewed; combined local gate passed, Linux proof pending CI. No writer/opkg consumer implemented. |
+| `inventory_ci_wait` awaiter | Completed failed-run monitoring; reuse after repair push | Wait/report only; no active job currently. |
+| `prerequisite_inventory` worker_strong | Completed implementation and bounded review | Files released; parent owns corrected runtime/fixtures and final CI integration. |
 | `next_subgoal_review` explorer | Completed read-only closure map | S02.09 is next independent target. Later linked batch: S02.04/.05/.06/.08, requiring tunnel DNS, confirmed reinstall, saved identity and return-eligibility consumers as well as repair. |
 
 Consumer route: future installed-opkg repair from the existing installer/prerequisite

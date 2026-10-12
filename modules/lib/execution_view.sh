@@ -327,7 +327,8 @@ cfmgr_execution_view_create() {
 	[ -d "$1" ] && [ ! -L "$1" ] && [ -d "$2" ] && [ ! -L "$2" ] || return 2
 	if (: <&4) 2>/dev/null; then return 2; fi
 	if (: <&3) 2>/dev/null; then return 2; fi
-	command -v cfmgr_execution_view_keeper >/dev/null 2>&1 || return 2
+	# Pinned ash includes type, but its optional command builtin is disabled.
+	type cfmgr_execution_view_keeper >/dev/null 2>&1 || return 2
 	cfmgr_storage_attached && [ -n "${cfmgr_storage_uuid_value:-}" ] || return 2
 	case $1 in "$2" | "$2"/*) return 2 ;; esac
 	cfmgr_view_root=$2/view cfmgr_view_guard=$2/guard

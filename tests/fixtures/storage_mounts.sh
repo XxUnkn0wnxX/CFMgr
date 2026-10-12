@@ -28,6 +28,11 @@ esac
 
 fail() {
 	printf 'storage mount fixture: %s\n' "$*" >&2
+	if [ "${view_loaded:-0}" = 1 ]; then
+		printf 'view state=%s pending=%s sequence=%s keeper=%s last=%s\n' \
+			"${cfmgr_view_state:-unset}" "${cfmgr_view_pending:-none}" "${cfmgr_view_sequence:-unset}" \
+			"${cfmgr_keeper_state:-unset}" "${view_last_operation:-unset}" >&2
+	fi
 	exit 1
 }
 
@@ -274,7 +279,10 @@ view_action() {
 	guard-root) "$view_busybox" mount -t tmpfs -o size=64k,mode=700 tmpfs "$1" ;;
 	bind4) "$view_busybox" mount -o bind /proc/self/fd/4 "$1" ;;
 	bind7)
-		[ "$cfmgr_view_test_fault" != partial ] || return 1
+		if [ "$cfmgr_view_test_fault" = partial ]; then
+			printf 'bind7\n' >"$cfmgr_view_context/test-bind7-fault" || return 2
+			return 1
+		fi
 		"$view_busybox" mount -o bind /proc/self/fd/7 "$1"
 		;;
 	private) "$view_busybox" mount -o make-private "$1" ;;
@@ -287,6 +295,7 @@ view_action() {
 }
 
 cfmgr_execution_view_native() {
+	view_last_operation="$1 ${2:-}"
 	# Bounded foreground fixture commands; real production per-operation ownership
 	# supervision remains an explicit integration prerequisite, not this adapter.
 	if (
@@ -546,6 +555,7 @@ view_cleanup)
 	view_prepare
 	cfmgr_view_test_fault=partial
 	if view_create; then fail 'partial bind failure was hidden'; fi
+	[ -f "$cfmgr_view_context/test-bind7-fault" ] || fail 'construction did not reach the injected bind7 failure'
 	[ "$cfmgr_view_state" != ready ] || fail 'partial construction became ready'
 	cfmgr_execution_view_release || fail 'proved partial construction could not clean'
 	cfmgr_view_test_fault=clean
