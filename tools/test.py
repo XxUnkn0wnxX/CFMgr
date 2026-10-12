@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -13,6 +14,111 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VENV_BIN = ROOT / ".venv" / "bin"
+FOCUSED_TRAILER = "CFMgr-Focused-Tests:"
+
+
+def validate_focused_paths(paths: str, *, root: Path | None = None) -> list[str]:
+    """Validate a space-separated list of existing root test modules."""
+    root = ROOT if root is None else root
+    if (
+        not paths
+        or re.fullmatch(
+            r"tests/test_[A-Za-z0-9_]+\.py(?: tests/test_[A-Za-z0-9_]+\.py){0,15}",
+            paths,
+            re.ASCII,
+        )
+        is None
+    ):
+        raise ValueError("expected 1 to 16 space-separated tests/test_NAME.py paths")
+    selected = paths.split(" ")
+    if len(set(selected)) != len(selected):
+        raise ValueError("focused test paths must be distinct")
+    if (root / "tests").is_symlink():
+        raise ValueError("tests directory must not be a symlink")
+    for relative in selected:
+        candidate = root / relative
+        if candidate.is_symlink() or not candidate.is_file():
+            raise ValueError(f"focused test path is not a regular file: {relative}")
+    return selected
+
+
+def focused_selection(
+    event_name: str, commit_message: str, *, root: Path | None = None
+) -> tuple[str, list[str]]:
+    """Return a validated workflow mode and selection from the push trailer."""
+    if event_name != "push":
+        return "full", []
+
+    lines = commit_message.splitlines()
+    trailer_lines = [
+        (index, line)
+        for index, line in enumerate(lines)
+        if re.match(r"^\s*CFMgr-Focused-Tests(?:\b|$)", line)
+    ]
+    if not trailer_lines:
+        return "full", []
+    if len(trailer_lines) != 1:
+        raise ValueError("exactly one CFMgr-Focused-Tests trailer is allowed")
+
+    index, line = trailer_lines[0]
+    nonempty = [position for position, value in enumerate(lines) if value.strip()]
+    if not line.startswith(FOCUSED_TRAILER) or not nonempty or index != nonempty[-1]:
+        raise ValueError("CFMgr-Focused-Tests must be the final nonempty trailer line")
+    value = line[len(FOCUSED_TRAILER) :]
+    if not value.startswith(" "):
+        raise ValueError("CFMgr-Focused-Tests requires a space before its paths")
+    value = value[1:]
+    try:
+        paths = validate_focused_paths(value, root=root)
+    except ValueError as error:
+        raise ValueError(f"invalid CFMgr-Focused-Tests selection: {error}") from error
+    return "focused", paths
+
+
+def validate_local_targets(
+    targets: list[str], *, root: Path | None = None
+) -> list[str]:
+    """Validate local pytest files or directories confined to tests/."""
+    root = ROOT if root is None else root
+    tests_root = root / "tests"
+    if tests_root.is_symlink() or not tests_root.is_dir():
+        raise ValueError("tests directory must be a regular directory")
+    if not targets or any(not target for target in targets):
+        raise ValueError("focused selection cannot be empty")
+    if len(set(targets)) != len(targets):
+        raise ValueError("focused targets must be distinct")
+
+    resolved_tests = tests_root.resolve()
+    validated: list[str] = []
+    for target in targets:
+        relative = Path(target)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"focused target must stay within tests/: {target}")
+        candidate = root / relative
+        current = root
+        has_symlink_component = False
+        for part in relative.parts:
+            current = current / part
+            if current.is_symlink():
+                has_symlink_component = True
+                break
+        if has_symlink_component:
+            raise ValueError(f"focused target cannot use symlinks: {target}")
+        try:
+            candidate.resolve().relative_to(resolved_tests)
+        except (OSError, ValueError) as error:
+            raise ValueError(
+                f"focused target must stay within tests/: {target}"
+            ) from error
+        if candidate.is_file():
+            if candidate.suffix != ".py" or not candidate.name.startswith("test_"):
+                raise ValueError(f"focused file must be a test module: {target}")
+        elif not candidate.is_dir():
+            raise ValueError(
+                f"focused target is not an existing test file/directory: {target}"
+            )
+        validated.append(relative.as_posix())
+    return validated
 
 
 def _tool(name: str) -> str | None:
@@ -116,10 +222,9 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--focused",
-        nargs="?",
-        const="tests",
+        nargs="*",
         metavar="PATH",
-        help="run one test path (default: tests) instead of the full suite",
+        help="run selected test paths (bare --focused selects tests/)",
     )
     parser.add_argument(
         "-k",
@@ -130,7 +235,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--require-busybox",
         action="store_true",
-        help="require BusyBox ash and run the full suite; missing proof fails",
+        help="require BusyBox ash and run the selected suite; missing proof fails",
     )
     return parser.parse_args()
 
@@ -149,13 +254,13 @@ def main() -> int:
         )
         return 2
 
-    if args.require_busybox and (args.focused is not None or args.keyword):
-        print(
-            "ERROR: --require-busybox runs the full suite; do not combine it with "
-            "--focused or -k.",
-            file=sys.stderr,
-        )
-        return 2
+    focused_paths: list[str] | None = None
+    if args.focused is not None:
+        try:
+            focused_paths = validate_local_targets(args.focused) if args.focused else []
+        except ValueError as error:
+            print(f"ERROR: invalid focused selection: {error}", file=sys.stderr)
+            return 2
 
     try:
         selected_shell = (
@@ -167,11 +272,12 @@ def main() -> int:
         print(f"ERROR: {error}", file=sys.stderr)
         return 2
 
-    if args.require_busybox:
+    full_suite = not focused_paths or (focused_paths == ["tests"] and not args.keyword)
+    if args.require_busybox and full_suite:
         storage_tests = ROOT / "tests" / "test_storage.py"
-        if not storage_tests.is_file():
+        if storage_tests.is_symlink() or not storage_tests.is_file():
             print(
-                "ERROR: BusyBox proof requires tests/test_storage.py.",
+                "ERROR: full BusyBox proof requires tests/test_storage.py.",
                 file=sys.stderr,
             )
             return 2
@@ -213,10 +319,11 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    test_target = str(ROOT / args.focused) if args.focused else str(ROOT / "tests")
-    if not Path(test_target).exists():
-        print(f"ERROR: test target does not exist: {test_target}", file=sys.stderr)
-        return 2
+    test_targets = (
+        [str(ROOT / path) for path in focused_paths]
+        if focused_paths
+        else [str(ROOT / "tests")]
+    )
     command = [
         sys.executable,
         "-m",
@@ -228,7 +335,7 @@ def main() -> int:
     ]
     if args.keyword:
         command.extend(("-k", args.keyword))
-    command.append(test_target)
+    command.extend(test_targets)
     return _run(command, env=env)
 
 

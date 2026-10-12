@@ -388,7 +388,7 @@ cfmgr_prerequisites_attachment_ok() {
 # Storage identity fields are supplied by the explicit storage library.
 # shellcheck disable=SC2154
 cfmgr_bootstrap_admit_tool() {
-	[ "$#" -eq 1 ] && [ -f "$1" ] && [ -x "$1" ] || return 1
+	[ "$#" -eq 1 ] && [ -f "$1" ] || return 1
 	cfmgr_install_resolved=$("$cfmgr_install_readlink" -f "$1") || return 1
 	cfmgr_bootstrap_path "$cfmgr_install_resolved" || return 1
 	case $cfmgr_install_resolved in "$cfmgr_storage_opt"/*) ;; *) return 1 ;; esac
@@ -400,6 +400,21 @@ cfmgr_bootstrap_admit_tool() {
 		[ "$cfmgr_install_resolved" != "$cfmgr_storage_opt" ] || break
 		cfmgr_install_resolved=${cfmgr_install_resolved%/*}
 	done
+}
+
+# Fixed prerequisite admission defers optional tools until their consumer needs
+# them. Missing safe tools are repair candidates; unsafe paths are fatal.
+cfmgr_prerequisites_admit_tool() {
+	[ "$#" -eq 1 ] || return 2
+	case "$1" in /opt/bin/jq | /opt/bin/timeout | /opt/bin/sha256sum | /opt/bin/flock | /opt/bin/dig) ;; *) return 2 ;; esac
+	[ -e "$1" ] || [ -L "$1" ] || return 1
+	if cfmgr_bootstrap_admit_tool "$1"; then
+		[ -x "$1" ] || return 1
+	else
+		cfmgr_install_admission_status=$?
+		[ "$cfmgr_install_admission_status" -ne 3 ] || return 3
+		return 2
+	fi
 }
 
 # Remove only the FD-pinned private, flat RAM context after all owned children
@@ -503,12 +518,9 @@ cfmgr_bootstrap_native_work() {
 	for cfmgr_install_admit_path in "$cfmgr_storage_opt" "$cfmgr_storage_opt/bin" "$cfmgr_storage_opt/lib"; do
 		cfmgr_bootstrap_metadata "$cfmgr_install_admit_path" 0 protected || return $?
 	done
-	cfmgr_bootstrap_admit_tool /opt/bin/jq && cfmgr_bootstrap_admit_tool /opt/bin/timeout && cfmgr_bootstrap_admit_tool /opt/bin/sha256sum || return $?
-	cfmgr_install_native_flock=/usr/bin/flock cfmgr_install_entware_flock=-
-	if [ -x /opt/bin/flock ]; then
-		cfmgr_bootstrap_admit_tool /opt/bin/flock || return $?
-		cfmgr_install_entware_flock=/opt/bin/flock
-	fi
+	# Entware admission belongs to the fixed prerequisite callback. A healthy
+	# native flock never inspects an unused optional Entware executable.
+	cfmgr_install_native_flock=/usr/bin/flock cfmgr_install_entware_flock=/opt/bin/flock
 	if [ ! -f /usr/bin/flock ] || [ ! -x /usr/bin/flock ]; then cfmgr_install_native_flock=-; fi
 	cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown || return $?
 	# Flock probes have released FD4/5. Keep the context off stdin before

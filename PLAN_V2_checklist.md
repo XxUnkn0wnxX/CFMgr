@@ -160,6 +160,18 @@ snapshot's root catalog and manifest. No package config/setup-guard payload is
 accepted. Trusted-local fresh installation and its generated private defaults
 are distinct from still-required remote acquisition/update-source proof.
 
+S02.04/S02.05 partial foundation: the installer now obtains an ordered inventory
+of ordinary missing/unusable shared packages, checks native flock before admitting
+an Entware fallback, and aborts unsafe admission, absent native supervision or
+unresolved ownership. No opkg writer or live tunnel DNS consumer is implemented.
+Parent reviewed the actual installer/check callback, failure propagation and FD
+cleanup; regenerated package metadata. On the dirty tree based on `4a50dd0`,
+`.venv/bin/python tools/test.py --focused tests/test_prerequisites.py tests/test_install.py tests/test_dev_runners.py`
+passed **62 tests, 4 Linux-only skips**, 31.26s, plus all planning/package/static
+gates. The four skipped process/FD/locking cases require exact focused CI; this
+package earns no complete-subgoal box. Focused CI routing is tested separately
+from product behavior and preserves the full main-goal gate.
+
 ### 3. Configuration, menus and status
 
 | Status | Focused local | ID | Subgoal and required result |

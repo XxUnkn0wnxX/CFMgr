@@ -106,18 +106,41 @@ def test_runner_refuses_ambient_pytest_options_before_execution(
     assert "PYTEST_ADDOPTS must be empty" in capsys.readouterr().err
 
 
-def test_runner_refuses_focused_busybox_combination_before_execution(
-    monkeypatch: pytest.MonkeyPatch, capsys
+def test_runner_passes_multiple_focused_paths_to_required_busybox(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     commands, _ = _capture_runner(monkeypatch)
     monkeypatch.setattr(
         sys,
         "argv",
-        ["tools/test.py", "--focused", "tests/test_storage.py", "--require-busybox"],
+        [
+            "tools/test.py",
+            "--focused",
+            "tests/test_install.py",
+            "tests/test_prerequisites.py",
+            "--require-busybox",
+        ],
+    )
+    assert runner.main() == 0
+    pytest_command, pytest_env = commands[-1]
+    assert pytest_command[-2:] == [
+        str(runner.ROOT / "tests/test_install.py"),
+        str(runner.ROOT / "tests/test_prerequisites.py"),
+    ]
+    assert pytest_env is not None
+    assert pytest_env["CFMGR_REQUIRE_BUSYBOX"] == "1"
+
+
+def test_runner_rejects_invalid_focused_paths_before_checks(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    commands, _ = _capture_runner(monkeypatch)
+    monkeypatch.setattr(
+        sys, "argv", ["tools/test.py", "--focused", "tests/test_x.py;unsafe"]
     )
     assert runner.main() == 2
     assert commands == []
-    assert "do not combine" in capsys.readouterr().err
+    assert "invalid focused selection" in capsys.readouterr().err
 
 
 def test_runner_stops_after_a_failed_static_gate(
@@ -137,6 +160,46 @@ def test_runner_stops_after_a_failed_static_gate(
     monkeypatch.setattr(runner, "_static_checks", lambda shell: 7)
     assert runner.main() == 7
     assert not any("pytest" in command for command in commands)
+
+
+def test_runner_default_keeps_full_tests_directory_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands, _ = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py"])
+    assert runner.main() == 0
+    assert commands[-1][0][-1] == str(runner.ROOT / "tests")
+
+
+def test_runner_explicit_tests_directory_retains_keyword_filter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_sample.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    commands, _ = _capture_runner(monkeypatch)
+    monkeypatch.setattr(
+        sys, "argv", ["tools/test.py", "--focused", "tests", "-k", "sample"]
+    )
+    assert runner.main() == 0
+    command = commands[-1][0]
+    assert command[command.index("-k") : command.index("-k") + 2] == ["-k", "sample"]
+    assert command[-1] == str(tests)
+
+
+def test_runner_full_busybox_requires_storage_suite_before_checks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_sample.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    commands, _ = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--require-busybox"])
+    assert runner.main() == 2
+    assert commands == []
+    assert "requires tests/test_storage.py" in capsys.readouterr().err
 
 
 def test_runner_package_check_fails_before_static_checks_and_pytest(
@@ -195,6 +258,88 @@ def test_runner_passes_focused_path_and_keyword_to_pytest(
     assert pytest_command[-1] == str(runner.ROOT / "tests/test_router_probe.py")
     assert pytest_env is not None
     assert pytest_env["CFMGR_TEST_SHELL"] == "/bin/test-shell --posix"
+
+
+def test_runner_bare_focused_keeps_tests_directory_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands, _ = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--focused"])
+    assert runner.main() == 0
+    assert commands[-1][0][-1] == str(runner.ROOT / "tests")
+
+
+def test_focused_workflow_selection_defaults_to_full_and_ignores_pull_request_trailer(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_sample.py").write_text("", encoding="utf-8")
+    trailer = "CFMgr-Focused-Tests: tests/test_sample.py"
+    assert runner.focused_selection("push", "ordinary commit") == ("full", [])
+    assert runner.focused_selection("pull_request", trailer, root=tmp_path) == (
+        "full",
+        [],
+    )
+    assert runner.focused_selection("push", trailer, root=tmp_path) == (
+        "focused",
+        ["tests/test_sample.py"],
+    )
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "CFMgr-Focused-Tests:",
+        "CFMgr-Focused-Tests: tests/test_sample.py\nextra text",
+        (
+            "CFMgr-Focused-Tests: tests/test_sample.py\n"
+            "CFMgr-Focused-Tests: tests/test_sample.py"
+        ),
+        "CFMgr-Focused-Tests: tests/test_sample.py; echo unsafe",
+        "CFMgr-Focused-Tests: tests/../tests/test_sample.py",
+        "CFMgr-Focused-Tests: tests/test_missing.py",
+    ],
+)
+def test_focused_workflow_selection_rejects_malformed_trailers(
+    tmp_path: Path, message: str
+) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_sample.py").write_text("", encoding="utf-8")
+    with pytest.raises(ValueError):
+        runner.focused_selection("push", message, root=tmp_path)
+
+
+def test_focused_workflow_selection_rejects_duplicate_and_symlink_paths(
+    tmp_path: Path,
+) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    sample = tests / "test_sample.py"
+    sample.write_text("", encoding="utf-8")
+    with pytest.raises(ValueError, match="distinct"):
+        runner.validate_focused_paths(
+            "tests/test_sample.py tests/test_sample.py", root=tmp_path
+        )
+    link = tests / "test_link.py"
+    link.symlink_to(sample)
+    with pytest.raises(ValueError, match="regular file"):
+        runner.validate_focused_paths("tests/test_link.py", root=tmp_path)
+
+
+def test_focused_workflow_selection_rejects_empty_or_oversized_lists(
+    tmp_path: Path,
+) -> None:
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    paths = []
+    for index in range(17):
+        name = f"tests/test_case_{index}.py"
+        (tmp_path / name).write_text("", encoding="utf-8")
+        paths.append(name)
+    with pytest.raises(ValueError):
+        runner.validate_focused_paths("", root=tmp_path)
+    with pytest.raises(ValueError, match="1 to 16"):
+        runner.validate_focused_paths(" ".join(paths), root=tmp_path)
 
 
 def test_runner_selects_full_busybox_suite_without_executing_it(

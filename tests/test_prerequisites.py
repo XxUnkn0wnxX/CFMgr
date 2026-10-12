@@ -283,7 +283,7 @@ def test_linux_supervisor_and_real_flock_capabilities(
     executable = "/bin/sh" if REQUIRE_BUSYBOX else shell[0]
     result = invoke(
         shell,
-        '. "$1"; shift; cfmgr_prerequisites_attachment_ok() { return 0; }; cfmgr_prerequisites_check shared "$@" - unknown || exit $?; printf "%s\\n" "$cfmgr_prereq_flock_provider"; [ "$cfmgr_prereq_result" = capabilities-checked ] && [ "$cfmgr_prereq_dns" = not-required ] && ! (: <&4) 2>/dev/null && ! (: <&5) 2>/dev/null',
+        '. "$1"; shift; cfmgr_prerequisites_attachment_ok() { return 0; }; cfmgr_prerequisites_admit_tool() { [ "$1" != /fixture/unsafe ] || return 2; [ -f "$1" ] && [ -x "$1" ]; }; cfmgr_prerequisites_check shared "$@" /fixture/unsafe unknown || exit $?; printf "%s\\n" "$cfmgr_prereq_flock_provider"; [ "$cfmgr_prereq_result" = capabilities-checked ] && [ -z "$cfmgr_prereq_missing" ] && [ "$cfmgr_prereq_dns" = not-required ] && ! (: <&4) 2>/dev/null && ! (: <&5) 2>/dev/null',
         tmp_path,
         executable,
         PROBE,
@@ -295,7 +295,7 @@ def test_linux_supervisor_and_real_flock_capabilities(
         tools["jq"],
         tools["timeout"],
         tools["sha"],
-        tools["flock"],
+        "/fixture/unsafe" if native_usable else tools["flock"],
         pause=True,
     )
     provider = b"native\n" if native_usable else b"entware\n"
@@ -341,3 +341,238 @@ def test_linux_supervisor_bounds_output_and_denies_detached_launch(
     assert 0 < (attached / "jq-good.out").stat().st_size <= 8192
     assert (attached / "jq-good.err").stat().st_size <= 8192
     assert list(detached.iterdir()) == []
+
+
+# This private workstation adapter proves inventory/control flow with actual fixed
+# jq/timeout/sha probes. Flock outcomes are finite fixtures; Linux tests above
+# retain real lock, process identity, ownership and bounded supervision proof.
+HOST_INVENTORY = r"""
+. "$1"
+shift
+cfmgr_test_context=$2
+cfmgr_test_admitted=''
+cfmgr_test_probed=''
+cfmgr_prerequisites_attachment_ok() { [ "$cfmgr_test_fault" != detached ]; }
+cfmgr_prerequisites_supervisor() { [ "$cfmgr_test_fault" != no-supervisor ] || return 2; }
+cfmgr_prerequisites_admit_tool() {
+    cfmgr_test_admitted="${cfmgr_test_admitted:+$cfmgr_test_admitted }$1"
+    [ "$1" != /fixture/unsafe ] || return 2
+    [ -f "$1" ] && [ -x "$1" ]
+}
+cfmgr_prerequisites_run() {
+    cfmgr_test_probed="${cfmgr_test_probed:+$cfmgr_test_probed }$1"
+    cfmgr_probe_reason=''
+    cfmgr_probe_status=reaped
+    cfmgr_probe_pid=''
+    if [ "$cfmgr_test_fault:$1" = ownership-flock:flock-first ]; then
+        cfmgr_probe_status=unresolved; cfmgr_probe_pid=123; return 3
+    fi
+    if [ "$1" = jq-good ]; then
+        case "$cfmgr_test_fault" in
+            ownership) cfmgr_probe_status=unresolved; cfmgr_probe_pid=123; return 3 ;;
+            attachment) cfmgr_probe_reason=attachment; return 1 ;;
+            unsupported) cfmgr_probe_reason=native-supervisor; return 2 ;;
+        esac
+    fi
+    cfmgr_probe_stdout=$2/$1.out
+    cfmgr_probe_stderr=$2/$1.err
+    (umask 077; set -C; : > "$cfmgr_probe_stdout" && : > "$cfmgr_probe_stderr") || return 2
+    case "$1" in
+        flock-*)
+            case "$1:$9" in
+                flock-first:*/false) cfmgr_probe_exit=1 ;;
+                flock-compete:*|flock-entware-compete:*) cfmgr_probe_exit=1 ;;
+                *) cfmgr_probe_exit=0 ;;
+            esac
+            ;;
+        *)
+            cfmgr_test_mode=$1 cfmgr_test_context=$2 cfmgr_test_sh=$3
+            cfmgr_test_probe=$4 cfmgr_test_env=$5 cfmgr_test_sleep=$7 cfmgr_test_tool=$9
+            case "$cfmgr_test_mode" in
+                timeout-exit) set -- "$cfmgr_test_sh" "$cfmgr_test_probe" ;;
+                timeout-expiry) set -- "$cfmgr_test_sh" "$cfmgr_test_probe" "$cfmgr_test_sleep" ;;
+                *) set -- ;;
+            esac
+            "$cfmgr_test_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= \
+                "$cfmgr_test_sh" "$cfmgr_test_probe" "$cfmgr_test_mode" "$cfmgr_test_tool" "$cfmgr_test_context" "$@" \
+                > "$cfmgr_probe_stdout" 2> "$cfmgr_probe_stderr"
+            cfmgr_probe_exit=$?
+            ;;
+    esac
+    return 0
+}
+cfmgr_prerequisites_check "$@"
+cfmgr_test_code=$?
+printf '%s\n' "$cfmgr_test_code" "$cfmgr_prereq_missing" "$cfmgr_prereq_flock_provider" \
+    "$cfmgr_prereq_dns" "$cfmgr_test_admitted" "$cfmgr_test_probed"
+[ "$cfmgr_test_code" != 3 ] || [ "$cfmgr_probe_status" = unresolved ] || exit 94
+! (: <&4) 2>/dev/null && ! (: <&5) 2>/dev/null || exit 95
+"""
+
+
+def inventory(
+    shell: list[str],
+    tools: dict[str, str],
+    context: Path,
+    *,
+    scope: str = "shared",
+    native: str = "/usr/bin/true",
+    fallback: str = "/fixture/unsafe",
+    jq: str | None = None,
+    timeout: str | None = None,
+    sha: str | None = None,
+    dig: str = "/fixture/unsafe",
+    fault: str = "clean",
+    recheck: bool = False,
+) -> list[str]:
+    # The shell executable is resolved, just as the real installer fixtures do.
+    executable = "/bin/sh" if REQUIRE_BUSYBOX else shell[0]
+    result = invoke(
+        shell,
+        f"cfmgr_test_fault={shlex.quote(fault)}; " + HOST_INVENTORY,
+        scope,
+        context,
+        executable,
+        PROBE,
+        tools["env"],
+        tools["awk"],
+        tools["sleep"],
+        tools["wc"],
+        native,
+        tools["jq"] if jq is None else jq,
+        tools["timeout"] if timeout is None else timeout,
+        tools["sha"] if sha is None else sha,
+        fallback,
+        dig,
+        "unknown",
+    )
+    assert result.returncode == 0
+    if recheck:
+        assert b"cannot overwrite existing file" in result.stderr
+    else:
+        assert result.stderr == b""
+    return result.stdout.decode().splitlines()
+
+
+def test_inventory_healthy_native_ignores_unsafe_optional_flock_and_dns(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    result = inventory(shell, tools, tmp_path)
+    assert result[:4] == ["0", "", "native", "not-required"]
+    assert result[4].split() == [tools["jq"], tools["timeout"], tools["sha"]]
+    assert "flock-entware-first" not in result[5] and "dig-version" not in result[5]
+
+
+def test_inventory_collects_missing_abi_and_incorrect_behavior_together(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    abi_failure = tmp_path / "unusable ABI jq"
+    abi_failure.write_text("#!/missing/loader\n")
+    abi_failure.chmod(0o700)
+    result = inventory(
+        shell,
+        tools,
+        tmp_path,
+        native="-",
+        fallback="-",
+        jq=str(abi_failure),
+        timeout="-",
+        sha="/usr/bin/true",
+    )
+    assert result[:4] == [
+        "1",
+        "jq coreutils-timeout coreutils-sha256sum flock",
+        "none",
+        "not-required",
+    ]
+    assert result[5].split() == ["jq-good", "sha-bytes", "wc-sha"]
+
+
+def test_inventory_native_failure_admits_fallback_only_when_needed(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    result = inventory(
+        shell, tools, tmp_path, native="/usr/bin/false", fallback="/usr/bin/true"
+    )
+    assert result[:4] == ["0", "", "entware", "not-required"]
+    assert result[4].split()[-1] == "/usr/bin/true"
+    assert result[5].split()[-5:] == [
+        "flock-entware-first",
+        "flock-entware-compete",
+        "flock-entware-release",
+        "flock-entware-after",
+        "flock-entware-finish",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("fault", "code"),
+    [("attachment", "2"), ("ownership", "3"), ("unsupported", "2")],
+)
+def test_inventory_fatal_probe_stops_before_later_capabilities(
+    shell: list[str], tools: dict[str, str], tmp_path: Path, fault: str, code: str
+) -> None:
+    result = inventory(shell, tools, tmp_path, fault=fault)
+    assert result[:4] == [code, "", "none", "not-required"]
+    assert result[4].split() == [tools["jq"]]
+    assert result[5].split() == ["jq-good"]
+
+
+def test_inventory_fatal_admission_and_attachment_do_not_become_missing(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    unsafe = tmp_path / "unsafe"
+    detached = tmp_path / "detached"
+    unsafe.mkdir()
+    detached.mkdir()
+    result = inventory(shell, tools, unsafe, jq="/fixture/unsafe")
+    assert result == ["2", "", "none", "not-required", "/fixture/unsafe", ""]
+    result = inventory(shell, tools, detached, fault="detached")
+    assert result == ["2", "", "none", "not-required", "", ""]
+    assert list(detached.iterdir()) == []
+
+
+def test_inventory_tunnel_alone_reports_missing_dig_and_preserves_recheck_evidence(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    result = inventory(shell, tools, tmp_path, scope="tunnel", dig="-")
+    assert result[:4] == ["1", "bind-dig", "native", "unusable"]
+    evidence = {entry.name: entry.read_bytes() for entry in tmp_path.iterdir()}
+    # A recheck requires a fresh context. Reusing one fails before replacing any
+    # capability evidence and does not delete the first check's private files.
+    result = inventory(shell, tools, tmp_path, recheck=True)
+    assert result[:4] == ["2", "", "none", "not-required"]
+    assert evidence == {entry.name: entry.read_bytes() for entry in tmp_path.iterdir()}
+
+
+def test_inventory_fatal_flock_closes_descriptors_without_admitting_fallback(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    result = inventory(shell, tools, tmp_path, fault="ownership-flock")
+    assert result[:4] == ["3", "", "none", "not-required"]
+    assert result[4].split() == [tools["jq"], tools["timeout"], tools["sha"]]
+    assert result[5].split()[-1] == "flock-first"
+
+
+def test_inventory_fatal_required_fallback_and_absent_supervisor(
+    shell: list[str], tools: dict[str, str], tmp_path: Path
+) -> None:
+    fallback = tmp_path / "fallback"
+    unsupported = tmp_path / "unsupported"
+    fallback.mkdir()
+    unsupported.mkdir()
+    result = inventory(shell, tools, fallback, native="/usr/bin/false")
+    assert result[:4] == ["2", "", "none", "not-required"]
+    assert result[4].split()[-1] == "/fixture/unsafe"
+    result = inventory(
+        shell,
+        tools,
+        unsupported,
+        native="-",
+        jq="-",
+        timeout="-",
+        sha="-",
+        fault="no-supervisor",
+    )
+    assert result == ["2", "", "none", "not-required", "", ""]
+    assert list(unsupported.iterdir()) == []

@@ -24,12 +24,16 @@ the main-goal gate:
 ```zsh
 .venv/bin/python tools/test.py --focused tests/test_storage.py
 .venv/bin/python tools/test.py --focused tests/test_platforms.py
+.venv/bin/python tools/test.py --focused tests/test_install.py tests/test_prerequisites.py
 .venv/bin/python tools/test.py
 ```
 
 Every test invocation also runs **Ruff lint/format checks, Python compilation,
 shell syntax, ShellCheck, shfmt, package metadata, planning/link and whitespace checks**.
-Optional `-k` narrows focused pytest selection; keep `PYTEST_ADDOPTS` empty.
+Bare `--focused` selects `tests/`; otherwise it accepts existing test files or
+directories under `tests/`, including `--focused tests -k expression` for a
+keyword-filtered run. Add `--require-busybox` to run that same selection with
+required BusyBox ash evidence. Keep `PYTEST_ADDOPTS` empty.
 For documentation-only changes:
 
 ```zsh
@@ -44,8 +48,19 @@ Use `--output PATH` to build a package in an absent or empty directory.
 ## CI and optional platform diagnostics
 
 The required [Checks workflow](../.github/workflows/checks.yml) uses one Ubuntu
-24.04 runner for planning consistency, the full host suite, a cached native
-vendor BusyBox build, and the full suite under BusyBox ash. These are approximate
+24.04 runner for planning consistency, a cached native vendor BusyBox build, and
+the selected suite under both the host shell and BusyBox ash. Develop pushes run
+the full suite unless the final nonempty commit-message line is a valid
+`CFMgr-Focused-Tests:` trailer with one to 16 distinct existing test paths, for
+example:
+
+```text
+CFMgr-Focused-Tests: tests/test_prerequisites.py tests/test_install.py
+```
+
+Pull requests always run the full suite. Missing trailers select the full suite;
+malformed or misplaced trailers fail the workflow. Focused routing still runs the
+planning, package, static and required BusyBox checks. These are approximate
 integration and shell-compatibility checks; they do not establish Merlin firmware,
 kernel, flash, hook, or true-beta router behavior. Router acceptance is deferred
 until implementation is complete. CI reuses validated Python tools, APT download

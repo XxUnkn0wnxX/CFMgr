@@ -15,12 +15,14 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Working rules](AGENTS.md)
 
-## Paused checkpoint: S03.01 accepted
+## Active work: complete one main goal, then pause
 
-The requested one-further-subgoal boundary is reached. **S03.01 passive fresh
-state is accepted. Pause now; do not start another package without resume.**
-For this session, the user wants a pause after every accepted subgoal until they
-say otherwise. The standing rule remains to pause after each completed main goal.
+The user resumed work and revoked this session's subgoal-pause override. Continue
+through foundations/subgoals until one whole main goal completes its audit, full
+local, exact full CI, acceptance/README and handoff gates; then pause under normal
+rules. S03.01 remains accepted. Current focus returns to **Goal 2**, the installation
+and dependency foundations needed by original Goal 1. Cross-goal prerequisites
+remain authorized; they earn only their own verified progress.
 
 The user explicitly permits subgoals from different main goals in any dependency-
 appropriate order: **build foundations and prerequisites first, then the workflows
@@ -37,22 +39,47 @@ focused CI, wait for its exact-SHA result and then resume/pause as agreed. This 
 recorded in AGENTS.md and the checklist; it replaces the older early-push full-CI
 requirement. No relevant missing proof may be counted as a pass.
 
-CI routing follow-up: current `Checks` still runs full suites on runtime pushes
-and has no focused-only route. No workflow changed or push occurred here. Before
-using the early exception, implement/review its explicit focused routing in that
-same package while preserving the full main-goal gate. Do not trigger the current
-full workflow and mislabel it focused or silently omit required main-goal checks.
+Current integration set:
 
-- Session focus, Goal 3: **1/10 accepted = 10%** (S03.01).
-- Return focus, Goal 2: **1/9 accepted = 11.1%** (S02.03).
+| Owner | Exclusive files / scope | Contracts, dependencies and gates |
+| --- | --- | --- |
+| Parent | Three plans; architecture and integration; package metadata | S02.04/S02.05 admission/repair design through installer; review stored-state/ownership dependencies before opkg writer delegation. |
+| Parent | Returned CI/runtime files and integrated focused gate | Both workers finished and released their files. Parent reviews admission/failure paths, regenerates metadata, records evidence and publishes only for required focused Linux/BusyBox proof. |
+| `focused_ci` worker (complete) | `.github/workflows/checks.yml`, `tools/test.py`, `tests/test_dev_runners.py`, `docs/development.md` | Validated final `CFMgr-Focused-Tests:` commit trailer lists explicit test files; ordinary pushes/PRs remain full. Local files/directories and keyword filters remain supported; full BusyBox storage-suite guard retained. 24 runner tests and static gates passed. |
+| `prerequisite_inventory` worker_strong (complete) | `modules/lib/prerequisites.sh`, `modules/helpers/bootstrap.sh`, `tests/test_prerequisites.py`, `tests/test_install.py` | S02.04/S02.05 prerequisite inventory consumed by fresh installer. 21 focused passes, 3 Linux-only skips; source statics passed. Probe helper unchanged. No opkg mutation or subgoal tick. |
+| Process design analyst (complete) | Read-only native/old-reference/source review | Confirmed cron process-group launch, baseline absence of namespaces/cgroups, and private execution-root ownership considerations. Parent owns the design below. No edits/tests/router work. |
+
+Prerequisite package entry is the existing `--install` → native-work → check call.
+Missing behavior: first-failure probes cannot select all missing/unusable packages;
+eager fallback admission violates native-first locking. Preserve the 15-argument
+check interface and output fields, add only a fixed-list deficiency result, and
+admit optional fallback only when selected. Fatal mount/ownership/native-supervisor
+failure aborts; ordinary completed negative capability probes may be aggregated.
+Check/recheck calls use separate fresh private contexts. DNS version-only evidence
+remains partial, and no tunnel/readiness claim is awarded. Parent regenerated the
+manifest and reviewed both returned packages. The integrated command
+`.venv/bin/python tools/test.py --focused tests/test_prerequisites.py tests/test_install.py tests/test_dev_runners.py`
+passed **62 tests, 4 Linux-only skips**, 31.26s, plus all planning/package/static
+gates on the dirty tree based on `4a50dd0`. Receipt:
+`.tmp/prerequisite-inventory-focused.log`. Remaining proof is exact focused
+Linux/BusyBox CI for ownership/locking/FD cases. The authorized early push uses
+those same three files in its final `CFMgr-Focused-Tests:` trailer; wait for that
+exact run before further implementation. No full suite/main-goal gate is claimed.
+Cost review uses the preceding 50-second warm Ubuntu job and current focused
+timings; caches/resources are unchanged, no extra measurement suite was run.
+
+- Active Goal 2: **1/9 accepted = 11.1%** (S02.03).
+- Supporting Goal 3: **1/10 accepted = 10%** (S03.01).
 - Product: **0/16 main goals = 0%**. No main-goal/README completion earned.
 
-The parent selected S03.01 as the direct companion to the already delivered
+The preceding acceptance package selected S03.01 as the direct companion to the already delivered
 S02.03 defaults installer, notified the user before switching and reviewed every
 passive-state clause. This was acceptance of existing implementation, not a new
 runtime package. Only checklist/handoff receipts and the clarified standing test
-cadence changed. No unanswered approval, required worker, test process, CI job or
-router connection remains active.
+cadence changed. That package is committed as
+`4a50dd0d6ddbd18a906e0a870c8d4ca592148a33`, one local commit ahead of origin.
+No unanswered approval or inherited CI/router job remains. Active ownership
+is listed above; do not interpret the preceding pause as current permission state.
 
 ## Current refs and evidence
 
@@ -63,8 +90,9 @@ no push occurred this session. Verify `HEAD` and status on resume. Tested
 runtime remains `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, already published.
 [Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754)
 was reverified at that full SHA: its sole Ubuntu job passed in **50 seconds**.
-Runtime, tests, tools, dependency inputs, package metadata and workflows have no
-diff from that tested revision. Subsequent documentation receipts are not new
+That was the unchanged runtime at session start. The current inventory/runner
+changes and regenerated manifest now require their own focused evidence; the old
+CI does not prove these edits. Subsequent documentation receipts are not new
 runtime-tested commits. Earlier S02.03/tool receipt:
 `02063a4e40764d682dcdd917fa550ad0251a4f63`.
 
@@ -99,8 +127,8 @@ Manager defaults do not establish update scheduling or other feature workflows.
 
 `next_subgoal_review` explorer returned a read-only consumer/acceptance review;
 parent integrated its findings and reviewed the existing tests/source. No worker
-edited files or ran tests. Parent exclusively owned planning receipts and the
-focused gate. No ongoing ownership/job remains.
+edited files or ran tests for that preceding acceptance package. Parent exclusively
+owned its planning receipts and focused gate. Current work is listed above.
 
 ## Pending foundation findings
 
@@ -109,18 +137,42 @@ order is not mandatory. Goal 2 still supports original Goal 1. Preserve partial
 work and keep these gaps visible:
 
 - **S02.04:** shared probes have an installer consumer, but tunnel DNS remains
-  `dig -v` with no real tunnel consumer. Also, `cfmgr_bootstrap_native_work` admits
-  optional Entware flock before native capability testing; an unsafe fallback can
-  block usable native flock. Fix/prove native-first ordering and complete the
-  scoped DNS consumer before accepting the subgoal.
+  `dig -v` with no real tunnel consumer. The current package fixes native-first
+  locking and inventories every ordinary missing/unusable direct requirement;
+  unsafe admission, absent supervision and unresolved ownership remain fatal.
+  Focused Linux/BusyBox proof and the scoped DNS consumer remain pending.
 - **S02.08:** fresh UUID storage and current invocation pins exist; retained
   expected-identity comparison and returning-work eligibility do not. Production
   pin/lazy-unmount/substitution loss needs written representative proof; boolean
   attachment adapters cannot establish those behaviors.
-- **S02.05:** installer-backed normal dependency repair is a viable foundation
-  package to assess next. Missing work includes installed-opkg admission,
-  missing/unusable-only selection, healthy no-op, bounded serialized repair,
-  post-probes and bounded later-launch retry. It is not yet assigned or started.
+- **S02.05:** the current inventory supplies missing/unusable-only selection.
+  Installed-opkg admission, serialized bounded repair, healthy no-op, post-probes
+  and bounded later-launch retry still require production implementation.
+
+Next shared foundation is S02.05/S02.08 execution/storage containment, returning
+to Goal 2 repair and reinstall consumers. Merely polling the `/opt` alias does
+not prevent stale-path writes. The parent design is a private execution root with
+descriptor-bound Entware; ordinary installed opkg retains its configured feeds,
+dependency resolution and scripts. No cgroups/namespaces or new resident daemon
+may be assumed. Track the direct launch plus tasks rooted in the owned root/mounts,
+including daemonization/nested roots and surviving threads; close outside FDs.
+On storage loss/deadline, cancel only verified owned tasks with bounded cleanup.
+Persistent/uncertain ownership or busy normal unmount retains guard/root evidence;
+never use lazy teardown to claim success. Successful opkg exit alone cannot clear
+that guard. Later invocation may recover/retry only after verified quiescence and
+cleanup; a completed ordinary failure without survivors must not latch permanently.
+The execution view must be proved compatible with normal selected package scripts
+before repair acceptance. This is planned implementation, not proven behavior.
+
+Source evidence: pinned Merlin crond creates a process group in both branches;
+Linux/chroot sources show inherited filesystem roots across fork/exec independently
+of process groups. Analyst hash-verified cached GT-AX11000 embedded kernel config
+against `kernel-config-status.json`: SHA256
+`b9795f074b019c327b1ea6fe7d29d46f6e716a9d017a8235c648e10c30cf323a`,
+with cgroups and namespaces disabled. Other cached firmware evidence was not
+requalified. No firmware or router execution occurred. Historical committed
+dependency/isolation source is retained read-only under `.tmp/previous-*-reference.sh`;
+it supplies patterns only, not acceptance or permission for a wholesale restore.
 
 The official Merlin Addons API, User scripts and Custom config files authorities
 were consulted during scope review; no new firmware compatibility claim or
@@ -248,7 +300,7 @@ runtime source changes. Regular Finder metadata is excluded; unsafe objects fail
    and focused checks before assigning a writer.
 3. Keep S02.03/S03.01/tool ticks scoped to their accepted development evidence.
    All main goals, remaining product subgoals, Vxx cases and README remain incomplete.
-   Preserve this session's subgoal pause until the user changes it. At a full
+   The user revoked subgoal pauses; continue to the normal full
    main-goal boundary follow audit → full local → exact full CI → main tick/README →
    handoff/pause. Actual router/provider beta follows complete implementation.
 

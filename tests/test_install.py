@@ -516,3 +516,58 @@ done <"$cfmgr_install_context/records"
             # original recorded direct child's unchanged process-start identity.
             if identity[19] == child_start:
                 os.kill(child, signal.SIGKILL)
+
+
+def test_native_install_routes_all_tool_admission_through_inventory(
+    shell: list[str], tmp_path: Path
+) -> None:
+    # Trace the actual controller up to prerequisite checking without pretending
+    # these fixtures prove native firmware storage/root admission. A fatal fixed
+    # admission call before the shared check detects the old first-failure path.
+    enabled = tmp_path / "native scripts enabled"
+    enabled.write_text("1\n")
+    script = r"""
+. "$1"
+cfmgr_install_context=$2 cfmgr_install_source=$3 cfmgr_storage_opt=$2
+cfmgr_storage_source=/fixture/device
+cfmgr_bootstrap_retained() { return 0; }
+cfmgr_test_enabled=$4; cfmgr_bootstrap_action() { cfmgr_install_output=$cfmgr_test_enabled; }
+cfmgr_test_empty=$5; cfmgr_prerequisites_run() { cfmgr_probe_exit=0; cfmgr_probe_stderr=$cfmgr_test_empty; }
+cfmgr_storage_uuid() { return 0; }
+cfmgr_bootstrap_metadata() { return 0; }
+cfmgr_bootstrap_admit_tool() { printf 'premature admission\n'; return 77; }
+cfmgr_prerequisites_check() {
+    [ "$#" = 15 ] && [ "$1" = shared ] && [ "$2" = "$cfmgr_install_context" ] || return 92
+    shift 9
+    [ "$1" = /opt/bin/jq ] && [ "$2" = /opt/bin/timeout ] &&
+        [ "$3" = /opt/bin/sha256sum ] && [ "$4" = /opt/bin/flock ] &&
+        [ "$5" = - ] && [ "$6" = unknown ] || return 93
+    printf 'shared inventory\n'
+    return 1
+}
+cfmgr_bootstrap_native_work
+[ "$?" = 1 ]
+"""
+    empty = tmp_path / "probe stderr"
+    empty.write_bytes(b"")
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "native-inventory-test",
+            BOOTSTRAP,
+            tmp_path,
+            ROOT,
+            enabled,
+            empty,
+        ],
+        check=False,
+        capture_output=True,
+        timeout=2,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"shared inventory\n",
+        b"",
+    )
