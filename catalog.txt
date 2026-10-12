@@ -1,5 +1,4 @@
 CFMGR-CATALOG 1 0.1.0
-modules/.DS_Store	data
 modules/helpers/.gitkeep	helper
 modules/helpers/bootstrap.sh	helper
 modules/helpers/probe.sh	helper

@@ -92,6 +92,74 @@ def test_output_is_complete_deterministic_and_exactly_hashed(
     }
 
 
+def test_finder_metadata_is_excluded_from_catalog_manifest_and_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clean_source = tmp_path / "clean-source"
+    source_tree(clean_source)
+    metadata_source = tmp_path / "metadata-source"
+    source_tree(metadata_source)
+    sidecar = metadata_source / "modules/helpers/.DS_Store"
+    sidecar.write_bytes(b"Finder metadata must not ship\n")
+    clean_output = tmp_path / "clean-output"
+    metadata_output = tmp_path / "metadata-output"
+
+    assert invoke(monkeypatch, clean_source, "--output", str(clean_output)) == 0
+    assert invoke(monkeypatch, metadata_source, "--output", str(metadata_output)) == 0
+
+    def packaged_files(root: Path) -> dict[str, bytes]:
+        return {
+            item.relative_to(root).as_posix(): item.read_bytes()
+            for item in root.rglob("*")
+            if item.is_file()
+        }
+
+    output_files = packaged_files(metadata_output)
+    assert output_files == packaged_files(clean_output)
+    assert b".DS_Store" not in output_files["catalog.txt"]
+    assert b".DS_Store" not in output_files["manifest.txt"]
+    assert not any(path.endswith(".DS_Store") for path in output_files)
+
+
+@pytest.mark.parametrize("unsafe_object", ["symlink", "nonregular"])
+def test_finder_metadata_name_does_not_bypass_unsafe_object_rejection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    unsafe_object: str,
+) -> None:
+    source = tmp_path / "source"
+    source_tree(source)
+    sidecar = source / "modules/lib/.DS_Store"
+    if unsafe_object == "symlink":
+        sidecar.symlink_to(tmp_path / "outside")
+    else:
+        os.mkfifo(sidecar)
+    destination = tmp_path / "rejected-output"
+
+    with pytest.raises(SystemExit) as rejected:
+        invoke(monkeypatch, source, "--output", str(destination))
+
+    assert rejected.value.code == 1
+    assert not destination.exists()
+
+
+def test_finder_only_directory_is_rejected_before_output_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source"
+    source_tree(source)
+    sidecar_directory = source / "modules/metadata-only"
+    sidecar_directory.mkdir()
+    (sidecar_directory / ".DS_Store").write_bytes(b"Finder metadata\n")
+    destination = tmp_path / "rejected-output"
+
+    with pytest.raises(SystemExit) as rejected:
+        invoke(monkeypatch, source, "--output", str(destination))
+
+    assert rejected.value.code == 1
+    assert not destination.exists()
+
+
 def test_check_rejects_stale_package_metadata(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

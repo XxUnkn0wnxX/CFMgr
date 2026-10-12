@@ -118,13 +118,18 @@ def test_volume_uuid_requires_complete_matching_native_observation(
         'cfmgr_storage_filesystem=ext4; cfmgr_storage_uuid "$3" || exit $?; '
         'printf "%s\\n" "$cfmgr_storage_uuid_value"'
     )
-    observed.write_text(record)
-    result = invoke(shell, script, awk, observed)
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == uuid.encode() + b"\n"
+    # The verified Merlin baseline disables FEATURE_BLKID_TYPE. Filesystem
+    # admission comes from the separately verified mountinfo snapshot.
+    for valid in (record, record.replace(' TYPE="ext4"', "")):
+        observed.write_text(valid)
+        result = invoke(shell, script, awk, observed)
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == uuid.encode() + b"\n"
     for invalid in (
         record.replace("/dev/sdb1", "/dev/sda1"),
         record.replace('TYPE="ext4"', 'TYPE="tmpfs"'),
+        record.replace('TYPE="ext4"', 'TYPE=""'),
+        record.replace(f'UUID="{uuid}" ', ""),
         record + record,
         record.replace('TYPE="ext4"', f'UUID="{uuid}" TYPE="ext4"'),
         record.replace(uuid, "not-a-uuid"),

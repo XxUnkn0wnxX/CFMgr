@@ -161,6 +161,8 @@ cfmgr_storage_attached() {
 cfmgr_storage_uuid() {
 	# Parse the bounded native blkid result as data. The caller separately proves
 	# that the native child succeeded and that the attachment remained unchanged.
+	# Merlin's native blkid can omit TYPE; mountinfo already supplies the admitted
+	# filesystem. If blkid also supplies TYPE, it must agree with that observation.
 	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || return 2
 	cfmgr_storage_uuid_value=$(
 		# AWK consumes literal operands, avoiding -v escape interpretation.
@@ -188,7 +190,7 @@ cfmgr_storage_uuid() {
 				}
 			}
 			END {
-				if (bad || lines != 1 || !seen["UUID"] || value["TYPE"] != filesystem) exit 1
+				if (bad || lines != 1 || !seen["UUID"] || (seen["TYPE"] && value["TYPE"] != filesystem)) exit 1
 				uuid=value["UUID"]
 				if (length(uuid) != 36 || uuid ~ /[^0-9A-Fa-f-]/ ||
 				    substr(uuid,9,1) != "-" || substr(uuid,14,1) != "-" ||

@@ -26,11 +26,15 @@ def inventory(root: Path) -> list[Path]:
     parents = {
         parent
         for item in objects
-        if item.is_file()
+        if item.is_file() and item.name != ".DS_Store"
         for parent in item.parents
         if parent != root and root in parent.parents
     }
     for item in objects:
+        if item.name == ".DS_Store":
+            if item.is_symlink() or not item.is_file():
+                raise ValueError(f"Nonregular package object: {item.relative_to(root)}")
+            continue
         if item.is_dir() and item not in parents:
             raise ValueError("Unlisted empty package directory")
         relative = item.relative_to(root).as_posix()
@@ -68,6 +72,10 @@ def catalog(root: Path) -> bytes:
     for item in sorted(modules.rglob("*")):
         if item.is_symlink():
             raise ValueError("Symlink in package")
+        if item.name == ".DS_Store":
+            if not item.is_file():
+                raise ValueError(f"Nonregular package object: {item.relative_to(root)}")
+            continue
         if item.is_file():
             relative = item.relative_to(root).as_posix()
             kind = (
@@ -89,6 +97,18 @@ def manifest(root: Path) -> bytes:
             f"{item.stat().st_mode & 0o777:04o}\t{len(content)}\t{hashlib.sha256(content).hexdigest()}\t{item.relative_to(root).as_posix()}"
         )
     return ("\n".join(lines) + "\n").encode()
+
+
+def ignore_finder_metadata(directory: str, names: list[str]) -> list[str]:
+    """Omit regular Finder sidecars while leaving unsafe objects for validation."""
+    ignored = []
+    for name in names:
+        if name != ".DS_Store":
+            continue
+        item = Path(directory) / name
+        if item.is_file() and not item.is_symlink():
+            ignored.append(name)
+    return ignored
 
 
 def main() -> int:
@@ -122,7 +142,11 @@ def main() -> int:
             inventory(ROOT)
             root.mkdir(parents=True, exist_ok=True)
             shutil.copy2(ROOT / "cfmgr.sh", root / "cfmgr.sh")
-            shutil.copytree(ROOT / "modules", root / "modules")
+            shutil.copytree(
+                ROOT / "modules",
+                root / "modules",
+                ignore=ignore_finder_metadata,
+            )
         expected_catalog = catalog(root)
         if args.check:
             if (root / "catalog.txt").read_bytes() != expected_catalog or (

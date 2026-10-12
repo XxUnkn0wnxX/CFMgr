@@ -35,8 +35,9 @@ New tool scope/entries still need approval; evidence updates do not.
 ## Implemented package and reviewed ownership
 
 All workers returned ownership; parent owns integration and final review. No
-router session or worker job is active. The current uncommitted package sits on
-published develop `b3cea2a3920b046174767e244b09b02634d54778`.
+router session or worker job is active. The first candidate was published as
+`5492a7d1cd1f9eb381c7595fa57d0d915c9e54eb`; exact CI found the failures below.
+The parent and a bounded package-tools worker own only those corrections.
 
 - `cfmgr.sh --install` enters an isolated native shell and consumes a complete
   explicitly trusted local package. Native preflight admits JFFS2, actual mounted
@@ -99,8 +100,8 @@ log oracle and probe admission/cleanup. No live SSH is needed to test transport.
 `requirements-dev.txt` remains correct: pinned pytest/Ruff/shfmt; JSON and SSH
 launcher use stdlib. `.venv` pip check passed. Local ignored config validates.
 
-1. Finish proportionate documentation checks and privacy/diff review; commit and
-   push this authorized candidate. Verify the remote full SHA.
+1. Finish the focused CI corrections below, regenerate package metadata, commit
+   and push. Verify the remote full SHA.
 2. Wait for all seven exact-commit Checks jobs. No further product implementation
    after push until green; fix only failures, focused-check and re-push as needed.
    Preserve cache inputs; changed kernel/BusyBox configurations intentionally
@@ -110,6 +111,24 @@ launcher use stdlib. `.venv` pip check passed. Local ignored config validates.
 4. Tick only S02.03 and fully proved tools, recording tested code SHA/run. A
    documentation-only receipt is not separately runtime-tested. Push receipt,
    fully refresh this handoff and pause with no active required jobs.
+
+## Current CI correction
+
+[Checks 38196136386](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38196136386)
+at `5492a7d` failed before runtime acceptance. Host metadata included a local
+ignored Finder `.DS_Store` absent from Git; package output must consistently omit
+regular Finder metadata while preserving unsafe-object rejection. portable_tools returned the corrected builder/tests; parent reviewed unsafe-object
+and metadata-only-directory rejection, then regenerated catalog/manifest.
+
+Native/guest builds rejected nonexistent `CONFIG_FEATURE_VOLUMEID`; vendor source
+uses `CONFIG_VOLUMEID`. Parent fixes the fixture and explicitly disables optional
+`FEATURE_BLKID_TYPE`, matching the baseline. A brief read-only native query confirmed
+that baseline blkid prints UUID without TYPE. UUID parsing now accepts absent TYPE
+because admitted mountinfo already verifies filesystem; a supplied conflicting or
+empty TYPE still fails. Focused valid/invalid observation tests pass. No router
+write or runtime install was performed. Logs remain ignored under
+`.tmp/platform-review/s02-03-*.log`. Repair gate: **28 passed, 134 deselected in 6.77s**, with all runner static gates;
+`.tmp/s02-03-repair-focused.log`. Full exact CI remains required after corrections.
 
 ## Retained evidence and known limits
 
