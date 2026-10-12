@@ -88,7 +88,12 @@ dependency_native_tool() {
 	file) cfmgr_dependencies_native_tool=$view_ram/ash ;;
 	fifo) cfmgr_dependencies_native_tool=$view_ram/mknod ;;
 	unmount) cfmgr_dependencies_native_tool=$view_ram/umount ;;
-	*) cfmgr_dependencies_native_tool=$view_ram/$1 ;;
+	copy) cfmgr_dependencies_native_tool=$view_ram/cp ;;
+	link) cfmgr_dependencies_native_tool=$view_ram/ln ;;
+	remove) cfmgr_dependencies_native_tool=$view_ram/rm ;;
+	signal) cfmgr_dependencies_native_tool=$view_ram/kill ;;
+	readlink | mkdir | chmod | rmdir) cfmgr_dependencies_native_tool=$view_ram/$1 ;;
+	*) return 2 ;;
 	esac
 }
 cfmgr_dependencies_inside_tools() { dependency_inside_tools; }

@@ -46,7 +46,27 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current candidate: `f99853c8fe39a34870875664b844711bfd69d290`, pushed and
+- Current candidate: `91cdfb1e511f2cc8f89b1d8d6cb5c832edaa4d43`, pushed and
+  remote-verified. [Checks 38236908142](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38236908142)
+  failed BusyBox: **267 passed/1 skip/6 failures/1 fixture error**; host/static
+  passed. Receipt `.tmp/dependency-repair-ci-failed-3.log`. All six repair cases
+  exit before view construction (`status=3`, phase unset); installer lacks its
+  imported `shell` fixture. No job remains active. Parent owns that Python fixture
+  registration; `prerequisite_inventory` owns bounded investigation/correction of
+  early repair setup in the runtime libraries/bootstrap/probe and dependency/storage
+  shell fixtures, with focused regression proof. No edits to the three plans,
+  metadata, CI, entry or Python test modules without transferring ownership.
+  Preserve all behavior/assertions; re-push the same focused selection and require
+  exact green before implementing the retained-manager consumer.
+  Source review proved fixture mode names were incorrectly used as executable
+  names: `copy/link/remove/signal` now map to `cp/ln/rm/kill`. Parent imported the
+  missing shell fixture and exercises adapter construction in portable syntax
+  coverage. Bounded failure diagnostics retain unknown ownership. Runtime bytes
+  are unchanged. Combined dependency/storage fixture checks: **20 passed/15 Linux
+  skips**; affected lint/format/compile/syntax, planning and whitespace passed.
+  Parent review passed and files are released. Cost review reuses required CI:
+  vendor behavior 81.74s; retain distinct mount/process cases, no full rerun due.
+- Previous candidate: `f99853c8fe39a34870875664b844711bfd69d290`, pushed and
   remote-verified. [Checks 38236283307](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38236283307)
   failed after statics and 246 host passes/28 skips: concurrency fixture controller
   exited 83 before its marker. BusyBox was skipped. Receipt

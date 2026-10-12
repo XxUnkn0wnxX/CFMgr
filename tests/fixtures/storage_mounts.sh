@@ -33,6 +33,27 @@ esac
 
 fail() {
 	printf 'storage mount fixture: %s\n' "$*" >&2
+	case $case_name in dependency_*)
+		printf 'dependency phase=%s native-mode=%s state=%s unresolved=%s claimed=%s\n' \
+			"${cfmgr_dependencies_phase:-unset}" "${cfmgr_dependencies_native_mode:-unset}" "${cfmgr_dependencies_state:-unset}" \
+			"${cfmgr_dependencies_native_unresolved:-0}" "${cfmgr_dependencies_claimed:-0}" >&2
+		printf 'probe mode=%s status=%s reason=%s exit=%s pid=%s start=%s\n' \
+			"${cfmgr_probe_mode:-unset}" "${cfmgr_probe_status:-unset}" "${cfmgr_probe_reason:-unset}" \
+			"${cfmgr_probe_exit:-unset}" "${cfmgr_probe_pid:-unset}" "${cfmgr_probe_start:-unset}" >&2
+		# Failure diagnostics use host setup tooling only, bounded to 512 bytes.
+		# Never follow a symlink or read outside our explicitly owned RAM context.
+		if [ -n "${cfmgr_install_context:-}" ] && [ -d "$cfmgr_install_context" ] && [ ! -L "$cfmgr_install_context" ]; then
+			case ${cfmgr_probe_stderr:-} in "$cfmgr_install_context"/*.err)
+				if [ -f "$cfmgr_probe_stderr" ] && [ ! -L "$cfmgr_probe_stderr" ] && [ -s "$cfmgr_probe_stderr" ]; then
+					printf 'owned probe stderr (first 512 bytes):\n' >&2
+					/usr/bin/head -c 512 "$cfmgr_probe_stderr" >&2
+					printf '\n' >&2
+				fi
+				;;
+			esac
+		fi
+		;;
+	esac
 	if [ "${view_loaded:-0}" = 1 ]; then
 		printf 'view state=%s pending=%s sequence=%s keeper=%s last=%s\n' \
 			"${cfmgr_view_state:-unset}" "${cfmgr_view_pending:-none}" "${cfmgr_view_sequence:-unset}" \
@@ -162,6 +183,17 @@ cleanup() {
 	if [ "$library_loaded" -eq 1 ]; then
 		cfmgr_storage_release >/dev/null 2>&1 || :
 	fi
+	case $case_name in dependency_*)
+		# These are this fixture controller's source/context pins. Never close them
+		# while product ownership is unresolved; preserve that evidence instead.
+		if [ "${cfmgr_dependencies_state:-none}" != retained ] && [ "${cfmgr_dependencies_native_unresolved:-0}" = 0 ]; then
+			case ${cfmgr_tasks_state:-none}:${cfmgr_keeper_state:-none} in
+			running:* | retained:* | *:active | *:retained) ;;
+			*) exec 0<&- 9<&- ;;
+			esac
+		fi
+		;;
+	esac
 	if [ -n "$view_native_root" ]; then
 		for view_fixture_point in "$view_native_root/tmp/mnt/usb/entware/nested" "$view_native_root/tmp/mnt/usb" "$view_native_root/proc" "$view_native_root/dev" "$view_ram"; do
 			if mountpoint -q "$view_fixture_point"; then

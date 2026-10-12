@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_install import legacy_fsync, package
+from test_install import legacy_fsync, package, shell
 from test_install import tools as install_tools
 from test_storage_mounts import (
     FIXTURE,
@@ -35,6 +35,7 @@ __all__ = [
     "legacy_fsync",
     "package",
     "selected_shell",
+    "shell",
 ]
 
 
@@ -135,13 +136,16 @@ def installer_adapter(
     return adapter
 
 
-def test_dependency_fixture_syntax(selected_shell: list[str]) -> None:
+def test_dependency_fixture_syntax(
+    selected_shell: list[str], installer_adapter: Path
+) -> None:
     # Syntax proof must collect/run before Linux/tool skips. ash -n -c executes
     # minusc on the pinned build, so inspect actual script files with -n.
     for script in (
         ROOT / "tests/fixtures/dependencies.sh",
         ROOT / "tests/fixtures/dependency_installer.sh",
         ROOT / "modules/helpers/dependencies.sh",
+        installer_adapter,
     ):
         result = subprocess.run(
             [*selected_shell, "-n", str(script)],
