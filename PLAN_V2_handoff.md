@@ -16,7 +16,12 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 **Resumed by the user.** The compiler/locking/entropy/native-test repair passed
 all seven exact-SHA CI jobs. Current work is the user's requested persistent CI
-tool/dependency caching improvement. Resume inspection found a
+tool/dependency caching improvement, pushed at `d71c813a73da5e0b07a1f0c1af2292aeb17e1111`.
+Checks 38190294055 passed all seven jobs at that exact SHA. Warm native and
+4.19.294 job reruns also passed. Requested CI caching and AGENTS trimming are
+complete. Bounded source review found no simple proven correction for the remaining
+4.1 guest entropy delay; retain the passing fixtures. No worker or CI job is active.
+Resume inspection found a
 clean tree at `5853701dfbd5b00e5746f83a2b6da13e8349e94f`, matching origin/develop,
 and no existing child agents. Parent session identity remains the already-recorded
 third ID; this resume does not establish a new ID. No router work is running.
@@ -131,7 +136,7 @@ No approval question is currently open.
 ## Current code and ownership
 
 Latest published runtime revision, verified on local/origin develop after push:
-`3ab84c5ab10dc4ed43d3eb7621a58af5b2fb46c8`.
+`d71c813a73da5e0b07a1f0c1af2292aeb17e1111`.
 The separate developer-docs receipt is `ae594bf`; it is not runtime CI evidence.
 Inspect current refs and full CI status on resume.
 Earlier partial checkpoints remain in ancestry: native helper `3e164914`, probe
@@ -148,7 +153,8 @@ actual kernel execution passed the full CI run below.
 | guest_diagnostic | Returned; no active ownership | Parent-reviewed guest prefix correction and native regression; reused existing applet fixture, pinned mode only. |
 | ci_tools | Returned; no active ownership | Parent reviewed APT archive and exact installed-venv caches, compatibility identities and healthy setup saves. Embedded Bash/Python static checks passed. |
 | Parent | Integration/planning, developer command notes and final checks | Review both cache packages, focused checks, exact full CI and representative warm-cache reuse. |
-| ci_resume_wait | Returned; no active ownership | Run 38188741049 at 3ab84c5 passed all seven jobs; parent verified full head and guest markers. |
+| platform_audit | Returned; no active ownership | AGENTS semantic review integrated. Bounded source review supports legacy entropy-transfer stall; no simple proven fixture correction, no edits/execution. |
+| ci_resume_wait | Returned; no active ownership | Exact full run plus warm native and 4.19.294 reruns passed; parent verified job identities, timestamps and actual cache-hit logs. |
 | platform_audit | Returned; no active ownership | Source review found guest entropy prerequisite; parent reviewed BIND constructor/RAND check and exact virtio driver quality. No other concrete blocker found. |
 | Other agents | No active ownership | Source/parity/persistence/runtime/probe packages returned. No router work. |
 
@@ -171,9 +177,14 @@ before accepting ownership or publishing.
 
 ## CI gate and local evidence
 
-The previous runtime checkpoint **passed**; the requested CI caching package may advance.
-Latest published runtime: `3ab84c5ab10dc4ed43d3eb7621a58af5b2fb46c8`, verified
-against origin/develop. [Checks 38188741049](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38188741049)
+The current cache checkpoint **passed**: [Checks 38190294055](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38190294055)
+at exact published `d71c813a73da5e0b07a1f0c1af2292aeb17e1111`, verified against
+origin/develop. All seven required jobs passed; parent verified full head and job
+outcomes. Attempt 2 reran only native BusyBox (67 passed, zero skips); attempt 3
+reran only kernel 4.19.294 with both feed success markers. GitHub carries forward
+other jobs under new IDs; their old timestamps/logs are not additional executions.
+The prior repair at `3ab84c5ab10dc4ed43d3eb7621a58af5b2fb46c8`,
+[Checks 38188741049](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38188741049),
 passed all seven required jobs at that exact full SHA. Parent independently read
 all four guest logs: exact kernel/vendor identity, native storage flush/rename/
 readback/cleanup, diagnostic rejection and both Entware ABI success markers passed.
@@ -196,7 +207,7 @@ tests/static checks precede the authorized CI push; full exact CI and observed
 warm restores are required before claiming caching works.
 
 The combined caching candidate on dirty `3ab84c5` passed the parent focused runner:
-**35 passed, zero skips, 0.49s**, with Ruff check/format, compileall, POSIX syntax,
+**35 passed, zero skips, 0.47s** (final pre-commit repeat), with Ruff check/format, compileall, POSIX syntax,
 ShellCheck, shfmt, planning/link/privacy and whitespace gates. Parent also parsed
 workflow/action YAML, checked every embedded Bash block (including composite
 shfmt with two-space indentation), and checked embedded Python syntax/Ruff.
@@ -204,7 +215,41 @@ Every pre-existing platform function except `execute`/`main` is source-identical
 to HEAD, preserving existing build/cache identities. Four small offline regressions
 cover scoped key invalidation, verified-completeness receipts and rejected CLI
 combinations. No full local run, native build, router work or test matrix reduction.
-Actual GitHub cache save/restore and Linux setup remain pending the next exact CI.
+Actual Linux/GitHub proof is now accepted for this bounded cache package:
+
+- Warm native job 114622481706 restored the exact installed Python environment and
+  existing BusyBox, skipped pip installation, and passed 67 tests with zero skips.
+  Its setup was 8s versus 19s on the initial cache-fill job; total 15s versus 27s.
+- Warm 4.19.294 job 114622842510 restored APT archives, GCC 8.5 compiler bundle,
+  shared Entware inputs, BusyBox and kernel image; APT reported **0 B/57.5 MB** to
+  fetch. Both guest ABIs passed. Total job 34s. Legacy GCC bundle reuse was already
+  observed by the second 4.1 job on attempt 1.
+- All kernel/BusyBox build identities remained unchanged. Warm image hits skip
+  unnecessary kernel source restoration/preparation but still execute fresh guests.
+  The source-cache miss branch has focused CLI/download proof; it was not exercised
+  remotely because all compiled images restored successfully.
+- Job wall times include runner/network variation, and aggregate CPU is unmeasured.
+  Do not attribute the earlier cold-kernel build savings solely to the new caches.
+  Kernel 4.1 guests still spend about 103s executing after warm restoration, versus
+  about 1s for 4.19. Source review found a likely legacy entropy-transfer stall:
+  hardware bytes credit input_pool, its producer stops above 896 bits, while
+  alternating background output transfers credit 64 bits and nonblocking init
+  requires more than 128. 4.19 instead directly credits CRNG initialization.
+  Guest logs support that diagnosis but replayed output cannot time the precise
+  syscall. No simple proven config/boot-argument correction was established;
+  retain the passing fixtures, with no sleeps, relaxed checks or extra CPU.
+  A future bounded exact-byte random consumer would need its own source/execution
+  proof; do not implement a guessed read count or resume unbounded optimization.
+- Receipts/logs: `.tmp/platform-review/cache-first-ci.json`, `cache-warm-ci.json`,
+  `cache-warm-kernel-ci.json` and `ci-38190294055-*.log`. Full code proof remains
+  `d71c813`; later documentation commits do not acquire that tested SHA's identity.
+
+The user requested AGENTS.md trimming. Parent reduced 33,235 bytes to 21,673 bytes;
+read-only semantic review checked against `.tmp/agents-before-trim.md`, and parent
+restored explicit checklist/README table structure and combined-package checkpoint
+clauses. Approval, publication, progress, preservation and router boundaries remain.
+The final developer guide's CI optimization coverage is mirrored in S16.03; the
+current 53-line developer notes remain unchanged.
 
 Local evidence for the accepted repair:
 
@@ -308,11 +353,10 @@ setting, package or Cloudflare data was changed.
 
 1. Resume inspection and CI repair are authorized. Preserve the hidden
    session block; append only a verified actual new parent session ID.
-2. Complete and parent-review the two disjoint CI cache packages above. Run focused
-   behavioral/static checks, push under the authorized CI gate and require all seven
-   exact-SHA jobs green. Verify representative warm restores before claiming reuse.
-   Preserve all existing kernel/BusyBox/Entware behavior and fresh guest state.
-3. After that gate, continue goal 2's real install/storage/dependency consumer and
+2. CI caching and its exact full/warm gates are complete. The remaining legacy
+   guest timing limit is recorded; do not rerun suites to regenerate receipts or
+   broaden optimization without a concrete justified correction.
+3. Continue goal 2's real install/storage/dependency consumer and
    Save integration under the documented firmware limit. Preserve incomplete work;
    no helper-based ticks. At the completed main-goal gate follow the full local/CI,
    README push, complete handoff and pause sequence in AGENTS.md. Goal 1 remains
