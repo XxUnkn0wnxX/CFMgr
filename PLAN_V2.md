@@ -1394,7 +1394,7 @@ Preserve Off as operationally unhooked even when reconstructing its binary/data;
 | --- | --- | --- |
 | S16.01 | Usable integrated product | Required workflows are implemented through actual user entry paths, with representative automated acceptance and declared beta target limits. |
 | S16.02 | Evidence and limitations | Separate source/Linux/BusyBox evidence from deferred live beta qualification; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
-| S16.03 | Complete practical guides | Keep interim developer notes small until most goals are met; complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before product readiness. |
+| S16.03 | Complete practical guides | Keep developer notes to essential tools/setup/check commands throughout implementation; expand at the final 100% readiness stage and complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before declaring beta readiness. |
 | S16.04 | Cloudflare prerequisites | Account/domain/DNS and policy wiring guidance in docs, no extra runtime prompts or private-network restriction. |
 | S16.05 | Safe reproducible delivery | Sanitized examples/screenshots and validated real installer command/failure behavior. |
 | S16.06 | Release readiness | Coherent first version, automated development acceptance and extended router beta before stable qualification; required functionality/documentation before optional final polish. |
@@ -1435,9 +1435,10 @@ tools and kernel/userspace/ABI boundaries without claiming universal router supp
 
 ### Documentation set
 
-The following set defines S16.03 coverage now; the full guides are written near
-product readiness. Paths name planned deliverables, not currently available
-pages. Keep README as the overview and the current development note compact.
+The following set defines S16.03 coverage; substantial developer documentation
+waits for the final 100% readiness stage. Paths name planned deliverables, not
+currently available pages. Keep README as the overview and the development note
+limited to essential tools, setup and check commands throughout implementation.
 Describe actual delivered behavior and limits when writing each guide; shared
 facts have one authoritative home with links from related tasks.
 

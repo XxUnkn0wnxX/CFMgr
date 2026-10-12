@@ -35,9 +35,11 @@ waiting, do only independent authorized work. Allow a reasonable response window
 record the question/safe resume point and end waiting. Silence, elapsed time, empty
 responses and preselected options are never approval. Do not repeat answered gates.
 
-The parent may trim/rebuild handoff without approval, preserving permissions,
-unanswered questions, unresolved proof/blockers, active jobs/owners, unfinished work
-and recovery references. If context or evidence conflicts, pause affected changes
+Keep handoff concise: trim completed-work narrative and rely on the checklist for
+accepted evidence. The parent may rebuild it without approval, preserving current
+permissions, unanswered questions, unresolved proof/blockers, active jobs/owners,
+unfinished work and recovery references. Audit source/receipts where needed instead
+of duplicating history. If context or evidence conflicts, pause affected changes
 and inspect actual entry/consumer paths, spec/checklist, refs/diffs, unfinished files,
 test/CI receipts and agent state first. Use focused checks only where uncertainty
 requires them, not a full suite to reconstruct notes. Record unknowns and report
@@ -202,7 +204,9 @@ Mandatory main-goal checkpoint sequence:
    remaining work and rough next scope; do not start another main goal in that session.
 
 Focused pushes select the package and affected regressions through the validated
-CI route. Unavailable Linux/BusyBox proof stays pending until that exact CI passes;
+CI route: the final nonempty commit-message line is `CFMgr-Focused-Tests:` followed
+by one to 16 distinct existing `tests/test_*.py` paths. Omit it for a full main-goal
+candidate; PRs always run full CI. Unavailable Linux/BusyBox proof stays pending until that exact CI passes;
 partial work earns no complete subgoal tick. If a required focused route is absent,
 add and validate it within the approved package instead of substituting a full run.
 
@@ -320,12 +324,15 @@ in progress but never increase completed-subgoal counts. Keep rows concise and
 put detailed evidence in the checklist. Mark a main goal complete only after its
 full audit/local/CI checkpoint. Parent verifies worker evidence before these updates.
 
-Until most/all goals are met, keep `docs/development.md` to required tools, setup and
-built-in checks. Put progress, investigations, detailed fixture internals and pending
-proof in handoff. Complete practical architecture/developer/operating guides near
-readiness **before 100%**; do not grow interim notes into another handoff or preserve
-stale guidance to fill a file list. No checkpoint/test/commit diary in operating guides.
-Documentation consistency alone proves neither behavior nor runtime safety.
+Keep `docs/development.md` short throughout implementation: essential required
+tools, setup and built-in check commands only. Do not append progress, test-run
+receipts, investigations, fixture internals, CI/publication procedure or session
+decisions; rules belong here and working notes in handoff. Amend existing setup/
+command text only when needed for usability; do not add interim guide sections.
+Substantial developer documentation waits for the final **100% readiness stage**.
+Complete the required practical guides at that stage before declaring beta readiness.
+No checkpoint/test/commit diary in operating guides or stale text kept to fill a
+file list. Documentation consistency proves neither behavior nor runtime safety.
 
 ## Runtime and reference boundaries
 

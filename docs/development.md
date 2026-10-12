@@ -18,28 +18,19 @@ python3 -m venv .venv
 
 ## Local checks
 
-Run the relevant focused tests during implementation. Reserve the full suite for
-the main-goal gate:
-
 ```zsh
 .venv/bin/python tools/test.py --focused tests/test_storage.py
-.venv/bin/python tools/test.py --focused tests/test_platforms.py
 .venv/bin/python tools/test.py --focused tests/test_install.py tests/test_prerequisites.py
 .venv/bin/python tools/test.py
 ```
 
 Every test invocation also runs **Ruff lint/format checks, Python compilation,
 shell syntax, ShellCheck, shfmt, package metadata, planning/link and whitespace checks**.
-Bare `--focused` selects `tests/`; otherwise it accepts existing test files or
-directories under `tests/`, including `--focused tests -k expression` for a
-keyword-filtered run. Add `--require-busybox` to run that same selection with
-required BusyBox ash evidence. Keep `PYTEST_ADDOPTS` empty.
-On Linux, that explicit BusyBox mode also runs the selected real ext4 mount tests
-using passwordless `sudo`, private mount namespaces, loop devices and temporary
-images. They require Ubuntu's `coreutils`, `e2fsprogs`, `mount`, `sudo` and
-`util-linux` packages. Normal host runs skip those privileged cases; required
-BusyBox runs fail if their setup is unavailable. These are developer-host
-requirements, not router dependencies.
+`--focused` accepts test paths; add `-k expression` to filter them. Add
+`--require-busybox` for required BusyBox ash proof. Its Linux mount cases require
+passwordless `sudo` and the `coreutils`, `e2fsprogs`, `mount`, `sudo` and `util-linux`
+packages. Keep `PYTEST_ADDOPTS` empty. Gate/publication rules are in [AGENTS.md](../AGENTS.md).
+
 For documentation-only changes:
 
 ```zsh
@@ -53,30 +44,9 @@ Use `--output PATH` to build a package in an absent or empty directory.
 
 ## CI and optional platform diagnostics
 
-The required [Checks workflow](../.github/workflows/checks.yml) uses one Ubuntu
-24.04 runner for planning consistency, a cached native vendor BusyBox build, and
-the selected suite under both the host shell and BusyBox ash. Develop pushes run
-the full suite unless the final nonempty commit-message line is a valid
-`CFMgr-Focused-Tests:` trailer with one to 16 distinct existing test paths, for
-example:
-
-```text
-CFMgr-Focused-Tests: tests/test_prerequisites.py tests/test_install.py
-```
-
-Normally finish locally provable work with focused checks and a local commit,
-then continue. Use the focused push route when required proof needs CI or for an
-explicit pause checkpoint. Omit the trailer for a complete main-goal candidate
-after its full local gate.
-
-Pull requests always run the full suite. Missing trailers select the full suite;
-malformed or misplaced trailers fail the workflow. Focused routing still runs the
-planning, package, static and required BusyBox checks. These are approximate
-integration and shell-compatibility checks; they do not establish Merlin firmware,
-kernel, flash, hook, or true-beta router behavior. Router acceptance is deferred
-until implementation is complete. CI reuses validated Python tools, APT download
-archives and the verified BusyBox binary; each runner still installs packages
-normally.
+The [Checks workflow](../.github/workflows/checks.yml) runs the selected host and
+vendor BusyBox checks on Ubuntu. This is representative development proof;
+Merlin/ARM/flash/provider qualification remains separate router-beta work.
 
 An optional Linux x86_64 guest diagnostic can build and run a pinned kernel
 profile. It is not required CI or accepted router proof:
@@ -85,9 +55,8 @@ profile. It is not required CI or accepted router proof:
 python3 tools/test_platforms.py --run --kernel 4.1.51
 ```
 
-Other profiles are listed in [platforms.json](../tests/fixtures/platforms.json).
-Running `tools/test_platforms.py` without build flags validates that manifest
-offline.
+Profiles are in [platforms.json](../tests/fixtures/platforms.json). Without build
+flags, `tools/test_platforms.py` validates that manifest offline.
 
 ## Optional router probe
 

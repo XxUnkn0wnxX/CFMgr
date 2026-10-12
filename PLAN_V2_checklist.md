@@ -357,7 +357,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | --- | --- | --- | --- |
 | [ ] | [ ] | S16.01 | **Usable integrated product:** Required workflows are implemented through actual user entry paths, with representative automated acceptance and declared beta target limits. |
 | [ ] | [ ] | S16.02 | **Evidence and limitations:** Separate source/Linux/BusyBox evidence from deferred live beta qualification; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
-| [ ] | [ ] | S16.03 | **Complete practical guides:** Keep interim developer notes small until most goals are met; complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before product readiness. |
+| [ ] | [ ] | S16.03 | **Complete practical guides:** Keep developer notes to essential tools/setup/check commands throughout implementation; expand at the final 100% readiness stage and complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before declaring beta readiness. |
 | [ ] | [ ] | S16.04 | **Cloudflare prerequisites:** Account/domain/DNS and policy wiring guidance in docs, no extra runtime prompts or private-network restriction. |
 | [ ] | [ ] | S16.05 | **Safe reproducible delivery:** Sanitized examples/screenshots and validated real installer command/failure behavior. |
 | [ ] | [ ] | S16.06 | **Release readiness:** Coherent first version, automated development acceptance and extended router beta before stable qualification; required functionality/documentation before optional final polish. |
@@ -365,7 +365,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 
 ### Planned documentation coverage for S16.03
 
-Keep interim developer notes small until most/all implementation goals are met.
+Developer notes stay minimal until the final 100% readiness stage.
 The following final-guide obligations mirror specification section 16; existing
 README and temporary developer notes do not complete them. These checks belong
 to S16.03 and do not change the 16-goal denominator. Final review checks actual
