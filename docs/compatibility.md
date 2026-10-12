@@ -10,8 +10,8 @@ IPv6 operation remains provisional.
 
 ## Representative profiles
 
-Retained official firmware was inspected as data, without execution or flashing.
-These are selected image snapshots, not promises about every release or model.
+These official firmware snapshots were inspected as data, without execution or
+flashing. They do not establish model support or cover every firmware release.
 
 | Target | Firmware snapshot | Kernel | Native BusyBox/curl/OpenSSL ABI |
 | --- | --- | --- | --- |
@@ -19,19 +19,16 @@ These are selected image snapshots, not promises about every release or model.
 | [RT-AX88U_PRO](https://sourceforge.net/projects/asuswrt-merlin/files/RT-AX88U_PRO/Release/) | `3006_102.9_0` | AArch64, 4.19.183 | ARM ELF32, `/lib/ld-linux.so.3` |
 | [RT-BE96U](https://sourceforge.net/projects/asuswrt-merlin/files/RT-BE96U/Release/) | `3006_102.9_0` | AArch64, 4.19.294 | ARM ELF32, `/lib/ld-linux.so.3` |
 
-All three contain BusyBox 1.25.1, curl 8.17.0 and a ROM CA bundle. Embedded
-OpenSSL banners identify 1.1.1w on the baseline and 3.5.8 on the modern snapshots;
-banner/ELF inspection does not prove successful execution.
+Static inventories report BusyBox 1.25.1, curl 8.17.0 and ROM CA bundles, with
+OpenSSL banners 1.1.1w on the baseline and 3.5.8 on the modern snapshots; this
+does not prove successful execution.
 
-[Pinned test profiles](../tests/fixtures/platforms.json) record Merlin source
-revisions, BusyBox and dependency inputs. Entware's
-[supported feeds](https://github.com/Entware/Entware/wiki) include
-`armv7sf-k3.2` and `aarch64-k3.10`, using their own
+[Pinned test profiles](../tests/fixtures/platforms.json) record source revisions,
+BusyBox, dependency inputs and additional source-only targets. Entware's [supported feeds](https://github.com/Entware/Entware/wiki)
+include `armv7sf-k3.2` and `aarch64-k3.10`, using their own
 [`/opt/lib` loaders](https://github.com/Entware/Entware/wiki/Using-GCC-for-native-compilation#environment-variables).
-The pinned inventories include jq, coreutils-timeout, coreutils-sha256sum and
-conditional flock/bind-dig. Feed names and package listings do not establish
-runtime usability, and the kernel, native utilities and Entware need not share
-one ELF class.
+Feed listings do not prove runtime usability; kernel, native utilities and
+Entware need not share one ELF class.
 
 ## Admission and evidence limits
 

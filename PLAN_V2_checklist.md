@@ -11,13 +11,14 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**3 of 157 product subgoals accepted — 1.9% overall subgoal completion.**
+**5 of 157 product subgoals accepted — 3.2% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
-static checks, parent review and full exact-commit Checks for CI-dependent acceptance.
+static checks, parent review and every applicable focused CI group passing at the
+exact candidate revision when platform proof is required.
 **Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
 local suite and exact full CI at the complete main-goal checkpoint. Subgoals do
-not trigger full local suites. Publication and execution rules: [AGENTS.md](AGENTS.md).
+not trigger full local or full CI suites. Publication and execution rules: [AGENTS.md](AGENTS.md).
 
 **Development platform gate:** representative Ubuntu integration and native-host
 vendor BusyBox execution. Exact firmware/ARM/kernel-VM execution is not a required
@@ -29,8 +30,9 @@ to separately authorized real-router beta; support stays provisional.
 Each product subgoal below has separate **focused local** evidence and **final
 status**. Focused evidence means the relevant written tests passed, not merely
 syntax or smoke checks. Final subgoal status also requires any specific platform
-proof; unavailable BusyBox-dependent evidence remains pending until full Checks
-at the exact candidate revision supplies it. Quick Checks alone earns no tick.
+proof; unavailable BusyBox evidence remains pending until all tests in every
+applicable focused group pass at the exact candidate revision. Include affected
+shared foundations across goals. Small diagnostic selections alone earn no tick.
 
 A main goal needs every required subgoal complete, the codebase audit, and full
 local/full CI suites before its final tick. Product completion is the number of
@@ -106,10 +108,10 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [ ] | [ ] | S02.02 | **Private storage layout:** JFFS authority/recovery, RAM frequent state, verified Entware tunnel/log data, independent backup mount. |
 | [x] | [x] | S02.03 | **Generated defaults:** Private extensionless config generated only for genuinely fresh setup; no shipped config/template. |
 | [ ] | [ ] | S02.04 | **Shared operational prerequisites:** Verified jq, timeout and SHA-256; native-first flock and tunnel-only DNS additions. |
-| [ ] | [ ] | S02.05 | **Normal dependency repair:** Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
+| [x] | [x] | S02.05 | **Normal dependency repair:** Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
 | [ ] | [ ] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | [ ] | [ ] | S02.07 | **Native recovery access:** Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
-| [ ] | [ ] | S02.08 | **Storage identity and loss:** Resolve current `/opt`, verify its backing mount and required-data reads, revalidate saved observations, guard CFMgr write paths, pin each action and stop/report owned work on loss. |
+| [x] | [x] | S02.08 | **Storage identity and loss:** Resolve current `/opt`, verify its backing mount and required-data reads, revalidate saved observations, guard CFMgr write paths, pin each action and stop/report owned work on loss. |
 | [x] | [x] | S02.09 | **Capability-based support:** Target the GT-AX11000 baseline and modern Merlin models with supported Entware and usable required dependencies; record source/ABI profiles and enforce native capability/TLS checks, with model qualification deferred to real-router beta. |
 
 S02.01/S02.03 mapping acceptance: root entry goes only to `/jffs/scripts/cfmgr.sh`;
@@ -120,20 +122,16 @@ are distinct from still-required remote acquisition/update-source proof.
 
 | Scope | Focused local/static evidence | Required CI gate | Subgoal acceptance |
 | --- | --- | --- | --- |
-| S02.04/S02.05 prerequisite inventory | `test_prerequisites.py`, `test_install.py`, `test_dev_runners.py`: 62 passed, 4 Linux skips on the initial dirty package; final prerequisite correction: 20 passed, 3 Linux skips. Static gates and parent review passed. | Passed at `b64a00b349935dc45aa518214d8aefa34456bb46`: [Checks 38204206519](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38204206519), host and vendor BusyBox each 65 passed, 1 workstation-only skip. | Partial. Inventory/native-first flock proved; normal opkg repair and the tunnel DNS consumer remain incomplete. |
-| S02.05/S02.08 storage proof | `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`, `test_install.py`: 57 passed, 16 platform/mode skips, 48.01s on the dirty tree based on `b64a00b`; static gates and parent review passed. | Passed at `423dd14a5b35c295f07aed0d9e1225a10a8a15df`: [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856), host 65 passed/8 skips; vendor BusyBox 73 passed/0 skips, including all five real mount cases. | Partial. Existing installer pin/UUID checks and parser passed focused local/CI proof; expected saved identity, owned-writer containment and returning-work eligibility remain incomplete. |
-| S02.05/S02.08 guarded view | `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`, `test_install.py`, `test_platforms.py`: 103 passed/19 platform skips; fixture corrections 7 passed/8 skips. Static gates and parent review passed. | Passed at `ad28a3abf4ced1f74a8bcf42b89e9ba4994704b0`: [Checks 38211199161](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38211199161), host 111 passed/11 skips; vendor BusyBox 122 passed/0 skips, including eight real mount cases. | Partial. Construction/recheck/normal cleanup and unplug/replacement guards proved; production supervision, opkg integration and complete storage-loss behavior remain unproved. |
-| S02.05/S02.08 mount references | `test_mount_keeper.py` plus guarded-view modules above: 104 passed/28 platform skips; final native/fixture corrections with prerequisite coverage: 29 passed/20 skips. Static gates and parent review passed. | Exact `a7fe16ce2503cf34920efe5034a22d319e54f948`, [Checks 38216515648](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38216515648): host 135 passed/21 skips; vendor BusyBox 155 passed/1 workstation-only skip, including keeper lifetime and real mount rollback/loss cases. All required steps passed. | Partial. No task supervisor or installed-opkg consumer; no additional accepted subgoal. |
 | S02.09 native capability/TLS admission | `test_native.py`, `test_install.py`, `test_prerequisites.py`, `test_package.py`, `test_platforms.py`: 112 passed/5 Linux skips, 56.47s on the reviewed dirty tree based on `ac6cb89`; final native/install host-fixture correction: 41 passed/2 Linux skips, 50.17s. All static/planning/package gates passed. Installer success/failure, isolated real TLS trust/hostname cases, CA decode and native mutations proved. | Passed at exact `2c6dfe16ab02d3e8c005851fbab2c7e67d4afeb8`, [Checks 38222000119](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38222000119): host and vendor BusyBox each 117 passed/1 workstation-only skip; all required steps passed. | Accepted: mandatory installer admission and representative TLS/native behavior passed parent review and focused local/CI gates. Static ARM/firmware profiles are recorded in the compatibility guide; model qualification remains beta-only. |
-| S02.05/S02.08 integrated repair | `31d3c78`: dependency/consumer tests 28 passed, 18 Linux skips; final prerequisite tests 20 passed, 8 Linux skips. At `8dfa477`: 13 passed, 11 Linux skips; relevant statics and parent review passed. | [Quick Checks 38249697814](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38249697814) passed 9 diagnostics. [Quick Checks 38253817799](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253817799) passed mixed-root, drive-loss and actual-installer cases at exact `8dfa47753860667f71aecb7710007559c61d5617`. Synthetic opkg proves the command contract; live Entware remains beta evidence. | Unchecked pending final full required CI with the retained consumer below. |
-| S02.05/S02.08 retained launch | Dirty candidate based on `b90eb6e`: `test_config_observation.py`, `test_retained_launch.py`, `test_dependency_consumer.py`, `test_install.py`, `test_prerequisites.py`, `test_dev_runners.py`: **107 passed, 17 Linux skips**; all static/planning/package checks and parent review passed. | Required Linux/BusyBox retained repair/return and full exact-candidate Checks pending. | Unchecked until the required platform gate passes. |
+| S02.05/S02.08 fresh and retained consumers | `test_config_observation.py`, `test_retained_launch.py`, `test_dependency_consumer.py`, `test_install.py`, `test_prerequisites.py`, `test_dev_runners.py`: **107 passed, 17 Linux skips**. Final storage-mount/retained fixture checks: **21 passed, 9 Linux skips**. Relevant statics and parent review passed. | Exact `81d2b29fa42374283f3b18d9de37e32f2880628e`, [full Checks 38274552711](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38274552711): host **355 passed, 26 skips**; vendor BusyBox **380 passed, 1 workstation-only skip**; four optional diagnostics excluded in each stage. All required gates passed. | Accepted: fresh install and retained launch consume normal installed-opkg repair, post-probes, guarded storage/loss handling, saved observations, missing-volume reporting and healthy return without changing retained settings. Synthetic opkg and representative Linux mounts/processes; live Entware/Merlin remains beta evidence. |
 
 Focused commands use `.venv/bin/python tools/test.py --focused` followed by the
 listed modules under `tests/`. No partial row earns a focused-complete or accepted
-subgoal tick. Separate Quick Checks runs diagnose selected BusyBox tests only;
-CI-dependent subgoal acceptance and requested pauses require full Checks at the
-exact candidate revision. Local packages retain focused tests/commits; full local
-suites remain main-goal gates.
+subgoal tick. Quick Checks supports small diagnostic fixes followed by the complete
+applicable grouped CI gate. All affected subgoal/shared-foundation groups must pass
+at the exact candidate revision before CI-dependent acceptance or a requested pause.
+Local packages retain focused tests/commits. Full local/full CI suites run only when
+a main goal reaches 100%.
 
 Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies).
 

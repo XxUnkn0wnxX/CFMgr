@@ -15,274 +15,88 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current task and route
+## Final checkpoint — focused policy CI pending
 
-**Priority override:** 3D passed in 2m39s and 3C in 47s. User accepts 3C; prioritize
-baseline trimming and check for another cheap 20–60s saving in 3D, aiming for about
-two minutes per batch. User accepts 3A/3B and provisionally 3E. Rerun changed
-groups, then the exact combined full gate before accepting S02.05/S02.08 and
-pausing. No runtime writer is active.
-Standing amendment recorded in AGENTS: every new Linux-dependent subgoal or
-substantial library package needs its own focused Quick batch with runtime review
-before the combined full gate; split/optimize slow groups first.
-Cancellation of 3D is terminal. Its tests finished during cancellation: **21 passed,
-4 deselected in 434.51s**, but cancelled workflow supplies no acceptance. Case
-times: failed-update 98.96s, daemon 98.66s, loss 95.73s, installer 139.73s; remaining
-tests negligible. CPU 407.11s confirms work rather than a fixed wait/hang. Receipt
-`.tmp/quick-3d-cancelled.log`. Current batch target is roughly 3–4 minutes.
-Parent reviewed and integrated the released test-only layering refinement in
-`tests/fixtures/{dependencies,storage_mounts}.sh`: the three failure cases reuse
-the real foreground view-operation adapter, preserving exact nonzero status and
-quiet-success validation. Real mounts/keeper/task/loss/cancellation and production
-task/FIFO/signal/claim callbacks remain. Fresh/retained complete consumers retain
-production per-operation supervision. Worker proof: **20 passed, 20 Linux skips**;
-affected ShellCheck, shfmt, shell syntax and whitespace passed. Exact `e128968`
-Quick runs passed: 3D `38272259819` **21 passed, 4 deselected, 158.46s** (installer
-126.60s; daemon 14.59s; loss 9.04s; failed update 7.44s); 3C `38272292860`
-**92 passed, 46.41s**. Logs: `.tmp/quick-3d-layered.log`, `.tmp/quick-3c-adapter.log`.
-User accepts 3C and now prefers around two minutes per batch, with a cheap further
-20–60s cut to 3D if feasible. Baseline remains first optimization priority.
-Both bounded reviews are complete with no code changes. No safe further installer
-saving of 20–60s was identified without weakening its full production proof.
-Baseline ShellCheck follows the entry's shared imports: full-list local check
-passed in 90.77s; four smaller batches took 6.71s but lost source context and
-reported SC2034/SC1091, so that split is rejected. Existing CI baseline 101.77s
-already meets the roughly two-minute target. Parent will rerun baseline at
-`e128968`, then the combined full gate. All workers have released their scopes.
-Latest cost direction: after the new baseline, report combined estimate; if near
-ten minutes, trim repeated subgoal work while preserving every plan core edge.
-Parent is checking whether retained-launch view-operation supervision duplicates
-the unchanged full fresh-installer proof. `next_subgoal_review` owns read-only
-composition review; no fixture edit yet. Retained config migration, actual repair,
-native claim/task/keeper paths, absence message and healthy return must stay intact.
-Composition review passed: retained uses the same repair FD mapping; its snapshot
-migration and publication follow released repair/post-probes through unchanged
-native callbacks. `dependency_fixture` now owns only `tests/fixtures/retained_launch.sh`
-to use the foreground view adapter before launch, preserving every existing
-assertion. Fresh installer remains complete native integration. Parent will rerun
-3E before full acceptance. User requests cheap savings across all groups; reuse
-the completed 18-module cost audit and already acceptable cheap group timings.
-Parent exclusively owns `tests/fixtures/storage_mounts.sh`: omit the unused
-native-file/nested-mount topology from `view_cleanup` only, keeping its complete
-rollback/quiescence/busy/foreign/retry assertions and full compatibility/detach
-topology in their dedicated cases. This is disjoint from the retained writer;
-rerun 3C alongside 3E after focused/static review. No other cost reduction survived
-the bounded review without losing distinct proof.
-The user now requests all practical trimming followed by the full suite. Both
-fixture edits are complete and parent-reviewed; focused tests passed **21 tests,
-9 Linux skips** across storage-mount and retained-launch modules. Shell syntax,
-shfmt, planning/package and whitespace passed. Source-aware ShellCheck passed for
-all shell inputs except the unchanged root entry; full CI retains the complete check.
-Baseline confirmation `38273391701` passed at `e128968`: host/statics **105.39s**,
-355 passed/26 skipped/4 deselected, full job 2m04. Pre-final-trim combined estimate
-was about nine minutes including setup. Quick 3C/3E and then exact full Checks are
-the remaining validation route; no full local suite or new product target is due.
-User accepts a combined full run around ten minutes or less, then requests a final
-concise docs consistency check before pause. Include the existing 3.2 KB
-`docs/compatibility.md` (added with S02.09 at `a0fdb2a`) in that review. Keep README
-and development guidance short, with no investigation/progress diary in guides.
-Reduced coupling coverage is in review notes; no product runtime edits authorized
-by this optimization package.
+Final user amendment is being integrated before publication: complete exact-SHA
+focused CI groups accept subgoals, including all affected shared foundations.
+Full local/CI suites occur only at complete main-goal markers. Rules, specification
+and checklist are reconciled. Both workflow edits are released and reviewed:
+Quick labels grouped focused proof; full Checks is manual-only. Existing runner
+tests passed (32), with workflow YAML/Bash/Python syntax checks. One exact focused
+runner CI batch remains before the final receipt; no new full run.
+Product acceptance below remains based on the already completed full pass.
 
-**Latest user direction:** cancel full Checks `38267375410` for excessive duration
-(sent at about 12m30s). Diagnose each remaining stage separately through Quick
-Checks before another full attempt. No cancellation supplies acceptance. Keep
-S02.05/S02.08 unchecked and finish optimization, quick proof and exact full CI
-before the agreed final pause. Parent owns stage coverage and publication; the
-existing quick workflow currently accepts individual test nodes, not modules.
-Cancellation is terminal (15:17:08 UTC); force-cancel raced with completion and
-returned already-completed. Host **353 passed, 26 skipped, 3 deselected in 27.41s**;
-host/statics total 108.71s. BusyBox reached 18% after 10m40s, then 75% about a minute
-later: the early dependency integration block dominates. No final BusyBox pass.
-Receipt `.tmp/optimized-full-cancelled.log`.
-Next bounded owners: `focused_ci` owns only quick module-group selection/timing
-in `tools/test.py`, `tests/test_dev_runners.py`, `.github/workflows/quick-checks.yml`;
-`dependency_fixture` owns only the retry consolidation in
-`tests/fixtures/{dependencies,storage_mounts}.sh` and `tests/test_dependencies.py`.
-No runtime edits. Parent integrates focused/static proof, documents reduced
-same-process retry coverage, then runs separate Quick batches for parsers/tools,
-native/prerequisites, storage/ownership, and each costly repair consumer. No overlap
-or full gate until stage costs are understood and bounded. User now authorizes
-separate concurrent manual Quick runs for stage 3, after a separate setup/full-host
-baseline check. Five disjoint groups cover all 18 modules: parsers/tools (8),
-native/prerequisites/consumer (3), install/package/storage/keeper (5), dependencies
-(1), retained launch (1). Manual run concurrency must not cancel sibling groups;
-push cancellation stays unchanged. Every job uses one serial pytest invocation.
-Both workers have released the package. Quick now supports the separate manual
-host baseline and whole-module groups with verbose names, durations and CPU/wall
-accounting. Required `dependency_update_failure` proves real failed-update terminal
-state/ownership/descriptor/deadline cleanup; old consecutive two-repair retry is
-optional. The fast later-retry consumer plus required real fresh/retained successes
-provide the remaining retry evidence; the composition limit is in review notes.
-No runtime change. Worker focused/static gates passed; parent integration review
-passed. Combined focused gate: **60 passed, 15 Linux skips, 4 optional diagnostics
-excluded in 4.43s** across runners/dependency/consumer modules; affected statics,
-planning/package and whitespace pass. Standing subgroup diagnosis rule
-and optional-light-Mac suite interaction rule are now in AGENTS below 26 KB.
+The requested **S02.05 normal dependency repair** and **S02.08 storage identity/loss**
+are complete and accepted after focused tests, parent review and exact full CI.
+The user accepted the **8m09s** combined runtime; stop cost tuning here.
+**5/157 accepted (3.2%); 0/16 main goals.** Goal 2: **4/9**; Goal 3: **1/10**.
+Accepted IDs: S02.03, S02.05, S02.08, S02.09, S03.01. No main-goal audit/full-local
+completion is claimed. No new product package has started. **Resume only on request.**
 
-**Finish and pause:** the user now explicitly requests completion of **S02.05 and
-S02.08**, their focused local and exact full CI gates, commit/push and a refreshed
-handoff, then pause. Do not start another target afterward. The latest user rule
-adds rapid selected BusyBox diagnostics followed by full CI before CI-dependent
-subgoal acceptance or pause. Full local suites still wait for main-goal markers.
+## Verified checkpoint
 
-Latest steering: optimize the whole existing suite before any new push/pause;
-the prior full Checks was cancelled on explicit user instruction for excessive
-duration. Parent owns runtime/coverage decisions. The read-only suite audit is
-complete; both optimization workers released their files and parent review passed.
-Preserve meaningful repair/loss/cancellation/corruption proof, exact full CI and
-fresh mutable fixture state. No new product target or additional edge-case suite.
-The user explicitly permits dropping or optionalizing costly rare edge variants;
-prioritize representative core failures over exhaustive combinations. Cheap tests
-need no churn. Record only actual relaxed coverage in the review-notes document.
-Full CI including setup must target 10–15 minutes and never exceed 20 minutes,
-including at product 100%. This is now a standing AGENTS rule; optimize before
-the final pause, measure the required run, and do not increase timeouts to fit bloat.
-Plan-specified edge cases remain required. Outside the plan, only cheap useful
-additions should be implemented automatically. Document critical residuals covered
-by small mitigations in review notes; if no small fix can cover a critical gap,
-ping the user and pause affected work under the hard-blocker rule. Goal delivery
-and planned tests remain the priority.
+- Tested code/test/workflow commit: **`81d2b29fa42374283f3b18d9de37e32f2880628e`**,
+  pushed and remote-verified on develop. Runtime is unchanged from `9e2563d`;
+  subsequent code changes optimized tests/runners/workflows.
+- Exact full [Checks 38274552711](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38274552711)
+  passed all required jobs/steps. Host: **355 passed, 26 platform skips**, statics
+  included, **1m45.42s**. Vendor BusyBox: **380 passed, 1 workstation-only skip**,
+  **6m05.86s**. Four optional diagnostics were excluded in each stage. Job including
+  setup/cleanup: **8m09s**. Parent verified terminal success and full head SHA.
+- Final focused Quick batches at that candidate: [3C 38274342379](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38274342379)
+  **92 passed, 47.45s**; [3E 38274310684](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38274310684)
+  **15 passed, 66.23s**, down from 173.54s. Unchanged 3D at `e128968`,
+  [38272259819](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38272259819), passed
+  **21 tests in 158.46s**, down from the cancelled 434.51s diagnostic. The full gate
+  above subsequently proved every required group together at the final candidate.
+- Focused implementation gate: **107 passed, 17 Linux skips**, relevant static/
+  planning/package checks and review passed; `.tmp/retained-local-focused.log`.
+  Final affected storage-mount/retained fixture tests: **21 passed, 9 Linux skips**;
+  relevant lint/syntax/format checks passed. No extra full local suite was run:
+  this is a subgoal/pause checkpoint, not a complete main-goal marker.
+- Full receipt: `.tmp/final-full-checks.log`. Supporting timings:
+  `.tmp/quick-{3c,3e}-final.log`, `.tmp/quick-3d-layered.log`,
+  `.tmp/quick-host-baseline-confirmed.log`; module map `.tmp/quick-groups.json`.
+  Earlier run history is retained at `81d2b29:PLAN_V2_handoff.md`. Cancelled runs
+  supply no acceptance.
 
-User explicitly ordered cancellation of Checks `38262065257` at about 20 minutes;
-parent sent cancellation. It supplies no acceptance. Completed optimization package:
-`focused_ci` released `tools/test.py`, `tests/test_dev_runners.py`, and
-`.github/workflows/checks.yml` (common static checks once, retain BusyBox syntax,
-visible timings and 20-minute job limit). `dependency_fixture` released
-`tests/fixtures/storage_mounts.sh` and `tests/test_dependencies.py` (omit unused
-native-file/nested-mount variants for dependency cases, retain dedicated
-compatibility proof; standalone normal-repair wrapper becomes optional because
-retry success plus actual installer/retained consumers cover it). Parent owns all
-docs, integration/coverage review and the exact quick/full CI gates. No runtime
-changes, shared mutable test state, supervisor bypass or deadline reductions.
-Cancellation is terminal: host/static passed; BusyBox was cancelled at 14:39:50 UTC.
-The whole-suite audit covered all 18 test modules and relevant fixtures. Cheap
-parser/config/identity/runner/offline-tool tests remain; real publication,
-native/TLS admission, coalescence, corruption/interruption, keeper and storage
-failure cases establish distinct required behavior. No other large safely
-removable case cluster was found. Parent also replaced duplicate retained-package
-construction with the existing immutable package fixture; each test still creates
-fresh mutable installed state. No polling/cancellation grace was shortened.
-Integrated focused proof: runner/dependency/storage tests **50 passed, 16 Linux
-skips, 3 optional diagnostics excluded**; retained tests **14 passed, 1 Linux skip**.
-Affected lint/format/compile, shell syntax/ShellCheck/shfmt, YAML, planning/package
-and whitespace checks passed. Linux timing and behavior still require quick/full
-CI at the new candidate. Runtime code is unchanged from `9e2563d`.
-Conditional exception: the user permits a full local diagnostic run if optimization
-cannot isolate the remaining cost. Not triggered yet: the cancelled CI host suite
-passed 351 tests in 27.81s; Linux-only integration dominates and concrete reductions
-are implemented. A macOS run skips those mount cases, so it cannot replace Linux
-timing or acceptance proof.
+## Final documentation and work state
 
-Latest optional diagnostic permission: a known-light full Mac suite taking about
-one minute may help optimization or focused-pass/full-suite-fail diagnosis, with
-Linux-only skips explicit. CI-dependent Quick Checks followed by full Checks still
-apply. It is optional, not a new per-subgoal gate; AGENTS records the rule. Ubuntu's 28s behavioral timing
-does not establish total Mac cost, and earlier Mac static gates took longer.
+README and checklist reflect only accepted progress. Development and compatibility
+remain approximately 3 KB each; commands, links and evidence limits were checked.
+Compatibility covers router/Merlin targets, not verified hardware support. AGENTS
+is approximately 26 KB, below 32 KB. Handoff session IDs, retained design evidence,
+permissions and recovery references are preserved. The completed 18-module cost
+review and required core edge coverage are retained; actual test composition/
+optional diagnostic limits are in [review notes](PLAN_V2_review_notes.md).
 
-Latest user direction: practical acceptance, no hours-long pursuit of rare edges.
-Use judgement to relax incidental test details or defer rare low-risk diagnostics
-with a concise review-note entry, without pinging the user. Pursue common
-failures; raise a concrete blocker after two unsuccessful focused attempts.
-Escalate high-risk unresolved issues; if unanswered, record the question and pause
-after 3–5 minutes. AGENTS owns the
-two-focused-fixes/~20-minute reassessment rule. Full CI means required acceptance,
-with rare mixed-root and dead-leader/thread stress optional. Possible later VPS
-testing is not current provisioning/execution authorization.
+All workers released their files; no product work or blocked question remains.
+The user-requested workflow policy update needs its focused runner CI, then the
+final documentation receipt. Runtime acceptance remains at the full-tested
+candidate above; no new full run is due. Publication is authorized: focused checks,
+commit/push, focused CI, then documentation receipt and verified clean refs. Before new work,
+verify `git status --short` and `git rev-parse HEAD origin/develop`; if receipt
+publication was interrupted, finish that boundary first. No destructive cleanup,
+new target or router action is authorized by this record.
 
-`focused_ci` released the runner/diagnostic files: 41 focused tests passed and
-11 Linux cases skipped locally; parent reviewed the selection/output changes.
-AGENTS consolidation is reviewed and below 24 KB, with a 28 KB proactive threshold.
-The docs/CI worker owns no remaining files.
-Parent owns planning files, package manifest, workflow path filters and integration.
-Both runtime and parser workers have completed and released their files. Parent
-review passed installed default routing, retained config/package admission, shared
-normal repair, post-repair snapshot migration, native storage-loss reporting and
-guarded raw-preserving observation publication. Native AWK check/observe/patch
-modes use exact generation/change/byte-count receipts and immutable snapshots.
-The integrated focused local gate passed: **107 passed, 17 Linux-only skips**;
-all planning/package, Ruff/format/compile, shell syntax, ShellCheck and shfmt gates
-passed. Command: `.venv/bin/python tools/test.py --focused
-tests/test_config_observation.py tests/test_retained_launch.py
-tests/test_dependency_consumer.py tests/test_install.py tests/test_prerequisites.py
-tests/test_dev_runners.py`; receipt `.tmp/retained-local-focused.log`.
-This was focused behavior plus common static checks, not a full local suite.
-Parent owns quick BusyBox proof, then full required Checks at the same candidate.
-Runtime/parser are committed and pushed; no writer or local test remains active.
-
-Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
-Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
-smallest independently completable subgoals, then linked module/framework batches,
-then remaining main-goal work. The active targets are **S02.05/S02.08**:
-real installed-opkg repair and saved storage identity/loss/return behavior.
-Finish the integrated normal-repair
-consumer below; supporting ownership/resource work belongs to S04.08/S04.09 and
-native state parsing may need S04.01. The user was notified before this prerequisite
-work. Return to Goal 2; supporting main goals do not all have to finish first.
-
-**3/157 accepted subgoals (1.9%); 0/16 main goals (0%).** Goal 2: 2/9 accepted
-(22.2%); Goal 3: 1/10. S02.05/S02.08 are implemented and locally reviewed/tested;
-their required Linux/BusyBox acceptance remains pending. Neither earns another
-accepted tick until full required Checks passes.
-
-Standing publication/pause, progress and concise-documentation rules are consolidated
-in AGENTS.md. Finish only the agreed two-subgoal pause boundary. Completed evidence
-belongs in the checklist. The user reiterated the current-/opt mount/read-test and
-saved-reference behavior in answer to the repeated storage question; apply that
-decision below and do not ask for the same approval again.
-Never leave a started library/subgoal half-finished to switch targets. Smallest
-standalone subgoals come first on resume; avoid discretionary framework expansion.
-
-## Working tree, refs and last gate
-
-- Current candidate **`f9a0c0b42528de640d30e0897cac8a6ff37877d4`** is committed,
-  pushed and remote-verified. Quick `38269823553` checks the runner module;
-  manual Quick `38269840050` runs stages 1–2 host baseline. `inventory_ci_wait`
-  monitors both. After host success, launch the five disjoint BusyBox groups
-  together as explicitly requested; record IDs/timings and do not retry full yet.
-  Both passed: host baseline step **1m42s**, runner module subsecond. Parent
-  verified SHA and terminal success; receipt `.tmp/quick-host-baseline.log`.
-  Five BusyBox groups are now running concurrently at this unchanged candidate:
-  **3A** parsers/tools `38270185634`; **3B** native/prerequisites `38270189956`;
-  **3C** installation/storage `38270194791`; **3D** dependency repair `38270199354`;
-  **3E** retained launch `38270203604`. Exact module map `.tmp/quick-groups.json`
-  covers all 18 modules once. `inventory_ci_wait` monitors these only. No writers.
-- Candidate **`885dc5c1c15881c634c7420a42301394a7306f5c`** is committed, pushed
-  and remote-verified on `develop`. Runtime is unchanged from `9e2563d`; subsequent
-  code changes optimize tests/runner/workflows and isolate unit-test environment.
-- [Full Checks 38267375410](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38267375410)
-  was cancelled on explicit user instruction. Host/static passed in 1m49s;
-  BusyBox ran 15:05:15–15:17:08 UTC without a final pass. Full acceptance remains pending.
-- [Quick Checks 38267255894](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38267255894)
-  passed **3 runner tests in 0.06s**, job 17s; parent verified exact SHA/job.
-  Receipt `.tmp/optimized-runner-quick-pass.log`. All 30 runner tests also pass
-  locally under each inherited shell environment (`/bin/sh` and `busybox ash`).
-- Optimized integration [Quick Checks 38265673929](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38265673929)
-  passed at `2085e324f54885305f9849c5ad26e0d926fef492`: **4 tests in 248.95s**.
-  Retained repair/return 140.16s (previously 165.50s), real drive loss 99.95s,
-  full view compatibility 5.42s, plus runner reuse. Receipt
-  `.tmp/optimized-quick-pass.log`. No Linux fixture/runtime changes since that pass.
-- The first optimized full run `38266754900` failed only a runner unit assertion:
-  inherited outer `CFMGR_TEST_SHELL` bypassed the fake default. Parent reproduced
-  it locally and fixed the harness in `885dc5c`; production behavior unchanged.
-  All statics passed; BusyBox was skipped. Receipt `.tmp/optimized-full-failed.log`.
-- Previous full `38262065257` was cancelled on user instruction after about
-  20 minutes. Host behavior passed 351 tests in 27.81s; BusyBox supplied no pass.
-  Receipt `.tmp/retained-full-cancelled-cost.log`. No acceptance from cancellation.
-- Only parent-owned documentation changes are uncommitted: optional-light-Mac
-  diagnosis rule in AGENTS and this handoff. No runtime/test writer or local
-  command remains active. No unchecked product target may start before pause.
-
-Earlier candidate/failure chronology is historical and preserved in
-`885dc5c:PLAN_V2_handoff.md` and its ignored local log receipts. The section was
-consolidated because superseded entries still described old work as active.
-Current acceptance is only the checklist; old counts/runs do not award new credit.
+AGENTS owns standing routes: focused local work commits/continues; required Linux
+proof uses small repair selections followed by all applicable grouped focused CI;
+full local and full CI suites occur only at complete main-goal markers. Aim for
+two minutes or less per focused batch, with three to four minutes as the practical
+upper range where feasible; preserve every plan core edge. The user accepted
+current full-suite cost; do not reopen optimization
+without new evidence. Keep guides concise and leave session/issue notes out of the
+checklist and README.
+At complete project 100%, the latest user target is roughly **40 minutes maximum**
+for the full suite including setup, replacing the earlier 10–15/20-minute ceiling.
+Current full workflow timeout remains 20 minutes; increase only as measured,
+necessary coverage grows, never beyond 40 minutes. Current eight-minute cost is accepted.
 
 ## Ownership and implemented boundary
 
 All runtime/test/parser workers have released their files. Parent owns the four
-planning files, integration, CI decisions and acceptance. `inventory_ci_wait` only
-monitors the current job. No new implementation target is authorized before the
+planning files, integration, CI decisions and acceptance. All delegated work and
+CI monitoring are complete. No new implementation target is authorized during the
 requested pause; S02.04/S02.06 and other independent work wait for resume.
 
 Implemented consumers:
@@ -339,7 +153,7 @@ worker history remain recoverable from `b90eb6e:PLAN_V2_handoff.md`.
 ## Retained execution/storage design evidence
 
 The private descriptor-bound view and fallback guards are integrated with normal
-opkg repair; final acceptance follows the current CI receipt above. Do not assume router cgroups/namespaces
+opkg repair; acceptance is established by the exact full CI receipt above. Do not assume router cgroups/namespaces
 or a new resident daemon; Linux test namespaces only isolate fixtures. Polling
 `/opt` alone cannot prevent stale-path writes.
 
@@ -421,39 +235,27 @@ Source pins and evidence for that decision:
   `b6a23a99f6564b332ad5f7ae418b5ffaa1c6afe424eac9a5cf2620ada8144803` under
   `.tmp/firmware-audit/sources/3004.388.12_2/util-linux/`: explicit bind operands
   reach syscall unchanged; pinned `get_devname.c` rewrites only UUID=/LABEL=.
-  Descriptor binding still needs execution proof. No firmware/router execution.
+  Descriptor binding has representative vendor-BusyBox/Linux proof, not firmware/router execution.
 - Entware root `36db8558ac7840d993cb11df1e47e0326d681077`; opkg source
   `80503d94e356476250adaf1f669ee955ec26de76`. Root feed references are unpinned;
   supplemental recipes `entware-packages/b6a6f2962f62882b76dfe45f9f9e1238cd9b74fd`
   and `rtndev/05d2b0f695b8bc1973a9c88a8f08764c8fcb8271` do not prove installed IPKs.
   Selected recipe simplicity does not constrain all existing unpacked scripts.
 
-## Validation and resume
+## Next-session boundaries
 
-1. Wait for the current full Checks candidate above; quick proof passed. On a
-   concrete failure, inspect its first useful log and repair only the affected
-   practical acceptance case, then repeat focused quick/full CI as required.
-2. No full local suite is due; the focused local gate already passed.
-3. After full required CI and parent acceptance, tick S02.05/S02.08, update concise
-   checklist/README counts and this handoff, then commit/push the docs receipt.
-4. Verify no required worker/job remains active and pause. Start no further target.
+Resume only when the user requests it. Follow smallest independently completable
+subgoals first, then shared-module batches, then remaining main-goal work. Finish
+started libraries/subgoals before switching; inspect existing consumers, tests and
+checklist before choosing the next smallest item. Return toward Goal 2, originally
+a prerequisite for Goal 1; S04.01/S04.08/S04.09 foundations earn no extra ticks.
+No next package has been selected or started. Full local suites remain main-goal
+gates. Required development CI is Ubuntu/vendor BusyBox; exact firmware/ARM/flash/
+hooks/provider qualification remains separately authorized beta work.
 
-Required development CI is one Ubuntu host/vendor-BusyBox job, not exact firmware
-emulation. Real Merlin/ARM/flash/hooks/TLS/provider qualification remains beta work.
-Optional guest tooling/caches stay preserved and unaccepted. No new kernel matrix,
-installer execution, hardware acceptance or beta deployment is authorized.
-
-Use `.venv` and pinned dependencies. CI ShellCheck is now pinned to local 0.11.0;
-older-version annotations remain narrow. Regenerate changed runtime metadata with
-`.venv/bin/python tools/package.py --write`, then `--check`.
-
-The suite-wide cost review and optimization are complete at `2085e32`: common
-statics now run once; unused dependency topology and duplicate successful-repair
-coverage were removed from required CI, with dedicated compatibility and retry/
-consumer proof retained. Retained repair/return improved from 165.50s to 140.16s
-in the passing quick run (not a controlled CPU benchmark). Current full Checks
-reports wall/CPU and slowest-test timings; record that receipt before pause.
-Further minute-scale fixture cuts were not justified by the bounded follow-up.
+Use the existing `.venv` and pinned dependencies. ShellCheck is pinned to 0.11.0.
+Regenerate changed runtime metadata with `.venv/bin/python tools/package.py --write`,
+then `--check`. Preserve optional guest tooling/caches as unaccepted diagnostics.
 
 ## Permissions, retained evidence and recovery
 

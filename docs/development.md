@@ -2,12 +2,12 @@
 
 [Project overview](../README.md) · [Work and acceptance rules](../AGENTS.md)
 
-These tools run on the developer host or CI. Router runtime remains POSIX shell.
+Tools run on the developer host or CI. Router runtime remains POSIX shell.
 
 ## Setup
 
-Use Python 3.11+, ShellCheck, a C99 compiler (`cc`), jq, GNU timeout, sha256sum,
-curl and OpenSSL for the local TLS fixtures.
+Use Python 3.11+, ShellCheck 0.11.0, a C99 compiler (`cc`), jq, GNU timeout,
+sha256sum, curl and OpenSSL for the local TLS fixtures.
 On macOS, host shell tests require Homebrew Bash at `/usr/local/bin/bash` and
 the GNU utilities supplied by Homebrew coreutils. Reuse the project `.venv`;
 create it if absent, then install pinned pytest, Ruff and shfmt:
@@ -25,8 +25,9 @@ python3 -m venv .venv
 .venv/bin/python tools/test.py
 ```
 
-Every test invocation also runs **Ruff lint/format checks, Python compilation,
-shell syntax, ShellCheck, shfmt, package metadata, planning/link and whitespace checks**.
+The runner also applies **Ruff lint/format, Python compilation, shell syntax,
+ShellCheck, shfmt, package, planning/link and whitespace checks**. By
+default pytest excludes optional diagnostic cases; `--include-diagnostics` opts in.
 `--focused` accepts test paths; add `-k expression` to filter them. Add
 `--require-busybox` for required BusyBox ash proof. Its Linux mount cases require
 passwordless `sudo` and the `coreutils`, `e2fsprogs`, `mount`, `sudo` and `util-linux`
@@ -45,9 +46,8 @@ Use `--output PATH` to build a package in an absent or empty directory.
 
 ## CI and optional platform diagnostics
 
-The [Checks workflow](../.github/workflows/checks.yml) runs the selected host and
-vendor BusyBox checks on Ubuntu. This is representative development proof;
-Merlin/ARM/flash/provider qualification remains separate router-beta work.
+Manual [Checks](../.github/workflows/checks.yml) runs the full suite on Ubuntu host and
+vendor BusyBox ash, with common statics once. Router qualification remains beta work.
 
 An optional Linux x86_64 guest diagnostic can build and run a pinned kernel
 profile. It is not required CI or accepted router proof:

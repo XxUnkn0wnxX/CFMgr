@@ -1,5 +1,5 @@
 name: Quick Checks
-run-name: "Quick Checks: ${{ inputs.label || 'selected diagnostics' }}"
+run-name: "Quick Checks: ${{ inputs.label || 'selected CI evidence' }}"
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       label:
-        description: Short name for this diagnostic group
+        description: Short name for this focused or diagnostic group
         required: false
         type: string
       host_baseline:
@@ -38,7 +38,7 @@ jobs:
     if: >-
       ${{ github.event_name == 'workflow_dispatch' ||
           contains(github.event.head_commit.message, 'CFMgr-Quick-Tests') }}
-    name: Ubuntu 24.04 CI diagnostics
+    name: Ubuntu 24.04 focused CI evidence
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -94,7 +94,7 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
         uses: ./.github/actions/setup-busybox
 
-      - name: Run diagnostic full host baseline
+      - name: Run diagnostic-only full host baseline
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.host_baseline == true }}
         env:
           CFMGR_TESTED_SHA: ${{ github.sha }}
@@ -102,7 +102,7 @@ jobs:
           echo "DIAGNOSTIC HOST BASELINE ONLY — not main acceptance for $CFMGR_TESTED_SHA"
           /usr/bin/time -v .venv/bin/python tools/test.py
 
-      - name: Run selected pytest nodes (diagnostic only)
+      - name: Run focused pytest selection with BusyBox ash
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
         env:
           CFMGR_QUICK_NODES: ${{ steps.selection.outputs.nodes }}
@@ -124,7 +124,12 @@ jobs:
           except ValueError as error:
               raise SystemExit(f"Invalid validated quick-test output: {error}")
 
-          print("DIAGNOSTIC ONLY — not main acceptance", flush=True)
+          print(
+              "FOCUSED CI EVIDENCE — all applicable focused groups must pass "
+              "for subgoal acceptance; narrow selections are diagnostic. "
+              "Main-goal acceptance requires full Checks.",
+              flush=True,
+          )
           print(f"Tested SHA: {os.environ['CFMGR_TESTED_SHA']}", flush=True)
           print("Selected targets: " + " ".join(nodes), flush=True)
           if selection_args[:2] == ["-m", "not diagnostic"]:

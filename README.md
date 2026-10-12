@@ -10,10 +10,10 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 3 of 157 subgoals accepted (1.9%).**
-The development code provides trusted-local fresh installation with private,
-passive defaults and initial storage safeguards. Complete installation/dependency
-repair and usable feature workflows remain unfinished. The [v2 plan](PLAN_V2.md)
+**0 of 16 main goals complete (0%); 5 of 157 subgoals accepted (3.2%).**
+The development code provides trusted-local fresh installation, private passive
+defaults, normal dependency repair and Entware storage-loss handling. Remote
+installation and usable feature workflows remain unfinished. The [v2 plan](PLAN_V2.md)
 defines the requirements, the [checklist](PLAN_V2_checklist.md) records acceptance,
 and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 
@@ -22,7 +22,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | Area | Intended implementation | Status |
 | --- | --- | --- |
 | [Product scope](PLAN_V2.md#1-product-scope-and-boundaries) | Independent DDNS, one Cloudflared tunnel and IP-Sync in a native shell CLI. | Planned |
-| [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | 2/9 accepted |
+| [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | 4/9 accepted |
 | [Menus, settings and status](PLAN_V2.md#3-configuration-menus-and-status) | Separate setup and On/Off controls, a compact dashboard and full health diagnostics. | 1/10 accepted |
 | [Settings and recovery](PLAN_V2.md#4-save-cancellation-and-recovery) | Reviewed saves, resumable drafts, cancellation and safe interruption recovery. | Planned |
 | [Cloudflared setup](PLAN_V2.md#5-cloudflared-setup-and-credentials) | Token, guided and advanced credential/configuration paths with reviewed hostname routing. | Planned |
@@ -48,6 +48,6 @@ The current scope is CLI-only; a WebUI is optional future work.
 
 - [Product specification](PLAN_V2.md) · [Implementation checklist](PLAN_V2_checklist.md)
 - [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
-- [Temporary development notes](docs/development.md)
+- [Development setup and checks](docs/development.md)
 - [Compatibility targets and evidence limits](docs/compatibility.md)
 - [GPL-3.0-or-later license](LICENSE.md) — Copyright (C) 2026 XxUnkn0wnxX.
