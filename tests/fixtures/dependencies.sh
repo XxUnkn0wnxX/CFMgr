@@ -28,6 +28,35 @@ dependency_trace() {
 		"${cfmgr_keeper_state:-unset}" "${cfmgr_keeper_count:-0}" "${cfmgr_probe_mode:-unset}" \
 		"${cfmgr_probe_status:-unset}" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" >"$fixture/dependency.trace"
 }
+# Preserve one bounded failure record before owned cleanup removes the receipt.
+# This sidecar contains controller/task labels and a capped synthetic receipt,
+# never package arguments or configuration. It is read only on fixture failure.
+dependency_outcome_capture() {
+	[ "${cfmgr_dependencies_phase:-none}" = cleanup ] || return 0
+	case ${cfmgr_dependencies_code:-0} in '' | 0) return 0 ;; esac
+	case ${dependency_attempt_count:-0} in 1 | 2) ;; *) return 0 ;; esac
+	dependency_outcome_path=$fixture/dependency.outcome.$dependency_attempt_count
+	[ ! -e "$dependency_outcome_path" ] && [ ! -L "$dependency_outcome_path" ] || return 0
+	(
+		umask 077
+		set -C
+		: >"$dependency_outcome_path"
+	) || return 1
+	{
+		printf 'attempt=%s label=%s code=%s tasks-exit=%s action-refused=%s loss=%s tasks-state=%s dependencies-state=%s\n' \
+			"$dependency_attempt_count" "${dependency_attempt_label:-unset}" "${cfmgr_dependencies_code:-unset}" "${cfmgr_tasks_exit:-unset}" \
+			"${cfmgr_tasks_action_refused:-unset}" "${cfmgr_dependencies_loss:-0}" \
+			"${cfmgr_tasks_state:-unset}" "${cfmgr_dependencies_state:-unset}"
+		dependency_outcome_receipt=$cfmgr_dependencies_context/receipt
+		if [ -f "$dependency_outcome_receipt" ] && [ ! -L "$dependency_outcome_receipt" ]; then
+			printf 'receipt (first at most 1024 bytes):\n'
+			/usr/bin/head -c 1024 "$dependency_outcome_receipt" || return 1
+			printf '\n'
+		else
+			printf 'receipt unavailable\n'
+		fi
+	} >"$dependency_outcome_path" || return 1
+}
 # Only fixture callbacks add phase evidence; native dispatch and supervision body
 # remain unchanged. Tool selection also covers the first direct snapshot copies.
 dependency_native() {
@@ -110,6 +139,7 @@ dependency_inside_tools() {
 	cfmgr_dependencies_inside_readlink=/bin/readlink cfmgr_dependencies_inside_usleep=/bin/usleep
 }
 dependency_native_tool() {
+	dependency_outcome_capture || :
 	dependency_trace START "$1" || return 3
 	case $1 in
 	inventory | awk | identity-parse) cfmgr_dependencies_native_tool=$view_ram/awk ;;
@@ -123,6 +153,7 @@ dependency_native_tool() {
 	remove) cfmgr_dependencies_native_tool=$view_ram/rm ;;
 	signal) cfmgr_dependencies_native_tool=$view_ram/kill ;;
 	readlink | mkdir | chmod | rmdir) cfmgr_dependencies_native_tool=$view_ram/$1 ;;
+	retire) cfmgr_dependencies_native_tool=$view_ram/rmdir ;;
 	*) return 2 ;;
 	esac
 }
@@ -135,6 +166,9 @@ cfmgr_mount_keeper_native() {
 }
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 dependency_attempt() {
+	dependency_attempt_count=$((${dependency_attempt_count:-0} + 1))
+	[ "$dependency_attempt_count" -le 2 ] || return 3
+	dependency_attempt_label=$1
 	cfmgr_install_context=$view_ram/preflight-$1
 	mkdir -m 700 "$cfmgr_install_context"
 	exec 0<"$root" 9<"$cfmgr_install_context"
@@ -142,6 +176,7 @@ dependency_attempt() {
 	cfmgr_dependencies_repair flock "$view_ram" "$root" "$view_native_root" "$view_ram/ash" "$view_ram/env" \
 		"$view_ram/awk" "$view_ram/readlink" "$view_ram/usleep" "$view_ram/wc" "$view_ram/mknod" "$view_ram/chroot"
 }
+dependency_attempt_count=0
 ln -s "$view_busybox" "$view_ram/chroot"
 if [ "$case_name" = dependency_installer ]; then
 	# shellcheck disable=SC1091 # Same trusted repository fixture, finite test entry.

@@ -148,6 +148,13 @@ repair-remove)
 	done
 	exec "$tool" "$@"
 	;;
+repair-retire)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	# shellcheck disable=SC3013 # Exact inherited Linux claim inode, not a new name.
+	[ -d "$1" ] && [ ! -L "$1" ] && [ "$1" -ef /proc/self/fd/5 ] || exit 2
+	exec "$tool" "$1"
+	;;
 repair-rmdir)
 	[ "$#" -eq 1 ] || exit 2
 	exec "$tool" "$1"

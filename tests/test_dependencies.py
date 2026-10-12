@@ -137,15 +137,18 @@ def installer_adapter(
 
 
 def test_dependency_fixture_syntax(
-    selected_shell: list[str], installer_adapter: Path
+    selected_shell: list[str], installer_adapter: Path, tmp_path: Path
 ) -> None:
     # Syntax proof must collect/run before Linux/tool skips. ash -n -c executes
     # minusc on the pinned build, so inspect actual script files with -n.
+    retirement_script = tmp_path / "dependency-retirement.sh"
+    retirement_script.write_text(DEPENDENCY_RETIREMENT_PROBE)
     for script in (
         ROOT / "tests/fixtures/dependencies.sh",
         ROOT / "tests/fixtures/dependency_installer.sh",
         ROOT / "modules/helpers/dependencies.sh",
         installer_adapter,
+        retirement_script,
     ):
         result = subprocess.run(
             [*selected_shell, "-n", str(script)],
@@ -239,7 +242,149 @@ exec "$3" -c 1024 "$1/dependency.trace"
         if diagnostic.returncode == 0:
             assert len(diagnostic.stdout) <= 1024
             result.stderr += b"bounded synthetic fixture trace:\n" + diagnostic.stdout
+        outcome = subprocess.run(
+            [
+                sudo,
+                "-n",
+                *shell,
+                "-c",
+                r"""
+[ -d "$1" ] && [ ! -L "$1" ] || exit 1
+[ "$("$2" -c %u:%a "$1")" = 0:700 ] || exit 1
+for outcome in "$1/dependency.outcome.1" "$1/dependency.outcome.2"; do
+    [ -e "$outcome" ] || [ -L "$outcome" ] || continue
+    [ -f "$outcome" ] && [ ! -L "$outcome" ] || exit 1
+    [ "$("$2" -c %u:%a "$outcome")" = 0:600 ] || exit 1
+    [ "$("$2" -c %s "$outcome")" -le 2048 ] || exit 1
+    printf '%s\n' "outcome: $outcome"
+    "$3" -c 2048 "$outcome" || exit $?
+    printf '\n'
+done
+""",
+                "dependency-outcome",
+                str(tmp_path / "cfmgr-storage-mount-fixture"),
+                stat_tool,
+                head_tool,
+            ],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        if outcome.returncode == 0:
+            assert len(outcome.stdout) <= 2 * 2048 + 256
+            result.stderr += b"bounded synthetic fixture outcome:\n" + outcome.stdout
     return result
+
+
+DEPENDENCY_RETIREMENT_PROBE = r"""
+root=$1 workspace=$2 scenario=$3
+claim=$workspace/dependencies preflight=$workspace/preflight
+mkdir -m 700 "$workspace" || exit 81
+mkdir -m 700 "$claim" "$preflight" || exit 81
+cp "$root/modules/lib/mountinfo.awk" "$preflight/repair-mountinfo.awk" || exit 82
+cp "$root/modules/helpers/probe.sh" "$preflight/repair-probe.sh" || exit 83
+. "$root/modules/helpers/bootstrap.sh"
+cfmgr_dependencies_context=$claim
+cfmgr_install_context=$preflight cfmgr_install_context_fd=9
+cfmgr_dependencies_claimed=1 cfmgr_dependencies_snapshot_ready=1 cfmgr_dependencies_cleaning=1
+cfmgr_dependencies_state=retained cfmgr_dependencies_phase=cleanup cfmgr_dependencies_native_unresolved=0
+cfmgr_install_interrupted=0 cfmgr_install_awk=/usr/bin/awk cfmgr_install_ls=/bin/ls
+cfmgr_install_tmp_snapshot=$(/usr/bin/awk -f "$preflight/repair-mountinfo.awk" "$preflight" /proc/self/mountinfo) || exit 84
+exec 5<"$claim" 9<"$preflight" || exit 85
+case $scenario in
+    preexisting)
+        /bin/mv "$claim" "$claim.moved" && /bin/mkdir -m 700 "$claim" &&
+            printf replacement >"$claim/sentinel" || exit 86
+        cfmgr_dependencies_retiring=0 cfmgr_probe_mode=none cfmgr_probe_pid=
+        ;;
+    rename)
+        /bin/mv "$claim" "$claim.moved" || exit 87
+        cfmgr_dependencies_retiring=1 cfmgr_probe_mode=repair-retire cfmgr_probe_pid=12345
+        ;;
+    replace)
+        /bin/rmdir "$claim" && /bin/mkdir -m 700 "$claim" &&
+            printf replacement >"$claim/sentinel" || exit 88
+        cfmgr_dependencies_retiring=1 cfmgr_probe_mode=repair-retire cfmgr_probe_pid=12345
+        ;;
+    exact)
+        /bin/rmdir "$claim" || exit 89
+        cfmgr_dependencies_retiring=1 cfmgr_probe_mode=repair-retire cfmgr_probe_pid=12345
+        ;;
+    *) exit 90 ;;
+esac
+if cfmgr_dependencies_attachment_ok; then attachment=accepted
+else attachment=rejected; fi
+cfmgr_dependencies_retiring=0 cfmgr_probe_mode=none cfmgr_probe_pid=
+if cfmgr_dependencies_attachment_ok; then ordinary=accepted
+else ordinary=rejected; fi
+if [ -d "$claim" ] && [ ! -L "$claim" ]; then claim_state=present
+else claim_state=absent; fi
+if [ -d "$claim.moved" ] && [ ! -L "$claim.moved" ]; then moved_state=present
+else moved_state=absent; fi
+if [ -f "$claim/sentinel" ] && [ ! -L "$claim/sentinel" ]; then sentinel_state=present
+else sentinel_state=absent; fi
+printf 'attachment=%s ordinary=%s claim=%s moved=%s sentinel=%s\n' \
+    "$attachment" "$ordinary" "$claim_state" "$moved_state" "$sentinel_state"
+"""
+
+
+@pytest.mark.parametrize(
+    ("scenario", "expected"),
+    [
+        (
+            "exact",
+            "attachment=accepted ordinary=rejected claim=absent moved=absent sentinel=absent",
+        ),
+        (
+            "rename",
+            "attachment=rejected ordinary=rejected claim=absent moved=present sentinel=absent",
+        ),
+        (
+            "replace",
+            "attachment=accepted ordinary=rejected claim=present moved=absent sentinel=present",
+        ),
+        (
+            "preexisting",
+            "attachment=rejected ordinary=rejected claim=present moved=present sentinel=present",
+        ),
+    ],
+)
+def test_linux_terminal_retirement_requires_the_pinned_claim_inode(
+    selected_shell: list[str], tmp_path: Path, scenario: str, expected: str
+) -> None:
+    if sys.platform != "linux":
+        pytest.skip("terminal claim retirement uses Linux proc descriptor identity")
+    sudo = shutil.which("sudo")
+    assert sudo, "Linux native supervision regression requires sudo"
+    workspace = tmp_path / "root-owned-retirement"
+    try:
+        result = subprocess.run(
+            [
+                sudo,
+                "-n",
+                *selected_shell,
+                "-c",
+                DEPENDENCY_RETIREMENT_PROBE,
+                "dependency-retirement",
+                str(ROOT),
+                str(workspace),
+                scenario,
+            ],
+            env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
+            capture_output=True,
+            check=False,
+            timeout=8,
+        )
+        assert result.returncode == 0, result.stderr.decode(errors="replace")
+        assert result.stdout.decode().strip() == expected
+    finally:
+        cleanup = subprocess.run(
+            [sudo, "-n", "/bin/rm", "-rf", "--", str(workspace)],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert cleanup.returncode == 0, cleanup.stderr.decode(errors="replace")
 
 
 @pytest.mark.parametrize(

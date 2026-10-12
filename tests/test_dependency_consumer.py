@@ -352,6 +352,12 @@ cfmgr_dependencies_native() {
             cfmgr_test_rmdirs=$((cfmgr_test_rmdirs + 1))
             /bin/rmdir "$1"
             ;;
+        retire)
+            [ "$#" -eq 1 ] && [ "$1" = "$cfmgr_dependencies_context" ] || return 98
+            cfmgr_test_rmdirs=$((cfmgr_test_rmdirs + 1))
+            echo retire-root >>"$cfmgr_test_log"
+            /bin/rmdir "$1"
+            ;;
         *) return 97 ;;
     esac
 }
@@ -414,7 +420,7 @@ cfmgr_dependencies_native() {
         mkdir) /bin/mkdir -m "$2" "$1" ;;
         inventory) : >"$2" ;;
         remove) /bin/rm -f "$@" ;;
-        rmdir) /bin/rmdir "$1" ;;
+        rmdir | retire) /bin/rmdir "$1" ;;
         *) return 2 ;;
     esac
 }
@@ -647,7 +653,7 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
         assert 5 <= int(observed["batches"]) <= 6
         assert 2 <= int(observed["max-batch"]) <= 8
         assert int(observed["rmdirs"]) == 4
-        assert log.read_text().splitlines()[-1] == "owner-last"
+        assert log.read_text().splitlines()[-2:] == ["owner-last", "retire-root"]
         assert marker.read_text() == "outside the claim\n"
     elif case == "batch-failure":
         assert observed["result"] == "3"

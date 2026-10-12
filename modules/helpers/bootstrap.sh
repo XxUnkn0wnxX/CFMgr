@@ -651,10 +651,25 @@ cfmgr_dependencies_attachment_ok() {
 		cfmgr_bootstrap_attached
 		return $?
 	fi
-	[ -d "$cfmgr_dependencies_context" ] && [ ! -L "$cfmgr_dependencies_context" ] &&
-		[ "$cfmgr_dependencies_context" -ef /proc/self/fd/5 ] || return 1
 	[ "$cfmgr_install_context_fd" = 9 ] && [ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef /proc/self/fd/9 ] || return 1
 	[ -r "$cfmgr_install_context/repair-mountinfo.awk" ] || return 1
+	if [ -d "$cfmgr_dependencies_context" ] && [ ! -L "$cfmgr_dependencies_context" ] &&
+		[ "$cfmgr_dependencies_context" -ef /proc/self/fd/5 ]; then :; else
+		# Only the already-launched final rmdir may retire this pinned inode.
+		# Before launch probe_pid is empty, so normal pathname admission still
+		# applies. A new claim at the old name is never adopted or modified.
+		[ "${cfmgr_dependencies_retiring:-0}:${cfmgr_probe_mode:-none}" = 1:repair-retire ] && [ -n "${cfmgr_probe_pid:-}" ] || return 1
+		[ -d /proc/self/fd/5 ] || return 1
+		cfmgr_dependencies_retired_metadata=$("$cfmgr_install_ls" -Ldn /proc/self/fd/5) || return 1
+		IFS=' ' read -r cfmgr_dependencies_retired_mode cfmgr_dependencies_retired_links cfmgr_dependencies_retired_uid cfmgr_dependencies_retired_rest <<EOF_RETIRED
+$cfmgr_dependencies_retired_metadata
+EOF_RETIRED
+		[ "$cfmgr_dependencies_retired_mode:$cfmgr_dependencies_retired_links:$cfmgr_dependencies_retired_uid" = drwx------:0:0 ] || return 1
+		# The deleted descriptor still pins the old claim; RAM context FD9 and
+		# its original covering mount protect the supervisor's remaining receipts.
+		[ "$("$cfmgr_install_awk" -f "$cfmgr_install_context/repair-mountinfo.awk" "$cfmgr_install_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ]
+		return $?
+	fi
 	if [ "${cfmgr_dependencies_cleaning:-0}" = 1 ]; then
 		"$cfmgr_install_awk" -f "$cfmgr_install_context/repair-mountinfo.awk" inventory-v1 "$cfmgr_dependencies_context" /proc/self/mountinfo >"$cfmgr_install_context/repair-cleanup.mounts" || return 1
 		[ ! -s "$cfmgr_install_context/repair-cleanup.mounts" ] || return 1
@@ -730,7 +745,7 @@ cfmgr_dependencies_native_tool() {
 	report) cfmgr_dependencies_native_tool=/usr/bin/logger ;;
 	signal) cfmgr_dependencies_native_tool=/bin/kill ;;
 	remove) cfmgr_dependencies_native_tool=/bin/rm ;;
-	rmdir) cfmgr_dependencies_native_tool=/bin/rmdir ;;
+	rmdir | retire) cfmgr_dependencies_native_tool=/bin/rmdir ;;
 	*) return 2 ;;
 	esac
 }
@@ -739,6 +754,14 @@ cfmgr_dependencies_native() {
 	[ "${cfmgr_dependencies_native_unresolved:-0}" = 0 ] || return 3
 	cfmgr_dependencies_native_mode=$1
 	shift
+	if [ "$cfmgr_dependencies_native_mode" = retire ]; then
+		[ "$#" -eq 1 ] && [ "$1" = "$cfmgr_dependencies_context" ] &&
+			[ "${cfmgr_dependencies_claimed:-0}:${cfmgr_dependencies_snapshot_ready:-0}:${cfmgr_dependencies_cleaning:-0}" = 1:1:1 ] || return 2
+		case ${cfmgr_dependencies_phase:-none} in cleanup | preparing) ;; *) return 2 ;; esac
+		[ ! -e "$1/owner" ] && [ ! -L "$1/owner" ] || return 2
+		# A previous deletion/replacement cannot authorize another rmdir.
+		cfmgr_dependencies_attachment_ok || return 3
+	fi
 	cfmgr_dependencies_native_tool "$cfmgr_dependencies_native_mode" || return 2
 	cfmgr_dependencies_operation_context=$cfmgr_install_context
 	cfmgr_dependencies_operation_probe=$cfmgr_install_source/modules/helpers/probe.sh
@@ -756,15 +779,19 @@ cfmgr_dependencies_native() {
 	esac
 	# Snapshot-copy bootstrap can still use the admitted source parser before its
 	# private replacement exists; all later cleanup requires the RAM replacement.
+	cfmgr_dependencies_retiring=0
+	if [ "$cfmgr_dependencies_native_mode" = retire ]; then cfmgr_dependencies_retiring=1; fi
 	if cfmgr_prerequisites_run "repair-$cfmgr_dependencies_native_mode" "$cfmgr_dependencies_operation_context" "$cfmgr_install_sh" "$cfmgr_dependencies_operation_probe" \
 		"$cfmgr_install_env" "$cfmgr_install_awk" "$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_dependencies_native_tool" "$@"; then :; else
 		cfmgr_dependencies_native_code=$?
+		cfmgr_dependencies_retiring=0
 		if [ "$cfmgr_dependencies_native_code" -eq 3 ]; then
 			cfmgr_dependencies_native_unresolved=1 cfmgr_dependencies_state=retained
 			cfmgr_dependencies_native_pid=$cfmgr_probe_pid cfmgr_dependencies_native_start=$cfmgr_probe_start cfmgr_dependencies_native_boot=$cfmgr_probe_boot
 		fi
 		return "$cfmgr_dependencies_native_code"
 	fi
+	cfmgr_dependencies_retiring=0
 	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
 	if [ "$cfmgr_dependencies_native_mode" = identity ]; then
 		cfmgr_dependencies_identity_raw=$cfmgr_probe_stdout
@@ -821,8 +848,10 @@ _cfmgr_dependencies_remove_tree() {
 	_cfmgr_dependencies_remove_batch "$@" || return 3
 	# Failed file batches/child directories preserve the owner for recovery. The
 	# owner is never mixed into a batch whose other removals could partly fail.
-	if [ "$1" = "$cfmgr_dependencies_context" ]; then cfmgr_dependencies_native remove "$1/owner" || return 3; fi
-	cfmgr_dependencies_native rmdir "$1"
+	if [ "$1" = "$cfmgr_dependencies_context" ]; then
+		cfmgr_dependencies_native remove "$1/owner" || return 3
+		cfmgr_dependencies_native retire "$1"
+	else cfmgr_dependencies_native rmdir "$1"; fi
 }
 
 _cfmgr_dependencies_tree_check() {
