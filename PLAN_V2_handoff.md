@@ -112,6 +112,17 @@ Parent owns the AGENTS user amendment, integration and publication; all worker
 ownership returned. Candidate is ready for required exact CI. If the next failure
 is the same shared cause, retrieve its log and cancel remaining jobs promptly.
 
+Run `38198892155` at `0babd62d0e91873a5acaae2a6df83487c9e74d3d` completed the
+first real install/cleanup on 4.1.52, then its test assertion failed because
+Entware jq omits ONIGURUMA regex support. Parent retrieved
+`.tmp/platform-review/s02-03-budget-first.log` and cancelled remaining jobs.
+Host/full BusyBox passed (163/166 tests respectively; expected platform skips).
+`ci_tools` returned the fixture correction: fixed synthetic ext4 UUID via mke2fs
+and an independent exact saved-UUID comparison without jq regex. Parent reviewed
+it; focused/static gate passed **40 tests**. Parent queues 4.19.294 first in the
+unchanged four-profile/max-two matrix for faster shared-failure feedback. Runtime
+and cached build inputs remain unchanged. Another exact acceptance run is required.
+
 All worker ownership is returned. Parent reviewed the native timer correction:
 fixed `/bin/usleep 50000` supplies three short supervision waits, bootstrap admits
 it, and the timeout child uses whole-second sleep. Guest fixture stages native

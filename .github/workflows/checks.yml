@@ -122,7 +122,8 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        kernel: ['4.1.51', '4.1.52', '4.19.183', '4.19.294']
+        # Queue a faster-starting profile first for shared-failure feedback.
+        kernel: ['4.19.294', '4.1.51', '4.19.183', '4.1.52']
 
     steps:
       - name: Check out source

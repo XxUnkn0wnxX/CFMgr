@@ -31,6 +31,7 @@ VERSIONS = {"4.1.51", "4.1.52", "4.19.183", "4.19.294"}
 MAX_DOWNLOAD = 256 * 1024 * 1024
 MAX_PACKAGE = 32 * 1024 * 1024
 RECIPE_VERSION = 1
+GUEST_EXT4_UUID = "11111111-2222-4333-8444-555555555555"
 
 
 class PlatformError(Exception):
@@ -1246,6 +1247,9 @@ def boot_guest(
             "-F",
             "-t",
             "ext4",
+            # Fixed disposable-image identity; production storage stays variable.
+            "-U",
+            GUEST_EXT4_UUID,
             "-d",
             str(work / "volume"),
             "-b",

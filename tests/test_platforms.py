@@ -248,7 +248,12 @@ def test_boot_guest_preserves_log_and_requires_completed_proof(
         log = log.replace(f"CFMGR_INSTALL={manifest['feeds'][0]['id']}:OK\n", "")
     work = tmp_path / outcome
     (work / "volume").mkdir(parents=True)
-    monkeypatch.setattr(platforms, "run", lambda *args, **kwargs: None)
+    mkfs_commands = []
+
+    def record_mkfs(command: list[str], **kwargs: object) -> None:
+        mkfs_commands.append(command)
+
+    monkeypatch.setattr(platforms, "run", record_mkfs)
 
     def qemu(
         command: list[str], *, stdout: object, timeout: int, **kwargs: object
@@ -274,6 +279,9 @@ def test_boot_guest_preserves_log_and_requires_completed_proof(
         platforms.boot_guest(
             tmp_path / "Image", tmp_path / "initramfs", kernel, manifest, work
         )
+    assert len(mkfs_commands) == 1
+    uuid_option = mkfs_commands[0].index("-U")
+    assert mkfs_commands[0][uuid_option + 1] == "11111111-2222-4333-8444-555555555555"
     assert capsys.readouterr().out == log
 
 
