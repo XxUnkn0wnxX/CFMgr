@@ -417,6 +417,11 @@ def test_normal_repair_and_owned_cleanup(
             b"[CFMGR] dependencies: error: Entware operation stopped; owned mounts released\n"
             b"[CFMGR] dependencies: warning: native system log unavailable\n"
         ), diagnostic
+    elif case == "dependency_mixed":
+        assert result.stderr == (
+            b"[CFMGR] dependencies: error: dependency cleanup pending\n"
+            b"[CFMGR] dependencies: warning: native system log unavailable\n"
+        ), diagnostic
     else:
         assert result.stderr == b"", diagnostic
     expected = (

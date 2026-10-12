@@ -47,7 +47,17 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Latest pushed/remote-verified candidate: `31d3c78d0fc0b0891625aeffb9ee59c88c45b284`.
+- Latest pushed/remote-verified candidate: `bf2da3e40f8b42c61e9e73ad8a0361b497f81fe1`.
+  [Quick Checks 38253187477](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253187477)
+  failed the Python stderr expectation after **160.30s**. The mixed-root shell
+  fixture exited zero: actual foreign/owned roots, retained state, no signals,
+  explicit fixture recovery and final cleanup assertions all passed. It correctly
+  emitted cleanup-pending plus unavailable-native-log messages, matching the source
+  contract; the outer test incorrectly expected empty stderr. Receipt
+  `.tmp/dependency-repair-quick-failed-2.log`. Parent owns the exact expected-message
+  correction in `tests/test_dependencies.py`; runtime unchanged. Repeat the same
+  three quick cases. No CI/workers active. README contains accepted counts only.
+- Previous candidate: `31d3c78d0fc0b0891625aeffb9ee59c88c45b284`.
   [Quick Checks 38249697814](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38249697814)
   **passed 9 tests in 134.93s**: five deterministic short-child observations,
   existing supervision and real normal repair. Receipt
