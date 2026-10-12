@@ -76,6 +76,7 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
   `.tmp/platform-review/s02-03-ubuntu-{run.json,ci.log}`. Historical failures were
   corrected before their green runs; retained logs are diagnostic history only.
 - Current keeper combined gate passed: `.venv/bin/python tools/test.py --focused tests/test_mount_keeper.py tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py` — **104 passed, 28 platform skips**, 51.29s, all statics/planning/package checks green on the dirty tree based on `f0f35a0`; `.tmp/mount-keeper-focused.log`. Parent review fixed a fixture literal-quoting warning. Exact focused CI is next; no main-goal/full-suite gate is due. Cost review: prior view CI job 62s; new Linux failure/deadline cases and one fixture applet rebuild are necessary proof, not duplicate full runs.
+- Final fixture review corrected swallowed fixture-definition quoting and an unset CPU-budget value before push. Portable fixture construction/shell syntax now runs despite Linux skips. `tools/test.py --focused tests/test_mount_keeper.py` passed 2/9 skips, 0.26s, including all statics; `.tmp/mount-keeper-fixture-fix-local.log`. Runtime bytes remain those from local `92ad1c1`; both commits will use one focused CI push.
 - No CI or router job is currently active. No router action occurred in this package.
 
 ## Ownership and next package

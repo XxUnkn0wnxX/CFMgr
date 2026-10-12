@@ -61,12 +61,14 @@ cleanup() {
     exec 3<&-
 }
 trap cleanup EXIT
-'''
+"""
 
 
 @pytest.fixture
 def keeper_script(keeper_setup: str) -> str:
-    return keeper_setup + r'''
+    return (
+        keeper_setup
+        + r"""
 # Invoke through a saved directory-stdin redirection frame. External shellexec
 # must drop its saved copies before env exec; reserved outside FDs close too.
 start_with_directory() { start; }
@@ -81,6 +83,7 @@ printf '%s %s\n' "$cfmgr_keeper_pid" "$cfmgr_keeper_start" >"$context/test-child
 exec 4<"$context/original" 5<"$context/original" 6<"$context/original" 7<"$context/original" 8<"$context/original" 9<"$context/original"
 id=$("$tools/awk" '/^mnt_id:/ { print $2 }' /proc/self/fdinfo/4)
 """
+    )
 
 
 def run_keeper(
@@ -121,6 +124,18 @@ def assert_keeper_passed(result: subprocess.CompletedProcess[bytes]) -> None:
         f"keeper fixture failed: {result.stdout!r}\n{result.stderr.decode(errors='replace')}"
     )
     assert result.stdout == result.stderr == b""
+
+
+def test_keeper_fixture_shell_syntax(
+    selected_shell: list[str], keeper_script: str
+) -> None:
+    result = subprocess.run(
+        [*selected_shell, "-n", "-c", keeper_script],
+        check=False,
+        capture_output=True,
+        timeout=5,
+    )
+    assert_keeper_passed(result)
 
 
 def test_source_and_invalid_admission_do_not_mutate(
@@ -326,6 +341,7 @@ def test_control_read_eof_parks_with_open_frame(
     # admitted production FIFO. It opens one frame then produces persistent EOF.
     script = (
         keeper_setup
+        + f"\ncpu_budget={max(2, os.sysconf('SC_CLK_TCK') // 20)}\n"
         + r"""
 umask 077
 cfmgr_keeper_context=$context cfmgr_keeper_awk=$tools/awk cfmgr_keeper_usleep=$tools/usleep
