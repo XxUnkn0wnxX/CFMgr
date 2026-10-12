@@ -37,23 +37,21 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
-- Branch: `develop`; local/remote last verified at guarded-view candidate
-  `819f4fdb2bae83117a2881abc412761b1bcb6949`. Its focused
-  [Checks 38210954706](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38210954706)
-  passed host/statics but failed BusyBox compatibility because the synthetic root
-  lacked external `[`/`printf` applet links. Parent added both plus positive write
-  controls before/after simulated unplug. Correction passed focused fixture local
-  gate (7 passed/8 platform skips, all statics); `.tmp/execution-view-applet-fix-local.log`.
-  Prior SC2015 correction is included. Failed receipts: `.tmp/execution-view-ci-busybox-failed.{json,log}`.
-  Re-push with the same five modules; no new implementation until exact CI passes.
+- Branch: `develop`; local/remote verified at guarded-view runtime
+  `ad28a3abf4ced1f74a8bcf42b89e9ba4994704b0`. Exact
+  [Checks 38211199161](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38211199161)
+  passed host 111/11 skips and vendor BusyBox 122/0 skips, including all eight real
+  mount cases. All required steps passed; job 62s, BusyBox behavior 22.84s.
+  Receipts: `.tmp/execution-view-ci.{json,log}`. README/checklist receipt follows
+  within this checkpoint; it does not claim its own runtime test SHA.
 - Guarded-view package is implemented and parent-reviewed. Combined local command
   below passed **103 tests,
   19 platform skips**, pytest 32.73s; all statics/planning/package checks passed.
-  Receipt: `.tmp/execution-view-focused.log`. Native fixture rebuild is cached;
-  latest warm job took 57s (BusyBox behavior 20.99s). Cost remains proportionate;
-  no extra full run is required for measurement.
-  Current docs record that pending gate; acceptance counts are unchanged.
-- Latest runtime: `423dd14a5b35c295f07aed0d9e1225a10a8a15df`, exact
+  Receipt: `.tmp/execution-view-focused.log`. Fixture corrections passed 7/8 skips
+  plus statics; `.tmp/execution-view-applet-fix-local.log`. Native fixture rebuild
+  is cached. Cost remains proportionate; no extra full measurement run is required.
+  Acceptance counts are unchanged; supervision and the real repair consumer remain.
+- Prior storage runtime: `423dd14a5b35c295f07aed0d9e1225a10a8a15df`, exact
   [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856)
   green. Selection: `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`,
   `test_install.py`. Host 65 passed/8 skips; vendor BusyBox 73 passed/0 skips,
@@ -76,8 +74,8 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 | --- | --- | --- |
 | Parent | Three plans, architecture, integration, metadata and CI config | Review storage-view contract, consumer boundary and focused evidence. No acceptance for a helper alone. |
 | `opkg_supervision_review` analyst | Completed read-only ownership review | Keeper, dynamic roots, mixed threadgroups and numeric-signal evidence limits recorded below; no implementation. |
-| `inventory_ci_wait` awaiter | Completed | Exact candidate failed; reuse to monitor the corrected run. |
-| `prerequisite_inventory` worker_strong | Completed; files released to parent | S02.05/S02.08 guarded-view construction/recheck/cleanup and Linux fixtures. Parent reviewed and combined local gate passed; real mount/chroot CI remains pending. No opkg launch or supervision consumer. |
+| `inventory_ci_wait` awaiter | Completed | Exact corrected CI passed; no job remains active. |
+| `prerequisite_inventory` worker_strong | Completed; files released to parent | S02.05/S02.08 guarded-view construction/recheck/cleanup and Linux fixtures passed parent review, local and exact CI gates. No opkg launch or supervision consumer. |
 
 Consumer route: future installed-opkg repair from the existing installer/prerequisite
 controller, using already admitted storage FDs 6/7. This package deliberately stops
@@ -124,8 +122,8 @@ for normal opkg/script trees and package writes. Extend coherently; do not blind
 
 ## Unresolved execution/storage design
 
-The private descriptor-bound view with read-only fallback guards is **locally tested,
-platform-pending and not integrated with opkg**. Do not assume router cgroups/namespaces
+The private descriptor-bound view with read-only fallback guards is **focused local/CI
+tested, but not integrated with opkg**. Do not assume router cgroups/namespaces
 or a new resident daemon; Linux test namespaces only isolate fixtures. Polling
 `/opt` alone cannot prevent stale-path writes.
 
@@ -195,7 +193,8 @@ ordinary hotplug. Scope remains the action’s verified owned children: host ser
 asked to act through IPC are not owned children, and independent root dismantling
 of guards is not prevented. CFMgr itself must never remove a busy leaf while writers
 survive. These are evidence limits, not restrictions on normal feeds/scripts. Actual
-construction, failure and cleanup proof is still required; no containment is claimed.
+construction/failure/cleanup now has representative Linux proof; owned-writer
+containment is still unimplemented and unclaimed.
 
 Source pins and evidence for that decision:
 
@@ -217,10 +216,12 @@ Source pins and evidence for that decision:
 
 ## Validation and resume
 
-1. Verify refs/status and the guarded-view candidate's exact focused CI. Local command:
+1. Verify refs/status and retain the green guarded-view evidence above. Local command:
    `.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py`.
-2. Fix any required CI failures before further implementation. Then integrate the
-   ownership review and design supervised writer launch and its repair consumer.
+2. Integrate the ownership review into the mount-reference keeper and supervised
+   writer launch, then the real repair consumer. Native config has MKNOD, not MKFIFO;
+   verify its FIFO mode before using it. No consumer may infer ownership from a
+   mount-ID ledger after those mount references are released.
    Any necessary product restriction needs a concrete proposal and approval first.
 3. Run focused local/statics, parent-review, commit. Required Linux/BusyBox proof
    uses the focused CI route in AGENTS, then wait for exact green before advancing.
