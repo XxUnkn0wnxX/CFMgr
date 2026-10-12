@@ -67,12 +67,24 @@ def mount_record(
 
 
 def run_parser(
-    awk: list[str], target: str, records: str, *, subtree: bool = False
+    awk: list[str],
+    target: str,
+    records: str,
+    *,
+    subtree: bool = False,
+    inventory: bool = False,
 ) -> subprocess.CompletedProcess[bytes]:
     environment = os.environ.copy()
     environment["LC_ALL"] = "C"
     return subprocess.run(
-        [*awk, "-f", str(PARSER), *(["subtree-v1"] if subtree else []), target, "-"],
+        [
+            *awk,
+            "-f",
+            str(PARSER),
+            *(["inventory-v1"] if inventory else ["subtree-v1"] if subtree else []),
+            target,
+            "-",
+        ],
         input=records.encode("utf-8"),
         capture_output=True,
         check=False,
@@ -403,3 +415,33 @@ def test_subtree_enforces_exact_bounds_without_partial_output(
             subtree=True,
         )
         assert_rejected(awk, "/owned", oversized, subtree=True)
+
+
+def test_inventory_preserves_validated_stacks_and_parent_identity(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    records = (
+        mount_record(1, 1)
+        + "\n"
+        + mount_record(
+            2,
+            1,
+            mountpoint="/owned",
+            filesystem="tmpfs",
+            source="tmpfs",
+            mount_options="ro",
+        )
+        + "\n"
+        + mount_record(3, 2, mountpoint="/owned", root="/entware")
+        + "\n"
+    )
+    for name, awk in awk_programs:
+        result = run_parser(awk, "/owned", records, inventory=True)
+        assert result.returncode == 0 and result.stderr == b"", (name, result.stderr)
+        rows = [line.split("\t") for line in result.stdout.decode().splitlines()]
+        assert [row[:2] for row in rows] == [["2", "1"], ["3", "2"]]
+        assert all(len(row) == 10 for row in rows)
+        assert [row[7] for row in rows] == ["ro", "rw"]
+        assert_rejected(awk, "/owned", records, subtree=True)
+        bad = run_parser(awk, "/owned", records + "bad tail\n", inventory=True)
+        assert bad.returncode != 0 and bad.stdout == b""

@@ -35,8 +35,9 @@ waiting, do only independent authorized work. Allow a reasonable response window
 record the question/safe resume point and end waiting. Silence, elapsed time, empty
 responses and preselected options are never approval. Do not repeat answered gates.
 
-Keep handoff concise: trim completed-work narrative and rely on the checklist for
-accepted evidence. The parent may rebuild it without approval, preserving current
+Do not spend routine implementation effort trimming handoff. Trim completed notes
+if it approaches **500–600 KB** or becomes difficult to follow; rely on the checklist
+for accepted evidence. The parent may rebuild it without approval, preserving current
 permissions, unanswered questions, unresolved proof/blockers, active jobs/owners,
 unfinished work and recovery references. Audit source/receipts where needed instead
 of duplicating history. If context or evidence conflicts, pause affected changes

@@ -1,6 +1,7 @@
 # Read-only parser for /proc/self/mountinfo.
 # Usage: LC_ALL=C awk -f modules/lib/mountinfo.awk "$canonical_target" /proc/self/mountinfo
 # Subtree usage: awk -f modules/lib/mountinfo.awk subtree-v1 "$canonical_target" INPUT
+# inventory-v1 uses the same operands/output but retains stacked mountpoints.
 # Subtree output adds propagation as field 10 and preserves input order. All
 # records must validate before either interface emits output.
 # The target is a literal ARGV operand so backslashes are not reinterpreted by awk.
@@ -12,7 +13,8 @@
 BEGIN {
 	MAX_RECORDS = 4096
 	MAX_LINE = 8192
-	if (ARGV[1] == "subtree-v1") {
+	if (ARGV[1] == "subtree-v1" || ARGV[1] == "inventory-v1") {
+		stack_inventory = (ARGV[1] == "inventory-v1")
 		subtree = 1
 		target = ARGV[2]
 		ARGV[1] = ARGV[2] = ""
@@ -200,7 +202,7 @@ function path_contains(path, point) {
 		if (!path_contains(mountpoint, target)) {
 			next
 		}
-		if (seen_subtree_point[mountpoint]++) {
+		if (seen_subtree_point[mountpoint]++ && !stack_inventory) {
 			fail("ambiguous mount")
 		}
 		propagation = ""

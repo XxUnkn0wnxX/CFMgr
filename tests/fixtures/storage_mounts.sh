@@ -5,8 +5,8 @@
 
 set -eu
 
-if [ "$#" -ne 7 ]; then
-	printf 'storage mount fixture: expected seven arguments\n' >&2
+if [ "$#" -ne 7 ] && [ "$#" -ne 8 ]; then
+	printf 'storage mount fixture: expected seven arguments (plus selected BusyBox for view cases)\n' >&2
 	exit 2
 fi
 
@@ -17,8 +17,9 @@ readlink=$4
 awk=$5
 parent_namespace=$6
 owner_uid=$7
+view_busybox=${8:-}
 case "$case_name" in
-valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec) ;;
+valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | view_compat | view_detach | view_cleanup) ;;
 *)
 	printf 'storage mount fixture: invalid case\n' >&2
 	exit 2
@@ -68,6 +69,10 @@ device=
 replacement_device=
 library_loaded=0
 cleanup_status=0
+view_loaded=0
+view_native_root=
+view_ram=
+view_observer=
 
 cleanup_issue() {
 	printf 'storage mount fixture cleanup: %s\n' "$*" >&2
@@ -100,8 +105,27 @@ release_loop() {
 cleanup() {
 	original_status=$?
 	trap - EXIT HUP INT TERM
+	if [ -n "$view_observer" ]; then
+		kill -TERM "$view_observer" 2>/dev/null || :
+		wait "$view_observer" 2>/dev/null || :
+		view_observer=
+	fi
+	if [ "$view_loaded" -eq 1 ]; then
+		cfmgr_view_test_quiet=1
+		case ${cfmgr_view_state:-invalid} in building | ready | retained)
+			cfmgr_execution_view_release || cleanup_issue 'guarded view could not be normally released'
+			;;
+		esac
+	fi
 	if [ "$library_loaded" -eq 1 ]; then
 		cfmgr_storage_release >/dev/null 2>&1 || :
+	fi
+	if [ -n "$view_native_root" ]; then
+		for view_fixture_point in "$view_native_root/tmp/mnt/usb/entware/nested" "$view_native_root/tmp/mnt/usb" "$view_native_root/proc" "$view_native_root/dev" "$view_ram"; do
+			if mountpoint -q "$view_fixture_point"; then
+				umount "$view_fixture_point" || cleanup_issue "could not normally release $view_fixture_point"
+			fi
+		done
 	fi
 	if mountpoint -q "$bind_dir"; then
 		umount "$bind_dir" || cleanup_issue "could not unmount $bind_dir"
@@ -111,6 +135,12 @@ cleanup() {
 	fi
 	if mountpoint -q "$bind_dir" || mountpoint -q "$mount_dir"; then
 		cleanup_issue 'fixture mount remains; preserving owned evidence'
+	fi
+	# Never delete through an unexpected/retained mount anywhere in the owned tree.
+	if ! "$awk" -f "$root/modules/lib/mountinfo.awk" inventory-v1 "$fixture" /proc/self/mountinfo >"$fixture/cleanup.mounts"; then
+		cleanup_issue 'could not verify final fixture mount absence'
+	elif [ -s "$fixture/cleanup.mounts" ]; then
+		cleanup_issue 'unexpected fixture mount remains; preserving owned evidence'
 	fi
 	if [ "$cleanup_status" -eq 0 ]; then
 		release_loop "$replacement_device" "$replacement_image"
@@ -144,7 +174,7 @@ blkid "$device" >"$fixture/blkid-main"
 main_uuid=$(blkid -s UUID -o value "$device")
 [ -n "$main_uuid" ] || fail 'ext4 UUID was not observed'
 
-if [ "$case_name" = lazy_replacement ]; then
+if [ "$case_name" = lazy_replacement ] || [ "$case_name" = view_detach ]; then
 	truncate -s 32M "$replacement_image"
 	mkfs.ext4 -q -F -U random "$replacement_image"
 	replacement_device=$(losetup --find --show "$replacement_image") ||
@@ -172,6 +202,117 @@ assert_released() {
 	if (: <&7) 2>/dev/null; then
 		fail 'descriptor 7 remained open after release'
 	fi
+}
+
+# Execution-view cases reuse this exact private namespace/ext4 image/cleanup.
+# Native operations below use the selected static vendor BusyBox applets. Host
+# tools above provide privileged fixture setup and the simulated external USB
+# detach only; they are not the production native-operation supervisor.
+view_action() {
+	view_action_mode=$1
+	shift
+	case $view_action_mode in
+	inventory) "$view_busybox" awk -f "$root/modules/lib/mountinfo.awk" inventory-v1 "$1" /proc/self/mountinfo >"$2" ;;
+	list) "$view_busybox" ls -1A "$1" >"$2" ;;
+	identity)
+		# shellcheck disable=SC2016 # Literal AWK fields are interpreted by AWK.
+		"$view_busybox" ls -idn "$1" | "$view_busybox" awk '
+			function bit(c,yes) { return index(yes,c)>0 }
+			{ if (NR!=1 || NF<5 || length($2)!=10) exit 1
+			  p=$2; special=0
+			  if (bit(substr(p,4,1),"sS")) special+=4
+			  if (bit(substr(p,7,1),"sS")) special+=2
+			  if (bit(substr(p,10,1),"tT")) special+=1
+			  mode=special ? special "" : ""
+			  for (i=2;i<=8;i+=3) mode=mode (4*bit(substr(p,i,1),"r")+2*bit(substr(p,i+1,1),"w")+bit(substr(p,i+2,1),"xst"))
+			  printf "%s\t%s\t%s\t%s\n",$1,mode,$4,$5 }
+		' >"$2"
+		;;
+	readlink) "$view_busybox" readlink "$1" >"$2" ;;
+	mkdir) "$view_busybox" mkdir -m "$2" "$1" ;;
+	file) (
+		umask 077
+		set -C
+		: >"$1"
+	) ;;
+	link) "$view_busybox" ln -s -- "$1" "$2" ;;
+	chmod) "$view_busybox" chmod "$2" "$1" ;;
+	copy) "$view_busybox" cp "$1" "$2" ;;
+	root) "$view_busybox" mount -t tmpfs -o size=8m,mode=700 tmpfs "$1" ;;
+	guard-root) "$view_busybox" mount -t tmpfs -o size=64k,mode=700 tmpfs "$1" ;;
+	bind4) "$view_busybox" mount -o bind /proc/self/fd/4 "$1" ;;
+	bind7)
+		[ "$cfmgr_view_test_fault" != partial ] || return 1
+		"$view_busybox" mount -o bind /proc/self/fd/7 "$1"
+		;;
+	private) "$view_busybox" mount -o make-private "$1" ;;
+	unbindable) "$view_busybox" mount -o make-unbindable "$1" ;;
+	seal) "$view_busybox" mount -o remount,ro "$1" ;;
+	unmount) "$view_busybox" umount "$1" ;;
+	awk) cfmgr_execution_view_awk "$@" ;;
+	*) return 2 ;;
+	esac
+}
+
+cfmgr_execution_view_native() {
+	# Bounded foreground fixture commands; real production per-operation ownership
+	# supervision remains an explicit integration prerequisite, not this adapter.
+	if (
+		ulimit -f 4096
+		view_action "$@"
+	) >"$cfmgr_view_context/native.out" 2>"$cfmgr_view_context/native.err"; then
+		return 0
+	else return $?; fi
+}
+
+cfmgr_execution_view_quiescent() {
+	# This package never launches package writers. All chroot checks run/reap in
+	# foreground. A separate test-owned read-only observer can prove kernel EBUSY.
+	[ "$cfmgr_view_test_quiet" = 1 ]
+}
+
+view_prepare() {
+	case $view_busybox in /*) ;; *) fail 'explicit selected vendor BusyBox is required' ;; esac
+	[ -f "$view_busybox" ] && [ -x "$view_busybox" ] || fail 'selected vendor BusyBox unavailable'
+	view_version=$("$view_busybox" 2>&1) || :
+	case $view_version in *'BusyBox v1.25.1'*) ;; *) fail 'selected BusyBox is not pinned vendor 1.25.1' ;; esac
+	view_native_root=$fixture/native
+	view_ram=$view_native_root/tmp/private-ram
+	view_observer=
+	cfmgr_view_test_quiet=1 cfmgr_view_test_fault=clean
+	mkdir -m 755 "$view_native_root"
+	mkdir -p "$view_native_root/bin" "$view_native_root/dev" "$view_native_root/proc" "$view_native_root/tmp/etc" "$view_native_root/tmp/feed" "$view_native_root/tmp/mnt/usb" "$view_native_root/tmp/foreign"
+	mkdir -m 700 "$view_ram"
+	mount -t tmpfs -o size=16m,mode=700 tmpfs "$view_ram" || fail 'private RAM context setup failed'
+	cp "$view_busybox" "$view_native_root/bin/busybox"
+	ln -s /tmp/etc "$view_native_root/etc"
+	ln -s /tmp/mnt/usb/entware "$view_native_root/opt"
+	printf 'configured file feed\n' >"$view_native_root/tmp/feed/Packages"
+	printf 'nameserver 127.0.0.1\n' >"$view_native_root/tmp/etc/resolv.conf"
+	mount --bind /dev "$view_native_root/dev"
+	mount --bind /proc "$view_native_root/proc"
+	mount --bind "$mount_dir" "$view_native_root/tmp/mnt/usb"
+	mkdir "$view_native_root/tmp/mnt/usb/entware/nested"
+	mount -t tmpfs -o size=64k tmpfs "$view_native_root/tmp/mnt/usb/entware/nested"
+	printf 'nested mount data\n' >"$view_native_root/tmp/mnt/usb/entware/nested/marker"
+	rm "$alias"
+	ln -s "$view_native_root/tmp/mnt/usb/entware" "$alias"
+	pin || fail 'execution fixture storage pin failed'
+	cfmgr_storage_uuid "$fixture/blkid-main" || fail 'execution fixture UUID failed'
+	# Native execution helper tool is a symlink invoking the actual vendor awk.
+	ln -s "$view_busybox" "$view_ram/awk"
+	# shellcheck disable=SC1091 # Trusted repository source; no execution on import.
+	. "$root/modules/lib/execution_view.sh"
+	view_loaded=1
+	mkdir -m 700 "$view_ram/context"
+}
+
+view_create() {
+	cfmgr_execution_view_create "$view_native_root" "$view_ram/context" "$view_ram/awk" "$readlink" "$root/modules/lib/mountinfo.awk"
+}
+
+view_chroot() {
+	"$view_busybox" chroot "$cfmgr_view_root" /bin/busybox sh -c "$1"
 }
 
 # Globals below are outputs from cfmgr_storage_pin in the sourced library.
@@ -268,6 +409,92 @@ ro_noexec)
 	fi
 	assert_released
 	printf 'PASS: read-only and noexec ext4 attachments were denied\n'
+	;;
+view_compat)
+	view_prepare
+	view_create || fail 'guarded compatible view construction failed'
+	[ "$cfmgr_view_state" = ready ] || fail 'view was not ready'
+	# shellcheck disable=SC2016 # Literal commands execute inside the chroot.
+	view_chroot '[ "$(/bin/busybox readlink /etc)" = /tmp/etc ] &&
+		[ "$(/bin/busybox cat /tmp/feed/Packages)" = "configured file feed" ] &&
+		[ "$(/bin/busybox cat /etc/resolv.conf)" = "nameserver 127.0.0.1" ] &&
+		[ "$(/bin/busybox cat /opt/nested/marker)" = "nested mount data" ] &&
+		[ "$(/bin/busybox cat /tmp/mnt/usb/entware/nested/marker)" = "nested mount data" ] &&
+		printf "writable temporary cache\n" >/tmp/cache-test &&
+		printf "normal Entware path\n" >/opt/view-test &&
+		[ -d /proc/self ] && [ -c /dev/null ] &&
+		[ ! -e /tmp/private-ram/context/expected.mounts ]' || fail 'normal native paths failed inside real chroot'
+	[ "$(cat "$view_native_root/tmp/cache-test")" = 'writable temporary cache' ] || fail 'native temporary view was restricted'
+	[ "$(cat "$mount_dir/entware/view-test")" = 'normal Entware path' ] || fail 'FD7 view did not reach pinned volume'
+	cfmgr_execution_view_recheck || fail 'healthy guarded view failed recheck'
+	"$view_busybox" mount -t tmpfs -o size=64k tmpfs "$view_native_root/tmp/foreign"
+	if cfmgr_execution_view_recheck; then fail 'source mount mutation was admitted'; fi
+	"$view_busybox" umount "$view_native_root/tmp/foreign"
+	cfmgr_execution_view_release || fail 'source-mutation view did not clean after quiescence'
+	printf 'PASS: guarded native paths, real chroot, file feed, writable tmp, and both nested aliases\n'
+	;;
+view_detach)
+	view_prepare
+	view_create || fail 'guarded detach view construction failed'
+	# Simulate Merlin USB removal by matching the actual device across ALL binds.
+	# External lazy detach is fault injection only; view release never uses it.
+	"$view_busybox" awk -f "$root/modules/lib/mountinfo.awk" inventory-v1 / /proc/self/mountinfo >"$fixture/device-mounts"
+	# shellcheck disable=SC2016 # Literal AWK fields are interpreted by AWK.
+	"$view_busybox" awk -F '\t' '
+		BEGIN { device=ARGV[1]; ARGV[1]="" }
+		$3==device { point[++n]=$5 }
+		END { for (i=n;i>0;i--) print point[i] }
+	' "$cfmgr_storage_device" "$fixture/device-mounts" >"$fixture/device-points"
+	while IFS= read -r view_detach_point; do umount -l "$view_detach_point" || fail 'simulated device detach failed'; done <"$fixture/device-points"
+	if view_chroot 'printf forbidden >/opt/blocked' 2>/dev/null; then fail 'detached /opt fallback accepted a write'; fi
+	if view_chroot 'printf forbidden >/tmp/mnt/usb/blocked' 2>/dev/null; then fail 'detached canonical fallback accepted a write'; fi
+	[ ! -e "$view_native_root/tmp/mnt/usb/blocked" ] || fail 'canonical bare path was changed'
+	mount -t ext4 "$replacement_device" "$view_native_root/tmp/mnt/usb"
+	printf 'replacement volume data\n' >"$view_native_root/tmp/mnt/usb/marker"
+	if view_chroot 'printf forbidden >/tmp/mnt/usb/blocked' 2>/dev/null; then fail 'replacement volume leaked into guarded view'; fi
+	[ ! -e "$view_native_root/tmp/mnt/usb/blocked" ] || fail 'replacement volume was changed'
+	if cfmgr_execution_view_recheck; then fail 'detached source was still accepted'; fi
+	# Release the fixture-owned replacement before reconciling detached mount IDs;
+	# numeric mount IDs can be reused and are not process-ownership authority.
+	umount "$view_native_root/tmp/mnt/usb"
+	cfmgr_execution_view_release || fail 'detached guarded view did not clean after quiescence'
+	printf 'PASS: device-matched lazy detach preserved RO guards at opt/canonical paths and excluded replacement\n'
+	;;
+view_cleanup)
+	view_prepare
+	cfmgr_view_test_fault=partial
+	if view_create; then fail 'partial bind failure was hidden'; fi
+	[ "$cfmgr_view_state" != ready ] || fail 'partial construction became ready'
+	cfmgr_execution_view_release || fail 'proved partial construction could not clean'
+	cfmgr_view_test_fault=clean
+	mkdir -m 700 "$view_ram/retry"
+	cfmgr_execution_view_create "$view_native_root" "$view_ram/retry" "$view_ram/awk" "$readlink" "$root/modules/lib/mountinfo.awk" || fail 'fresh retry view failed'
+	cfmgr_view_test_quiet=0
+	if cfmgr_execution_view_release; then fail 'release bypassed required quiescence'; fi
+	cfmgr_view_test_quiet=1
+	(
+		cd "$cfmgr_view_root/opt"
+		printf ready >"$cfmgr_view_context/observer.ready"
+		exec /bin/sleep 15
+	) &
+	view_observer=$!
+	view_observer_wait=0
+	while [ ! -f "$cfmgr_view_context/observer.ready" ]; do
+		[ "$view_observer_wait" -lt 20 ] || fail 'external read-only observer did not start'
+		"$view_busybox" usleep 50000
+		view_observer_wait=$((view_observer_wait + 1))
+	done
+	if cfmgr_execution_view_release; then fail 'busy owned mount was falsely released'; fi
+	[ "$cfmgr_view_state" = retained ] && [ -s "$cfmgr_view_context/expected.mounts" ] || fail 'busy release lost evidence'
+	"$view_busybox" mount -t tmpfs -o size=64k tmpfs "$cfmgr_view_root/opt"
+	if cfmgr_execution_view_release; then fail 'foreign layer was adopted for cleanup'; fi
+	"$view_busybox" umount "$cfmgr_view_root/opt"
+	kill -TERM "$view_observer"
+	wait "$view_observer" 2>/dev/null || :
+	view_observer=
+	cfmgr_execution_view_release || fail 'busy release did not recover after observer reaped'
+	[ "$cfmgr_view_state" = released ] || fail 'successful release remained latched'
+	printf 'PASS: partial rollback, required quiescence, busy retention, foreign rejection, and normal retry cleanup\n'
 	;;
 *) fail "unknown case: $case_name" ;;
 esac

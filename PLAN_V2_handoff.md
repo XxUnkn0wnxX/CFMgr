@@ -31,29 +31,22 @@ switch and record its consumer/return path. Dependency-first ordering is authori
 Goal 3: 1/10. No additional complete subgoal awaits CI. Partial storage/inventory
 proof earns no complete subgoal. The checklist owns accepted IDs, results and gates.
 
-AGENTS.md owns publication/pause and documentation rules. Ordinary local proof ends
-in a reviewed local commit, then work continues. Required unavailable focused proof
-authorizes an automatic focused push and exact green CI before further implementation.
-Full suites belong only to complete main-goal markers. An explicit pause after
-substantial work requires completing that subgoal, focused tests/commit/push/green
-CI and a session-ready handoff; a barely-started owned attempt may be scoped back to
-HEAD without losing unrelated work. No pause is currently requested.
-
-Keep development notes to essential tools/setup/check commands until the final
-100% readiness stage. Keep accepted evidence in the checklist and update README
-subgoal status at validated gates. Trim completed narrative here; audit source and
-receipts if uncertain. No pending scope-approval question exists.
+Standing publication/pause, progress and concise-documentation rules are consolidated
+in AGENTS.md. The current work is authorized to continue; no pause or unanswered
+scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
-- Branch: `develop`. Last inspected local HEAD:
-  `d5c1597a68272db0198420a10291836d4381392e` (local documentation-policy commit).
+- Branch: `develop`. Local documentation cleanup is committed as `ed9e899`.
   Last verified published documentation receipt:
   `67f0283e13024046d7746bafc36cb6d744204e9b`. Verify refs/status on resume; later
   documentation commits do not change the tested runtime below.
-- Current parent-owned edits: developer-note reduction, matching S16.03 wording,
-  consolidated AGENTS rules and this handoff reduction. Validate planning/links/
-  whitespace and commit locally; no docs-only push is due.
+- Guarded-view package is implemented and parent-reviewed, awaiting its focused
+  runtime commit/push and exact CI. Combined local command below passed **103 tests,
+  19 platform skips**, pytest 32.73s; all statics/planning/package checks passed.
+  Receipt: `.tmp/execution-view-focused.log`. The fixture applet config changes
+  the BusyBox cache key; existing warm CI was 48s, so this run includes a rebuild.
+  Current docs record that pending gate; acceptance counts are unchanged.
 - Latest runtime: `423dd14a5b35c295f07aed0d9e1225a10a8a15df`, exact
   [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856)
   green. Selection: `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`,
@@ -69,21 +62,26 @@ receipts if uncertain. No pending scope-approval question exists.
   `.tmp/s03-01-focused.log`, `.tmp/s03-01-existing-ci.log` and
   `.tmp/platform-review/s02-03-ubuntu-{run.json,ci.log}`. Historical failures were
   corrected before their green runs; retained logs are diagnostic history only.
-- No CI, shell test or router job is active. No router action occurred in this
-  package. Architecture review is complete; no agent is active.
+- No CI or router job is active. No router action occurred in this package.
+  Writer ownership and completed review are listed below.
 
 ## Ownership and next package
 
 | Owner | Exclusive scope | Gate / stop condition |
 | --- | --- | --- |
-| Parent | Three plans, architecture, integration, metadata | Resolve execution-view compatibility/storage risks before assigning construction or opkg launch. Preserve approved normal opkg semantics. |
-| `execution_view_review` deep, completed | Read-only S02.05/S02.08 architecture review | Revised guarded view is viable for ordinary hotplug; concurrent root unmount and external-service ownership boundaries need the parent decision below. No edits/tests/router actions. |
+| Parent | Three plans, architecture, integration, metadata and CI config | Review storage-view contract, consumer boundary and focused evidence. No acceptance for a helper alone. |
+| `opkg_supervision_review` analyst | Read-only ownership follow-up | Assess dynamically changed task roots and safe handling of unknown roots under S02.05/S02.08; no edits/tests/router actions. Prior keeper source review is complete. |
+| `prerequisite_inventory` worker_strong | Completed; files released to parent | S02.05/S02.08 guarded-view construction/recheck/cleanup and Linux fixtures. Parent reviewed and combined local gate passed; real mount/chroot CI remains pending. No opkg launch or supervision consumer. |
 
-All workers released their files. Inspect live threads on resume before assigning
-another writer. No execution-root or opkg-writer
-implementation is underway. Before delegation record exclusive files, entry/consumer,
-interfaces, missing behavior and focused checks. Reuse existing privileged fixture
-rather than creating a duplicate harness. Parent owns acceptance and publications.
+Consumer route: future installed-opkg repair from the existing installer/prerequisite
+controller, using already admitted storage FDs 6/7. This package deliberately stops
+before writer launch/supervision, so it remains partial. Preserve existing parser
+interfaces; add explicit inventory support for verified owned stacks. Reuse the
+real ext4 fixture. Focused gate: mountinfo, storage, storage_mounts, install and platforms modules;
+Linux mount cases require focused CI. Parent owns workflow requirements and metadata.
+All other workers finished and released files; filesystem architecture review is integrated.
+Parent added matching-native BusyBox CHROOT/LN fixture applets for the actual view tests;
+cache identity already includes this config. No new APT requirement or full run is needed.
 
 ## Implemented foundation and remaining consumer gaps
 
@@ -120,10 +118,10 @@ for normal opkg/script trees and package writes. Extend coherently; do not blind
 
 ## Unresolved execution/storage design
 
-The candidate is a private chroot view with descriptor-bound Entware and native
-path compatibility. It is **not implemented or qualified**. Do not assume cgroups,
-mount namespaces or a new resident daemon on the router. Native Linux test namespaces
-isolate fixtures only. Polling `/opt` cannot prevent stale-path writes by itself.
+The private descriptor-bound view with read-only fallback guards is **locally tested,
+platform-pending and not integrated with opkg**. Do not assume router cgroups/namespaces
+or a new resident daemon; Linux test namespaces only isolate fixtures. Polling
+`/opt` alone cannot prevent stale-path writes.
 
 Preserve ordinary installed opkg feeds/dependency resolution/scripts, including
 configured local-feed/temp/cache paths and existing unpacked packages. A minimal
@@ -132,15 +130,35 @@ Opkg invokes `wget` through PATH; curl admission alone does not qualify transpor
 Account for native `/etc`→`/tmp` symlinks, devices/procfs and service IPC. Normal
 `dest root /` is valid; Entware patches free-space checks to `/opt`.
 
-Proposed ownership: direct PID/start/boot handshake, then tasks rooted in owned
-root/mounts across fork/exec/daemonization/nested roots and surviving threads;
-close inherited outside descriptors/cwd. Storage loss/deadline cancels only verified
-owned tasks with bounded TERM/KILL/reaping. Persistent/uncertain ownership or busy
-normal unmount retains guard/root evidence; no lazy cleanup or replacement overlap.
-Opkg exit alone does not prove quiescence. A later invocation recovers only verified
-quiescent state; ordinary completed failure must not create a permanent failure latch.
-Host services spawned through IPC do not inherit the chroot; establish that boundary
-without pretending it owns arbitrary host daemon work.
+Writer supervision remains unresolved and is outside this construction package.
+Track direct PID/start/boot before release and rooted tasks across threads/daemonization;
+close outside directory descriptors/cwd. The view hides its controller context, so
+handshake needs narrowly admitted FIFO descriptors closed before opkg exec.
+
+**Mount IDs can be reused after final reference release.** Pin every ownership
+mount; the unique root alone does not retain detached child binds. Source-reviewed
+candidate: one native ash child holds directory references in active recursive
+function-redirection frames. ACK only after each open; verify its PID/start/boot
+and complete held fdinfo mount-ID set before overmounting. Reserve FD/stack headroom;
+EOF, unwind, keeper loss or missing pins closes ownership admission. Release pins
+only after quiescence, then never signal from that retired ledger. This is an
+ash/Linux contract, still needing implementation and focused execution proof.
+Pinned `shell/ash.c` SHA256 `28fcb7d7f9428e44bad4299bffdc7c30c8c83468c479305b60f0c690e57b7b09`
+matches cached provenance: `openredirect`, `REDIR_PUSH`, `evalfun`, `popredir`.
+
+Script-created mounts/chroots can escape a static inventory; resolve dynamic or
+unknown ownership before launch. Positively identify kernel threads by PF_KTHREAD;
+retry transient exits within deadline, never infer live unreadable roots are foreign.
+Kernel evidence: Linux v4.1 `fs/namespace.c`, `fs/proc/{base,fd}.c`,
+`include/linux/{fs_struct,sched}.h`, `kernel/exit.c`.
+
+Persistent package-script daemons count as continuing owned work, not direct-exit
+success. Bounded cancellation can make repair fail even after opkg exit zero; do not
+claim normal service-success compatibility without review. Unknown ownership or
+busy normal unmount retains evidence and prevents overlap; never lazy cleanup.
+Later recovery requires proved quiescence; a completed ordinary failure must not
+permanently latch. External host services requested through IPC are not inherited
+owned children. No supervisor/repair success or scope restriction is yet approved.
 
 Concrete Merlin hotplug finding: at pinned firmware source below,
 `rc/usb.c` unmounts the device from **all** matching mounts, including private bind
@@ -156,8 +174,12 @@ itself; preserve a separate bindable guard source. Do not later clear unbindable
 with recursive-private. Ordinary device detach can leave the RO underlay in place,
 but `rc/usb.c:1797–1849` calls the user hook then retries path-based unmounts without
 revalidating top-device identity: another actor removing the leaf can expose the
-guard to a later attempt. The completed review finds the revised construction viable for ordinary hotplug;
-parent must resolve or state this concrete concurrency boundary before implementation. No containment success is claimed.
+guard to a later attempt. Parent verified the pinned hotplug source and accepts the revised construction for
+ordinary hotplug. Scope remains the action’s verified owned children: host services
+asked to act through IPC are not owned children, and independent root dismantling
+of guards is not prevented. CFMgr itself must never remove a busy leaf while writers
+survive. These are evidence limits, not restrictions on normal feeds/scripts. Actual
+construction, failure and cleanup proof is still required; no containment is claimed.
 
 Source pins and evidence for that decision:
 
@@ -179,11 +201,11 @@ Source pins and evidence for that decision:
 
 ## Validation and resume
 
-1. Verify refs/status and collect the architecture review. Finish documentation-only
-   correction with planning/link/whitespace checks and a local commit.
-2. Settle the bounded execution/storage design, then record and delegate its actual
-   implementation/consumer/fixture package. Any necessary product restriction needs
-   a concrete proposal and approval first; implementation refinements do not.
+1. Verify refs/status and the guarded-view candidate's exact focused CI. Local command:
+   `.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py`.
+2. Fix any required CI failures before further implementation. Then integrate the
+   ownership review and design supervised writer launch and its repair consumer.
+   Any necessary product restriction needs a concrete proposal and approval first.
 3. Run focused local/statics, parent-review, commit. Required Linux/BusyBox proof
    uses the focused CI route in AGENTS, then wait for exact green before advancing.
    No full run or main-goal tick is due now. Update checklist/README gate status.
