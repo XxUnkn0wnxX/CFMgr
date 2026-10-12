@@ -1413,7 +1413,12 @@ Preserve Off as operationally unhooked even when reconstructing its binary/data;
 
 The completed implementation is the full CLI described here, with real consumers,
 integrated behavior, required automated safety tests and practical documentation.
-One Ubuntu runner executes the full host and vendor BusyBox suites; representative
+One Ubuntu runner executes the full required host and vendor BusyBox acceptance
+suites. Use small representative tests for normal operation and credible boot-loop,
+router-hang, unbounded-work, unsafe-write and serious-corruption failures. Rare
+synthetic process/thread stress is optional diagnostic work, with deferred proof
+and criticality stated explicitly; incidental output/timing details need not block
+acceptance. A concrete serious safety failure remains blocking. Representative
 fixtures approximate router behavior. Source-only helpers and absent consumers
 cannot receive ticks. Exact Merlin/ARM/physical-flash and live-provider execution
 are deferred to an extended beta, initially on the user's router and optionally

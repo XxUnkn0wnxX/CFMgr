@@ -263,6 +263,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="require BusyBox ash and run the selected suite; missing proof fails",
     )
+    parser.add_argument(
+        "--include-diagnostics",
+        action="store_true",
+        help="include optional diagnostic pytest cases normally excluded from the required suite",
+    )
     return parser.parse_args()
 
 
@@ -360,6 +365,14 @@ def main() -> int:
         "--strict-markers",
         "--maxfail=1",
     ]
+    if args.include_diagnostics:
+        print("Pytest selection: required suite plus optional diagnostic cases.")
+    else:
+        print(
+            "Pytest selection: required suite; optional diagnostic cases excluded "
+            "(use --include-diagnostics to include them)."
+        )
+        command.extend(("-m", "not diagnostic"))
     if args.keyword:
         command.extend(("-k", args.keyword))
     command.extend(test_targets)

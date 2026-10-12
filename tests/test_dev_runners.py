@@ -254,7 +254,8 @@ def test_runner_passes_focused_path_and_keyword_to_pytest(
     assert pytest_command[:3] == [sys.executable, "-m", "pytest"]
     assert pytest_command[3:5] == ["-q", "-ra"]
     assert pytest_command[5:7] == ["--strict-config", "--strict-markers"]
-    assert pytest_command[7:10] == ["--maxfail=1", "-k", "password_auth"]
+    assert pytest_command[7:10] == ["--maxfail=1", "-m", "not diagnostic"]
+    assert pytest_command[10:12] == ["-k", "password_auth"]
     assert pytest_command[-1] == str(runner.ROOT / "tests/test_router_probe.py")
     assert pytest_env is not None
     assert pytest_env["CFMGR_TEST_SHELL"] == "/bin/test-shell --posix"
@@ -267,6 +268,31 @@ def test_runner_bare_focused_keeps_tests_directory_selection(
     monkeypatch.setattr(sys, "argv", ["tools/test.py", "--focused"])
     assert runner.main() == 0
     assert commands[-1][0][-1] == str(runner.ROOT / "tests")
+
+
+@pytest.mark.parametrize("include_diagnostics", [False, True])
+def test_runner_diagnostic_selection_is_explicit(
+    monkeypatch: pytest.MonkeyPatch, capsys, include_diagnostics: bool
+) -> None:
+    commands, _ = _capture_runner(monkeypatch)
+    argv = ["tools/test.py"]
+    if include_diagnostics:
+        argv.append("--include-diagnostics")
+    monkeypatch.setattr(sys, "argv", argv)
+
+    assert runner.main() == 0
+    command = commands[-1][0]
+    output = capsys.readouterr().out
+    if include_diagnostics:
+        assert "--include-diagnostics" not in command
+        assert "plus optional diagnostic cases" in output
+    else:
+        marker_index = command.index("-m", 3)
+        assert command[marker_index : marker_index + 2] == [
+            "-m",
+            "not diagnostic",
+        ]
+        assert "optional diagnostic cases excluded" in output
 
 
 def test_quick_selection_accepts_final_push_trailer_and_manual_nodes(

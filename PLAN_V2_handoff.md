@@ -23,6 +23,30 @@ handoff, then pause. Do not start another target afterward. The latest user rule
 adds rapid selected BusyBox diagnostics followed by full CI before CI-dependent
 subgoal acceptance or pause. Full local suites still wait for main-goal markers.
 
+Latest user direction: practical acceptance, no hours-long pursuit of rare edges.
+Use judgement to relax incidental test details or defer rare low-risk diagnostics
+with a concise checklist criticality note, without pinging the user. Pursue common
+failures; raise a concrete blocker after two unsuccessful focused attempts.
+Escalate high-risk unresolved issues; if unanswered, record the question and pause
+after 3–5 minutes. AGENTS owns the
+two-focused-fixes/~20-minute reassessment rule. Full CI means required acceptance,
+with rare mixed-root and dead-leader/thread stress optional. Possible later VPS
+testing is not current provisioning/execution authorization.
+
+`focused_ci` released the runner/diagnostic files: 41 focused tests passed and
+11 Linux cases skipped locally; parent reviewed the selection/output changes.
+AGENTS consolidation is reviewed and below 23 KB, with a 28 KB proactive threshold.
+The docs/CI worker owns no remaining files.
+Parent owns planning files, package manifest, workflow path filters and integration.
+For the remaining S02.05/S02.08 installed-launch consumer, `retained_config` owns
+new `modules/lib/json.awk`, `modules/lib/config_observation.awk` and
+`tests/test_config_observation.py`; `prerequisite_inventory` owns entry/bootstrap,
+new launch controller, prerequisite/probe dispatch and installed-launch fixtures.
+Their fixed interface is native AWK tree validation plus check/observe/patch modes,
+with an exact generation/change/byte-count receipt and raw-preserving patch output.
+No shared writers. Parent reviews both packages before integrated Linux proof;
+focused host checks precede quick CI, then full required CI at the final candidate.
+
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
 Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
 smallest independently completable subgoals, then linked module/framework batches,
@@ -47,7 +71,15 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Latest pushed/remote-verified candidate: `bf2da3e40f8b42c61e9e73ad8a0361b497f81fe1`.
+- Latest pushed/remote-verified candidate: `8dfa47753860667f71aecb7710007559c61d5617`.
+  [Quick Checks 38253817799](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253817799)
+  passed at that exact SHA; selected mixed/loss/installer tests ran
+  13:10:37–13:19:12 UTC. `inventory_ci_wait` finished and owns no work.
+  Only the exact mixed stderr expectation changed. Local dependency tests
+  **13 passed/11 Linux skips**; affected Ruff/format/compile/planning/whitespace
+  passed. Quick proof permits continued work on the same pair; full required
+  acceptance CI still waits for the completed candidate.
+- Previous candidate: `bf2da3e40f8b42c61e9e73ad8a0361b497f81fe1`.
   [Quick Checks 38253187477](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253187477)
   failed the Python stderr expectation after **160.30s**. The mixed-root shell
   fixture exited zero: actual foreign/owned roots, retained state, no signals,
