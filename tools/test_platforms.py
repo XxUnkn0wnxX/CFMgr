@@ -912,6 +912,16 @@ def stage_feeds(manifest: dict[str, Any], downloads: Path, root: Path) -> None:
             extract_tar(
                 ipk_data(archive), destination, package=True, limit=128 * 1024 * 1024
             )
+        # These pinned Entware packages declare opkg alternatives in their
+        # control metadata; the disposable fixture creates the same links
+        # without running package maintainer scripts.
+        for command in ("timeout", "sha256sum"):
+            alternative = destination / "opt/bin" / command
+            _require(
+                not alternative.exists() and not alternative.is_symlink(),
+                "unexpected Entware alternative",
+            )
+            alternative.symlink_to(f"../libexec/{command}-coreutils")
         for name in (
             "bin/jq",
             "libexec/timeout-coreutils",
@@ -988,6 +998,7 @@ def prepare_guest(
     busybox: Path,
     downloads: Path,
     work: Path,
+    package: Path,
 ) -> Path:
     root = work / "root"
     _require(not root.exists(), "guest root must be fresh")
@@ -1002,7 +1013,9 @@ def prepare_guest(
         "dev",
         "cfmgr",
         "opt",
-        "tmp/mnt/MERLIN",
+        "jffs",
+        "tmp",
+        "mnt/cfmgr-scratch",
     ):
         (root / name).mkdir(parents=True, exist_ok=True)
     shutil.copy2(busybox, root / "bin/busybox")
@@ -1012,6 +1025,9 @@ def prepare_guest(
         "echo",
         "ls",
         "mkdir",
+        "cp",
+        "chmod",
+        "df",
         "mv",
         "rm",
         "rmdir",
@@ -1020,17 +1036,29 @@ def prepare_guest(
         "pwd",
         "test",
         "[",
+        "printf",
         "uname",
         "sleep",
+        "wc",
+        "flock",
+        "blkid",
         "mount",
         "umount",
     ]
     for name in bin_applets:
         (root / "bin" / name).symlink_to("busybox")
-    for name in ("awk", "cmp", "env", "printf"):
+    for name in ("awk", "cmp", "env", "printf", "readlink", "wc"):
         (root / "usr/bin" / name).symlink_to("../../bin/busybox")
+    (root / "usr/bin/flock").symlink_to("../../bin/busybox")
+    (root / "sbin/blkid").symlink_to("../bin/busybox")
     (root / "sbin/poweroff").symlink_to("../bin/busybox")
-    (root / "mnt").symlink_to("tmp/mnt")
+    nvram = root / "bin/nvram"
+    nvram.write_text(
+        "#!/bin/sh\n"
+        '[ "$#" -eq 2 ] && [ "$1" = get ] && [ "$2" = jffs2_scripts ] || exit 2\n'
+        "printf '1\\n'\n"
+    )
+    nvram.chmod(0o755)
     shutil.copy2(FIXTURES / "init.sh", root / "init")
     (root / "init").chmod(0o755)
     library = (ROOT / "modules/lib/storage.sh").read_bytes()
@@ -1063,7 +1091,26 @@ def prepare_guest(
             )
         )
     (root / "cfmgr/feeds").write_text("\n".join(feed_lines) + "\n")
+    shutil.copytree(package, root / "cfmgr/package")
+    volume = work / "volume"
+    volume.mkdir()
+    (volume / "tmp").mkdir()
+    (volume / "feeds").mkdir()
     stage_feeds(manifest, downloads, root)
+    package_entries = []
+    for source in sorted(path for path in package.rglob("*") if path.is_file()):
+        relative = source.relative_to(package).as_posix()
+        target = (
+            "/jffs/scripts/cfmgr.sh"
+            if relative == "cfmgr.sh"
+            else f"/jffs/addons/CFMgr.d/{relative}"
+        )
+        package_entries.append(
+            (hashlib.sha256(source.read_bytes()).hexdigest(), target)
+        )
+    (root / "cfmgr/installed.sha256").write_text(
+        "".join(f"{digest}  {target}\n" for digest, target in package_entries)
+    )
     archive = work / "initramfs.cpio.gz"
     newc_archive(root, archive)
     return archive
@@ -1162,8 +1209,12 @@ def verify_guest_log(
         f"CFMGR_PLATFORM_OK_v1:{kernel['version']}:{item['id']}",
     ]
     required.extend(
-        f"CFMGR_FEED={feed['id']}:{feed['architecture']}:OK"
+        marker
         for feed in manifest["feeds"]
+        for marker in (
+            f"CFMGR_FEED={feed['id']}:{feed['architecture']}:OK",
+            f"CFMGR_INSTALL={feed['id']}:OK",
+        )
     )
     _require(
         not any("CFMGR_PLATFORM_FAIL:" in line for line in lines),
@@ -1192,6 +1243,8 @@ def boot_guest(
             "-F",
             "-t",
             "ext4",
+            "-d",
+            str(work / "volume"),
             "-b",
             "1024",
             "-O",
@@ -1224,7 +1277,7 @@ def boot_guest(
         "-initrd",
         str(initramfs),
         "-append",
-        "console=ttyAMA0 rdinit=/init panic=1",
+        "console=ttyAMA0 rdinit=/init panic=1 mtdram.total_size=8192 mtdram.erase_size=128",
         "-drive",
         f"file={disk},format=raw,if=none,id=scratch",
         "-device",
@@ -1276,6 +1329,10 @@ def execute_native_busybox(manifest: dict[str, Any]) -> None:
     print(f"Verified native vendor BusyBox staged at {destination.relative_to(ROOT)}")
 
 
+def build_platform_package(destination: Path) -> None:
+    run([sys.executable, str(ROOT / "tools/package.py"), "--output", str(destination)])
+
+
 def execute(manifest: dict[str, Any], selected: str | None) -> None:
     require_linux_host()
     for tool in (
@@ -1295,6 +1352,9 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
     compilers: dict[str, tuple[str, Path | None]] = {}
     work_root = ROOT / ".tmp/platform-runs"
     work_root.mkdir(parents=True, exist_ok=True)
+    package_work = Path(tempfile.mkdtemp(prefix="package-", dir=work_root))
+    package = package_work / "package"
+    package_ready = False
     for kernel in manifest["kernels"]:
         if selected and kernel["version"] != selected:
             continue
@@ -1309,9 +1369,15 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
         recipe = build_key("kernel", kernel, toolchain)
         downloads = cache / "kernel-inputs" / kernel["sha256"]
         image = build_kernel(kernel, compiler, downloads, cache, recipe, runtime)
-        # New mutable filesystem for every boot; cached immutable inputs only.
+        if not package_ready:
+            build_platform_package(package)
+            package_ready = True
+        # The guest resets only paths it just installed between feed profiles;
+        # the actual JFFS2 mount remains live and all installs stay observable.
         work = Path(tempfile.mkdtemp(prefix=kernel["version"] + "-", dir=work_root))
-        initramfs = prepare_guest(manifest, kernel, binary, feed_downloads, work)
+        initramfs = prepare_guest(
+            manifest, kernel, binary, feed_downloads, work, package
+        )
         boot_guest(image, initramfs, kernel, manifest, work)
         print(
             f"Accepted generic guest proof: {kernel['version']} / {kernel['busybox']}; logs retained at {work.relative_to(ROOT)}",

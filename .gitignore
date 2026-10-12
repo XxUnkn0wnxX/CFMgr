@@ -21,6 +21,7 @@ __pycache__/
 /cfmgr.conf
 /cfmgr.conf.*
 !/cfmgr.conf.example
+/tools/router.local.json
 
 # Credentials
 /secrets/

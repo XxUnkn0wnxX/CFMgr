@@ -1,6 +1,5 @@
 #!/bin/sh
-# Opt-in diagnostic: JFFS needs explicit permission; the optional USB scratch
-# destination follows the user's separate temporary-command-test permission.
+# Opt-in developer diagnostic; the operator explicitly selects the destination.
 # Stream verified storage.sh followed by this script through router /bin/sh.
 # --define only defines developer-test functions and performs no filesystem work.
 # Native flush/rename/readback evidence is not power-loss or Save acceptance.
@@ -34,9 +33,41 @@ cfmgr_probe_preflight() {
 
 cfmgr_probe_mounted() {
 	# Count every row for this mountpoint, including any inadmissible row.
-	awk -v mountpoint="$1" -v filesystem="$2" '
-		$2 == mountpoint { n++; if ($3 != filesystem || $4 !~ /(^|,)rw(,|$)/) bad=1 }
-		END { exit (n == 1 && !bad ? 0 : 1) }' "$3"
+	cfmgr_probe_mount_record "$1" "$2" "$3" >/dev/null
+}
+
+cfmgr_probe_mount_record() {
+	# Literal ARGV operands preserve spaces/backslashes without awk -v decoding.
+	# /proc/mounts escapes spaces; controls and unknown encodings fail closed.
+	awk '
+		function decode(value, result, part, code) {
+			result=""
+			while (length(value)) {
+				part=substr(value,1,1)
+				if (part == "\\") {
+					code=substr(value,1,4)
+					if (code == "\\040") part=" "
+					else if (code == "\\134") part="\\"
+					else { bad=1; return "" }
+					value=substr(value,5)
+				} else value=substr(value,2)
+				result=result part
+			}
+			return result
+		}
+		BEGIN { mountpoint=ARGV[1]; filesystem=ARGV[2]; ARGV[1]=""; ARGV[2]="" }
+		{
+			if (NR > 4096 || length($0) > 8192 || NF != 6) { bad=1; next }
+			if (decode($2) != mountpoint) next
+			n++
+			if ((filesystem == "external" && $3 !~ /^ext[234]$/) ||
+			    (filesystem != "external" && $3 != filesystem) ||
+			    $4 !~ /(^|,)rw(,|$)/ || $4 ~ /(^|,)ro(,|$)/) bad=1
+			source=decode($1)
+			if (source !~ /^\/dev\// || source ~ /[[:cntrl:]]/) bad=1
+		}
+		END { if (n != 1 || bad) exit 1; print source }
+	' "$1" "$2" "$3"
 }
 
 cfmgr_probe_identity() {
@@ -105,8 +136,9 @@ cfmgr_probe_write() (
 	if [ "$cfmgr_probe_parent_missing" = 1 ]; then
 		# The caller is already in the admitted USB root and holds fd 7.
 		[ . -ef /proc/self/fd/7 ] && [ "${cfmgr_probe_parent%/*}" -ef /proc/self/fd/7 ] || return 2
-		mkdir -m 700 tmp || return 2
-		exec 6<tmp || return 1
+		cfmgr_probe_basename=${cfmgr_probe_parent##*/}
+		mkdir -m 700 "$cfmgr_probe_basename" || return 2
+		exec 6<"$cfmgr_probe_basename" || return 1
 		cfmgr_probe_identity "$cfmgr_probe_parent" 6 drwx------ "$cfmgr_probe_owner" || return 1
 	else
 		[ -d "$cfmgr_probe_parent" ] && [ ! -L "$cfmgr_probe_parent" ] || return 2
@@ -154,6 +186,8 @@ cfmgr_router_storage_probe() (
 	LANGUAGE=
 	export PATH LC_ALL LANGUAGE
 	umask 077
+	[ "$#" -eq 1 ] || return 2
+	_cfmgr_storage_path "$1" || return 2
 	cfmgr_probe_preflight /proc/self/status /proc/mounts /bin/fsync || return 2
 	cfmgr_probe_parent_missing=0
 	case $1 in
@@ -164,14 +198,29 @@ cfmgr_router_storage_probe() (
 		cfmgr_probe_mounted /jffs jffs2 /proc/mounts || return 2
 		cfmgr_probe_parent=/jffs/addons
 		;;
-	/mnt/MERLIN/tmp)
-		[ -d /mnt/MERLIN ] && [ ! -L /mnt/MERLIN ] || return 2
-		[ "$(readlink -f /mnt/MERLIN)" = /tmp/mnt/MERLIN ] || return 2
-		exec 7</tmp/mnt/MERLIN || return 2
+	/*/*)
+		# A retained scratch base directly below an existing external mount.
+		# Native path normalization keeps aliases but never invents a stale mount.
+		cfmgr_probe_requested=$1
+		cfmgr_probe_mount_alias=${cfmgr_probe_requested%/*}
+		cfmgr_probe_basename=${cfmgr_probe_requested##*/}
+		[ -d "$cfmgr_probe_mount_alias" ] || return 2
+		cfmgr_probe_mount=$(readlink -f "$cfmgr_probe_mount_alias" && printf '\n.') || return 2
+		case $cfmgr_probe_mount in
+		*'
+
+.') cfmgr_probe_mount=${cfmgr_probe_mount%'
+
+.'} ;;
+		*) return 2 ;;
+		esac
+		_cfmgr_storage_path "$cfmgr_probe_mount" || return 2
+		cfmgr_probe_device=$(cfmgr_probe_mount_record "$cfmgr_probe_mount" external /proc/mounts) || return 2
+		[ -b "$cfmgr_probe_device" ] || return 2
+		exec 7<"$cfmgr_probe_mount" || return 2
 		cd /proc/self/fd/7 || return 2
-		[ "$(pwd -P)" = /tmp/mnt/MERLIN ] && [ /tmp/mnt/MERLIN -ef /proc/self/fd/7 ] || return 2
-		cfmgr_probe_mounted /tmp/mnt/MERLIN ext4 /proc/mounts || return 2
-		cfmgr_probe_parent=/tmp/mnt/MERLIN/tmp
+		[ "$(pwd -P)" = "$cfmgr_probe_mount" ] && [ "$cfmgr_probe_mount" -ef /proc/self/fd/7 ] || return 2
+		cfmgr_probe_parent=$cfmgr_probe_mount/$cfmgr_probe_basename
 		if [ -e "$cfmgr_probe_parent" ] || [ -L "$cfmgr_probe_parent" ]; then
 			[ -d "$cfmgr_probe_parent" ] && [ ! -L "$cfmgr_probe_parent" ] || return 2
 			[ "$(readlink -f "$cfmgr_probe_parent")" = "$cfmgr_probe_parent" ] || return 2
@@ -184,19 +233,45 @@ cfmgr_router_storage_probe() (
 	cfmgr_probe_write "$cfmgr_probe_parent" /bin/fsync "$cfmgr_probe_parent_missing" 0
 )
 
-case $#:$1 in
+cfmgr_probe_help() {
+	printf '%s\n' \
+		'CFMgr router storage probe (explicit opt-in)' \
+		'Usage: /bin/sh router-storage-probe.sh --run ABSOLUTE_SCRATCH_DIR' \
+		'       /bin/sh router-storage-probe.sh --help' \
+		'The scratch directory must be directly below a mounted ext2/3/4 volume.' \
+		'An existing scratch directory and its contents/permissions are preserved.' \
+		'An absent scratch directory is created privately and retained afterward.' \
+		'Explicit /jffs/addons is also supported; obtain permission before JFFS writes.' \
+		'Writes one 30-byte file in a new private .cfmgr-storage-probe-PID directory,' \
+		'checks flush/rename/readback, then removes only verified owned artifacts.' \
+		'No settings, services or packages are changed. This is not power-loss proof.' \
+		'From a checkout, use tools/router_probe.py with the ignored local config.'
+}
+
+case $#:${1-} in
 1:--define) : ;;
-1:--run) cfmgr_router_storage_probe /jffs/addons ;;
+1:--help) cfmgr_probe_help ;;
 2:--run)
-	if [ "$2" = /mnt/MERLIN/tmp ]; then
-		cfmgr_router_storage_probe "$2"
-	else
-		printf '%s\n' 'Router storage probe is inert. Only JFFS or the explicit USB scratch destination is allowed.'
+	# A local checkout can import its own explicit library; streamed execution
+	# prepends the reviewed source. Help/invalid invocation performs no import.
+	if ! type cfmgr_storage_flush_fd >/dev/null 2>&1; then
+		cfmgr_probe_library=${0%/*}/../modules/lib/storage.sh
+		if [ -f "$cfmgr_probe_library" ] && [ ! -L "$cfmgr_probe_library" ]; then
+			# shellcheck source=/dev/null
+			. "$cfmgr_probe_library"
+		else
+			printf '%s\n' 'Missing storage library; use the checkout developer launcher.' >&2
+			exit 2
+		fi
+	fi
+	if ! cfmgr_router_storage_probe "$2"; then
+		printf '%s\n' 'Probe failed or storage was not admitted; inspect any retained ownership warning.' >&2
 		exit 2
 	fi
 	;;
 *)
-	printf '%s\n' 'Router storage probe is inert. Explicit --run and execution permission are required.'
+	printf '%s\n' 'Router storage probe is inert. Explicit --run with a destination is required.'
+	cfmgr_probe_help
 	exit 2
 	;;
 esac

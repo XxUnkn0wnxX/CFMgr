@@ -6,8 +6,9 @@ These tools run on the developer host or CI. Router runtime remains POSIX shell.
 
 ## Setup
 
-Use Python 3.11+, ShellCheck and a C99 compiler (`cc`). On macOS, host shell tests
-also require Homebrew Bash at `/usr/local/bin/bash`. Reuse the project `.venv`;
+Use Python 3.11+, ShellCheck, a C99 compiler (`cc`), jq, GNU timeout and sha256sum.
+On macOS, host shell tests require Homebrew Bash at `/usr/local/bin/bash` and
+the GNU utilities supplied by Homebrew coreutils. Reuse the project `.venv`;
 create it if absent, then install pinned pytest, Ruff and shfmt:
 
 ```zsh
@@ -27,7 +28,7 @@ the main-goal gate:
 ```
 
 Every test invocation also runs **Ruff lint/format checks, Python compilation,
-shell syntax, ShellCheck, shfmt, planning/link checks and whitespace checks**.
+shell syntax, ShellCheck, shfmt, package metadata, planning/link and whitespace checks**.
 Optional `-k` narrows focused pytest selection; keep `PYTEST_ADDOPTS` empty.
 For documentation-only changes:
 
@@ -35,6 +36,10 @@ For documentation-only changes:
 .venv/bin/python tools/check.py
 git diff --check
 ```
+
+After changing runtime files, regenerate their catalog and manifest with
+`.venv/bin/python tools/package.py --write`; `--check` verifies them without edits.
+Use `--output PATH` to build a package in an absent or empty directory.
 
 ## Linux platform checks
 
@@ -51,3 +56,22 @@ python3 tools/test_platforms.py --run --kernel 4.1.51
 Other kernel profiles are in [platforms.json](../tests/fixtures/platforms.json).
 Running `tools/test_platforms.py` without build flags validates that manifest
 offline. Generic platform checks are separate from live router acceptance.
+
+## Optional router probe
+
+Copy `tools/router.local.json.template` to ignored `tools/router.local.json`, edit
+its target and scratch path, and set file mode `600`. Prefer `"mode": "KEY"` for
+passwordless key authentication through your normal SSH config; username and
+password can be blank. `"mode": "USR"` requires `ssh_user` and `ssh_password` in
+this private file. In either mode, a blank or `null` port inherits SSH config;
+an integer overrides it. Verify the router's host key through your normal SSH
+client first. The scratch directory must sit directly
+below a mounted ext2/3/4 volume; the probe retains that directory.
+
+```zsh
+.venv/bin/python tools/router_probe.py --check-config
+.venv/bin/python tools/router_probe.py --run
+```
+
+`--check-config` stays local. `--run` explicitly authorizes the small remote write
+probe and scoped cleanup; inspect its output for success or retained artifacts.

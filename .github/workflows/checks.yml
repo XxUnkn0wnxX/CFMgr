@@ -59,7 +59,7 @@ jobs:
       - name: Restore and verify developer tools
         uses: ./.github/actions/setup-tools
         with:
-          apt-packages: shellcheck
+          apt-packages: jq shellcheck
           python-tools: 'true'
 
       - name: Run full host suite and static checks
@@ -80,7 +80,7 @@ jobs:
       - name: Restore and verify developer tools
         uses: ./.github/actions/setup-tools
         with:
-          apt-packages: shellcheck
+          apt-packages: jq shellcheck
           python-tools: 'true'
 
       - name: Identify native vendor BusyBox cache key

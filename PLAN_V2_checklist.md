@@ -58,8 +58,8 @@ denominator.
 ## Accepted product evidence
 
 None yet: native storage prerequisites are being implemented, with current work
-and pending proof in the handoff. All 156 subgoals and the acceptance cases below
-remain unchecked. Partial helpers and planning checks do not establish complete
+and pending proof in the handoff. Final status for all 156 subgoals and the acceptance cases below
+remains unchecked. S02.03 has focused local proof; required CI is pending. Partial helpers and planning checks do not establish complete
 Save, feature, BusyBox/kernel or live router acceptance.
 
 For each future accepted subgoal, record its actual consumer, focused test
@@ -90,13 +90,19 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | --- | --- | --- | --- |
 | [ ] | [ ] | S02.01 | **Modular distribution:** One verified package with extensible feature modules, shared libraries grouped by reused responsibility and thin entry/hooks. |
 | [ ] | [ ] | S02.02 | **Private storage layout:** JFFS authority/recovery, RAM frequent state, verified Entware tunnel/log data, independent backup mount. |
-| [ ] | [ ] | S02.03 | **Generated defaults:** Private extensionless config generated only for genuinely fresh setup; no shipped config/template. |
+| [ ] | [x] | S02.03 | **Generated defaults:** Private extensionless config generated only for genuinely fresh setup; no shipped config/template. |
 | [ ] | [ ] | S02.04 | **Shared operational prerequisites:** Verified jq, timeout and SHA-256; native-first flock and tunnel-only DNS additions. |
 | [ ] | [ ] | S02.05 | **Normal dependency repair:** Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
 | [ ] | [ ] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | [ ] | [ ] | S02.07 | **Native recovery access:** Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | [ ] | [ ] | S02.08 | **Storage identity and loss:** Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
 | [ ] | [ ] | S02.09 | **Capability-based support:** Support the GT-AX11000 baseline and modern Merlin models with supported Entware and available, usable required dependencies; pin qualified firmware/kernel/ABI profiles and verify native options and TLS trust. |
+
+S02.01/S02.03 mapping acceptance: root entry goes only to `/jffs/scripts/cfmgr.sh`;
+`modules/` paths remain nested beneath `/jffs/addons/CFMgr.d/`, alongside the
+snapshot's root catalog and manifest. No package config/setup-guard payload is
+accepted. Trusted-local fresh installation and its generated private defaults
+are distinct from still-required remote acquisition/update-source proof.
 
 ### 3. Configuration, menus and status
 
@@ -335,6 +341,28 @@ against accepted runtime/tests. Reassess grouping only while preserving coverage
 | [ ] | `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools and workflow optimization (shared verified caches, scoped invalidation/rebuilds, failure-safe saves, fresh mutable state and warm-run checks), package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
 | [ ] | `CONTRIBUTING.md` | Concise change/review workflow, scope/checklist discipline, validation/privacy rules and links to development/architecture guidance. | 16 |
 
+## Developer tooling acceptance
+
+Tooling is supporting delivery, separate from the 16 product goals and the active
+main-goal percentage. A tick requires its complete approved behavior, focused local
+tests and any required exact-commit CI. Record concise accepted evidence here;
+keep active work in handoff. New entries/scope require user approval.
+
+| Accepted | Tool | Required proof |
+| --- | --- | --- |
+| [ ] | Planning checker | Valid documents pass; misalignment, broken links and private paths fail. |
+| [ ] | Focused/full test runner | Correct selection, required static gates and truthful failure/skip handling. |
+| [ ] | Platform runner | Input/cache/staging/log-oracle tests plus actual required pinned guest execution. |
+| [ ] | Package builder | Deterministic complete package, correct mapping and manifest, unsafe/stale input rejection. |
+| [ ] | Router probe tools | Config/auth/quoting/status tests without live SSH; native admission, descriptor ownership and cleanup proof in isolated Linux/BusyBox fixtures. |
+
+Router configuration acceptance includes explicit `KEY`/`USR` modes, blank unused
+credentials for key authentication, required username/password for `USR`, and
+blank/`null` port inheritance or an explicit integer port override.
+
+Only tools whose full listed proof is available receive ticks. This checkpoint may
+accept its delivered tools while unrelated or incomplete tooling remains pending.
+
 ## Open product decisions
 
 See specification section 17. These remain unresolved until their owning workflow has a supported concrete decision.
@@ -342,7 +370,7 @@ See specification section 17. These remain unresolved until their owning workflo
 | Status | Decision area |
 | --- | --- |
 | [ ] | **Configuration/transactions:** Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
-| [ ] | **Package distribution:** Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, developer-only config source grammar/shared-default reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
+| [ ] | **Package distribution:** Section 2 fixes the source-to-installed mapping. Remaining decisions/proof: bootstrap acquisition/manifest trust, complete update generation activation/reader retention, developer-only config source grammar/shared-default reset, catalog compatibility beyond the initial schema, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
 | [ ] | **Supported platforms:** GT-AX11000 baseline plus qualified modern Merlin models; pinned firmware/kernel/BusyBox/Entware ABI/feed/dependency versions, actual native paths/options/CA and official binary compatibility; explicit package/ABI exclusions, no historical-coverage obligation or support inferred solely from feed names. |
 | [ ] | **Storage/processes:** Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | [ ] | **Budgets/readiness:** Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |

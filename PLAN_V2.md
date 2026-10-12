@@ -110,6 +110,13 @@ fewer files alone do not establish a coherent architecture or delivered feature.
 
 The package manifest must enumerate safe nested relative paths. Install the entry at `/jffs/scripts/cfmgr.sh`; keep its verified modules, support files and separate catalog under `/jffs/addons/CFMgr.d/`, preserving responsibility categories. Freeze the exact source-to-installed mapping before installer implementation and use it consistently in imports, manifests, hooks and recovery.
 
+The source mapping preserves every `modules/` relative path beneath
+`/jffs/addons/CFMgr.d/`; root `catalog.txt` and `manifest.txt` map directly into
+that directory. Root `cfmgr.sh` maps only to `/jffs/scripts/cfmgr.sh`. Private
+configuration and setup guards are generated installation data, never package
+payloads. The fresh-install stage may consume an explicitly trusted local complete
+package; that stage does not establish remote acquisition or update-source trust.
+
 | Location | Intended contents and rules |
 | --- | --- |
 | `/jffs/scripts/cfmgr.sh` | Small executable entry, mode `755`; installed package generation must match its modules. |
@@ -1397,6 +1404,31 @@ Necessary library organization and practical documentation belong to functional
 readiness. Optional final polish and broad optimization may follow it. A future
 CFMgr WebUI remains outside this product scope.
 
+## Developer tooling
+
+Developer tools run on the contributor's host or isolated CI, never as router
+runtime dependencies. Derive checkout paths and accept clone-local connection
+settings as data. Store SSH target, optional username/password/key/port and router
+scratch path in ignored `tools/router.local.json`. Supply fake values in
+`tools/router.local.json.template`. Recommend SSH keys; password mode must not
+expose credentials in command arguments or logs or accept unknown host keys.
+Require `mode` to be `KEY` (SSH config/key authentication, unused username/password
+may be blank) or `USR` (configured username/password required). A blank or `null`
+port inherits global SSH configuration; a configured integer overrides the port.
+
+| Tool | Required behavior |
+| --- | --- |
+| `tools/check.py` | Check plan/checklist alignment, documentation links and private-path leakage without claiming runtime acceptance. |
+| `tools/test.py` | Run selected focused tests or the full suite with the required lint, format and static gates; report unavailable platform proof truthfully. |
+| `tools/test_platforms.py` | Build/reuse verified pinned fixtures and execute isolated BusyBox/kernel/Entware checks with fresh mutable state and preserved required coverage. |
+| `tools/package.py` | Build/check a deterministic complete trusted-local package, catalog and manifest; reject unsafe inventory or stale metadata. |
+| `tools/router_probe.py` and `tools/router-storage-probe.sh` | Validate local settings without connecting; require explicit run intent for SSH; use router-side `/bin/sh`, verify a user-selected mounted scratch location, write only owned probe artifacts, retain the scratch base and verify scoped cleanup. |
+
+Each tool needs meaningful focused local tests, useful help and concise developer
+command notes. Mocked transport tests never establish live-router evidence. Add
+required platform coverage to CI as tools grow. New tool entries or requirement
+expansions in this section and the matching checklist require user approval.
+
 ## 17. Open product decisions
 
 These details need concrete supported decisions before their dependent product behavior can be accepted. Proposed values remain proposals until settled.
@@ -1404,7 +1436,7 @@ These details need concrete supported decisions before their dependent product b
 | Area | Decision/proof required |
 | --- | --- |
 | Configuration/transactions | Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
-| Package distribution | Source-to-installed path mapping, bootstrap manifest trust, complete generation activation/reader retention, developer-only config source grammar/shared-default reset, snapshot catalog grammar, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
+| Package distribution | Section 2 fixes the source-to-installed mapping. Remaining decisions/proof: bootstrap acquisition/manifest trust, complete update generation activation/reader retention, developer-only config source grammar/shared-default reset, catalog compatibility beyond the initial schema, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
 | Supported platforms | Actual native paths/options/CA, minimal kernel/userspace ABI/capability profiles and official binary compatibility; no unsupported legacy promise based solely on feed names. |
 | Storage/processes | Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | Budgets/readiness | Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |

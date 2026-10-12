@@ -131,6 +131,17 @@ planning/link/whitespace checks alongside behavior. Python tooling stays develop
 only. Planning checks complement runtime proof; never remove valid runtime code to
 satisfy an obsolete empty-tree rule. The full runner must not commit, push or watch CI.
 
+Developer tools must work for other contributors and forks. Derive checkout paths;
+never hardcode a developer's SSH alias, router address, login/key or mounted-drive
+path. Router tooling reads those settings as data from ignored
+`tools/router.local.json`; ship `tools/router.local.json.template` with fake values
+and useful help. Require explicit execution intent and preserve scoped cleanup.
+Keep private settings out of tracked files, test expectations and published output.
+Ask the user before adding new developer-tool entries, requirements or scope to
+the plan and checklist, showing the proposed text first. Existing approved-tool
+evidence/status updates follow the normal focused-test and CI gates. Supporting
+tool completion does not add product goals or inflate product percentages.
+
 `develop` remains the only active/default branch until reviewed product 100%. Do not
 recreate local/origin `main`, change the default, rewrite history or promote runtime
 incidentally. Main's return is an explicit readiness action. Assign the first release

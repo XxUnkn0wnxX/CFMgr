@@ -1,0 +1,9 @@
+{
+  "mode": "USR",
+  "ssh_target": "router.example",
+  "ssh_user": "fake-user",
+  "ssh_password": "fake-password",
+  "ssh_port": 2222,
+  "ssh_identity_file": null,
+  "scratch_dir": "/mnt/USB/probe-work"
+}

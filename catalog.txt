@@ -1,0 +1,11 @@
+CFMGR-CATALOG 1 0.1.0
+modules/.DS_Store	data
+modules/helpers/.gitkeep	helper
+modules/helpers/bootstrap.sh	helper
+modules/helpers/probe.sh	helper
+modules/hooks/.gitkeep	data
+modules/lib/.gitkeep	library
+modules/lib/config.sh	library
+modules/lib/mountinfo.awk	library
+modules/lib/prerequisites.sh	library
+modules/lib/storage.sh	library

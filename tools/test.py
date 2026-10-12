@@ -195,6 +195,11 @@ def main() -> int:
         if code:
             return code
 
+    if (ROOT / "cfmgr.sh").is_file():
+        code = _run([sys.executable, "tools/package.py", "--check"])
+        if code:
+            return code
+
     code = _static_checks(selected_shell)
     if code:
         return code

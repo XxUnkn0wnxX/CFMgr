@@ -206,6 +206,7 @@ def test_guest_proof_requires_every_exact_marker(manifest: dict) -> None:
             f"CFMGR_FEED={feed['id']}:{feed['architecture']}:OK"
             for feed in manifest["feeds"]
         ],
+        *[f"CFMGR_INSTALL={feed['id']}:OK" for feed in manifest["feeds"]],
         "CFMGR_PLATFORM_OK_v1:4.1.51:baseline",
     ]
     log = "\r\n".join(lines)
@@ -214,6 +215,8 @@ def test_guest_proof_requires_every_exact_marker(manifest: dict) -> None:
         log.replace("4.1.51", "4.19.294"),
         log.replace(lines[-1], ""),
         log.replace(lines[2], ""),
+        log.replace("CFMGR_INSTALL=aarch64-k3.10:OK", ""),
+        log + "\nCFMGR_INSTALL=aarch64-k3.10:OK",
         log + "\nCFMGR_PLATFORM_FAIL:storage\n",
         log + "\n" + lines[-1],
         "QEMU exited successfully\n",
@@ -720,6 +723,64 @@ def test_platform_execution_stops_at_failed_compiler_preflight(
         platforms.execute(manifest, "4.1.51")
 
 
+def test_prepare_guest_stages_complete_package_and_scratch_roots(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    package = tmp_path / "tiny-package"
+    (package / "modules/lib").mkdir(parents=True)
+    for relative, contents in (
+        ("cfmgr.sh", b"#!/bin/sh\nprintf 'CFMgr fixture\\n'\n"),
+        ("catalog.txt", b"fixture catalog\n"),
+        ("manifest.txt", b"fixture manifest\n"),
+        ("modules/lib/config.sh", b"fixture module\n"),
+    ):
+        (package / relative).write_bytes(contents)
+    busybox = tmp_path / "busybox"
+    busybox.write_bytes(b"fixture busybox")
+    work = tmp_path / "work"
+    work.mkdir()
+    kernel = manifest["kernels"][0]
+    staged: list[tuple[dict, Path, Path]] = []
+
+    def fake_stage_feeds(data: dict, downloads: Path, root: Path) -> None:
+        staged.append((data, downloads, root))
+        for feed in data["feeds"]:
+            jq = root / "feeds" / feed["id"] / "opt/bin/jq"
+            jq.parent.mkdir(parents=True, exist_ok=True)
+            jq.write_bytes(b"fixture jq")
+
+    monkeypatch.setattr(platforms, "stage_feeds", fake_stage_feeds)
+    archive = platforms.prepare_guest(
+        manifest, kernel, busybox, tmp_path / "downloads", work, package
+    )
+
+    root = work / "root"
+    assert (root / "tmp").is_dir()
+    assert (root / "cfmgr/package/cfmgr.sh").read_bytes() == (
+        package / "cfmgr.sh"
+    ).read_bytes()
+    assert (root / "cfmgr/package/modules/lib/config.sh").is_file()
+    assert (root / "bin/nvram").is_file()
+    assert (work / "volume/tmp").is_dir()
+    assert staged == [(manifest, tmp_path / "downloads", root)]
+    for feed in manifest["feeds"]:
+        assert (root / "feeds" / feed["id"] / "opt/bin/jq").read_bytes() == (
+            b"fixture jq"
+        )
+    expected = []
+    for source in sorted(path for path in package.rglob("*") if path.is_file()):
+        relative = source.relative_to(package).as_posix()
+        target = (
+            "/jffs/scripts/cfmgr.sh"
+            if relative == "cfmgr.sh"
+            else f"/jffs/addons/CFMgr.d/{relative}"
+        )
+        expected.append(f"{hashlib.sha256(source.read_bytes()).hexdigest()}  {target}")
+    assert (root / "cfmgr/installed.sha256").read_text().splitlines() == expected
+    assert archive == work / "initramfs.cpio.gz"
+    assert gzip.decompress(archive.read_bytes()).startswith(b"070701")
+
+
 @pytest.mark.parametrize("kernel_version", ["4.1.51", "4.19.183"])
 def test_platform_consumer_acquires_only_selected_compiler_and_runtime(
     manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kernel_version: str
@@ -768,6 +829,11 @@ def test_platform_consumer_acquires_only_selected_compiler_and_runtime(
     monkeypatch.setattr(platforms, "extract_tar", lambda *args: None)
     monkeypatch.setattr(platforms, "stage_kernel_runtime", runtime_stage)
     monkeypatch.setattr(platforms, "compiler_preflight", preflight)
+    monkeypatch.setattr(
+        platforms,
+        "build_platform_package",
+        lambda destination: events.append("package"),
+    )
     monkeypatch.setattr(platforms, "build_busybox", lambda *args: tmp_path / "busybox")
     monkeypatch.setattr(
         platforms,
@@ -787,6 +853,7 @@ def test_platform_consumer_acquires_only_selected_compiler_and_runtime(
         *(["legacy runtime"] if toolchain["runtime"] else []),
         "preflight",
         "kernel",
+        "package",
         "boot",
     ]
     assert os.environ["LD_LIBRARY_PATH"] == "/ambient/runtime"

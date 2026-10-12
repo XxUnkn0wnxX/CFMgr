@@ -83,6 +83,60 @@ def invoke(
 FLUSH = '. "$1"; exec 3<"$3"; cfmgr_storage_flush_fd "$2" 4>&1'
 
 
+def test_canonical_attachment_path_does_not_trim_unsafe_names(
+    shell: list[str], tmp_path: Path
+) -> None:
+    readlink = shutil.which("greadlink") or shutil.which("readlink")
+    assert readlink, "Native canonical-path reader is required"
+    safe = tmp_path / "Entware data"
+    safe.mkdir()
+    unsafe = tmp_path / "Entware data\n"
+    unsafe.mkdir()
+    alias = tmp_path / "opt"
+    alias.symlink_to(safe, target_is_directory=True)
+    script = '. "$1"; cfmgr_storage_readlink=$2; _cfmgr_storage_canonical "$3"'
+    result = invoke(shell, script, readlink, alias)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == os.fsencode(safe.resolve()) + b"\n"
+    alias.unlink()
+    alias.symlink_to(unsafe, target_is_directory=True)
+    result = invoke(shell, script, readlink, alias)
+    assert result.returncode != 0
+    assert result.stdout == b""
+
+
+def test_volume_uuid_requires_complete_matching_native_observation(
+    shell: list[str], tmp_path: Path
+) -> None:
+    awk = shutil.which("awk")
+    assert awk, "Native awk is required"
+    uuid = "12345678-1234-abcd-9876-123456789abc"
+    record = f'/dev/sdb1: LABEL="Entware data" UUID="{uuid}" TYPE="ext4"\n'
+    observed = tmp_path / "blkid.out"
+    script = (
+        '. "$1"; cfmgr_storage_awk=$2; cfmgr_storage_source=/dev/sdb1; '
+        'cfmgr_storage_filesystem=ext4; cfmgr_storage_uuid "$3" || exit $?; '
+        'printf "%s\\n" "$cfmgr_storage_uuid_value"'
+    )
+    observed.write_text(record)
+    result = invoke(shell, script, awk, observed)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == uuid.encode() + b"\n"
+    for invalid in (
+        record.replace("/dev/sdb1", "/dev/sda1"),
+        record.replace('TYPE="ext4"', 'TYPE="tmpfs"'),
+        record + record,
+        record.replace('TYPE="ext4"', f'UUID="{uuid}" TYPE="ext4"'),
+        record.replace(uuid, "not-a-uuid"),
+        record.replace("Entware data", 'Entware" UUID="injected'),
+        record + "unrelated trailing record\n",
+    ):
+        observed.write_text(invalid)
+        result = invoke(shell, script, awk, observed)
+        assert result.returncode != 0, invalid
+        assert result.stdout == b"", invalid
+
+
 @pytest.mark.parametrize("directory", [False, True], ids=["file", "directory"])
 def test_clean_flush_preserves_target_and_caller_state(
     shell: list[str], legacy_fsync: Path, tmp_path: Path, directory: bool
@@ -196,7 +250,7 @@ def test_source_is_inert_and_probe_requires_explicit_run(shell: list[str]) -> No
         "! ( : <&3 ) 2>/dev/null",
     )
     assert (source.returncode, source.stdout, source.stderr) == (0, b"", b"")
-    for arguments in ([], ["--help"], ["--run", "unexpected"]):
+    for arguments in ([], ["--run"]):
         probe = subprocess.run(
             [*shell, str(PROBE), *arguments],
             check=False,
@@ -206,19 +260,20 @@ def test_source_is_inert_and_probe_requires_explicit_run(shell: list[str]) -> No
         assert probe.returncode == 2
         assert b"probe is inert" in probe.stdout
         assert probe.stderr == b""
-    # A stand-alone --run cannot create anything without the reviewed library.
-    missing_library = subprocess.run(
-        [*shell, str(PROBE), "--run"], check=False, capture_output=True, timeout=10
+    help_result = subprocess.run(
+        [*shell, str(PROBE), "--help"], check=False, capture_output=True, timeout=10
     )
-    assert (
-        missing_library.returncode,
-        missing_library.stdout,
-        missing_library.stderr,
-    ) == (
-        2,
-        b"",
-        b"",
-    )
+    assert help_result.returncode == 0 and help_result.stderr == b""
+    assert b"ABSOLUTE_SCRATCH_DIR" in help_result.stdout
+    for destination in ("relative", "/mnt/../tmp", "/mnt/unsafe\n/tmp"):
+        invalid = subprocess.run(
+            [*shell, str(PROBE), "--run", destination],
+            check=False,
+            capture_output=True,
+            timeout=10,
+        )
+        assert invalid.returncode == 2 and invalid.stdout == b""
+        assert b"not admitted" in invalid.stderr
 
 
 @pytest.fixture(scope="module")
@@ -366,6 +421,32 @@ def test_probe_uid_and_mount_admission(shell: list[str], tmp_path: Path) -> None
         assert (result.returncode == 0) is accepted, rows
 
 
+def test_probe_mount_selection_is_portable_and_literal(
+    shell: list[str], tmp_path: Path
+) -> None:
+    mounts = tmp_path / "mount table"
+    mount = r"/tmp/mnt/Other drive\name"
+    record = r"/dev/sdc2 /tmp/mnt/Other\040drive\134name ext4 rw,noatime 0 0" + "\n"
+    script = 'cfmgr_probe_mount_record "$CFMGR_MOUNT" external "$CFMGR_MOUNTS"'
+    for contents, accepted in (
+        (record, True),
+        (record.replace("ext4", "ext3"), True),
+        (record.replace("rw,noatime", "ro,noatime"), False),
+        (record.replace("ext4", "tmpfs"), False),
+        (record.replace("/dev/sdc2", "tmpfs"), False),
+        (record + record, False),
+        (record.replace(r"\040", r"\011"), False),
+    ):
+        mounts.write_text(contents)
+        result = invoke_probe(
+            shell,
+            script,
+            environment={"CFMGR_MOUNT": mount, "CFMGR_MOUNTS": str(mounts)},
+        )
+        assert (result.returncode == 0) is accepted, contents
+        assert result.stdout == (b"/dev/sdc2\n" if accepted else b"")
+
+
 def test_probe_metadata_requires_exact_owner_mode_and_one_row(
     shell: list[str], tmp_path: Path
 ) -> None:
@@ -466,7 +547,7 @@ def test_linux_probe_cleanup_and_identity(
     tmp_path: Path,
     scenario: str,
 ) -> None:
-    parent = tmp_path / "tmp"
+    parent = tmp_path / "scratch space"
     if scenario != "new-parent":
         parent.mkdir(mode=0o755)
         (parent / "pre-existing").write_bytes(b"preserved")
@@ -496,7 +577,7 @@ def test_linux_probe_cleanup_and_identity(
         },
     )
     assert result.returncode == (0 if scenario in ("clean", "new-parent") else 1)
-    assert parent.is_dir(), "The user's USB tmp base must remain"
+    assert parent.is_dir(), "The configured USB scratch base must remain"
     if scenario == "new-parent":
         assert parent.stat().st_mode & 0o777 == 0o700
         assert list(parent.iterdir()) == []
