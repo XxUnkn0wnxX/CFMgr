@@ -176,12 +176,19 @@ separate authorization.
 Each subgoal requires written focused tests passing locally, relevant static/lint
 checks and parent review; required unavailable platform proof remains pending until
 exact focused CI. Keep focused-test results and outstanding acceptance gates in the
-checklist. Reviewed subgoals/partial packages may be committed after their focused
-gate, but **local commits do not grant push permission**. Full local and full CI
-gates trigger only when a complete main goal is ready for its publication checkpoint,
-not per helper/worker/subgoal or the retired 1%/10% cadence.
+checklist. Keep checkpoints coherent and partial status honest:
 
-Mandatory normal checkpoint sequence:
+| Checkpoint | Required sequence |
+| --- | --- |
+| Ordinary work with meaningful local proof | Focused local tests/statics → parent review → local commit → continue without pushing or pausing. |
+| Required focused proof unavailable locally | Run available focused checks/review → commit and automatically push → exact focused CI pass → continue. No repeat permission needed. |
+| Explicit pause after substantial subgoal work | Finish the subgoal → focused local checks/review → commit/push → exact focused CI pass → refreshed handoff and pause, as detailed below. |
+| Complete main-goal marker | All subgoals → audit → full local → push → exact full CI → acceptance/README/handoff → pause. |
+
+Full suites run only at complete main-goal markers, not per helper/worker/subgoal
+or the retired 1%/10% cadence. A local commit alone is not a routine push trigger.
+
+Mandatory main-goal checkpoint sequence:
 
 1. Implement every required subgoal and pass runnable focused local tests; list
    platform-only proof pending CI.
@@ -194,16 +201,10 @@ Mandatory normal checkpoint sequence:
    **pause**. Record exact evidence, main-goal and overall-subgoal counts/percentages,
    remaining work and rough next scope; do not start another main goal in that session.
 
-An earlier subgoal commit/push/wait is authorized when required **focused behavioral
-proof needs CI execution unavailable locally**, such as Linux/BusyBox. Explain the
-dependency, review/run available focused local checks, route that exception to the
-required focused CI checks and wait for their exact-commit result. Do not trigger
-full local/full CI suites merely to accept a subgoal. The exception closes only
-fully proved subgoals and cannot complete an unfinished main goal. Otherwise wait
-for the normal main-goal candidate gate; convenience/helper completion is not a
-push grant. The explicit pause checkpoint below is a separate authorized focused
-push. If CI lacks the needed focused route, add and validate it in the same
-approved package before using the exception.
+Focused pushes select the package and affected regressions through the validated
+CI route. Unavailable Linux/BusyBox proof stays pending until that exact CI passes;
+partial work earns no complete subgoal tick. If a required focused route is absent,
+add and validate it within the approved package instead of substituting a full run.
 
 After **any authorized runtime checkpoint push**, wait for its exact prescribed CI
 before further implementation. On failure, fix, focused-test, commit/re-push and wait
@@ -393,10 +394,10 @@ last acceptable checkpoint:
   Do not reset the whole tree unless every affected change is verified discardable.
 - **Substantial progress, roughly halfway or near completion:** finish that
   subgoal, pass its written focused tests/static checks and parent review, fixing
-  failures until they pass. This pause checkpoint explicitly authorizes commit and
-  push with focused CI. Wait for all required checks at that exact SHA; on failure,
-  fix, focused-test, commit/re-push and wait again. Do not pause with failed/pending
-  required CI. Full local/full CI still run only if a whole main goal is ready.
+  failures until they pass. Commit/push through the authorized pause checkpoint and
+  wait for its exact required CI, repairing/re-pushing failures under the rules
+  above. Do not pause with failed/pending required CI. Full suites still require
+  a complete main-goal marker.
 
 Then update justified checklist/README status and refresh handoff for either a new
 session or resumption in this one: commits, tests/skips/pending gates, staged/

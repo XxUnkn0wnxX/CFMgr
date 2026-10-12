@@ -61,11 +61,12 @@ pause after the first completed main-goal checkpoint before starting the next.
 The user also clarified the validation cadence: keep focused tests/static checks,
 parent review and outstanding gates in the checklist for each subgoal. **Full local
 and full CI gates run only when a complete main goal is ready for its checkpoint.**
-The early-push exception remains when CI is needed for unavailable focused proof:
-run available local checks, push the reviewed package, run only the required
-focused CI, wait for its exact-SHA result and then resume/pause as agreed. This is
-recorded in AGENTS.md and the checklist; it replaces the older early-push full-CI
-requirement. No relevant missing proof may be counted as a pass.
+Latest clarified sequence: ordinary locally provable work ends with focused tests,
+parent review and a local commit, then continues without push/pause. When required
+focused proof needs CI, automatically push and wait for exact focused CI before
+continuing. A requested substantial-work pause separately authorizes focused
+commit/push/green CI and session-ready handoff. Complete main goals retain the full
+local/full CI checkpoint and default pause. No relevant missing proof counts as pass.
 
 Current integration set (previous checkpoint accepted; next package active):
 

@@ -64,6 +64,11 @@ example:
 CFMgr-Focused-Tests: tests/test_prerequisites.py tests/test_install.py
 ```
 
+Normally finish locally provable work with focused checks and a local commit,
+then continue. Use the focused push route when required proof needs CI or for an
+explicit pause checkpoint. Omit the trailer for a complete main-goal candidate
+after its full local gate.
+
 Pull requests always run the full suite. Missing trailers select the full suite;
 malformed or misplaced trailers fail the workflow. Focused routing still runs the
 planning, package, static and required BusyBox checks. These are approximate
