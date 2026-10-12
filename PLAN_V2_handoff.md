@@ -38,18 +38,20 @@ testing is not current provisioning/execution authorization.
 AGENTS consolidation is reviewed and below 24 KB, with a 28 KB proactive threshold.
 The docs/CI worker owns no remaining files.
 Parent owns planning files, package manifest, workflow path filters and integration.
-For the remaining S02.05/S02.08 installed-launch consumer, `retained_config` owns
-new `modules/lib/json.awk`, `modules/lib/config_observation.awk` and
-`tests/test_config_observation.py`; `prerequisite_inventory` owns entry/bootstrap,
-new launch controller, prerequisite/probe dispatch and installed-launch fixtures.
-Their fixed interface is native AWK tree validation plus check/observe/patch modes,
-with an exact generation/change/byte-count receipt and raw-preserving patch output.
-No shared writers. Parent reviews both packages before integrated Linux proof;
-focused host checks precede quick CI, then full required CI at the final candidate.
-`retained_config` has released its three files; parent review and focused host
-validation passed (19 tests including constructor regressions). BusyBox proof and
-actual launch integration remain pending. Runtime writer is correcting reviewed
-post-repair record migration, native logger admission and publication verification.
+Both runtime and parser workers have completed and released their files. Parent
+review passed installed default routing, retained config/package admission, shared
+normal repair, post-repair snapshot migration, native storage-loss reporting and
+guarded raw-preserving observation publication. Native AWK check/observe/patch
+modes use exact generation/change/byte-count receipts and immutable snapshots.
+The integrated focused local gate passed: **107 passed, 17 Linux-only skips**;
+all planning/package, Ruff/format/compile, shell syntax, ShellCheck and shfmt gates
+passed. Command: `.venv/bin/python tools/test.py --focused
+tests/test_config_observation.py tests/test_retained_launch.py
+tests/test_dependency_consumer.py tests/test_install.py tests/test_prerequisites.py
+tests/test_dev_runners.py`; receipt `.tmp/retained-local-focused.log`.
+This was focused behavior plus common static checks, not a full local suite.
+Parent owns the final commit/push, quick BusyBox proof, then full required Checks
+at the same candidate. No worker or local test remains active.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
 Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
@@ -62,8 +64,9 @@ native state parsing may need S04.01. The user was notified before this prerequi
 work. Return to Goal 2; supporting main goals do not all have to finish first.
 
 **3/157 accepted subgoals (1.9%); 0/16 main goals (0%).** Goal 2: 2/9 accepted
-(22.2%); Goal 3: 1/10. Focused-complete equals accepted; no additional completed
-subgoal awaits CI. Partial storage/inventory proof earns no complete subgoal.
+(22.2%); Goal 3: 1/10. S02.05/S02.08 are implemented and locally reviewed/tested;
+their required Linux/BusyBox acceptance remains pending. Neither earns another
+accepted tick until full required Checks passes.
 
 Standing publication/pause, progress and concise-documentation rules are consolidated
 in AGENTS.md. Finish only the agreed two-subgoal pause boundary. Completed evidence
@@ -75,9 +78,14 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Local commits after the last push: `bc4b275` (practical required/optional CI and
-  compact rules) and `87656e7` (fourth review-notes document and gate wording).
-  Runtime/parser integration remains uncommitted; no CI currently runs.
+- Local commits after the last push: `bc4b275` (practical required/optional CI),
+  `87656e7` (fourth review-notes document), and `b90eb6e` (checklist notes moved).
+  The reviewed runtime/parser package and regenerated catalog/manifest passed
+  focused local validation on this dirty tree; commit and quick push are next.
+  No CI currently runs. Quick targets retained repair/return, retained-state
+  refusal/publication, installed entry routing, native config parsing and the
+  existing fresh-installer regression. Full required Checks must follow before
+  accepting S02.05/S02.08 and the requested pause. Full local is not due.
 - Latest pushed/remote-verified candidate: `8dfa47753860667f71aecb7710007559c61d5617`.
   [Quick Checks 38253817799](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253817799)
   passed at that exact SHA; selected mixed/loss/installer tests ran

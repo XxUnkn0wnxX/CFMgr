@@ -84,6 +84,12 @@ cfmgr_install_nvram=$view_ram/nvram
 printf '#!/bin/sh\nprintf "1\\n"\n' >"$cfmgr_install_nvram"
 chmod 755 "$cfmgr_install_nvram"
 exec 0<"$cfmgr_install_context" 8<"$fixture/jffs" 9<"$installer_package"
+if [ -n "${dependency_retained_fixture:-}" ]; then
+	# Fixed Python-admitted fixture extension, no production environment override.
+	# shellcheck disable=SC1090
+	. "$dependency_retained_fixture"
+	return 0
+fi
 cfmgr_bootstrap_native_work || fail "actual native_work repair/publication failed phase=${cfmgr_dependencies_phase:-unknown}"
 [ "$(cat "$fixture/jffs/addons/CFMgr.d/setup-state")" = 'CFMGR-SETUP 1 0.1.0 complete' ] || fail 'unchanged transaction did not publish complete setup'
 cmp "$installer_package/cfmgr.sh" "$fixture/jffs/scripts/cfmgr.sh" || fail 'installer published different entry'

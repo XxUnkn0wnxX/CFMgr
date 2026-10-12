@@ -23,12 +23,48 @@ case ${1-} in
 	;;
 --help | '')
 	[ "$#" -le 1 ] || exit 2
+	cfmgr_default_entry=
+	if [ "$#" -eq 0 ] && { [ -e /jffs/scripts/cfmgr.sh ] || [ -L /jffs/scripts/cfmgr.sh ]; }; then
+		cfmgr_default_entry=$(/usr/bin/readlink -f "$0") || exit 1
+	fi
+	if [ "$#" -eq 0 ] && [ "$cfmgr_default_entry" = /jffs/scripts/cfmgr.sh ]; then
+		[ -f "$0" ] && [ ! -L "$0" ] || exit 1
+		exec /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= \
+			CFMGR_INTERNAL_LAUNCH=1 /bin/sh "$cfmgr_default_entry" --internal-launch
+	fi
 	printf '%s\n' 'CFMgr: --install (trusted complete local package), --version, --help.' \
 		'Fresh base installation checks and repairs required Entware tools. Acquisition and feature menus remain unavailable.'
 	if [ -e /jffs/addons/CFMgr.d ] || [ -L /jffs/addons/CFMgr.d ]; then
 		printf '%s\n' 'An installed or retained package exists; fresh installation will not reset it. Recovery/update is not implemented.'
 	fi
 	exit 0
+	;;
+--internal-launch)
+	[ "$#" -eq 1 ] && [ "${CFMGR_INTERNAL_LAUNCH-}" = 1 ] && [ "$0" = /jffs/scripts/cfmgr.sh ] || exit 2
+	cfmgr_source=/jffs/addons/CFMgr.d
+	# Root-protected literal imports, never a config-selected source. Structural
+	# package admission precedes repair; full digests follow healthy SHA probes.
+	for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
+		"$cfmgr_source/modules/lib/storage.sh" "$cfmgr_source/modules/lib/prerequisites.sh" "$cfmgr_source/modules/lib/native.sh" \
+		"$cfmgr_source/modules/lib/mount_keeper.sh" "$cfmgr_source/modules/lib/execution_view.sh" "$cfmgr_source/modules/lib/execution_tasks.sh" \
+		"$cfmgr_source/modules/lib/dependencies.sh" "$cfmgr_source/modules/helpers/bootstrap.sh" "$cfmgr_source/modules/helpers/launch.sh"; do
+		[ ! -L "$cfmgr_import" ] && [ "$(/usr/bin/readlink -f "$cfmgr_import")" = "$cfmgr_import" ] || exit 1
+		# shellcheck disable=SC2016
+		/bin/ls -ldn "$cfmgr_import" | /usr/bin/awk 'NR!=1 || $3!=0 || $1 !~ /^[-d]/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad ? 1 : 0 }' || exit 1
+	done
+	# shellcheck disable=SC1091
+	. "$cfmgr_source/modules/lib/storage.sh" || exit 1
+	. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1
+	. "$cfmgr_source/modules/lib/native.sh" || exit 1
+	. "$cfmgr_source/modules/lib/mount_keeper.sh" || exit 1
+	. "$cfmgr_source/modules/lib/execution_view.sh" || exit 1
+	. "$cfmgr_source/modules/lib/execution_tasks.sh" || exit 1
+	. "$cfmgr_source/modules/lib/dependencies.sh" || exit 1
+	. "$cfmgr_source/modules/helpers/bootstrap.sh" || exit 1
+	. "$cfmgr_source/modules/helpers/launch.sh" || exit 1
+	if cfmgr_launch_native "$cfmgr_source"; then exit 0; fi
+	printf '[CFMGR] launch: error: retained launch blocked or incomplete\n' >&2
+	exit 1
 	;;
 --install)
 	[ "$#" -eq 1 ] || exit 2

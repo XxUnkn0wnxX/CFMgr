@@ -121,41 +121,7 @@ cfmgr_bootstrap_manifest() {
 	cfmgr_bootstrap_metadata "$cfmgr_install_source/manifest.txt" "$cfmgr_install_owner" 0644 || return $?
 	cfmgr_bootstrap_size "$cfmgr_install_source/manifest.txt" || return $?
 	[ "$cfmgr_install_size" -le 131072 ] || return 1
-	# Parse bounded manifest data, never eval/source it. Output is also bounded by
-	# the finite input/count/path limits and lives in the private RAM context.
-	# shellcheck disable=SC2016
-	"$cfmgr_install_awk" '
-		BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
-		NR==1 { if ($0 != "CFMGR-MANIFEST 1 " version) bad=1; next }
-		{
-			if (NF!=4 || length($0)>512 || $1 !~ /^0(644|755)$/ ||
-			    $2 !~ /^(0|[1-9][0-9]*)$/ || $2>1048576 ||
-			    length($3)!=64 || $3 ~ /[^0-9a-f]/ || length($4)>256 ||
-			    $4 !~ /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
-			    $4 ~ /(^|\/)(\.|\.\.)(\/|$)/ || seen[$4]++) { bad=1; next }
-			if ($4!="cfmgr.sh" && $4!="catalog.txt" && $4!~/^modules\//) bad=1
-			if (previous!="" && $4<=previous) bad=1
-			previous=$4; total+=$2; count++
-			if (count>512 || total>16777216) bad=1
-			print
-		}
-		END {
-			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh"
-			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
-			if (bad || count<2) exit 1
-		}
-	' "$CFMGR_VERSION" "$cfmgr_install_source/manifest.txt" >"$cfmgr_install_context/records" || return 1
-	# Catalog is passive schema/versioned data matching the complete module set.
-	# shellcheck disable=SC2016
-	"$cfmgr_install_awk" 'BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
-		NR==FNR { if ($4~/^modules\//) expected[$4]=1; next }
-		FNR==1 { if ($0!="CFMGR-CATALOG 1 " version) bad=1; next }
-		{
-			kind=($1~/^modules\/lib\// ? "library" : ($1~/^modules\/helpers\// ? "helper" : "data"))
-			if (NF!=2 || !expected[$1] || seen[$1]++ || $2!=kind) bad=1
-		}
-		END { for (path in expected) if (!seen[path]) bad=1; if (bad) exit 1 }
-	' "$CFMGR_VERSION" "$cfmgr_install_context/records" "$cfmgr_install_source/catalog.txt" || return 1
+	cfmgr_bootstrap_manifest_records || return $?
 	cfmgr_bootstrap_inventory "$cfmgr_install_source" || return 1
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" 'BEGIN { FS="\t" } NR==FNR {
@@ -176,6 +142,44 @@ cfmgr_bootstrap_manifest() {
 	while IFS='	' read -r cfmgr_install_expected_mode cfmgr_install_expected_size cfmgr_install_expected_digest cfmgr_install_relative; do
 		cfmgr_bootstrap_file "$cfmgr_install_source/$cfmgr_install_relative" || return $?
 	done <"$cfmgr_install_context/records"
+}
+
+cfmgr_bootstrap_manifest_records() {
+	# Parse bounded manifest data, never eval/source it. Output is also bounded by
+	# the finite input/count/path limits and lives in the private RAM context.
+	# shellcheck disable=SC2016
+	"$cfmgr_install_awk" '
+		BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
+		NR==1 { if ($0 != "CFMGR-MANIFEST 1 " version) bad=1; next }
+		{
+			if (NF!=4 || length($0)>512 || $1 !~ /^0(644|755)$/ ||
+			    $2 !~ /^(0|[1-9][0-9]*)$/ || $2>1048576 ||
+			    length($3)!=64 || $3 ~ /[^0-9a-f]/ || length($4)>256 ||
+			    $4 !~ /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
+			    $4 ~ /(^|\/)(\.|\.\.)(\/|$)/ || seen[$4]++) { bad=1; next }
+			if ($4!="cfmgr.sh" && $4!="catalog.txt" && $4!~/^modules\//) bad=1
+			if (previous!="" && $4<=previous) bad=1
+			previous=$4; total+=$2; count++
+			if (count>512 || total>16777216) bad=1
+			print
+		}
+		END {
+			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk"
+			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
+			if (bad || count<2) exit 1
+		}
+	' "$CFMGR_VERSION" "$cfmgr_install_source/manifest.txt" >"$cfmgr_install_context/records" || return 1
+	# Catalog is passive schema/versioned data matching the complete module set.
+	# shellcheck disable=SC2016
+	"$cfmgr_install_awk" 'BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
+		NR==FNR { if ($4~/^modules\//) expected[$4]=1; next }
+		FNR==1 { if ($0!="CFMGR-CATALOG 1 " version) bad=1; next }
+		{
+			kind=($1~/^modules\/lib\// ? "library" : ($1~/^modules\/helpers\// ? "helper" : "data"))
+			if (NF!=2 || !expected[$1] || seen[$1]++ || $2!=kind) bad=1
+		}
+		END { for (path in expected) if (!seen[path]) bad=1; if (bad) exit 1 }
+	' "$CFMGR_VERSION" "$cfmgr_install_context/records" "$cfmgr_install_source/catalog.txt" || return 1
 }
 
 cfmgr_bootstrap_file() {
@@ -362,8 +366,14 @@ cfmgr_bootstrap_signals() {
 # Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
 # shellcheck disable=SC3013
 cfmgr_bootstrap_attached() {
+	cfmgr_storage_attached && cfmgr_bootstrap_native_attached
+}
+
+# Native-only admission is reserved for finite launch-* pre-storage probes.
+cfmgr_bootstrap_native_attached() {
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
-	cfmgr_storage_attached || return 1
+	if [ "${cfmgr_launch_guard_owned:-0}" = 1 ]; then cfmgr_launch_guard_attachment || return 1; fi
+	if [ "${cfmgr_launch_migrating:-0}" = 1 ]; then cfmgr_launch_original_attached || return 1; fi
 	if [ -n "${cfmgr_install_context:-}" ]; then
 		case $cfmgr_install_context_fd in 0 | 3 | 5 | 9) ;; *) return 1 ;; esac
 		[ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef "/proc/self/fd/$cfmgr_install_context_fd" ] || return 1
@@ -449,8 +459,8 @@ cfmgr_bootstrap_cleanup() {
 # Explicit storage/prerequisite imports supply result fields; proc/listing
 # receiving fields keep their fixed positions even when policy needs a subset.
 # shellcheck disable=SC2034,SC2154
-cfmgr_bootstrap_native() {
-	[ "$#" -eq 1 ] && cfmgr_bootstrap_path "$1" || return 2
+cfmgr_bootstrap_native_prepare() {
+	[ "$#" -eq 2 ] && { [ "$2" = install ] || [ "$2" = launch ]; } && cfmgr_bootstrap_path "$1" || return 2
 	cfmgr_install_source=$1 cfmgr_install_jffs=/jffs cfmgr_install_opt=/opt cfmgr_install_owner=0
 	cfmgr_install_sh=/bin/sh cfmgr_install_env=/usr/bin/env cfmgr_install_awk=/usr/bin/awk
 	cfmgr_install_readlink=/usr/bin/readlink cfmgr_install_sleep=/bin/sleep cfmgr_install_wc=/usr/bin/wc
@@ -466,6 +476,7 @@ cfmgr_bootstrap_native() {
 	/usr/bin/awk '$1=="Uid:" { n++; if (NF!=5 || $2!=0 || $3!=0 || $4!=0 || $5!=0) bad=1 }
 		END { if (n!=1 || bad) exit 1 }' /proc/self/status || return 1
 	[ -d /jffs ] && [ ! -L /jffs ] && [ -d "$cfmgr_install_source" ] && [ ! -L "$cfmgr_install_source" ] || return 1
+	cfmgr_install_source_fd=9
 	cfmgr_install_jffs_snapshot=$(/usr/bin/awk -f "$cfmgr_install_source/modules/lib/mountinfo.awk" /jffs /proc/self/mountinfo) || return 1
 	IFS='	' read -r cfmgr_install_jffs_id cfmgr_install_jffs_parent cfmgr_install_jffs_device cfmgr_install_jffs_root cfmgr_install_jffs_mount cfmgr_install_jffs_type cfmgr_install_jffs_device_path cfmgr_install_jffs_options cfmgr_install_jffs_superoptions <<EOF
 $cfmgr_install_jffs_snapshot
@@ -474,7 +485,6 @@ EOF
 	case ,$cfmgr_install_jffs_options, in *,rw,*) ;; *) return 1 ;; esac
 	case ,$cfmgr_install_jffs_options, in *,noexec,* | *,ro,*) return 1 ;; esac
 	exec 8</jffs 9<"$cfmgr_install_source" || return 1
-	cfmgr_storage_pin /opt /usr/bin/readlink /usr/bin/awk "$cfmgr_install_source/modules/lib/mountinfo.awk" /proc/self || return $?
 	# Prove RAM backing before creating any preflight object.
 	[ -d /tmp ] && [ ! -L /tmp ] && [ "$(/usr/bin/readlink -f /tmp)" = /tmp ] || return 1
 	cfmgr_install_tmp_snapshot=$(/usr/bin/awk -f "$cfmgr_install_source/modules/lib/mountinfo.awk" /tmp /proc/self/mountinfo) || return 1
@@ -497,7 +507,7 @@ EOF
 		return 1
 	fi
 	cfmgr_prerequisites_identity "$$" || return 1
-	cfmgr_install_private_context=/tmp/cfmgr/install.$$.$cfmgr_identity_start
+	cfmgr_install_private_context=/tmp/cfmgr/$2.$$.$cfmgr_identity_start
 	cfmgr_install_context=$cfmgr_install_private_context
 	/bin/mkdir -m 700 "$cfmgr_install_context" || return 1
 	exec 0<"$cfmgr_install_context" || return 1
@@ -505,7 +515,14 @@ EOF
 	cfmgr_bootstrap_signals
 	cfmgr_probe_serial=0
 	cfmgr_probe_pid='' cfmgr_probe_status=invalid
-	if cfmgr_bootstrap_native_work; then cfmgr_install_native_status=0; else cfmgr_install_native_status=$?; fi
+}
+
+cfmgr_bootstrap_native() {
+	[ "$#" -eq 1 ] || return 2
+	cfmgr_bootstrap_native_prepare "$1" install || return $?
+	if cfmgr_storage_pin /opt /usr/bin/readlink /usr/bin/awk "$cfmgr_install_source/modules/lib/mountinfo.awk" /proc/self; then
+		if cfmgr_bootstrap_native_work; then cfmgr_install_native_status=0; else cfmgr_install_native_status=$?; fi
+	else cfmgr_install_native_status=$?; fi
 	if ! cfmgr_bootstrap_cleanup; then
 		printf '[CFMGR] install: error: retained preflight context requires recovery (%s)\n' "$cfmgr_install_context" >&2
 		return 1
@@ -576,8 +593,9 @@ cfmgr_bootstrap_native_admission() {
 
 # The outer admission function owns the single RAM claim and its cleanup.
 # shellcheck disable=SC2034,SC2154
-cfmgr_bootstrap_native_work() {
-	cfmgr_bootstrap_retained || return 1
+cfmgr_bootstrap_shared_requirements() {
+	[ "$#" -eq 1 ] && { [ "$1" = fresh ] || [ "$1" = retained ]; } || return 2
+	cfmgr_install_consumer=$1
 	cfmgr_bootstrap_native_admission || return $?
 	cfmgr_bootstrap_action install-nvram || return $?
 	IFS= read -r cfmgr_install_scripts_enabled <"$cfmgr_install_output" || return 1
@@ -624,12 +642,18 @@ cfmgr_bootstrap_native_work() {
 		if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_post_code=0; else cfmgr_install_post_code=$?; fi
 		# Reaped fresh probes allow bounded cleanup of the original owned context.
 		[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		if [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_install_consumer" = retained ]; then cfmgr_launch_migrate_snapshot || return $?; fi
 		cfmgr_install_post_context=$cfmgr_install_context
 		cfmgr_install_context=$cfmgr_install_original_context cfmgr_install_context_fd=3
 		cfmgr_bootstrap_cleanup || return 3
 		cfmgr_install_context=$cfmgr_install_post_context cfmgr_install_context_fd=0 cfmgr_install_private_context=$cfmgr_install_post_context
 		[ "$cfmgr_install_post_code" -eq 0 ] || return "$cfmgr_install_post_code"
 	fi
+}
+
+cfmgr_bootstrap_native_work() {
+	cfmgr_bootstrap_retained || return 1
+	cfmgr_bootstrap_shared_requirements fresh || return $?
 	# Flock probes have released FD4/5. Keep the context off stdin before
 	# transaction while-read loops temporarily redirect FD0 to manifest records.
 	exec 5<&0 0<&-

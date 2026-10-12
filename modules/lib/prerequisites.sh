@@ -93,6 +93,7 @@ cfmgr_prerequisites_pause() {
 
 _cfmgr_prerequisites_attachment() {
 	case ${cfmgr_probe_mode:-none} in
+	launch-*) cfmgr_launch_attachment_ok ;;
 	repair-*) cfmgr_dependencies_attachment_ok ;;
 	*) cfmgr_prerequisites_attachment_ok ;;
 	esac
@@ -118,6 +119,10 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	launch-config-check) [ "$#" -eq 13 ] || return 2 ;;
+	launch-config-observe | launch-config-patch) [ "$#" -eq 17 ] || return 2 ;;
+	launch-copy) [ "$#" -eq 11 ] || return 2 ;;
+	launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-report | launch-readonly) [ "$#" -eq 10 ] || return 2 ;;
 	repair-awk) [ "$#" -ge 14 ] && [ "$#" -le 22 ] || return 2 ;;
 	repair-inventory) [ "$#" -eq 12 ] || return 2 ;;
 	repair-identity-parse | repair-readlink | repair-list | repair-copy | repair-mkdir | repair-chmod | repair-link | repair-signal) [ "$#" -eq 11 ] || return 2 ;;
@@ -165,7 +170,7 @@ cfmgr_prerequisites_run() {
 	}
 	cfmgr_probe_label=$cfmgr_probe_mode
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-*)
+	install-* | native-* | repair-* | launch-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
 		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
@@ -189,9 +194,9 @@ cfmgr_prerequisites_run() {
 			DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH \
 			DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 			OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
-		case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; install-copy) ulimit -f 2048 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
+		case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; install-copy | launch-copy) ulimit -f 2048 || exit 2 ;; launch-config-patch) ulimit -f 128 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
 		case "$cfmgr_probe_mode" in
-		install-* | native-* | repair-*)
+		install-* | native-* | repair-* | launch-*)
 			shift 9
 			exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
 			;;

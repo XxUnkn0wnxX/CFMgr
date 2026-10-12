@@ -45,6 +45,51 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
+launch-config-check | launch-config-observe | launch-config-patch)
+	case "$mode:$#" in launch-config-check:4 | launch-config-observe:8 | launch-config-patch:8) ;; *) exit 2 ;; esac
+	case $1 in '' | *[!0-9]*) exit 2 ;; esac
+	[ "${#1}" -le 5 ] && [ "$1" -le 65536 ] || exit 2
+	for path in "$2" "$3" "$4"; do
+		case $path in /*) ;; *) exit 2 ;; esac
+		[ -f "$path" ] && [ ! -L "$path" ] || exit 2
+	done
+	config_mode=${mode#launch-config-}
+	if [ "$config_mode" != check ]; then
+		CFMGR_CONFIG_UUID=$5 CFMGR_CONFIG_FILESYSTEM=$6 CFMGR_CONFIG_ROOT=$7 CFMGR_CONFIG_RELATIVE=$8
+		export CFMGR_CONFIG_UUID CFMGR_CONFIG_FILESYSTEM CFMGR_CONFIG_ROOT CFMGR_CONFIG_RELATIVE
+	fi
+	exec "$tool" -v cfmgr_json_size="$1" -v cfmgr_json_mode=tree -v cfmgr_config_mode="$config_mode" -f "$2" -f "$3" <"$4"
+	;;
+launch-copy)
+	[ "$#" -eq 2 ] || exit 2
+	[ -f "$1" ] && [ ! -L "$1" ] && [ ! -e "$2" ] && [ ! -L "$2" ] || exit 2
+	exec "$tool" "$1" "$2"
+	;;
+launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-readonly)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	case $mode in
+	launch-ls) exec "$tool" -ldn "$1" ;;
+	launch-wc) exec "$tool" -c <"$1" ;;
+	launch-sha) exec "$tool" <"$1" ;;
+	launch-readonly)
+		[ -f "$1" ] && [ ! -L "$1" ] || exit 2
+		exec "$tool" 400 "$1"
+		;;
+	launch-remove)
+		[ -f "$1" ] && [ ! -L "$1" ] || exit 2
+		exec "$tool" "$1"
+		;;
+	launch-rmdir)
+		[ -d "$1" ] && [ ! -L "$1" ] && [ "$1" -ef /proc/self/fd/4 ] || exit 2
+		exec "$tool" "$1"
+		;;
+	esac
+	;;
+launch-report)
+	[ "$#" -eq 1 ] && [ "$1" = storage-unavailable ] || exit 2
+	exec "$tool" -t CFMGR '[CFMGR] launch: error: Entware attachment unavailable; operation stopped'
+	;;
 repair-inventory)
 	[ "$#" -eq 3 ] || exit 2
 	exec "$tool" -f "$1" inventory-v1 "$2" /proc/self/mountinfo >"$3"
