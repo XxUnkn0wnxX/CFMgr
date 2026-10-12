@@ -269,20 +269,31 @@ def test_linux_native_proc_reopen(
 
 
 def test_linux_busybox_zero_exit_diagnostic_is_rejected_silently(
-    request: pytest.FixtureRequest, shell: list[str]
+    request: pytest.FixtureRequest, shell: list[str], tmp_path: Path
 ) -> None:
     if not REQUIRE_BUSYBOX:
         pytest.skip("Pinned vendor BusyBox is required for this diagnostic contract")
     native_busybox_fsync = request.getfixturevalue("native_fsync")
+    # BusyBox opens with O_NOATIME: the non-root runner must own this inode.
+    # Keep a writer on fd 5 so the read-only fd 3 reopen cannot block.
+    fifo = tmp_path / "owned unsupported flush target"
+    os.mkfifo(fifo, 0o600)
+    open_fifo = '. "$1"; exec 5<>"$3"; exec 3<"$3"; '
+    diagnostic = invoke(
+        shell,
+        open_fifo + 'LC_ALL=C LANGUAGE= "$2" /proc/self/fd/3',
+        native_busybox_fsync,
+        fifo,
+        trace=False,
+    )
+    assert (diagnostic.returncode, diagnostic.stdout) == (0, b"")
+    assert diagnostic.stderr.startswith(b"fsync: /proc/self/fd/3: ")
+    assert diagnostic.stderr[len(b"fsync: /proc/self/fd/3: ") :].strip()
     result = invoke(
         shell,
-        '. "$1"; exec 3<"$3"; '
-        'diagnostic=$(LC_ALL=C LANGUAGE= "$2" /proc/self/fd/3 2>&1); status=$?; '
-        '[ "$status" -eq 0 ] && [ -n "$diagnostic" ] || exit 41; '
-        'case $diagnostic in "fsync: /proc/self/fd/3: "*) ;; *) exit 42 ;; esac; '
-        'cfmgr_storage_flush_fd "$2" 4>&1',
+        open_fifo + 'cfmgr_storage_flush_fd "$2" 4>&1',
         native_busybox_fsync,
-        "/dev/null",
+        fifo,
         trace=False,
     )
     assert (result.returncode, result.stdout, result.stderr) == (1, b"", b"")

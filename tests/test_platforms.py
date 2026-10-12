@@ -26,7 +26,9 @@ def manifest() -> dict:
 @pytest.fixture(autouse=True)
 def offline_kernel_runtime_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        platforms, "kernel_runtime_identity", lambda: b"fixed host runtime packages"
+        platforms,
+        "kernel_runtime_identity",
+        lambda packages: b"fixed host runtime packages",
     )
 
 
@@ -55,8 +57,22 @@ def test_manifest_rejects_missing_profile_closure_or_digest(
     missing_kernel["kernels"].pop()
     cases.append(missing_kernel)
     wrong_hash = copy.deepcopy(manifest)
-    wrong_hash["toolchain"]["sha256"] = "guess"
+    wrong_hash["toolchains"]["4.9.4"]["sha256"] = "guess"
     cases.append(wrong_hash)
+    wrong_selection = copy.deepcopy(manifest)
+    wrong_selection["kernels"][2]["toolchain"] = "4.9.4"
+    cases.append(wrong_selection)
+    missing_compiler = copy.deepcopy(manifest)
+    del missing_compiler["toolchains"]["8.5.0"]
+    cases.append(missing_compiler)
+    for field, value in (
+        ("url", "https://example.com/gcc.tar.xz"),
+        ("version_option", "-dumpversion"),
+        ("runtime", manifest["toolchains"]["4.9.4"]["runtime"]),
+    ):
+        wrong_compiler = copy.deepcopy(manifest)
+        wrong_compiler["toolchains"]["8.5.0"][field] = value
+        cases.append(wrong_compiler)
     for field, value in (
         ("url", "https://example.com/libmpfr4.deb"),
         ("architecture", "arm64"),
@@ -65,7 +81,7 @@ def test_manifest_rejects_missing_profile_closure_or_digest(
         ("library_sha256", "guess"),
     ):
         wrong_runtime = copy.deepcopy(manifest)
-        wrong_runtime["toolchain"]["runtime"][field] = value
+        wrong_runtime["toolchains"]["4.9.4"]["runtime"][field] = value
         cases.append(wrong_runtime)
     missing_dependency = copy.deepcopy(manifest)
     missing_dependency["feeds"][0]["packages"].pop()
@@ -283,14 +299,30 @@ def test_kernel_cache_key_tracks_build_inputs_without_guest_or_feed_changes(
         platforms, "compiler_identity", lambda target="arm": b"fixed compiler packages"
     )
     kernel = copy.deepcopy(manifest["kernels"][0])
-    toolchain = copy.deepcopy(manifest["toolchain"])
+    toolchain = copy.deepcopy(manifest["toolchains"]["4.9.4"])
     original = platforms.build_key("kernel", kernel, toolchain)
     (fixtures / "init.sh").write_text("guest v2\n")
     kernel["busybox"] = "ax-current"
     assert platforms.build_key("kernel", kernel, toolchain) == original
+    other = copy.deepcopy(manifest)
+    other["toolchains"]["8.5.0"]["sha256"] = "0" * 64
+    assert (
+        platforms.build_key("kernel", kernel, platforms.kernel_toolchain(other, kernel))
+        == original
+    )
+    modern_kernel = manifest["kernels"][2]
+    modern_key = platforms.build_key(
+        "kernel", modern_kernel, platforms.kernel_toolchain(manifest, modern_kernel)
+    )
+    assert (
+        platforms.build_key(
+            "kernel", modern_kernel, platforms.kernel_toolchain(other, modern_kernel)
+        )
+        != modern_key
+    )
     toolchain["sha256"] = "0" * 64
     assert platforms.build_key("kernel", kernel, toolchain) != original
-    toolchain = manifest["toolchain"]
+    toolchain = manifest["toolchains"]["4.9.4"]
     changed_runtime = copy.deepcopy(toolchain)
     changed_runtime["runtime"]["sha256"] = "0" * 64
     assert platforms.build_key("kernel", kernel, changed_runtime) != original
@@ -308,9 +340,14 @@ def test_kernel_runtime_package_identity_invalidates_only_kernel(
         for target in ("arm", "native")
     }
     kernel = manifest["kernels"][0]
-    original = platforms.build_key("kernel", kernel, manifest["toolchain"])
-    monkeypatch.setattr(platforms, "kernel_runtime_identity", lambda: b"changed mpc")
-    assert platforms.build_key("kernel", kernel, manifest["toolchain"]) != original
+    original = platforms.build_key("kernel", kernel, manifest["toolchains"]["4.9.4"])
+    monkeypatch.setattr(
+        platforms, "kernel_runtime_identity", lambda packages: b"changed mpc"
+    )
+    assert (
+        platforms.build_key("kernel", kernel, manifest["toolchains"]["4.9.4"])
+        != original
+    )
     for target, key in keys.items():
         assert platforms.build_key("busybox", item, target=target) == key
 
@@ -318,7 +355,7 @@ def test_kernel_runtime_package_identity_invalidates_only_kernel(
 def test_private_compiler_runtime_is_hash_verified_data_only(
     manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    runtime = copy.deepcopy(manifest["toolchain"]["runtime"])
+    runtime = copy.deepcopy(manifest["toolchains"]["4.9.4"]["runtime"])
     library_bytes = bytearray(elf_header(2, 62))
     library_bytes[16:18] = (3).to_bytes(2, "little")
     data = archive_bytes(
@@ -403,20 +440,27 @@ def test_private_compiler_runtime_is_hash_verified_data_only(
     assert not (tmp_path / "escape").exists()
 
 
+@pytest.mark.parametrize("compiler_version", ["4.9.4", "8.5.0"])
 def test_compiler_preflight_exercises_cc1_headers_and_assembler_with_scoped_env(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    manifest: dict,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    compiler_version: str,
 ) -> None:
+    toolchain = manifest["toolchains"][compiler_version]
     compiler = str(tmp_path / "aarch64-linux-")
     Path(compiler + "gcc").touch()
-    runtime = tmp_path / "private runtime"
-    runtime.mkdir()
+    runtime = tmp_path / "private runtime" if compiler_version == "4.9.4" else None
+    if runtime is not None:
+        runtime.mkdir()
     monkeypatch.setenv("LD_LIBRARY_PATH", "/ambient/runtime")
     commands = []
 
     def version(command: list[str], **kwargs: object) -> str:
         commands.append(command)
         assert kwargs == {"text": True, "timeout": 30}
-        return "4.9.4\n"
+        assert command[-1] == toolchain["version_option"]
+        return compiler_version + "\n"
 
     def compile_object(command: list[str], **kwargs: object) -> None:
         commands.append(command)
@@ -431,10 +475,15 @@ def test_compiler_preflight_exercises_cc1_headers_and_assembler_with_scoped_env(
 
     monkeypatch.setattr(platforms.subprocess, "check_output", version)
     monkeypatch.setattr(platforms, "run", compile_object)
-    platforms.compiler_preflight(compiler, runtime, tmp_path / "cache")
+    platforms.compiler_preflight(compiler, runtime, tmp_path / "cache", toolchain)
     assert len(commands) == 2
     for command in commands:
-        assert command[:2] == ["env", "LD_LIBRARY_PATH=" + str(runtime)]
+        expected = (
+            ["env", "LD_LIBRARY_PATH=" + str(runtime)]
+            if runtime is not None
+            else ["env", "-u", "LD_LIBRARY_PATH"]
+        )
+        assert command[: len(expected)] == expected
     assert os.environ["LD_LIBRARY_PATH"] == "/ambient/runtime"
     assert not list((tmp_path / "cache/toolchain/preflight").iterdir())
 
@@ -443,8 +492,13 @@ def test_compiler_preflight_exercises_cc1_headers_and_assembler_with_scoped_env(
 
     monkeypatch.setattr(platforms, "run", broken_cc1)
     with pytest.raises(subprocess.CalledProcessError):
-        platforms.compiler_preflight(compiler, runtime, tmp_path / "cache")
+        platforms.compiler_preflight(compiler, runtime, tmp_path / "cache", toolchain)
     assert not list((tmp_path / "cache/toolchain/preflight").iterdir())
+    monkeypatch.setattr(
+        platforms.subprocess, "check_output", lambda *args, **kwargs: "8\n"
+    )
+    with pytest.raises(platforms.PlatformError, match="compiler version mismatch"):
+        platforms.compiler_preflight(compiler, runtime, tmp_path / "cache", toolchain)
 
 
 def test_every_kernel_make_phase_has_private_runtime_environment(
@@ -521,6 +575,78 @@ def test_platform_execution_stops_at_failed_compiler_preflight(
         platforms.execute(manifest, "4.1.51")
 
 
+@pytest.mark.parametrize("kernel_version", ["4.1.51", "4.19.183"])
+def test_platform_consumer_acquires_only_selected_compiler_and_runtime(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kernel_version: str
+) -> None:
+    monkeypatch.setattr(platforms, "ROOT", tmp_path)
+    monkeypatch.setattr(platforms, "require_linux_host", lambda: None)
+    monkeypatch.setattr(platforms.shutil, "which", lambda tool: tool)
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/ambient/runtime")
+    selected = next(
+        item for item in manifest["kernels"] if item["version"] == kernel_version
+    )
+    toolchain = platforms.kernel_toolchain(manifest, selected)
+    events = []
+
+    def download(url: str, digest: str, destination: Path) -> Path:
+        assert url == toolchain["url"] and digest == toolchain["sha256"]
+        events.append("compiler download")
+        return destination
+
+    def runtime_stage(runtime: dict, *args: object) -> Path:
+        assert toolchain["version"] == "4.9.4" and runtime == toolchain["runtime"]
+        events.append("legacy runtime")
+        return tmp_path / "private runtime"
+
+    def preflight(compiler: str, runtime: Path | None, cache: Path, pin: dict) -> None:
+        assert pin == toolchain
+        assert compiler.endswith(toolchain["prefix"])
+        assert (runtime is not None) == (toolchain["version"] == "4.9.4")
+        events.append("preflight")
+
+    def kernel_build(
+        kernel: dict,
+        compiler: str,
+        downloads: Path,
+        cache: Path,
+        recipe: str,
+        runtime: Path | None,
+    ) -> Path:
+        assert kernel == selected
+        assert compiler.endswith(toolchain["prefix"])
+        assert (runtime is not None) == (toolchain["version"] == "4.9.4")
+        events.append("kernel")
+        return tmp_path / "Image"
+
+    monkeypatch.setattr(platforms, "download", download)
+    monkeypatch.setattr(platforms, "extract_tar", lambda *args: None)
+    monkeypatch.setattr(platforms, "stage_kernel_runtime", runtime_stage)
+    monkeypatch.setattr(platforms, "compiler_preflight", preflight)
+    monkeypatch.setattr(platforms, "build_busybox", lambda *args: tmp_path / "busybox")
+    monkeypatch.setattr(
+        platforms,
+        "build_key",
+        lambda kind, kernel, pin: (
+            "recipe" if pin == toolchain else pytest.fail("incorrect cache compiler")
+        ),
+    )
+    monkeypatch.setattr(platforms, "build_kernel", kernel_build)
+    monkeypatch.setattr(
+        platforms, "prepare_guest", lambda *args: tmp_path / "initramfs"
+    )
+    monkeypatch.setattr(platforms, "boot_guest", lambda *args: events.append("boot"))
+    platforms.execute(manifest, kernel_version)
+    assert events == [
+        "compiler download",
+        *(["legacy runtime"] if toolchain["runtime"] else []),
+        "preflight",
+        "kernel",
+        "boot",
+    ]
+    assert os.environ["LD_LIBRARY_PATH"] == "/ambient/runtime"
+
+
 def test_native_compiler_and_cache_identity_are_separate_from_arm(
     manifest: dict, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -578,12 +704,15 @@ def test_generic_header_staging_preserves_vendor_source_and_invalidates_only_bus
         for target in ("arm", "native")
     }
     kernel = manifest["kernels"][0]
-    kernel_key = platforms.build_key("kernel", kernel, manifest["toolchain"])
+    kernel_key = platforms.build_key("kernel", kernel, manifest["toolchains"]["4.9.4"])
     with (fixtures / "busybox-support/rtconfig.h").open("ab") as output:
         output.write(b"/* changed generic build support */\n")
     for target, key in keys.items():
         assert platforms.build_key("busybox", item, target=target) != key
-    assert platforms.build_key("kernel", kernel, manifest["toolchain"]) == kernel_key
+    assert (
+        platforms.build_key("kernel", kernel, manifest["toolchains"]["4.9.4"])
+        == kernel_key
+    )
 
 
 def test_native_cache_requires_native_elf_and_target_receipt(
@@ -710,6 +839,9 @@ def test_kernel_configuration_preserves_version_specific_required_symbols() -> N
     for version in sorted(platforms.VERSIONS):
         values = platforms.kernel_configuration(version)
         assert values["CONFIG_SMP"] == "y"
+        assert values["CONFIG_FILE_LOCKING"] == "y"
+        assert values["CONFIG_HW_RANDOM"] == "y"
+        assert values["CONFIG_HW_RANDOM_VIRTIO"] == "y"
         assert values["CONFIG_STACKPROTECTOR"] == "n"
         if version.startswith("4.1."):
             assert values["CONFIG_CC_STACKPROTECTOR_NONE"] == "y"

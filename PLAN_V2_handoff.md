@@ -14,8 +14,8 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and progress
 
-**Resumed by the user.** Compiler/runtime prerequisites now pass. Full CI exposed
-two guest/configuration fixture defects; their reviewed correction is ready to push. No new runtime
+**Resumed by the user.** Full CI exposed further fixture prerequisites; the combined
+compiler/locking/entropy/native-test repair is reviewed and ready to push. No new runtime
 package may start before this exact-SHA gate passes. Resume inspection found a
 clean tree at `5853701dfbd5b00e5746f83a2b6da13e8349e94f`, matching origin/develop,
 and no existing child agents. Parent session identity remains the already-recorded
@@ -112,7 +112,7 @@ No approval question is currently open.
 ## Current code and ownership
 
 Latest published runtime revision, verified on local/origin develop after push:
-`a7e3955f35319b50bb0d9ed3ecfd3f09ec005002`.
+`e01b8ee0514fc5bc5df908efebafb56cddb1e752`.
 The separate developer-docs receipt is `ae594bf`; it is not runtime CI evidence.
 Inspect current refs and full CI status on resume.
 Earlier partial checkpoints remain in ancestry: native helper `3e164914`, probe
@@ -125,10 +125,11 @@ actual kernel execution is pending the current full CI run.
 | Owner | Exclusive scope | Current state |
 | --- | --- | --- |
 | Parent | Planning files, AGENTS.md, docs, integration and final review | Own all accepted requirements and CI gate; inspect every returned change. |
-| kernel_compiler | Returned; no active ownership | Private compiler-runtime package completed and parent-reviewed. |
+| kernel_compiler | Returned; no active ownership | Parent reviewed compiler selection/cache/preflight/workflow and QEMU RNG integration; actual CI pending. |
 | guest_diagnostic | Returned; no active ownership | Parent-reviewed guest prefix correction and native regression; reused existing applet fixture, pinned mode only. |
-| Parent | tools/test_platforms.py, tests/test_platforms.py; integration/plans | Enable 4.19-only VIRTIO_MENU required by its MMIO transport Kconfig; preserve 4.1 configuration and required-option assertions. |
-| ci_resume_wait | Completed, no active work | Run 38187447546 at a7e3955 terminal failure confirmed. |
+| Parent | tests/test_storage.py, tests/fixtures/platform/kernel.config; integration/plans | Owned FIFO native error fixture; FILE_LOCKING and virtio RNG guest prerequisites. Worker owns matching QEMU arguments. Preserve all proof. |
+| ci_resume_wait | Completed | Run 38187960627 at e01b8ee terminal failure confirmed. |
+| platform_audit | Returned; no active ownership | Source review found guest entropy prerequisite; parent reviewed BIND constructor/RAND check and exact virtio driver quality. No other concrete blocker found. |
 | Other agents | No active ownership | Source/parity/persistence/runtime/probe packages returned. No router work. |
 
 Current S02.04/S02.07–S02.09/S04.03 consumers are developer probes/tests, not a
@@ -150,99 +151,78 @@ before accepting ownership or publishing.
 
 ## CI gate and local evidence
 
-- [Run 38187447546](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38187447546),
-  exact `a7e3955f35319b50bb0d9ed3ecfd3f09ec005002`: failed. Planning, host/static
-  and full native BusyBox suite passed. Both 4.1 kernels built/booted but failed
-  the guest's diagnostic-prefix expectation after successful native storage probe;
-  4.19 jobs failed the required VIRTIO config assertion. Both pinned sources gate
-  MMIO transport behind VIRTIO_MENU, absent in 4.1; the parent adds that 4.19-only
-  prerequisite. Pinned fsync/libbb sources prove the omitted `fsync: `
-  prefix; correct the fixture, retaining status/diagnostic/rejection assertions.
-  Local HEAD and origin/develop were verified equal after push. No final tick.
-- Guest/configuration correction on dirty `a7e3955`: parent platform gate **28
-  passed, zero skips, 0.34s**; worker storage gate **22 passed, ten Linux skips**.
-  Parent review removed duplicated applet setup and scoped the legacy diagnostic
-  assertion to required pinned BusyBox mode, avoiding assumptions about unrelated
-  host versions. New-case recheck: **one explicit platform skip, 31 deselected**;
-  all static gates passed. Native regression and all guests still need exact CI.
-  No full local suite. Existing version-config test covers the added prerequisite;
-  kernel configuration assertions and every guest proof marker remain mandatory.
-  Successful prior native job independently verified **59 passed, zero skips,
-  0.79s**; the next run must also prove the newly added regression.
-- [Run 38186542110](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186542110),
-  exact `9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`: attempt 1 cancelled for the
-  pause; resumed **attempt 2 failed**. Host/static and planning passed. Native
-  vendor BusyBox compiled and ran 52 tests, but two native-fsync setup cases errored
-  because the minimal config omitted BUSYBOX's --list applet. All four generic
-  kernel jobs were blocked by GCC 4.9.4's missing host libmpfr.so.4 dependency
-  (on 4.19 this also produces secondary Kconfig errors). No kernel boot proof yet.
-  Parent enabled the source-declared BUSYBOX option; the private pinned compiler
-  runtime and actual compilation preflight are implemented and locally reviewed.
-  The user reiterated Ruff and ShellCheck: the focused/full runner retains Ruff
-  check/format, compileall, ShellCheck, shfmt and shell syntax; developer notes now
-  name Ruff explicitly. No required check is bypassed.
-- Current repair on dirty `ae594bf`: parent ran
-  `.venv/bin/python tools/test.py --focused tests/test_platforms.py` — **28 passed,
-  zero skips, 0.27s**; planning/links/privacy, whitespace, Ruff check/format,
-  compileall, Homebrew POSIX syntax, ShellCheck and shfmt passed. Review covered
-  actual consumer/failure paths, private library hash/ABI/link/cache validation,
-  child-scoped compiler environment, compile/header/assembler preflight, native
-  mode isolation, unchanged kernel/compiler source pins and all four workflow
-  jobs. Added tests reuse immutable fixtures and complete serially in under one
-  second; no full local suite or router work. Actual compiler/kernel execution
-  remains CI-only proof.
-- [Run 38186228388](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186228388),
-  exact `c8e93c42aaef8216c6cabee2a3c175e74b7552d0`: planning and host/static passed;
-  required native BusyBox and all four ARM jobs failed building vendor rm because
-  standalone builds lack firmware-generated `rtconfig.h`. The selected generic
-  fixture must provide explicit board-neutral configuration without modifying
-  applet logic or claiming exact firmware equivalence. Local/remote develop were
-  verified equal after push. No new runtime package before full CI passes.
-- [Run 38185361432](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38185361432),
-  exact `6b91cd82aad8feddcbde7e1d81a8f4e0c35174d8`: planning passed; six jobs failed
-  before behavioral proof. Corrected source-declared BusyBox option names and
-  compatibility with CI's older ShellCheck. Probe annotations cover its proven
-  BusyBox `-ef` extension and EXIT callback only; no runtime guard was removed.
-- [Run 38185610840](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38185610840),
-  exact `56b8b5a1583e35401065626da8c1a08ca31a0dac`: planning and full host/static job
-  passed; required BusyBox and four ARM jobs failed. Ubuntu's regular **and static**
-  BusyBox omit fsync (confirmed official package source), and allnoconfig's retained
-  shell-NONE choice conflicted with ASH. The choice correction explicitly disables
-  NONE and preserves post-Kconfig assertions. Native vendor build is implemented
-  with separate compiler/cache/ELF identity; actual compilation remains CI pending.
-- Parent combined platform repair check at dirty `56b8b5a`:
-  `.venv/bin/python tools/test.py --focused tests/test_platforms.py` — **22 passed,
-  zero skips, 0.15s**, plus planning, whitespace, Ruff/format/compile, Homebrew bash
-  POSIX syntax, ShellCheck and shfmt. Parent reviewed native/ARM cache separation,
-  receipt and ELF checks, source-config guards, version-specific kernel symbols,
-  workflow and matching developer notes. Native compilation/guest execution still
-  require the next exact-SHA CI run; no full local suite was run.
-- Generic-header repair at dirty `c8e93c42`: parent reran the same focused command,
-  **23 passed, zero skips, 0.18s**, and all static/planning checks passed. Header staging
-  leaves vendor sources unchanged and changing it invalidates both BusyBox targets
-  without invalidating kernels. Explicit HND make flags keep generic fixtures free
-  of board macros/shared firmware includes. Actual compilation remains CI pending.
-  Read-only source audit receipts for all three pins are retained in
-  `.tmp/platform-review/busybox-build-support-audit/{provenance,assumptions}.json`;
-  source inspection is not compiler/runtime proof.
-- Parent storage focused check at dirty `3e164914`: **22 passed, nine Linux skips,
-  0.77s**. Those skips were not passes. The later Linux full host job is green,
-  but the required BusyBox/platform gate remains failed. No full local suite for
-  these corrections. Tests share a compiled fixture and run serially.
-- Parent staged all 36 actual hash-verified IPKs with the new extractor, checked
-  required ELF class/machine for both feeds, and independently read the generated
-  initramfs using host libarchive (175 entries). No maintainer scripts/binaries
-  executed. Private `.tmp/platform-review/feed-stage-briuimcw/feeds.cpio.gz`.
-- Current host .venv: Python 3.14.0, pytest 9.1.1, Ruff 0.16.10, shfmt 3.7.0.1;
-  Homebrew bash 5.3.3 and ShellCheck. No host dependencies installed this session.
-  CI installs its declared tools. Developer docs contain tooling/check commands.
+The runtime checkpoint remains **failed**, so only its repairs may advance.
+Latest published runtime: `e01b8ee0514fc5bc5df908efebafb56cddb1e752`, verified
+against origin/develop. No product subgoal is accepted.
 
-Both 4.1 kernels built/booted and passed the native storage happy path; the guest
-diagnostic assertion stopped further proof. Neither 4.19 kernel has booted yet.
-Complete generic-kernel execution and both ARM Entware command sets are required before
-this fixture package is green. Generic guests do not prove exact Merlin firmware,
-NAND/JFFS2 hidden-failure behavior, all TLS/options or complete model qualification.
-S02.09 remains unfinished even after these selected guests pass.
+- [Checks 38187960627](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38187960627)
+  at that exact SHA finished with host/static and planning success; native BusyBox
+  and four kernel jobs failed. Parent read all five failed-job logs.
+- Native suite: **59 passed, one new-case failure**, 0.85s. The new error fixture
+  used root-owned /dev/null under the non-root runner; vendor fsync's O_NOATIME
+  requires inode ownership/capability. Parent now uses a private owned FIFO with
+  a held writer, separately asserting the real zero-status diagnostic and silent
+  wrapper rejection. The root guest keeps its valid /dev/null test.
+- Both 4.1 kernels built and booted; native storage probe/cleanup and zero-status
+  diagnostic rejection passed, followed by actual Entware jq, timeout and SHA.
+  flock returned ENOSYS because the minimal fixture omitted FILE_LOCKING. Parent
+  enabled that exact source-declared prerequisite; real locking proof stays required.
+- Both 4.19 kernels passed configuration, then their ARM64 compiler header rejected
+  GCC 4.9.4 (minimum 5.1). Worker is qualifying a separately pinned official GCC
+  8.5 compiler; retain the working 4.1 compiler, every kernel pin and source checks.
+- Earlier [Checks 38187447546](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38187447546)
+  at `a7e3955f35319b50bb0d9ed3ecfd3f09ec005002` passed planning, host/static and native
+  BusyBox (**59 passed, zero skips, 0.79s**). It exposed the now-fixed guest fsync
+  prefix and 4.19 VIRTIO_MENU prerequisite. This older success does not cover the
+  new native regression. Prior compiler MPFR4 and BUSYBOX applet repairs are proven
+  by the later actual builds; old failed/cancelled runs award no acceptance.
+
+Local evidence, limited to the named dirty tree and inputs:
+
+- Combined compiler-runtime repair on dirty `ae594bf`: parent
+  `.venv/bin/python tools/test.py --focused tests/test_platforms.py` — **28 passed,
+  zero skips, 0.27s**; all planning/static checks passed. Worker also validated
+  actual Debian package data extraction/cache hashes without executing its code.
+- Guest/config correction on dirty `a7e3955`: parent platform command **28 passed,
+  zero skips, 0.34s**; worker storage command **22 passed, ten Linux skips**. Parent
+  removed duplicated applet setup and restricted the legacy-error assertion to
+  required pinned BusyBox mode. No test assumes an unrelated host version has it.
+- Current owned-FIFO correction on dirty `e01b8ee`:
+  `.venv/bin/python tools/test.py --focused tests/test_storage.py -k linux_busybox_zero_exit`
+  — **one explicit platform skip, 31 deselected**; no native execution claimed.
+  Current FILE_LOCKING selection check:
+  `.venv/bin/python tools/test.py --focused tests/test_platforms.py -k kernel_configuration`
+  — **one passed, 27 deselected**, 0.12s. Both invocations passed Ruff check/format,
+  compileall, host POSIX syntax, ShellCheck, shfmt, planning/links/privacy and
+  whitespace checks. Actual changed behavior must pass the next full CI gate.
+- No full local suite for this earlier platform checkpoint. Tests reuse immutable
+  setup and run serially; platform tests complete under one second. CI keeps two
+  kernel jobs at most, make -j2, one CPU/256 MB per guest and verified build caches.
+  No extra full suite was run to measure cost. Current host tools: .venv Python
+  3.14.0, pytest 9.1.1, Ruff 0.16.10, shfmt 3.7.0.1, Homebrew bash 5.3.3/ShellCheck.
+- Combined final repair on dirty `e01b8ee`: worker and parent ran the platform
+  focused command, **31 passed, zero skips**, with all static gates passing.
+  Parent reviewed every changed consumer, tests, manifest, workflow and both
+  returned packages; independently matched the downloaded GCC 8.5 archive hash.
+  New coverage reuses existing fixtures; each family gets its own prebuilt
+  compiler/preflight/environment checks, no GCC source build or new framework.
+  Kernel and BusyBox actual execution, FIFO regression and guest RNG remain
+  pending the next exact full CI run.
+
+Raw job logs remain ignored at `.tmp/platform-review/ci-<run>-<job>.log`.
+Bounded independent fixture review found an additional unexecuted risk: BIND's
+[libisc constructor](https://github.com/isc-projects/bind9/blob/v9.20.18/lib/isc/lib.c)
+initializes TLS/RAND before dig main. Add the guest HW_RANDOM/VIRTIO driver and an
+explicit QEMU virtio-rng device backed by host /dev/urandom. Exact drivers for all
+four kernels set quality 1000, so their RNG cores credit entropy without rngd or
+extra boot arguments. Parent reviewed the relevant sources. This prevents a
+plausible startup entropy wait; actual dig proof remains required, never replaced
+by source inspection. Exact Entware OpenSSL build configuration was inferred
+from its recipe, not independently reproduced.
+Complete guests must prove both ARM Entware command sets and every exact success
+marker. Generic kernels are not exact Merlin firmware or live NAND/JFFS2 proof;
+TLS/native option checks and full model qualification remain unfinished. S02.09
+cannot be ticked merely because these selected guests pass.
 
 ## Source and platform findings
 
@@ -255,7 +235,13 @@ parsing/schedules do not supersede v2.
 
 `tests/fixtures/platforms.json` owns public pins: upstream ARM64 kernels 4.1.51,
 4.1.52, 4.19.183 and 4.19.294; three distinct vendor BusyBox 1.25.1 source commits;
-GCC 4.9.4 kernel compiler; both aarch64-k3.10 and armv7sf-k3.2 Entware closures.
+GCC 4.9.4 for 4.1 and GCC 8.5.0 for 4.19; both aarch64-k3.10 and armv7sf-k3.2
+Entware closures. Both compilers are prebuilt downloads. Official kernel.org GCC
+8.5 archive SHA256 `a676b32874ee649f5d39bed5a31c9d88b29d70833b99d6d00879b086420909c6`
+matches its published digest (signature not checked). Data-only ELF inspection
+found only glibc host dependencies, no MPFR4/MPC/GMP dependency. It uses exact
+-dumpfullversion and clears child LD_LIBRARY_PATH. Evidence is retained at
+`.tmp/platform-review/gcc-8.5.0-elf-dependencies.txt`; no compiler executed locally.
 The compiler needs legacy host MPFR4. Official Debian Stretch metadata and actual
 package bytes independently verify `libmpfr4` 3.1.5-1 amd64; both package and library
 hashes are pinned in the manifest. Only data is extracted into a private cache;
@@ -312,7 +298,7 @@ setting, package or Cloudflare data was changed.
 
 1. Resume inspection and CI repair are authorized. Preserve the hidden
    session block; append only a verified actual new parent session ID.
-2. Commit/push the reviewed guest/configuration correction and monitor its full
+2. Commit/push the reviewed combined fixture correction and monitor its full
    Checks run, all seven exact-SHA jobs. Fix actual
    build/boot/command failures within this checkpoint, focused-test, commit/push
    and wait again. No new runtime package before full required CI passes; no full

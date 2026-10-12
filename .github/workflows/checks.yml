@@ -140,9 +140,13 @@ jobs:
           persist-credentials: false
 
       - name: Install bounded guest build tools
+        env:
+          CFMGR_KERNEL: ${{ matrix.kernel }}
         run: |
+          compiler_package_words="$(python3 -c 'import os; from tools.test_platforms import load_manifest, kernel_toolchain; manifest = load_manifest(); kernel = next(item for item in manifest["kernels"] if item["version"] == os.environ["CFMGR_KERNEL"]); print(" ".join(kernel_toolchain(manifest, kernel)["host_packages"]))')"
+          read -r -a compiler_packages <<< "$compiler_package_words"
           sudo apt-get update
-          sudo apt-get install --no-install-recommends --yes gcc-arm-linux-gnueabi libc6-dev-armel-cross qemu-system-arm bc bison flex libssl-dev e2fsprogs libmpc3 libgmp10
+          sudo apt-get install --no-install-recommends --yes gcc-arm-linux-gnueabi libc6-dev-armel-cross qemu-system-arm bc bison flex libssl-dev e2fsprogs "${compiler_packages[@]}"
 
       - name: Identify immutable build cache keys
         id: fixture

@@ -111,19 +111,40 @@ def load_manifest(path: Path = MANIFEST) -> dict[str, Any]:
     )
     for item in kernels:
         _require(item["busybox"] in ids, "missing kernel BusyBox source")
+        _require(
+            item["toolchain"]
+            == ("4.9.4" if item["version"].startswith("4.1.") else "8.5.0"),
+            "kernel compiler compatibility mismatch",
+        )
         expected = f"https://www.kernel.org/pub/linux/kernel/v4.x/linux-{item['version']}.tar.xz"
         _require(item["url"] == expected, "kernel archive identity mismatch")
         _pin(item["sha256"])
         _pin(item["merlin"]["commit"], 40)
         _relative(item["merlin"]["path"])
-    toolchain = manifest["toolchain"]
-    _https(toolchain["url"], {"mirrors.edge.kernel.org", "www.kernel.org"})
-    _pin(toolchain["sha256"])
+    toolchains = manifest["toolchains"]
     _require(
-        toolchain["prefix"] == "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-",
-        "kernel compiler prefix mismatch",
+        set(toolchains) == {"4.9.4", "8.5.0"}, "both pinned kernel compilers required"
     )
-    runtime = toolchain["runtime"]
+    for version, toolchain in toolchains.items():
+        expected = f"https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/{version}/x86_64-gcc-{version}-nolibc-aarch64-linux.tar.xz"
+        _require(
+            toolchain["url"] == expected, "kernel compiler archive identity mismatch"
+        )
+        _pin(toolchain["sha256"])
+        _require(
+            toolchain["version"] == version
+            and toolchain["version_option"]
+            == ("-dumpversion" if version == "4.9.4" else "-dumpfullversion")
+            and toolchain["prefix"]
+            == f"gcc-{version}-nolibc/aarch64-linux/bin/aarch64-linux-"
+            and toolchain["host_packages"]
+            == (["libc6", "libmpc3", "libgmp10"] if version == "4.9.4" else ["libc6"]),
+            "kernel compiler identity mismatch",
+        )
+    _require(
+        toolchains["8.5.0"]["runtime"] is None, "unexpected modern compiler runtime"
+    )
+    runtime = toolchains["4.9.4"]["runtime"]
     _require(
         runtime["url"]
         == "https://archive.debian.org/debian/pool/main/m/mpfr4/libmpfr4_3.1.5-1_amd64.deb"
@@ -175,6 +196,12 @@ def load_manifest(path: Path = MANIFEST) -> dict[str, Any]:
                 "incomplete pinned dependency closure",
             )
     return manifest
+
+
+def kernel_toolchain(
+    manifest: dict[str, Any], kernel: dict[str, Any]
+) -> dict[str, Any]:
+    return manifest["toolchains"][kernel["toolchain"]]
 
 
 def verify_hash(path: Path, expected: str) -> None:
@@ -528,15 +555,18 @@ def build_key(
         digest.update((FIXTURES / "busybox-support/rtconfig.h").read_bytes())
     else:
         digest.update(inspect.getsource(kernel_configuration).encode())
-        digest.update(kernel_runtime_identity())
+        _require(toolchain is not None, "kernel cache key requires selected compiler")
+        digest.update(kernel_runtime_identity(tuple(toolchain["host_packages"])))
         for function in (
-            stage_kernel_runtime,
+            prepare_kernel_compiler,
             kernel_command,
             compiler_preflight,
             verify_elf,
-            ipk_data,
         ):
             digest.update(inspect.getsource(function).encode())
+        if toolchain["runtime"] is not None:
+            for function in (stage_kernel_runtime, ipk_data):
+                digest.update(inspect.getsource(function).encode())
     digest.update(str(RECIPE_VERSION).encode())
     return digest.hexdigest()
 
@@ -650,10 +680,10 @@ def verify_elf(path: Path, architecture: str) -> None:
     )
 
 
-@lru_cache(maxsize=1)
-def kernel_runtime_identity() -> bytes:
-    """Host ABI providers for the pinned legacy compiler, never BusyBox inputs."""
-    return subprocess.check_output(["dpkg-query", "-W", "libmpc3", "libgmp10"])
+@lru_cache(maxsize=2)
+def kernel_runtime_identity(packages: tuple[str, ...]) -> bytes:
+    """Selected compiler's host ABI providers, never BusyBox inputs."""
+    return subprocess.check_output(["dpkg-query", "-W", *packages])
 
 
 def stage_kernel_runtime(runtime: dict[str, str], downloads: Path, cache: Path) -> Path:
@@ -686,19 +716,23 @@ def stage_kernel_runtime(runtime: dict[str, str], downloads: Path, cache: Path) 
     return library.parent
 
 
-def kernel_command(command: list[str], runtime: Path) -> list[str]:
+def kernel_command(command: list[str], runtime: Path | None) -> list[str]:
     # Replace, rather than append to, ambient paths; never mutate os.environ.
+    if runtime is None:
+        return ["env", "-u", "LD_LIBRARY_PATH", *command]
     return ["env", "LD_LIBRARY_PATH=" + str(runtime.resolve()), *command]
 
 
-def compiler_preflight(compiler: str, runtime: Path, cache: Path) -> None:
+def compiler_preflight(
+    compiler: str, runtime: Path | None, cache: Path, toolchain: dict[str, Any]
+) -> None:
     _require(Path(compiler + "gcc").is_file(), "pinned kernel compiler is absent")
     version = subprocess.check_output(
-        kernel_command([compiler + "gcc", "-dumpversion"], runtime),
+        kernel_command([compiler + "gcc", toolchain["version_option"]], runtime),
         text=True,
         timeout=30,
     ).strip()
-    _require(version == "4.9.4", "pinned kernel compiler version mismatch")
+    _require(version == toolchain["version"], "pinned kernel compiler version mismatch")
     work = cache / "toolchain/preflight"
     work.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="compile-", dir=work) as directory:
@@ -731,6 +765,27 @@ def compiler_preflight(compiler: str, runtime: Path, cache: Path) -> None:
             int.from_bytes(object_file.read_bytes()[16:18], "little") == 1,
             "compiler preflight must produce an ELF relocatable object",
         )
+
+
+def prepare_kernel_compiler(
+    toolchain: dict[str, Any], downloads: Path, cache: Path
+) -> tuple[str, Path | None]:
+    archive = download(
+        toolchain["url"],
+        toolchain["sha256"],
+        downloads / f"kernel-compiler-{toolchain['version']}.tar.xz",
+    )
+    root = cache / "toolchain" / toolchain["sha256"]
+    if not root.exists():
+        extract_tar(archive, root)
+    compiler = str(root / toolchain["prefix"])
+    runtime = (
+        stage_kernel_runtime(toolchain["runtime"], downloads, cache)
+        if toolchain["runtime"] is not None
+        else None
+    )
+    compiler_preflight(compiler, runtime, cache, toolchain)
+    return compiler, runtime
 
 
 def stage_feeds(manifest: dict[str, Any], downloads: Path, root: Path) -> None:
@@ -923,7 +978,7 @@ def build_kernel(
     downloads: Path,
     cache: Path,
     recipe: str,
-    runtime: Path,
+    runtime: Path | None,
 ) -> Path:
     version = kernel["version"]
     output = cache / "kernels" / version / recipe
@@ -1046,6 +1101,10 @@ def boot_guest(
         "1",
         "-m",
         "256M",
+        "-object",
+        "rng-random,id=cfmgr-rng,filename=/dev/urandom",
+        "-device",
+        "virtio-rng-device,rng=cfmgr-rng",
         "-nographic",
         "-no-reboot",
         "-net",
@@ -1123,27 +1182,23 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
         _require(shutil.which(tool) is not None, f"missing platform tool: {tool}")
     cache = ROOT / ".tmp/platform-cache"
     downloads = cache / "downloads"
-    compiler_archive = download(
-        manifest["toolchain"]["url"],
-        manifest["toolchain"]["sha256"],
-        downloads / "kernel-compiler.tar.xz",
-    )
-    compiler_root = cache / "toolchain" / manifest["toolchain"]["sha256"]
-    if not compiler_root.exists():
-        extract_tar(compiler_archive, compiler_root)
-    compiler = str(compiler_root / manifest["toolchain"]["prefix"])
-    runtime = stage_kernel_runtime(manifest["toolchain"]["runtime"], downloads, cache)
-    compiler_preflight(compiler, runtime, cache)
+    compilers: dict[str, tuple[str, Path | None]] = {}
     work_root = ROOT / ".tmp/platform-runs"
     work_root.mkdir(parents=True, exist_ok=True)
     for kernel in manifest["kernels"]:
         if selected and kernel["version"] != selected:
             continue
+        toolchain = kernel_toolchain(manifest, kernel)
+        if toolchain["version"] not in compilers:
+            compilers[toolchain["version"]] = prepare_kernel_compiler(
+                toolchain, downloads, cache
+            )
+        compiler, runtime = compilers[toolchain["version"]]
         busybox_item = next(
             item for item in manifest["busyboxes"] if item["id"] == kernel["busybox"]
         )
         binary = build_busybox(busybox_item, cache)
-        recipe = build_key("kernel", kernel, manifest["toolchain"])
+        recipe = build_key("kernel", kernel, toolchain)
         image = build_kernel(kernel, compiler, downloads, cache, recipe, runtime)
         # New mutable filesystem for every boot; cached immutable inputs only.
         work = Path(tempfile.mkdtemp(prefix=kernel["version"] + "-", dir=work_root))
@@ -1206,7 +1261,10 @@ def main() -> int:
                 for item in manifest["busyboxes"]
                 if item["id"] == kernel["busybox"]
             )
-            print("kernel=" + build_key("kernel", kernel, manifest["toolchain"]))
+            print(
+                "kernel="
+                + build_key("kernel", kernel, kernel_toolchain(manifest, kernel))
+            )
             print("busybox=" + build_key("busybox", busybox))
         elif args.run:
             execute(manifest, args.kernel)

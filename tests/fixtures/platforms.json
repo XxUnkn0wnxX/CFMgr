@@ -20,7 +20,8 @@
       "merlin": {
         "commit": "433fc608f5fc1689f3d3c3ab5cd2a7d57102260f",
         "path": "release/src-rt-5.02axhnd/kernel/linux-4.1"
-      }
+      },
+      "toolchain": "4.9.4"
     },
     {
       "version": "4.1.52",
@@ -35,7 +36,8 @@
       "merlin": {
         "commit": "b053ba701af02e46a86d465d82cc2a7891a288a7",
         "path": "release/src-rt-5.02axhnd.675x/kernel/linux-4.1"
-      }
+      },
+      "toolchain": "4.9.4"
     },
     {
       "version": "4.19.183",
@@ -51,7 +53,8 @@
       "merlin": {
         "commit": "b053ba701af02e46a86d465d82cc2a7891a288a7",
         "path": "release/src-rt-5.04axhnd.675x/kernel/linux-4.19"
-      }
+      },
+      "toolchain": "8.5.0"
     },
     {
       "version": "4.19.294",
@@ -66,7 +69,8 @@
       "merlin": {
         "commit": "5ae56b079dd89ed5108b1ccdbb835ee0779444b9",
         "path": "release/src-rt-5.04behnd.4916/kernel/linux-4.19"
-      }
+      },
+      "toolchain": "8.5.0"
     }
   ],
   "busyboxes": [
@@ -92,19 +96,39 @@
       "path": "release/src/router/busybox"
     }
   ],
-  "toolchain": {
-    "url": "https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/4.9.4/x86_64-gcc-4.9.4-nolibc-aarch64-linux.tar.xz",
-    "sha256": "d9037bedbc526ffd2fc03f7a4641f3d9f68dc4a48252192bc088a0e8d997dbcd",
-    "prefix": "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-",
-    "runtime": {
-      "package": "libmpfr4",
-      "version": "3.1.5-1",
-      "architecture": "amd64",
-      "url": "https://archive.debian.org/debian/pool/main/m/mpfr4/libmpfr4_3.1.5-1_amd64.deb",
-      "sha256": "95730a4709b898ffaf677f9b3ab6f6ebef5a96866589a8cf5f775448b3413a98",
-      "library": "usr/lib/x86_64-linux-gnu/libmpfr.so.4.1.5",
-      "library_sha256": "50997740cd2446f7f0ee0f4abbde81cd3f9c040dc895120876dcf30b0ef2d278",
-      "soname": "libmpfr.so.4"
+  "toolchains": {
+    "4.9.4": {
+      "url": "https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/4.9.4/x86_64-gcc-4.9.4-nolibc-aarch64-linux.tar.xz",
+      "sha256": "d9037bedbc526ffd2fc03f7a4641f3d9f68dc4a48252192bc088a0e8d997dbcd",
+      "prefix": "gcc-4.9.4-nolibc/aarch64-linux/bin/aarch64-linux-",
+      "runtime": {
+        "package": "libmpfr4",
+        "version": "3.1.5-1",
+        "architecture": "amd64",
+        "url": "https://archive.debian.org/debian/pool/main/m/mpfr4/libmpfr4_3.1.5-1_amd64.deb",
+        "sha256": "95730a4709b898ffaf677f9b3ab6f6ebef5a96866589a8cf5f775448b3413a98",
+        "library": "usr/lib/x86_64-linux-gnu/libmpfr.so.4.1.5",
+        "library_sha256": "50997740cd2446f7f0ee0f4abbde81cd3f9c040dc895120876dcf30b0ef2d278",
+        "soname": "libmpfr.so.4"
+      },
+      "version": "4.9.4",
+      "version_option": "-dumpversion",
+      "host_packages": [
+        "libc6",
+        "libmpc3",
+        "libgmp10"
+      ]
+    },
+    "8.5.0": {
+      "url": "https://mirrors.edge.kernel.org/pub/tools/crosstool/files/bin/x86_64/8.5.0/x86_64-gcc-8.5.0-nolibc-aarch64-linux.tar.xz",
+      "sha256": "a676b32874ee649f5d39bed5a31c9d88b29d70833b99d6d00879b086420909c6",
+      "prefix": "gcc-8.5.0-nolibc/aarch64-linux/bin/aarch64-linux-",
+      "runtime": null,
+      "version": "8.5.0",
+      "version_option": "-dumpfullversion",
+      "host_packages": [
+        "libc6"
+      ]
     }
   },
   "dependency_sets": {
