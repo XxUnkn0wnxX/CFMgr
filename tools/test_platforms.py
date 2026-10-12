@@ -1294,7 +1294,8 @@ def boot_guest(
                 stdout=output,
                 stderr=subprocess.STDOUT,
                 check=False,
-                timeout=180,
+                # Legacy ARM startup plus both guarded Entware install proofs.
+                timeout=600,
             )
     finally:
         text = log.read_text(errors="replace")

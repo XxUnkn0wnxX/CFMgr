@@ -196,19 +196,28 @@ def test_ipk_tar_and_ar_extract_only_data_not_maintainer_scripts(
         assert not (root / "postinst").exists()
 
 
+def complete_guest_log(kernel: dict, manifest: dict) -> str:
+    item = next(
+        item for item in manifest["busyboxes"] if item["id"] == kernel["busybox"]
+    )
+    return "\n".join(
+        [
+            f"CFMGR_KERNEL={kernel['version']}",
+            f"CFMGR_BUSYBOX={item['id']}:{item['version']}",
+            "CFMGR_STORAGE=OK",
+            *[
+                f"CFMGR_FEED={feed['id']}:{feed['architecture']}:OK"
+                for feed in manifest["feeds"]
+            ],
+            *[f"CFMGR_INSTALL={feed['id']}:OK" for feed in manifest["feeds"]],
+            f"CFMGR_PLATFORM_OK_v1:{kernel['version']}:{item['id']}",
+        ]
+    )
+
+
 def test_guest_proof_requires_every_exact_marker(manifest: dict) -> None:
     kernel = manifest["kernels"][0]
-    lines = [
-        "CFMGR_KERNEL=4.1.51",
-        "CFMGR_BUSYBOX=baseline:1.25.1",
-        "CFMGR_STORAGE=OK",
-        *[
-            f"CFMGR_FEED={feed['id']}:{feed['architecture']}:OK"
-            for feed in manifest["feeds"]
-        ],
-        *[f"CFMGR_INSTALL={feed['id']}:OK" for feed in manifest["feeds"]],
-        "CFMGR_PLATFORM_OK_v1:4.1.51:baseline",
-    ]
+    lines = complete_guest_log(kernel, manifest).splitlines()
     log = "\r\n".join(lines)
     platforms.verify_guest_log(log, kernel, manifest)
     for failed in (
@@ -223,6 +232,49 @@ def test_guest_proof_requires_every_exact_marker(manifest: dict) -> None:
     ):
         with pytest.raises(platforms.PlatformError):
             platforms.verify_guest_log(failed, kernel, manifest)
+
+
+@pytest.mark.parametrize("outcome", ["nonzero", "timeout", "complete", "missing"])
+def test_boot_guest_preserves_log_and_requires_completed_proof(
+    manifest: dict,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    outcome: str,
+) -> None:
+    kernel = manifest["kernels"][0]
+    log = complete_guest_log(kernel, manifest)
+    if outcome == "missing":
+        log = log.replace(f"CFMGR_INSTALL={manifest['feeds'][0]['id']}:OK\n", "")
+    work = tmp_path / outcome
+    (work / "volume").mkdir(parents=True)
+    monkeypatch.setattr(platforms, "run", lambda *args, **kwargs: None)
+
+    def qemu(
+        command: list[str], *, stdout: object, timeout: int, **kwargs: object
+    ) -> subprocess.CompletedProcess[bytes]:
+        assert command[0] == "qemu-system-aarch64"
+        stdout.write(log.encode())
+        if outcome == "timeout":
+            raise subprocess.TimeoutExpired(command, timeout)
+        return subprocess.CompletedProcess(command, 1 if outcome == "nonzero" else 0)
+
+    monkeypatch.setattr(platforms.subprocess, "run", qemu)
+    if outcome == "timeout":
+        with pytest.raises(subprocess.TimeoutExpired):
+            platforms.boot_guest(
+                tmp_path / "Image", tmp_path / "initramfs", kernel, manifest, work
+            )
+    elif outcome in {"nonzero", "missing"}:
+        with pytest.raises(platforms.PlatformError):
+            platforms.boot_guest(
+                tmp_path / "Image", tmp_path / "initramfs", kernel, manifest, work
+            )
+    else:
+        platforms.boot_guest(
+            tmp_path / "Image", tmp_path / "initramfs", kernel, manifest, work
+        )
+    assert capsys.readouterr().out == log
 
 
 def elf_header(elf_class: int, machine: int) -> bytes:

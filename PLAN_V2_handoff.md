@@ -97,6 +97,21 @@ User amendment: for trace-only diagnosis, collect the first kernel failure/log
 and cancel the remaining run promptly; do not wait for every kernel to fail.
 The repaired acceptance candidate still needs all required exact-commit CI jobs.
 
+Trace candidate `03b0db30d4f241d4dc12834e62306dea7d9f6bc4`, run `38198511174`,
+showed steady progress from operation 13 at 10s to operation 76 at 60s after
+legacy startup. First failed kernel log is
+`.tmp/platform-review/s02-03-trace-first.log`. Parent cancelled immediately after
+retrieval; both legacy jobs had finished failing by then, modern jobs cancelled.
+No tick. `ci_tools` returned the aggregate guest budget correction in
+`tools/test_platforms.py` plus focused runner failure tests in
+`tests/test_platforms.py`: allow 600s for startup and two complete guarded
+installs, retain per-operation bounds and failure rejection. Focused platform gate
+passed **40 tests** and all static checks. Parent reviewed the runner and tests:
+nonzero exits/timeouts cannot pass despite success markers; missing markers fail.
+Parent owns the AGENTS user amendment, integration and publication; all worker
+ownership returned. Candidate is ready for required exact CI. If the next failure
+is the same shared cause, retrieve its log and cancel remaining jobs promptly.
+
 All worker ownership is returned. Parent reviewed the native timer correction:
 fixed `/bin/usleep 50000` supplies three short supervision waits, bootstrap admits
 it, and the timeout child uses whole-second sleep. Guest fixture stages native

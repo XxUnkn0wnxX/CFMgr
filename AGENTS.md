@@ -183,6 +183,13 @@ proportionate checks; reference the tested code SHA, never imply the receipt SHA
 already runtime-tested. No unearned main-goal or README completion. The boundary pause
 is after a completed main goal, not internal packages or numeric increments.
 
+During tracing or repair of a shared CI/kernel failure, retrieve the first useful
+failed job's log and cancel the remaining run promptly. Do not wait for every
+kernel to repeat the same failure. Keep the full matrix when determining whether
+a failure affects only specific kernels (for example, one or two of four), and
+for the final acceptance candidate. Cancelled jobs supply no proof; acceptance
+still requires all prescribed jobs green at the exact repaired SHA.
+
 ## Mandatory main-goal audit
 
 Before every main-goal full local gate/push, the parent audits the **accumulated active
