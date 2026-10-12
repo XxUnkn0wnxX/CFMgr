@@ -14,6 +14,12 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and progress
 
+**Paused at the user's explicit request to restart the session.** Start no new
+package until the user resumes. The latest runtime repair is committed/pushed;
+its CI was cancelled for this pause and must be rerun before further implementation.
+Cancellation is verified terminal with no active jobs; all child agents are
+completed. No router session, local test/build or background command remains active.
+
 **Active main goal: 2 — installation, prerequisites and supported platforms.**
 Estimated progress toward goal 2: **about 10%**, not an acceptance percentage.
 Product completion remains **0/16 = 0%**; no subgoal is accepted. Goal 2 is the
@@ -94,20 +100,22 @@ No approval question is currently open.
 
 ## Current code and ownership
 
-Published develop/origin last verified equal:
-`c8e93c42aaef8216c6cabee2a3c175e74b7552d0`.
+Latest published runtime revision, verified on local/origin develop after push:
+`9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`.
+The documentation-only pause receipt may sit above this revision; its SHA is not
+a runtime-tested revision. Inspect current refs on resume.
 Earlier partial checkpoints remain in ancestry: native helper `3e164914`, probe
 correction `6b411736`, platform fixtures `6b91cd8`, policy amendment `b73b9bb`.
-No main branch was recreated. The Goal 6 plan/checklist amendment, BusyBox choice
-correction and native CI fixture repair are committed. Current uncommitted work
-is the generic BusyBox header/build repair, focused regression, developer notes,
-the user's checkpoint/pause workflow amendment in AGENTS.md and this handoff.
+No main branch was recreated. All source/tests, generic BusyBox header/build repair,
+developer notes, Goal 6 amendment and the user's checkpoint/pause rules in AGENTS.md
+are committed/pushed. Only this documentation pause receipt is being finalized;
+there are no uncommitted runtime files or unfinished local tests.
 
 | Owner | Exclusive scope | Current state |
 | --- | --- | --- |
 | Parent | Planning files, AGENTS.md, docs, integration and final review | Own all accepted requirements and CI gate; inspect every returned change. |
 | probe_compat | No active ownership; returned to parent | Generic BusyBox header/build repair reviewed; focused/static checks passed. Source audit found no further firmware assumptions in selected applets and 271 shared/build files per pin. |
-| ci_wait | No active job | Run 38186228388 at c8e93c42 finished failed; reuse for next repair run. |
+| ci_wait | No active job | Previous run terminal; latest run cancelled for user pause. Resume monitoring only after an explicitly resumed CI rerun. |
 | Other agents | No active ownership | Source/parity/persistence/runtime/probe packages returned. No router work. |
 
 Current S02.04/S02.07–S02.09/S04.03 consumers are developer probes/tests, not a
@@ -129,6 +137,11 @@ before accepting ownership or publishing.
 
 ## CI gate and local evidence
 
+- [Run 38186542110](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186542110),
+  exact `9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`: cancelled for the user's session
+  restart pause. This is not a pass or a diagnosed failure of the generic-header
+  repair. Rerun its **full workflow**, not only failed jobs, after resume and require
+  all seven jobs green before further runtime implementation.
 - [Run 38186228388](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186228388),
   exact `c8e93c42aaef8216c6cabee2a3c175e74b7552d0`: planning and host/static passed;
   required native BusyBox and all four ARM jobs failed building vendor rm because
@@ -156,7 +169,7 @@ before accepting ownership or publishing.
   workflow and matching developer notes. Native compilation/guest execution still
   require the next exact-SHA CI run; no full local suite was run.
 - Generic-header repair at dirty `c8e93c42`: parent reran the same focused command,
-  **23 passed, zero skips**, and all static/planning checks passed. Header staging
+  **23 passed, zero skips, 0.18s**, and all static/planning checks passed. Header staging
   leaves vendor sources unchanged and changing it invalidates both BusyBox targets
   without invalidating kernels. Explicit HND make flags keep generic fixtures free
   of board macros/shared firmware includes. Actual compilation remains CI pending.
@@ -241,14 +254,19 @@ setting, package or Cloudflare data was changed.
 
 ## Next actions
 
-1. Commit/push reviewed generic-header repair plus the user's checkpoint/pause
-   rules. Focused checks and developer notes are complete; prior run is terminal.
-2. Monitor the new exact-SHA run; fix any build/boot/command failures within this
-   checkpoint without dropping required proof, then re-push and wait again.
-   Update this handoff with final SHA/jobs; no full local run solely for this push.
+1. Wait for the user to resume in the new session. Read the three planning files,
+   current AGENTS.md, Git refs/diff and worker/job state. Preserve this hidden
+   session block; append only a verified actual new parent session ID.
+2. Rerun full Checks workflow 38186542110 at runtime revision `9ab6f62b` using
+   `gh run rerun 38186542110`, then monitor all seven exact-SHA jobs. Fix actual
+   build/boot/command failures within this checkpoint, focused-test, commit/push
+   and wait again. No new runtime package before full required CI passes; no full
+   local suite solely for this earlier platform checkpoint.
 3. After that gate, continue goal 2's real install/storage/dependency consumer and
    Save integration under the documented firmware limit. Preserve incomplete work;
-   no helper-based ticks. Return to goal 1 only after its required foundation.
+   no helper-based ticks. At the completed main-goal gate follow the full local/CI,
+   README push, complete handoff and pause sequence in AGENTS.md. Goal 1 remains
+   the original objective, reached through its necessary prerequisites.
 
 ## Recovery record and limits
 
