@@ -92,6 +92,8 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Ownership and next package
 
+CI correction complete: `prerequisite_inventory` released `tests/test_native.py` for the confirmed GNU coreutils 9.3/9.4 `mv -n` host-fixture mismatch. Runtime admission stays strict; mandatory vendor mode uses actual applets unchanged. Parent owns receipts/metadata. Checks 38220488864 host behavior: 110 passed/6 failed/1 workstation-only skip; BusyBox skipped. `.tmp/native-admission-ci-failed-2.log`. Official coreutils v9.4 NEWS records nonzero/diagnostic on skipped `-n` and `--update=none` as the older silent-success equivalent. Corrected native/install integrated local gate: 41 passed/2 Linux skips, 50.17s plus all statics; `.tmp/native-admission-host-mv-fix.log`. Parent reviewed strict rejection regression and actual host adapter preserve/publish proof. Local GNU9.11 executes the adapter; automatic9.3/9.4 selection remains exact-CI proof. No later implementation may start before repaired exact CI.
+
 Active **S02.09 admission package**: `cfmgr.sh --install` → native bootstrap
 preflight must consume native path/options/CA and usable executable checks before
 JFFS publication. Preserve offline trusted-local installation: no mandatory external

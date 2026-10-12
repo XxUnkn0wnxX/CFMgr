@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.server
 import os
+import shlex
 import shutil
 import ssl
 import subprocess
@@ -27,13 +28,89 @@ package = install_package
 NATIVE = ROOT / "modules/lib/native.sh"
 
 
+def host_mv_adapter(actual: str, directory: Path) -> str:
+    """Host-only GNU compatibility adapter; never used for vendor applet proof."""
+    adapter = directory / "host-mv-silent-no-clobber"
+    quoted = shlex.quote(actual)
+    adapter.write_text(
+        "#!/bin/sh\n"
+        "# GNU 9.3/9.4 -n reports a skipped destination as failure.\n"
+        'if [ "$1" = -n ]; then\n'
+        '    [ "$#" = 3 ] || exit 2\n'
+        f'    exec {quoted} --update=none "$2" "$3"\n'
+        "fi\n"
+        f'exec {quoted} "$@"\n'
+    )
+    adapter.chmod(0o755)
+    return str(adapter)
+
+
+@pytest.fixture(scope="module")
+def host_mv_profile(
+    base_tools: dict[str, str],
+    tmp_path_factory: pytest.TempPathFactory,
+) -> tuple[str, str | None, bool]:
+    actual = base_tools["mv"]
+    if REQUIRE_BUSYBOX:
+        # Mandatory vendor proof must not even qualify a host compatibility tool.
+        return actual, None, False
+    version = subprocess.run(
+        [actual, "--version"], check=False, capture_output=True, timeout=2
+    )
+    assert len(version.stdout) + len(version.stderr) <= 8192
+    first = version.stdout.splitlines()[0] if version.stdout else b""
+    if not first.startswith(b"mv (GNU coreutils) "):
+        return actual, None, False
+    needs_adapter = first in (b"mv (GNU coreutils) 9.3", b"mv (GNU coreutils) 9.4")
+    directory = tmp_path_factory.mktemp("host-gnu-mv-qualification")
+    source, destination, published = (
+        directory / name for name in ("source", "destination", "published")
+    )
+    source.write_bytes(b"source survives\n")
+    destination.write_bytes(b"destination survives\n")
+    skipped = subprocess.run(
+        [actual, "--update=none", str(source), str(destination)],
+        check=False,
+        capture_output=True,
+        timeout=2,
+    )
+    supports_none = (skipped.returncode, skipped.stdout, skipped.stderr) == (
+        0,
+        b"",
+        b"",
+    )
+    if not supports_none:
+        assert not needs_adapter, (
+            "Required GNU mv host adapter lacks silent --update=none capability"
+        )
+        return actual, None, False
+    assert (
+        source.read_bytes() == b"source survives\n"
+        and destination.read_bytes() == b"destination survives\n"
+    )
+    moved = subprocess.run(
+        [actual, "--update=none", str(source), str(published)],
+        check=False,
+        capture_output=True,
+        timeout=2,
+    )
+    assert (moved.returncode, moved.stdout, moved.stderr) == (0, b"", b"")
+    assert not source.exists() and published.read_bytes() == b"source survives\n"
+    return actual, host_mv_adapter(actual, directory), needs_adapter
+
+
 @pytest.fixture(scope="module")
 def native_tools(
     base_tools: dict[str, str],
     shell: list[str],
     tmp_path_factory: pytest.TempPathFactory,
+    host_mv_profile: tuple[str, str | None, bool],
 ) -> dict[str, str]:
     result = dict(base_tools)
+    _, adapter, needs_adapter = host_mv_profile
+    if not REQUIRE_BUSYBOX and needs_adapter:
+        assert adapter is not None
+        result["mv"] = adapter
     for name in ("curl", "openssl", "rmdir"):
         actual = shutil.which(name)
         assert actual, f"Actual developer {name} is required for TLS capability proof"
@@ -221,7 +298,7 @@ cfmgr_prerequisites_attachment_ok() { return 0; }
             "LANGUAGE= CFMGR_FSYNC_FAULT=",
             "LANGUAGE= OPENSSL_CONF=/dev/null CFMGR_FSYNC_FAULT=",
         )
-    return subprocess.run(
+    result = subprocess.run(
         [
             *shell,
             "-c",
@@ -241,6 +318,20 @@ cfmgr_prerequisites_attachment_ok() { return 0; }
         timeout=15,
         env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
     )
+
+    if result.returncode != 0:
+        evidence = []
+        errors = sorted(context.glob("*.err"), key=lambda path: path.stat().st_mtime_ns)
+        for error in errors[-6:]:
+            with error.open("rb") as stream:
+                content = stream.read(256)
+            if content:
+                evidence.append(f"{error.name}: {content!r}")
+        pytest.fail(
+            f"Native fixture exit {result.returncode}; stdout={result.stdout[:512]!r}; "
+            f"stderr={result.stderr[:512]!r}; private synthetic evidence: {evidence}"
+        )
+    return result
 
 
 def test_source_is_inert(shell: list[str], tmp_path: Path) -> None:
@@ -721,7 +812,7 @@ def test_native_work_real_admission_continues_to_real_transaction(
     )
     result = host_install(
         shell,
-        base_tools,
+        {**base_tools, "mv": native_tools["mv"]},
         legacy_fsync,
         package,
         tmp_path,
@@ -774,3 +865,68 @@ cfmgr_native_https https://127.0.0.1:9/
         timeout=2,
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+def test_diagnostic_no_clobber_fails_and_real_adapter_or_vendor_passes(
+    shell: list[str],
+    native_tools: dict[str, str],
+    host_mv_profile: tuple[str, str | None, bool],
+    legacy_fsync: Path,
+    tls_material: Path,
+    tmp_path: Path,
+) -> None:
+    # Emulate the incompatible GNU skip status without weakening production
+    # admission; all other operations still execute the actual selected utility.
+    incompatible = tmp_path / "diagnostic-mv"
+    incompatible.write_text(
+        "#!/bin/sh\n"
+        'if [ "$#" = 3 ] && [ "$1" = -n ] && [ -e "$3" ]; then\n'
+        "    printf 'mv fixture: no-clobber skip is an error\\n' >&2\n"
+        "    exit 1\n"
+        "fi\n"
+        f'exec {shlex.quote(native_tools["mv"])} "$@"\n'
+    )
+    incompatible.chmod(0o755)
+    _, candidate, _ = host_mv_profile
+    # Exercise the host-only mapping even on newer GNU versions that already
+    # return zero for -n; required vendor mode uses its unmodified mv applet.
+    compatible = (
+        native_tools["mv"] if REQUIRE_BUSYBOX else candidate or native_tools["mv"]
+    )
+    if REQUIRE_BUSYBOX:
+        assert candidate is None
+        assert Path(compatible).resolve() == Path(shell[0]).resolve()
+    result = native_invoke(
+        shell,
+        native_tools,
+        legacy_fsync,
+        tmp_path / "failed-context",
+        tls_material / "trusted.pem",
+        r"""
+cfmgr_native_offline() { return 0; }
+cfmgr_install_mv=$1
+cfmgr_native_check "$cfmgr_install_context" "$test_curl" "$test_openssl" "$test_ca"
+[ "$?" = 1 ] && [ "$cfmgr_native_reason" = mutation-publish ] && [ "$cfmgr_native_ready" = 0 ] || exit 10
+[ ! -e "$cfmgr_install_context/native.directory" ] || exit 11
+cfmgr_install_context=$2
+mkdir -m 700 "$cfmgr_install_context"
+cfmgr_install_mv=$3
+cfmgr_native_check "$cfmgr_install_context" "$test_curl" "$test_openssl" "$test_ca" || exit 12
+[ "$cfmgr_native_ready" = 1 ] || exit 13
+""",
+        incompatible,
+        tmp_path / "good-context",
+        compatible,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    failed = tmp_path / "failed-context"
+    assert (failed / "native.source").read_bytes() == b"original\n"
+    assert (failed / "native.destination").read_bytes() == b"original\n"
+    assert any(
+        b"no-clobber skip is an error" in receipt.read_bytes()
+        for receipt in failed.glob("install-publish.*.err")
+    )
+    good = tmp_path / "good-context"
+    assert (good / "native.destination").read_bytes() == b"retained\n"
+    assert (good / "native.published").read_bytes() == b"original\n"
+    assert not (good / "native.source").exists()
