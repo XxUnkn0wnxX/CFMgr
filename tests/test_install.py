@@ -135,6 +135,8 @@ def install(
     *,
     fault: str = "clean",
     missing: bool = False,
+    script: str = HOST_TRANSACTION,
+    extra: tuple[Path | str, ...] = (),
 ) -> subprocess.CompletedProcess[bytes]:
     jffs = tmp_path / "jffs"
     opt = tmp_path / "opt"
@@ -174,10 +176,11 @@ def install(
         [
             *shell,
             "-c",
-            HOST_TRANSACTION,
+            script,
             "install-test",
             str(BOOTSTRAP),
             *map(str, arguments),
+            *map(str, extra),
         ],
         env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
         capture_output=True,
@@ -531,6 +534,7 @@ def test_native_install_routes_all_tool_admission_through_inventory(
 cfmgr_install_context=$2 cfmgr_install_source=$3 cfmgr_storage_opt=$2
 cfmgr_storage_source=/fixture/device
 cfmgr_bootstrap_retained() { return 0; }
+cfmgr_bootstrap_native_admission() { return 0; }
 cfmgr_test_enabled=$4; cfmgr_bootstrap_action() { cfmgr_install_output=$cfmgr_test_enabled; }
 cfmgr_test_empty=$5; cfmgr_prerequisites_run() { cfmgr_probe_exit=0; cfmgr_probe_stderr=$cfmgr_test_empty; }
 cfmgr_storage_uuid() { return 0; }

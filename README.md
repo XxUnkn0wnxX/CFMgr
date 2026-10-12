@@ -22,7 +22,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | Area | Intended implementation | Status |
 | --- | --- | --- |
 | [Product scope](PLAN_V2.md#1-product-scope-and-boundaries) | Independent DDNS, one Cloudflared tunnel and IP-Sync in a native shell CLI. | Planned |
-| [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | In progress — 1/9 accepted; storage guards and mount keeper passed focused CI |
+| [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | In progress — 1/9 accepted; native capability/TLS admission passed focused local tests, CI pending |
 | [Menus, settings and status](PLAN_V2.md#3-configuration-menus-and-status) | Separate setup and On/Off controls, a compact dashboard and full health diagnostics. | In progress — 1/10 accepted |
 | [Settings and recovery](PLAN_V2.md#4-save-cancellation-and-recovery) | Reviewed saves, resumable drafts, cancellation and safe interruption recovery. | Planned |
 | [Cloudflared setup](PLAN_V2.md#5-cloudflared-setup-and-credentials) | Token, guided and advanced credential/configuration paths with reviewed hostname routing. | Planned |
@@ -49,4 +49,5 @@ The current scope is CLI-only; a WebUI is optional future work.
 - [Product specification](PLAN_V2.md) · [Implementation checklist](PLAN_V2_checklist.md)
 - [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
 - [Temporary development notes](docs/development.md)
+- [Compatibility targets and evidence limits](docs/compatibility.md)
 - [GPL-3.0-or-later license](LICENSE.md) — Copyright (C) 2026 XxUnkn0wnxX.

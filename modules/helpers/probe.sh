@@ -44,6 +44,59 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
+native-curl-version)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -q -V
+	;;
+native-curl-offline | native-curl-https)
+	case "$mode:$#" in native-curl-offline:2) set -- "$1" "$2" http://127.0.0.1:9/ ;; native-curl-https:3) ;; *) exit 2 ;; esac
+	case "$1:$2" in /*:/*) ;; *) exit 2 ;; esac
+	case "$2" in *:*) exit 2 ;; esac
+	if [ "$mode" = native-curl-https ]; then case $3 in https://*) ;; *) exit 2 ;; esac fi
+	# One policy shared by offline option admission and the real HTTPS primitive.
+	# -q MUST be first: ignore every curlrc. No redirects, proxy, implicit trust,
+	# or environment-configured OpenSSL/loader state survives env-i launch.
+	exec "$tool" -q --silent --show-error --proto '=https' --proto-redir '=https' \
+		--tlsv1.2 --cacert "$1" --capath "$2" --proxy '' --noproxy '*' \
+		--connect-timeout 1 --max-time 1 --head --output /dev/null --write-out '%{http_code}\n' --url "$3"
+	;;
+native-ca-decode)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	exec "$tool" crl2pkcs7 -nocrl -certfile "$1" -out /dev/null
+	;;
+native-rmdir)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in "$context/native.directory") ;; *) exit 2 ;; esac
+	exec "$tool" "$1"
+	;;
+native-curl-features)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in "$context"/*) ;; *) exit 2 ;; esac
+	# shellcheck disable=SC2016
+	exec "$tool" '
+		NR==1 { if ($1!="curl" || $2 !~ /^[0-9]+[.][0-9]+[.][0-9]+/) bad=1 }
+		length($0)>4096 || NR>32 { bad=1 }
+		$1=="Protocols:" { protocols++; for (i=2;i<=NF;i++) if ($i=="https") https=1 }
+		$1=="Features:" { features++; for (i=2;i<=NF;i++) if ($i=="SSL") ssl=1 }
+		END { exit bad || protocols!=1 || features!=1 || !https || !ssl ? 1 : 0 }
+	' "$1"
+	;;
+native-ca-pem)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	# Framing/count is separate: OpenSSL can decode a zero-certificate bundle.
+	# shellcheck disable=SC2016
+	exec "$tool" '
+		length($0)>4096 || NR>32768 || $0 ~ /[^ -~]/ { bad=1; exit 1 }
+		$0=="-----BEGIN CERTIFICATE-----" { if (inside || ++certs>1024) bad=1; inside=1; bytes=0; padded=0; next }
+		$0=="-----END CERTIFICATE-----" { if (!inside || !bytes || bytes%4) bad=1; inside=0; next }
+		inside { if (padded || length($0)<1 || length($0)>76 || $0 !~ /^[A-Za-z0-9+\/]+(=|==)?$/) bad=1
+		  if (index($0,"=")) padded=1; bytes+=length($0); next }
+		$0!~/^ *$/ && $0!~/^#/ { bad=1 }
+		END { exit bad || inside || certs<1 ? 1 : 0 }
+	' "$1"
+	;;
 install-config)
 	[ "$#" -eq 7 ] || exit 2
 	case "$1" in /*) ;; *) exit 2 ;; esac

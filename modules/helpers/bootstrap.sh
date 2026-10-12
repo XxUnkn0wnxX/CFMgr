@@ -139,7 +139,7 @@ cfmgr_bootstrap_manifest() {
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/mountinfo.awk modules/helpers/bootstrap.sh modules/helpers/probe.sh"
+			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mountinfo.awk modules/helpers/bootstrap.sh modules/helpers/probe.sh"
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
 			if (bad || count<2) exit 1
 		}
@@ -505,10 +505,70 @@ EOF
 	return "$cfmgr_install_native_status"
 }
 
+# Fixed native tools/CA are root-protected through their resolved ancestry.
+# This admission precedes all JFFS publication; test adapters are private callers.
+cfmgr_bootstrap_native_protected() {
+	cfmgr_bootstrap_path "$1" && [ -f "$1" ] && [ ! -L "$1" ] || return 1
+	cfmgr_install_native_resolved=$("$cfmgr_install_readlink" -f "$1") || return 1
+	cfmgr_bootstrap_path "$cfmgr_install_native_resolved" && [ "$cfmgr_install_native_resolved" = "$1" ] || return 1
+	[ ! -L "$cfmgr_install_native_resolved" ] || return 1
+	cfmgr_bootstrap_metadata "$cfmgr_install_native_resolved" 0 protected || return $?
+	cfmgr_install_native_parent=${cfmgr_install_native_resolved%/*}
+	while [ -n "$cfmgr_install_native_parent" ]; do
+		cfmgr_bootstrap_metadata "$cfmgr_install_native_parent" 0 protected || return $?
+		[ "$cfmgr_install_native_parent" != / ] || break
+		cfmgr_install_native_parent=${cfmgr_install_native_parent%/*}
+		[ -n "$cfmgr_install_native_parent" ] || cfmgr_install_native_parent=/
+	done
+	if [ "$2" = executable ]; then [ -x "$cfmgr_install_native_resolved" ] || return 1; fi
+}
+
+# Finite direct-exec dispatcher shared with the prerequisite supervisor.
+# shellcheck disable=SC2034,SC2154 # Exports bounded native callback result fields.
+cfmgr_native_action() {
+	case $1 in
+	install-*) cfmgr_bootstrap_action "$@" || return $? ;;
+	native-*)
+		cfmgr_install_native_mode=$1
+		case $1 in
+		native-curl-version | native-curl-offline | native-curl-https) cfmgr_install_native_tool=$cfmgr_native_curl ;;
+		native-ca-decode) cfmgr_install_native_tool=$cfmgr_native_openssl ;;
+		native-curl-features | native-ca-pem) cfmgr_install_native_tool=$cfmgr_install_awk ;;
+		native-rmdir) cfmgr_install_native_tool=/bin/rmdir ;;
+		*) return 2 ;;
+		esac
+		shift
+		cfmgr_prerequisites_run "$cfmgr_install_native_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
+			"$cfmgr_install_source/modules/helpers/probe.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
+			"$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_install_native_tool" "$@" || return $?
+		;;
+	*) return 2 ;;
+	esac
+	cfmgr_native_output=$cfmgr_probe_stdout cfmgr_native_error=$cfmgr_probe_stderr cfmgr_native_exit=$cfmgr_probe_exit
+}
+
+# shellcheck disable=SC2154 # Explicit native library exports finite reason codes.
+cfmgr_bootstrap_native_admission() {
+	for cfmgr_install_native_path in /usr/sbin/curl /usr/sbin/openssl /rom/etc/ssl/certs/ca-certificates.crt; do
+		case $cfmgr_install_native_path in *.crt) cfmgr_install_native_kind=certificate ;; *) cfmgr_install_native_kind=executable ;; esac
+		if cfmgr_bootstrap_native_protected "$cfmgr_install_native_path" "$cfmgr_install_native_kind"; then :; else
+			cfmgr_install_native_check_status=$?
+			printf '[CFMGR] install: error: native path admission failed\n' >&2
+			return "$cfmgr_install_native_check_status"
+		fi
+	done
+	if cfmgr_native_check "$cfmgr_install_context" /usr/sbin/curl /usr/sbin/openssl /rom/etc/ssl/certs/ca-certificates.crt; then return 0; else
+		cfmgr_install_native_check_status=$?
+		printf '[CFMGR] install: error: native admission failed (%s)\n' "$cfmgr_native_reason" >&2
+		return "$cfmgr_install_native_check_status"
+	fi
+}
+
 # The outer admission function owns the single RAM claim and its cleanup.
 # shellcheck disable=SC2034,SC2154
 cfmgr_bootstrap_native_work() {
 	cfmgr_bootstrap_retained || return 1
+	cfmgr_bootstrap_native_admission || return $?
 	cfmgr_bootstrap_action install-nvram || return $?
 	IFS= read -r cfmgr_install_scripts_enabled <"$cfmgr_install_output" || return 1
 	[ "$cfmgr_install_scripts_enabled" = 1 ] || return 1

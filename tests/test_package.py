@@ -4,12 +4,75 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from test_prerequisites import shell as prerequisite_shell
 
 from tools import package as package_builder
+
+shell = prerequisite_shell
+
+
+def test_entry_clears_inherited_loader_and_transport_overrides(
+    shell: list[str],
+) -> None:
+    # Set pollution inside the already-started test shell: the application cannot
+    # undo the interpreter loader's startup, but must isolate subsequent children.
+    names = (
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "LD_AUDIT",
+        "GLIBC_TUNABLES",
+        "ENV",
+        "BASH_ENV",
+        "CURL_HOME",
+        "CURL_CA_BUNDLE",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+        "OPENSSL_CONF",
+        "OPENSSL_MODULES",
+        "https_proxy",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+    )
+    check = (
+        "import os; "
+        f"assert not any(name in os.environ for name in {names!r}); "
+        "assert os.environ['PATH'] == '/bin:/usr/bin:/sbin:/usr/sbin'"
+    )
+    child = '"$test_python" -c ' + shlex.quote(check) + " || exit 1"
+    script = (
+        "entry=$1; test_python=$2; "
+        + "export "
+        + " ".join(f"{name}=cfmgr-invalid-override" for name in names)
+        + "; PATH=/cfmgr-invalid-path; export PATH; "
+        + "trap "
+        + shlex.quote(child)
+        + " EXIT; "
+        + 'set -- --version; . "$entry"'
+    )
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "entry-boundary",
+            str(package_builder.ROOT / "cfmgr.sh"),
+            sys.executable,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"CFMgr 0.1.0 (development placeholder)\n",
+        b"",
+    )
 
 
 def source_tree(root: Path) -> dict[str, tuple[bytes, int]]:

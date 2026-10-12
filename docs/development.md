@@ -6,7 +6,8 @@ These tools run on the developer host or CI. Router runtime remains POSIX shell.
 
 ## Setup
 
-Use Python 3.11+, ShellCheck, a C99 compiler (`cc`), jq, GNU timeout and sha256sum.
+Use Python 3.11+, ShellCheck, a C99 compiler (`cc`), jq, GNU timeout, sha256sum,
+curl and OpenSSL for the local TLS fixtures.
 On macOS, host shell tests require Homebrew Bash at `/usr/local/bin/bash` and
 the GNU utilities supplied by Homebrew coreutils. Reuse the project `.venv`;
 create it if absent, then install pinned pytest, Ruff and shfmt:
