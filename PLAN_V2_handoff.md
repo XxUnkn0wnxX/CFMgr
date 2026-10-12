@@ -18,9 +18,10 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 ## Current task and route
 
 **Finish and pause:** the user now explicitly requests completion of **S02.05 and
-S02.08**, their focused local/exact CI gates, commit/push and a refreshed handoff,
-then pause. Do not start another target afterward. Full suites remain reserved for
-complete main-goal markers; this pause does not itself trigger a full suite.
+S02.08**, their focused local and exact full CI gates, commit/push and a refreshed
+handoff, then pause. Do not start another target afterward. The latest user rule
+adds rapid selected BusyBox diagnostics followed by full CI before CI-dependent
+subgoal acceptance or pause. Full local suites still wait for main-goal markers.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
 Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
@@ -46,7 +47,38 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current candidate: `060583128c750c3cf1f2baf13c0ca961396ee085`, pushed and
+- Local runtime correction: `c086f66970c93355b7e7316c679c36c2214fd832`, committed
+  after focused checks; not pushed alone. The rapid/full CI workflow package below
+  will accompany it. Prerequisite regressions also passed: **20 passed/3 Linux skips**.
+- Last remote candidate: `d809f5b3e7f3326428e98b4daf3a90695a0a7966`, pushed and
+  remote-verified. [Checks 38242571950](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38242571950)
+  failed vendor repair (**1 passed/1 failed**, 121.34s); host/static passed.
+  Receipt `.tmp/dependency-repair-ci-failed-7.log`: batching reached final claim
+  rmdir, whose successful removal invalidates the supervisor's own pathname
+  attachment check. No job remains active. The terminal `repair-retire` correction
+  is implemented and parent-reviewed: ordinary prelaunch admission remains; only
+  the launched final removal may accept deleted pinned FD5 with zero links, valid
+  preflight FD9 and the original RAM mount. Both runtime/test writers released
+  files. Consumer/dependency tests: **27 passed/18 Linux skips**; affected statics
+  pass. Platform tests: **40 passed**. Fixture `ls -L` now matches the hash-verified
+  baseline source config. Bounded failure receipts survive cleanup. New quick CI
+  below will first run retirement cases and the actual normal-repair case.
+- The user now authorizes a separate fast CI loop: an explicit quick-test push
+  runs only selected BusyBox test nodes using the existing verified cache, without
+  duplicating the host/acceptance run. Quick results are diagnostic, not subgoal
+  acceptance. The user clarified that normal Checks must run the **full suite**
+  before accepting CI-dependent subgoals or pausing; ordinary local-focused work
+  still commits and continues. Main Checks gains manual full-suite dispatch at the
+  candidate ref; the older focused-trailer route is retired. `focused_ci` completed
+  and released both workflows, shared verified BusyBox setup and bounded runner
+  selection/tests. Parent reviewed the changes. Direct runner tests: **26 passed**;
+  affected Ruff/format/compile, package/whitespace and YAML parsing passed
+  (`.tmp/quick-ci-validation.log`). Integrated runner attempts were interrupted in
+  all-tree ShellCheck before pytest; they supply no full-run receipt. Actionlint
+  is unavailable. No worker or local test remains active. Parent owns planning,
+  metadata and publication. Finish this CI prerequisite, then return to the same
+  S02.05/S02.08 repair tests and the agreed finish-and-pause boundary.
+- Previous candidate: `060583128c750c3cf1f2baf13c0ca961396ee085`, pushed and
   remote-verified. [Checks 38241095159](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38241095159)
   failed first vendor repair after **1 passed/1 failed**, 143.89s; host/static passed.
   Receipt `.tmp/dependency-repair-ci-failed-6.log`: view/keeper released, but individual
@@ -318,8 +350,9 @@ installer repair integration and focused tests, then stop/release files; no comm
 pushes, ticks, unrelated refactor or router execution. Notify parent before any
 interface change outside this ownership. Focused integration gate will include new
 dependency tests, prerequisites, install, native admission, storage/view/keeper and
-platform metadata. Linux mount/process tests require exact focused CI; no full
-suite is due. Native helper operations retain finite argv and separate long-action
+platform metadata. The latest CI rule above supersedes this package's older
+focused-only publication gate: quick diagnostics, then full CI before acceptance.
+Native helper operations retain finite argv and separate long-action
 state. Parent reviews source/call/failure paths before publication or next scope.
 No router execution or release/version/default-branch change is authorized here.
 `dependency_fixture` exclusively owns new `tests/test_dependency_consumer.py` for
@@ -541,9 +574,10 @@ Source pins and evidence for that decision:
    generation if later reviewed runtime changes invalidate it.
 2. Complete S02.08 saved-observation revalidation and eligible returning-work
    behavior through actual consumers. Preserve the settled storage policy above.
-3. Run focused local/statics, parent-review, commit/push. Required Linux/BusyBox proof
-   uses the focused CI route in AGENTS, then wait for exact green before advancing.
-   No full run or main-goal tick is due now. Update checklist/README gate status.
+3. Run focused local/statics, parent-review, commit/push. Use Quick Checks for rapid
+   Linux/BusyBox debugging, then full Checks at the final candidate before acceptance
+   or pause. Full local execution and a main-goal tick are not due. Update
+   checklist/README gate status.
 4. Once both agreed subgoals pass, update acceptance/README and the handoff, ensure
    no required worker or job remains active, and pause. Start no further target.
 

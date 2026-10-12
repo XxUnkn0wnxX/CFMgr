@@ -1,0 +1,124 @@
+name: Quick Checks
+
+on:
+  push:
+    branches: [develop]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.markdown'
+      - 'docs/**'
+      - '.images/**'
+      - '**/.gitkeep'
+  workflow_dispatch:
+    inputs:
+      test_nodes:
+        description: Space-separated pytest node IDs (up to eight)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick-checks:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          contains(github.event.head_commit.message, 'CFMgr-Quick-Tests') }}
+    name: Ubuntu 24.04 BusyBox diagnostics
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Select and validate quick test nodes
+        id: selection
+        env:
+          CFMGR_EVENT_NAME: ${{ github.event_name }}
+          CFMGR_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          CFMGR_DISPATCH_NODES: ${{ inputs.test_nodes }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          from tools.test import quick_selection
+
+          if os.environ.get("PYTEST_ADDOPTS", "").strip():
+              raise SystemExit("PYTEST_ADDOPTS must be empty for visible quick-test selection")
+          try:
+              nodes = quick_selection(
+                  os.environ.get("CFMGR_EVENT_NAME", ""),
+                  os.environ.get("CFMGR_COMMIT_MESSAGE", ""),
+                  os.environ.get("CFMGR_DISPATCH_NODES", ""),
+              )
+          except ValueError as error:
+              raise SystemExit(f"Invalid quick-test selection: {error}")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write("nodes=" + " ".join(nodes) + "\n")
+          PY
+
+      - name: Run lightweight planning and package checks
+        run: |
+          python3 tools/check.py
+          python3 tools/package.py --check
+          git diff --check
+
+      - name: Restore and verify developer tools
+        uses: ./.github/actions/setup-tools
+        with:
+          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl shellcheck sudo util-linux
+          python-tools: 'true'
+
+      - name: Prepare verified native vendor BusyBox
+        uses: ./.github/actions/setup-busybox
+
+      - name: Run selected pytest nodes (diagnostic only)
+        env:
+          CFMGR_QUICK_NODES: ${{ steps.selection.outputs.nodes }}
+          CFMGR_TESTED_SHA: ${{ github.sha }}
+        run: |
+          export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
+          .venv/bin/python - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          if os.environ.get("PYTEST_ADDOPTS", "").strip():
+              raise SystemExit("PYTEST_ADDOPTS must be empty for visible quick-test selection")
+          try:
+              from tools.test import validate_quick_nodes
+
+              nodes = validate_quick_nodes(os.environ.get("CFMGR_QUICK_NODES", ""))
+          except ValueError as error:
+              raise SystemExit(f"Invalid validated quick-test output: {error}")
+
+          print("DIAGNOSTIC ONLY — not main acceptance", flush=True)
+          print(f"Tested SHA: {os.environ['CFMGR_TESTED_SHA']}", flush=True)
+          print("Selected nodes: " + " ".join(nodes), flush=True)
+          environment = os.environ.copy()
+          environment["CFMGR_TEST_SHELL"] = "busybox ash"
+          environment["CFMGR_REQUIRE_BUSYBOX"] = "1"
+          environment["PYTEST_DISABLE_PLUGIN_AUTOLOAD"] = "1"
+          command = [
+              sys.executable,
+              "-m",
+              "pytest",
+              "-q",
+              "-ra",
+              "--strict-config",
+              "--strict-markers",
+              "--maxfail=1",
+              "--durations=5",
+              *nodes,
+          ]
+          raise SystemExit(subprocess.run(command, check=False, env=environment).returncode)
+          PY

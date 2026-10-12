@@ -269,47 +269,56 @@ def test_runner_bare_focused_keeps_tests_directory_selection(
     assert commands[-1][0][-1] == str(runner.ROOT / "tests")
 
 
-def test_focused_workflow_selection_defaults_to_full_and_ignores_pull_request_trailer(
+def test_quick_selection_accepts_final_push_trailer_and_manual_nodes(
     tmp_path: Path,
 ) -> None:
-    (tmp_path / "tests").mkdir()
-    (tmp_path / "tests/test_sample.py").write_text("", encoding="utf-8")
-    trailer = "CFMgr-Focused-Tests: tests/test_sample.py"
-    assert runner.focused_selection("push", "ordinary commit") == ("full", [])
-    assert runner.focused_selection("pull_request", trailer, root=tmp_path) == (
-        "full",
-        [],
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "test_sample.py").write_text("", encoding="utf-8")
+    nodes = (
+        "tests/test_sample.py::test_sample "
+        "tests/test_sample.py::test_parameterized[repair_case]"
     )
-    assert runner.focused_selection("push", trailer, root=tmp_path) == (
-        "focused",
-        ["tests/test_sample.py"],
-    )
+    assert runner.quick_selection(
+        "push", f"diagnose failure\n\nCFMgr-Quick-Tests: {nodes}", root=tmp_path
+    ) == nodes.split(" ")
+    assert runner.quick_selection(
+        "workflow_dispatch",
+        "CFMgr-Quick-Tests: ignored-on-dispatch",
+        nodes,
+        root=tmp_path,
+    ) == nodes.split(" ")
 
 
 @pytest.mark.parametrize(
     "message",
     [
-        "CFMgr-Focused-Tests:",
-        "CFMgr-Focused-Tests: tests/test_sample.py\nextra text",
+        "CFMgr-Quick-Tests:",
+        "CFMgr-Quick-Tests: tests/test_sample.py::test_sample\nextra text",
         (
-            "CFMgr-Focused-Tests: tests/test_sample.py\n"
+            "CFMgr-Quick-Tests: tests/test_sample.py::test_sample\n"
+            "CFMgr-Quick-Tests: tests/test_sample.py::test_sample"
+        ),
+        "CFMgr-Quick-Tests: tests/test_sample.py::test_sample; echo unsafe",
+        "CFMgr-Quick-Tests: tests/../test_sample.py::test_sample",
+        "CFMgr-Quick-Tests: tests/test_missing.py::test_sample",
+        "CFMgr-Quick-Tests: -k",
+        (
+            "CFMgr-Quick-Tests: tests/test_sample.py::test_sample\n"
             "CFMgr-Focused-Tests: tests/test_sample.py"
         ),
-        "CFMgr-Focused-Tests: tests/test_sample.py; echo unsafe",
-        "CFMgr-Focused-Tests: tests/../tests/test_sample.py",
-        "CFMgr-Focused-Tests: tests/test_missing.py",
     ],
 )
-def test_focused_workflow_selection_rejects_malformed_trailers(
+def test_quick_selection_rejects_malformed_or_conflicting_push_trailers(
     tmp_path: Path, message: str
 ) -> None:
     (tmp_path / "tests").mkdir()
     (tmp_path / "tests/test_sample.py").write_text("", encoding="utf-8")
     with pytest.raises(ValueError):
-        runner.focused_selection("push", message, root=tmp_path)
+        runner.quick_selection("push", message, root=tmp_path)
 
 
-def test_focused_workflow_selection_rejects_duplicate_and_symlink_paths(
+def test_quick_selection_rejects_duplicate_and_symlink_modules(
     tmp_path: Path,
 ) -> None:
     tests = tmp_path / "tests"
@@ -317,16 +326,24 @@ def test_focused_workflow_selection_rejects_duplicate_and_symlink_paths(
     sample = tests / "test_sample.py"
     sample.write_text("", encoding="utf-8")
     with pytest.raises(ValueError, match="distinct"):
-        runner.validate_focused_paths(
-            "tests/test_sample.py tests/test_sample.py", root=tmp_path
+        runner.quick_selection(
+            "workflow_dispatch",
+            dispatch_nodes=(
+                "tests/test_sample.py::test_sample tests/test_sample.py::test_sample"
+            ),
+            root=tmp_path,
         )
     link = tests / "test_link.py"
     link.symlink_to(sample)
     with pytest.raises(ValueError, match="regular file"):
-        runner.validate_focused_paths("tests/test_link.py", root=tmp_path)
+        runner.quick_selection(
+            "workflow_dispatch",
+            dispatch_nodes="tests/test_link.py::test_sample",
+            root=tmp_path,
+        )
 
 
-def test_focused_workflow_selection_rejects_empty_or_oversized_lists(
+def test_quick_selection_rejects_empty_or_oversized_lists(
     tmp_path: Path,
 ) -> None:
     tests = tmp_path / "tests"
@@ -337,9 +354,10 @@ def test_focused_workflow_selection_rejects_empty_or_oversized_lists(
         (tmp_path / name).write_text("", encoding="utf-8")
         paths.append(name)
     with pytest.raises(ValueError):
-        runner.validate_focused_paths("", root=tmp_path)
-    with pytest.raises(ValueError, match="1 to 16"):
-        runner.validate_focused_paths(" ".join(paths), root=tmp_path)
+        runner.quick_selection("workflow_dispatch", dispatch_nodes="", root=tmp_path)
+    nodes = " ".join(f"{path}::test_case" for path in paths[:9])
+    with pytest.raises(ValueError, match="1 to 8"):
+        runner.quick_selection("workflow_dispatch", dispatch_nodes=nodes, root=tmp_path)
 
 
 def test_runner_selects_full_busybox_suite_without_executing_it(

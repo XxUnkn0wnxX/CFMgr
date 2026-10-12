@@ -14,7 +14,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VENV_BIN = ROOT / ".venv" / "bin"
-FOCUSED_TRAILER = "CFMgr-Focused-Tests:"
+QUICK_TRAILER = "CFMgr-Quick-Tests:"
+QUICK_NODE = re.compile(
+    r"tests/test_[A-Za-z0-9_]+\.py::test_[A-Za-z0-9_]+"
+    r"(?:\[[A-Za-z0-9_.-]{1,64}\])?",
+    re.ASCII,
+)
 
 
 def validate_focused_paths(paths: str, *, root: Path | None = None) -> list[str]:
@@ -42,37 +47,58 @@ def validate_focused_paths(paths: str, *, root: Path | None = None) -> list[str]
     return selected
 
 
-def focused_selection(
-    event_name: str, commit_message: str, *, root: Path | None = None
-) -> tuple[str, list[str]]:
-    """Return a validated workflow mode and selection from the push trailer."""
+def validate_quick_nodes(nodes: str, *, root: Path | None = None) -> list[str]:
+    """Validate a bounded list of pytest node IDs and their regular test modules."""
+    root = ROOT if root is None else root
+    if not nodes:
+        raise ValueError("one to eight pytest node IDs are required")
+    selected = nodes.split(" ")
+    if len(selected) > 8 or any(not QUICK_NODE.fullmatch(node) for node in selected):
+        raise ValueError("expected 1 to 8 tests/test_NAME.py::test_NAME node IDs")
+    if len(set(selected)) != len(selected):
+        raise ValueError("quick test node IDs must be distinct")
+
+    for module in dict.fromkeys(node.split("::", 1)[0] for node in selected):
+        validate_focused_paths(module, root=root)
+    return selected
+
+
+def quick_selection(
+    event_name: str,
+    commit_message: str = "",
+    dispatch_nodes: str = "",
+    *,
+    root: Path | None = None,
+) -> list[str]:
+    """Read a quick-test trailer on push or explicit node input on dispatch."""
+    root = ROOT if root is None else root
+    if event_name == "workflow_dispatch":
+        return validate_quick_nodes(dispatch_nodes, root=root)
     if event_name != "push":
-        return "full", []
+        raise ValueError("Quick Checks supports push trailers and manual dispatch only")
 
     lines = commit_message.splitlines()
-    trailer_lines = [
-        (index, line)
-        for index, line in enumerate(lines)
-        if re.match(r"^\s*CFMgr-Focused-Tests(?:\b|$)", line)
+    marker = re.compile(r"^\s*CFMgr-Quick-Tests(?:\b|$)")
+    focused_marker = re.compile(r"^\s*CFMgr-Focused-Tests(?:\b|$)")
+    quick_lines = [
+        (index, line) for index, line in enumerate(lines) if marker.match(line)
     ]
-    if not trailer_lines:
-        return "full", []
-    if len(trailer_lines) != 1:
-        raise ValueError("exactly one CFMgr-Focused-Tests trailer is allowed")
+    if any(focused_marker.match(line) for line in lines):
+        raise ValueError("quick and focused CI trailers cannot be combined")
+    if len(quick_lines) != 1:
+        raise ValueError("exactly one CFMgr-Quick-Tests trailer is required")
 
-    index, line = trailer_lines[0]
+    index, line = quick_lines[0]
     nonempty = [position for position, value in enumerate(lines) if value.strip()]
-    if not line.startswith(FOCUSED_TRAILER) or not nonempty or index != nonempty[-1]:
-        raise ValueError("CFMgr-Focused-Tests must be the final nonempty trailer line")
-    value = line[len(FOCUSED_TRAILER) :]
+    if not line.startswith(QUICK_TRAILER) or not nonempty or index != nonempty[-1]:
+        raise ValueError("CFMgr-Quick-Tests must be the final nonempty trailer line")
+    value = line[len(QUICK_TRAILER) :]
     if not value.startswith(" "):
-        raise ValueError("CFMgr-Focused-Tests requires a space before its paths")
-    value = value[1:]
+        raise ValueError("CFMgr-Quick-Tests requires a space before its node IDs")
     try:
-        paths = validate_focused_paths(value, root=root)
+        return validate_quick_nodes(value[1:], root=root)
     except ValueError as error:
-        raise ValueError(f"invalid CFMgr-Focused-Tests selection: {error}") from error
-    return "focused", paths
+        raise ValueError(f"invalid CFMgr-Quick-Tests selection: {error}") from error
 
 
 def validate_local_targets(

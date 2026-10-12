@@ -17,6 +17,7 @@ on:
       - 'docs/**'
       - '.images/**'
       - '**/.gitkeep'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,6 +28,9 @@ concurrency:
 
 jobs:
   checks:
+    if: >-
+      ${{ github.event_name != 'push' ||
+          !contains(github.event.head_commit.message, 'CFMgr-Quick-Tests') }}
     name: Ubuntu 24.04 host and BusyBox checks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -50,97 +54,16 @@ jobs:
           apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl shellcheck sudo util-linux
           python-tools: 'true'
 
-      - name: Select full or authorized focused test paths
-        id: selection
-        env:
-          CFMGR_EVENT_NAME: ${{ github.event_name }}
-          CFMGR_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      - name: Prepare verified native vendor BusyBox
+        uses: ./.github/actions/setup-busybox
+
+      - name: Run full host suite and static checks
         run: |
-          python3 - <<'PY'
-          import os
-          from pathlib import Path
+          echo "FULL host checks for $GITHUB_SHA"
+          .venv/bin/python tools/test.py
 
-          from tools.test import focused_selection
-
-          try:
-              mode, paths = focused_selection(
-                  os.environ.get("CFMGR_EVENT_NAME", ""),
-                  os.environ.get("CFMGR_COMMIT_MESSAGE", ""),
-              )
-          except ValueError as error:
-              raise SystemExit(f"Invalid focused-test trailer: {error}")
-
-          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
-              output.write(f"mode={mode}\n")
-              output.write(f"paths={' '.join(paths)}\n")
-          print(f"Selected {mode.upper()} checks; paths: {' '.join(paths) or '(all tests)'}")
-          PY
-
-      - name: Identify native vendor BusyBox cache key
-        id: fixture
-        run: python3 tools/test_platforms.py --native-busybox --cache-keys >> "$GITHUB_OUTPUT"
-
-      - name: Restore verified native vendor BusyBox
-        id: busybox-cache
-        # actions/cache v4, official tag resolved 2026-10-12
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
-          key: platform-native-busybox-v1-${{ steps.fixture.outputs.busybox }}
-
-      - name: Build and stage native vendor BusyBox with fsync
-        run: python3 tools/test_platforms.py --native-busybox
-
-      - name: Run selected host suite and static checks
-        env:
-          CFMGR_TEST_MODE: ${{ steps.selection.outputs.mode }}
-          CFMGR_TEST_PATHS: ${{ steps.selection.outputs.paths }}
-        run: |
-          case "$CFMGR_TEST_MODE" in
-            focused)
-              IFS=' ' read -r -a focused_paths <<< "$CFMGR_TEST_PATHS"
-              echo "FOCUSED host checks: ${focused_paths[*]}"
-              .venv/bin/python tools/test.py --focused "${focused_paths[@]}"
-              ;;
-            full)
-              echo "FULL host checks"
-              .venv/bin/python tools/test.py
-              ;;
-            *)
-              echo "Invalid test mode: $CFMGR_TEST_MODE" >&2
-              exit 2
-              ;;
-          esac
-
-      - name: Run selected suite with mandatory BusyBox ash checks
-        env:
-          CFMGR_TEST_MODE: ${{ steps.selection.outputs.mode }}
-          CFMGR_TEST_PATHS: ${{ steps.selection.outputs.paths }}
+      - name: Run full suite with mandatory BusyBox ash checks
         run: |
           export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
-          case "$CFMGR_TEST_MODE" in
-            focused)
-              IFS=' ' read -r -a focused_paths <<< "$CFMGR_TEST_PATHS"
-              echo "FOCUSED BusyBox checks: ${focused_paths[*]}"
-              .venv/bin/python tools/test.py --focused "${focused_paths[@]}" --require-busybox
-              ;;
-            full)
-              echo "FULL BusyBox checks"
-              .venv/bin/python tools/test.py --require-busybox
-              ;;
-            *)
-              echo "Invalid test mode: $CFMGR_TEST_MODE" >&2
-              exit 2
-              ;;
-          esac
-
-      - name: Save completed native vendor BusyBox even after test failure
-        if: >-
-          ${{ always() && steps.fixture.outcome == 'success' &&
-              steps.busybox-cache.outputs.cache-hit != 'true' &&
-              hashFiles(format('.tmp/platform-cache/busybox/{0}/verified.json', steps.fixture.outputs.busybox)) != '' &&
-              hashFiles(format('.tmp/platform-cache/busybox/{0}/busybox', steps.fixture.outputs.busybox)) != '' }}
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .tmp/platform-cache/busybox/${{ steps.fixture.outputs.busybox }}
-          key: platform-native-busybox-v1-${{ steps.fixture.outputs.busybox }}
+          echo "FULL BusyBox checks for $GITHUB_SHA"
+          .venv/bin/python tools/test.py --require-busybox

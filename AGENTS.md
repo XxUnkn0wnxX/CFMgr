@@ -132,7 +132,7 @@ Use three separate progress measures:
   remaining work in meaningful updates and checkpoint/final reports. A focused local
   pass earns this progress credit while required CI acceptance remains explicitly
   pending. Skips, helpers and partial implementations earn none; if meaningful
-  focused execution is unavailable locally, wait for focused CI. Cap at **99%** until
+  focused execution is unavailable locally, wait for required CI. Cap at **99%** until
   all subgoals, audit, full local and exact full CI gates pass. Explain regressions;
   keep acceptance ticks and labelled package/workload estimates separate.
 
@@ -189,19 +189,20 @@ before packaging. Stable promotion, release publication and live deployment need
 separate authorization.
 
 Each subgoal requires written focused tests passing locally, relevant static/lint
-checks and parent review; required unavailable platform proof remains pending until
-exact focused CI. Keep focused-test results and outstanding acceptance gates in the
+checks and parent review; CI-dependent acceptance requires the full Checks suite at
+the exact candidate SHA. Keep focused-test results and outstanding gates in the
 checklist. Keep checkpoints coherent and partial status honest:
 
 | Checkpoint | Required sequence |
 | --- | --- |
 | Ordinary work with meaningful local proof | Focused local tests/statics → parent review → local commit → continue without pushing or pausing. |
-| Required focused proof unavailable locally | Run available focused checks/review → commit and automatically push → exact focused CI pass → continue. No repeat permission needed. |
-| Explicit pause after substantial subgoal work | Finish the subgoal → focused local checks/review → commit/push → exact focused CI pass → refreshed handoff and pause, as detailed below. |
+| Required proof unavailable locally | Available focused checks/review → commit/automatic quick push → repair through Quick Checks → full Checks pass before accepting the subgoal. No repeat permission needed. |
+| Explicit pause after substantial subgoal work | Finish the subgoal → focused local checks/review → commit/push → full Checks pass → checklist/README/handoff and pause. Repair failures through Quick Checks, then rerun full Checks. |
 | Complete main-goal marker | All subgoals → audit → full local → push → exact full CI → acceptance/README/handoff → pause. |
 
-Full suites run only at complete main-goal markers, not per helper/worker/subgoal
-or the retired 1%/10% cadence. A local commit alone is not a routine push trigger.
+Full **local** suites remain main-goal gates. Full **CI** also gates CI-dependent
+subgoal acceptance and requested pauses. Locally testable work still uses focused
+tests, commits and continued work; a local commit alone is not a push trigger.
 
 Mandatory main-goal checkpoint sequence:
 
@@ -211,17 +212,20 @@ Mandatory main-goal checkpoint sequence:
 3. Pass the full applicable local suite, then push the candidate.
 4. Pass full required CI for that **exact commit**, close remaining CI-dependent
    boxes and award the main-goal tick. Pending platform boxes may wait for this
-   push; already accepted focused subgoals do not trigger full suites themselves.
+   push; reuse applicable exact-candidate evidence without redundant full runs.
 5. Update and push README completion, fully refresh handoff for a new session and
    **pause**. Record exact evidence, main-goal and overall-subgoal counts/percentages,
    remaining work and rough next scope; do not start another main goal in that session.
 
-Focused pushes select the package and affected regressions through the validated
-CI route: the final nonempty commit-message line is `CFMgr-Focused-Tests:` followed
-by one to 16 distinct existing `tests/test_*.py` paths. Omit it for a full main-goal
-candidate; PRs always run full CI. Unavailable Linux/BusyBox proof stays pending until that exact CI passes;
-partial work earns no complete subgoal tick. If a required focused route is absent,
-add and validate it within the approved package instead of substituting a full run.
+For CI repair iterations, the separate **Quick Checks** workflow accepts a final
+`CFMgr-Quick-Tests:` trailer with one to eight validated test-node IDs, or manual
+dispatch. It runs only selected BusyBox diagnostics with the shared verified cache;
+the broad Checks job does not also run on that quick push. A quick pass permits
+continuing the same repair, but earns no acceptance tick or focused-complete credit.
+Before accepting a CI-dependent subgoal or pausing, dispatch full **Checks** at the
+candidate's exact SHA. The old `CFMgr-Focused-Tests:` CI selector is retired;
+ordinary pushes, PRs and manual Checks runs use the full suite.
+Never treat a skipped Checks job as passed. Invalid/ambiguous selections must fail.
 
 After **any authorized runtime checkpoint push**, wait for its exact prescribed CI
 before further implementation. On failure, fix, focused-test, commit/re-push and wait
@@ -235,8 +239,8 @@ During tracing or repair of a shared CI failure, retrieve the first useful faile
 log and cancel remaining redundant work promptly. This also applies if optional
 kernel diagnostics are explicitly run; keep multiple profiles only to investigate
 profile-specific differences. Optional kernel runs are not the acceptance gate.
-Cancelled jobs supply no proof; acceptance requires the prescribed focused or full
-Ubuntu checks green at the exact repaired SHA, according to the current gate.
+Cancelled jobs supply no proof; CI acceptance requires full Ubuntu Checks green
+at the exact repaired SHA.
 
 ## Mandatory main-goal audit
 
@@ -264,13 +268,13 @@ user approval and record the review/correction in checklist and handoff.
 
 ## CI requirements
 
-Keep **Checks** on develop pushes/PRs; exclude documentation, images and placeholders
+Keep **Checks** on ordinary develop pushes/PRs, with the explicit quick-push route
+above and manual full dispatch; exclude documentation, images and placeholders
 when they are the only changes. Retain planning consistency. Add actual code/test/
 tool/workflow paths, commands and dependencies **in the same
-package as new tests**. Main-goal runtime checkpoints run the full required suite;
-the early platform-proof exception runs its prescribed focused CI only. Preserve
-explicit, reviewable selection so a focused pass cannot be mistaken for the full
-main-goal gate. Later release-branch scope requires review.
+package as new tests**. Quick Checks supports rapid CI-only debugging; full Checks
+is the acceptance gate. Keep selections explicit so a diagnostic pass cannot be
+mistaken for acceptance. Later release-branch scope requires review.
 
 Use one Ubuntu CI runner for full host integration and cached native-host vendor
 BusyBox checks, including planning and static gates. These are representative
@@ -416,7 +420,7 @@ last acceptable checkpoint:
   subgoal, pass its written focused tests/static checks and parent review, fixing
   failures until they pass. Commit/push through the authorized pause checkpoint and
   wait for its exact required CI, repairing/re-pushing failures under the rules
-  above. Do not pause with failed/pending required CI. Full suites still require
+  above. Do not pause with failed/pending full CI. Full local suites still require
   a complete main-goal marker.
 
 Then update justified checklist/README status and refresh handoff for either a new
