@@ -162,7 +162,7 @@ case $case_name in
 dependency_retry)
 	: >"$cfmgr_storage_opt/fail-update"
 	if dependency_attempt failed; then fail 'failed update reported repair success'; else dependency_status=$?; fi
-	[ "$dependency_status" = 1 ] && [ ! -e "$view_ram/dependencies" ] || fail 'resolved update failure did not release claim'
+	if [ "$dependency_status" = 1 ] && [ ! -e "$view_ram/dependencies" ]; then :; else fail 'resolved update failure did not release claim'; fi
 	rm "$cfmgr_storage_opt/fail-update"
 	;;
 dependency_daemon) : >"$cfmgr_storage_opt/launch-daemon" ;;
@@ -179,9 +179,9 @@ esac
 if dependency_attempt final; then dependency_status=0; else dependency_status=$?; fi
 case $case_name in
 dependency_mixed)
-	[ "$dependency_status" = 3 ] && [ -d "$view_ram/dependencies" ] && [ "$cfmgr_view_pin_state" = active ] || fail 'mixed roots were not retained'
+	if [ "$dependency_status" = 3 ] && [ -d "$view_ram/dependencies" ] && [ "$cfmgr_view_pin_state" = active ]; then :; else fail 'mixed roots were not retained'; fi
 	IFS=' ' read -r mixed_pid mixed_tid <"$cfmgr_storage_opt/mixed.receipt"
-	[ "$mixed_pid" = "$dependency_observer" ] && [ -d "/proc/$mixed_pid/task/$mixed_tid" ] || fail 'foreign/mixed process was signalled'
+	if [ "$mixed_pid" = "$dependency_observer" ] && [ -d "/proc/$mixed_pid/task/$mixed_tid" ]; then :; else fail 'foreign/mixed process was signalled'; fi
 	[ ! -e "$view_ram/signals" ] || fail 'mixed-root uncertainty admitted a signal'
 	# Isolated test recovery owns this exact unreaped direct fixture child. This
 	# is not product authority to kill a mixed-root/service task.
@@ -200,7 +200,7 @@ dependency_daemon | dependency_threads)
 		[ "$dependency_pid" = "$dependency_tid" ] || fail 'daemon receipt changed'
 	else
 		IFS=' ' read -r dependency_pid dependency_tid <"$cfmgr_storage_opt/thread.receipt"
-		[ "$dependency_pid" != "$dependency_tid" ] && [ -f "$view_ram/thread.proof" ] || fail 'dead leader/live thread was not observed'
+		if [ "$dependency_pid" != "$dependency_tid" ] && [ -f "$view_ram/thread.proof" ]; then :; else fail 'dead leader/live thread was not observed'; fi
 	fi
 	if [ -d "/proc/$dependency_pid" ]; then
 		cfmgr_tasks_context=$cfmgr_install_context
@@ -215,17 +215,17 @@ dependency_daemon | dependency_threads)
 dependency_loss)
 	[ "$dependency_status" = 1 ] || fail 'lost attachment did not stop repair with resolved failure'
 	wait "$dependency_observer" || fail 'detach actor did not prove readonly fallbacks'
-	[ -f "$view_ram/loss.guards" ] && [ "$cfmgr_dependencies_reason" = storage-lost ] || fail 'loss reason/guard proof absent'
-	[ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_keeper_state" = released ] || fail 'loss cleanup retained live protection unexpectedly'
+	if [ -f "$view_ram/loss.guards" ] && [ "$cfmgr_dependencies_reason" = storage-lost ]; then :; else fail 'loss reason/guard proof absent'; fi
+	if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_keeper_state" = released ]; then :; else fail 'loss cleanup retained live protection unexpectedly'; fi
 	exec 0<&- 9<&-
 	printf 'PASS: production loss cancellation with readonly fallback\n'
 	return 0
 	;;
 *) [ "$dependency_status" = 0 ] || fail "normal installed opkg repair failed status=$dependency_status phase=${cfmgr_dependencies_phase:-unknown}" ;;
 esac
-[ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_pin_state:$cfmgr_keeper_state" = retired:released ] || fail 'repair retained protection after normal cleanup'
+if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_pin_state:$cfmgr_keeper_state" = retired:released ]; then :; else fail 'repair retained protection after normal cleanup'; fi
 [ -f "$cfmgr_storage_opt/bin/flock" ] || fail 'selected package was not installed'
-[ "$(cat "$cfmgr_storage_opt/operations" | tail -n 2)" = "$(printf 'update\ninstall flock')" ] || fail 'opkg dispatched unexpected package/phase'
+if [ "$(tail -n 2 "$cfmgr_storage_opt/operations")" = "$(printf 'update\ninstall flock')" ]; then :; else fail 'opkg dispatched unexpected package/phase'; fi
 # Fresh real post-probe of the selected installed CLI; original receipt survives.
 mkdir -m 700 "$view_ram/post"
 cfmgr_prerequisites_attachment_ok() { cfmgr_storage_attached; }
@@ -238,7 +238,7 @@ for dependency_mode in flock-first flock-compete flock-release flock-after flock
 	cfmgr_prerequisites_run "$dependency_mode" "$view_ram/post" "$view_ram/ash" "$root/modules/helpers/probe.sh" \
 		"$view_ram/env" "$view_ram/awk" /bin/sleep "$view_ram/wc" "$cfmgr_storage_opt/bin/flock" || fail 'fresh installed flock probe failed'
 	case $dependency_mode:$cfmgr_probe_exit in flock-compete:1 | flock-first:0 | flock-release:0 | flock-after:0 | flock-finish:0) ;; *) fail 'installed flock behavior incorrect' ;; esac
-	[ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || fail 'installed flock output incorrect'
+	if [ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ]; then :; else fail 'installed flock output incorrect'; fi
 done
 exec 4<&- 5<&- 0<&- 9<&-
 printf 'PASS: production dependency repair and normal ownership cleanup\n'

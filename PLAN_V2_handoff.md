@@ -46,7 +46,18 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current branch/local/remote receipt: `develop` at
+- Active repair candidate: `b85df486221a519cd291ebe31a1d92d50d7dfa7c`, committed,
+  pushed and remote-verified on `develop`. Exact focused
+  [Checks 38235446674](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38235446674)
+  failed Ubuntu ShellCheck before behavior; BusyBox checks were skipped. Receipt:
+  `.tmp/dependency-repair-ci-failed.log`. The two dependency shell fixtures now use
+  explicit conditionals and direct `tail`, preserving every assertion. Parent diff
+  review passed; `.venv/bin/pytest -q tests/test_dependencies.py`: **13 passed/7
+  Linux skips**. Relevant shell syntax, ShellCheck/shfmt, planning and whitespace
+  checks passed. Worker files are released; runtime bytes remain unchanged.
+  Re-push the same focused selection and require exact green before new runtime work.
+  No job is active or subgoal acceptance awarded.
+- Previous branch/local/remote receipt: `develop` at
   `008ad84d5e64592b9462af501b33d0b2aa714284`. The integrated repair package below
   is now in progress; prior failed runs and candidate instructions in this section
   are historical. No CI is active or owed for the accepted S02.09 runtime.

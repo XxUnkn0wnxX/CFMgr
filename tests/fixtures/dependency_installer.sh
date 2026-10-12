@@ -76,7 +76,7 @@ exec 0<"$cfmgr_install_context" 8<"$fixture/jffs" 9<"$installer_package"
 cfmgr_bootstrap_native_work || fail "actual native_work repair/publication failed phase=${cfmgr_dependencies_phase:-unknown}"
 [ "$(cat "$fixture/jffs/addons/CFMgr.d/setup-state")" = 'CFMGR-SETUP 1 0.1.0 complete' ] || fail 'unchanged transaction did not publish complete setup'
 cmp "$installer_package/cfmgr.sh" "$fixture/jffs/scripts/cfmgr.sh" || fail 'installer published different entry'
-[ ! -e "$view_ram/dependencies" ] && [ -f "$cfmgr_storage_opt/bin/flock" ] || fail 'installer repair did not clean its worker/install selected tool'
+if [ ! -e "$view_ram/dependencies" ] && [ -f "$cfmgr_storage_opt/bin/flock" ]; then :; else fail 'installer repair did not clean its worker/install selected tool'; fi
 cfmgr_bootstrap_cleanup || fail 'installer post-probe context did not clean'
 exec 8<&- 9<&-
 printf 'PASS: actual installer repair, fresh full probes and unchanged transaction\n'
