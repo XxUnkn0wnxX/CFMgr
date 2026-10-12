@@ -244,10 +244,14 @@ Actual Linux/GitHub proof is now accepted for this bounded cache package:
   `cache-warm-kernel-ci.json` and `ci-38190294055-*.log`. Full code proof remains
   `d71c813`; later documentation commits do not acquire that tested SHA's identity.
 
-The user requested AGENTS.md trimming. Parent reduced 33,235 bytes to 21,673 bytes;
+The user requested AGENTS.md trimming. Parent reduced 33,235 bytes to 20,892 bytes;
 read-only semantic review checked against `.tmp/agents-before-trim.md`, and parent
 restored explicit checklist/README table structure and combined-package checkpoint
 clauses. Approval, publication, progress, preservation and router boundaries remain.
+The new global `zr0-ci-optimization` skill and its GitHub Actions reference were
+reviewed; at the user's request, general cache/optimization rules were removed from
+local AGENTS.md. The skill owns that procedure alongside `zr0-test-efficiency`;
+CFMgr-specific CI coverage and acceptance/publication gates remain local.
 The final developer guide's CI optimization coverage is mirrored in S16.03; the
 current 53-line developer notes remain unchanged.
 

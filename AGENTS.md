@@ -196,7 +196,7 @@ location, difference, completion impact and correction. Fix and revalidate befor
 advancing; never rewrite scope to legitimize it. Keep newly gated decisions pending
 user approval and record the review/correction in checklist and handoff.
 
-## CI maintenance and shared caches
+## CI requirements
 
 Keep **Checks** on develop pushes/PRs; exclude documentation, images and placeholders
 when they are the only changes. Retain planning consistency. Add actual code/test/
@@ -206,18 +206,7 @@ later release-branch scope requires review.
 
 Adjust CI as approved tests grow, preserving coverage and modest resource limits.
 This adaptive permission applies only to CI, not agent rules, goals, acceptance or
-publication gates. Follow `zr0-test-efficiency`; keep setup and shared caches optimized
-alongside tests:
-
-- Reuse verified toolchains, dependency downloads, installed developer tools and
-  immutable kernel/BusyBox builds across eligible jobs/pushes.
-- Key caches by actual compatibility, pins and build parameters. Unrelated edits
-  should not rebuild them; changes invalidate only affected components.
-- Save complete verified setup before later test failures. Never cache mutable
-  guest disks, test state or secrets; required tests still run on fresh state.
-- Verify meaningful warm-cache hits and review setup/build costs when CI changes.
-  Cache misses use normal verified preparation, without weaker proof or needless
-  whole-environment rebuilds.
+publication gates. Global CI and testing skills own the general procedures.
 
 ## Delegation and integration
 
@@ -267,9 +256,8 @@ Until most/all goals are met, keep `docs/development.md` to required tools, setu
 built-in checks. Put progress, investigations, detailed fixture internals and pending
 proof in handoff. Complete practical architecture/developer/operating guides near
 readiness **before 100%**; do not grow interim notes into another handoff or preserve
-stale guidance to fill a file list. Final developer-guide coverage includes CI cache/
-workflow optimization under S16.03. No checkpoint/test/commit diary in operating
-guides. Documentation consistency alone proves neither behavior nor runtime safety.
+stale guidance to fill a file list. No checkpoint/test/commit diary in operating guides.
+Documentation consistency alone proves neither behavior nor runtime safety.
 
 ## Runtime and reference boundaries
 
