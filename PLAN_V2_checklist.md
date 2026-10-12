@@ -171,6 +171,11 @@ passed **62 tests, 4 Linux-only skips**, 31.26s, plus all planning/package/stati
 gates. The four skipped process/FD/locking cases require exact focused CI; this
 package earns no complete-subgoal box. Focused CI routing is tested separately
 from product behavior and preserves the full main-goal gate.
+Initial focused CI at `470e65046263f4eaad395858a9e20e572cd67652`,
+[Checks 38203771391](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203771391),
+failed before behavior on ShellCheck SC2015; BusyBox was skipped. Parent is
+correcting the condition without changing its behavior; exact corrected proof
+remains pending.
 
 ### 3. Configuration, menus and status
 

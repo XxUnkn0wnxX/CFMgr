@@ -68,6 +68,18 @@ exact run before further implementation. No full suite/main-goal gate is claimed
 Cost review uses the preceding 50-second warm Ubuntu job and current focused
 timings; caches/resources are unchanged, no extra measurement suite was run.
 
+Published foundation SHA: `470e65046263f4eaad395858a9e20e572cd67652`;
+remote `develop` matched after push. Focused [Checks 38203771391](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203771391)
+failed in the host static stage before behavioral tests: Ubuntu ShellCheck raised
+SC2015 on the new flock-output `A && B || { ...; }` condition. BusyBox tests were
+skipped, not passed. Parent owns the tiny explicit-if correction and regenerated
+manifest; focused prerequisite/static verification precedes a correction push with
+the same three-file CI selection. Failure log:
+`.tmp/prerequisite-inventory-ci-failed.log`. No redundant job remains running.
+Correction gate: `.venv/bin/python tools/test.py --focused tests/test_prerequisites.py`
+passed **20 tests, 3 Linux-only skips**, 2.49s, and all integrated static checks.
+Receipt: `.tmp/prerequisite-inventory-ci-fix-local.log`.
+
 - Active Goal 2: **1/9 accepted = 11.1%** (S02.03).
 - Supporting Goal 3: **1/10 accepted = 10%** (S03.01).
 - Product: **0/16 main goals = 0%**. No main-goal/README completion earned.

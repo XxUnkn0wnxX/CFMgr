@@ -419,10 +419,10 @@ cfmgr_prerequisites_check() {
 				break
 				;;
 			esac
-			[ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || {
+			if [ -s "$cfmgr_probe_stdout" ] || [ -s "$cfmgr_probe_stderr" ]; then
 				cfmgr_prereq_flock=unusable
 				break
-			}
+			fi
 		done
 		if [ "$cfmgr_prereq_flock" = usable ]; then
 			cfmgr_prereq_flock_provider=$cfmgr_prereq_candidate
