@@ -13,7 +13,7 @@ Fourth ID verified 2026-10-12 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
-[Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Working rules](AGENTS.md)
+[Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
 ## Current task and route
 
@@ -25,7 +25,7 @@ subgoal acceptance or pause. Full local suites still wait for main-goal markers.
 
 Latest user direction: practical acceptance, no hours-long pursuit of rare edges.
 Use judgement to relax incidental test details or defer rare low-risk diagnostics
-with a concise checklist criticality note, without pinging the user. Pursue common
+with a concise review-note entry, without pinging the user. Pursue common
 failures; raise a concrete blocker after two unsuccessful focused attempts.
 Escalate high-risk unresolved issues; if unanswered, record the question and pause
 after 3–5 minutes. AGENTS owns the

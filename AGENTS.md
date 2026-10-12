@@ -15,12 +15,16 @@ Read at session start/resume:
 | [PLAN_V2.md](PLAN_V2.md) | Product requirements, stable goal/subgoal IDs, behavior, edge cases and open decisions. |
 | [PLAN_V2_checklist.md](PLAN_V2_checklist.md) | Matching requirements, acceptance, totals/boxes, focused results, outstanding gates and concise accepted evidence. No diary, ownership, queue, next actions or publication authority. |
 | [PLAN_V2_handoff.md](PLAN_V2_handoff.md) | Current task/permissions, resumable state, owners/jobs, pending proof, blockers and next steps; replace stale notes. |
+| [PLAN_V2_review_notes.md](PLAN_V2_review_notes.md) | Only relaxed acceptance points and significant risks for later review. Mirror goal headings and subgoal descriptions; replace checkboxes with concise review notes. |
 
 Checklist mirrors the specification's main-goal/subgoal tables. The parent alone
-edits these three files. Preserve user decisions; make every approved plan change
+edits these four files. Preserve user decisions; make every approved plan change
 and matching checklist change together, checking both directions; update handoff
 when current work changes. Never rewrite requirements to fit code, weaken tests
-to manufacture compliance, or infer approval from a worker/handoff.
+to manufacture compliance, or infer approval from a worker/handoff. Keep review
+notes current when an exception is accepted, resolved or changes; omit unaffected
+goals, routine progress and session history. Link from checklist instead of copying
+the notes. Review notes neither change requirements nor waive unresolved serious failures.
 
 Significant objective, behavior, scope, accepted-edge-case changes or extensive
 feature rework need prior user approval. Explain the change, reason, tradeoffs
@@ -124,7 +128,7 @@ Reuse immutable setup and fresh mutable state. Prioritize boot-loop, router-hang
 unbounded-work, unsafe-write and serious-corruption failures. Keep mandatory CI
 small and focused; rare synthetic process/thread stress is optional diagnostic
 work. Relax incidental output/timing assertions or defer rare low-risk cases with
-a brief checklist note and no approval request. Pursue common failures; after two
+a brief review-note entry and no approval request. Pursue common failures; after two
 unsuccessful focused fixes or roughly 20 minutes on one CI issue, reassess its
 evidence and criticality. Raise a blocked common failure's concrete
 cause/impact. Ask about unresolved high-risk issues or significant behavior
@@ -269,7 +273,7 @@ No worker self-advancement.
 
 Apply `zr0-github-documentation` to repository Markdown, including AGENTS and
 plans: accurate claims, working links, sanitized paths and proportional detail.
-Workers may edit guides, never the three planning files.
+Workers may edit guides, never the four planning files.
 
 README is the implementation overview: concise warning, all 16 goals and their
 subgoals/scope/guide links; separate intended from available behavior. Progress

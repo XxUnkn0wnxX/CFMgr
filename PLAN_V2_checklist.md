@@ -1,6 +1,6 @@
 # CFMgr v2 — project checklist
 
-[Product specification](PLAN_V2.md) · [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
+[Product specification](PLAN_V2.md) · [Review notes](PLAN_V2_review_notes.md) · [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
 
 This checklist owns product acceptance and delivery status. The specification owns
 required behavior; the handoff owns current work and pending evidence; AGENTS.md
@@ -14,10 +14,10 @@ earn product ticks.
 **3 of 157 product subgoals accepted — 1.9% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
-static checks, parent review and any required exact-commit focused CI.
+static checks, parent review and full exact-commit Checks for CI-dependent acceptance.
 **Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
 local suite and exact full CI at the complete main-goal checkpoint. Subgoals do
-not trigger full suites. Publication and execution rules: [AGENTS.md](AGENTS.md).
+not trigger full local suites. Publication and execution rules: [AGENTS.md](AGENTS.md).
 
 **Development platform gate:** representative Ubuntu integration and native-host
 vendor BusyBox execution. Exact firmware/ARM/kernel-VM execution is not a required
@@ -29,8 +29,8 @@ to separately authorized real-router beta; support stays provisional.
 Each product subgoal below has separate **focused local** evidence and **final
 status**. Focused evidence means the relevant written tests passed, not merely
 syntax or smoke checks. Final subgoal status also requires any specific platform
-proof; unavailable BusyBox-dependent focused evidence remains pending until
-exact-commit focused CI (or the full main-goal CI gate) supplies that proof.
+proof; unavailable BusyBox-dependent evidence remains pending until full Checks
+at the exact candidate revision supplies it. Quick Checks alone earns no tick.
 
 A main goal needs every required subgoal complete, the codebase audit, and full
 local/full CI suites before its final tick. Product completion is the number of
@@ -134,10 +134,8 @@ CI-dependent subgoal acceptance and requested pauses require full Checks at the
 exact candidate revision. Local packages retain focused tests/commits; full local
 suites remain main-goal gates.
 
-Low-frequency diagnostic limit: dead-leader/live-thread and mixed-root stress
-cases are optional, explicitly selectable diagnostics. Normal repair/retry,
-bounded cancellation, drive loss and actual installer behavior remain required;
-full acceptance does not claim exhaustive process/thread stress coverage.
+Optional stress coverage and the script-created mount-alias limitation:
+[Goal 2 review notes](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies).
 
 ### 3. Configuration, menus and status
 
