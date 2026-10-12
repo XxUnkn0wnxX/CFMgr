@@ -37,12 +37,16 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
-- Branch: `develop`. Local documentation cleanup is committed as `ed9e899`.
-  Last verified published documentation receipt:
-  `67f0283e13024046d7746bafc36cb6d744204e9b`. Verify refs/status on resume; later
-  documentation commits do not change the tested runtime below.
-- Guarded-view package is implemented and parent-reviewed, awaiting its focused
-  runtime commit/push and exact CI. Combined local command below passed **103 tests,
+- Branch: `develop`; local/remote verified at guarded-view candidate
+  `793957b3ee80604cb25270d658db330eed1efd31`. Its focused
+  [Checks 38210733787](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38210733787)
+  failed on two Ubuntu ShellCheck SC2015 fixture conditions before behavior ran.
+  Explicit-condition correction passed the focused fixture runner (7 passed,
+  8 platform skips plus all statics); `.tmp/execution-view-ci-fix-local.log`.
+  Failed receipt: `.tmp/execution-view-ci-failed.log`. Re-push the correction with
+  the same five focused modules; no new implementation until exact CI passes.
+- Guarded-view package is implemented and parent-reviewed. Combined local command
+  below passed **103 tests,
   19 platform skips**, pytest 32.73s; all statics/planning/package checks passed.
   Receipt: `.tmp/execution-view-focused.log`. The fixture applet config changes
   the BusyBox cache key; existing warm CI was 48s, so this run includes a rebuild.
@@ -62,15 +66,15 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
   `.tmp/s03-01-focused.log`, `.tmp/s03-01-existing-ci.log` and
   `.tmp/platform-review/s02-03-ubuntu-{run.json,ci.log}`. Historical failures were
   corrected before their green runs; retained logs are diagnostic history only.
-- No CI or router job is active. No router action occurred in this package.
-  Writer ownership and completed review are listed below.
+- No CI or router job is currently active. No router action occurred in this package.
 
 ## Ownership and next package
 
 | Owner | Exclusive scope | Gate / stop condition |
 | --- | --- | --- |
 | Parent | Three plans, architecture, integration, metadata and CI config | Review storage-view contract, consumer boundary and focused evidence. No acceptance for a helper alone. |
-| `opkg_supervision_review` analyst | Read-only ownership follow-up | Assess dynamically changed task roots and safe handling of unknown roots under S02.05/S02.08; no edits/tests/router actions. Prior keeper source review is complete. |
+| `opkg_supervision_review` analyst | Completed read-only ownership review | Keeper, dynamic roots, mixed threadgroups and numeric-signal evidence limits recorded below; no implementation. |
+| `inventory_ci_wait` awaiter | Completed | Exact candidate failed; reuse to monitor the corrected run. |
 | `prerequisite_inventory` worker_strong | Completed; files released to parent | S02.05/S02.08 guarded-view construction/recheck/cleanup and Linux fixtures. Parent reviewed and combined local gate passed; real mount/chroot CI remains pending. No opkg launch or supervision consumer. |
 
 Consumer route: future installed-opkg repair from the existing installer/prerequisite
@@ -151,6 +155,16 @@ unknown ownership before launch. Positively identify kernel threads by PF_KTHREA
 retry transient exits within deadline, never infer live unreadable roots are foreign.
 Kernel evidence: Linux v4.1 `fs/namespace.c`, `fs/proc/{base,fd}.c`,
 `include/linux/{fs_struct,sched}.h`, `kernel/exit.c`.
+
+Parent-verified ownership refinements: classify pinned non-view mount roots too
+(existing Entware chroots need not remain unknown). Transfer an already-open root
+FD to the keeper while verifying/pinning visible owned ancestry; never reopen the
+pathname. Numeric `kill` affects the threadgroup: require all live threads owned
+or separately verified group provenance; mixed/unknown groups remain uncertain.
+Boot/start/root rechecks are observational, not atomic signal identity: Linux
+4.1.51 `kernel/{pid,signal}.c` allows PID reuse despite proc/root FDs; pinned ash
+`dowait` also reaps before builtins/functions. Do not claim delayed shell `wait`
+reserves a PID. Empty sweeps still require successful normal unmount for cleanup.
 
 Persistent package-script daemons count as continuing owned work, not direct-exit
 success. Bounded cancellation can make repair fail even after opkg exit zero; do not

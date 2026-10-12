@@ -273,7 +273,9 @@ cfmgr_execution_view_quiescent() {
 
 view_prepare() {
 	case $view_busybox in /*) ;; *) fail 'explicit selected vendor BusyBox is required' ;; esac
-	[ -f "$view_busybox" ] && [ -x "$view_busybox" ] || fail 'selected vendor BusyBox unavailable'
+	if [ ! -f "$view_busybox" ] || [ ! -x "$view_busybox" ]; then
+		fail 'selected vendor BusyBox unavailable'
+	fi
 	view_version=$("$view_busybox" 2>&1) || :
 	case $view_version in *'BusyBox v1.25.1'*) ;; *) fail 'selected BusyBox is not pinned vendor 1.25.1' ;; esac
 	view_native_root=$fixture/native
@@ -485,7 +487,9 @@ view_cleanup)
 		view_observer_wait=$((view_observer_wait + 1))
 	done
 	if cfmgr_execution_view_release; then fail 'busy owned mount was falsely released'; fi
-	[ "$cfmgr_view_state" = retained ] && [ -s "$cfmgr_view_context/expected.mounts" ] || fail 'busy release lost evidence'
+	if [ "$cfmgr_view_state" != retained ] || [ ! -s "$cfmgr_view_context/expected.mounts" ]; then
+		fail 'busy release lost evidence'
+	fi
 	"$view_busybox" mount -t tmpfs -o size=64k tmpfs "$cfmgr_view_root/opt"
 	if cfmgr_execution_view_release; then fail 'foreign layer was adopted for cleanup'; fi
 	"$view_busybox" umount "$cfmgr_view_root/opt"
