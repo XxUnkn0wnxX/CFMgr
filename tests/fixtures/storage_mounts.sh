@@ -333,17 +333,20 @@ view_action() {
 	esac
 }
 
-cfmgr_execution_view_native() {
+view_native() {
 	view_last_operation="$1 ${2:-}"
-	# Bounded foreground fixture commands; real production per-operation ownership
-	# supervision remains an explicit integration prerequisite, not this adapter.
+	# Bounded foreground view commands; layered dependency cases use this only for
+	# view construction/release while retaining real mounts and other callbacks.
 	if (
 		ulimit -f 4096
 		view_action "$@"
 	) >"$cfmgr_view_context/native.out" 2>"$cfmgr_view_context/native.err"; then
+		[ ! -s "$cfmgr_view_context/native.out" ] && [ ! -s "$cfmgr_view_context/native.err" ] || return 1
 		return 0
 	else return $?; fi
 }
+
+cfmgr_execution_view_native() { view_native "$@"; }
 
 # Fixed test adapter only: production callbacks require native supervision.
 cfmgr_mount_keeper_native() {

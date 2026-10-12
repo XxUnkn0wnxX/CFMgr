@@ -152,6 +152,11 @@ wall/CPU timings to locate the cost. Isolated CI groups may run concurrently;
 avoid duplicating heavy work already running. Optimize the slow groups, preserve
 required coverage, then pass exact full Checks before acceptance. Do not keep
 rerunning the whole suite to diagnose one slow group.
+For each Linux-dependent subgoal or substantial library package, run its own
+focused Quick Checks batch and review both correctness and measured runtime
+before adding it to the combined full gate. Split and optimize unexpectedly slow
+batches first; a quick pass alone does not establish acceptable cost. Reuse
+already-proved cheap groups instead of restarting unrelated tests during diagnosis.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
 format, Python compile, shell syntax, ShellCheck, shfmt, planning/link/whitespace

@@ -17,6 +17,29 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and route
 
+**Priority override:** bring 3D within the current roughly 3–4 minute batch target,
+then trim and rerun baseline first and 3C second to measure any saving. User accepts
+3A/3B and provisionally 3E. Do not start baseline/3C optimization before 3D is
+acceptable; then run the exact combined full gate before accepting S02.05/S02.08
+and pausing. No runtime writer is active.
+Standing amendment recorded in AGENTS: every new Linux-dependent subgoal or
+substantial library package needs its own focused Quick batch with runtime review
+before the combined full gate; split/optimize slow groups first.
+Cancellation of 3D is terminal. Its tests finished during cancellation: **21 passed,
+4 deselected in 434.51s**, but cancelled workflow supplies no acceptance. Case
+times: failed-update 98.96s, daemon 98.66s, loss 95.73s, installer 139.73s; remaining
+tests negligible. CPU 407.11s confirms work rather than a fixed wait/hang. Receipt
+`.tmp/quick-3d-cancelled.log`. Current batch target is roughly 3–4 minutes.
+Parent reviewed and integrated the released test-only layering refinement in
+`tests/fixtures/{dependencies,storage_mounts}.sh`: the three failure cases reuse
+the real foreground view-operation adapter, preserving exact nonzero status and
+quiet-success validation. Real mounts/keeper/task/loss/cancellation and production
+task/FIFO/signal/claim callbacks remain. Fresh/retained complete consumers retain
+production per-operation supervision. Worker proof: **20 passed, 20 Linux skips**;
+affected ShellCheck, shfmt, shell syntax and whitespace passed. Linux correctness
+and timing remain pending. Parent owns commit/push, 3D Quick proof and a 3C adapter
+regression run; no writer remains. Reduced coupling coverage is in review notes.
+
 **Latest user direction:** cancel full Checks `38267375410` for excessive duration
 (sent at about 12m30s). Diagnose each remaining stage separately through Quick
 Checks before another full attempt. No cancellation supplies acceptance. Keep
@@ -168,12 +191,24 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
+- Current candidate **`f9a0c0b42528de640d30e0897cac8a6ff37877d4`** is committed,
+  pushed and remote-verified. Quick `38269823553` checks the runner module;
+  manual Quick `38269840050` runs stages 1–2 host baseline. `inventory_ci_wait`
+  monitors both. After host success, launch the five disjoint BusyBox groups
+  together as explicitly requested; record IDs/timings and do not retry full yet.
+  Both passed: host baseline step **1m42s**, runner module subsecond. Parent
+  verified SHA and terminal success; receipt `.tmp/quick-host-baseline.log`.
+  Five BusyBox groups are now running concurrently at this unchanged candidate:
+  **3A** parsers/tools `38270185634`; **3B** native/prerequisites `38270189956`;
+  **3C** installation/storage `38270194791`; **3D** dependency repair `38270199354`;
+  **3E** retained launch `38270203604`. Exact module map `.tmp/quick-groups.json`
+  covers all 18 modules once. `inventory_ci_wait` monitors these only. No writers.
 - Candidate **`885dc5c1c15881c634c7420a42301394a7306f5c`** is committed, pushed
   and remote-verified on `develop`. Runtime is unchanged from `9e2563d`; subsequent
   code changes optimize tests/runner/workflows and isolate unit-test environment.
 - [Full Checks 38267375410](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38267375410)
-  is running at that exact candidate. Host/static passed in 1m49s; BusyBox started
-  15:05:15 UTC. `inventory_ci_wait` monitors only. Full acceptance remains pending.
+  was cancelled on explicit user instruction. Host/static passed in 1m49s;
+  BusyBox ran 15:05:15–15:17:08 UTC without a final pass. Full acceptance remains pending.
 - [Quick Checks 38267255894](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38267255894)
   passed **3 runner tests in 0.06s**, job 17s; parent verified exact SHA/job.
   Receipt `.tmp/optimized-runner-quick-pass.log`. All 30 runner tests also pass

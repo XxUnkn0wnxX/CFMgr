@@ -159,7 +159,15 @@ dependency_native_tool() {
 }
 cfmgr_dependencies_inside_tools() { dependency_inside_tools; }
 cfmgr_dependencies_native_tool() { dependency_native_tool "$@"; }
-cfmgr_execution_view_native() { dependency_native "$@"; }
+cfmgr_execution_view_native() {
+	case $case_name in
+	dependency_update_failure | dependency_daemon | dependency_loss)
+		# Layer view setup/cleanup only; task, keeper, ownership, signals and repair stay production-native.
+		view_native "$@"
+		;;
+	*) dependency_native "$@" ;;
+	esac
+}
 cfmgr_mount_keeper_native() {
 	[ "$1" = fifo ] || return 2
 	dependency_native fifo "$3"
