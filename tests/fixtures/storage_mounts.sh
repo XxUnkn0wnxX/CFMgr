@@ -396,15 +396,23 @@ view_prepare() {
 	done
 	ln -s /tmp/etc "$view_native_root/etc"
 	ln -s /tmp/mnt/usb/entware "$view_native_root/opt"
-	printf 'native regular file\n' >"$view_native_root/native-file"
+	case $case_name in
+	dependency_*) ;;
+	*) printf 'native regular file\n' >"$view_native_root/native-file" ;;
+	esac
 	printf 'configured file feed\n' >"$view_native_root/tmp/feed/Packages"
 	printf 'nameserver 127.0.0.1\n' >"$view_native_root/tmp/etc/resolv.conf"
 	mount --bind /dev "$view_native_root/dev"
 	mount --bind /proc "$view_native_root/proc"
 	mount --bind "$mount_dir" "$view_native_root/tmp/mnt/usb"
-	mkdir "$view_native_root/tmp/mnt/usb/entware/nested"
-	mount -t tmpfs -o size=64k tmpfs "$view_native_root/tmp/mnt/usb/entware/nested"
-	printf 'nested mount data\n' >"$view_native_root/tmp/mnt/usb/entware/nested/marker"
+	case $case_name in
+	dependency_*) ;;
+	*)
+		mkdir "$view_native_root/tmp/mnt/usb/entware/nested"
+		mount -t tmpfs -o size=64k tmpfs "$view_native_root/tmp/mnt/usb/entware/nested"
+		printf 'nested mount data\n' >"$view_native_root/tmp/mnt/usb/entware/nested/marker"
+		;;
+	esac
 	rm "$alias"
 	ln -s "$view_native_root/tmp/mnt/usb/entware" "$alias"
 	pin || fail 'execution fixture storage pin failed'

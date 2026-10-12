@@ -190,11 +190,27 @@ def _require_tool(name: str) -> str:
     return path
 
 
-def _static_checks(test_shell: list[str]) -> int:
-    python_files = _files(("modules", "tests", "tools"), (".py",))
+def _shell_files() -> list[Path]:
     shell_files = _files(("modules", "tests", "tools"), (".sh",))
     if (ROOT / "cfmgr.sh").is_file():
         shell_files.append(ROOT / "cfmgr.sh")
+    return shell_files
+
+
+def _shell_syntax_checks(test_shell: list[str]) -> int:
+    shell_files = _shell_files()
+    for path in shell_files:
+        code = _run([*test_shell, "-n", str(path)])
+        if code:
+            return code
+    if not shell_files:
+        print("SKIP shell syntax checks: no runtime shell files found.")
+    return 0
+
+
+def _static_checks() -> int:
+    python_files = _files(("modules", "tests", "tools"), (".py",))
+    shell_files = _shell_files()
 
     ruff = _require_tool("ruff")
     if python_files:
@@ -212,10 +228,6 @@ def _static_checks(test_shell: list[str]) -> int:
     if shell_files:
         shellcheck = _require_tool("shellcheck")
         shfmt = _require_tool("shfmt")
-        for path in shell_files:
-            code = _run([*test_shell, "-n", str(path)])
-            if code:
-                return code
         for command in (
             [shellcheck, *map(str, shell_files)],
             [shfmt, "-d", *map(str, shell_files)],
@@ -264,6 +276,11 @@ def _parse_args() -> argparse.Namespace:
         help="require BusyBox ash and run the selected suite; missing proof fails",
     )
     parser.add_argument(
+        "--reuse-static",
+        action="store_true",
+        help="reuse successful common checks from this job's host stage; requires --require-busybox",
+    )
+    parser.add_argument(
         "--include-diagnostics",
         action="store_true",
         help="include optional diagnostic pytest cases normally excluded from the required suite",
@@ -275,6 +292,10 @@ def main() -> int:
     args = _parse_args()
     if sys.version_info < (3, 11):
         print("Python 3.11 or newer is required.", file=sys.stderr)
+        return 2
+
+    if args.reuse_static and not args.require_busybox:
+        print("ERROR: --reuse-static requires --require-busybox.", file=sys.stderr)
         return 2
 
     if os.environ.get("PYTEST_ADDOPTS", "").strip():
@@ -327,19 +348,29 @@ def main() -> int:
         print(f"Host shell evidence: {env['CFMGR_TEST_SHELL']}.")
         print("Platform limit: BusyBox/Linux proof requires --require-busybox.")
 
-    for command in ([sys.executable, "tools/check.py"], ["git", "diff", "--check"]):
-        code = _run(list(command))
-        if code:
-            return code
+    if args.reuse_static:
+        print(
+            "Reusing successful planning, package, Ruff, compile, ShellCheck and "
+            "shfmt checks from the earlier host stage."
+        )
+    else:
+        for command in ([sys.executable, "tools/check.py"], ["git", "diff", "--check"]):
+            code = _run(list(command))
+            if code:
+                return code
 
-    if (ROOT / "cfmgr.sh").is_file():
-        code = _run([sys.executable, "tools/package.py", "--check"])
-        if code:
-            return code
+        if (ROOT / "cfmgr.sh").is_file():
+            code = _run([sys.executable, "tools/package.py", "--check"])
+            if code:
+                return code
 
-    code = _static_checks(selected_shell)
+    code = _shell_syntax_checks(selected_shell)
     if code:
         return code
+    if not args.reuse_static:
+        code = _static_checks()
+        if code:
+            return code
 
     try:
         __import__("pytest")
@@ -364,6 +395,7 @@ def main() -> int:
         "--strict-config",
         "--strict-markers",
         "--maxfail=1",
+        "--durations=10",
     ]
     if args.include_diagnostics:
         print("Pytest selection: required suite plus optional diagnostic cases.")

@@ -84,12 +84,16 @@ def _capture_runner(
         commands.append((command, env))
         return 0
 
-    def fake_static(shell: list[str]) -> int:
+    def fake_static() -> int:
+        return 0
+
+    def fake_syntax(shell: list[str]) -> int:
         static_shells.append(shell)
         return 0
 
     monkeypatch.setattr(runner, "_run", fake_run)
     monkeypatch.setattr(runner, "_static_checks", fake_static)
+    monkeypatch.setattr(runner, "_shell_syntax_checks", fake_syntax)
     monkeypatch.setattr(runner, "_default_shell", lambda: ["/bin/test-shell"])
     monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
     return commands, static_shells
@@ -157,7 +161,7 @@ def test_runner_stops_after_a_failed_static_gate(
         lambda command, **kwargs: commands.append(command) or 0,
     )
     monkeypatch.setattr(runner, "_default_shell", lambda: ["/bin/test-shell"])
-    monkeypatch.setattr(runner, "_static_checks", lambda shell: 7)
+    monkeypatch.setattr(runner, "_static_checks", lambda: 7)
     assert runner.main() == 7
     assert not any("pytest" in command for command in commands)
 
@@ -165,9 +169,15 @@ def test_runner_stops_after_a_failed_static_gate(
 def test_runner_default_keeps_full_tests_directory_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    commands, _ = _capture_runner(monkeypatch)
+    commands, shell_syntax = _capture_runner(monkeypatch)
     monkeypatch.setattr(sys, "argv", ["tools/test.py"])
     assert runner.main() == 0
+    assert [command for command, _ in commands[:3]] == [
+        [sys.executable, "tools/check.py"],
+        ["git", "diff", "--check"],
+        [sys.executable, "tools/package.py", "--check"],
+    ]
+    assert shell_syntax == [["/bin/test-shell"]]
     assert commands[-1][0][-1] == str(runner.ROOT / "tests")
 
 
@@ -220,9 +230,7 @@ def test_runner_package_check_fails_before_static_checks_and_pytest(
         return 0
 
     monkeypatch.setattr(runner, "_run", fake_run)
-    monkeypatch.setattr(
-        runner, "_static_checks", lambda shell: static_calls.append(shell) or 0
-    )
+    monkeypatch.setattr(runner, "_static_checks", lambda: static_calls.append([]) or 0)
     assert runner.main() == 12
     assert commands == [
         [sys.executable, "tools/check.py"],
@@ -254,8 +262,13 @@ def test_runner_passes_focused_path_and_keyword_to_pytest(
     assert pytest_command[:3] == [sys.executable, "-m", "pytest"]
     assert pytest_command[3:5] == ["-q", "-ra"]
     assert pytest_command[5:7] == ["--strict-config", "--strict-markers"]
-    assert pytest_command[7:10] == ["--maxfail=1", "-m", "not diagnostic"]
-    assert pytest_command[10:12] == ["-k", "password_auth"]
+    assert pytest_command[7:11] == [
+        "--maxfail=1",
+        "--durations=10",
+        "-m",
+        "not diagnostic",
+    ]
+    assert pytest_command[11:13] == ["-k", "password_auth"]
     assert pytest_command[-1] == str(runner.ROOT / "tests/test_router_probe.py")
     assert pytest_env is not None
     assert pytest_env["CFMGR_TEST_SHELL"] == "/bin/test-shell --posix"
@@ -400,3 +413,59 @@ def test_runner_selects_full_busybox_suite_without_executing_it(
     assert pytest_env is not None
     assert pytest_env["CFMGR_TEST_SHELL"] == "busybox ash"
     assert pytest_env["CFMGR_REQUIRE_BUSYBOX"] == "1"
+
+
+def test_runner_reuses_common_checks_but_keeps_busybox_syntax_and_suite(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    commands: list[tuple[list[str], dict[str, str] | None]] = []
+    common_checks: list[bool] = []
+
+    def fake_run(command: list[str], *, env: dict[str, str] | None = None) -> int:
+        commands.append((command, env))
+        return 0
+
+    monkeypatch.setattr(runner, "_run", fake_run)
+    monkeypatch.setattr(
+        runner, "_static_checks", lambda: common_checks.append(True) or 0
+    )
+    monkeypatch.setattr(
+        sys, "argv", ["tools/test.py", "--require-busybox", "--reuse-static"]
+    )
+    monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
+
+    assert runner.main() == 0
+    assert common_checks == []
+    assert commands[0][0] == ["busybox", "ash", "-c", ":"]
+    syntax_commands = [
+        command
+        for command, _ in commands
+        if command[:2] == ["busybox", "ash"]
+        and len(command) == 4
+        and command[2] == "-n"
+    ]
+    assert {Path(command[3]) for command in syntax_commands} == set(
+        runner._shell_files()
+    )
+    pytest_command, pytest_env = commands[-1]
+    assert pytest_command[-1] == str(runner.ROOT / "tests")
+    assert "--durations=10" in pytest_command
+    assert "not diagnostic" in pytest_command
+    assert pytest_env is not None
+    assert pytest_env["CFMGR_TEST_SHELL"] == "busybox ash"
+    assert pytest_env["CFMGR_REQUIRE_BUSYBOX"] == "1"
+    assert (
+        "Reusing successful planning, package, Ruff, compile, ShellCheck and shfmt checks"
+        in capsys.readouterr().out
+    )
+
+
+def test_runner_rejects_static_reuse_without_required_busybox(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    commands, _ = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--reuse-static"])
+
+    assert runner.main() == 2
+    assert commands == []
+    assert "--reuse-static requires --require-busybox" in capsys.readouterr().err

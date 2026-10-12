@@ -64,8 +64,15 @@ prerequisite in another goal. Goal 1 requires all three features and source pari
 not a menu skeleton. Dependency work earns only its proven credit.
 
 Keep shared support grouped by responsibility, not disconnected helpers or one
-monolith. Preserve partial work as WIP, record missing integration/tests, and do
-not invent smaller product subgoals or lower acceptance. Focused-tested partial
+monolith. Prefer simple designs covering normal operation and core failure risks;
+retain the edge cases explicitly required by the plan. Outside that scope, add only
+cheap useful safeguards or small interim mitigations automatically. Record critical
+limitations covered by those mitigations in review notes for later user review.
+If a critical gap cannot be covered by a small fix, ask the user and pause affected
+work under the hard-blocker rule. Prioritize planned goals and their required tests;
+avoid speculative frameworks. Actual required-behavior failures retain their gates.
+Preserve partial work as WIP, record missing integration/tests, and do not invent
+smaller product subgoals or lower acceptance. Focused-tested partial
 work may be committed honestly with boxes unchecked, but does not authorize a
 target switch. Review/checkpoint coherent packages before advancing. Preserve
 interruptions and known failures; never delete work to manufacture a clean pass.
@@ -135,6 +142,10 @@ cause/impact. Ask about unresolved high-risk issues or significant behavior
 changes; after 3–5 unanswered minutes, pause as above. Do not spend hours proving
 rare possibilities. Test counts are not targets; review cost before each develop
 push and after about three batches using existing timings, not extra full runs.
+Full CI, including setup, targets 10–15 minutes with a hard 20-minute ceiling,
+through product 100%. Remove redundant work and costly low-value variants before
+adding coverage; retain representative core safety proof. Do not raise the ceiling
+or hide a failure to meet it. Record measured cost using the required acceptance run.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
 format, Python compile, shell syntax, ShellCheck, shfmt, planning/link/whitespace

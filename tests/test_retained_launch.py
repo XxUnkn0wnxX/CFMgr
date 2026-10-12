@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import shlex
@@ -37,22 +36,8 @@ __all__ = [
 
 
 @pytest.fixture(scope="module")
-def retained_package(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    # Reuse the actual deterministic package functions on an isolated copy;
-    # repository catalog/manifest remain exclusively parent-owned.
-    spec = importlib.util.spec_from_file_location(
-        "retained_package_tool", ROOT / "tools/package.py"
-    )
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    package = tmp_path_factory.mktemp("immutable-retained-package")
-    shutil.copy2(ROOT / "cfmgr.sh", package / "cfmgr.sh")
-    shutil.copytree(
-        ROOT / "modules", package / "modules", ignore=module.ignore_finder_metadata
-    )
-    (package / "catalog.txt").write_bytes(module.catalog(package))
-    (package / "manifest.txt").write_bytes(module.manifest(package))
+def retained_package(package: Path) -> Path:
+    # Share the immutable actual package; launch_host creates fresh mutable state.
     return package
 
 

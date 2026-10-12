@@ -390,7 +390,7 @@ def test_linux_terminal_retirement_requires_the_pinned_claim_inode(
 @pytest.mark.parametrize(
     "case",
     [
-        "dependency_repair",
+        pytest.param("dependency_repair", marks=pytest.mark.diagnostic),
         "dependency_retry",
         "dependency_daemon",
         pytest.param("dependency_threads", marks=pytest.mark.diagnostic),

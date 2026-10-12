@@ -33,7 +33,7 @@ jobs:
           !contains(github.event.head_commit.message, 'CFMgr-Quick-Tests') }}
     name: Ubuntu 24.04 host and BusyBox checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Check out source
@@ -51,7 +51,7 @@ jobs:
       - name: Restore and verify developer tools
         uses: ./.github/actions/setup-tools
         with:
-          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo util-linux
+          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo time util-linux
           python-tools: 'true'
 
       - name: Prepare verified native vendor BusyBox
@@ -60,10 +60,10 @@ jobs:
       - name: Run full host suite and static checks
         run: |
           echo "FULL host checks for $GITHUB_SHA"
-          .venv/bin/python tools/test.py
+          /usr/bin/time -v .venv/bin/python tools/test.py
 
       - name: Run full suite with mandatory BusyBox ash checks
         run: |
           export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
           echo "FULL BusyBox checks for $GITHUB_SHA"
-          .venv/bin/python tools/test.py --require-busybox
+          /usr/bin/time -v .venv/bin/python tools/test.py --require-busybox --reuse-static

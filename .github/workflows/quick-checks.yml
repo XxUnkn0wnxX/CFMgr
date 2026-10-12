@@ -75,7 +75,7 @@ jobs:
       - name: Restore and verify developer tools
         uses: ./.github/actions/setup-tools
         with:
-          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo util-linux
+          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo time util-linux
           python-tools: 'true'
 
       - name: Prepare verified native vendor BusyBox

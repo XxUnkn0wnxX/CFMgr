@@ -23,6 +23,54 @@ handoff, then pause. Do not start another target afterward. The latest user rule
 adds rapid selected BusyBox diagnostics followed by full CI before CI-dependent
 subgoal acceptance or pause. Full local suites still wait for main-goal markers.
 
+Latest steering: optimize the whole existing suite before any new push/pause;
+the prior full Checks was cancelled on explicit user instruction for excessive
+duration. Parent owns runtime/coverage decisions. The read-only suite audit is
+complete; both optimization workers released their files and parent review passed.
+Preserve meaningful repair/loss/cancellation/corruption proof, exact full CI and
+fresh mutable fixture state. No new product target or additional edge-case suite.
+The user explicitly permits dropping or optionalizing costly rare edge variants;
+prioritize representative core failures over exhaustive combinations. Cheap tests
+need no churn. Record only actual relaxed coverage in the review-notes document.
+Full CI including setup must target 10–15 minutes and never exceed 20 minutes,
+including at product 100%. This is now a standing AGENTS rule; optimize before
+the final pause, measure the required run, and do not increase timeouts to fit bloat.
+Plan-specified edge cases remain required. Outside the plan, only cheap useful
+additions should be implemented automatically. Document critical residuals covered
+by small mitigations in review notes; if no small fix can cover a critical gap,
+ping the user and pause affected work under the hard-blocker rule. Goal delivery
+and planned tests remain the priority.
+
+User explicitly ordered cancellation of Checks `38262065257` at about 20 minutes;
+parent sent cancellation. It supplies no acceptance. Completed optimization package:
+`focused_ci` released `tools/test.py`, `tests/test_dev_runners.py`, and
+`.github/workflows/checks.yml` (common static checks once, retain BusyBox syntax,
+visible timings and 20-minute job limit). `dependency_fixture` released
+`tests/fixtures/storage_mounts.sh` and `tests/test_dependencies.py` (omit unused
+native-file/nested-mount variants for dependency cases, retain dedicated
+compatibility proof; standalone normal-repair wrapper becomes optional because
+retry success plus actual installer/retained consumers cover it). Parent owns all
+docs, integration/coverage review and the exact quick/full CI gates. No runtime
+changes, shared mutable test state, supervisor bypass or deadline reductions.
+Cancellation is terminal: host/static passed; BusyBox was cancelled at 14:39:50 UTC.
+The whole-suite audit covered all 18 test modules and relevant fixtures. Cheap
+parser/config/identity/runner/offline-tool tests remain; real publication,
+native/TLS admission, coalescence, corruption/interruption, keeper and storage
+failure cases establish distinct required behavior. No other large safely
+removable case cluster was found. Parent also replaced duplicate retained-package
+construction with the existing immutable package fixture; each test still creates
+fresh mutable installed state. No polling/cancellation grace was shortened.
+Integrated focused proof: runner/dependency/storage tests **50 passed, 16 Linux
+skips, 3 optional diagnostics excluded**; retained tests **14 passed, 1 Linux skip**.
+Affected lint/format/compile, shell syntax/ShellCheck/shfmt, YAML, planning/package
+and whitespace checks passed. Linux timing and behavior still require quick/full
+CI at the new candidate. Runtime code is unchanged from `9e2563d`.
+Conditional exception: the user permits a full local diagnostic run if optimization
+cannot isolate the remaining cost. Not triggered yet: the cancelled CI host suite
+passed 351 tests in 27.81s; Linux-only integration dominates and concrete reductions
+are implemented. A macOS run skips those mount cases, so it cannot replace Linux
+timing or acceptance proof.
+
 Latest user direction: practical acceptance, no hours-long pursuit of rare edges.
 Use judgement to relax incidental test details or defer rare low-risk diagnostics
 with a concise review-note entry, without pinging the user. Pursue common
@@ -78,7 +126,14 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current runtime candidate `cffc1a541a73d177ec216746a3351433ce136d94` is committed,
+- Current candidate `9e2563da53b836a9a51cedc66b94f7287af8f548` is pushed and
+  remote-verified. It pins CI ShellCheck 0.11.0 to match the workstation and contains
+  the reviewed shell annotation/conditional fixes below. [Quick Checks 38261906544](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38261906544)
+  passed **14 tests in 8.97s** and verified the pinned ShellCheck binary. Receipt
+  `.tmp/retained-shellcheck-quick-pass.log`. [Full Checks 38262065257](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38262065257)
+  is now running at this exact SHA; `inventory_ci_wait` only monitors it. No local
+  tests or writers are active. Wait for its final result before ticks/pause.
+- Previous runtime candidate `cffc1a541a73d177ec216746a3351433ce136d94` is committed,
   pushed and remote-verified, including the practical CI and review-note commits.
   [Quick Checks 38260092807](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38260092807)
   passed **17 tests in 344.93s**, including actual retained repair/return and fresh
@@ -581,11 +636,17 @@ emulation. Real Merlin/ARM/flash/hooks/TLS/provider qualification remains beta w
 Optional guest tooling/caches stay preserved and unaccepted. No new kernel matrix,
 installer execution, hardware acceptance or beta deployment is authorized.
 
-Use `.venv` and pinned dependencies. Local ShellCheck 0.11.0 differs from Ubuntu:
-portable explicit conditions avoid SC2015; intentional Linux `-ef` fixture checks
-have narrow SC3013 annotations. Package metadata regeneration after runtime edits:
-`.venv/bin/python tools/package.py --write`, then `--check`. Cost review uses existing
-48-second warm CI and local timings, not extra full measurement runs.
+Use `.venv` and pinned dependencies. CI ShellCheck is now pinned to local 0.11.0;
+older-version annotations remain narrow. Regenerate changed runtime metadata with
+`.venv/bin/python tools/package.py --write`, then `--check`.
+
+Cost follow-up after the agreed pause: quick receipt `38260092807` took 344.93s;
+fresh repair 170.28s and retained repair/return 165.50s consumed about 97%. Repeated
+real mount-view admission, process supervision and cleanup dominate; immutable tool
+setup is cached/fast. Full CI also repeats static checks across host/BusyBox stages.
+Inspect reuse and redundant validation from existing timings before adding cases;
+preserve fresh mutable state and actual safety assertions. No optimization package
+or extra timing-only suite is started at this checkpoint.
 
 ## Permissions, retained evidence and recovery
 
