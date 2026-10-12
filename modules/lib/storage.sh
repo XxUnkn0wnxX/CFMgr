@@ -142,6 +142,8 @@ EOF
 	fi
 }
 
+# Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
+# shellcheck disable=SC3013
 cfmgr_storage_attached() {
 	[ "${cfmgr_storage_pinned:-0}" = 1 ] || return 1
 	[ -d "$cfmgr_storage_opt" ] && [ -d "$cfmgr_storage_mount" ] &&

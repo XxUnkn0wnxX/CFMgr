@@ -112,23 +112,31 @@ launcher use stdlib. `.venv` pip check passed. Local ignored config validates.
    documentation-only receipt is not separately runtime-tested. Push receipt,
    fully refresh this handoff and pause with no active required jobs.
 
-## Current CI correction
+## Current CI corrections
 
-[Checks 38196136386](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38196136386)
-at `5492a7d` failed before runtime acceptance. Host metadata included a local
-ignored Finder `.DS_Store` absent from Git; package output must consistently omit
-regular Finder metadata while preserving unsafe-object rejection. portable_tools returned the corrected builder/tests; parent reviewed unsafe-object
-and metadata-only-directory rejection, then regenerated catalog/manifest.
+First candidate `5492a7d`, [Checks 38196136386](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38196136386),
+failed before runtime acceptance. Corrected at `9038a99410894153955e42f5082cbb94b959d35e`:
+regular Finder metadata no longer enters inventory/catalog/output; unsafe objects
+and metadata-only directories still fail before copying. Parent verified metadata
+in a clean Git export. Vendor BusyBox uses `CONFIG_VOLUMEID`; the invalid symbol
+was corrected. `FEATURE_BLKID_TYPE=n` matches baseline source and a brief read-only
+native query. UUID parser accepts absent TYPE based on verified mountinfo, while
+rejecting any supplied empty/conflicting TYPE. No router writes occurred.
+Repair focused gate: **28 passed, 134 deselected in 6.77s**, all static gates passed;
+`.tmp/s02-03-repair-focused.log`.
 
-Native/guest builds rejected nonexistent `CONFIG_FEATURE_VOLUMEID`; vendor source
-uses `CONFIG_VOLUMEID`. Parent fixes the fixture and explicitly disables optional
-`FEATURE_BLKID_TYPE`, matching the baseline. A brief read-only native query confirmed
-that baseline blkid prints UUID without TYPE. UUID parsing now accepts absent TYPE
-because admitted mountinfo already verifies filesystem; a supplied conflicting or
-empty TYPE still fails. Focused valid/invalid observation tests pass. No router
-write or runtime install was performed. Logs remain ignored under
-`.tmp/platform-review/s02-03-*.log`. Repair gate: **28 passed, 134 deselected in 6.77s**, with all runner static gates;
-`.tmp/s02-03-repair-focused.log`. Full exact CI remains required after corrections.
+Second candidate [Checks 38196367041](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38196367041)
+reached ShellCheck and kernel configuration. CI ShellCheck 0.9 reports SC2015 and
+SC3013 that local 0.11 accepts: parent made failure branches explicit and scoped
+the existing proven native BusyBox `test -ef` exception to descriptor functions.
+Focused gate: **46 passed, 3 Linux-only skips, 113 deselected in 6.80s**, with static
+checks (`.tmp/s02-03-lint-repair-focused.log`). Kernel admission correctly rejected
+missing JFFS2: both [4.1](https://raw.githubusercontent.com/torvalds/linux/v4.1/fs/Kconfig)
+and [4.19](https://raw.githubusercontent.com/torvalds/linux/v4.19/fs/Kconfig) require
+`MISC_FILESYSTEMS` before the JFFS2 option can remain enabled. Parent added that
+fixture dependency; its configuration regression passes. No guard was relaxed.
+Preserve restored/saved source/compiler/feed/BusyBox caches for the next attempt.
+Full exact CI remains pending; raw logs are `.tmp/platform-review/s02-03-*.log`.
 
 ## Retained evidence and known limits
 

@@ -30,7 +30,7 @@ case $busybox_banner in
 esac
 printf '%s\n' "CFMGR_KERNEL=$expected_kernel" "CFMGR_BUSYBOX=$expected_busybox:$expected_version"
 mount -t ext4 /dev/vda /mnt/cfmgr-scratch || fail ext4
-[ -d /mnt/cfmgr-scratch/feeds ] && [ -d /mnt/cfmgr-scratch/tmp ] || fail dirty-volume
+if [ ! -d /mnt/cfmgr-scratch/feeds ] || [ ! -d /mnt/cfmgr-scratch/tmp ]; then fail dirty-volume; fi
 # Definition-only sourcing must not create scratch state.
 set -- --define
 # shellcheck source=/dev/null
@@ -70,8 +70,8 @@ while read -r feed architecture jq_version coreutils_version flock_version dig_v
 	/bin/chmod 755 "/mnt/cfmgr-scratch/feeds/$feed/opt" || fail feed-mode
 	mount -o bind "/mnt/cfmgr-scratch/feeds/$feed/opt" /opt || fail feed-mount
 	[ "$(/opt/bin/jq --version)" = "jq-$jq_version" ] || fail jq-version
-	[ -L /opt/bin/timeout ] && [ "$(readlink /opt/bin/timeout)" = ../libexec/timeout-coreutils ] || fail timeout-alternative
-	[ -L /opt/bin/sha256sum ] && [ "$(readlink /opt/bin/sha256sum)" = ../libexec/sha256sum-coreutils ] || fail sha-alternative
+	if [ ! -L /opt/bin/timeout ] || [ "$(readlink /opt/bin/timeout)" != ../libexec/timeout-coreutils ]; then fail timeout-alternative; fi
+	if [ ! -L /opt/bin/sha256sum ] || [ "$(readlink /opt/bin/sha256sum)" != ../libexec/sha256sum-coreutils ]; then fail sha-alternative; fi
 	printf '%s\n' '{"values":[1,2]}' | /opt/bin/jq -e '.values[1] == 2' || fail jq-valid
 	if printf '%s\n' '{broken' | /opt/bin/jq -e '.'; then
 		fail jq-invalid
@@ -109,7 +109,7 @@ EOV
 	fi
 	# shellcheck disable=SC2012 # The script directory starts empty and is fixture-owned.
 	[ "$(ls -A /jffs/scripts)" = cfmgr.sh ] || fail install-feature-hooks
-	[ ! -e /opt/etc/cloudflared ] && [ ! -e /opt/var/log/cloudflared.log ] || fail install-feature-state
+	if [ -e /opt/etc/cloudflared ] || [ -e /opt/var/log/cloudflared.log ]; then fail install-feature-state; fi
 	/bin/cp /jffs/addons/CFMgr.d/config /cfmgr/config.expected || fail config-copy
 	/opt/libexec/sha256sum-coreutils -c /cfmgr/installed.sha256 || fail install-payload
 	if /bin/sh /cfmgr/package/cfmgr.sh --install; then fail reinstall-accepted; fi

@@ -1052,6 +1052,8 @@ def test_kernel_configuration_preserves_version_specific_required_symbols() -> N
         values = platforms.kernel_configuration(version)
         assert values["CONFIG_SMP"] == "y"
         assert values["CONFIG_FILE_LOCKING"] == "y"
+        for symbol in ("MTD", "MTD_BLOCK", "MTD_RAM", "MISC_FILESYSTEMS", "JFFS2_FS"):
+            assert values[f"CONFIG_{symbol}"] == "y"
         assert values["CONFIG_HW_RANDOM"] == "y"
         assert values["CONFIG_HW_RANDOM_VIRTIO"] == "y"
         assert values["CONFIG_STACKPROTECTOR"] == "n"

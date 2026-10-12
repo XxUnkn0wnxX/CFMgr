@@ -213,17 +213,17 @@ cfmgr_prerequisites_run() {
 		fi
 	fi
 	if [ -d "/proc/$cfmgr_probe_pid" ]; then
-		cfmgr_prerequisites_owned && [ "$cfmgr_identity_state" = Z ] || {
+		if ! cfmgr_prerequisites_owned || [ "$cfmgr_identity_state" != Z ]; then
 			cfmgr_probe_status=unresolved
 			return 3
-		}
+		fi
 	fi
 	if wait "$cfmgr_probe_pid"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
 	if [ "$cfmgr_probe_mode" = timeout-expiry ]; then
-		cfmgr_prerequisites_child && [ ! -d "/proc/$cfmgr_probe_child_pid" ] || {
+		if ! cfmgr_prerequisites_child || [ -d "/proc/$cfmgr_probe_child_pid" ]; then
 			cfmgr_probe_status=unresolved
 			return 3
-		}
+		fi
 	fi
 	cfmgr_prerequisites_attachment_ok || cfmgr_probe_reason=attachment
 	cfmgr_probe_status=reaped

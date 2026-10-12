@@ -358,6 +358,8 @@ cfmgr_bootstrap_signals() {
 	trap 'cfmgr_install_interrupted=1' HUP INT TERM
 }
 
+# Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
+# shellcheck disable=SC3013
 cfmgr_bootstrap_attached() {
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
 	cfmgr_storage_attached || return 1
@@ -402,6 +404,8 @@ cfmgr_bootstrap_admit_tool() {
 
 # Remove only the FD-pinned private, flat RAM context after all owned children
 # have been reaped. Unknown objects/ownership preserve the one active claim.
+# Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
+# shellcheck disable=SC3013
 cfmgr_bootstrap_cleanup() {
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
 	case $cfmgr_install_context_fd in 0 | 5) ;; *) return 1 ;; esac
