@@ -27,10 +27,19 @@ no required CI, local test process or router session remains active.
 
 Tested code is `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, published to `develop`.
 [Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754)
-passed its sole Ubuntu 24.04 job in **50 seconds**. The current documentation
-receipt records the resulting S02.03/tool ticks and pause; it is not another tested
-runtime revision. Verify `git log -2`, clean status and remote `develop` when
-resuming. No `main`, release, deployment or provider action was performed.
+passed its sole Ubuntu 24.04 job in **50 seconds**. Acceptance receipt
+`02063a4e40764d682dcdd917fa550ad0251a4f63` records the S02.03/tool ticks and pause.
+This subsequent handoff refresh records Actions cleanup only; documentation
+revisions are not new runtime-tested commits. Verify clean status, current `HEAD`
+and remote `develop` on resume, using the explicit tested/receipt SHAs above.
+No `main`, release, deployment or provider action was performed.
+
+At the user's request, **14 failed/cancelled kernel-CI runs were deleted** after
+acceptance. The successful approximate-machine run above, older successful runs
+and shared caches were preserved. Private deletion inventory/receipt:
+`.tmp/actions-cleanup-20261012.json`. Superseded failed-run URLs are no longer
+available; retained local diagnostics remain under `.tmp/platform-review/`.
+Do not recreate deleted runs or restart the obsolete matrix to rebuild history.
 
 ## Accepted platform and logging decisions
 
