@@ -12,163 +12,142 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint and stop boundary
+## Paused checkpoint
 
-**Active goal 2: installation, storage and dependencies.** S02.03 has the real
-trusted-local fresh-install consumer and passing focused local proof. Goal progress
-is **1/9 focused-passed = 11.1%**; final acceptance waits for the new exact Ubuntu
-CI gate. Overall product completion remains **0/16 = 0%**. Goal 2 is the announced
-prerequisite for original goal 1; supporting S02.04/S02.08/S02.09 work has no tick.
+**Active goal 2: installation, storage and dependencies — 1/9 accepted = 11.1%.**
+S02.03 now has accepted focused local and exact Ubuntu/BusyBox CI proof. Overall
+product completion remains **0/16 = 0%**. Goal 2 is the announced prerequisite for
+original goal 1; S02.04/S02.08/S02.09 supporting work remains partial and unchecked.
 
-The user authorizes this subgoal/tools checkpoint: focused checks, commit/push,
-required CI, concrete failure repairs/re-pushes, justified ticks and receipt, then
-fully refresh handoff and **pause for the day**. No next subgoal in this session.
-No README update: only main-goal completion affects its table. No full local run
-is required for this early checkpoint; later main-goal audit/full-local/full-CI
-requirements remain. No unanswered approval remains.
+The user requested one completed subgoal plus supporting tools, accepted CI and
+receipt, then **pause for the day**. This boundary is reached: do not start another
+package until resume. No main-goal audit/full local gate or README update belongs
+to this early checkpoint. No unanswered approval remains. All workers returned;
+no required CI, local test process or router session remains active.
 
-## Accepted validation change
+Tested code is `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, published to `develop`.
+[Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754)
+passed its sole Ubuntu 24.04 job in **50 seconds**. The current documentation
+receipt records the resulting S02.03/tool ticks and pause; it is not another tested
+runtime revision. Verify `git log -2`, clean status and remote `develop` when
+resuming. No `main`, release, deployment or provider action was performed.
 
-Latest explicit addition: developer-only diagnostics belong to new S13.14, with
-redacted main-process/all-module trace/verbose capture and dedicated CFMgr Scribe
-log copies in a global-config destination, regardless of feature On/Off. The
-destination has no CFMgr rotation/pruning/truncation/automatic cleanup; the user
-manages its contents. Preserve normal Scribe policies and safe mount-loss handling.
-Normal and developer logging must identify a relevant credential's type/purpose
-and mask any displayed value as `****` with at most a safe three-character suffix;
-short/structured secrets remain fully masked. No unmasked diagnostic exception.
-The user's intended
-beta destination is `/mnt/MERLIN/CFmgr`; do not hardcode or create it now. Default
-`manager.developer_log_directory=null`, gated by `manager.developer=false`.
-`portable_tools` returned `modules/lib/config.sh` and `tests/test_config.py` with
-that passive default; seven focused config tests passed. Parent owns metadata regeneration, focused
-integration and all planning documents. No diagnostic writer is implemented or
-accepted at this Goal 2 checkpoint; complete S13.14 before beta readiness.
+## Accepted platform and logging decisions
 
-The user explicitly replaced mandatory kernel/firmware VM CI with **one Ubuntu
-runner** for approximate integration and native-host vendor BusyBox checks. Real
-router use becomes the true beta after implementation is finished, with an
-extended beta and optional external testers. Product safety contracts remain;
-100% means implementation complete and ready for beta, not stable hardware
-qualification. Router/provider changes, beta deployment and publication still
-need their own authorization. PLAN_V2.md, checklist and AGENTS.md now mirror this
-change, including S02.09/S16 and the supporting platform-tool requirement.
+The user replaced mandatory kernel/firmware VM CI with **one approximate Ubuntu
+runner**, running host integration and native-host vendor BusyBox tests. Get close
+to the target without requiring exact Merlin emulation or every kernel/ARM profile.
+These checks are sufficient development acceptance. At implementation 100%, the
+integrated CLI and guides are ready for extended real-router beta, starting with
+the GT-AX11000; hardware/flash/hooks/TLS/provider qualification and optional other
+router testers follow. Keep support provisional; beta deployment and release still
+need explicit authorization. Runtime safety contracts remain required.
 
-Current workflow candidate runs planning, full host/static tests and full vendor
-BusyBox tests on one Ubuntu 24.04 runner. Python/APT and native BusyBox caches
-remain. No required ARM toolchain/feed downloads, kernel builds or VM boots. Retained
-QEMU tools/fixtures/caches are optional diagnostics; their cancelled/unverified
-runs do not become passes or block development ticks. During optional diagnostics
-or shared CI failure repair, collect the first useful failure and cancel redundant
-work promptly. Final acceptance always needs the prescribed exact CI green.
+Python/APT/native BusyBox caches are preserved; Python and BusyBox were cache hits
+in the accepted run. No required ARM downloads, compiler/kernel builds or VM boots.
+GCC is not compiled. Existing optional QEMU tools/fixtures/caches are preserved,
+not falsely passed or a development gate. During optional diagnostics/shared CI
+repair, retrieve the first useful failure and stop redundant work promptly.
 
-Latest published pre-change code is
-`bb8d5157bda2df6cd42a3e530e92a0662402e843`; its kernel-matrix
-[run 38199408002](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38199408002)
-was cancelled at the user's request and is **not accepted**. The single-runner
-workflow and mirrored docs are current uncommitted candidate work; verify Git
-state before resuming. All worker ownership returned; parent owns integration
-and planning files. `ci_tools` completed the final read-only workflow/cache review with no blocker;
-parent verified the integrated changes. No active worker or router session remains.
+New **S13.14** requires `developer.log` covering the main CFMgr process, every
+module, child results and trace/verbose/error/Off/stop paths, plus copies of CFMgr's
+dedicated Scribe logs. Only `manager.developer` gates capture; feature On/Off does
+not. The global `manager.developer_log_directory` selects the destination; no
+rotation, pruning, truncation or automatic cleanup there. The user manages the
+folder. Preserve Scribe's normal policies, captured history, safe mount checks and
+truthful I/O failure reporting. Developer Off stops new capture and preserves files.
 
-The old guest loop exposed fixture assumptions (BusyBox configuration, native
-sleep, whole-guest budget and Entware jq without regex). A guest completed its
-first native install/cleanup before the UUID assertion failed. Its replacement
-uses an exact synthetic filesystem UUID, but no complete current guest pass is
-claimed. Private logs remain `.tmp/platform-review/s02-03-*.log`; optional tool
-sources and firmware evidence are retained. Do not restart that matrix without
-an explicit diagnostic reason/request.
+Normal and developer output must identify a relevant credential's actual type and
+purpose. An eligible opaque token/key can show `****` plus at most its last three
+characters; short/structured/unsafe material stays fully masked. Never dump full
+credentials, raw authorization or private payloads, including child output/log
+copies. These rules are mirrored in S13.13/S13.14 and their acceptance.
 
-## Implemented consumer and limits
+Only the passive default `manager.developer_log_directory=null` is implemented;
+`manager.developer` remains false. No diagnostic writer is implemented or accepted.
+The intended personal beta destination is `/mnt/MERLIN/CFmgr`; never hardcode or
+create it now. Implement/test the actual capture during Goal 13 before beta readiness.
 
-- `cfmgr.sh --install` isolates the native environment and consumes a complete,
-  explicitly trusted local package. Preflight admits actual JFFS2, mounted ext2/3/4
-  Entware identity/UUID, native/Entware tools, private paths and practical space.
-  No public test-root override, remote acquisition or opkg repair exists yet.
-- `bootstrap.sh` checks complete inventory/catalog/manifest/modes/bytes, blocks
-  retained setup before defaults, claims a durable private recovery guard,
-  verifies copied package bytes and generated passive extensionless config,
-  publishes the entry and completion record last, and checks exposed flush errors.
-  Failed/repeated/corrupt/retained setup cannot reset configuration. No feature,
-  hook, service, provider or manager auto-update is activated.
-- Inert config/storage/prerequisite libraries and the finite probe helper support
-  that consumer. Source/JFFS/Entware/context descriptors are pinned and rechecked.
-  Signal handling cancels/reaps the owned writer before cleanup; unresolved work
-  retains recovery evidence. Context FD0 transfers to FD5 after flock probes,
-  before manifest loops. Native short waits use admitted `/bin/usleep`; firmware
-  floating-point sleep remains disabled in the fixtures.
-- Installed entry maps to `/jffs/scripts/cfmgr.sh`; support/catalog/manifest stay
-  under `/jffs/addons/CFMgr.d/` with nested module paths. Private defaults are code-
-  generated, not a distributed product config/template. Root-relative Entware
-  bind mounts are supported. Native blkid may omit TYPE; verified mountinfo is
-  authoritative and any supplied conflicting TYPE is rejected.
-- Optional guest fixtures run the unmodified entry on disposable RAM-MTD JFFS2 and ext4,
-  with real pinned Entware packages. They check passive config, exact volume
-  identity, private modes, installed bytes, repeated/corrupt/incomplete rejection
-  and cleanup. Only the JFFS script-enable NVRAM query is emulated. These are
-  limited generic kernel/BusyBox/Entware tests, not a complete Merlin emulator or
-  physical-router/flash acceptance. S02.09 native profile qualification remains.
+## Delivered consumer and remaining boundaries
 
-## Developer tools and validation
+- `cfmgr.sh --install` isolates native environment and consumes an explicitly
+  trusted complete local package. Preflight checks JFFS2, mounted ext2/3/4 Entware
+  identity/UUID, native/Entware tools, private paths and practical free space.
+- Bootstrap verifies inventory/catalog/manifest/modes/hashes, rejects retained
+  setup before defaults, claims a private recovery guard, generates mode-600
+  passive config, verifies copied bytes, and publishes the entry/completion last.
+  Failed/repeated/corrupt/incomplete installation cannot reset existing setup.
+- Source/JFFS/Entware/context descriptors are pinned/rechecked. Signals cancel/reap
+  the owned writer before cleanup; unresolved work retains recovery evidence.
+  Context FD0 moves to FD5 after flock probes and before manifest loops. Short
+  native waits use `/bin/usleep`; firmware fractional sleep is not assumed.
+- Entry installs to `/jffs/scripts/cfmgr.sh`; nested support/catalog/manifest live
+  under `/jffs/addons/CFMgr.d/`. No shipped product config/template. Actual mountinfo
+  is authoritative when native blkid omits TYPE; supplied conflicts are rejected.
+- No remote acquisition, opkg repair, retained recovery/update, feature menus,
+  provider/hook/service activation or manager auto-update is delivered yet. Save
+  is not implemented. Generated defaults alone do not close Goal 2 or Goal 3.
 
-Five approved supporting tools remain unchecked until the new required exact Ubuntu CI passes:
-planning checker, focused/full runner, platform runner, package builder and router
-probe tools. Parent reviewed their real consumers and failure paths.
+## Accepted evidence and review
 
-- Package builder checks deterministic complete mapping, safe inventory, byte
-  metadata and absent/empty output. Regular Finder metadata is omitted; unsafe
-  objects/metadata-only directories fail. Regenerate catalog/manifest after any
-  runtime source change with `tools/package.py --write`, then `--check`.
-- Portable router launcher reads ignored `tools/router.local.json`; fake template
-  documents KEY/USR and optional port. KEY uses normal SSH config/public keys;
-  USR requires private username/password and restricted ASKPASS. No password in
-  argv/environment/logs; unknown host keys are not accepted. Actual local config
-  uses KEY and blank username/password/port, inheriting existing SSH settings.
-  Config validation is local-only; this launcher has not run against the router.
-- Probe requires explicit execution, a selected mounted scratch directory, owned
-  artifacts/descriptor checks and verified cleanup preserving the base. Transport
-  tests use fixtures; Linux/BusyBox tests prove native descriptor behavior.
-- `.venv` uses pinned pytest/Ruff/shfmt from `requirements-dev.txt`; JSON/SSH tools
-  use Python stdlib. Dependency consistency passed; no JSON package is missing.
-  Developer notes remain short. README and full product guides are not completed.
+Exact CI above ran `.venv/bin/python tools/test.py` (**163 passed, 4 skips**, 7.88s)
+and, with native vendor BusyBox on PATH, `tools/test.py --require-busybox`
+(**166 passed, 1 skip**, 17.78s). All required planning, metadata, Ruff lint/format,
+compilation, shell syntax, ShellCheck, shfmt and whitespace gates passed. BusyBox
+ran native fsync/supervisor/cleanup cases skipped in host mode. The remaining Linux
+skip is specifically the workstation-without-`/proc` boundary, exercised locally.
+Private receipts: `.tmp/platform-review/s02-03-ubuntu-run.json` and
+`.tmp/platform-review/s02-03-ubuntu-ci.log`.
 
-Focused combined gate: **126 passed, 11 explicit Linux-only skips, 21 deselected,
-31.88s**; `.tmp/s02-03-focused.log`. Command:
+Latest focused local integration used:
 
 ```sh
-.venv/bin/python tools/test.py --focused tests -k 'install or prerequisite or mountinfo or config or router_probe or dev_runners or platform or package or probe or canonical_attachment or volume_uuid'
+.venv/bin/python tools/test.py --focused tests -k 'test_config or test_install or test_dev_runners or test_platforms'
 ```
 
-Later affected package/storage, installer/prerequisite and platform repairs passed
-focused gates. Latest focused integration selected config/install/developer-runner/platform tests:
-**73 passed, one Linux-only skip, one planning-fixture failure, 92 deselected** in
-26.77s. The new S13.14 increased the required subgoal count to 157; the synthetic
-planning fixture still had 156. After correcting that fixture, the affected
-`tests/test_dev_runners.py` gate passed **10/10** in 0.15s. Both invocations ran
-Ruff lint/format, compilation, shell syntax, ShellCheck, shfmt, package metadata,
-planning and whitespace checks. Logs are `.tmp/s02-03-ubuntu-focused.log` and
-`.tmp/s02-03-planning-fixture-focused.log`. No full local run.
+It returned **73 passed, 1 Linux-only skip, 1 failed, 92 deselected**, 26.77s.
+The failure was the synthetic planning fixture's old 156-row count after S13.14
+made 157; the corrected `tools/test.py --focused tests/test_dev_runners.py` passed
+**10/10**, 0.15s, with all static gates. CI then passed all corrected tests. Logs:
+`.tmp/s02-03-ubuntu-focused.log`, `.tmp/s02-03-planning-fixture-focused.log`.
+Earlier broad focused proof was **126 passed, 11 Linux-only skips, 21 deselected**
+in 31.88s (`.tmp/s02-03-focused.log`); later affected package/installer/platform
+repairs each passed their focused gate. No full local suite was run for this early
+checkpoint. Main-goal completion still requires its audit/full local/full CI gates.
 
-Previous candidate `0babd62d0e91873a5acaae2a6df83487c9e74d3d` passed full Linux
-host/static (**163 passed, 4 expected platform skips**, 5.35s) and required vendor
-BusyBox (**166 passed, one host-without-proc case skipped**, 18.06s). All mandatory
-native supervisor/fsync/cleanup cases ran. Logs:
-`.tmp/platform-review/s02-03-candidate-host.log` and `s02-03-candidate-busybox.log`.
-These receipts do not replace the new single-runner candidate CI. Earlier host adapters are
-labelled; they cannot establish native guest admission/attachment behavior.
+Parent reviewed the real entry/config consumer, failure paths, generated metadata,
+focused regressions, exact full CI and evidence limits. `ci_tools` returned the
+single-runner workflow/docs package and final cache/dependency review; parent
+restored the original KEY/USR probe instructions and kept `jq shellcheck` APT
+inputs. `portable_tools` returned the null default and seven passing config tests;
+parent shfmt/static integration closed its missing local tool check. Test cost is
+now the observed 50-second warm CI job, with no extra full run for timing.
 
-## Next actions
+The five approved developer tools are accepted in checklist for their listed
+proof: planning checker, focused/full runner, platform runner, package builder,
+and portable router probes. Optional guest boot proof remains separate/unaccepted.
+The runner uses pinned pytest/Ruff/shfmt; JSON/SSH configuration uses stdlib, so no
+missing parser dependency. `requirements-dev.txt` matches the development venv.
 
-1. Finish parent review of the single-runner workflow, concise developer notes and
-   mirrored plan/checklist/AGENTS change. Planning and whitespace must pass.
-2. Commit/push this authorized candidate; verify exact remote SHA and require the
-   one Checks job, both full test suites and static gates green. No old or cancelled
-   run supplies that receipt. Fix only concrete failures before moving forward.
-3. Tick S02.03 and fully proved tools under the approved automated gate. Record
-   tested full SHA/run, commands/results and deferred beta limits. Do not tick
-   Goal 2, unfinished multi-goal Vxx cases or README.
-4. Push a proportionately checked documentation receipt referencing tested code,
-   fully refresh handoff for a new session and pause with no required active jobs.
+Router tools use ignored mode-600 `tools/router.local.json`; fake tracked template
+supports KEY/USR and optional port. Current private config uses KEY with blank
+username/password/port and existing global SSH settings. Local config check passed;
+the launcher has not run against the router. Tests prove transport/auth/quoting and
+isolated native cleanup. Future live execution retains the router boundaries below.
+Package generation is `tools/package.py --write`, then `--check`; regenerate after
+runtime source changes. Regular Finder metadata is excluded; unsafe objects fail.
+
+## Resume path
+
+1. Verify this receipt, clean Git/remote state and no active worker/job. Do not
+   rerun the finished checkpoint or restart the optional kernel matrix.
+2. Resume remaining Goal 2 requirements using the plan/checklist and real consumers;
+   inspect S02.04/S02.08 foundations before selecting the next coherent package.
+   Record exact missing behavior and focused tests before assigning a writer.
+3. Keep S02.03/tool ticks scoped to the accepted development evidence. Goal 2,
+   multi-goal Vxx cases, all other subgoals and README remain incomplete. At a full
+   main-goal boundary follow audit → full local → exact full CI → ticks/README →
+   handoff/pause. Actual router/provider beta follows complete implementation.
 
 ## Retained evidence and limits
 

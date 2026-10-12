@@ -65,16 +65,33 @@ denominator.
 
 ## Accepted product evidence
 
-None yet: native storage prerequisites are being implemented, with current work
-and pending proof in the handoff. Final status for all 157 subgoals and the acceptance cases below
-remains unchecked. S02.03 has focused local proof; required CI is pending. Partial helpers and planning checks do not establish complete
-Save, feature, BusyBox/kernel or live router acceptance.
+**S02.03 accepted:** the real `cfmgr.sh --install` → bootstrap transaction →
+config generator creates a private extensionless config only for fresh setup.
+Written config/installer/package tests cover passive defaults, mode/byte checks,
+retained/repeated/corrupt/incomplete refusal and interrupted publication. This is
+trusted-local installation; remote acquisition, complete dependency repair and
+other installation subgoals remain incomplete.
 
-For each future accepted subgoal, record its actual consumer, focused test
-references/command and result, tested revision, and required exact platform CI
-run. Main-goal evidence also records the codebase audit, full local/full CI results
-and parent review, with the accepted revision.
-Current partial work, missing proof and next actions belong in the handoff.
+Tested code: `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`,
+[Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754).
+The single Ubuntu job passed planning/static checks, full host tests (**163 passed,
+4 platform skips**) and required vendor BusyBox tests (**166 passed, 1 skip**).
+The latter skip is the workstation-without-`/proc` boundary, covered locally;
+required native fsync, supervision and cleanup cases ran. Host tests approximate
+mount/transaction behavior; these results do not qualify Merlin/ARM/physical flash.
+
+Focused local command:
+`tools/test.py --focused tests -k 'test_config or test_install or test_dev_runners or test_platforms'`
+ran through `.venv/bin/python`: **73 passed, 1 Linux-only skip**, plus one planning
+fixture count failure. Correcting its old 156 count for approved S13.14 produced
+**10/10 passed** with `tools/test.py --focused tests/test_dev_runners.py` and all
+static gates. The exact CI above then passed the complete corrected suite. Earlier
+focused package/tool tests are recorded in handoff. No full local suite or main-
+goal audit is claimed for this authorized early checkpoint.
+
+Goal 2: **1/9 accepted = 11.1%**. Other product subgoals and multi-goal acceptance
+cases remain unchecked; none of the 16 main goals is complete. A later documentation
+receipt references this tested code revision and does not claim new runtime proof.
 
 ## Product goals and subgoal evidence
 
@@ -98,7 +115,7 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | --- | --- | --- | --- |
 | [ ] | [ ] | S02.01 | **Modular distribution:** One verified package with extensible feature modules, shared libraries grouped by reused responsibility and thin entry/hooks. |
 | [ ] | [ ] | S02.02 | **Private storage layout:** JFFS authority/recovery, RAM frequent state, verified Entware tunnel/log data, independent backup mount. |
-| [ ] | [x] | S02.03 | **Generated defaults:** Private extensionless config generated only for genuinely fresh setup; no shipped config/template. |
+| [x] | [x] | S02.03 | **Generated defaults:** Private extensionless config generated only for genuinely fresh setup; no shipped config/template. |
 | [ ] | [ ] | S02.04 | **Shared operational prerequisites:** Verified jq, timeout and SHA-256; native-first flock and tunnel-only DNS additions. |
 | [ ] | [ ] | S02.05 | **Normal dependency repair:** Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
 | [ ] | [ ] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
@@ -381,18 +398,24 @@ keep active work in handoff. New entries/scope require user approval.
 
 | Accepted | Tool | Required proof |
 | --- | --- | --- |
-| [ ] | Planning checker | Valid documents pass; misalignment, broken links and private paths fail. |
-| [ ] | Focused/full test runner | Correct selection, required static gates and truthful failure/skip handling. |
-| [ ] | Platform runner | Input/cache/staging/log-oracle tests and actual native-host vendor BusyBox execution in the required Ubuntu gate; retained QEMU/ARM paths have separate optional proof status. |
-| [ ] | Package builder | Deterministic complete package, correct mapping and manifest, unsafe/stale input rejection. |
-| [ ] | Router probe tools | Config/auth/quoting/status tests without live SSH; native admission, descriptor ownership and cleanup proof in isolated Linux/BusyBox fixtures. |
+| [x] | Planning checker | Valid documents pass; misalignment, broken links and private paths fail. |
+| [x] | Focused/full test runner | Correct selection, required static gates and truthful failure/skip handling. |
+| [x] | Platform runner | Input/cache/staging/log-oracle tests and actual native-host vendor BusyBox execution in the required Ubuntu gate; retained QEMU/ARM paths have separate optional proof status. |
+| [x] | Package builder | Deterministic complete package, correct mapping and manifest, unsafe/stale input rejection. |
+| [x] | Router probe tools | Config/auth/quoting/status tests without live SSH; native admission, descriptor ownership and cleanup proof in isolated Linux/BusyBox fixtures. |
 
 Router configuration acceptance includes explicit `KEY`/`USR` modes, blank unused
 credentials for key authentication, required username/password for `USR`, and
 blank/`null` port inheritance or an explicit integer port override.
 
-Only tools whose full listed proof is available receive ticks. This checkpoint may
-accept its delivered tools while unrelated or incomplete tooling remains pending.
+All five tools have their listed development proof at tested code
+`7ce3cad771a7cedb0e2f17e69082f9659655c5c5` and
+[Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754).
+Focused local tests cover checker/runner behavior, platform inputs/cache/oracles,
+package mapping/unsafe rejection and router configuration/auth/quoting/status.
+The full Ubuntu/vendor BusyBox suites prove required native descriptor/cleanup
+cases. The portable launcher has not been run on the live router; optional
+QEMU/ARM execution remains unaccepted. Tool ticks add no product progress.
 
 ## Open product decisions
 
