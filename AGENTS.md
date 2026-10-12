@@ -371,6 +371,10 @@ CFMgr WebUI is optional future work, outside current scope/checklist/percentage.
 
 Maintain accurate README scope and status throughout; link only to available
 guides. Keep interim developer/tool notes small until most or all goals are met.
+During implementation, keep `docs/development.md` to the required tools, setup
+and built-in check commands. Current progress, failure investigations, detailed
+fixture internals and pending evidence belong in handoff. Expand the complete
+developer guide at the 100% readiness gate, not incrementally into another handoff.
 README remains the implementation overview. Build full architecture,
 developer and operating guides near product readiness, before claiming 100%;
 do not preserve outdated guidance simply to satisfy a file list. Apply the same
