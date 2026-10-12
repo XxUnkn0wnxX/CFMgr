@@ -199,30 +199,34 @@ defer or report a blocker, never sufficient evidence that the source is useless.
 - Main-goal checkpoints replace the former 1%/10% cadence; a completed goal is the
   new publication milestone, not an invented numeric 1% increment. At a subgoal
   use focused tests, relevant lint/static/whitespace checks and parent review;
-  local commits may follow. Do not run full suites for each helper, worker or
-  subgoal merely because it finished.
+  each reviewed subgoal may be committed once its focused tests pass. Do not run
+  full suites for each helper, worker or subgoal merely because it finished.
 - Normal publication order is mandatory: **implement every required subgoal and
   pass its runnable focused local tests → audit the codebase, scope, accumulated
   tests/cost and docs → pass the full applicable local suite → push → pass full CI
-  for that exact commit → award final subgoal/main-goal ticks and README completion**.
+  for that exact commit → award final subgoal/main-goal ticks → update and push
+  README completion → fully refresh the handoff for a new session and pause**.
   Explicitly list any platform-only proof pending for that CI run. A candidate
   may be ready to push before those CI-dependent boxes can be ticked; this is not
   a circular requirement to obtain CI before the push that runs it. Keep the
   main goal and README incomplete until all required evidence is green.
 - An earlier subgoal push is eligible **only when most of that subgoal's required
   behavioral proof needs Linux/BusyBox/kernel execution unavailable locally**.
-  Explain that concrete dependency and obtain explicit user approval unless the
-  current user has already authorized early CI pushes under this condition;
-  an existing conditional authorization needs no repeat permission question.
+  The user has authorized commit/push/wait for these BusyBox/kernel CI checkpoints:
+  explain the concrete dependency, push the reviewed focused-tested package and
+  wait for its required CI. No repeat permission question is needed within this
+  authorization.
   Judge the meaningful focused proof, not a padded test count. A minority
   of platform cases, convenience or finishing a helper is insufficient. Otherwise
-  wait for the full main-goal candidate and local gate above. Judge substantive
-  proof, not a padded test count. An approved earlier push runs full CI and can
-  close only the fully proved subgoal; it needs no additional full local run just
-  for publication and cannot complete an unfinished main goal.
+  wait for the full main-goal candidate and local gate above. An approved earlier
+  push runs full CI and can close only the fully proved subgoal; it needs no
+  additional full local run just for publication and cannot complete an
+  unfinished main goal.
 - After any authorized runtime checkpoint push, require its exact prescribed CI
-  to pass before further implementation; fix/re-push failures within that same
-  checkpoint. This does not prevent dependency work before a goal is ready.
+  to pass before further implementation; if it fails, fix, commit, re-push and
+  wait again until the required exact-commit checks pass. Keep CI paths, jobs and
+  dependencies current as tests grow. This does not prevent dependency work
+  before a goal is ready.
   Record accepted test/run SHAs with the ticks. A later checklist/README-only
   receipt references the tested code commit and remains documentation evidence;
   never imply its new SHA was already tested. Such receipts may follow within the
@@ -231,8 +235,10 @@ defer or report a blocker, never sufficient evidence that the source is useless.
   reuse and cost decisions. Pass it to each test-writing agent.
 - After each completed main-goal checkpoint, record a clean handoff with exact
   evidence, completed/16 percentage, remaining requirements and rough next scope.
-  Continue authorized work subject to explicit pause/session/publication gates;
-  do not invent numeric 1% or 10% checkpoints or stop after an internal package.
+  After the accepted goal and README receipt are pushed, fully refresh handoff for
+  a new session and **pause**; do not start the next main goal in that session.
+  This user-requested pause is at the completed main-goal boundary, not after
+  internal packages or invented numeric 1%/10% checkpoints.
 - Assign the first release version at usable 100%, then beta. No milestone version
   bumps; settle beta ordering/upgrade rules before packaging. Stable promotion,
   release publication and live deployment require separate authorization.

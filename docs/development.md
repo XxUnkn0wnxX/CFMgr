@@ -82,6 +82,11 @@ This explicit build uses the shared vendor source/configuration and separate
 native compiler/cache identity. It does not require an ARM compiler, download
 kernel or Entware packages, or boot a guest.
 
+The isolated vendor build supplies a fixture `rtconfig.h` with no router board
+flags; firmware normally generates that header. Vendor applet source stays
+unchanged. These generic-machine builds do not test board-specific firmware
+branches or replace exact firmware capability checks.
+
 ## Kernel and Entware fixtures
 
 The platform manifest pins upstream Linux 4.1.51, 4.1.52, 4.19.183 and 4.19.294,
@@ -118,8 +123,8 @@ kernel images and downloads are cached under `.tmp/platform-cache/`. Build trees
 and fresh guest logs remain under `.tmp/platform-builds/` and
 `.tmp/platform-runs/`; cache hits still verify artifact hashes. Completed verified
 BusyBox/kernel builds remain cached even if later tests or a guest fail.
-Guest/runtime test changes reuse compiled images when their build inputs are unchanged. Host focused
-checks never invoke these builds or guests.
+Guest/runtime test changes reuse compiled images when their build inputs are
+unchanged. Host focused checks never invoke these builds or guests.
 
 ## CI gate
 

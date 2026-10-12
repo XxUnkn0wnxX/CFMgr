@@ -7,6 +7,7 @@ import gzip
 import hashlib
 import io
 import json
+import re
 import tarfile
 from pathlib import Path
 
@@ -297,6 +298,47 @@ def test_native_compiler_and_cache_identity_are_separate_from_arm(
         platforms, "compiler_identity", lambda target="arm": b"changed compiler"
     )
     assert platforms.build_key("busybox", item, target="native") != native
+
+
+def test_generic_header_staging_preserves_vendor_source_and_invalidates_only_busybox(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    for name in ("busybox.config", "kernel.config", "busybox-support/rtconfig.h"):
+        target = fixtures / name
+        target.parent.mkdir(exist_ok=True)
+        target.write_bytes((platforms.FIXTURES / name).read_bytes())
+    monkeypatch.setattr(platforms, "FIXTURES", fixtures)
+    monkeypatch.setattr(
+        platforms, "compiler_identity", lambda target="arm": b"fixed compiler"
+    )
+    source = tmp_path / "vendor source"
+    source.mkdir()
+    vendor = source / "rm.c"
+    vendor.write_text("#include <rtconfig.h>\n/* retained vendor source */\n")
+    original = vendor.read_bytes()
+    platforms.stage_busybox_support(source)
+    header = source / ".cfmgr-generic-headers/rtconfig.h"
+    assert header.read_bytes() == (fixtures / "busybox-support/rtconfig.h").read_bytes()
+    assert not re.search(
+        rb"^\s*#\s*define\s+RTCONFIG_", header.read_bytes(), re.MULTILINE
+    )
+    assert vendor.read_bytes() == original
+    with pytest.raises(FileExistsError):
+        platforms.stage_busybox_support(source)
+    item = manifest["busyboxes"][0]
+    keys = {
+        target: platforms.build_key("busybox", item, target=target)
+        for target in ("arm", "native")
+    }
+    kernel = manifest["kernels"][0]
+    kernel_key = platforms.build_key("kernel", kernel, manifest["toolchain"])
+    with (fixtures / "busybox-support/rtconfig.h").open("ab") as output:
+        output.write(b"/* changed generic build support */\n")
+    for target, key in keys.items():
+        assert platforms.build_key("busybox", item, target=target) != key
+    assert platforms.build_key("kernel", kernel, manifest["toolchain"]) == kernel_key
 
 
 def test_native_cache_requires_native_elf_and_target_receipt(

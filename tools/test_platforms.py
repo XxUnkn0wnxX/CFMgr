@@ -507,10 +507,20 @@ def build_key(
     if kind == "busybox":
         digest.update(inspect.getsource(check_busybox_symbols).encode())
         digest.update(inspect.getsource(verify_elf).encode())
+        digest.update(inspect.getsource(stage_busybox_support).encode())
+        digest.update((FIXTURES / "busybox-support/rtconfig.h").read_bytes())
     else:
         digest.update(inspect.getsource(kernel_configuration).encode())
     digest.update(str(RECIPE_VERSION).encode())
     return digest.hexdigest()
+
+
+def stage_busybox_support(source: Path) -> None:
+    # Use an explicit local include directory, without patching vendor sources or
+    # borrowing firmware-generated board settings from a router source tree.
+    support = source / ".cfmgr-generic-headers"
+    support.mkdir()
+    shutil.copyfile(FIXTURES / "busybox-support/rtconfig.h", support / "rtconfig.h")
 
 
 def build_busybox(item: dict[str, str], cache: Path, *, target: str = "arm") -> Path:
@@ -562,12 +572,16 @@ def build_busybox(item: dict[str, str], cache: Path, *, target: str = "arm") -> 
     ).strip()
     _require(actual == item["commit"], "vendor checkout commit mismatch")
     source = checkout / item["path"]
+    stage_busybox_support(source)
     make = [
         "make",
         "ARCH=" + ("arm" if target == "arm" else "x86_64"),
         "CROSS_COMPILE=" + prefix,
+        # The vendor Makefile can otherwise add board flags/shared include paths.
+        "HND_ROUTER=n",
+        "HND_ROUTER_BE_4916=n",
         "HOSTCFLAGS=-O2 -fcommon",
-        "EXTRA_CFLAGS=-include sys/sysmacros.h",
+        "EXTRA_CFLAGS=-include sys/sysmacros.h -I.cfmgr-generic-headers",
     ]
     run([*make, "allnoconfig"], cwd=source)
     values = configuration(FIXTURES / "busybox.config")
