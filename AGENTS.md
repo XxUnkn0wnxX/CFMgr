@@ -131,7 +131,8 @@ separate authorization. Optional polish may follow implementation completion.
 ### Practical test policy
 
 Apply `zr0-test-efficiency`; pass its current requirements to test workers.
-Reuse immutable setup and fresh mutable state. Prioritize boot-loop, router-hang,
+Plan-specified core edge cases are the mandatory minimum; cost cuts must preserve
+their proof. Reuse immutable setup and fresh mutable state. Prioritize boot-loop, router-hang,
 unbounded-work, unsafe-write and serious-corruption failures. Keep mandatory CI
 small and focused; rare synthetic process/thread stress is optional diagnostic
 work. Relax incidental output/timing assertions or defer rare low-risk cases with
@@ -155,7 +156,8 @@ rerunning the whole suite to diagnose one slow group.
 For each Linux-dependent subgoal or substantial library package, run its own
 focused Quick Checks batch and review both correctness and measured runtime
 before adding it to the combined full gate. Split and optimize unexpectedly slow
-batches first; a quick pass alone does not establish acceptable cost. Reuse
+batches first; aim for roughly two minutes per focused batch, without discarding
+core proof to meet a timing target. A pass alone does not establish acceptable cost. Reuse
 already-proved cheap groups instead of restarting unrelated tests during diagnosis.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/

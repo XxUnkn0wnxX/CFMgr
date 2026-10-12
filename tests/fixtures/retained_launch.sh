@@ -68,6 +68,8 @@ chmod 755 "$retained_fixture_logger"
 # pin implementation still validates the held ext4 device and mount identities.
 . "$retained_storage_alias"
 # Alias source defines only the renamed public pin; restore selected callback.
+# Keep real view operations bounded in the foreground for this retained case.
+cfmgr_execution_view_native() { view_native "$@"; }
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'actual retained launch repair failed'
 if [ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ]; then :; else

@@ -17,11 +17,11 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and route
 
-**Priority override:** bring 3D within the current roughly 3–4 minute batch target,
-then trim and rerun baseline first and 3C second to measure any saving. User accepts
-3A/3B and provisionally 3E. Do not start baseline/3C optimization before 3D is
-acceptable; then run the exact combined full gate before accepting S02.05/S02.08
-and pausing. No runtime writer is active.
+**Priority override:** 3D passed in 2m39s and 3C in 47s. User accepts 3C; prioritize
+baseline trimming and check for another cheap 20–60s saving in 3D, aiming for about
+two minutes per batch. User accepts 3A/3B and provisionally 3E. Rerun changed
+groups, then the exact combined full gate before accepting S02.05/S02.08 and
+pausing. No runtime writer is active.
 Standing amendment recorded in AGENTS: every new Linux-dependent subgoal or
 substantial library package needs its own focused Quick batch with runtime review
 before the combined full gate; split/optimize slow groups first.
@@ -36,9 +36,53 @@ the real foreground view-operation adapter, preserving exact nonzero status and
 quiet-success validation. Real mounts/keeper/task/loss/cancellation and production
 task/FIFO/signal/claim callbacks remain. Fresh/retained complete consumers retain
 production per-operation supervision. Worker proof: **20 passed, 20 Linux skips**;
-affected ShellCheck, shfmt, shell syntax and whitespace passed. Linux correctness
-and timing remain pending. Parent owns commit/push, 3D Quick proof and a 3C adapter
-regression run; no writer remains. Reduced coupling coverage is in review notes.
+affected ShellCheck, shfmt, shell syntax and whitespace passed. Exact `e128968`
+Quick runs passed: 3D `38272259819` **21 passed, 4 deselected, 158.46s** (installer
+126.60s; daemon 14.59s; loss 9.04s; failed update 7.44s); 3C `38272292860`
+**92 passed, 46.41s**. Logs: `.tmp/quick-3d-layered.log`, `.tmp/quick-3c-adapter.log`.
+User accepts 3C and now prefers around two minutes per batch, with a cheap further
+20–60s cut to 3D if feasible. Baseline remains first optimization priority.
+Both bounded reviews are complete with no code changes. No safe further installer
+saving of 20–60s was identified without weakening its full production proof.
+Baseline ShellCheck follows the entry's shared imports: full-list local check
+passed in 90.77s; four smaller batches took 6.71s but lost source context and
+reported SC2034/SC1091, so that split is rejected. Existing CI baseline 101.77s
+already meets the roughly two-minute target. Parent will rerun baseline at
+`e128968`, then the combined full gate. All workers have released their scopes.
+Latest cost direction: after the new baseline, report combined estimate; if near
+ten minutes, trim repeated subgoal work while preserving every plan core edge.
+Parent is checking whether retained-launch view-operation supervision duplicates
+the unchanged full fresh-installer proof. `next_subgoal_review` owns read-only
+composition review; no fixture edit yet. Retained config migration, actual repair,
+native claim/task/keeper paths, absence message and healthy return must stay intact.
+Composition review passed: retained uses the same repair FD mapping; its snapshot
+migration and publication follow released repair/post-probes through unchanged
+native callbacks. `dependency_fixture` now owns only `tests/fixtures/retained_launch.sh`
+to use the foreground view adapter before launch, preserving every existing
+assertion. Fresh installer remains complete native integration. Parent will rerun
+3E before full acceptance. User requests cheap savings across all groups; reuse
+the completed 18-module cost audit and already acceptable cheap group timings.
+Parent exclusively owns `tests/fixtures/storage_mounts.sh`: omit the unused
+native-file/nested-mount topology from `view_cleanup` only, keeping its complete
+rollback/quiescence/busy/foreign/retry assertions and full compatibility/detach
+topology in their dedicated cases. This is disjoint from the retained writer;
+rerun 3C alongside 3E after focused/static review. No other cost reduction survived
+the bounded review without losing distinct proof.
+The user now requests all practical trimming followed by the full suite. Both
+fixture edits are complete and parent-reviewed; focused tests passed **21 tests,
+9 Linux skips** across storage-mount and retained-launch modules. Shell syntax,
+shfmt, planning/package and whitespace passed. Source-aware ShellCheck passed for
+all shell inputs except the unchanged root entry; full CI retains the complete check.
+Baseline confirmation `38273391701` passed at `e128968`: host/statics **105.39s**,
+355 passed/26 skipped/4 deselected, full job 2m04. Pre-final-trim combined estimate
+was about nine minutes including setup. Quick 3C/3E and then exact full Checks are
+the remaining validation route; no full local suite or new product target is due.
+User accepts a combined full run around ten minutes or less, then requests a final
+concise docs consistency check before pause. Include the existing 3.2 KB
+`docs/compatibility.md` (added with S02.09 at `a0fdb2a`) in that review. Keep README
+and development guidance short, with no investigation/progress diary in guides.
+Reduced coupling coverage is in review notes; no product runtime edits authorized
+by this optimization package.
 
 **Latest user direction:** cancel full Checks `38267375410` for excessive duration
 (sent at about 12m30s). Diagnose each remaining stage separately through Quick

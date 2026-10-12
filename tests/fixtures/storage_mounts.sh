@@ -400,7 +400,7 @@ view_prepare() {
 	ln -s /tmp/etc "$view_native_root/etc"
 	ln -s /tmp/mnt/usb/entware "$view_native_root/opt"
 	case $case_name in
-	dependency_*) ;;
+	dependency_* | view_cleanup) ;;
 	*) printf 'native regular file\n' >"$view_native_root/native-file" ;;
 	esac
 	printf 'configured file feed\n' >"$view_native_root/tmp/feed/Packages"
@@ -409,7 +409,7 @@ view_prepare() {
 	mount --bind /proc "$view_native_root/proc"
 	mount --bind "$mount_dir" "$view_native_root/tmp/mnt/usb"
 	case $case_name in
-	dependency_*) ;;
+	dependency_* | view_cleanup) ;;
 	*)
 		mkdir "$view_native_root/tmp/mnt/usb/entware/nested"
 		mount -t tmpfs -o size=64k tmpfs "$view_native_root/tmp/mnt/usb/entware/nested"
