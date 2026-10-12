@@ -176,6 +176,13 @@ Initial focused CI at `470e65046263f4eaad395858a9e20e572cd67652`,
 failed before behavior on ShellCheck SC2015; BusyBox was skipped. Parent is
 correcting the condition without changing its behavior; exact corrected proof
 remains pending.
+The correction at `a6facabb49d2ed4ca9475555f720dfe20782a82e` passed CI statics and
+64 host tests, but a Bash-specific diagnostic assertion failed under dash;
+[Checks 38203907818](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203907818)
+did not run BusyBox. The portable test retains failure status, no further probes,
+identified-file diagnostics and byte-for-byte evidence preservation. Its focused
+local/static gate passed **20 tests, 3 Linux-only skips**; exact focused CI remains
+pending. No acceptance credit is added.
 
 ### 3. Configuration, menus and status
 

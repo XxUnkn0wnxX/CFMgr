@@ -448,7 +448,9 @@ def inventory(
     )
     assert result.returncode == 0
     if recheck:
-        assert b"cannot overwrite existing file" in result.stderr
+        # Bash, dash and ash phrase noclobber differently. The result and exact
+        # preserved bytes below prove refusal; diagnostics must identify its file.
+        assert os.fsencode(context / "json.good") in result.stderr
     else:
         assert result.stderr == b""
     return result.stdout.decode().splitlines()
@@ -541,7 +543,7 @@ def test_inventory_tunnel_alone_reports_missing_dig_and_preserves_recheck_eviden
     # A recheck requires a fresh context. Reusing one fails before replacing any
     # capability evidence and does not delete the first check's private files.
     result = inventory(shell, tools, tmp_path, recheck=True)
-    assert result[:4] == ["2", "", "none", "not-required"]
+    assert result == ["2", "", "none", "not-required", "", ""]
     assert evidence == {entry.name: entry.read_bytes() for entry in tmp_path.iterdir()}
 
 

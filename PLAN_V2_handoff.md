@@ -79,6 +79,17 @@ the same three-file CI selection. Failure log:
 Correction gate: `.venv/bin/python tools/test.py --focused tests/test_prerequisites.py`
 passed **20 tests, 3 Linux-only skips**, 2.49s, and all integrated static checks.
 Receipt: `.tmp/prerequisite-inventory-ci-fix-local.log`.
+Second published SHA: `a6facabb49d2ed4ca9475555f720dfe20782a82e`, remote verified.
+[Checks 38203907818](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38203907818)
+passed statics and **64 host tests**, with one workstation-only skip, but one
+new test incorrectly required Bash's noclobber error text. Dash correctly refused
+the existing file with `File exists`. Parent changed that test to require the
+identified file, full failure/no-probe result and unchanged bytes. No runtime
+behavior changed. Focused prerequisites/static checks: **20 passed, 3 Linux-only
+skips**, 2.95s; `.tmp/prerequisite-inventory-portable-local.log`. BusyBox proof still
+pending; third focused push uses the same selection. Failure receipt:
+`.tmp/prerequisite-inventory-ci-failed-2.log`. Cost remains one serial focused job
+per correction, with no full-suite reruns or extra measurements.
 
 - Active Goal 2: **1/9 accepted = 11.1%** (S02.03).
 - Supporting Goal 3: **1/10 accepted = 10%** (S03.01).
