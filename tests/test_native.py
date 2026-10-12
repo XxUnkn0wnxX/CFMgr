@@ -117,6 +117,7 @@ def native_tools(
         result[name] = actual
     if REQUIRE_BUSYBOX:
         directory = tmp_path_factory.mktemp("native-vendor-applets")
+        vendor = Path(base_tools["sh"]).resolve(strict=True)
         for name in (
             "env",
             "awk",
@@ -130,7 +131,8 @@ def native_tools(
             "fsync",
         ):
             target = directory / name
-            target.symlink_to(Path(shell[0]).resolve())
+            target.symlink_to(vendor)
+            assert target.is_file() and os.access(target, os.X_OK)
             result[name] = str(target)
     return result
 
@@ -895,7 +897,7 @@ def test_diagnostic_no_clobber_fails_and_real_adapter_or_vendor_passes(
     )
     if REQUIRE_BUSYBOX:
         assert candidate is None
-        assert Path(compatible).resolve() == Path(shell[0]).resolve()
+        assert Path(compatible).resolve() == Path(native_tools["sh"]).resolve()
     result = native_invoke(
         shell,
         native_tools,
