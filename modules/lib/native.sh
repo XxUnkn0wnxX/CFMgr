@@ -154,10 +154,10 @@ cfmgr_native_check() {
 	[ -d "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ -x "$2" ] && [ -f "$3" ] && [ -x "$3" ] || return 2
 	if (: <&3) 2>/dev/null; then return 2; fi
 	for cfmgr_native_claim in native.source native.destination native.copy native.published native.directory; do
-		[ ! -e "$1/$cfmgr_native_claim" ] && [ ! -L "$1/$cfmgr_native_claim" ] || {
+		if [ -e "$1/$cfmgr_native_claim" ] || [ -L "$1/$cfmgr_native_claim" ]; then
 			cfmgr_native_reason=context-not-fresh
 			return 2
-		}
+		fi
 	done
 	if cfmgr_native_offline && cfmgr_native_mutations; then cfmgr_native_result=0; else cfmgr_native_result=$?; fi
 	[ "$cfmgr_native_result" -ne 3 ] || return 3

@@ -45,6 +45,8 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
 
+- S02.09 candidate `a0fdb2a6c33a68738e528c67769fc5d0ce39387b` was pushed/remote-verified; [Checks 38220282450](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38220282450) failed Ubuntu ShellCheck SC2015 before behavior, with BusyBox skipped. Parent changed the owned-context guard to an explicit conditional; semantics are unchanged. Corrective `tools/test.py --focused tests/test_native.py`: **22 passed/1 Linux skip**, 14.38s plus all statics; `.tmp/native-admission-lint-fix.log`. Failed receipt `.tmp/native-admission-ci-failed.log`. Re-push the same complete focused selection and wait for exact green.
+
 - S02.09 final integrated local gate: `.venv/bin/python tools/test.py --focused tests/test_native.py tests/test_install.py tests/test_prerequisites.py tests/test_package.py tests/test_platforms.py` passed **112 tests/5 explicit Linux skips**, 56.47s, plus all static/planning/package checks on the reviewed dirty tree based on `ac6cb89`. Receipt `.tmp/native-admission-focused.log`. Runtime/tests are frozen and parent-reviewed; worker files released. Package metadata is regenerated. Commit with the matching focused-test trailer and push for required Linux supervision/loader and vendor applet proof; wait for exact green before more implementation. No full gate is due. Cost review: previous required job 94s; TLS setup is module-scoped with fresh mutable contexts and bounded requests, no duplicate full run.
 
 - Branch: `develop`; current work is based on local/remote documentation receipt
