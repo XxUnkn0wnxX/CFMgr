@@ -715,10 +715,12 @@ def test_kernel_configuration_preserves_version_specific_required_symbols() -> N
             assert values["CONFIG_CC_STACKPROTECTOR_NONE"] == "y"
             assert "CONFIG_ARM_PSCI_FW" not in values
             assert "CONFIG_POSIX_TIMERS" not in values
+            assert "CONFIG_VIRTIO_MENU" not in values
         else:
             assert "CONFIG_CC_STACKPROTECTOR_NONE" not in values
             assert values["CONFIG_ARM_PSCI_FW"] == "y"
             assert values["CONFIG_POSIX_TIMERS"] == "y"
+            assert values["CONFIG_VIRTIO_MENU"] == "y"
 
 
 def test_busybox_fragment_clears_allnoconfig_shell_none_choice(tmp_path: Path) -> None:

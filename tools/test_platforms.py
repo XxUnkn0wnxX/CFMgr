@@ -912,6 +912,8 @@ def kernel_configuration(version: str) -> dict[str, str]:
         # The 4.1 ARM64 sources build these unconditionally without Kconfig symbols.
         values["CONFIG_POSIX_TIMERS"] = "y"
         values["CONFIG_ARM_PSCI_FW"] = "y"
+        # 4.19 gates MMIO transport behind this menu; 4.1 has no such symbol.
+        values["CONFIG_VIRTIO_MENU"] = "y"
     return values
 
 

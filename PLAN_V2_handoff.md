@@ -14,8 +14,8 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and progress
 
-**Resumed by the user.** The resumed full CI failed on two fixture prerequisites;
-their reviewed repair is ready for the next authorized push. No new runtime
+**Resumed by the user.** Compiler/runtime prerequisites now pass. Full CI exposed
+two guest/configuration fixture defects; their reviewed correction is ready to push. No new runtime
 package may start before this exact-SHA gate passes. Resume inspection found a
 clean tree at `5853701dfbd5b00e5746f83a2b6da13e8349e94f`, matching origin/develop,
 and no existing child agents. Parent session identity remains the already-recorded
@@ -112,22 +112,23 @@ No approval question is currently open.
 ## Current code and ownership
 
 Latest published runtime revision, verified on local/origin develop after push:
-`9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`.
-Documentation receipts `5853701` and `ae594bf` sit above this revision; their SHAs
-are not runtime-tested revisions. Inspect current refs on resume.
+`a7e3955f35319b50bb0d9ed3ecfd3f09ec005002`.
+The separate developer-docs receipt is `ae594bf`; it is not runtime CI evidence.
+Inspect current refs and full CI status on resume.
 Earlier partial checkpoints remain in ancestry: native helper `3e164914`, probe
 correction `6b411736`, platform fixtures `6b91cd8`, policy amendment `b73b9bb`.
-No main branch was recreated. The next repair changes the platform runner/tests,
-manifest, BusyBox config and workflow, plus this handoff. Parent reviewed all
-returned changes and reran their focused/static gate; actual Linux execution is
-pending the next full CI run.
+No main branch was recreated. The pushed repair changes the platform runner/tests,
+manifest, BusyBox config and workflow, plus the approved progress rule and this
+handoff. Parent reviewed all returned changes and reran their focused/static gate;
+actual kernel execution is pending the current full CI run.
 
 | Owner | Exclusive scope | Current state |
 | --- | --- | --- |
 | Parent | Planning files, AGENTS.md, docs, integration and final review | Own all accepted requirements and CI gate; inspect every returned change. |
 | kernel_compiler | Returned; no active ownership | Private compiler-runtime package completed and parent-reviewed. |
-| Parent | Platform runner/tests/manifest/workflow and BusyBox config | Integrate verified MPFR4 data, compiler preflight and source-declared BUSYBOX applet; preserve all kernel pins and proof. |
-| ci_resume_wait | Read-only monitoring only; currently completed | Attempt 2 terminal failure confirmed; reusable for the next exact-SHA run. |
+| guest_diagnostic | Returned; no active ownership | Parent-reviewed guest prefix correction and native regression; reused existing applet fixture, pinned mode only. |
+| Parent | tools/test_platforms.py, tests/test_platforms.py; integration/plans | Enable 4.19-only VIRTIO_MENU required by its MMIO transport Kconfig; preserve 4.1 configuration and required-option assertions. |
+| ci_resume_wait | Completed, no active work | Run 38187447546 at a7e3955 terminal failure confirmed. |
 | Other agents | No active ownership | Source/parity/persistence/runtime/probe packages returned. No router work. |
 
 Current S02.04/S02.07–S02.09/S04.03 consumers are developer probes/tests, not a
@@ -149,6 +150,25 @@ before accepting ownership or publishing.
 
 ## CI gate and local evidence
 
+- [Run 38187447546](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38187447546),
+  exact `a7e3955f35319b50bb0d9ed3ecfd3f09ec005002`: failed. Planning, host/static
+  and full native BusyBox suite passed. Both 4.1 kernels built/booted but failed
+  the guest's diagnostic-prefix expectation after successful native storage probe;
+  4.19 jobs failed the required VIRTIO config assertion. Both pinned sources gate
+  MMIO transport behind VIRTIO_MENU, absent in 4.1; the parent adds that 4.19-only
+  prerequisite. Pinned fsync/libbb sources prove the omitted `fsync: `
+  prefix; correct the fixture, retaining status/diagnostic/rejection assertions.
+  Local HEAD and origin/develop were verified equal after push. No final tick.
+- Guest/configuration correction on dirty `a7e3955`: parent platform gate **28
+  passed, zero skips, 0.34s**; worker storage gate **22 passed, ten Linux skips**.
+  Parent review removed duplicated applet setup and scoped the legacy diagnostic
+  assertion to required pinned BusyBox mode, avoiding assumptions about unrelated
+  host versions. New-case recheck: **one explicit platform skip, 31 deselected**;
+  all static gates passed. Native regression and all guests still need exact CI.
+  No full local suite. Existing version-config test covers the added prerequisite;
+  kernel configuration assertions and every guest proof marker remain mandatory.
+  Successful prior native job independently verified **59 passed, zero skips,
+  0.79s**; the next run must also prove the newly added regression.
 - [Run 38186542110](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38186542110),
   exact `9ab6f62b2c545b969b168604f0f4d1eb8810dbc9`: attempt 1 cancelled for the
   pause; resumed **attempt 2 failed**. Host/static and planning passed. Native
@@ -217,8 +237,9 @@ before accepting ownership or publishing.
   Homebrew bash 5.3.3 and ShellCheck. No host dependencies installed this session.
   CI installs its declared tools. Developer docs contain tooling/check commands.
 
-No kernel has successfully built/booted in current CI yet. Exact generic-kernel
-execution, vendor BusyBox and both ARM Entware command sets are required before
+Both 4.1 kernels built/booted and passed the native storage happy path; the guest
+diagnostic assertion stopped further proof. Neither 4.19 kernel has booted yet.
+Complete generic-kernel execution and both ARM Entware command sets are required before
 this fixture package is green. Generic guests do not prove exact Merlin firmware,
 NAND/JFFS2 hidden-failure behavior, all TLS/options or complete model qualification.
 S02.09 remains unfinished even after these selected guests pass.
@@ -291,8 +312,8 @@ setting, package or Cloudflare data was changed.
 
 1. Resume inspection and CI repair are authorized. Preserve the hidden
    session block; append only a verified actual new parent session ID.
-2. Commit/push the reviewed platform repair and monitor its full Checks workflow,
-   all seven exact-SHA jobs. Fix actual
+2. Commit/push the reviewed guest/configuration correction and monitor its full
+   Checks run, all seven exact-SHA jobs. Fix actual
    build/boot/command failures within this checkpoint, focused-test, commit/push
    and wait again. No new runtime package before full required CI passes; no full
    local suite solely for this earlier platform checkpoint.

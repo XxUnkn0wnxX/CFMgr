@@ -268,6 +268,26 @@ def test_linux_native_proc_reopen(
     assert list(tmp_path.iterdir()) == [target]
 
 
+def test_linux_busybox_zero_exit_diagnostic_is_rejected_silently(
+    request: pytest.FixtureRequest, shell: list[str]
+) -> None:
+    if not REQUIRE_BUSYBOX:
+        pytest.skip("Pinned vendor BusyBox is required for this diagnostic contract")
+    native_busybox_fsync = request.getfixturevalue("native_fsync")
+    result = invoke(
+        shell,
+        '. "$1"; exec 3<"$3"; '
+        'diagnostic=$(LC_ALL=C LANGUAGE= "$2" /proc/self/fd/3 2>&1); status=$?; '
+        '[ "$status" -eq 0 ] && [ -n "$diagnostic" ] || exit 41; '
+        'case $diagnostic in "fsync: /proc/self/fd/3: "*) ;; *) exit 42 ;; esac; '
+        'cfmgr_storage_flush_fd "$2" 4>&1',
+        native_busybox_fsync,
+        "/dev/null",
+        trace=False,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (1, b"", b"")
+
+
 def invoke_probe(
     shell: list[str],
     script: str,

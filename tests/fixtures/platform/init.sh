@@ -40,7 +40,7 @@ if [ "$fsync_result" != 0 ] || [ -z "$fsync_diagnostic" ]; then
 	fail native-error-fixture
 fi
 case $fsync_diagnostic in
-"/proc/self/fd/3: "*) ;;
+"fsync: /proc/self/fd/3: "*) ;;
 *) fail native-error-diagnostic ;;
 esac
 if cfmgr_storage_flush_fd /bin/fsync; then
