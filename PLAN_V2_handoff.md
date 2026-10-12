@@ -22,28 +22,32 @@ update acceptance/README/handoff and pause. The earlier pause-every-subgoal over
 was revoked. Recent workflow/doc corrections were not pause requests.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
-Goal 1. S02.05/S02.08 keeper validation passed; apply
-the user's order: smallest independently completable subgoals first, linked
-module/framework batches second, remaining main-goal work last. Read-only closure
-mapping selected **S02.09 capability-based support** as the next smallest independent
-Goal 2 target. Enforce native capabilities/TLS/ABI through installer admission;
-source/profile metadata alone is not completion. Keeper/storage is a necessary
-repair prerequisite, not a completed subgoal. The eventual S02.05 batch must include
-the normal-opkg consumer, healthy no-op, missing/unusable selection, post-probes and
-bounded later retry, with focused workflow paths and complete acceptance gates.
-Goal 3 contributes accepted S03.01; Goal 4 S04.01/S04.07–S04.09 may supply parsing,
-guards, ownership and resource bounds. Notify the user before an actual cross-goal
-switch and record its consumer/return path. Dependency-first ordering is authorized.
+Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
+smallest independently completable subgoals, then linked module/framework batches,
+then remaining main-goal work. The next linked batch targets **S02.04/S02.05/S02.06/S02.08**:
+shared requirements, real installed-opkg repair, selected confirmed reinstall and
+saved storage identity/loss/return behavior. Start with the integrated normal-repair
+consumer below; supporting ownership/resource work belongs to S04.08/S04.09 and
+native state parsing may need S04.01. The user was notified before this prerequisite
+work. Return to Goal 2; supporting main goals do not all have to finish first.
 
-**2/157 accepted subgoals (1.3%); 0/16 main goals (0%).** Goal 2: 1/9 accepted;
-Goal 3: 1/10. S02.09 is focused-local complete and awaits exact CI (Goal 2: 2/9
-focused-complete, 22.2%). Partial storage/inventory proof earns no complete subgoal. The checklist owns accepted IDs, results and gates.
+**3/157 accepted subgoals (1.9%); 0/16 main goals (0%).** Goal 2: 2/9 accepted
+(22.2%); Goal 3: 1/10. Focused-complete equals accepted; no additional completed
+subgoal awaits CI. Partial storage/inventory proof earns no complete subgoal.
 
 Standing publication/pause, progress and concise-documentation rules are consolidated
 in AGENTS.md. The current work is authorized to continue; no pause or unanswered
 scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Working tree, refs and last gate
+
+- Latest accepted runtime: `2c6dfe16ab02d3e8c005851fbab2c7e67d4afeb8`, exact
+  [Checks 38222000119](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38222000119).
+  Parent verified all required job steps and focused selection: host **117 passed/1
+  workstation-only skip**, vendor BusyBox **117 passed/1 same skip**; native loader,
+  real TLS and mutation cases ran. Job 101s, host behavior 20.21s/vendor 45.21s.
+  Receipts `.tmp/native-admission-ci.{json,log}`. S02.09 accepted; README/checklist
+  receipt follows without claiming a separate runtime test for the docs commit.
 
 - S02.09 `f9eb6b5acdeb2abbc8a70cc2c8d8c99d5c916ee7`, [Checks 38221588897](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38221588897): host/static green; vendor failed before probe execution because fixture symlinks resolved bare `busybox` against the checkout instead of the selected executable. Parent now derives every applet from the already-resolved shell fixture and asserts each is executable. Native focused local gate: 23 passed/1 Linux skip, 19.76s plus statics; `.tmp/native-admission-vendor-path-fix.log`. Failed receipt `.tmp/native-admission-ci-failed-3.log`; re-push same focused selection. Runtime admission is unchanged.
 
@@ -94,55 +98,43 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Ownership and next package
 
-While S02.09 CI runs, `opkg_supervision_review` is read-only on the next S02.05/S02.08 supervisor integration design (view/keeper/prerequisite APIs and existing ownership source evidence). No new runtime implementation starts before exact CI green. Parent retains architecture and scope decisions; no additional writer owns files.
+No active writer or CI job. S02.09 files are released and accepted. Parent is
+preparing one coherent **S02.05/S02.08 integrated repair** assignment; do not start
+an unrelated helper package. Actual consumer: `cfmgr.sh --install` → bootstrap
+prerequisite inventory → healthy no-op or bounded installed-opkg repair → fresh
+post-inventory → existing installation transaction. The wider linked batch adds
+S02.04 tunnel DNS, S02.06 selected reinstall and S02.08 saved identity/return cases.
 
-CI correction complete: `prerequisite_inventory` released `tests/test_native.py` for the confirmed GNU coreutils 9.3/9.4 `mv -n` host-fixture mismatch. Runtime admission stays strict; mandatory vendor mode uses actual applets unchanged. Parent owns receipts/metadata. Checks 38220488864 host behavior: 110 passed/6 failed/1 workstation-only skip; BusyBox skipped. `.tmp/native-admission-ci-failed-2.log`. Official coreutils v9.4 NEWS records nonzero/diagnostic on skipped `-n` and `--update=none` as the older silent-success equivalent. Corrected native/install integrated local gate: 41 passed/2 Linux skips, 50.17s plus all statics; `.tmp/native-admission-host-mv-fix.log`. Parent reviewed strict rejection regression and actual host adapter preserve/publish proof. Local GNU9.11 executes the adapter; automatic9.3/9.4 selection remains exact-CI proof. No later implementation may start before repaired exact CI.
+Reuse guarded execution view and lifetime keeper. Parent/analyst design review:
+- Launch via fixed chroot/ready/gate helper; record direct PID/start/boot and verify
+  rooted view plus closure of outside directory FDs/cwd before release to opkg.
+- Scan every task/thread root through an opened FD and rechecked identity. Retained
+  owned IDs and verified visible dynamic descendants are ownership evidence;
+  unknown/detached/unreadable roots retain protection. Foreign-root lifetime pins
+  require positive outside ancestry, are deduplicated, and never authorize cleanup.
+- Reconcile **all** visible dynamic view mounts, including script mounts without a
+  chroot. Pin verified ancestry/root before registration, preserve immutable guard
+  layers, record ordered cleanup, and retain unknown substitutions/foreign layers.
+- Keep long-action PID/deadline state separate from `cfmgr_probe_*` native probes.
+  Verify all live threads before group signalling. Numeric kill is observational,
+  not an atomic identity guarantee. Empty sweeps still need normal unmount proof.
+- Direct opkg success with surviving script daemons is not quiescence. Bound cleanup;
+  unresolved work retains claim/keeper/storage and prevents overlap. Completed
+  ordinary failures release the claim and allow a bounded later-launch retry.
+- Preserve normal configured feeds/resolution/scripts and active provider choice.
+  Plain install may not repair an already-installed unusable tool; use scoped
+  reinstall only for failed mapped requirements, preserving healthy tools.
+- No package-wide tiny file-size limit: normal transitive/package writes may be
+  large. Discard opkg output to `/dev/null` and retain concise phase/exit receipts;
+  do not create unbounded RAM diagnostics. Native probe bounds remain separate.
+- Ensure required helper/parser code remains available from admitted private RAM
+  if the original source or Entware volume disappears; never infer this from using
+  native tool binaries alone.
 
-Active **S02.09 admission package**: `cfmgr.sh --install` → native bootstrap
-preflight must consume native path/options/CA and usable executable checks before
-JFFS publication. Preserve offline trusted-local installation: no mandatory external
-HTTPS request. Fixed isolated curl policy is exercised by real local TLS fixtures;
-this is capability evidence, not completed S11.01/provider transport or model beta.
-Production firmware paths are `/usr/sbin/curl`, `/usr/sbin/openssl` and
-`/rom/etc/ssl/certs/ca-certificates.crt`, supported by retained image inventory.
-Reverify source/cache identities before documenting profile facts. Actual executable
-probes remain ABI/usability authority; kernel architecture/feed names alone are not.
-
-Parent owns architecture, entry environment sanitization and its package test,
-workflow/package metadata, concise compatibility guide, three plans and acceptance.
-`prerequisite_inventory` completed and released its coherent implementation
-in bootstrap/prerequisites/probe, a source-inert native admission library and focused
-native/install tests. No overlap with parent files. Add bounded native option tests
-on owned RAM artifacts; fixed curl options must reject HTTP before any connection,
-use approved CA, ignore curlrc/proxy/loader overrides and preserve verification.
-Validate CA framing and decode with the admitted native OpenSSL, not shell evaluation.
-Real TLS fixtures cover trust, hostname, invalid/missing CA and contaminated env;
-installer integration must prove admission failure prevents publication and success
-makes no network request. Reuse existing bounded child supervision and explicit
-descriptor contracts. Focused gate: native admission, prerequisites, install and
-platform profile tests; static/planning/package checks remain mandatory. Stop after
-this package and parent review; no worker advancement, publication or router action.
-`opkg_supervision_review` supplies a bounded read-only review of native admission,
-TLS policy and failure cleanup after initial implementation; parent resolves findings.
-
-Profile evidence rechecked for this package: provenance-listed inventory/extraction/
-capability report hashes plus actual BusyBox, curl, OpenSSL, ARM loader and ROM CA
-bytes for GT-AX11000 `3004_388.12_2`, RT-AX88U_PRO and RT-BE96U `3006_102.9_0`.
-All selected native binaries are ARM ELF32; CA bundles contain 152/121/121 certificates
-with only blank/comment text outside PEM frames. Official Merlin device and Entware
-feed/loader pages were refreshed; source presence remains distinct from usability.
-OpenSSL 1.1.1w `apps/crl2p7.c` confirms complete certificate decode and fixed output;
-zero certificates can succeed, so separate nonempty framing is required. Curl 8.17
-option docs confirm explicit CA/capath override and protocol restriction. These are
-read-only source/profile checks, not firmware execution.
-
-| Owner | Exclusive scope | Gate / stop condition |
-| --- | --- | --- |
-| Parent | Three plans, architecture, integration, metadata and CI config | S02.09 entry/environment, profile evidence and final integrated gate; no acceptance before complete proof. |
-| `opkg_supervision_review` analyst | Completed read-only S02.09 review | No additional runtime blocker; required failing-admission consumer proof is assigned. Earlier ownership findings remain below. |
-| `inventory_ci_wait` awaiter | Completed exact repaired-run monitoring | Checks 38216515648 green; no active job. |
-| `prerequisite_inventory` worker_strong | Completed S02.09 runtime/tests; files released | Integrated local gate passed; no active writer. |
-| `next_subgoal_review` explorer | Completed read-only closure map | S02.09 is next independent target. Later linked batch: S02.04/.05/.06/.08, requiring tunnel DNS, confirmed reinstall, saved identity and return-eligibility consumers as well as repair. |
+Parent owns architecture, three plans, entry/metadata/CI integration and acceptance.
+`opkg_supervision_review` completed this read-only review; all implementation files
+remain parent-owned until the next explicit worker brief. No router execution,
+release/version/default-branch change or additional scope approval is pending.
 
 Consumer route: future installed-opkg repair from the existing installer/prerequisite
 controller, using already admitted storage FDs 6/7. This package deliberately stops
@@ -203,7 +195,7 @@ lost Entware source are not automatically available merely because native tools 
 - S02.04 tunnel DNS is only `dig -v`, with no real readiness consumer. S02.05 still
   needs installed-opkg admission, serialized bounded repair, healthy no-op, post-
   probes and bounded later-launch retry. S02.06 reinstall and S02.07 native recovery/safe Off remain unfinished.
-  S02.09 capability/TLS/ABI admission is implemented and focused-local passed; exact CI remains.
+  S02.09 capability/TLS/ABI admission is accepted; exact receipt is above.
 - No remote package acquisition, menus/features/provider activation, retained
   recovery/update or Save exists. Defaults and helper proof do not complete goals.
 
@@ -238,8 +230,8 @@ candidate: one native ash child holds directory references in active recursive
 function-redirection frames. ACK only after each open; verify its PID/start/boot
 and complete held fdinfo mount-ID set before overmounting. Reserve FD/stack headroom;
 EOF, unwind, keeper loss or missing pins closes ownership admission. Release pins
-only after quiescence, then never signal from that retired ledger. This is an
-ash/Linux contract, still needing implementation and focused execution proof.
+only after quiescence, then never signal from that retired ledger. This ash/Linux contract now has keeper implementation and focused CI proof;
+actual opkg ownership/supervision remains pending.
 Pinned `shell/ash.c` SHA256 `28fcb7d7f9428e44bad4299bffdc7c30c8c83468c479305b60f0c690e57b7b09`
 matches cached provenance: `openredirect`, `REDIR_PUSH`, `evalfun`, `popredir`.
 

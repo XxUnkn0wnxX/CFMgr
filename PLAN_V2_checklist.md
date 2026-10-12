@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**2 of 157 product subgoals accepted — 1.3% overall subgoal completion.**
+**3 of 157 product subgoals accepted — 1.9% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and any required exact-commit focused CI.
@@ -110,7 +110,7 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [ ] | [ ] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | [ ] | [ ] | S02.07 | **Native recovery access:** Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | [ ] | [ ] | S02.08 | **Storage identity and loss:** Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
-| [ ] | [x] | S02.09 | **Capability-based support:** Target the GT-AX11000 baseline and modern Merlin models with supported Entware and usable required dependencies; record source/ABI profiles and enforce native capability/TLS checks, with model qualification deferred to real-router beta. |
+| [x] | [x] | S02.09 | **Capability-based support:** Target the GT-AX11000 baseline and modern Merlin models with supported Entware and usable required dependencies; record source/ABI profiles and enforce native capability/TLS checks, with model qualification deferred to real-router beta. |
 
 S02.01/S02.03 mapping acceptance: root entry goes only to `/jffs/scripts/cfmgr.sh`;
 `modules/` paths remain nested beneath `/jffs/addons/CFMgr.d/`, alongside the
@@ -125,7 +125,7 @@ are distinct from still-required remote acquisition/update-source proof.
 | S02.05/S02.08 guarded view | `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`, `test_install.py`, `test_platforms.py`: 103 passed/19 platform skips; fixture corrections 7 passed/8 skips. Static gates and parent review passed. | Passed at `ad28a3abf4ced1f74a8bcf42b89e9ba4994704b0`: [Checks 38211199161](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38211199161), host 111 passed/11 skips; vendor BusyBox 122 passed/0 skips, including eight real mount cases. | Partial. Construction/recheck/normal cleanup and unplug/replacement guards proved; production supervision, opkg integration and complete storage-loss behavior remain unproved. |
 | S02.05/S02.08 mount references | `test_mount_keeper.py` plus guarded-view modules above: 104 passed/28 platform skips; final native/fixture corrections with prerequisite coverage: 29 passed/20 skips. Static gates and parent review passed. | Exact `a7fe16ce2503cf34920efe5034a22d319e54f948`, [Checks 38216515648](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38216515648): host 135 passed/21 skips; vendor BusyBox 155 passed/1 workstation-only skip, including keeper lifetime and real mount rollback/loss cases. All required steps passed. | Partial. No task supervisor or installed-opkg consumer; no additional accepted subgoal. |
 
-| S02.09 native capability/TLS admission | `test_native.py`, `test_install.py`, `test_prerequisites.py`, `test_package.py`, `test_platforms.py`: 112 passed/5 Linux skips, 56.47s on the reviewed dirty tree based on `ac6cb89`; final native/install host-fixture correction: 41 passed/2 Linux skips, 50.17s. All static/planning/package gates passed. Installer success/failure, isolated real TLS trust/hostname cases, CA decode and native mutations proved. | Pending exact focused Ubuntu/vendor BusyBox CI for actual Linux child/loader and selected native applet behavior. | Focused-local complete; final acceptance pending CI. Static ARM/firmware profiles are recorded in the compatibility guide; model qualification remains beta-only. |
+| S02.09 native capability/TLS admission | `test_native.py`, `test_install.py`, `test_prerequisites.py`, `test_package.py`, `test_platforms.py`: 112 passed/5 Linux skips, 56.47s on the reviewed dirty tree based on `ac6cb89`; final native/install host-fixture correction: 41 passed/2 Linux skips, 50.17s. All static/planning/package gates passed. Installer success/failure, isolated real TLS trust/hostname cases, CA decode and native mutations proved. | Passed at exact `2c6dfe16ab02d3e8c005851fbab2c7e67d4afeb8`, [Checks 38222000119](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38222000119): host and vendor BusyBox each 117 passed/1 workstation-only skip; all required steps passed. | Accepted: mandatory installer admission and representative TLS/native behavior passed parent review and focused local/CI gates. Static ARM/firmware profiles are recorded in the compatibility guide; model qualification remains beta-only. |
 
 Focused commands use `.venv/bin/python tools/test.py --focused` followed by the
 listed modules under `tests/`. No partial row earns a focused-complete or accepted
