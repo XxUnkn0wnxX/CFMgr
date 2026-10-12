@@ -35,7 +35,7 @@ testing is not current provisioning/execution authorization.
 
 `focused_ci` released the runner/diagnostic files: 41 focused tests passed and
 11 Linux cases skipped locally; parent reviewed the selection/output changes.
-AGENTS consolidation is reviewed and below 23 KB, with a 28 KB proactive threshold.
+AGENTS consolidation is reviewed and below 24 KB, with a 28 KB proactive threshold.
 The docs/CI worker owns no remaining files.
 Parent owns planning files, package manifest, workflow path filters and integration.
 For the remaining S02.05/S02.08 installed-launch consumer, `retained_config` owns
@@ -46,6 +46,10 @@ Their fixed interface is native AWK tree validation plus check/observe/patch mod
 with an exact generation/change/byte-count receipt and raw-preserving patch output.
 No shared writers. Parent reviews both packages before integrated Linux proof;
 focused host checks precede quick CI, then full required CI at the final candidate.
+`retained_config` has released its three files; parent review and focused host
+validation passed (19 tests including constructor regressions). BusyBox proof and
+actual launch integration remain pending. Runtime writer is correcting reviewed
+post-repair record migration, native logger admission and publication verification.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
 Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
@@ -71,6 +75,9 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
+- Local commits after the last push: `bc4b275` (practical required/optional CI and
+  compact rules) and `87656e7` (fourth review-notes document and gate wording).
+  Runtime/parser integration remains uncommitted; no CI currently runs.
 - Latest pushed/remote-verified candidate: `8dfa47753860667f71aecb7710007559c61d5617`.
   [Quick Checks 38253817799](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38253817799)
   passed at that exact SHA; selected mixed/loss/installer tests ran
