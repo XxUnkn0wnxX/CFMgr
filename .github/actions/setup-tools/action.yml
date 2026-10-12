@@ -1,0 +1,186 @@
+name: Set up cached CI tools
+description: Install requested Ubuntu packages and optionally restore pinned Python developer tools.
+
+inputs:
+  apt-packages:
+    description: Space-separated Ubuntu package names to install.
+    required: true
+  python-tools:
+    description: Restore or install the pinned Python developer tools from requirements-dev.txt.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Validate package names and identify runner image
+      id: apt-input
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.apt-packages }}
+      run: |
+        set -euo pipefail
+        packages=()
+        read -r -a packages <<<"$APT_PACKAGES"
+        if ((${#packages[@]} == 0)); then
+          echo 'apt-packages must contain at least one package name.' >&2
+          exit 2
+        fi
+        for package in "${packages[@]}"; do
+          if [[ ! "$package" =~ ^[a-z0-9][a-z0-9+.-]*$ ]]; then
+            printf 'Invalid Ubuntu package name: %s\n' "$package" >&2
+            exit 2
+          fi
+        done
+        canonical_packages="$(printf '%s\n' "${packages[@]}" | LC_ALL=C sort -u | paste -sd ' ' -)"
+        package_hash="$(printf '%s\n' "$canonical_packages" | sha256sum | cut -d ' ' -f 1)"
+        image_identity="${ImageOS:-unknown}:${ImageVersion:-unknown}"
+        image_hash="$(printf '%s\n' "$image_identity" | sha256sum | cut -d ' ' -f 1)"
+        {
+          printf 'packages=%s\n' "$canonical_packages"
+          printf 'package-hash=%s\n' "$package_hash"
+          printf 'image-hash=%s\n' "$image_hash"
+        } >>"$GITHUB_OUTPUT"
+
+    - name: Restore downloaded Ubuntu packages
+      id: apt-cache
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: .tmp/ci-tools/apt/*.deb
+        key: cfmgr-apt-debs-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-input.outputs.package-hash }}-${{ steps.apt-input.outputs.image-hash }}
+        restore-keys: |
+          cfmgr-apt-debs-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-input.outputs.package-hash }}-
+
+    - name: Install requested Ubuntu packages
+      id: apt-install
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ steps.apt-input.outputs.packages }}
+      run: |
+        set -euo pipefail
+        packages=()
+        read -r -a packages <<<"$APT_PACKAGES"
+        archives="$GITHUB_WORKSPACE/.tmp/ci-tools/apt"
+        mkdir -p "$archives"
+        sudo apt-get \
+          -o "Dir::Cache::archives=$archives/" \
+          -o APT::Keep-Downloaded-Packages=true \
+          update
+        sudo apt-get \
+          -o "Dir::Cache::archives=$archives/" \
+          -o APT::Keep-Downloaded-Packages=true \
+          install --no-install-recommends --yes "${packages[@]}"
+
+    - name: Save downloaded Ubuntu packages
+      if: >-
+        ${{ success() && steps.apt-cache.outputs.cache-hit != 'true' &&
+            hashFiles('.tmp/ci-tools/apt/*.deb') != '' }}
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: .tmp/ci-tools/apt/*.deb
+        key: cfmgr-apt-debs-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-input.outputs.package-hash }}-${{ steps.apt-input.outputs.image-hash }}
+
+    - name: Validate Python tools option
+      id: python-identity
+      shell: bash
+      env:
+        PYTHON_TOOLS: ${{ inputs.python-tools }}
+      run: |
+        set -euo pipefail
+        if [[ "$PYTHON_TOOLS" != true && "$PYTHON_TOOLS" != false ]]; then
+          echo 'python-tools must be either true or false.' >&2
+          exit 2
+        fi
+        printf 'enabled=%s\n' "$PYTHON_TOOLS" >>"$GITHUB_OUTPUT"
+        [[ "$PYTHON_TOOLS" == true ]] || exit 0
+        identity="$(
+          python3 - <<'PY'
+        import hashlib
+        import json
+        import os
+        import platform
+        import sys
+        import sysconfig
+
+        os_release = platform.freedesktop_os_release()
+        fields = {
+            "version": platform.python_version(),
+            "implementation": sys.implementation.name,
+            "cache_tag": sys.implementation.cache_tag,
+            "abi": sysconfig.get_config_var("SOABI"),
+            "platform": sysconfig.get_platform(),
+            "machine": platform.machine(),
+            "distribution": os_release.get("ID"),
+            "distribution_version": os_release.get("VERSION_ID"),
+            "libc": platform.libc_ver(),
+            "executable": os.path.realpath(sys.executable),
+            "workspace": os.path.realpath(os.getcwd()),
+        }
+        print(hashlib.sha256(json.dumps(fields, sort_keys=True).encode()).hexdigest())
+        PY
+        )"
+        printf 'identity=%s\n' "$identity" >>"$GITHUB_OUTPUT"
+
+    - name: Restore pinned Python developer tools
+      if: ${{ steps.python-identity.outputs.enabled == 'true' }}
+      id: python-cache
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: .venv
+        # Bump v1 if the venv setup or validation contract changes; unrelated action edits should keep this cache.
+        key: cfmgr-python-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.python-identity.outputs.identity }}-${{ hashFiles('requirements-dev.txt') }}
+
+    - name: Create venv and install pinned Python tools on cache miss
+      if: ${{ steps.python-identity.outputs.enabled == 'true' && steps.python-cache.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 -m venv .venv
+        .venv/bin/python -m pip install --disable-pip-version-check --requirement requirements-dev.txt
+
+    - name: Validate pinned Python tools
+      if: ${{ steps.python-identity.outputs.enabled == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        .venv/bin/python - <<'PY'
+        import importlib.metadata
+        import re
+        from pathlib import Path
+
+        requirements = Path("requirements-dev.txt").read_text(encoding="utf-8").splitlines()
+        pinned = {}
+        for line in requirements:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            match = re.fullmatch(r"([A-Za-z0-9_.-]+)==([A-Za-z0-9.!+_-]+)", line)
+            if not match:
+                raise SystemExit(f"Developer requirement is not exactly pinned: {line}")
+            pinned[match.group(1).lower().replace("_", "-")] = match.group(2)
+
+        required_tools = {"pytest": "pytest", "ruff": "ruff", "shfmt-py": "shfmt"}
+        if not set(required_tools).issubset(pinned):
+            raise SystemExit("requirements-dev.txt is missing a required pinned developer tool")
+        for distribution, expected in pinned.items():
+            actual = importlib.metadata.version(distribution)
+            if actual != expected:
+                raise SystemExit(f"{distribution} version {actual} does not match pinned {expected}")
+        for executable in required_tools.values():
+            if not Path(".venv", "bin", executable).is_file():
+                raise SystemExit(f"Missing developer tool executable: {executable}")
+        PY
+        .venv/bin/python -m pip check
+        .venv/bin/pytest --version
+        .venv/bin/ruff --version
+        .venv/bin/shfmt --version
+
+    - name: Save healthy pinned Python developer tools
+      if: >-
+        ${{ steps.python-identity.outputs.enabled == 'true' && success() &&
+            steps.python-cache.outputs.cache-hit != 'true' &&
+            hashFiles('.venv/pyvenv.cfg') != '' }}
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: .venv
+        key: cfmgr-python-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.python-identity.outputs.identity }}-${{ hashFiles('requirements-dev.txt') }}

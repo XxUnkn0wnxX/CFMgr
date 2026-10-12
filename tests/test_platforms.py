@@ -352,6 +352,151 @@ def test_kernel_runtime_package_identity_invalidates_only_kernel(
         assert platforms.build_key("busybox", item, target=target) == key
 
 
+def test_shared_input_keys_track_only_their_pinned_inputs(manifest: dict) -> None:
+    compiler_keys = [
+        platforms.compiler_input_key(platforms.kernel_toolchain(manifest, kernel))
+        for kernel in manifest["kernels"]
+    ]
+    assert compiler_keys[0] == compiler_keys[1]
+    assert compiler_keys[2] == compiler_keys[3]
+    assert compiler_keys[0] != compiler_keys[2]
+    feeds_key = platforms.feed_input_key(manifest)
+    changed = copy.deepcopy(manifest)
+    changed["feeds"].reverse()
+    for feed in changed["feeds"]:
+        feed["packages"].reverse()
+    assert platforms.feed_input_key(changed) == feeds_key
+    changed["kernels"][0]["sha256"] = "0" * 64
+    changed["feeds"][0]["index"]["sha256"] = "0" * 64
+    assert platforms.feed_input_key(changed) == feeds_key
+    assert (
+        platforms.compiler_input_key(changed["toolchains"]["4.9.4"]) == compiler_keys[0]
+    )
+    changed["feeds"][0]["packages"][0]["sha256"] = "0" * 64
+    assert platforms.feed_input_key(changed) != feeds_key
+    assert (
+        platforms.compiler_input_key(changed["toolchains"]["4.9.4"]) == compiler_keys[0]
+    )
+    changed["toolchains"]["8.5.0"]["sha256"] = "0" * 64
+    assert (
+        platforms.compiler_input_key(changed["toolchains"]["8.5.0"]) != compiler_keys[2]
+    )
+    assert (
+        platforms.compiler_input_key(changed["toolchains"]["4.9.4"]) == compiler_keys[0]
+    )
+
+
+def test_compiler_input_receipt_requires_completed_preflight_and_clean_bundle(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    toolchain = manifest["toolchains"]["8.5.0"]
+    events = []
+    should_fail = False
+    leave_probe = False
+
+    def prepare(pin: dict, downloads: Path, root: Path) -> tuple[str, None]:
+        assert pin == toolchain and downloads == root / "downloads"
+        assert not (root / "verified.json").exists()
+        events.append("preflight")
+        if should_fail:
+            raise platforms.PlatformError("bad compiler input/preflight")
+        preflight = root / "toolchain/preflight"
+        preflight.mkdir(parents=True, exist_ok=True)
+        if leave_probe:
+            (preflight / "probe.o").write_bytes(b"mutable probe")
+        return "pinned-compiler-", None
+
+    monkeypatch.setattr(platforms, "prepare_kernel_compiler", prepare)
+    root = tmp_path / "compiler-inputs" / platforms.compiler_input_key(toolchain)
+    assert platforms.prepare_compiler_inputs(toolchain, tmp_path) == (
+        "pinned-compiler-",
+        None,
+    )
+    assert json.loads((root / "verified.json").read_text())["key"] == root.name
+    assert not (root / "toolchain/preflight").exists()
+    should_fail = True
+    with pytest.raises(platforms.PlatformError, match="bad compiler"):
+        platforms.prepare_compiler_inputs(toolchain, tmp_path)
+    assert not (root / "verified.json").exists()
+    should_fail = False
+    leave_probe = True
+    with pytest.raises(OSError):
+        platforms.prepare_compiler_inputs(toolchain, tmp_path)
+    assert not (root / "verified.json").exists()
+    assert (root / "toolchain/preflight/probe.o").read_bytes() == b"mutable probe"
+    (root / "toolchain/preflight/probe.o").unlink()
+    leave_probe = False
+    (root / "stale.part").write_bytes(b"unfinished download")
+    with pytest.raises(platforms.PlatformError, match="unfinished input"):
+        platforms.prepare_compiler_inputs(toolchain, tmp_path)
+    assert not (root / "verified.json").exists()
+    assert events == ["preflight"] * 4
+
+
+def test_feed_input_receipt_requires_every_verified_archive(
+    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    small = copy.deepcopy(manifest)
+    for feed in small["feeds"]:
+        feed["packages"] = feed["packages"][:1]
+        feed["packages"][0]["sha256"] = hashlib.sha256(b"pinned bytes").hexdigest()
+    root = tmp_path / "feed-inputs" / platforms.feed_input_key(small)
+    for feed in small["feeds"]:
+        package = feed["packages"][0]
+        target = root / feed["id"] / package["filename"]
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b"pinned bytes")
+
+    def forbidden_network(*args: object, **kwargs: object) -> None:
+        raise platforms.PlatformError("missing required archive")
+
+    monkeypatch.setattr(platforms.urllib.request, "urlopen", forbidden_network)
+    assert platforms.prepare_feed_inputs(small, tmp_path) == root
+    assert (root / "verified.json").is_file()
+    target.write_bytes(b"corruption")
+    with pytest.raises(platforms.PlatformError, match="SHA256 mismatch"):
+        platforms.prepare_feed_inputs(small, tmp_path)
+    assert not (root / "verified.json").exists()
+    target.unlink()
+    with pytest.raises(platforms.PlatformError, match="missing required"):
+        platforms.prepare_feed_inputs(small, tmp_path)
+    assert not (root / "verified.json").exists()
+    assert not list(root.rglob("*.part"))
+
+
+def test_preparation_cli_keeps_modes_separate(
+    manifest: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(platforms, "load_manifest", lambda: manifest)
+    monkeypatch.setattr(platforms, "require_linux_host", lambda: None)
+    called = []
+    for name in (
+        "prepare_compiler_inputs",
+        "prepare_feed_inputs",
+        "prepare_kernel_source",
+    ):
+        monkeypatch.setattr(
+            platforms, name, lambda *args, name=name: called.append(name)
+        )
+    for arguments, expected in (
+        (["--prepare-compiler", "--kernel", "4.19.183"], "prepare_compiler_inputs"),
+        (["--prepare-feeds"], "prepare_feed_inputs"),
+        (["--prepare-kernel-source", "--kernel", "4.1.51"], "prepare_kernel_source"),
+    ):
+        monkeypatch.setattr(platforms.sys, "argv", ["runner", *arguments])
+        assert platforms.main() == 0 and called.pop() == expected
+    for arguments in (
+        ["--prepare-compiler"],
+        ["--prepare-kernel-source"],
+        ["--prepare-feeds", "--kernel", "4.1.51"],
+        ["--prepare-feeds", "--run"],
+        ["--prepare-feeds", "--native-busybox"],
+        ["--prepare-compiler", "--kernel", "4.1.51", "--cache-keys"],
+    ):
+        monkeypatch.setattr(platforms.sys, "argv", ["runner", *arguments])
+        assert platforms.main() == 1 and not called
+
+
 def test_private_compiler_runtime_is_hash_verified_data_only(
     manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -367,6 +367,17 @@ does not authorize changing agreed agent rules, plan/goals, checklist acceptance
 completion/publication gates or reducing required proof. Ordinary authorized
 implementation and evidence/status updates continue under their existing rules.
 
+Keep this repository's CI setup and shared caches optimized alongside its tests,
+following `zr0-test-efficiency`. Reuse verified toolchains, dependency downloads,
+installed developer tools and immutable kernel/BusyBox builds across eligible jobs
+and pushes. Key each cache by its actual compatibility, pins and build parameters
+so unrelated changes do not rebuild it. Preserve complete verified setup before
+later test failures; never cache mutable guest disks, test state or secrets. Keep
+required tests running on fresh state, verify meaningful warm-cache hits and review
+setup/build costs when CI changes. Cache misses must recover through the normal
+verified preparation path, without weakening proof or adding costly rebuilds by
+default.
+
 README summarizes **all main product implementation goals** covering the detailed
 subgoals in v2. Keep a concise warning, main-goal table, quick scope points and guide
 links with tasteful visual polish. Distinguish intended from available behavior;

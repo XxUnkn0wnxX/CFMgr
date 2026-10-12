@@ -788,6 +788,116 @@ def prepare_kernel_compiler(
     return compiler, runtime
 
 
+def compiler_input_key(toolchain: dict[str, Any]) -> str:
+    """Share only identical pinned compiler bytes and their verification recipe."""
+    digest = hashlib.sha256(json.dumps(toolchain, sort_keys=True).encode())
+    functions = [
+        prepare_compiler_inputs,
+        prepare_kernel_compiler,
+        compiler_preflight,
+        kernel_command,
+        download,
+        verify_hash,
+        verify_elf,
+        extract_tar,
+        _parents_safe,
+        _relative,
+        _input_receipt,
+        _finish_inputs,
+    ]
+    if toolchain["runtime"] is not None:
+        functions.extend((stage_kernel_runtime, ipk_data))
+    for function in functions:
+        digest.update(inspect.getsource(function).encode())
+    return digest.hexdigest()
+
+
+def feed_input_key(manifest: dict[str, Any]) -> str:
+    pins = [
+        {
+            "id": feed["id"],
+            "packages": [
+                {key: package[key] for key in ("filename", "sha256")}
+                for package in sorted(
+                    feed["packages"], key=lambda item: item["filename"]
+                )
+            ],
+        }
+        for feed in sorted(manifest["feeds"], key=lambda item: item["id"])
+    ]
+    digest = hashlib.sha256(json.dumps(pins, sort_keys=True).encode())
+    for function in (
+        prepare_feed_inputs,
+        download,
+        verify_hash,
+        _input_receipt,
+        _finish_inputs,
+    ):
+        digest.update(inspect.getsource(function).encode())
+    return digest.hexdigest()
+
+
+def _input_receipt(root: Path) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    receipt = _parents_safe(root, PurePosixPath("verified.json"))
+    _require(not receipt.is_symlink(), "unsafe input cache receipt")
+    if receipt.exists():
+        _require(receipt.is_file(), "invalid input cache receipt")
+        receipt.unlink()
+    return receipt
+
+
+def _finish_inputs(root: Path, receipt: Path, key: str) -> None:
+    _require(not any(root.rglob("*.part")), "unfinished input cache download")
+    receipt.write_text(json.dumps({"key": key}, sort_keys=True) + "\n")
+
+
+def prepare_compiler_inputs(
+    toolchain: dict[str, Any], cache: Path
+) -> tuple[str, Path | None]:
+    key = compiler_input_key(toolchain)
+    root = cache / "compiler-inputs" / key
+    receipt = _input_receipt(root)
+    compiler, runtime = prepare_kernel_compiler(toolchain, root / "downloads", root)
+    # Only the immutable compiler/runtime/archive bundle is saved, never probes.
+    preflight = root / "toolchain/preflight"
+    if preflight.exists():
+        _require(
+            preflight.is_dir() and not preflight.is_symlink(),
+            "unsafe compiler preflight directory",
+        )
+        preflight.rmdir()
+    _finish_inputs(root, receipt, key)
+    return compiler, runtime
+
+
+def prepare_feed_inputs(manifest: dict[str, Any], cache: Path) -> Path:
+    key = feed_input_key(manifest)
+    root = cache / "feed-inputs" / key
+    receipt = _input_receipt(root)
+    for feed in manifest["feeds"]:
+        for package in feed["packages"]:
+            download(
+                f"https://bin.entware.net/{feed['id']}/{package['filename']}",
+                package["sha256"],
+                root / feed["id"] / package["filename"],
+                limit=MAX_PACKAGE,
+            )
+    _finish_inputs(root, receipt, key)
+    return root
+
+
+def prepare_kernel_source(kernel: dict[str, Any], cache: Path) -> Path:
+    return download(
+        kernel["url"],
+        kernel["sha256"],
+        cache
+        / "kernel-inputs"
+        / kernel["sha256"]
+        / f"linux-{kernel['version']}.tar.xz",
+    )
+
+
 def stage_feeds(manifest: dict[str, Any], downloads: Path, root: Path) -> None:
     for feed in manifest["feeds"]:
         destination = root / "feeds" / feed["id"]
@@ -1181,7 +1291,7 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
     ):
         _require(shutil.which(tool) is not None, f"missing platform tool: {tool}")
     cache = ROOT / ".tmp/platform-cache"
-    downloads = cache / "downloads"
+    feed_downloads = cache / "feed-inputs" / feed_input_key(manifest)
     compilers: dict[str, tuple[str, Path | None]] = {}
     work_root = ROOT / ".tmp/platform-runs"
     work_root.mkdir(parents=True, exist_ok=True)
@@ -1190,19 +1300,18 @@ def execute(manifest: dict[str, Any], selected: str | None) -> None:
             continue
         toolchain = kernel_toolchain(manifest, kernel)
         if toolchain["version"] not in compilers:
-            compilers[toolchain["version"]] = prepare_kernel_compiler(
-                toolchain, downloads, cache
-            )
+            compilers[toolchain["version"]] = prepare_compiler_inputs(toolchain, cache)
         compiler, runtime = compilers[toolchain["version"]]
         busybox_item = next(
             item for item in manifest["busyboxes"] if item["id"] == kernel["busybox"]
         )
         binary = build_busybox(busybox_item, cache)
         recipe = build_key("kernel", kernel, toolchain)
+        downloads = cache / "kernel-inputs" / kernel["sha256"]
         image = build_kernel(kernel, compiler, downloads, cache, recipe, runtime)
         # New mutable filesystem for every boot; cached immutable inputs only.
         work = Path(tempfile.mkdtemp(prefix=kernel["version"] + "-", dir=work_root))
-        initramfs = prepare_guest(manifest, kernel, binary, downloads, work)
+        initramfs = prepare_guest(manifest, kernel, binary, feed_downloads, work)
         boot_guest(image, initramfs, kernel, manifest, work)
         print(
             f"Accepted generic guest proof: {kernel['version']} / {kernel['busybox']}; logs retained at {work.relative_to(ROOT)}",
@@ -1232,14 +1341,58 @@ def main() -> int:
         action="store_true",
         help="CI cache keys only; probes local compiler package versions without builds or downloads",
     )
+    preparation = parser.add_mutually_exclusive_group()
+    preparation.add_argument(
+        "--prepare-compiler",
+        action="store_true",
+        help="verify selected prebuilt compiler inputs before saving their CI cache",
+    )
+    preparation.add_argument(
+        "--prepare-feeds",
+        action="store_true",
+        help="verify both pinned Entware archive closures before saving their CI cache",
+    )
+    preparation.add_argument(
+        "--prepare-kernel-source",
+        action="store_true",
+        help="verify one kernel source archive without building or booting",
+    )
     args = parser.parse_args()
     try:
+        preparing = (
+            args.prepare_compiler or args.prepare_feeds or args.prepare_kernel_source
+        )
+        _require(
+            not preparing or not (args.run or args.cache_keys or args.native_busybox),
+            "input preparation cannot be combined with runtime or cache-key modes",
+        )
+        _require(
+            not preparing
+            or (args.kernel is not None and not args.prepare_feeds)
+            or (args.prepare_feeds and args.kernel is None),
+            "compiler/source preparation requires one kernel; feed preparation is shared",
+        )
         _require(
             not (args.native_busybox and (args.run or args.kernel)),
             "--native-busybox cannot be combined with --run or --kernel",
         )
         manifest = load_manifest()
-        if args.native_busybox:
+        if preparing:
+            cache = ROOT / ".tmp/platform-cache"
+            if args.prepare_feeds:
+                prepare_feed_inputs(manifest, cache)
+            else:
+                kernel = next(
+                    item
+                    for item in manifest["kernels"]
+                    if item["version"] == args.kernel
+                )
+                if args.prepare_compiler:
+                    require_linux_host()
+                    prepare_compiler_inputs(kernel_toolchain(manifest, kernel), cache)
+                else:
+                    prepare_kernel_source(kernel, cache)
+        elif args.native_busybox:
             if args.cache_keys:
                 require_linux_host()
                 busybox = next(
@@ -1266,6 +1419,9 @@ def main() -> int:
                 + build_key("kernel", kernel, kernel_toolchain(manifest, kernel))
             )
             print("busybox=" + build_key("busybox", busybox))
+            print("compiler=" + compiler_input_key(kernel_toolchain(manifest, kernel)))
+            print("feeds=" + feed_input_key(manifest))
+            print("source=" + kernel["sha256"])
         elif args.run:
             execute(manifest, args.kernel)
         else:

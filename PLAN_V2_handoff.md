@@ -14,9 +14,9 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and progress
 
-**Resumed by the user.** Full CI exposed further fixture prerequisites; the combined
-compiler/locking/entropy/native-test repair is reviewed and ready to push. No new runtime
-package may start before this exact-SHA gate passes. Resume inspection found a
+**Resumed by the user.** The compiler/locking/entropy/native-test repair passed
+all seven exact-SHA CI jobs. Current work is the user's requested persistent CI
+tool/dependency caching improvement. Resume inspection found a
 clean tree at `5853701dfbd5b00e5746f83a2b6da13e8349e94f`, matching origin/develop,
 and no existing child agents. Parent session identity remains the already-recorded
 third ID; this resume does not establish a new ID. No router work is running.
@@ -54,6 +54,25 @@ that scope; detailed fixture/source/CI progress stays here, with the standing
 documentation boundary recorded in AGENTS.md. The user explicitly authorized its
 separate documentation push: `ae594bf4f44c6bfc34b3eee88997bf644ccc1515`, verified
 equal to origin/develop. That receipt is not runtime CI evidence.
+
+Latest CI request: persist reusable installed developer tools/dependency downloads
+so pushes do not rebuild the environment unnecessarily. Kernel/BusyBox build
+caches already exist. Improve dependency/tool
+caching, preserve validated setup across later test failures, keep mutable guest
+and test state fresh, and verify actual cache hits. GitHub-hosted runners still
+start fresh; no GCC source build or whole-machine snapshot is requested.
+Parent read the user's latest ChatGPT conversation, “GitHub Environments Explained”,
+through the connected conversation tool. It recommends saving verified inputs
+before later failures, sharing identical downloads/compiler bundles and evaluating
+a prebuilt container afterward. This informs the authorized caching task; it does
+not change product requirements or authorize a new deployment/registry publication.
+The user also requested ongoing CI optimization in AGENTS.md. Parent added the
+standing cache/setup rule: share verified immutable inputs, invalidate only affected
+compatibility/pins/parameters, save before later failures and prove warm reuse while
+retaining all required tests and fresh mutable state. The final S16.03 developer-guide
+coverage now mirrors those workflow/cache basics in the plan and checklist; the
+interim developer notes remain minimal. This user-requested documentation
+amendment adds no product goal or acceptance tick.
 
 ## Router boundary
 
@@ -112,7 +131,7 @@ No approval question is currently open.
 ## Current code and ownership
 
 Latest published runtime revision, verified on local/origin develop after push:
-`e01b8ee0514fc5bc5df908efebafb56cddb1e752`.
+`3ab84c5ab10dc4ed43d3eb7621a58af5b2fb46c8`.
 The separate developer-docs receipt is `ae594bf`; it is not runtime CI evidence.
 Inspect current refs and full CI status on resume.
 Earlier partial checkpoints remain in ancestry: native helper `3e164914`, probe
@@ -120,15 +139,16 @@ correction `6b411736`, platform fixtures `6b91cd8`, policy amendment `b73b9bb`.
 No main branch was recreated. The pushed repair changes the platform runner/tests,
 manifest, BusyBox config and workflow, plus the approved progress rule and this
 handoff. Parent reviewed all returned changes and reran their focused/static gate;
-actual kernel execution is pending the current full CI run.
+actual kernel execution passed the full CI run below.
 
 | Owner | Exclusive scope | Current state |
 | --- | --- | --- |
 | Parent | Planning files, AGENTS.md, docs, integration and final review | Own all accepted requirements and CI gate; inspect every returned change. |
-| kernel_compiler | Returned; no active ownership | Parent reviewed compiler selection/cache/preflight/workflow and QEMU RNG integration; actual CI pending. |
+| kernel_compiler | Returned; no active ownership | Parent reviewed shared compiler/feed/source caches, preparation failure boundaries, actual runner consumers and workflow integration. Existing build/key helpers are unchanged. |
 | guest_diagnostic | Returned; no active ownership | Parent-reviewed guest prefix correction and native regression; reused existing applet fixture, pinned mode only. |
-| Parent | tests/test_storage.py, tests/fixtures/platform/kernel.config; integration/plans | Owned FIFO native error fixture; FILE_LOCKING and virtio RNG guest prerequisites. Worker owns matching QEMU arguments. Preserve all proof. |
-| ci_resume_wait | Completed | Run 38187960627 at e01b8ee terminal failure confirmed. |
+| ci_tools | Returned; no active ownership | Parent reviewed APT archive and exact installed-venv caches, compatibility identities and healthy setup saves. Embedded Bash/Python static checks passed. |
+| Parent | Integration/planning, developer command notes and final checks | Review both cache packages, focused checks, exact full CI and representative warm-cache reuse. |
+| ci_resume_wait | Returned; no active ownership | Run 38188741049 at 3ab84c5 passed all seven jobs; parent verified full head and guest markers. |
 | platform_audit | Returned; no active ownership | Source review found guest entropy prerequisite; parent reviewed BIND constructor/RAND check and exact virtio driver quality. No other concrete blocker found. |
 | Other agents | No active ownership | Source/parity/persistence/runtime/probe packages returned. No router work. |
 
@@ -151,76 +171,66 @@ before accepting ownership or publishing.
 
 ## CI gate and local evidence
 
-The runtime checkpoint remains **failed**, so only its repairs may advance.
-Latest published runtime: `e01b8ee0514fc5bc5df908efebafb56cddb1e752`, verified
-against origin/develop. No product subgoal is accepted.
+The previous runtime checkpoint **passed**; the requested CI caching package may advance.
+Latest published runtime: `3ab84c5ab10dc4ed43d3eb7621a58af5b2fb46c8`, verified
+against origin/develop. [Checks 38188741049](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38188741049)
+passed all seven required jobs at that exact full SHA. Parent independently read
+all four guest logs: exact kernel/vendor identity, native storage flush/rename/
+readback/cleanup, diagnostic rejection and both Entware ABI success markers passed.
+Native BusyBox suite: **63 passed, zero skips, 0.90s**, including the owned-FIFO
+zero-exit diagnostic regression. Planning and host/static jobs also passed.
+Generic guests do not establish full S02.09/model/TLS or live flash acceptance.
+No product subgoal is accepted.
 
-- [Checks 38187960627](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38187960627)
-  at that exact SHA finished with host/static and planning success; native BusyBox
-  and four kernel jobs failed. Parent read all five failed-job logs.
-- Native suite: **59 passed, one new-case failure**, 0.85s. The new error fixture
-  used root-owned /dev/null under the non-root runner; vendor fsync's O_NOATIME
-  requires inode ownership/capability. Parent now uses a private owned FIFO with
-  a held writer, separately asserting the real zero-status diagnostic and silent
-  wrapper rejection. The root guest keeps its valid /dev/null test.
-- Both 4.1 kernels built and booted; native storage probe/cleanup and zero-status
-  diagnostic rejection passed, followed by actual Entware jq, timeout and SHA.
-  flock returned ENOSYS because the minimal fixture omitted FILE_LOCKING. Parent
-  enabled that exact source-declared prerequisite; real locking proof stays required.
-- Both 4.19 kernels passed configuration, then their ARM64 compiler header rejected
-  GCC 4.9.4 (minimum 5.1). Worker is qualifying a separately pinned official GCC
-  8.5 compiler; retain the working 4.1 compiler, every kernel pin and source checks.
-- Earlier [Checks 38187447546](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38187447546)
-  at `a7e3955f35319b50bb0d9ed3ecfd3f09ec005002` passed planning, host/static and native
-  BusyBox (**59 passed, zero skips, 0.79s**). It exposed the now-fixed guest fsync
-  prefix and 4.19 VIRTIO_MENU prerequisite. This older success does not cover the
-  new native regression. Prior compiler MPFR4 and BUSYBOX applet repairs are proven
-  by the later actual builds; old failed/cancelled runs award no acceptance.
+Current cache package integration contract: workflow uses local
+`.github/actions/setup-tools` with `apt-packages` (space-separated validated package
+names) and optional `python-tools: 'true'`. Host/native jobs request ShellCheck and
+Python tooling; kernel jobs pass their existing package set plus selected compiler
+host requirements. Installed venv cache identity includes interpreter/platform,
+requirements and workspace location. Cache only APT archive downloads, never an
+installed system snapshot. Platform input preparation must verify pinned bytes
+and compiler preflight before saving shared immutable inputs. Mutable guest disks,
+work directories, test state and secrets are never cached. Preserve current build
+cache identities unless an actual build input changes. Focused offline behavioral
+tests/static checks precede the authorized CI push; full exact CI and observed
+warm restores are required before claiming caching works.
 
-Local evidence, limited to the named dirty tree and inputs:
+The combined caching candidate on dirty `3ab84c5` passed the parent focused runner:
+**35 passed, zero skips, 0.49s**, with Ruff check/format, compileall, POSIX syntax,
+ShellCheck, shfmt, planning/link/privacy and whitespace gates. Parent also parsed
+workflow/action YAML, checked every embedded Bash block (including composite
+shfmt with two-space indentation), and checked embedded Python syntax/Ruff.
+Every pre-existing platform function except `execute`/`main` is source-identical
+to HEAD, preserving existing build/cache identities. Four small offline regressions
+cover scoped key invalidation, verified-completeness receipts and rejected CLI
+combinations. No full local run, native build, router work or test matrix reduction.
+Actual GitHub cache save/restore and Linux setup remain pending the next exact CI.
 
-- Combined compiler-runtime repair on dirty `ae594bf`: parent
-  `.venv/bin/python tools/test.py --focused tests/test_platforms.py` — **28 passed,
-  zero skips, 0.27s**; all planning/static checks passed. Worker also validated
-  actual Debian package data extraction/cache hashes without executing its code.
-- Guest/config correction on dirty `a7e3955`: parent platform command **28 passed,
-  zero skips, 0.34s**; worker storage command **22 passed, ten Linux skips**. Parent
-  removed duplicated applet setup and restricted the legacy-error assertion to
-  required pinned BusyBox mode. No test assumes an unrelated host version has it.
-- Current owned-FIFO correction on dirty `e01b8ee`:
-  `.venv/bin/python tools/test.py --focused tests/test_storage.py -k linux_busybox_zero_exit`
-  — **one explicit platform skip, 31 deselected**; no native execution claimed.
-  Current FILE_LOCKING selection check:
-  `.venv/bin/python tools/test.py --focused tests/test_platforms.py -k kernel_configuration`
-  — **one passed, 27 deselected**, 0.12s. Both invocations passed Ruff check/format,
+Local evidence for the accepted repair:
+
+- Worker and parent ran `.venv/bin/python tools/test.py --focused tests/test_platforms.py`
+  on dirty `e01b8ee`: **31 passed, zero skips** (parent 0.31s). Ruff check/format,
   compileall, host POSIX syntax, ShellCheck, shfmt, planning/links/privacy and
-  whitespace checks. Actual changed behavior must pass the next full CI gate.
-- No full local suite for this earlier platform checkpoint. Tests reuse immutable
-  setup and run serially; platform tests complete under one second. CI keeps two
-  kernel jobs at most, make -j2, one CPU/256 MB per guest and verified build caches.
-  No extra full suite was run to measure cost. Current host tools: .venv Python
+  whitespace checks passed. Parent reviewed both returned packages and independently
+  matched the prebuilt GCC 8.5 archive hash.
+- The owned-FIFO native regression explicitly skipped locally because pinned Linux
+  BusyBox was unavailable; the required CI above supplied its actual proof. It
+  asserts the vendor fsync zero-exit diagnostic and silent wrapper rejection.
+- Earlier CI failures established missing FILE_LOCKING and 4.19 VIRTIO_MENU, the
+  4.19 compiler minimum, the native inode-ownership fixture condition and legacy
+  MPFR4 runtime requirement. Current source-selected fixes passed actual guests.
+  Raw job logs remain ignored at `.tmp/platform-review/ci-<run>-<job>.log`.
+- BIND initializes TLS/RAND before `dig` main. The exact four virtio RNG drivers
+  advertise quality 1000; the minimal kernel enables HW_RANDOM/VIRTIO and QEMU
+  supplies host random bytes. Actual `dig -v` now passes for both feed ABIs on
+  every guest. No extra boot argument, rngd or fallback bypass was needed.
+- No full local suite was run for this earlier platform checkpoint. Existing
+  focused tests run serially below one second. CI retains at most two kernel
+  jobs, make -j2 and one CPU/256 MB per guest. Current host tools: .venv Python
   3.14.0, pytest 9.1.1, Ruff 0.16.10, shfmt 3.7.0.1, Homebrew bash 5.3.3/ShellCheck.
-- Combined final repair on dirty `e01b8ee`: worker and parent ran the platform
-  focused command, **31 passed, zero skips**, with all static gates passing.
-  Parent reviewed every changed consumer, tests, manifest, workflow and both
-  returned packages; independently matched the downloaded GCC 8.5 archive hash.
-  New coverage reuses existing fixtures; each family gets its own prebuilt
-  compiler/preflight/environment checks, no GCC source build or new framework.
-  Kernel and BusyBox actual execution, FIFO regression and guest RNG remain
-  pending the next exact full CI run.
+  Required full CI supplies comparable job wall times; aggregate CPU is not measured.
 
-Raw job logs remain ignored at `.tmp/platform-review/ci-<run>-<job>.log`.
-Bounded independent fixture review found an additional unexecuted risk: BIND's
-[libisc constructor](https://github.com/isc-projects/bind9/blob/v9.20.18/lib/isc/lib.c)
-initializes TLS/RAND before dig main. Add the guest HW_RANDOM/VIRTIO driver and an
-explicit QEMU virtio-rng device backed by host /dev/urandom. Exact drivers for all
-four kernels set quality 1000, so their RNG cores credit entropy without rngd or
-extra boot arguments. Parent reviewed the relevant sources. This prevents a
-plausible startup entropy wait; actual dig proof remains required, never replaced
-by source inspection. Exact Entware OpenSSL build configuration was inferred
-from its recipe, not independently reproduced.
-Complete guests must prove both ARM Entware command sets and every exact success
-marker. Generic kernels are not exact Merlin firmware or live NAND/JFFS2 proof;
+These generic kernels are not exact Merlin firmware or live NAND/JFFS2 proof.
 TLS/native option checks and full model qualification remain unfinished. S02.09
 cannot be ticked merely because these selected guests pass.
 
@@ -242,7 +252,7 @@ matches its published digest (signature not checked). Data-only ELF inspection
 found only glibc host dependencies, no MPFR4/MPC/GMP dependency. It uses exact
 -dumpfullversion and clears child LD_LIBRARY_PATH. Evidence is retained at
 `.tmp/platform-review/gcc-8.5.0-elf-dependencies.txt`; no compiler executed locally.
-The compiler needs legacy host MPFR4. Official Debian Stretch metadata and actual
+Legacy GCC 4.9.4 needs host MPFR4. Official Debian Stretch metadata and actual
 package bytes independently verify `libmpfr4` 3.1.5-1 amd64; both package and library
 hashes are pinned in the manifest. Only data is extracted into a private cache;
 no install/maintainer script is run. Its library path is passed only to compiler
@@ -298,11 +308,10 @@ setting, package or Cloudflare data was changed.
 
 1. Resume inspection and CI repair are authorized. Preserve the hidden
    session block; append only a verified actual new parent session ID.
-2. Commit/push the reviewed combined fixture correction and monitor its full
-   Checks run, all seven exact-SHA jobs. Fix actual
-   build/boot/command failures within this checkpoint, focused-test, commit/push
-   and wait again. No new runtime package before full required CI passes; no full
-   local suite solely for this earlier platform checkpoint.
+2. Complete and parent-review the two disjoint CI cache packages above. Run focused
+   behavioral/static checks, push under the authorized CI gate and require all seven
+   exact-SHA jobs green. Verify representative warm restores before claiming reuse.
+   Preserve all existing kernel/BusyBox/Entware behavior and fresh guest state.
 3. After that gate, continue goal 2's real install/storage/dependency consumer and
    Save integration under the documented firmware limit. Preserve incomplete work;
    no helper-based ticks. At the completed main-goal gate follow the full local/CI,

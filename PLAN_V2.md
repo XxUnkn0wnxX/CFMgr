@@ -1381,7 +1381,7 @@ facts have one authoritative home with links from related tasks.
 | `docs/backup-and-removal.md` | Manual archives, validated restore/migration, backup storage/retention, KEEP/WIPE uninstall, retained installation and scoped resets. | 14–15 |
 | `docs/compatibility.md` | Declared firmware/native-tool/ABI support, required capabilities, source/host/BusyBox/kernel/live evidence and provisional limitations. | 2, 8, 16 |
 | `docs/architecture.md` | Actual entry/module/shared-library interfaces, storage/state authority, ownership/locks, transactions, worker/lifecycle/resolver/provider flows and integration boundaries. | 1–15 |
-| `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools, package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
+| `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools and workflow optimization (shared verified caches, scoped invalidation/rebuilds, failure-safe saves, fresh mutable state and warm-run checks), package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
 | `CONTRIBUTING.md` | Concise change/review workflow, scope/checklist discipline, validation/privacy rules and links to development/architecture guidance. | 16 |
 
 Full-guide readiness requires verified commands and failure guidance, accurate
