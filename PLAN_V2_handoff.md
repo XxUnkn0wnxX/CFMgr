@@ -42,6 +42,12 @@ Working route, owners, failure diagnosis and next steps remain in this handoff.
 README now includes the same subgoal total and corrects the stale no-installer
 claim: trusted-local passive installation exists, complete installation and all
 feature workflows remain unfinished. No acceptance was added by these edits.
+Subsequent user refinements are consolidated in AGENTS.md: minimal checklist
+summary, README table updates at validated subgoal gates, a 32,000-byte instruction
+limit and pause behavior based on whether a subgoal is barely started or already
+substantial. A substantial-work pause authorizes focused commit/push/CI before
+handoff; a barely-started attempt may be scoped back to HEAD. These were standing
+rule changes, not a request to pause this active task.
 
 Approximate completion route: aim for **Goal 2 — Installation and dependencies**.
 Current S02.05 repair and S02.08 storage work supports its remaining prerequisite,
@@ -68,6 +74,7 @@ Current integration set (previous checkpoint accepted; next package active):
 | Parent | Three plans; architecture, integration and package metadata | S02.05/S02.08 private execution/storage design for installed-opkg consumers. Review tests against real entry paths; no acceptance for helpers alone. |
 | Parent integrating completed worker packages | Storage fixture correction, parser/package metadata, workflow/docs and plans | S02.05/S02.08 focused CI correction only. Both writing workers finished and released files; no execution-root construction or opkg launch yet. |
 | `opkg_supervision_review` analyst, completed | Read-only pinned Entware/opkg source findings returned | Minimal native views are not yet shown compatible with normal configured opkg/scripts. Parent owns the architecture decision below; no edits, package execution, installation or router work occurred. |
+| `execution_view_review` deep, read-only | S02.05/S02.08 execution-view architecture review | Evaluate a host-compatible view with descriptor-bound `/opt` against normal configured opkg/script behavior, storage loss and owned-task cleanup. No writes, tests, router actions or additional agents; parent retains the implementation decision. |
 
 The completed inventory package connects `--install` → native-work → check. It
 preserves the 15-argument interface, aggregates ordinary missing/unusable tools
@@ -150,6 +157,16 @@ gates. Receipt: `.tmp/storage-mount-ci-fix-local.log`. Only the fixture changed;
 the previous parser/install/storage local evidence remains applicable. Re-push
 the four-file focused selection and wait. No workers or CI jobs are now active.
 
+**Correction checkpoint passed:** `423dd14a5b35c295f07aed0d9e1225a10a8a15df`,
+origin/develop verified; [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856).
+Parent verified the full SHA, sole required job, selection and logs. Host:
+**65 passed, 8 platform/mode skips**, 5.39s. Vendor BusyBox: **73 passed, no skips**,
+12.26s, including all five real ext4 cases. All static/planning gates passed;
+job 48s. Receipts: `.tmp/storage-mount-ci.json` and `.log`. No CI job is active;
+implementation may resume after the architecture decision below. Checklist gets
+only concise gate evidence; README marks the tested storage foundation without
+adding a complete subgoal. New policy-only edits retain this tested runtime SHA.
+
 - Active Goal 2: **1/9 accepted = 11.1%** (S02.03).
 - Supporting Goal 3: **1/10 accepted = 10%** (S03.01).
 - Product: **0/16 main goals = 0%**. No main-goal/README completion earned.
@@ -168,9 +185,9 @@ is listed above; do not interpret the preceding pause as current permission stat
 
 Resume started on clean local/remote `develop` at
 `bc49cf54831e8b7099aad3aee9ba8e75fbcae137`. Current published local/remote head is
-`b64a00b349935dc45aa518214d8aefa34456bb46`, with exact focused evidence above.
-Verify HEAD and status on resume; the active storage/parser package is dirty and
-not covered by that receipt. The preceding full-suite runtime baseline was
+`423dd14a5b35c295f07aed0d9e1225a10a8a15df`, with exact focused evidence above.
+Verify HEAD and status on resume; current uncommitted changes are documentation
+receipts/rules only, not a new runtime-tested revision. The preceding full-suite runtime baseline was
 `7ce3cad771a7cedb0e2f17e69082f9659655c5c5`, already published.
 [Checks 38200865754](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38200865754)
 was reverified at that full SHA: its sole Ubuntu job passed in **50 seconds**.
@@ -263,6 +280,27 @@ explicit bind operands reach the mount syscall unchanged; canonicalization occur
 only afterward for optional mtab updates. The pinned `get_devname.c` source shows
 `resolve_mount_spec` changes only UUID=/LABEL= operands. Descriptor bind behavior
 still needs execution proof; source review alone does not qualify the future view.
+
+Compatibility review found that the earlier minimal native-root proposal can
+change approved normal opkg behavior: configured `file:` feeds/temp/cache paths
+may sit outside `/opt`; install configures every existing unpacked package; scripts
+run through `/bin/sh` and may use native `/etc`→`/tmp` links, service IPC, devices,
+procfs and other mounted paths. Opkg invokes `wget` through PATH, so curl admission
+alone does not qualify its transport. Entware's default generated OpenWrt hooks
+are disabled; selected recipe simplicity does not constrain other unpacked scripts.
+These are source findings, not evidence that the installed router packages match.
+No restricted root or opkg writer was implemented. Parent is evaluating a private
+root that preserves native path visibility while holding `/opt` to FD7; a bounded
+top-level bind inventory with replicated existing submounts is only a proposal.
+`execution_view_review` checks whether it preserves both normal behavior and the
+storage/ownership guarantees before any construction code is assigned. No new
+product restriction or unanswered user-approval question exists yet.
+
+Source pins: Entware root `36db8558ac7840d993cb11df1e47e0326d681077`, upstream opkg
+`80503d94e356476250adaf1f669ee955ec26de76`; its feed references are not pinned by
+that root. Supplemental current recipe snapshots are entware-packages
+`b6a6f2962f62882b76dfe45f9f9e1238cd9b74fd` and rtndev
+`05d2b0f695b8bc1973a9c88a8f08764c8fcb8271`; do not treat them as installed-IPK proof.
 
 The official Merlin Addons API, User scripts and Custom config files authorities
 were consulted during scope review; no new firmware compatibility claim or

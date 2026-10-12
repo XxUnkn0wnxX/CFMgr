@@ -12,11 +12,6 @@ earn product ticks.
 **0 of 16 main goals complete — 0% product completion.**
 
 **2 of 157 product subgoals accepted — 1.3% overall subgoal completion.**
-Accepted IDs: S02.03 (Goal 2) and S03.01 (Goal 3). Focused-complete: **2/157**;
-no additional fully implemented subgoal is awaiting CI.
-Goal 2: **1/9 accepted (11.1%)**. Goal 3: **1/10 accepted (10%)**.
-All other product subgoals remain unchecked.
-Counting rules: [AGENTS.md](AGENTS.md#evidence-and-progress).
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and any required exact-commit focused CI.
@@ -126,7 +121,7 @@ are distinct from still-required remote acquisition/update-source proof.
 | Scope | Focused local/static evidence | Required CI gate | Subgoal acceptance |
 | --- | --- | --- | --- |
 | S02.04/S02.05 prerequisite inventory | `test_prerequisites.py`, `test_install.py`, `test_dev_runners.py`: 62 passed, 4 Linux skips on the initial dirty package; final prerequisite correction: 20 passed, 3 Linux skips. Static gates and parent review passed. | Passed at `b64a00b349935dc45aa518214d8aefa34456bb46`: [Checks 38204206519](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38204206519), host and vendor BusyBox each 65 passed, 1 workstation-only skip. | Partial. Inventory/native-first flock proved; normal opkg repair and the tunnel DNS consumer remain incomplete. |
-| S02.05/S02.08 storage proof | `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`, `test_install.py`: 57 passed, 16 platform/mode skips, 48.01s on the dirty tree based on `b64a00b`; static gates and parent review passed. | Pending. Five real Linux mount cases and BusyBox regressions require exact focused CI; candidate `78f7a025a3e556155101df39f63a40f3ad6d417a` failed the CI static gate. | Partial. Existing installer pin/UUID checks and parser tested locally; expected saved identity, owned-writer containment and returning-work eligibility remain incomplete. |
+| S02.05/S02.08 storage proof | `test_mountinfo.py`, `test_storage.py`, `test_storage_mounts.py`, `test_install.py`: 57 passed, 16 platform/mode skips, 48.01s on the dirty tree based on `b64a00b`; static gates and parent review passed. | Passed at `423dd14a5b35c295f07aed0d9e1225a10a8a15df`: [Checks 38206169856](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38206169856), host 65 passed/8 skips; vendor BusyBox 73 passed/0 skips, including all five real mount cases. | Partial. Existing installer pin/UUID checks and parser passed focused local/CI proof; expected saved identity, owned-writer containment and returning-work eligibility remain incomplete. |
 
 Focused commands use `.venv/bin/python tools/test.py --focused` followed by the
 listed modules under `tests/`. No partial row earns a focused-complete or accepted

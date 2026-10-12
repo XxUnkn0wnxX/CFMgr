@@ -2,7 +2,9 @@
 
 Global instructions and matching skills apply. Explicit user instructions override
 stale files and memory. This file owns standing workflow; product behavior belongs
-in the v2 specification. Keep rules concise and avoid duplicating skills or handoff.
+in the v2 specification. Keep this file below **32,000 bytes**: revise/consolidate
+existing rules, avoid duplicate text and reference skills/plans instead of copying
+their instructions. Check its byte size after edits.
 
 ## Planning authority
 
@@ -127,6 +129,8 @@ supporting main goals/subgoals being worked through and the return path after a
 prerequisite switch. Keep that route approximate when dependencies are unsettled;
 do not imply every supporting main goal must finish first. Update checklist totals
 and current handoff focus/route when acceptance or sequencing changes.
+Keep the checklist's completion summary to overall main-goal and subgoal counts/
+percentages; individual IDs, focused proof and outstanding gates stay in its tables.
 
 100% means the approved CLI is implemented, integrated and ready for controlled
 beta, with coherent libraries, automated safety tests and practical guides. The
@@ -197,7 +201,8 @@ required focused CI checks and wait for their exact-commit result. Do not trigge
 full local/full CI suites merely to accept a subgoal. The exception closes only
 fully proved subgoals and cannot complete an unfinished main goal. Otherwise wait
 for the normal main-goal candidate gate; convenience/helper completion is not a
-push grant. If CI lacks the needed focused route, add and validate it in the same
+push grant. The explicit pause checkpoint below is a separate authorized focused
+push. If CI lacks the needed focused route, add and validate it in the same
 approved package before using the exception.
 
 After **any authorized runtime checkpoint push**, wait for its exact prescribed CI
@@ -306,6 +311,14 @@ goals covering their subgoals, scope points and links to existing guides. Separa
 from available behavior; no helper-based progress, unsupported installer or unearned
 completion. WebUI is optional future work outside scope/checklist/percentage.
 
+Update the README table as each subgoal's focused-test, required CI or acceptance
+gate is validated; do not wait for a whole main goal to update subgoal progress.
+Show in-progress status and accepted subgoals/total, distinguishing fully focused-
+tested subgoals awaiting CI when applicable. Partial packages may remain visibly
+in progress but never increase completed-subgoal counts. Keep rows concise and
+put detailed evidence in the checklist. Mark a main goal complete only after its
+full audit/local/CI checkpoint. Parent verifies worker evidence before these updates.
+
 Until most/all goals are met, keep `docs/development.md` to required tools, setup and
 built-in checks. Put progress, investigations, detailed fixture internals and pending
 proof in handoff. Complete practical architecture/developer/operating guides near
@@ -369,8 +382,28 @@ authorize deleting retained evidence.
 
 ## Pause and handoff
 
-On pause/stop, start no new package. Finish only the agreed safe boundary and stop
-required work. Record commits, checks/skips, staged/unstaged/untracked work, recovery
-locations, agents/commands/jobs, unresolved findings and next actions in handoff;
-checklist gets only justified evidence/acceptance. Leave no required worker/job active
-at completed handoff. Resume only within the user's instruction and current gate.
+An explicit pause request overrides the normal main-goal stopping boundary. Start
+no unrelated subgoal/package; use the amount of work already done to choose the
+last acceptable checkpoint:
+
+- **Barely started:** the user permits dropping that small new subgoal attempt
+  and resetting its owned changes to HEAD. Inspect the diff/ownership first and
+  follow the preservation rules above. Scope the reset/removal to that attempt;
+  preserve unrelated changes, prior validated packages and untracked/private data.
+  Do not reset the whole tree unless every affected change is verified discardable.
+- **Substantial progress, roughly halfway or near completion:** finish that
+  subgoal, pass its written focused tests/static checks and parent review, fixing
+  failures until they pass. This pause checkpoint explicitly authorizes commit and
+  push with focused CI. Wait for all required checks at that exact SHA; on failure,
+  fix, focused-test, commit/re-push and wait again. Do not pause with failed/pending
+  required CI. Full local/full CI still run only if a whole main goal is ready.
+
+Then update justified checklist/README status and refresh handoff for either a new
+session or resumption in this one: commits, tests/skips/pending gates, staged/
+unstaged/untracked work, recovery paths, agents/commands/jobs, unresolved findings,
+completion target and exact next actions. Publish any checkpoint documentation
+receipt with proportionate checks, identifying the tested code SHA. Leave no
+required worker/job active, then pause; resume only on the user's instruction.
+Never award a tick to partial work. If a genuine blocker prevents the agreed
+checkpoint, preserve it unchecked and report the blocker instead of discarding
+substantial work or claiming success. An immediate stop request takes precedence.
