@@ -90,6 +90,7 @@ cfmgr_config_defaults_exec() {
 				"check_updates": true,
 				"auto_update": false,
 				"developer": false,
+				"developer_log_directory": null,
 				"source": {
 					"repository": $repository,
 					"branch": $branch,

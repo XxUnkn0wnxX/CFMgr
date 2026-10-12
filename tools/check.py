@@ -192,9 +192,9 @@ def validate(root: Path) -> list[str]:
             specification, SPEC_ROW, SPEC_ID_ROW, "PLAN_V2.md"
         )
         errors.extend(row_errors)
-        if len(spec_rows) != 156:
+        if len(spec_rows) != 157:
             errors.append(
-                f"PLAN_V2.md: expected 156 unique subgoals, found {len(spec_rows)}"
+                f"PLAN_V2.md: expected 157 unique subgoals, found {len(spec_rows)}"
             )
         _, section_errors = _goal_sections(specification, GOAL_HEADING, "PLAN_V2.md")
         errors.extend(section_errors)
@@ -205,9 +205,9 @@ def validate(root: Path) -> list[str]:
             checklist, CHECKLIST_ROW, CHECKLIST_ID_ROW, "PLAN_V2_checklist.md"
         )
         errors.extend(row_errors)
-        if len(checklist_rows) != 156:
+        if len(checklist_rows) != 157:
             errors.append(
-                f"PLAN_V2_checklist.md: expected 156 unique subgoals, found {len(checklist_rows)}"
+                f"PLAN_V2_checklist.md: expected 157 unique subgoals, found {len(checklist_rows)}"
             )
         _, section_errors = _goal_sections(
             checklist, CHECK_GOAL_HEADING, "PLAN_V2_checklist.md"
@@ -237,7 +237,7 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
     print(
-        "Planning consistency passed: 156 aligned subgoals, 16 README goal links, "
+        "Planning consistency passed: 157 aligned subgoals, 16 README goal links, "
         "and active document links/privacy. No runtime acceptance was performed."
     )
     return 0

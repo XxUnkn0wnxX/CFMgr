@@ -79,6 +79,7 @@ def expected_config(
             "check_updates": True,
             "auto_update": False,
             "developer": False,
+            "developer_log_directory": None,
             "source": {"repository": repository, "branch": branch, "commit": ""},
         },
         "storage": {

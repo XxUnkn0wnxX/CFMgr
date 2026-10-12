@@ -41,21 +41,27 @@ After changing runtime files, regenerate their catalog and manifest with
 `.venv/bin/python tools/package.py --write`; `--check` verifies them without edits.
 Use `--output PATH` to build a package in an absent or empty directory.
 
-## Linux platform checks
+## CI and optional platform diagnostics
 
-The [Checks workflow](../.github/workflows/checks.yml) declares the system
-prerequisites and runs the full host, required BusyBox and kernel jobs. Explicit
-platform builds require Linux x86_64 and download pinned fixtures:
+The required [Checks workflow](../.github/workflows/checks.yml) uses one Ubuntu
+24.04 runner for planning consistency, the full host suite, a cached native
+vendor BusyBox build, and the full suite under BusyBox ash. These are approximate
+integration and shell-compatibility checks; they do not establish Merlin firmware,
+kernel, flash, hook, or true-beta router behavior. Router acceptance is deferred
+until implementation is complete. CI reuses validated Python tools, APT download
+archives and the verified BusyBox binary; each runner still installs packages
+normally.
+
+An optional Linux x86_64 guest diagnostic can build and run a pinned kernel
+profile. It is not required CI or accepted router proof:
 
 ```sh
-python3 tools/test_platforms.py --native-busybox
-PATH="$PWD/.tmp/native-busybox/bin:$PATH" .venv/bin/python tools/test.py --require-busybox
 python3 tools/test_platforms.py --run --kernel 4.1.51
 ```
 
-Other kernel profiles are in [platforms.json](../tests/fixtures/platforms.json).
+Other profiles are listed in [platforms.json](../tests/fixtures/platforms.json).
 Running `tools/test_platforms.py` without build flags validates that manifest
-offline. Generic platform checks are separate from live router acceptance.
+offline.
 
 ## Optional router probe
 

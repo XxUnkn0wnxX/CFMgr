@@ -112,9 +112,13 @@ Use two separate progress measures:
   all subgoals, audit, full local and exact full CI gates pass. Explain regressions;
   keep acceptance ticks and labelled package/workload estimates separate.
 
-100% means the approved CLI is implemented, integrated, validated and usable within
-declared support, including coherent libraries, efficient tests, required safety
-proof and practical guides. Only optional final polish/broad optimization may follow.
+100% means the approved CLI is implemented, integrated and ready for controlled
+beta, with coherent libraries, automated safety tests and practical guides. The
+development gate is representative Ubuntu/BusyBox evidence. Actual Merlin/ARM,
+flash, hooks, TLS and live-provider qualification follows during an extended
+real-router beta; keep support provisional until evidenced. Beta deployment and
+stable/release publication still need explicit authorization. Optional final
+polish/broad optimization may follow implementation completion.
 
 ## Validation and publication gates
 
@@ -145,7 +149,7 @@ tool completion does not add product goals or inflate product percentages.
 `develop` remains the only active/default branch until reviewed product 100%. Do not
 recreate local/origin `main`, change the default, rewrite history or promote runtime
 incidentally. Main's return is an explicit readiness action. Assign the first release
-version at usable 100%, then beta; no milestone bumps. Settle beta upgrade ordering
+version at 100% implementation/beta readiness; no milestone bumps. Settle beta upgrade ordering
 before packaging. Stable promotion, release publication and live deployment need
 separate authorization.
 
@@ -168,7 +172,7 @@ Mandatory normal checkpoint sequence:
    next scope; do not start another main goal in that session.
 
 Earlier subgoal commit/push/wait is already authorized **only when most meaningful
-behavioral proof needs Linux/BusyBox/kernel execution unavailable locally**. Explain
+behavioral proof needs Linux/BusyBox execution unavailable locally**. Explain
 that dependency; push the reviewed focused-tested package and require full CI.
 Convenience, a minority of platform cases, helper completion or padded test counts
 do not qualify. Such a push needs no extra full local run solely for publication,
@@ -183,12 +187,12 @@ proportionate checks; reference the tested code SHA, never imply the receipt SHA
 already runtime-tested. No unearned main-goal or README completion. The boundary pause
 is after a completed main goal, not internal packages or numeric increments.
 
-During tracing or repair of a shared CI/kernel failure, retrieve the first useful
-failed job's log and cancel the remaining run promptly. Do not wait for every
-kernel to repeat the same failure. Keep the full matrix when determining whether
-a failure affects only specific kernels (for example, one or two of four), and
-for the final acceptance candidate. Cancelled jobs supply no proof; acceptance
-still requires all prescribed jobs green at the exact repaired SHA.
+During tracing or repair of a shared CI failure, retrieve the first useful failed
+log and cancel remaining redundant work promptly. This also applies if optional
+kernel diagnostics are explicitly run; keep multiple profiles only to investigate
+profile-specific differences. Optional kernel runs are not the acceptance gate.
+Cancelled jobs supply no proof; acceptance requires the prescribed Ubuntu checks
+green at the exact repaired SHA.
 
 ## Mandatory main-goal audit
 
@@ -218,9 +222,18 @@ user approval and record the review/correction in checklist and handoff.
 
 Keep **Checks** on develop pushes/PRs; exclude documentation, images and placeholders
 when they are the only changes. Retain planning consistency. Add actual code/test/
-tool/workflow paths, commands, dependencies and necessary platform jobs **in the same
+tool/workflow paths, commands and dependencies **in the same
 package as new tests**. Authorized runtime pushes/PRs run the full required suite;
 later release-branch scope requires review.
+
+Use one Ubuntu CI runner for full host integration and cached native-host vendor
+BusyBox checks, including planning and static gates. These are representative
+development tests, not a fake Merlin firmware installation. Do not make QEMU
+kernel/ARM/firmware matrices mandatory per push, subgoal or main goal. Preserve
+existing optional diagnostic tooling/fixtures/caches without treating unfinished
+or cancelled guest work as passed. Real-router/provider beta follows completed
+implementation; keep those evidence limits explicit without weakening runtime
+safety contracts, focused/full testing or publication gates.
 
 Adjust CI as approved tests grow, preserving coverage and modest resource limits.
 This adaptive permission applies only to CI, not agent rules, goals, acceptance or

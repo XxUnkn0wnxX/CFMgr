@@ -19,7 +19,7 @@ def make_valid_planning_tree(root: Path) -> None:
         specification.extend([f"## {goal}. Goal {goal}", ""])
         checklist.extend([f"### {goal}. Goal {goal}", ""])
         readme.append(f"| {goal} | [Goal {goal}](PLAN_V2.md#{goal}-goal-{goal}) |")
-        row_count = 10 if goal <= 12 else 9
+        row_count = 10 if goal <= 13 else 9
         for subgoal in range(1, row_count + 1):
             identifier = f"S{goal:02d}.{subgoal:02d}"
             title = f"Feature {identifier}"

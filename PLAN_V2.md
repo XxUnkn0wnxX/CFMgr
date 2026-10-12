@@ -4,7 +4,7 @@
 
 CFMgr is a terminal menu and command-line manager for Cloudflare DDNS, one Cloudflared tunnel, and Cloudflare IP-Sync on Asuswrt-Merlin. Each feature has its own setup and saved activation state, with shared infrastructure where their requirements overlap.
 
-**100% means implemented, integrated, validated and ready to use within the declared support scope.** Necessary library consolidation, operating documentation, efficient tests and required safety validation are part of delivery. Optional final documentation polish and broad optimization may follow functional completion.
+**100% means the approved CLI is implemented, integrated and validated for controlled beta.** Necessary library consolidation, operating documentation, efficient tests and automated safety validation are part of delivery. Development acceptance uses representative Linux/BusyBox testing; real Merlin hardware/provider qualification follows in an extended beta. Optional final documentation polish and broad optimization may follow functional completion. Beta readiness is not verified stable router support.
 
 The retained source specification is [`.old/PLAN.md`](.old/PLAN.md). It is an archive for checking scope, not an execution roadmap. This v2 contains no imported progress, commit history, validation results or completion credit. Each main section lists its subgoals; the detailed contracts below the table define their behavior and edge cases. Proposed defaults and unresolved implementation decisions are labelled explicitly; they are not silently treated as approved guarantees.
 
@@ -93,7 +93,7 @@ Remove every router Python call path, including DDNS record parsing, Access disp
 | S02.06 | Selected dependency reinstall | Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | S02.07 | Native recovery access | Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | S02.08 | Storage identity and loss | Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
-| S02.09 | Capability-based support | Support the GT-AX11000 baseline and modern Merlin models with supported Entware and available, usable required dependencies; pin qualified firmware/kernel/ABI profiles and verify native options and TLS trust. |
+| S02.09 | Capability-based support | Target the GT-AX11000 baseline and modern Merlin models with supported Entware and usable required dependencies; record source/ABI profiles and enforce native capability/TLS checks, with model qualification deferred to real-router beta. |
 
 ### Package and directory layout
 
@@ -167,9 +167,9 @@ Before affected work verify root/JFFS/script support, safely parsed state, actua
 
 Mount loss cancels/reaps only the action's verified owned children within a bounded cleanup policy, retains guards/recovery and reports unavailable storage. Never write into a leftover mountpoint, silently select another drive or wait in boot for the drive. A confirmed returning mount resumes only already configured eligible work, never an interrupted fresh tunnel creation. Software deadlines must not claim guaranteed termination of uninterruptible kernel I/O; retain unresolved ownership and prevent overlapping replacement work.
 
-Native tool paths, curl TLS trust, loader/CA/proxy environment, kernel/userspace ABI and actual options must be proved for each supported capability profile. The GT-AX11000 firmware is the required baseline for implementation and live validation, alongside modern Merlin-supported routers. Qualify the official Merlin model/firmware range against Entware's supported kernel and userspace architectures and the availability and usability of every required dependency. Exclude model/firmware profiles whose required packages are unavailable or incompatible; supporting obsolete routers merely to extend historical coverage is not required. An unavailable baseline dependency is a design blocker to resolve, not permission to silently drop the GT-AX11000.
+Native tool paths, curl TLS trust, loader/CA/proxy environment, kernel/userspace ABI and actual options remain runtime admission requirements. The GT-AX11000 firmware is the required implementation reference and first real-router beta target, alongside modern Merlin-supported routers. Check the official model/firmware and Entware sources for compatible architectures and available required dependencies. Exclude profiles whose required packages are unavailable or incompatible; an obsolete-router coverage obligation is not required. An unavailable baseline dependency remains a design blocker, not permission to silently drop the GT-AX11000. Model-specific execution and TLS qualification occur during beta before verified support claims.
 
-Pin representative firmware, kernel, BusyBox configuration, Entware feed/ABI and dependency versions for the oldest through newest qualified profiles. Build that matrix from official supported-device/release and Entware sources, rather than only the three cached images, kernel version or a feed name. Package-index presence alone does not prove executable or required-option compatibility. Do not invent an upper bound or treat one model/kernel as proof for others. Temporary absence or failure of an otherwise supported Entware installation is an operational failure under S02.07, not a new model exclusion. Keep unverified profiles pending; record concrete reasons for exclusions. Versioned fixtures and actual kernel/BusyBox execution are required where behavior depends on them. Static firmware/feed evidence, host fixtures, BusyBox execution and live router acceptance remain separate evidence classes. Downloaded firmware and raw private evidence remain ignored and must never be executed/flashed as part of an audit.
+Record representative firmware, kernel, BusyBox, Entware ABI/feed and dependency source references for target profiles. Development CI uses one Ubuntu runner with representative integration/failure fixtures and native-host vendor BusyBox execution. Exact firmware emulation, ARM Entware execution and a booted kernel-version matrix are not subgoal/main-goal gates. Existing QEMU tooling and fixtures may remain optional diagnostics; unrun or failed diagnostics are not passes. Keep actual router, flash, hooks, TLS and provider integration explicitly pending real beta. Package-index presence, one kernel or one router does not establish universal support. Temporary Entware loss remains an operational failure under S02.07, not a model exclusion. Preserve source/host/BusyBox/optional-kernel/live evidence distinctions and concrete exclusion reasons. Downloaded firmware and raw private evidence remain ignored and must never be executed/flashed as part of an audit.
 
 ## 3. Configuration, menus and status
 
@@ -200,6 +200,7 @@ Detect retained setup and incomplete guards **before** generating defaults. Miss
 | Check for CFMgr updates | On. |
 | Auto-update CFMgr | Off; requires saved explicit opt-in. |
 | Developer mode | `developer=false`, manual config editing only. |
+| Developer diagnostics | `manager.developer_log_directory=null`; a manually configured mounted directory receives `developer.log` and CFMgr Scribe-log copies only while developer mode is On. Feature On/Off does not suppress capture; the user manages destination retention. |
 | Manager source selection | One code-defined repository/branch pair supplies normal defaults (`develop` temporarily, `main` on the approved return); only developer mode honors configured repository/branch/full-commit overrides. |
 | External amtm update permission | Off if that optional supported integration is later selected. |
 
@@ -997,7 +998,7 @@ Permanent invalid config, incompatible artifact or missing essential capability 
 
 | ID | Subgoal | Required result |
 | --- | --- | --- |
-| S13.01 | Three private logs/native notices | Extended setup detail stays terminal-only; native notices reach the existing system messages log, eligible feature logs add a copy, daemon stream stays file-only, no global routes/manager logfile. |
+| S13.01 | Three private logs/native notices | Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit developer diagnostics under S13.14. |
 | S13.02 | First setup versus saved preference | Only completed fresh ready setup initializes own logs; pending/maintenance-only/opt-out remain inactive. |
 | S13.03 | Readiness and independence | Verified mounted Entware /opt/var/log paths and actual Scribe/base/schedule/include readiness, graceful no-file operation and service-Off rotation retention. |
 | S13.04 | Cloudflared tuning | Per-file size/total-count including live file, shown Enter defaults and supported time/compression/age options; no aggregate-byte quota. |
@@ -1009,7 +1010,61 @@ Permanent invalid config, incompatible artifact or missing essential capability 
 | S13.10 | Resume without file output | Release runtime guard after safe quiescence/opt-out, retain residual cleanup, resume only still-On/no-file work. |
 | S13.11 | Optional external viewing | Supported bounded owned-path registry only if selected; no fake routing/private patches or CFMgr WebUI requirement. |
 | S13.12 | Explicit all-service re-detect | Ready Scribe enables logging for every configured On service, overriding prior logging Off only for this explicit action; reuse policies or initialize defaults. |
-| S13.13 | Prominent concise event format | Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression. |
+| S13.13 | Prominent concise event format | Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression; normal/developer credential references identify type/purpose and mask any displayed value. |
+| S13.14 | Developer diagnostic capture | Developer-mode-only main-process/all-module trace capture and dedicated Scribe-log copies in a global-config directory, independent of feature On/Off, with redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
+
+### Credential references in every logging mode
+
+Normal and developer logging share the same credential-handling rule. When a
+credential reference helps explain an event, identify its actual type and purpose
+(for example, `Cloudflare API token (DNS update): ****xyz`). Any displayed value
+must be masked: use a fixed `****` prefix and at most the final three characters
+of an eligible opaque token/key, never the full value or enough of a short value
+to expose it. Omit the suffix for short, structured or unsafe material and use
+`****` alone. Identify distinct runtime tunnel tokens, DNS/API credentials,
+management keys and certificates by their actual roles; do not infer credentials
+are interchangeable. Do not add credential values to events that do not need them.
+
+Apply this rule before terminal, syslog, feature-file or developer-file output,
+including child output and copied Scribe content. Raw authorization headers,
+passwords, private keys, credential JSON/certificates, login callbacks and
+sensitive payloads never reach logs; a type/purpose label is enough for material
+that cannot safely supply an opaque suffix. Sanitize control characters and keep
+records bounded. Developer mode does not grant an unmasked-output exception.
+
+### Developer diagnostic capture
+
+`manager.developer` is the sole enable gate for developer capture. The global
+private config's `manager.developer_log_directory` selects the destination; its
+fresh value is `null`. Use a user-selected absolute directory on verified mounted
+storage, never a hardcoded developer mount or an implicit JFFS/RAM fallback.
+Developer mode Off creates/appends/copies nothing in that destination. Feature
+On/Off does not suppress developer capture: `developer.log` covers the main CFMgr
+process, all modules, child-operation results and applicable trace/verbose output,
+including Off/stop paths, errors and deferred work. Capture observes existing
+activity; it grants no authority to activate features or alter their saved state.
+
+Also preserve copies of CFMgr's dedicated Scribe logs, including eligible current
+and retained log content, regardless of the corresponding feature's On/Off state.
+Keep normal Scribe logging preferences, ownership and rotation unchanged. Developer
+capture has no Scribe dependency for its own `developer.log`; absent dedicated
+source logs are reported accurately, not manufactured. Preserve captured copies
+through source rotation/replacement without deleting destination history.
+
+The developer destination has **no CFMgr rotation, pruning, truncation or automatic
+cleanup policy**. The user manages its contents and retention. Stop new diagnostic
+writes/copies when developer mode is turned Off, preserving existing files. Verify
+directory ownership/canonical paths and expected mounted storage before writes;
+on mount loss, unsafe paths, full storage or other I/O failure, report unavailable
+or incomplete capture without writing into a stale mountpoint or changing the
+underlying operation's outcome. Keep individual records, in-memory buffering and
+copy work bounded even though destination retention is user-managed.
+
+Apply the credential masking/type/purpose rules above to traces and log copies;
+redact all other sensitive payloads. Do not use unrestricted shell xtrace or copy
+unrelated router/system logs. Diagnostic events need timestamps, component/operation context and truthful
+results useful for prolonged beta investigation. This explicit developer channel
+does not increase normal syslog/Scribe verbosity or change release/update guards.
 
 ### Independent output and preference
 
@@ -1041,17 +1096,17 @@ JFFS or RAM. Preserve shared-directory permissions and unrelated files. An exist
 same-named foreign log or rule is a collision, not permission to adopt, truncate
 or delete it. Syslog and eligible Scribe feature files use **minimal operational
 logging by default**. Extended interactive setup explanation stays in the
-terminal; do not copy wizard transcripts, raw API replies, token values or verbose
+terminal; do not copy wizard transcripts, raw API replies, unmasked token values or verbose
 discovery/probe details into persistent logs.
 
 | Event/output | Destination and detail |
 | --- | --- |
-| Interactive DDNS/IP-Sync setup | Terminal may explain selected WAN/local and verified public IPv4/IPv6, detected translation/CGNAT, chosen family/list mapping and actual success/failure or waiting cause. Label unknown/stale evidence and never print credentials. |
+| Interactive DDNS/IP-Sync setup | Terminal may explain selected WAN/local and verified public IPv4/IPv6, detected translation/CGNAT, chosen family/list mapping and actual success/failure or waiting cause. Label unknown/stale evidence; credential references follow the masked type/purpose rule above. |
 | DDNS/IP-Sync operational update | Concise syslog plus that feature's requested/ready file: action, changed public address/family, verified outcome or short failure/defer reason. Show a compact local-to-public/CGNAT distinction when relevant, not full repeated discovery traces. |
 | Watchdog/readiness/Cloudflared maintenance | Brief reason/delay/recovery/start/stop/update result in syslog and the applicable requested/ready feature log. Coalesce shared outage notices and suppress unchanged repeated waits; do not spam three copies of every shared probe. |
 | Feature hook/integration repair | Notify interactively and retain visible repair state; send the concise fault, affected stopped/blocked/uncertain state and safe repair action to syslog plus the affected feature's configured/ready Scribe log. Without eligible file logging, syslog only; verified repair produces one recovery event. |
 | Cloudflared daemon stream | File-only when eligible logging is ready, at normal daemon verbosity; never mirror the stream to syslog or force debug logging for setup. Separate controller notices remain minimal. |
-| CFMgr manager checks/install/reinstall | Minimal syslog result for launch/manual/daily checks and update success/failure/rollback; suppress duplicate unchanged notices. No dedicated manager logfile or custom logging prerequisite. |
+| CFMgr manager checks/install/reinstall | Minimal syslog result for launch/manual/daily checks and update success/failure/rollback; suppress duplicate unchanged notices. No dedicated operational manager logfile or custom logging prerequisite; the explicit S13.14 developer channel is separate. |
 
 Missing Scribe or logging Off leaves native operational notices available without creating unmanaged files. No global syslog-ng route change, verbose-by-default logger or new persistent setup transcript. Terminal setup detail does not expand routine logging verbosity.
 
@@ -1083,7 +1138,8 @@ new/changed warnings and real errors promptly; suppress unchanged polling result
 and identical repeated notices. Log material reason/delay/severity changes and one
 recovery Info, preserving distinct affected-target failures without repeating a
 shared outage under every feature. Sanitize untrusted text/newlines/control bytes;
-never dump credentials, API bodies, wizard detail or raw stack/debug traces.
+never dump unmasked credentials, API bodies, wizard detail or raw stack/debug traces
+into normal logs; developer output follows S13.14 and the same masking rules.
 Cloudflared's own daemon stream retains its native format and remains file-only;
 these prefixes apply to CFMgr's controller/maintenance notices.
 
@@ -1336,24 +1392,33 @@ Preserve Off as operationally unhooked even when reconstructing its binary/data;
 
 | ID | Subgoal | Required result |
 | --- | --- | --- |
-| S16.01 | Usable integrated product | Required workflows and acceptance work through actual user entry paths within declared support. |
-| S16.02 | Evidence and limitations | Source/host/BusyBox/kernel/live classes separate; no ready claim for missing required proof, IPv6 provisional explicit. |
+| S16.01 | Usable integrated product | Required workflows are implemented through actual user entry paths, with representative automated acceptance and declared beta target limits. |
+| S16.02 | Evidence and limitations | Separate source/Linux/BusyBox evidence from deferred live beta qualification; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
 | S16.03 | Complete practical guides | Keep interim developer notes small until most goals are met; complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before product readiness. |
 | S16.04 | Cloudflare prerequisites | Account/domain/DNS and policy wiring guidance in docs, no extra runtime prompts or private-network restriction. |
 | S16.05 | Safe reproducible delivery | Sanitized examples/screenshots and validated real installer command/failure behavior. |
-| S16.06 | Release readiness | Coherent first version/beta semantics and required functionality/documentation before optional final polish. |
+| S16.06 | Release readiness | Coherent first version, automated development acceptance and extended router beta before stable qualification; required functionality/documentation before optional final polish. |
 
-The finished product is the complete CLI described here, integrated and validated
-within a declared supported platform scope. Source-only helpers, a passing fixture
-suite or a live PID cannot establish ready-to-use operation. Required live behavior
-remains unaccepted without its appropriate evidence; optional live IPv6-only gaps
-remain explicitly provisional rather than being reported as passed.
+The completed implementation is the full CLI described here, with real consumers,
+integrated behavior, required automated safety tests and practical documentation.
+One Ubuntu runner executes the full host and vendor BusyBox suites; representative
+fixtures approximate router behavior. Source-only helpers and absent consumers
+cannot receive ticks. Exact Merlin/ARM/physical-flash and live-provider execution
+are deferred to an extended beta, initially on the user's router and optionally
+other testers' routers. Record those unverified boundaries explicitly; a green
+development gate is not hardware acceptance. Live IPv6 gaps remain provisional.
+
+After all implementation goals and automated gates pass, the product may reach
+100% implementation/beta readiness. Beta deployment, provider writes and release
+publication still require their explicit authorization. Keep the product in beta
+while real use and feedback qualify support; stable readiness requires appropriate
+live evidence and a separate release decision, not an automatic promotion.
 
 During implementation, keep README focused on the implementation overview and
 main-goal status. Keep temporary developer/tool notes small and accurate. Build
 the full documentation set, including architecture and developer guides, when
 most or all implementation goals are met; complete required guides before
-claiming ready-to-use 100%. Do not expand interim notes into a premature manual.
+claiming 100% implementation/beta readiness. Do not expand interim notes into a premature manual.
 
 User documentation must cover installation, dependencies, dedicated feature setup,
 credentials and permissions, current operation/status, updates, outages/repair,
@@ -1386,9 +1451,9 @@ facts have one authoritative home with links from related tasks.
 | `docs/recovery.md` | Failed setup/save/update, missing storage/dependencies, outages, credential faults, damaged hook blocks, rollback and interrupted-operation recovery. | 2–4, 7–8, 11–12, 15 |
 | `docs/logging.md` | Native system messages, per-feature Scribe logging, /opt/var/log storage, owned logrotate policy, re-detection and truthful failure handling. | 12–13 |
 | `docs/backup-and-removal.md` | Manual archives, validated restore/migration, backup storage/retention, KEEP/WIPE uninstall, retained installation and scoped resets. | 14–15 |
-| `docs/compatibility.md` | Declared firmware/native-tool/ABI support, required capabilities, source/host/BusyBox/kernel/live evidence and provisional limitations. | 2, 8, 16 |
+| `docs/compatibility.md` | Target firmware/native-tool/ABI profiles, runtime capability checks, automated/source evidence, deferred router-beta qualification and provisional support limits. | 2, 8, 16 |
 | `docs/architecture.md` | Actual entry/module/shared-library interfaces, storage/state authority, ownership/locks, transactions, worker/lifecycle/resolver/provider flows and integration boundaries. | 1–15 |
-| `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools and workflow optimization (shared verified caches, scoped invalidation/rebuilds, failure-safe saves, fresh mutable state and warm-run checks), package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
+| `docs/development.md` | Reproducible environment, source references, focused/full tests on one Ubuntu CI runner with vendor BusyBox, optional platform diagnostics, efficient verified caches/fresh mutable state, package generation and extended router-beta workflow. | All goals, especially 2, 7, 16 |
 | `CONTRIBUTING.md` | Concise change/review workflow, scope/checklist discipline, validation/privacy rules and links to development/architecture guidance. | 16 |
 
 Full-guide readiness requires verified commands and failure guidance, accurate
@@ -1398,8 +1463,10 @@ obligation. These documents are coverage within S16.03, not extra product goals 
 percentage points. Reassess grouping near completion if the implementation makes
 another arrangement clearer, preserving every required topic.
 
-The first release version is assigned when the product is ready to use, followed
-by beta. Version identity, manifest comparison and beta ordering must agree.
+The first release version is assigned at completed implementation/beta readiness.
+Version identity, manifest comparison and beta ordering must agree. Real-router
+qualification follows during beta; no fixed beta duration or automatic stable
+promotion is assumed.
 Necessary library organization and practical documentation belong to functional
 readiness. Optional final polish and broad optimization may follow it. A future
 CFMgr WebUI remains outside this product scope.
@@ -1420,7 +1487,7 @@ port inherits global SSH configuration; a configured integer overrides the port.
 | --- | --- |
 | `tools/check.py` | Check plan/checklist alignment, documentation links and private-path leakage without claiming runtime acceptance. |
 | `tools/test.py` | Run selected focused tests or the full suite with the required lint, format and static gates; report unavailable platform proof truthfully. |
-| `tools/test_platforms.py` | Build/reuse verified pinned fixtures and execute isolated BusyBox/kernel/Entware checks with fresh mutable state and preserved required coverage. |
+| `tools/test_platforms.py` | Validate pinned fixture metadata and build/reuse native-host vendor BusyBox for the required Ubuntu gate; retain kernel/ARM Entware guests as optional diagnostics with separate, truthful proof status. |
 | `tools/package.py` | Build/check a deterministic complete trusted-local package, catalog and manifest; reject unsafe inventory or stale metadata. |
 | `tools/router_probe.py` and `tools/router-storage-probe.sh` | Validate local settings without connecting; require explicit run intent for SSH; use router-side `/bin/sh`, verify a user-selected mounted scratch location, write only owned probe artifacts, retain the scratch base and verify scoped cleanup. |
 
@@ -1437,7 +1504,7 @@ These details need concrete supported decisions before their dependent product b
 | --- | --- |
 | Configuration/transactions | Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
 | Package distribution | Section 2 fixes the source-to-installed mapping. Remaining decisions/proof: bootstrap acquisition/manifest trust, complete update generation activation/reader retention, developer-only config source grammar/shared-default reset, catalog compatibility beyond the initial schema, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
-| Supported platforms | Actual native paths/options/CA, minimal kernel/userspace ABI/capability profiles and official binary compatibility; no unsupported legacy promise based solely on feed names. |
+| Supported platforms | Target native paths/options/CA, ABI/dependency source references and fail-closed runtime checks; explicit real-router beta qualification before verified model support, with no legacy promise based solely on feed names. |
 | Storage/processes | Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | Budgets/readiness | Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |
 | Firmware DDNS | DDNS soft timer inside matched whole-action ceiling, overlap without request IDs and native retry collision; default 14-day field/bounds/apply/persistence/certificate side effects and ownership relinquishment. |

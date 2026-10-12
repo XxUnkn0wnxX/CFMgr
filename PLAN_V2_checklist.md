@@ -14,7 +14,7 @@ calculation is `completed main goals / 16 × 100`; every completed main goal add
 6.25%. Partial subgoals remain visible without increasing this percentage.
 Task-workload estimates are separate. No archived completion is imported.
 
-**Subgoal gate:** write and pass focused local tests. Where BusyBox/Linux/kernel
+**Subgoal gate:** write and pass focused local tests. Where BusyBox/Linux
 CI evidence is required, retain pending status until that exact-commit proof
 passes. Source review and preliminary smokes are not the focused-test gate.
 **Main-goal gate:** all required subgoals complete, parent codebase/scope audit,
@@ -23,6 +23,14 @@ Incomplete work remains unchecked; that status does not authorize deletion or
 reduction of its requirements.
 The main-goal box and README completion change only after that full evidence is
 accepted. A locally validated candidate awaiting required CI is still incomplete.
+
+**Development platform gate:** one Ubuntu CI runner executes the full host and
+native-host vendor BusyBox suites. Representative fixtures approximate router
+behavior; exact firmware/ARM/kernel-VM execution is not required for development
+ticks. Real Merlin/flash/hooks/TLS/provider qualification follows during an extended
+beta after implementation completion, with deployment separately authorized.
+At 100%, the implementation is ready for beta, not verified stable router support.
+Cancelled/optional guest runs are never labelled passed.
 
 ## Main-goal completion gates
 
@@ -58,7 +66,7 @@ denominator.
 ## Accepted product evidence
 
 None yet: native storage prerequisites are being implemented, with current work
-and pending proof in the handoff. Final status for all 156 subgoals and the acceptance cases below
+and pending proof in the handoff. Final status for all 157 subgoals and the acceptance cases below
 remains unchecked. S02.03 has focused local proof; required CI is pending. Partial helpers and planning checks do not establish complete
 Save, feature, BusyBox/kernel or live router acceptance.
 
@@ -96,7 +104,7 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [ ] | [ ] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | [ ] | [ ] | S02.07 | **Native recovery access:** Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | [ ] | [ ] | S02.08 | **Storage identity and loss:** Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
-| [ ] | [ ] | S02.09 | **Capability-based support:** Support the GT-AX11000 baseline and modern Merlin models with supported Entware and available, usable required dependencies; pin qualified firmware/kernel/ABI profiles and verify native options and TLS trust. |
+| [ ] | [ ] | S02.09 | **Capability-based support:** Target the GT-AX11000 baseline and modern Merlin models with supported Entware and usable required dependencies; record source/ABI profiles and enforce native capability/TLS checks, with model qualification deferred to real-router beta. |
 
 S02.01/S02.03 mapping acceptance: root entry goes only to `/jffs/scripts/cfmgr.sh`;
 `modules/` paths remain nested beneath `/jffs/addons/CFMgr.d/`, alongside the
@@ -261,7 +269,7 @@ are distinct from still-required remote acquisition/update-source proof.
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S13.01 | **Three private logs/native notices:** Extended setup detail stays terminal-only; native notices reach the existing system messages log, eligible feature logs add a copy, daemon stream stays file-only, no global routes/manager logfile. |
+| [ ] | [ ] | S13.01 | **Three private logs/native notices:** Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit developer diagnostics under S13.14. |
 | [ ] | [ ] | S13.02 | **First setup versus saved preference:** Only completed fresh ready setup initializes own logs; pending/maintenance-only/opt-out remain inactive. |
 | [ ] | [ ] | S13.03 | **Readiness and independence:** Verified mounted Entware /opt/var/log paths and actual Scribe/base/schedule/include readiness, graceful no-file operation and service-Off rotation retention. |
 | [ ] | [ ] | S13.04 | **Cloudflared tuning:** Per-file size/total-count including live file, shown Enter defaults and supported time/compression/age options; no aggregate-byte quota. |
@@ -273,7 +281,30 @@ are distinct from still-required remote acquisition/update-source proof.
 | [ ] | [ ] | S13.10 | **Resume without file output:** Release runtime guard after safe quiescence/opt-out, retain residual cleanup, resume only still-On/no-file work. |
 | [ ] | [ ] | S13.11 | **Optional external viewing:** Supported bounded owned-path registry only if selected; no fake routing/private patches or CFMgr WebUI requirement. |
 | [ ] | [ ] | S13.12 | **Explicit all-service re-detect:** Ready Scribe enables logging for every configured On service, overriding prior logging Off only for this explicit action; reuse policies or initialize defaults. |
-| [ ] | [ ] | S13.13 | **Prominent concise event format:** Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression. |
+| [ ] | [ ] | S13.13 | **Prominent concise event format:** Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression; normal/developer credential references identify type/purpose and mask any displayed value. |
+| [ ] | [ ] | S13.14 | **Developer diagnostic capture:** Developer-mode-only main-process/all-module trace capture and dedicated Scribe-log copies in a global-config directory, independent of feature On/Off, with redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
+
+Developer diagnostics acceptance (S13.14): fresh destination is `null`; only
+`manager.developer` enables capture, with feature On/Off ignored as a logging gate.
+Verify main-process/all-module and child/error/Off paths reach `developer.log`,
+dedicated CFMgr Scribe content is copied without changing source policies, source
+rotation preserves captured history, and developer Off stops new capture while
+retaining files. Exercise configurable paths, missing Scribe/source logs, mount
+loss/replacement, unsafe paths and full/I/O-failed storage; no stale-mount writes
+or false captured/success claim. Credential references follow the shared masking
+rule below. The destination has no CFMgr rotation/pruning/truncation/automatic cleanup; retention is user-managed,
+while individual records, buffering and copy work remain bounded. Automated
+fixtures supply development acceptance; prolonged actual-router capture is beta
+evidence and is not claimed before it runs.
+
+Credential logging acceptance (S13.13/S13.14): normal and developer terminal,
+syslog, feature-file, trace/child-output and Scribe-copy paths identify the real
+credential type and purpose when relevant. An eligible opaque value is at most
+`****` plus its final three characters; short/structured/unsafe material has no
+suffix. Tests cover distinct token/API-key roles, short values, control characters,
+child output and copied logs, and reject any full credential, authorization header,
+password, private key, credential JSON/certificate or sensitive payload leakage.
+Developer mode cannot bypass masking; irrelevant events contain no credential value.
 
 ### 14. Backup and restore
 
@@ -309,12 +340,12 @@ are distinct from still-required remote acquisition/update-source proof.
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S16.01 | **Usable integrated product:** Required workflows and acceptance work through actual user entry paths within declared support. |
-| [ ] | [ ] | S16.02 | **Evidence and limitations:** Source/host/BusyBox/kernel/live classes separate; no ready claim for missing required proof, IPv6 provisional explicit. |
+| [ ] | [ ] | S16.01 | **Usable integrated product:** Required workflows are implemented through actual user entry paths, with representative automated acceptance and declared beta target limits. |
+| [ ] | [ ] | S16.02 | **Evidence and limitations:** Separate source/Linux/BusyBox evidence from deferred live beta qualification; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
 | [ ] | [ ] | S16.03 | **Complete practical guides:** Keep interim developer notes small until most goals are met; complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before product readiness. |
 | [ ] | [ ] | S16.04 | **Cloudflare prerequisites:** Account/domain/DNS and policy wiring guidance in docs, no extra runtime prompts or private-network restriction. |
 | [ ] | [ ] | S16.05 | **Safe reproducible delivery:** Sanitized examples/screenshots and validated real installer command/failure behavior. |
-| [ ] | [ ] | S16.06 | **Release readiness:** Coherent first version/beta semantics and required functionality/documentation before optional final polish. |
+| [ ] | [ ] | S16.06 | **Release readiness:** Coherent first version, automated development acceptance and extended router beta before stable qualification; required functionality/documentation before optional final polish. |
 
 
 ### Planned documentation coverage for S16.03
@@ -336,9 +367,9 @@ against accepted runtime/tests. Reassess grouping only while preserving coverage
 | [ ] | `docs/recovery.md` | Failed setup/save/update, missing storage/dependencies, outages, credential faults, damaged hook blocks, rollback and interrupted-operation recovery. | 2–4, 7–8, 11–12, 15 |
 | [ ] | `docs/logging.md` | Native system messages, per-feature Scribe logging, /opt/var/log storage, owned logrotate policy, re-detection and truthful failure handling. | 12–13 |
 | [ ] | `docs/backup-and-removal.md` | Manual archives, validated restore/migration, backup storage/retention, KEEP/WIPE uninstall, retained installation and scoped resets. | 14–15 |
-| [ ] | `docs/compatibility.md` | Declared firmware/native-tool/ABI support, required capabilities, source/host/BusyBox/kernel/live evidence and provisional limitations. | 2, 8, 16 |
+| [ ] | `docs/compatibility.md` | Target firmware/native-tool/ABI profiles, runtime capability checks, automated/source evidence, deferred router-beta qualification and provisional support limits. | 2, 8, 16 |
 | [ ] | `docs/architecture.md` | Actual entry/module/shared-library interfaces, storage/state authority, ownership/locks, transactions, worker/lifecycle/resolver/provider flows and integration boundaries. | 1–15 |
-| [ ] | `docs/development.md` | Reproducible environment, source references, focused/full/platform testing, fixtures and cost controls, CI/tools and workflow optimization (shared verified caches, scoped invalidation/rebuilds, failure-safe saves, fresh mutable state and warm-run checks), package generation and release/beta workflow. | All goals, especially 2, 7, 16 |
+| [ ] | `docs/development.md` | Reproducible environment, source references, focused/full tests on one Ubuntu CI runner with vendor BusyBox, optional platform diagnostics, efficient verified caches/fresh mutable state, package generation and extended router-beta workflow. | All goals, especially 2, 7, 16 |
 | [ ] | `CONTRIBUTING.md` | Concise change/review workflow, scope/checklist discipline, validation/privacy rules and links to development/architecture guidance. | 16 |
 
 ## Developer tooling acceptance
@@ -352,7 +383,7 @@ keep active work in handoff. New entries/scope require user approval.
 | --- | --- | --- |
 | [ ] | Planning checker | Valid documents pass; misalignment, broken links and private paths fail. |
 | [ ] | Focused/full test runner | Correct selection, required static gates and truthful failure/skip handling. |
-| [ ] | Platform runner | Input/cache/staging/log-oracle tests plus actual required pinned guest execution. |
+| [ ] | Platform runner | Input/cache/staging/log-oracle tests and actual native-host vendor BusyBox execution in the required Ubuntu gate; retained QEMU/ARM paths have separate optional proof status. |
 | [ ] | Package builder | Deterministic complete package, correct mapping and manifest, unsafe/stale input rejection. |
 | [ ] | Router probe tools | Config/auth/quoting/status tests without live SSH; native admission, descriptor ownership and cleanup proof in isolated Linux/BusyBox fixtures. |
 
@@ -371,7 +402,7 @@ See specification section 17. These remain unresolved until their owning workflo
 | --- | --- |
 | [ ] | **Configuration/transactions:** Exact bounded schema/ref/generation/guard formats; reliable write/flush/rename and failure reporting; supported native JSON/certificate/YAML subset; scoped merge and cross-filesystem recovery. |
 | [ ] | **Package distribution:** Section 2 fixes the source-to-installed mapping. Remaining decisions/proof: bootstrap acquisition/manifest trust, complete update generation activation/reader retention, developer-only config source grammar/shared-default reset, catalog compatibility beyond the initial schema, supported historical snapshots and development-commit comparison; beta version grammar before first release. |
-| [ ] | **Supported platforms:** GT-AX11000 baseline plus qualified modern Merlin models; pinned firmware/kernel/BusyBox/Entware ABI/feed/dependency versions, actual native paths/options/CA and official binary compatibility; explicit package/ABI exclusions, no historical-coverage obligation or support inferred solely from feed names. |
+| [ ] | **Supported platforms:** GT-AX11000 baseline plus modern Merlin targets; firmware/BusyBox/Entware ABI/dependency source references and fail-closed native-path/options/CA checks; explicit package/ABI exclusions and deferred router-beta model qualification, with no historical-coverage obligation or support inferred solely from feed names. |
 | [ ] | **Storage/processes:** Persistent/attached volume identity, mount-race handling, approved path whitelist, lock order/descriptor lifetime, child identity/quiescence and uninterruptible-I/O limitation. |
 | [ ] | **Budgets/readiness:** Aggregate hook/DDNS/worker/response/staging/queue bounds; monotonic clocks, NTP/transport/egress evidence, reconnect grace/stability criteria, common outage retry fixed at 1/2/4/5 minutes (300-second cap); verify scoped provider-delay parsing and separate no-hint throttle 5/10/20/30-minute state. |
 | [ ] | **Firmware DDNS:** DDNS soft timer inside matched whole-action ceiling, overlap without request IDs and native retry collision; default 14-day field/bounds/apply/persistence/certificate side effects and ownership relinquishment. |
@@ -391,7 +422,7 @@ IDs identify behavior, **not a required test count**. One meaningful test may co
 | Status | Case | Required evidence |
 | --- | --- | --- |
 | [ ] | V01 | absent/read-only/wrong/lost Entware blocks dependent operation without stale writes or resetting intent; native diagnostic/recovery/Off remains available; optional logging failure alone does not block otherwise-ready APIs. |
-| [ ] | V02 | qualify official Merlin model/firmware profiles against Entware kernel/ABI support and available, usable required packages, retaining GT-AX11000 as required baseline and covering modern routers; record concrete exclusions for unavailable/incompatible dependencies, without an obsolete-router obligation or silently dropping the baseline; pin firmware/kernel/BusyBox configuration/feed/ABI/dependency fixtures from oldest through newest qualified profiles; actual native/Entware parser/options/TLS/binary execution remains distinct from source/index evidence and three images cannot close range gaps; temporary Entware loss retains native recovery and is not a model exclusion; unsupported/missing requirements fail before activation; no router Python/venv/picker dependency. |
+| [ ] | V02 | target official Merlin models against Entware ABI support and available required packages, retaining GT-AX11000 as baseline and modern routers as targets; record source/firmware/BusyBox/feed/dependency references and concrete exclusions without an obsolete-router obligation; implement fail-closed native capability/TLS admission and test it with representative fixtures on one Ubuntu runner plus native-host vendor BusyBox; exact firmware/ARM/kernel-VM execution is optional during development, with actual model/flash/hooks/TLS/provider qualification explicitly deferred to extended router beta; source/feed presence alone is not verified support; temporary Entware loss retains native recovery rather than excluding the model; no router Python/venv/picker dependency. |
 | [ ] | V03 | overlapping boot/WAN/watchdog/manual starts admit one owned connector and leave firmware/foreign hooks responsive. |
 | [ ] | V04 | all three features use shared NTP plus independent family-aware reachability after failure; IPv6 transport is not blocked by IPv4-only probes; readiness precedes ordinary tunnel stop/restart, outage checks follow 1/2/4/5-minute capped due state, and longer provider cooldown still wins. |
 | [ ] | V09 | repeated install/repair/hook-code update converges exact owned hooks/jobs; dedicated paired CFMGR BEGIN/END blocks with stable IDs and DO NOT EDIT labels replace only recognized current/older owned bodies, preserve unrelated bytes/control flow/arguments/mode and concurrent edits, and pass whole-hook syntax. Only explicit DDNS Save/Enable may replace a foreign provider without displaced-provider backup; its generated handler is marked for later maintenance. |
@@ -483,16 +514,16 @@ IDs identify behavior, **not a required test count**. One meaningful test may co
 
 | Status | Case | Required evidence |
 | --- | --- | --- |
-| [ ] | V43 | reproducible isolated developer environment, efficient focused/full workflows, required BusyBox evidence, runtime package exclusions and accurate sanitized linked usage guides. |
+| [ ] | V43 | reproducible isolated developer environment, focused/full workflows on one Ubuntu CI runner with required vendor BusyBox evidence, optional nongating kernel diagnostics, explicit deferred real-router beta, runtime package exclusions and accurate sanitized linked usage guides. |
 | [ ] | V30 — Conditional only | if external uiScribe support is separately selected, verify owned paths/permissions, bounded viewing/clear/rotate and reinstall durability without requiring a CFMgr WebUI. |
 | [ ] | V33 — Optional launcher / conditional updater | supported user-chosen amtm personal slot preserves occupied slots and preferences; any later official callback requires explicit separate opt-in/developer gating and the trusted transaction. |
 
-## Ready-to-use product
+## Implementation complete and ready for beta
 
 | Status | Required result |
 | --- | --- |
-| [ ] | All required workflows/subgoals and release-blocking acceptance are satisfied within the declared support scope. |
+| [ ] | All required workflows/subgoals and automated development acceptance are satisfied within the declared beta target scope. |
 | [ ] | Cross-feature behavior, storage/boot/update/restore recovery, ownership and credentials have adequate evidence with actual limitations stated. |
 | [ ] | Practical installation, operation, repair and removal guides are accurate and usable. |
 | [ ] | The completion assessment reflects delivered requirements; optional future WebUI/external integrations and post-completion polish are excluded. |
-| [ ] | Required hardware/provider acceptance is explicitly evidenced; first-version and beta semantics are coherent. |
+| [ ] | Deferred real-router/flash/hooks/TLS/provider checks and provisional model support are explicitly documented for extended beta; first-version/beta semantics are coherent and stable qualification awaits appropriate live evidence and a separate release decision. |
