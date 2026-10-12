@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import stat
 import subprocess
 import sys
@@ -437,6 +438,35 @@ exit 0
 """
 
 
+PORTABLE_WAIT_DISAPPEARANCE = r"""
+. "$CFMGR_TEST_ROOT/modules/lib/dependencies.sh"
+cfmgr_dependencies_context=$1 cfmgr_dependencies_usleep=cfmgr_test_usleep cfmgr_dependencies_wc=$2
+cfmgr_test_mode=$3
+cfmgr_test_now=100
+_cfmgr_tasks_now() { cfmgr_tasks_now=$cfmgr_test_now; cfmgr_test_now=$((cfmgr_test_now + 1)); }
+cfmgr_test_usleep() { return 97; }
+cfmgr_dependencies_claim_admit() {
+    [ -d "$1" ] || return 2
+    if [ "$cfmgr_test_mode" = claim-admit ]; then
+        rm -f "$1/owner" || return 3
+        rmdir "$1" || return 3
+        return 2
+    fi
+    return 0
+}
+if _cfmgr_dependencies_wait; then cfmgr_test_result=0
+else cfmgr_test_result=$?; fi
+printf 'result=%s\n' "$cfmgr_test_result"
+printf 'controller-result=%s\n' "${cfmgr_dependencies_result:-unset}"
+if [ -e "$cfmgr_dependencies_context" ] || [ -L "$cfmgr_dependencies_context" ]; then
+    echo claim=present
+else
+    echo claim=absent
+fi
+exit 0
+"""
+
+
 @pytest.mark.parametrize(
     (
         "state",
@@ -552,9 +582,7 @@ def test_linux_dependency_repair_coalesces_two_live_controller_processes(
     usleep = tmp_path / "usleep"
     usleep.write_text(
         "#!/bin/sh\n"
-        'IFS=" " read -r owner_pid owner_start owner_boot <'
-        '"$CFMGR_TEST_PARENT/dependencies/owner" || exit 3\n'
-        'if [ "$PPID" != "$owner_pid" ]; then : >'
+        'if [ "$CFMGR_TEST_ROLE" = waiter ]; then : >'
         '"$CFMGR_TEST_MARKER/waiter-ready"; fi\n'
         "/bin/sleep 0.1\n"
     )
@@ -570,6 +598,7 @@ def test_linux_dependency_repair_coalesces_two_live_controller_processes(
     }
 
     def launch(role: str) -> subprocess.Popen[bytes]:
+        process_env = {**env, "CFMGR_TEST_ROLE": role}
         return subprocess.Popen(
             [
                 *shell,
@@ -581,7 +610,7 @@ def test_linux_dependency_repair_coalesces_two_live_controller_processes(
                 str(marker),
                 role,
             ],
-            env=env,
+            env=process_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -610,6 +639,8 @@ def test_linux_dependency_repair_coalesces_two_live_controller_processes(
 
         waiter = launch("waiter")
         processes.append(waiter)
+        # The helper emits this only after _wait validates the owner receipt
+        # and calls its bounded sleep callback; it never reopens the claim.
         wait_for_path(marker / "waiter-ready", processes)
         assert waiter.pid != leader.pid
         (marker / "release").write_text("release\n")
@@ -701,6 +732,81 @@ def test_linux_dependency_wait_preserves_untrusted_or_stale_claims(
     }
     assert owner_path.read_bytes() == owner_record
     assert keep.read_text() == "must remain\n"
+
+
+@pytest.mark.parametrize(
+    (
+        "observation",
+        "owner_record",
+        "expected_result",
+        "expected_controller",
+        "expected_claim",
+    ),
+    [
+        ("claim-admit", b"12 34 boot\n", "0", "coalesced", "absent"),
+        ("owner-wc", b"12 34 boot\n", "0", "coalesced", "absent"),
+        ("malformed", b"malformed owner receipt\n", "3", "unset", "present"),
+    ],
+)
+def test_dependency_wait_coalesces_only_after_complete_claim_disappears(
+    shell: list[str],
+    tmp_path: Path,
+    observation: str,
+    owner_record: bytes,
+    expected_result: str,
+    expected_controller: str,
+    expected_claim: str,
+) -> None:
+    """Owner-observation races coalesce only when the whole claim is gone."""
+    claim = tmp_path / "dependencies"
+    claim.mkdir(mode=0o700)
+    owner = claim / "owner"
+    owner.write_bytes(owner_record)
+    owner.chmod(0o600)
+
+    wc_adapter = tmp_path / "wc-adapter"
+    adapter_env = {**os.environ, "LC_ALL": "C", "CFMGR_TEST_ROOT": str(ROOT)}
+    if observation == "owner-wc":
+        wc_script = tmp_path / "wc-adapter-script"
+        wc_script.write_text(
+            '[ "$#" -eq 1 ] && [ "$1" = -c ] || exit 91\n'
+            "bytes=$(wc -c) || exit 92\n"
+            'rm -f "$CFMGR_TEST_CLAIM/owner" || exit 93\n'
+            'rmdir "$CFMGR_TEST_CLAIM" || exit 94\n'
+            "printf '%s\\n' \"$bytes\"\n"
+        )
+        wc_adapter.write_text(
+            f'#!/bin/sh\nexec {shlex.join(shell)} "$CFMGR_TEST_WC_SCRIPT" "$@"\n'
+        )
+        wc_adapter.chmod(0o700)
+        adapter_env["CFMGR_TEST_WC_SCRIPT"] = str(wc_script)
+    else:
+        wc_adapter = Path("/usr/bin/wc")
+
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            PORTABLE_WAIT_DISAPPEARANCE,
+            "dependency-owner-race",
+            str(claim),
+            str(wc_adapter),
+            observation,
+        ],
+        env={**adapter_env, "CFMGR_TEST_CLAIM": str(claim)},
+        check=False,
+        capture_output=True,
+        timeout=5,
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    observed = report(result)
+    assert observed == {
+        "result": expected_result,
+        "controller-result": expected_controller,
+        "claim": expected_claim,
+    }
+    if expected_claim == "present":
+        assert owner.read_bytes() == owner_record
 
 
 def test_native_work_repairs_then_uses_fresh_post_inventory_before_transaction(

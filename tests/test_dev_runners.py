@@ -254,7 +254,7 @@ def test_runner_passes_focused_path_and_keyword_to_pytest(
     assert pytest_command[:3] == [sys.executable, "-m", "pytest"]
     assert pytest_command[3:5] == ["-q", "-ra"]
     assert pytest_command[5:7] == ["--strict-config", "--strict-markers"]
-    assert pytest_command[7:9] == ["-k", "password_auth"]
+    assert pytest_command[7:10] == ["--maxfail=1", "-k", "password_auth"]
     assert pytest_command[-1] == str(runner.ROOT / "tests/test_router_probe.py")
     assert pytest_env is not None
     assert pytest_env["CFMGR_TEST_SHELL"] == "/bin/test-shell --posix"

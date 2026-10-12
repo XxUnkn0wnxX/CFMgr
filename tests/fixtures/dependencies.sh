@@ -6,6 +6,32 @@
 [ "${dependency_pid_namespace:-}" != "$("$readlink" /proc/self/ns/pid)" ] || fail 'dependency fixture needs its own PID namespace'
 [ "$("$readlink" /proc/1/ns/pid)" = "$("$readlink" /proc/self/ns/pid)" ] || fail 'dependency fixture needs matching private procfs'
 view_prepare
+# Fixed synthetic phase evidence survives loss of the private tmpfs/namespace.
+# This file contains no arguments, package/config data, or trusted ownership input.
+(
+	umask 077
+	set -C
+	: >"$fixture/dependency.trace"
+) || fail 'could not exclusively create fixture trace'
+dependency_trace_count=0
+dependency_trace() {
+	[ -f "$fixture/dependency.trace" ] && [ ! -L "$fixture/dependency.trace" ] || return 1
+	[ "$dependency_trace_count" -lt 999999 ] || return 1
+	dependency_trace_count=$((dependency_trace_count + 1))
+	printf 'counter=%s stage=%s mode=%s code=%s phase=%s view=%s sequence=%s pending=%s keeper=%s pins=%s probe=%s status=%s reason=%s exit=%s\n' \
+		"$dependency_trace_count" "$1" "$2" "${3:-unset}" "${cfmgr_dependencies_phase:-unset}" \
+		"${cfmgr_view_state:-unset}" "${cfmgr_view_sequence:-0}" "${cfmgr_view_pending:-none}" \
+		"${cfmgr_keeper_state:-unset}" "${cfmgr_keeper_count:-0}" "${cfmgr_probe_mode:-unset}" \
+		"${cfmgr_probe_status:-unset}" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" >"$fixture/dependency.trace"
+}
+# Only fixture callbacks add phase evidence; native dispatch and supervision body
+# remain unchanged. Tool selection also covers the first direct snapshot copies.
+dependency_native() {
+	dependency_trace START "$1" || return 3
+	if cfmgr_dependencies_native "$@"; then dependency_native_code=0; else dependency_native_code=$?; fi
+	dependency_trace END "$1" "$dependency_native_code" || return 3
+	return "$dependency_native_code"
+}
 for dependency_applet in sh awk readlink usleep cp chmod kill; do
 	ln -s busybox "$view_native_root/bin/$dependency_applet"
 done
@@ -81,6 +107,7 @@ dependency_inside_tools() {
 	cfmgr_dependencies_inside_readlink=/bin/readlink cfmgr_dependencies_inside_usleep=/bin/usleep
 }
 dependency_native_tool() {
+	dependency_trace START "$1" || return 3
 	case $1 in
 	inventory | awk | identity-parse) cfmgr_dependencies_native_tool=$view_ram/awk ;;
 	identity | list) cfmgr_dependencies_native_tool=$view_ram/ls ;;
@@ -98,6 +125,11 @@ dependency_native_tool() {
 }
 cfmgr_dependencies_inside_tools() { dependency_inside_tools; }
 cfmgr_dependencies_native_tool() { dependency_native_tool "$@"; }
+cfmgr_execution_view_native() { dependency_native "$@"; }
+cfmgr_mount_keeper_native() {
+	[ "$1" = fifo ] || return 2
+	dependency_native fifo "$3"
+}
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 dependency_attempt() {
 	cfmgr_install_context=$view_ram/preflight-$1
@@ -161,7 +193,7 @@ cfmgr_execution_tasks_native() {
 			fi
 		fi
 	fi
-	cfmgr_dependencies_native "$@"
+	dependency_native "$@"
 }
 case $case_name in
 dependency_retry)

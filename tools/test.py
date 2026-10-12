@@ -332,6 +332,7 @@ def main() -> int:
         "-ra",
         "--strict-config",
         "--strict-markers",
+        "--maxfail=1",
     ]
     if args.keyword:
         command.extend(("-k", args.keyword))

@@ -71,43 +71,47 @@ cfmgr_dependencies_select() {
 }
 
 # Claim receipt carries only kernel-derived owner identity, never mutable config.
+_cfmgr_dependencies_owner_active() {
+	cfmgr_dependencies_claim_admit "$cfmgr_dependencies_context" || return 3
+	cfmgr_dependencies_owner_pid='' cfmgr_dependencies_owner_start='' cfmgr_dependencies_owner_boot='' cfmgr_dependencies_extra=''
+	if [ ! -f "$cfmgr_dependencies_context/owner" ]; then
+		# Exclusive mkdir can precede the owner receipt. Wait without adoption.
+		return 0
+	fi
+	[ ! -L "$cfmgr_dependencies_context/owner" ] || return 3
+	cfmgr_dependencies_owner_bytes=$("$cfmgr_dependencies_wc" -c <"$cfmgr_dependencies_context/owner") || return 3
+	case $cfmgr_dependencies_owner_bytes in '' | *[!0-9\ ]*) return 3 ;; esac
+	[ "$cfmgr_dependencies_owner_bytes" -le 96 ] || return 3
+	cfmgr_dependencies_owner_line='' cfmgr_dependencies_owner_tail=''
+	{
+		IFS= read -r cfmgr_dependencies_owner_line || return 3
+		if IFS= read -r cfmgr_dependencies_owner_tail; then return 3; fi
+		[ -z "$cfmgr_dependencies_owner_tail" ] || return 3
+	} <"$cfmgr_dependencies_context/owner" || return 3
+	[ "$cfmgr_dependencies_owner_bytes" -eq "$((${#cfmgr_dependencies_owner_line} + 1))" ] || return 3
+	IFS=' ' read -r cfmgr_dependencies_owner_pid cfmgr_dependencies_owner_start cfmgr_dependencies_owner_boot cfmgr_dependencies_extra <<EOF_OWNER
+$cfmgr_dependencies_owner_line
+EOF_OWNER
+	[ -z "$cfmgr_dependencies_extra" ] || return 3
+	case $cfmgr_dependencies_owner_pid:$cfmgr_dependencies_owner_start in *[!0-9:]* | :* | *: | 0* | *:0*) return 3 ;; esac
+	[ "${#cfmgr_dependencies_owner_pid}" -le 10 ] && [ "${#cfmgr_dependencies_owner_start}" -le 20 ] || return 3
+	[ "$cfmgr_dependencies_owner_line" = "$cfmgr_dependencies_owner_pid $cfmgr_dependencies_owner_start $cfmgr_dependencies_owner_boot" ] || return 3
+	IFS= read -r cfmgr_dependencies_current_boot </proc/sys/kernel/random/boot_id || return 3
+	[ "$cfmgr_dependencies_owner_boot" = "$cfmgr_dependencies_current_boot" ] || return 3
+	cfmgr_prerequisites_identity "$cfmgr_dependencies_owner_pid" || return 3
+	[ "$cfmgr_identity_start" = "$cfmgr_dependencies_owner_start" ] && [ "$cfmgr_identity_state" != Z ] || return 3
+}
+
 _cfmgr_dependencies_wait() {
 	_cfmgr_tasks_now || return 3
 	cfmgr_dependencies_wait_deadline=$((cfmgr_tasks_now + 120))
 	while [ -e "$cfmgr_dependencies_context" ] || [ -L "$cfmgr_dependencies_context" ]; do
-		cfmgr_dependencies_claim_admit "$cfmgr_dependencies_context" || return 3
-		cfmgr_dependencies_owner_pid='' cfmgr_dependencies_owner_start='' cfmgr_dependencies_owner_boot='' cfmgr_dependencies_extra=''
-		if [ ! -f "$cfmgr_dependencies_context/owner" ]; then
-			# The successful exclusive mkdir can precede its atomic owner receipt.
-			# No second claim/adoption; wait boundedly for the original claimant.
-			_cfmgr_tasks_now || return 3
-			[ "$cfmgr_tasks_now" -lt "$cfmgr_dependencies_wait_deadline" ] || return 3
-			"$cfmgr_dependencies_usleep" 50000 || return 3
-			continue
-		fi
-		[ ! -L "$cfmgr_dependencies_context/owner" ] || return 3
-		cfmgr_dependencies_owner_bytes=$("$cfmgr_dependencies_wc" -c <"$cfmgr_dependencies_context/owner") || return 3
-		case $cfmgr_dependencies_owner_bytes in '' | *[!0-9\ ]*) return 3 ;; esac
-		[ "$cfmgr_dependencies_owner_bytes" -le 96 ] || return 3
-		cfmgr_dependencies_owner_line='' cfmgr_dependencies_owner_tail=''
-		{
-			IFS= read -r cfmgr_dependencies_owner_line || return 3
-			if IFS= read -r cfmgr_dependencies_owner_tail; then return 3; fi
-			[ -z "$cfmgr_dependencies_owner_tail" ] || return 3
-		} <"$cfmgr_dependencies_context/owner"
-		[ "$cfmgr_dependencies_owner_bytes" -eq "$((${#cfmgr_dependencies_owner_line} + 1))" ] || return 3
-		IFS=' ' read -r cfmgr_dependencies_owner_pid cfmgr_dependencies_owner_start cfmgr_dependencies_owner_boot cfmgr_dependencies_extra <<EOF_OWNER
-$cfmgr_dependencies_owner_line
-EOF_OWNER
-		[ -z "$cfmgr_dependencies_extra" ] || return 3
-		case $cfmgr_dependencies_owner_pid:$cfmgr_dependencies_owner_start in *[!0-9:]* | :* | *: | 0* | *:0*) return 3 ;; esac
-		[ "${#cfmgr_dependencies_owner_pid}" -le 10 ] && [ "${#cfmgr_dependencies_owner_start}" -le 20 ] || return 3
-		[ "$cfmgr_dependencies_owner_line" = "$cfmgr_dependencies_owner_pid $cfmgr_dependencies_owner_start $cfmgr_dependencies_owner_boot" ] || return 3
-		IFS= read -r cfmgr_dependencies_current_boot </proc/sys/kernel/random/boot_id || return 3
-		[ "$cfmgr_dependencies_owner_boot" = "$cfmgr_dependencies_current_boot" ] || return 3
-		if cfmgr_prerequisites_identity "$cfmgr_dependencies_owner_pid"; then
-			[ "$cfmgr_identity_start" = "$cfmgr_dependencies_owner_start" ] && [ "$cfmgr_identity_state" != Z ] || return 3
+		if _cfmgr_dependencies_owner_active; then
+			:
 		else
+			# Successful cleanup can remove the claim during any observation.
+			# Only complete disappearance permits the caller's fresh post-probes;
+			# an unreadable, stale or replaced claim still present stays unresolved.
 			[ ! -e "$cfmgr_dependencies_context" ] && [ ! -L "$cfmgr_dependencies_context" ] || return 3
 			break
 		fi

@@ -202,6 +202,36 @@ def run_dependency_case(
         check=False,
         timeout=50,
     )
+    if result.returncode:
+        # Private fixture evidence contains finite phase labels only. Root-owned
+        # setup uses sudo; validate the known object before a bounded host read.
+        stat_tool, head_tool = shutil.which("stat"), shutil.which("head")
+        assert stat_tool and head_tool, "Declared host fixture diagnostics disappeared"
+        diagnostic = subprocess.run(
+            [
+                sudo,
+                "-n",
+                *shell,
+                "-c",
+                r"""
+[ -d "$1" ] && [ ! -L "$1" ] || exit 1
+[ "$("$2" -c %u:%a "$1")" = 0:700 ] || exit 1
+[ -f "$1/dependency.trace" ] && [ ! -L "$1/dependency.trace" ] || exit 1
+[ "$("$2" -c %u:%a "$1/dependency.trace")" = 0:600 ] || exit 1
+exec "$3" -c 1024 "$1/dependency.trace"
+""",
+                "dependency-trace",
+                str(tmp_path / "cfmgr-storage-mount-fixture"),
+                stat_tool,
+                head_tool,
+            ],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        if diagnostic.returncode == 0:
+            assert len(diagnostic.stdout) <= 1024
+            result.stderr += b"bounded synthetic fixture trace:\n" + diagnostic.stdout
     return result
 
 

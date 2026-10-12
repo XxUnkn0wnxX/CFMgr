@@ -19,6 +19,9 @@ mkdir -m 755 "$fixture/jffs"
 # retain byte-identical bodies for finite path forwarding only.
 # shellcheck disable=SC1090
 . "$installer_package/modules/helpers/bootstrap.sh"
+# Private prerequisite alias imports restore the production /bin/usleep default.
+# Reapply the explicitly selected vendor applet before any supervised operation.
+cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 cfmgr_dependencies_repair() {
 	[ "$#" = 12 ] && [ "$1" = flock ] && [ "$2" = /tmp/cfmgr ] && [ "$3" = "$installer_package" ] || return 91
 	[ "$4:$5:$6" = /:/bin/sh:/usr/bin/env ] || return 91
@@ -27,6 +30,12 @@ cfmgr_dependencies_repair() {
 }
 cfmgr_dependencies_inside_tools() { dependency_inside_tools; }
 cfmgr_dependencies_native_tool() { dependency_native_tool "$@"; }
+cfmgr_execution_view_native() { dependency_native "$@"; }
+cfmgr_execution_tasks_native() { dependency_native "$@"; }
+cfmgr_mount_keeper_native() {
+	[ "$1" = fifo ] || return 2
+	dependency_native fifo "$3"
+}
 cfmgr_dependencies_admit() { cfmgr_bootstrap_attached; }
 cfmgr_bootstrap_native_admission() { return 0; }
 cfmgr_bootstrap_metadata() { return 0; }
@@ -51,6 +60,8 @@ cfmgr_bootstrap_transaction() {
 	# execute unchanged against explicitly owned fixture roots and actual tools.
 	# shellcheck disable=SC1090
 	. "$installer_package/modules/helpers/bootstrap.sh"
+	# shellcheck disable=SC2329 # Fixed supervisor calls this imported callback.
+	cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 	# shellcheck disable=SC2329 # The imported actual transaction invokes this callback.
 	cfmgr_bootstrap_attached() {
 		cfmgr_storage_attached && [ "$cfmgr_install_source" -ef /proc/self/fd/9 ] && [ "$cfmgr_install_jffs" -ef /proc/self/fd/8 ] &&

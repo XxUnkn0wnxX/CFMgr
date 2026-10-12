@@ -46,7 +46,34 @@ standalone subgoals come first on resume; avoid discretionary framework expansio
 
 ## Working tree, refs and last gate
 
-- Current candidate: `91cdfb1e511f2cc8f89b1d8d6cb5c832edaa4d43`, pushed and
+- Current candidate: `64085a10f9efffa06621068125f4e94e7fd23bc4`, pushed and
+  remote-verified. [Checks 38237947152](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38237947152)
+  failed: host/static passed; vendor BusyBox **266 passed/1 skip/8 failed**.
+  Six real repair cases hit their 45s outer watchdog; installer fixture re-imports
+  the default `/bin/usleep` callback, unavailable on Ubuntu; coalescence has an
+  intermittent waiter failure. Receipt `.tmp/dependency-repair-ci-failed-4.log`.
+  No CI remains active. Repair ownership: `prerequisite_inventory` owns the
+  dependency/storage shell fixtures and `test_dependencies.py` for bounded timeout
+  diagnostics and installer callback correction; runtime changes require parent
+  agreement. `dependency_fixture` owns only `test_dependency_consumer.py` for the
+  coalescence fixture race; report production findings to parent. Parent owns
+  runtime race review, runner fail-fast and planning/metadata. Preserve all
+  assertions and deadlines unless execution evidence justifies a change. Focused
+  modules stay the prior selection, plus developer-runner checks for CI edits;
+  require exact green before implementing retained-manager behavior.
+  Parent fixed waiter observation/removal races: only complete claim disappearance
+  permits coalescence and fresh caller probes; retained bad claims remain blocked.
+  Portable regressions pass (consumer **11 passed/7 Linux skips**). Runner now
+  stops after the first failed test, retaining complete selection for successful
+  gates; developer-runner **24 passed**, selection/package **47 passed**. Affected
+  static/planning/package checks pass. Installer callback correction and bounded
+  timeout diagnostics are the next exact focused CI candidate; no acceptance yet.
+  Fixtures are released and parent-reviewed: dependency **13 passed/7 Linux skips**,
+  affected shell/Python lint/format/compile/syntax and whitespace passed. Runtime
+  metadata regenerated. No worker remains active. Cost review: the last vendor
+  behavior run took 366.64s, dominated by repeated known watchdog failures; first-
+  failure termination avoids that repetition without reducing successful coverage.
+- Previous candidate: `91cdfb1e511f2cc8f89b1d8d6cb5c832edaa4d43`, pushed and
   remote-verified. [Checks 38236908142](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38236908142)
   failed BusyBox: **267 passed/1 skip/6 failures/1 fixture error**; host/static
   passed. Receipt `.tmp/dependency-repair-ci-failed-3.log`. All six repair cases

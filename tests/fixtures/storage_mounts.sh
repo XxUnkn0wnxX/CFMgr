@@ -234,8 +234,9 @@ cleanup() {
 	exit "$original_status"
 }
 trap cleanup EXIT
-trap 'exit 1' HUP INT TERM
+trap 'fail "interrupted or watchdog timeout"' HUP INT TERM
 
+mkdir -m 700 "$fixture" || fail 'could not exclusively create private fixture directory'
 mkdir -p "$mount_dir" "$bind_dir"
 truncate -s 32M "$image"
 mkfs.ext4 -q -F -U random "$image"
