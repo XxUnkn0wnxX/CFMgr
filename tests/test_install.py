@@ -172,6 +172,11 @@ def install(
         tools["timeout"],
         fault,
     ]
+    # Publication checks and actually fsyncs every payload file and its parent.
+    # Keep the per-operation 2s supervisor above; the outer harness budget scales
+    # with this immutable package instead of cutting off a growing finite install.
+    payload_files = sum(path.is_file() for path in package.rglob("*"))
+    whole_install_budget = max(15, 5 + 2 * payload_files)
     return subprocess.run(
         [
             *shell,
@@ -185,7 +190,7 @@ def install(
         env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
         capture_output=True,
         check=False,
-        timeout=15,
+        timeout=whole_install_budget,
     )
 
 
@@ -547,8 +552,16 @@ cfmgr_prerequisites_check() {
         [ "$3" = /opt/bin/sha256sum ] && [ "$4" = /opt/bin/flock ] &&
         [ "$5" = - ] && [ "$6" = unknown ] || return 93
     printf 'shared inventory\n'
+    cfmgr_prereq_result=capabilities-checked cfmgr_prereq_missing='jq coreutils-timeout'
     return 1
 }
+cfmgr_dependencies_repair() {
+    [ "$1" = 'jq coreutils-timeout' ] && [ "$2" = /tmp/cfmgr ] || return 94
+    printf 'mapped repair\n'
+    cfmgr_dependencies_phase=fixture-admission
+    return 1
+}
+exec 0<"$2" 9<"$3"
 cfmgr_bootstrap_native_work
 [ "$?" = 1 ]
 """
@@ -572,6 +585,6 @@ cfmgr_bootstrap_native_work
     )
     assert (result.returncode, result.stdout, result.stderr) == (
         0,
-        b"shared inventory\n",
-        b"",
+        b"shared inventory\nmapped repair\n",
+        b"[CFMGR] install: error: dependency repair failed (fixture-admission)\n",
     )

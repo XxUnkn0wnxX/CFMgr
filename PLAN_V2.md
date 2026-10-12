@@ -92,7 +92,7 @@ Remove every router Python call path, including DDNS record parsing, Access disp
 | S02.05 | Normal dependency repair | Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
 | S02.06 | Selected dependency reinstall | Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | S02.07 | Native recovery access | Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
-| S02.08 | Storage identity and loss | Verify actual expected volume/attachment and paths, stop dependent owned work on loss, never stale mountpoint writes. |
+| S02.08 | Storage identity and loss | Resolve current `/opt`, verify its backing mount and required-data reads, revalidate saved observations, guard CFMgr write paths, pin each action and stop/report owned work on loss. |
 | S02.09 | Capability-based support | Target the GT-AX11000 baseline and modern Merlin models with supported Entware and usable required dependencies; record source/ABI profiles and enforce native capability/TLS checks, with model qualification deferred to real-router beta. |
 
 ### Package and directory layout
@@ -165,7 +165,19 @@ Advanced options has a separate confirmed **Reinstall Entware dependencies** act
 
 Before affected work verify root/JFFS/script support, safely parsed state, actual command capabilities, practical free space, private paths and required storage permissions. Verify `/opt`'s resolved mounted backing volume, persistent identity, filesystem/root and relative Entware location; directory/executable presence, mount label, `/dev/sdX`, kernel architecture or package-feed name alone is insufficient. Recheck attachment and identity through dependent stages and owned-child supervision, including lazy unmount and substituted paths.
 
-Mount loss cancels/reaps only the action's verified owned children within a bounded cleanup policy, retains guards/recovery and reports unavailable storage. Never write into a leftover mountpoint, silently select another drive or wait in boot for the drive. A confirmed returning mount resumes only already configured eligible work, never an interrupted fresh tunnel creation. Software deadlines must not claim guaranteed termination of uninterruptible kernel I/O; retain unresolved ownership and prevent overlapping replacement work.
+Saved Entware identity/location is a last verified observation, not a permanent
+drive or label allowlist. At each new operation resolve where `/opt` currently
+leads and admit that actual mounted installation; a renamed label, rebuilt Entware
+or replacement drive can be revalidated. Report changed storage and refresh saved
+observations through normal guarded metadata updates, preserving settings and
+checking any required existing feature data. Do not infer data/configuration
+recovery merely from a usable new Entware installation. Before CFMgr-controlled
+writes recheck the admitted attachment and bounded readability of required existing
+data; a successful read is not an atomic guarantee for a later write. Once an
+operation starts, pin its admitted identity and never switch backing volumes
+mid-operation. Frequent attachment observations remain in RAM.
+
+Mount loss cancels/reaps only the action's verified owned children within a bounded cleanup policy, retains guards/recovery and reports unavailable storage through native system messages, with interactive delivery limitations handled under section 13. CFMgr-controlled writes use admitted guarded storage paths and must not fall through to leftover mountpoints or introduce unguarded Entware aliases. Preserve normal installed-opkg scripts: mount/read checks and bounded cancellation do not promise atomic prevention of fallback writes through new aliases those scripts create. Do not silently switch drives during an action or wait in boot for a drive. A returning or changed `/opt` target is re-admitted for a new operation and resumes only already configured eligible work with validated required data, never an interrupted fresh tunnel creation. Software deadlines must not claim guaranteed termination of uninterruptible kernel I/O; retain unresolved ownership, report cleanup pending and prevent overlapping replacement work.
 
 Native tool paths, curl TLS trust, loader/CA/proxy environment, kernel/userspace ABI and actual options remain runtime admission requirements. The GT-AX11000 firmware is the required implementation reference and first real-router beta target, alongside modern Merlin-supported routers. Check the official model/firmware and Entware sources for compatible architectures and available required dependencies. Exclude profiles whose required packages are unavailable or incompatible; an obsolete-router coverage obligation is not required. An unavailable baseline dependency remains a design blocker, not permission to silently drop the GT-AX11000. Model-specific execution and TLS qualification occur during beta before verified support claims.
 
@@ -863,7 +875,7 @@ Cancel leaves affected fault/Off state intact. Accepted repair retries only stil
 | S12.02 | Exact hook ownership and repair | Dedicated verified CFMgr blocks preserve foreign content; unsafe edits leave hooks unchanged, stop affected work with visible repair state, and use guarded repair/reinjection before eligible resume. |
 | S12.03 | Boot/WAN/IPv6 dispatch | Saved eligible registration without mount wait, selected events and detached rechecked tunnel settle. |
 | S12.04 | DDNS/IP-Sync coexistence | One completion owner; Access-only observation preserves foreign provider and needs no provider itself. |
-| S12.05 | Mount and shutdown | Match expected volume, scoped resume and suppression-before-stop within firmware budget. |
+| S12.05 | Mount and shutdown | Re-resolve and admit current `/opt`, scoped resume and suppression-before-stop within firmware budget. |
 | S12.06 | Eligible schedules | One global watchdog dispatches eligible tunnel/native/retry work; native DDNS days, binary updates and manager checks retain distinct schedules. |
 | S12.07 | No duplicate/foreign jobs | Exact names plus commands/ownership; Scribe owns rotation, backups manual, Off removes only its scope. |
 | S12.08 | Bounded resource admission | Coalesce before spawn/sleep, cap active/pending children/RAM/notices and aggregate work/cleanup. |
@@ -966,7 +978,7 @@ faults retain section 13's syslog-only policy, without a new manager logfile.
 | `dhcpc-event` where supported | Validate firmware family/interface event mapping; coalesce IPv6 address/prefix/RA changes, preserve foreign behavior. Shared periodic discovery covers missed/unsupported events. |
 | `ddns-start` | One bounded completion owner under section 9; independent valid native observation forwarding. |
 | Access-only observation | With IP-Sync On and CFMgr DDNS Off, preserve an existing foreign provider and add only identifiable IP-Sync observation; never report its DDNS result. Standalone boot/WAN/periodic resolution works with no DDNS provider. |
-| `post-mount` | Match actual expected Entware; request only eligible deferred scope/logging repair, not all services or unrelated mounts. Shared dependency gates still govern native work. |
+| `post-mount` | Resolve and admit the actual current `/opt` target under section 2; request only eligible deferred scope/logging repair, not all services or unrelated mounts. Shared dependency gates still govern native work. |
 | `unmount` / `services-stop` | Establish suppression before owned stop; cancel pending admission, bound cleanup inside firmware budget and preserve saved On for later valid recovery. No watchdog respawn during teardown. |
 
 ### Schedules

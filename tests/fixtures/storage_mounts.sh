@@ -5,7 +5,7 @@
 
 set -eu
 
-if [ "$#" -ne 7 ] && [ "$#" -ne 8 ]; then
+if [ "$#" -ne 7 ] && [ "$#" -ne 8 ] && [ "$#" -ne 10 ] && [ "$#" -ne 11 ]; then
 	printf 'storage mount fixture: expected seven arguments (plus selected BusyBox for view cases)\n' >&2
 	exit 2
 fi
@@ -18,8 +18,13 @@ awk=$5
 parent_namespace=$6
 owner_uid=$7
 view_busybox=${8:-}
+dependency_pid_namespace=${9:-}
+# shellcheck disable=SC2034 # Dependency extension consumes this explicit fixture path.
+dependency_process=${10:-}
+# shellcheck disable=SC2034 # Installer fixture extension consumes this private adapter.
+dependency_install_adapter=${11:-}
 case "$case_name" in
-valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | view_compat | view_detach | view_cleanup) ;;
+valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | view_compat | view_detach | view_cleanup | dependency_repair | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer) ;;
 *)
 	printf 'storage mount fixture: invalid case\n' >&2
 	exit 2
@@ -245,6 +250,7 @@ assert_released() {
 # Native operations below use the selected static vendor BusyBox applets. Host
 # tools above provide privileged fixture setup and the simulated external USB
 # detach only; they are not the production native-operation supervisor.
+# shellcheck disable=SC2154 # Imported view library supplies context/root state.
 view_action() {
 	view_action_mode=$1
 	shift
@@ -388,6 +394,7 @@ view_create() {
 	cfmgr_execution_view_create "$view_native_root" "$view_ram/context" "$view_ram/awk" "$readlink" "$root/modules/lib/mountinfo.awk"
 }
 
+# shellcheck disable=SC2154 # Imported view library supplies the actual view root.
 view_chroot() {
 	"$view_busybox" chroot "$cfmgr_view_root" /bin/busybox sh -c "$1"
 }
@@ -395,6 +402,10 @@ view_chroot() {
 # Globals below are outputs from cfmgr_storage_pin in the sourced library.
 # shellcheck disable=SC2154
 case "$case_name" in
+dependency_repair | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer)
+	# shellcheck disable=SC1091 # Fixed repository fixture extension, no user input.
+	. "$root/tests/fixtures/dependencies.sh"
+	;;
 valid)
 	pin || fail 'valid ext4 attachment was rejected'
 	[ "$cfmgr_storage_relative" = entware ] || fail 'wrong volume-relative path'

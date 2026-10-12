@@ -1,11 +1,14 @@
 CFMGR-CATALOG 1 0.1.0
 modules/helpers/.gitkeep	helper
 modules/helpers/bootstrap.sh	helper
+modules/helpers/dependencies.sh	helper
 modules/helpers/mount_keeper.sh	helper
 modules/helpers/probe.sh	helper
 modules/hooks/.gitkeep	data
 modules/lib/.gitkeep	library
 modules/lib/config.sh	library
+modules/lib/dependencies.sh	library
+modules/lib/execution_tasks.sh	library
 modules/lib/execution_view.sh	library
 modules/lib/mount_keeper.sh	library
 modules/lib/mountinfo.awk	library

@@ -29,11 +29,13 @@ tradeoffs and affected plan/checklist IDs. Keep proposals separate from accepted
 scope. Explicitly requested changes, routine evidence/format/link updates and
 implementation refinements preserving approved behavior need no repeat approval.
 
-Prepare a reviewable proposal before asking one clear approval question. While
-waiting, do only independent authorized work. Allow a reasonable response window
-(about a minute for a simple choice, longer for complex decisions); if unanswered,
-record the question/safe resume point and end waiting. Silence, elapsed time, empty
-responses and preselected options are never approval. Do not repeat answered gates.
+For a hard blocker requiring a change to a subgoal's behavior, prepare a reviewable
+proposal and ask one clear question. While waiting, do only independent authorized
+work. If unanswered after **3–5 minutes**, preserve unfinished work, record the
+question/safe resume point in handoff, stop active work safely and pause. This timeout
+does not apply to ordinary implementation or test failures: fix those autonomously.
+Silence, elapsed time, empty responses and preselected options are never approval.
+Do not repeat answered gates.
 
 Do not spend routine implementation effort trimming handoff. Trim completed notes
 if it approaches **500–600 KB** or becomes difficult to follow; rely on the checklist
@@ -59,9 +61,11 @@ history resets and publication grants are not recurring permissions.
 
 Order work where dependencies allow: smallest independently completable subgoals,
 then batches tied to a shared module/framework, then remaining work to close a full
-main goal. Name every affected ID and target complete workflows in each batch.
-Write focused tests, align CI test paths, pass
-available local and required focused CI gates, update checklist/README, then advance.
+main goal. Do not start a large target while smaller independent ones remain.
+Once a library, subgoal or shared batch is underway, finish its implementation,
+integration and required focused local/CI validation before moving to another target;
+do not leave it half-finished to chase easier ticks. Name every affected ID, align
+test paths and update checklist/README after validated gates, then advance.
 Award each tick only for its fully proved requirements. Before each package, inspect code,
 tests and ownership; record its Sxx.yy, actual consumer, missing acceptance and
 focused checks in handoff. Start with the requested main goal. If a prerequisite
@@ -77,7 +81,8 @@ not disconnected helpers or a monolithic entry. Partial implementation is preser
 **work in progress**, not a completed subgoal or permission to delete it. Record
 missing integration/tests; do not invent smaller product subgoals or lower acceptance.
 Review/checkpoint each coherent package before advancing. Focused-tested partial
-work may be committed honestly with product boxes unchecked. Preserve interrupted
+work may be committed honestly with product boxes unchecked; that preserves work
+but does not authorize switching targets. Preserve interrupted
 work and known failures rather than deleting it to obtain a clean/passing tree.
 
 Before authorized destructive replacement, bulk code/test deletion or history

@@ -119,6 +119,48 @@ cfmgr_execution_view_awk() {
 			  if (bad) exit 1; for (i=1;i<=n;i++) print rows[i] }
 		' "$1" "$2" "$3" >"$4"
 		;;
+	dynamic)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
+			BEGIN { root=ARGV[1]; guard=root; sub(/\/view$/,"/guard",guard); ARGV[1]="" }
+			function protected_cover(p, id,best,depth,n,top,a) {
+			  for (id in visible) if (path[id]=="/" || path[id]==p || index(p,path[id] "/")==1) {
+			    if (length(path[id])>depth) { depth=length(path[id]); best=path[id] } }
+			  n=0; top=""
+			  for (id in visible) if (path[id]==best && !(id in covered)) { n++; top=id }
+			  if (n!=1 || !(top in old) || old[top]!=full[top]) return 0
+			  split(full[top],a,"\t"); return (a[3] in immutable) && a[8] ~ /(^|,)ro(,|$)/
+			}
+			FILENAME==ARGV[2] { old[$1]=$0; olddev[$1]=$3; oldpath[$1]=$5; point[$5]=1; known[$1]=1
+			  if ($5==root || $5==guard) { immutable[$3]=1; essential[$1]=1 }; next }
+			FILENAME==ARGV[3] { visible[$1]=1; full[$1]=$0; path[$1]=$5; fullparent[$1]=$2; next }
+			{ current[$1]=$0; rows[++n]=$0; parent[$1]=$2
+			  if ($1 in old) { if (old[$1]!=$0) bad=1 }
+			  else { if (index($5,root "/")!=1 || ($5 in point) || ++added>256) bad=1; fresh[$1]=$0; known[$1]=1; point[$5]=1 } }
+			END { for (id in visible) if (path[id]==path[fullparent[id]]) covered[fullparent[id]]=1
+			  for (id in old) if (!(id in current)) {
+			    if ((id in visible) || (id in essential)) bad=1
+			    else if ((olddev[id] in immutable) && !protected_cover(oldpath[id])) bad=1
+			  }
+			  for (id in fresh) { cursor=id; depth=0
+			    while (!(cursor in old)) {
+			      if (!(cursor in fresh) || ++depth>256) { bad=1; break }; cursor=parent[cursor] }
+			  }
+			  if (bad) exit 1
+			  # Input mountinfo order is normally parent-first; explicitly sort new
+			  # children by ancestry depth so reverse cleanup cannot unmount a parent.
+			  for (i=1;i<=n;i++) { split(rows[i],a,"\t"); if (!(a[1] in fresh)) continue
+			    depth=0; cursor=a[1]; while (!(cursor in old)) { depth++; cursor=parent[cursor] }
+			    k=++count; out[k]=rows[i]; d[k]=depth }
+			  for (i=2;i<=count;i++) { row=out[i]; depth=d[i]; j=i-1
+			    while (j>0 && d[j]>depth) { out[j+1]=out[j]; d[j+1]=d[j]; j-- }; out[j+1]=row; d[j+1]=depth }
+			  for (i=1;i<=count;i++) print out[i] }
+		' "$1" "$2" "$3" "$4" >"$5"
+		;;
+	merge)
+		shift
+		"$cfmgr_view_awk" -F '\t' '{ if (seen[$1]++) exit 1; print }' "$1" "$2" >"$3"
+		;;
 	cover-private)
 		shift
 		"$cfmgr_view_awk" -F '\t' '
@@ -429,6 +471,33 @@ cfmgr_execution_view_create() {
 	cfmgr_view_state=ready
 }
 
+# Register only complete, ancestry-verified new descendants; original immutable
+# layers/replacements cannot be adopted. Foreign root pins never enter this ledger.
+# Missing detached owned IDs stay in the lifetime ledger until quiescent release.
+# shellcheck disable=SC2034,SC2094 # Full parsed columns; borrowed mount FD, distinct ledger files.
+cfmgr_execution_view_reconcile() {
+	[ "$cfmgr_view_pin_state" = active ] && [ -z "$cfmgr_view_pending" ] || return 3
+	_cfmgr_view_keeper check 0 "$cfmgr_view_context/expected.mounts" || return 3
+	_cfmgr_view_inventory / "$cfmgr_view_context/all.mounts" || return 3
+	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/current.mounts" || return 3
+	_cfmgr_view_call awk dynamic "$cfmgr_view_root" "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/all.mounts" "$cfmgr_view_context/current.mounts" "$cfmgr_view_context/new.mounts" || return 3
+	while IFS='	' read -r cfmgr_view_dynamic_id cfmgr_view_dynamic_parent cfmgr_view_dynamic_device cfmgr_view_dynamic_fsroot cfmgr_view_dynamic_point cfmgr_view_dynamic_type cfmgr_view_dynamic_source cfmgr_view_dynamic_options cfmgr_view_dynamic_super cfmgr_view_dynamic_propagation; do
+		[ "$cfmgr_view_sequence" -lt 4096 ] || return 3
+		_cfmgr_view_target "$cfmgr_view_dynamic_point" || return 3
+		cfmgr_view_sequence=$((cfmgr_view_sequence + 1))
+		cfmgr_view_pending=dynamic-unverified
+		printf 'dynamic\t%s\n' "$cfmgr_view_dynamic_point" >"$cfmgr_view_context/intent.$cfmgr_view_sequence" || return 3
+		_cfmgr_view_pin "$cfmgr_view_dynamic_point" "$cfmgr_view_context/current.mounts" 4<"$cfmgr_view_dynamic_point" || return 3
+		printf 'dynamic\t%s\n' "$cfmgr_view_dynamic_point" >"$cfmgr_view_context/done.$cfmgr_view_sequence" || return 3
+		cfmgr_view_pending=dynamic-unverified
+	done <"$cfmgr_view_context/new.mounts"
+	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/pinned.mounts" || return 3
+	_cfmgr_view_call awk same "$cfmgr_view_context/current.mounts" "$cfmgr_view_context/pinned.mounts" || return 3
+	_cfmgr_view_call awk merge "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/new.mounts" "$cfmgr_view_context/merged.mounts" || return 3
+	_cfmgr_view_call copy "$cfmgr_view_context/merged.mounts" "$cfmgr_view_context/expected.mounts" || return 3
+	cfmgr_view_pending=''
+}
+
 cfmgr_execution_view_recheck() {
 	case ${cfmgr_view_state:-invalid} in building | ready) ;; *) return 2 ;; esac
 	if _cfmgr_view_source_check && _cfmgr_view_exact; then return 0; else
@@ -444,7 +513,11 @@ cfmgr_execution_view_recheck() {
 cfmgr_execution_view_release() {
 	case ${cfmgr_view_state:-invalid} in building | ready | retained) ;; *) return 2 ;; esac
 	cfmgr_view_state=retained
-	cfmgr_execution_view_quiescent || return 3
+	case $cfmgr_view_pin_state in
+	active) cfmgr_execution_view_quiescent || return 3 ;;
+	retired) cfmgr_execution_view_quiescent retired || return 3 ;;
+	*) return 3 ;;
+	esac
 	[ -z "$cfmgr_view_pending" ] || return 3
 	_cfmgr_view_inventory / "$cfmgr_view_context/all.mounts" || return $?
 	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/current.mounts" || return $?
@@ -465,7 +538,7 @@ cfmgr_execution_view_release() {
 	while [ "$cfmgr_view_release_sequence" -gt 0 ]; do
 		if [ -f "$cfmgr_view_context/done.$cfmgr_view_release_sequence" ]; then
 			IFS='	' read -r cfmgr_view_done_mode cfmgr_view_done_target <"$cfmgr_view_context/done.$cfmgr_view_release_sequence" || return 3
-			case $cfmgr_view_done_mode in root | guard-root | bind4 | bind7)
+			case $cfmgr_view_done_mode in root | guard-root | bind4 | bind7 | dynamic)
 				_cfmgr_view_exact || return 3
 				if _cfmgr_view_call awk top "$cfmgr_view_done_target" "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/top.id"; then
 					IFS= read -r cfmgr_view_remove_id <"$cfmgr_view_context/top.id" || return 3

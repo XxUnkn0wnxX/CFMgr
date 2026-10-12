@@ -71,6 +71,13 @@ cfmgr_prerequisites_pause() {
 	/bin/usleep 50000
 }
 
+_cfmgr_prerequisites_attachment() {
+	case ${cfmgr_probe_mode:-none} in
+	repair-*) cfmgr_dependencies_attachment_ok ;;
+	*) cfmgr_prerequisites_attachment_ok ;;
+	esac
+}
+
 # Exports cfmgr_probe_* results for the admitted controller.
 # shellcheck disable=SC2034
 cfmgr_prerequisites_run() {
@@ -85,11 +92,15 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_child_start='' cfmgr_probe_child_parent='' cfmgr_probe_child_boot=''
 	cfmgr_probe_stdout='' cfmgr_probe_stderr=''
 	cfmgr_probe_reason=arguments
-	[ "$#" -ge 9 ] && [ "$#" -le 16 ] || return 2
+	[ "$#" -ge 9 ] && [ "$#" -le 22 ] || return 2
 	cfmgr_probe_mode=$1 cfmgr_probe_context=$2 cfmgr_probe_shell=$3
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	repair-awk) [ "$#" -ge 14 ] && [ "$#" -le 22 ] || return 2 ;;
+	repair-inventory) [ "$#" -eq 12 ] || return 2 ;;
+	repair-identity-parse | repair-readlink | repair-list | repair-copy | repair-mkdir | repair-chmod | repair-link | repair-signal) [ "$#" -eq 11 ] || return 2 ;;
+	repair-report | repair-identity | repair-file | repair-root | repair-guard-root | repair-bind4 | repair-bind7 | repair-private | repair-unbindable | repair-seal | repair-unmount | repair-fifo | repair-remove | repair-rmdir) [ "$#" -eq 10 ] || return 2 ;;
 	native-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
 	native-curl-https) [ "$#" -eq 12 ] || return 2 ;;
 	native-curl-version) [ "$#" -eq 9 ] || return 2 ;;
@@ -115,13 +126,24 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_reason=native-supervisor
 	cfmgr_prerequisites_supervisor || return 2
 	cfmgr_probe_deadline=$((cfmgr_probe_now + 2))
-	cfmgr_prerequisites_attachment_ok || {
+	case $cfmgr_probe_mode in repair-*)
+		case ${cfmgr_dependencies_operation_deadline:-} in
+		'') ;;
+		*[!0-9]*) return 2 ;;
+		*)
+			[ "$cfmgr_probe_now" -lt "$cfmgr_dependencies_operation_deadline" ] || return 1
+			[ "$cfmgr_dependencies_operation_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_dependencies_operation_deadline
+			;;
+		esac
+		;;
+	esac
+	_cfmgr_prerequisites_attachment || {
 		cfmgr_probe_reason=attachment
 		return 1
 	}
 	cfmgr_probe_label=$cfmgr_probe_mode
 	case "$cfmgr_probe_mode" in
-	install-* | native-*)
+	install-* | native-* | repair-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
 		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
@@ -145,9 +167,9 @@ cfmgr_prerequisites_run() {
 			DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH \
 			DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 			OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
-		case "$cfmgr_probe_mode" in install-copy) ulimit -f 2048 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
+		case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; install-copy) ulimit -f 2048 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
 		case "$cfmgr_probe_mode" in
-		install-* | native-*)
+		install-* | native-* | repair-*)
 			shift 9
 			exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
 			;;
@@ -178,7 +200,7 @@ cfmgr_prerequisites_run() {
 			return 3
 		}
 		[ "$cfmgr_identity_state" = Z ] && break
-		if ! cfmgr_prerequisites_attachment_ok; then cfmgr_probe_reason=attachment; fi
+		if ! _cfmgr_prerequisites_attachment; then cfmgr_probe_reason=attachment; fi
 		cfmgr_prerequisites_now || cfmgr_probe_reason=clock
 		[ "$cfmgr_probe_now" -lt "$cfmgr_probe_deadline" ] || cfmgr_probe_reason=deadline
 		if [ -n "$cfmgr_probe_reason" ]; then
@@ -253,7 +275,7 @@ cfmgr_prerequisites_run() {
 			return 3
 		fi
 	fi
-	cfmgr_prerequisites_attachment_ok || cfmgr_probe_reason=attachment
+	_cfmgr_prerequisites_attachment || cfmgr_probe_reason=attachment
 	cfmgr_probe_status=reaped
 	[ -z "$cfmgr_probe_reason" ] || return 1
 	return 0

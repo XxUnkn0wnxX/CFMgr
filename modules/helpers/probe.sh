@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2034 # Fixed sourced view parser consumes explicit fields.
 # Fixed prerequisite probes. Paths are admitted by the caller, never discovered here.
 set -f
 [ "$#" -ge 1 ] || exit 2
@@ -44,6 +45,122 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
+repair-inventory)
+	[ "$#" -eq 3 ] || exit 2
+	exec "$tool" -f "$1" inventory-v1 "$2" /proc/self/mountinfo >"$3"
+	;;
+repair-awk)
+	# shellcheck disable=SC2034 # Fixed imported library uses these explicit fields.
+	[ "$#" -ge 5 ] && [ "$#" -le 13 ] || exit 2
+	cfmgr_view_awk=cfmgr_probe_awk_exec cfmgr_view_context=$2 cfmgr_view_native_root=$3
+	# Fixed controller-admitted RAM snapshot, never environment/source payload.
+	# shellcheck disable=SC1090 # Caller-admitted private RAM library snapshot.
+	. "$1" || exit 2
+	cfmgr_probe_awk_exec() { exec "$tool" "$@"; }
+	shift 3
+	cfmgr_execution_view_awk "$@"
+	;;
+repair-identity)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -idn "$1"
+	;;
+repair-identity-parse)
+	[ "$#" -eq 2 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" '
+		function bit(c,yes) { return index(yes,c)>0 }
+		{ if (NR!=1 || NF<5 || length($2)!=10) exit 1
+		  p=$2; special=0
+		  if (bit(substr(p,4,1),"sS")) special+=4
+		  if (bit(substr(p,7,1),"sS")) special+=2
+		  if (bit(substr(p,10,1),"tT")) special+=1
+		  mode=special ? special "" : ""
+		  for (i=2;i<=8;i+=3) mode=mode (4*bit(substr(p,i,1),"r")+2*bit(substr(p,i+1,1),"w")+bit(substr(p,i+2,1),"xst"))
+		  printf "%s\t%s\t%s\t%s\n",$1,mode,$4,$5 }
+		END { if (NR!=1) exit 1 }
+	' "$1" >"$2"
+	;;
+repair-readlink | repair-list)
+	[ "$#" -eq 2 ] || exit 2
+	if [ "$mode" = repair-list ]; then exec "$tool" -1A "$1" >"$2"; fi
+	exec "$tool" "$1" >"$2"
+	;;
+repair-copy)
+	[ "$#" -eq 2 ] || exit 2
+	exec "$tool" "$1" "$2"
+	;;
+repair-mkdir)
+	[ "$#" -eq 2 ] || exit 2
+	exec "$tool" -m "$2" "$1"
+	;;
+repair-chmod)
+	[ "$#" -eq 2 ] || exit 2
+	exec "$tool" "$2" "$1"
+	;;
+repair-link)
+	[ "$#" -eq 2 ] || exit 2
+	exec "$tool" -s -- "$1" "$2"
+	;;
+repair-file)
+	[ "$#" -eq 1 ] || exit 2
+	umask 077
+	set -C
+	: >"$1"
+	;;
+repair-root | repair-guard-root)
+	[ "$#" -eq 1 ] || exit 2
+	if [ "$mode" = repair-root ]; then exec "$tool" -t tmpfs -o size=8m,mode=700 tmpfs "$1"; fi
+	exec "$tool" -t tmpfs -o size=64k,mode=700 tmpfs "$1"
+	;;
+repair-bind4)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -o bind /proc/self/fd/4 "$1"
+	;;
+repair-bind7)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -o bind /proc/self/fd/7 "$1"
+	;;
+repair-private)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -o make-private "$1"
+	;;
+repair-unbindable)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -o make-unbindable "$1"
+	;;
+repair-seal)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -o remount,ro "$1"
+	;;
+repair-unmount)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" "$1"
+	;;
+repair-fifo)
+	[ "$#" -eq 1 ] || exit 2
+	umask 077
+	exec "$tool" "$1" p
+	;;
+repair-remove | repair-rmdir)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" "$1"
+	;;
+repair-report)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in
+	storage-lost) message='[CFMGR] dependencies: error: Entware attachment lost; cleanup pending' ;;
+	cleanup-pending) message='[CFMGR] dependencies: error: dependency cleanup pending' ;;
+	cleanup-complete) message='[CFMGR] dependencies: error: Entware operation stopped; owned mounts released' ;;
+	*) exit 2 ;;
+	esac
+	exec "$tool" -t CFMGR "$message"
+	;;
+repair-signal)
+	[ "$#" -eq 2 ] || exit 2
+	case $1 in '' | 0* | *[!0-9]*) exit 2 ;; esac
+	case $2 in TERM | KILL) ;; *) exit 2 ;; esac
+	exec "$tool" -"$2" "$1"
+	;;
 native-curl-version)
 	[ "$#" -eq 0 ] || exit 2
 	exec "$tool" -q -V

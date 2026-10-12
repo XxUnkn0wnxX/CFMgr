@@ -24,7 +24,7 @@ case ${1-} in
 --help | '')
 	[ "$#" -le 1 ] || exit 2
 	printf '%s\n' 'CFMgr: --install (trusted complete local package), --version, --help.' \
-		'Fresh base installation only. Dependency repair, acquisition and feature menus remain unavailable.'
+		'Fresh base installation checks and repairs required Entware tools. Acquisition and feature menus remain unavailable.'
 	if [ -e /jffs/addons/CFMgr.d ] || [ -L /jffs/addons/CFMgr.d ]; then
 		printf '%s\n' 'An installed or retained package exists; fresh installation will not reset it. Recovery/update is not implemented.'
 	fi
@@ -51,6 +51,10 @@ case ${1-} in
 	. "$cfmgr_source/modules/lib/storage.sh" || exit 1
 	. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1
 	. "$cfmgr_source/modules/lib/native.sh" || exit 1
+	. "$cfmgr_source/modules/lib/mount_keeper.sh" || exit 1
+	. "$cfmgr_source/modules/lib/execution_view.sh" || exit 1
+	. "$cfmgr_source/modules/lib/execution_tasks.sh" || exit 1
+	. "$cfmgr_source/modules/lib/dependencies.sh" || exit 1
 	. "$cfmgr_source/modules/helpers/bootstrap.sh" || exit 1
 	if cfmgr_bootstrap_native "$cfmgr_source"; then
 		printf '%s\n' 'CFMgr fresh installation complete.'

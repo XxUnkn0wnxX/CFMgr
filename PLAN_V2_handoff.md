@@ -17,16 +17,17 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Current task and route
 
-Continue until **one complete main goal**, then audit/full local/exact full CI,
-update acceptance/README/handoff and pause. The earlier pause-every-subgoal override
-was revoked. Recent workflow/doc corrections were not pause requests.
+**Finish and pause:** the user now explicitly requests completion of **S02.05 and
+S02.08**, their focused local/exact CI gates, commit/push and a refreshed handoff,
+then pause. Do not start another target afterward. Full suites remain reserved for
+complete main-goal markers; this pause does not itself trigger a full suite.
 
 Aim for **Goal 2 — Installation and dependencies**, the prerequisite to original
 Goal 1. S02.09 is accepted after exact focused CI. Follow the user's order:
 smallest independently completable subgoals, then linked module/framework batches,
-then remaining main-goal work. The next linked batch targets **S02.04/S02.05/S02.06/S02.08**:
-shared requirements, real installed-opkg repair, selected confirmed reinstall and
-saved storage identity/loss/return behavior. Start with the integrated normal-repair
+then remaining main-goal work. The active targets are **S02.05/S02.08**:
+real installed-opkg repair and saved storage identity/loss/return behavior.
+Finish the integrated normal-repair
 consumer below; supporting ownership/resource work belongs to S04.08/S04.09 and
 native state parsing may need S04.01. The user was notified before this prerequisite
 work. Return to Goal 2; supporting main goals do not all have to finish first.
@@ -36,10 +37,50 @@ work. Return to Goal 2; supporting main goals do not all have to finish first.
 subgoal awaits CI. Partial storage/inventory proof earns no complete subgoal.
 
 Standing publication/pause, progress and concise-documentation rules are consolidated
-in AGENTS.md. The current work is authorized to continue; no pause or unanswered
-scope-approval question is pending. Completed evidence belongs in the checklist.
+in AGENTS.md. Finish only the agreed two-subgoal pause boundary. Completed evidence
+belongs in the checklist. The user reiterated the current-/opt mount/read-test and
+saved-reference behavior in answer to the repeated storage question; apply that
+decision below and do not ask for the same approval again.
+Never leave a started library/subgoal half-finished to switch targets. Smallest
+standalone subgoals come first on resume; avoid discretionary framework expansion.
 
 ## Working tree, refs and last gate
+
+- Current branch/local/remote receipt: `develop` at
+  `008ad84d5e64592b9462af501b33d0b2aa714284`. The integrated repair package below
+  is now in progress; prior failed runs and candidate instructions in this section
+  are historical. No CI is active or owed for the accepted S02.09 runtime.
+- Current repair dirty-tree proof: parent ran `.venv/bin/pytest -q
+  tests/test_dependency_selection.py tests/test_execution_tasks.py`: **48 passed**
+  in 1.18s. This proves portable selection/stat parsing only; integrated repair,
+  loss/cancellation, descriptor phases and Linux mount/process proof remain pending.
+  Latest AGENTS finish-before-switch amendment passes planning/whitespace checks;
+  AGENTS is 29,062 bytes, including the user's 3–5 minute unanswered hard-blocker
+  pause rule. No additional acceptance, commit or push yet.
+- Repair runtime/tests are now frozen after parent/analyst review. Worker targeted
+  regressions pass **70 tests/14 explicit Linux skips**, 5.80s. Parent regenerated
+  metadata and launched the combined focused runner on dependency, consumer,
+  selection, task, install, prerequisite, native, storage/mount/keeper, package and
+  platform modules. Command `7445` finished: **228 passed/46 platform skips/1 failed**,
+  behavior 100.32s; all statics passed. Receipt `.tmp/dependency-repair-focused.log`.
+  Failure is the existing native-admission/full-transaction fixture's 15s outer
+  deadline during normal file publication (253 bounded probes completed), not a
+  runtime hang. A narrow reproduction completed 213 probes before the same deadline;
+  receipt intervals stayed below 0.20s, with normal copies/real fsync progressing.
+  Immutable setup is already shared and these publication checks are required.
+  Parent made only the outer fixture budget scale with payload count; per-operation
+  2s supervision and all publication/failure assertions remain. Narrow proof passed:
+  native/install consumer **1 passed**, 20.02s call; installer regression module
+  **18 passed/1 Linux skip**, 75.88s. Receipts
+  `.tmp/dependency-repair-native-budget.log` and `.tmp/dependency-repair-install-budget.log`.
+  Relevant Python lint/format/compile and whitespace passed after that fixture-only
+  change; prior shell/static evidence remains applicable. No local command remains.
+  Required Linux proof still awaits the next exact focused CI; no full suite is due.
+- Pre-push cost review: immutable package/tool/C builds are module-scoped; mutation,
+  interruption and ownership cases retain fresh state. Real fsync/publication now
+  costs 15–20s in the largest workstation cases; distinct failure proof is retained.
+  ShellCheck was the largest local static step (over two minutes); avoid duplicate
+  invocations and inspect the required CI timing before further cost changes.
 
 - Latest accepted runtime: `2c6dfe16ab02d3e8c005851fbab2c7e67d4afeb8`, exact
   [Checks 38222000119](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38222000119).
@@ -98,14 +139,28 @@ scope-approval question is pending. Completed evidence belongs in the checklist.
 
 ## Ownership and next package
 
-No active writer or CI job. S02.09 files are released and accepted. Parent is
-preparing one coherent **S02.05/S02.08 integrated repair** assignment; do not start
+S02.09 files are released and accepted; no CI job is active. `prerequisite_inventory`
+now owns one coherent **S02.05/S02.08 integrated repair** assignment; do not start
 an unrelated helper package. Actual consumer: `cfmgr.sh --install` → bootstrap
 prerequisite inventory → healthy no-op or bounded installed-opkg repair → fresh
 post-inventory → existing installation transaction. The wider linked batch adds
 S02.04 tunnel DNS, S02.06 selected reinstall and S02.08 saved identity/return cases.
 
 Reuse guarded execution view and lifetime keeper. Parent/analyst design review:
+- Parent approved PID/start-specific private preflight contexts so concurrent
+  installers can reach shared repair coalescence; keep the exclusive JFFS claim,
+  strict FD/path ownership and legacy retained `/tmp/cfmgr/install` blocker.
+- Parent/analyst approved a repair-phase low-FD swap: source pin on FD0, preflight
+  RAM pin on FD9, shared claim on FD5. After snapshots, native callbacks use stable
+  RAM/claim pins and never require source FD0 inside read loops. Restore the same
+  refs only after scratch FD4 is safely free; unresolved work preserves its phase.
+  Once keeper release/reap frees FD3, hold the original context there across fresh
+  post-inventory flock probes on FD4/5. Do not add a colliding high descriptor.
+- No eval for descriptor closure. Use literal closure of known FDs, a regular
+  copied-helper FD9 handoff closed after ash opens it, gate stdin then `/dev/null`,
+  and admitted output only. Unexpected high non-CLOEXEC descriptors reject launch;
+  positively identified CLOEXEC bookkeeping must disappear across exec. Recheck
+  helper descriptors before ready/opkg. Source-proof any native ash uncertainty.
 - Launch via fixed chroot/ready/gate helper; record direct PID/start/boot and verify
   rooted view plus closure of outside directory FDs/cwd before release to opkg.
 - Scan every task/thread root through an opened FD and rechecked identity. Retained
@@ -124,6 +179,8 @@ Reuse guarded execution view and lifetime keeper. Parent/analyst design review:
 - Preserve normal configured feeds/resolution/scripts and active provider choice.
   Plain install may not repair an already-installed unusable tool; use scoped
   reinstall only for failed mapped requirements, preserving healthy tools.
+  Pinned opkg `opkg_info_status_cmd` consumes only `argv[0]`; fixed per-package
+  status queries are required (the test double must not invent multi-name support).
 - No package-wide tiny file-size limit: normal transitive/package writes may be
   large. Discard opkg output to `/dev/null` and retain concise phase/exit receipts;
   do not create unbounded RAM diagnostics. Native probe bounds remain separate.
@@ -132,17 +189,89 @@ Reuse guarded execution view and lifetime keeper. Parent/analyst design review:
   native tool binaries alone.
 
 Parent owns architecture, three plans, entry/metadata/CI integration and acceptance.
-`opkg_supervision_review` completed this read-only review; all implementation files
-remain parent-owned until the next explicit worker brief. No router execution,
-release/version/default-branch change or additional scope approval is pending.
+`opkg_supervision_review` is assigned a final read-only check of its five prior
+findings plus loss-before-success ordering in the provisional runtime freeze;
+no writes, tests or scope expansion. Parent integrates any material findings before
+the combined focused local/CI gate. The runtime writer retains exclusive ownership.
+That review is complete: the prior five fixes are present; writer corrected
+fresh interrupt/deadline/storage admission before query/repair gates, cancellation
+preservation when direct exit is zero, and unresolved optional-logger ownership.
+Re-record action expiry before accepting terminal status, not after separate cleanup
+consumes its own budget. Targeted regressions pass; parent reviewed these corrections.
+`opkg_supervision_review` returned five material task-lifecycle findings; the writer
+is fixing them. A short read-only follow-up checks the stable descriptor allocation
+for read-loop callbacks and fresh post-inventory. Parent owns the final contract.
+Worker exclusive files: new `modules/lib/dependencies.sh`, shared root/task
+supervision in `modules/lib/execution_tasks.sh` when needed, and narrow
+`modules/helpers/dependencies.sh`; existing bootstrap/probe/prerequisites/view/keeper
+libraries; their dependency/install/storage/keeper tests and fixture files, plus
+necessary native fixture config. Preserve accepted native admission behavior/tests.
+Parent exclusive: `cfmgr.sh`, package metadata, workflow, `tests/test_package.py`,
+all Markdown and acceptance. No overlapping writers. Worker must deliver the real
+installer repair integration and focused tests, then stop/release files; no commits,
+pushes, ticks, unrelated refactor or router execution. Notify parent before any
+interface change outside this ownership. Focused integration gate will include new
+dependency tests, prerequisites, install, native admission, storage/view/keeper and
+platform metadata. Linux mount/process tests require exact focused CI; no full
+suite is due. Native helper operations retain finite argv and separate long-action
+state. Parent reviews source/call/failure paths before publication or next scope.
+No router execution or release/version/default-branch change is authorized here.
+`dependency_fixture` exclusively owns new `tests/test_dependency_consumer.py` for
+portable native-work routing and descriptor/post-inventory regressions, using
+explicit adapters for unavailable Linux admission. The runtime writer retains
+`test_install.py`, real PID/mount-isolated repair/process tests and fixture changes.
+The consumer worker also adds real Linux process/claim-wait coalescence proof in
+that file; it owns no runtime or mount-fixture files. Existing consumer tests pass
+8 cases locally; three actual cleanup/FD cases require Linux and remain pending.
 
-Consumer route: future installed-opkg repair from the existing installer/prerequisite
-controller, using already admitted storage FDs 6/7. This package deliberately stops
-before writer launch/supervision, so it remains partial. Preserve existing parser
-interfaces; add explicit inventory support for verified owned stacks. Reuse the
-real ext4 fixture. Focused gate: mountinfo, storage, storage_mounts, install and platforms modules;
-Linux mount cases require focused CI. Parent owns workflow requirements and metadata.
-All other workers finished and released files; filesystem architecture review is integrated.
+`next_subgoal_review` returned a future closure map. The user's later boundary
+supersedes its execution order: finish S02.05/S02.08, then pause; S02.04/S02.06
+and other independent targets wait for resume. Bounded prerequisites are allowed
+where needed to complete these two, without awarding unrelated subgoal credit.
+Its current read-only follow-up assesses the smallest actual retained-operation
+consumer needed for S02.08, using existing entry/config/storage/bootstrap contracts;
+no edits, tests or new implementation target. Parent decides the integration design
+after the repair gate. Writer ownership remains unchanged.
+
+The user answered the repeated storage question by reiterating the required
+mount/read test and saved reference. This settles the implementation direction;
+no approval question remains pending. S02.08/S12.05 and section 2 now specify:
+resolve current `/opt` every new operation; saved identity/location is a last-known
+observation, not a permanent UUID/label lock. Re-admit rebuilt/replaced Entware,
+report changes, preserve settings and validate required existing data. Pin one
+identity during active work; recheck attachment/readability and cancel/report loss
+through native system messages, with truthful cleanup-pending/delivery limits.
+Completed bounded opkg status/config initialization supplies repair read evidence.
+CFMgr writes use admitted guarded paths; normal installed-opkg scripts remain
+enabled. Read checks and cancellation do not promise atomic prevention of fallback
+writes through new aliases those scripts create. Do not restart an enforcement
+redesign or repeat this question; finish implementation and the required proof.
+
+`dependency_fixture` exclusively owns new `tests/fixtures/dependency_process.c`;
+`prerequisite_inventory` released this file and retains all fixture build/integration
+tests. Host-only static pthread helper modes: hold, TERM-ignoring daemon,
+leader-exit with live thread, and mixed roots via a thread's `unshare(CLONE_FS)`.
+CLI `MODE PID_RECEIPT [VIEW_ROOT]`; one canonical `TGID TID\n` receipt after state
+is ready, no retained receipt/unrelated descriptors. Parent reviews C source;
+Linux PID/mount-isolated integration is the required behavioral gate. Never run
+this helper or mount tests on a router. No worker publication or acceptance.
+Initial source review passed; parent requested bounded direct-child cleanup on
+daemon setup failure before file release. Static Linux build/execution remain CI-only.
+That fix is reviewed and the C file is now released to integration.
+`dependency_fixture` released both portable test modules. Selection now passes
+35 tests, including real opkg Conffiles/Description continuations and strict query
+framing; Ruff passes. Task parsing initially passed 12/13; the final-LF correction
+passes the two affected cases, with combined validation pending. Runtime
+fixes and `test_dependencies.py`/Linux integration remain exclusively
+with `prerequisite_inventory`; do not duplicate selector cases or overlap writers.
+`opkg_supervision_review` performs read-only review of the implemented task/view
+lifecycle and signalling paths while fixtures are written. Parent reviews controller,
+bootstrap and selection; runtime edits stay with the implementation owner.
+
+The prior guarded-view construction package used admitted storage FDs 6/7 and
+the real ext4 fixture; its Linux proof is recorded in the checklist. The current
+package adds the actual writer launch/supervision consumer. Preserve existing parser
+interfaces. Filesystem architecture review is integrated.
 Parent added matching-native BusyBox CHROOT/LN fixture applets for the actual view tests;
 cache identity already includes this config. No new APT requirement or full run is needed.
 
@@ -155,7 +284,7 @@ PID/start/boot and resource headroom. Parent loss/EOF must not silently unwind p
 Release only after independently proved quiescence, then normal view unmount.
 Focused tests add `test_mount_keeper.py` to storage/view coverage; Linux proof needs CI.
 Keeper implementation is reviewed and focused-local/CI-passed, with no complete
-subgoal credit. Keeper ownership is released; current S02.09 ownership is above.
+subgoal credit. Current integrated repair ownership is above.
 Pinned ash `shellexec` calls `clearredir(drop=1)`, closing saved redirection copies
 before external exec; verify that behavior in the vendor fixture. Current review
 fixes cover glob-disabled callers, canonical numeric protocol, uncertain-release
@@ -301,17 +430,16 @@ Source pins and evidence for that decision:
 
 ## Validation and resume
 
-1. Verify refs/status and retain the green guarded-view evidence above. Local command:
-   `.venv/bin/python tools/test.py --focused tests/test_mountinfo.py tests/test_storage.py tests/test_storage_mounts.py tests/test_install.py tests/test_platforms.py`.
-2. Integrate the ownership review into the mount-reference keeper and supervised
-   writer launch, then the real repair consumer. Native config has MKNOD, not MKFIFO;
-   verify its FIFO mode before using it. No consumer may infer ownership from a
-   mount-ID ledger after those mount references are released.
-   Any necessary product restriction needs a concrete proposal and approval first.
-3. Run focused local/statics, parent-review, commit. Required Linux/BusyBox proof
+1. Finish the active real installer/repair integration fixture and parent review.
+   Runtime metadata was regenerated after the provisional runtime freeze; rerun
+   generation if later reviewed runtime changes invalidate it.
+2. Complete S02.08 saved-observation revalidation and eligible returning-work
+   behavior through actual consumers. Preserve the settled storage policy above.
+3. Run focused local/statics, parent-review, commit/push. Required Linux/BusyBox proof
    uses the focused CI route in AGENTS, then wait for exact green before advancing.
    No full run or main-goal tick is due now. Update checklist/README gate status.
-4. Continue Goal 2 or recorded prerequisites until the full main-goal boundary.
+4. Once both agreed subgoals pass, update acceptance/README and the handoff, ensure
+   no required worker or job remains active, and pause. Start no further target.
 
 Required development CI is one Ubuntu host/vendor-BusyBox job, not exact firmware
 emulation. Real Merlin/ARM/flash/hooks/TLS/provider qualification remains beta work.

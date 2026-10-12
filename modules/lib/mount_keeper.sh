@@ -11,6 +11,13 @@ _cfmgr_keeper_now() {
 	IFS=' ' read -r cfmgr_keeper_uptime cfmgr_keeper_idle </proc/uptime || return 3
 	cfmgr_keeper_now=${cfmgr_keeper_uptime%%.*}
 	case $cfmgr_keeper_now in '' | *[!0-9]*) return 3 ;; esac
+	# Fixed controller's optional whole-phase budget also bounds ACK/FD retries.
+	# Empty for standalone keeper consumers; never derived from environment.
+	case ${cfmgr_keeper_outer_deadline:-} in
+	'') ;;
+	*[!0-9]*) return 3 ;;
+	*) [ "$cfmgr_keeper_now" -lt "$cfmgr_keeper_outer_deadline" ] || return 3 ;;
+	esac
 }
 
 # shellcheck disable=SC2154 # Narrow prerequisite identity utility exports these fields.

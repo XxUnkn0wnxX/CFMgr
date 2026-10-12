@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC2034,SC2154 # Imported/exported finite controller fields and listing columns.
 # Trusted-local fresh installation only. All functions are inert when sourced.
 # The internal transaction accepts already-admitted roots/tools, never public
 # environment overrides. Production admission always uses the fixed Merlin paths.
@@ -139,7 +140,7 @@ cfmgr_bootstrap_manifest() {
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mountinfo.awk modules/helpers/bootstrap.sh modules/helpers/probe.sh"
+			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh"
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
 			if (bad || count<2) exit 1
 		}
@@ -364,12 +365,12 @@ cfmgr_bootstrap_attached() {
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
 	cfmgr_storage_attached || return 1
 	if [ -n "${cfmgr_install_context:-}" ]; then
-		case $cfmgr_install_context_fd in 0 | 5) ;; *) return 1 ;; esac
+		case $cfmgr_install_context_fd in 0 | 3 | 5 | 9) ;; *) return 1 ;; esac
 		[ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef "/proc/self/fd/$cfmgr_install_context_fd" ] || return 1
 		[ "$("$cfmgr_install_awk" -f "$cfmgr_install_source/modules/lib/mountinfo.awk" "$cfmgr_install_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ] || return 1
 	fi
 	[ ! -L "$cfmgr_install_source" ] && [ ! -L "$cfmgr_install_jffs" ] &&
-		[ "$cfmgr_install_source" -ef /proc/self/fd/9 ] &&
+		[ "$cfmgr_install_source" -ef "/proc/self/fd/${cfmgr_install_source_fd:-9}" ] &&
 		[ "$cfmgr_install_jffs" -ef /proc/self/fd/8 ] || return 1
 	[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_source")" = "$cfmgr_install_source" ] &&
 		[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_jffs")" = "$cfmgr_install_jffs" ] || return 1
@@ -422,24 +423,27 @@ cfmgr_prerequisites_admit_tool() {
 # Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
 # shellcheck disable=SC3013
 cfmgr_bootstrap_cleanup() {
+	# A reaped short native probe says nothing about retained long-action work.
+	# Its RAM machinery and phase-pinned descriptors remain recovery evidence.
+	[ "${cfmgr_dependencies_state:-none}" != retained ] && [ "${cfmgr_dependencies_native_unresolved:-0}" = 0 ] || return 3
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
-	case $cfmgr_install_context_fd in 0 | 5) ;; *) return 1 ;; esac
-	[ "$cfmgr_install_context" = /tmp/cfmgr/install ] &&
-		[ ! -L /tmp/cfmgr/install ] && [ /tmp/cfmgr/install -ef "/proc/self/fd/$cfmgr_install_context_fd" ] || return 1
+	case $cfmgr_install_context_fd in 0 | 3 | 5 | 9) ;; *) return 1 ;; esac
+	[ "$cfmgr_install_context" = "${cfmgr_install_private_context:-/tmp/cfmgr/install}" ] &&
+		[ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef "/proc/self/fd/$cfmgr_install_context_fd" ] || return 1
 	[ -z "${cfmgr_probe_pid:-}" ] || [ "${cfmgr_probe_status:-}" = reaped ] || return 1
 	cfmgr_install_cleanup_count=0
-	for cfmgr_install_cleanup_item in /tmp/cfmgr/install/* /tmp/cfmgr/install/.[!.]* /tmp/cfmgr/install/..?*; do
+	for cfmgr_install_cleanup_item in "$cfmgr_install_context"/* "$cfmgr_install_context"/.[!.]* "$cfmgr_install_context"/..?*; do
 		[ -e "$cfmgr_install_cleanup_item" ] || [ -L "$cfmgr_install_cleanup_item" ] || continue
 		[ -f "$cfmgr_install_cleanup_item" ] && [ ! -L "$cfmgr_install_cleanup_item" ] || return 1
 		cfmgr_install_cleanup_count=$((cfmgr_install_cleanup_count + 1))
 		[ "$cfmgr_install_cleanup_count" -le 4096 ] || return 1
 	done
-	for cfmgr_install_cleanup_item in /tmp/cfmgr/install/* /tmp/cfmgr/install/.[!.]* /tmp/cfmgr/install/..?*; do
+	for cfmgr_install_cleanup_item in "$cfmgr_install_context"/* "$cfmgr_install_context"/.[!.]* "$cfmgr_install_context"/..?*; do
 		[ -f "$cfmgr_install_cleanup_item" ] || continue
 		/bin/rm -f "$cfmgr_install_cleanup_item" || return 1
 	done
-	/bin/rmdir /tmp/cfmgr/install || return 1
-	case $cfmgr_install_context_fd in 0) exec 0<&- ;; 5) exec 5<&- ;; esac
+	/bin/rmdir "$cfmgr_install_context" || return 1
+	case $cfmgr_install_context_fd in 0) exec 0<&- ;; 3) exec 3<&- ;; 5) exec 5<&- ;; 9) exec 9<&- ;; esac
 }
 
 # Explicit storage/prerequisite imports supply result fields; proc/listing
@@ -488,16 +492,22 @@ EOF
 $cfmgr_install_ram
 EOF
 	[ "$cfmgr_install_ram_mode" = drwx------ ] && [ "$cfmgr_install_ram_uid" = 0 ] || return 1
-	cfmgr_install_context=/tmp/cfmgr/install
-	/bin/mkdir -m 700 /tmp/cfmgr/install || return 1
-	exec 0</tmp/cfmgr/install || return 1
+	if [ -e /tmp/cfmgr/install ] || [ -L /tmp/cfmgr/install ]; then
+		printf '[CFMGR] install: error: legacy preflight context requires recovery\n' >&2
+		return 1
+	fi
+	cfmgr_prerequisites_identity "$$" || return 1
+	cfmgr_install_private_context=/tmp/cfmgr/install.$$.$cfmgr_identity_start
+	cfmgr_install_context=$cfmgr_install_private_context
+	/bin/mkdir -m 700 "$cfmgr_install_context" || return 1
+	exec 0<"$cfmgr_install_context" || return 1
 	cfmgr_install_context_fd=0
 	cfmgr_bootstrap_signals
 	cfmgr_probe_serial=0
 	cfmgr_probe_pid='' cfmgr_probe_status=invalid
 	if cfmgr_bootstrap_native_work; then cfmgr_install_native_status=0; else cfmgr_install_native_status=$?; fi
 	if ! cfmgr_bootstrap_cleanup; then
-		printf '%s\n' 'CFMgr retained probe context: /tmp/cfmgr/install (recovery required).' >&2
+		printf '[CFMGR] install: error: retained preflight context requires recovery (%s)\n' "$cfmgr_install_context" >&2
 		return 1
 	fi
 	[ "$cfmgr_install_interrupted" = 0 ] || return 1
@@ -582,7 +592,44 @@ cfmgr_bootstrap_native_work() {
 	# native flock never inspects an unused optional Entware executable.
 	cfmgr_install_native_flock=/usr/bin/flock cfmgr_install_entware_flock=/opt/bin/flock
 	if [ ! -f /usr/bin/flock ] || [ ! -x /usr/bin/flock ]; then cfmgr_install_native_flock=-; fi
-	cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown || return $?
+	if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_inventory_code=0; else cfmgr_install_inventory_code=$?; fi
+	case $cfmgr_install_inventory_code in
+	0) [ ! -e /tmp/cfmgr/dependencies ] && [ ! -L /tmp/cfmgr/dependencies ] || cfmgr_install_inventory_code=1 ;;
+	1) [ "$cfmgr_prereq_result" = capabilities-checked ] || return 2 ;;
+	*) return "$cfmgr_install_inventory_code" ;;
+	esac
+	if [ "$cfmgr_install_inventory_code" -eq 1 ]; then
+		# Flock has released4/5. Phase-swap the two retained directories without
+		# allocating a hidden/high ash descriptor: source0, stable preflight9.
+		exec 4<&9 9<&0 0<&4 4<&-
+		cfmgr_install_source_fd=0 cfmgr_install_context_fd=9
+		if cfmgr_dependencies_repair "$cfmgr_prereq_missing" /tmp/cfmgr "$cfmgr_install_source" / /bin/sh /usr/bin/env /usr/bin/awk /usr/bin/readlink /bin/usleep /usr/bin/wc /bin/mknod /usr/sbin/chroot; then :; else
+			cfmgr_install_repair_code=$?
+			# Unknown gate/root/native children retain the phase mapping and FD4.
+			if [ "$cfmgr_install_repair_code" -ne 3 ]; then
+				exec 4<&0 0<&9 9<&4 4<&-
+				cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
+			fi
+			printf '[CFMGR] install: error: dependency repair failed (%s)\n' "${cfmgr_dependencies_phase:-admission}" >&2
+			return "$cfmgr_install_repair_code"
+		fi
+		exec 4<&0 0<&9 9<&4 4<&-
+		cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
+		# Fresh post-probe context; no original probe file is rewritten or reused.
+		cfmgr_install_original_context=$cfmgr_install_context
+		cfmgr_bootstrap_action install-mkdir-private "$cfmgr_install_original_context.post" || return $?
+		exec 3<&0 0<"$cfmgr_install_original_context.post"
+		cfmgr_install_context=$cfmgr_install_original_context.post
+		cfmgr_install_context_fd=0
+		if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_post_code=0; else cfmgr_install_post_code=$?; fi
+		# Reaped fresh probes allow bounded cleanup of the original owned context.
+		[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		cfmgr_install_post_context=$cfmgr_install_context
+		cfmgr_install_context=$cfmgr_install_original_context cfmgr_install_context_fd=3
+		cfmgr_bootstrap_cleanup || return 3
+		cfmgr_install_context=$cfmgr_install_post_context cfmgr_install_context_fd=0 cfmgr_install_private_context=$cfmgr_install_post_context
+		[ "$cfmgr_install_post_code" -eq 0 ] || return "$cfmgr_install_post_code"
+	fi
 	# Flock probes have released FD4/5. Keep the context off stdin before
 	# transaction while-read loops temporarily redirect FD0 to manifest records.
 	exec 5<&0 0<&-
@@ -593,4 +640,212 @@ cfmgr_bootstrap_native_work() {
 		/bin/sh /usr/bin/env /usr/bin/awk /usr/bin/readlink /bin/sleep /usr/bin/wc /bin/ls /bin/fsync \
 		/bin/mkdir /bin/cp /bin/chmod /bin/mv /opt/bin/sha256sum /opt/bin/jq \
 		"$cfmgr_storage_uuid_value" "$cfmgr_storage_filesystem" "$cfmgr_storage_fsroot" "$cfmgr_storage_relative" /bin/df
+}
+
+# shellcheck disable=SC2034,SC2154 # Imported view/task/keeper fields and bounded listing columns.
+# Native repair operations use a separate RAM/FD admission, so cleanup remains
+# executable after Entware/source loss. They never regain package-write admission.
+# shellcheck disable=SC3013,SC2154
+cfmgr_dependencies_attachment_ok() {
+	if [ "${cfmgr_dependencies_claimed:-0}" != 1 ] || [ "${cfmgr_dependencies_snapshot_ready:-0}" != 1 ]; then
+		cfmgr_bootstrap_attached
+		return $?
+	fi
+	[ -d "$cfmgr_dependencies_context" ] && [ ! -L "$cfmgr_dependencies_context" ] &&
+		[ "$cfmgr_dependencies_context" -ef /proc/self/fd/5 ] || return 1
+	[ "$cfmgr_install_context_fd" = 9 ] && [ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef /proc/self/fd/9 ] || return 1
+	[ -r "$cfmgr_install_context/repair-mountinfo.awk" ] || return 1
+	if [ "${cfmgr_dependencies_cleaning:-0}" = 1 ]; then
+		"$cfmgr_install_awk" -f "$cfmgr_install_context/repair-mountinfo.awk" inventory-v1 "$cfmgr_dependencies_context" /proc/self/mountinfo >"$cfmgr_install_context/repair-cleanup.mounts" || return 1
+		[ ! -s "$cfmgr_install_context/repair-cleanup.mounts" ] || return 1
+	fi
+	[ "$("$cfmgr_install_awk" -f "$cfmgr_install_context/repair-mountinfo.awk" "$cfmgr_dependencies_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ]
+}
+
+# The private claim parent is admitted once by bootstrap. Never chmod/reclaim an
+# existing claim. Fixed literal listing plus FD proof prevents adopting its data.
+cfmgr_dependencies_claim_admit() {
+	[ -d "$1" ] && [ ! -L "$1" ] || return 2
+	cfmgr_dependencies_claim_metadata=$("$cfmgr_install_ls" -ldn "$1") || return 2
+	IFS=' ' read -r cfmgr_dependencies_claim_mode cfmgr_dependencies_claim_links cfmgr_dependencies_claim_uid cfmgr_dependencies_claim_rest <<EOF_CLAIM
+$cfmgr_dependencies_claim_metadata
+EOF_CLAIM
+	[ "$cfmgr_dependencies_claim_mode:$cfmgr_dependencies_claim_uid" = drwx------:0 ] || return 2
+	if [ -e "$1/owner" ] || [ -L "$1/owner" ]; then
+		[ -f "$1/owner" ] && [ ! -L "$1/owner" ] || return 2
+		cfmgr_dependencies_claim_metadata=$("$cfmgr_install_ls" -ldn "$1/owner") || return 2
+		IFS=' ' read -r cfmgr_dependencies_claim_mode cfmgr_dependencies_claim_links cfmgr_dependencies_claim_uid cfmgr_dependencies_claim_rest <<EOF_OWNER_MODE
+$cfmgr_dependencies_claim_metadata
+EOF_OWNER_MODE
+		[ "$cfmgr_dependencies_claim_mode:$cfmgr_dependencies_claim_uid" = -rw-------:0 ] || return 2
+	fi
+}
+
+cfmgr_dependencies_admit() {
+	cfmgr_bootstrap_attached || return 2
+	if cfmgr_bootstrap_admit_tool /opt/bin/opkg; then :; else
+		cfmgr_dependencies_opkg_code=$?
+		[ "$cfmgr_dependencies_opkg_code" -ne 3 ] || return 3
+		return 2
+	fi
+	[ -x /opt/bin/opkg ] || return 1
+	for cfmgr_dependencies_native_tool in /bin/mount /bin/umount /bin/mknod /usr/sbin/chroot /bin/kill /bin/ln /bin/rm /bin/rmdir; do
+		cfmgr_dependencies_native_resolved=$("$cfmgr_install_readlink" -f "$cfmgr_dependencies_native_tool") || return 2
+		# Native BusyBox applets can be literal firmware symlinks to busybox.
+		case $cfmgr_dependencies_native_resolved in "$cfmgr_dependencies_native_tool" | /bin/busybox) ;; *) return 2 ;; esac
+		cfmgr_bootstrap_native_protected "$cfmgr_dependencies_native_resolved" executable || return $?
+	done
+	cfmgr_dependencies_logger_admitted=0
+	# Syslog availability cannot decide whether ordinary dependency repair runs.
+	if [ -f /usr/bin/logger ] && [ -x /usr/bin/logger ]; then
+		cfmgr_dependencies_logger_resolved=$("$cfmgr_install_readlink" -f /usr/bin/logger) || return 0
+		case $cfmgr_dependencies_logger_resolved in
+		/usr/bin/logger | /bin/busybox)
+			if cfmgr_bootstrap_native_protected "$cfmgr_dependencies_logger_resolved" executable; then
+				cfmgr_dependencies_logger_admitted=1
+			else
+				cfmgr_dependencies_logger_code=$?
+				[ "$cfmgr_dependencies_logger_code" -ne 3 ] || return 3
+			fi
+			;;
+		esac
+	fi
+}
+
+# Finite native dispatcher. The supervisor does not accept arbitrary commands;
+# every mode below maps to one previously admitted native applet/grammar.
+cfmgr_dependencies_native_tool() {
+	case $1 in
+	inventory | awk | identity-parse) cfmgr_dependencies_native_tool=$cfmgr_install_awk ;;
+	identity | list) cfmgr_dependencies_native_tool=$cfmgr_install_ls ;;
+	readlink) cfmgr_dependencies_native_tool=$cfmgr_install_readlink ;;
+	mkdir) cfmgr_dependencies_native_tool=$cfmgr_install_mkdir ;;
+	copy) cfmgr_dependencies_native_tool=$cfmgr_install_cp ;;
+	chmod) cfmgr_dependencies_native_tool=$cfmgr_install_chmod ;;
+	link) cfmgr_dependencies_native_tool=/bin/ln ;;
+	root | guard-root | bind4 | bind7 | private | unbindable | seal) cfmgr_dependencies_native_tool=/bin/mount ;;
+	unmount) cfmgr_dependencies_native_tool=/bin/umount ;;
+	file) cfmgr_dependencies_native_tool=$cfmgr_install_sh ;;
+	fifo) cfmgr_dependencies_native_tool=/bin/mknod ;;
+	report) cfmgr_dependencies_native_tool=/usr/bin/logger ;;
+	signal) cfmgr_dependencies_native_tool=/bin/kill ;;
+	remove) cfmgr_dependencies_native_tool=/bin/rm ;;
+	rmdir) cfmgr_dependencies_native_tool=/bin/rmdir ;;
+	*) return 2 ;;
+	esac
+}
+
+cfmgr_dependencies_native() {
+	[ "${cfmgr_dependencies_native_unresolved:-0}" = 0 ] || return 3
+	cfmgr_dependencies_native_mode=$1
+	shift
+	cfmgr_dependencies_native_tool "$cfmgr_dependencies_native_mode" || return 2
+	cfmgr_dependencies_operation_context=$cfmgr_install_context
+	cfmgr_dependencies_operation_probe=$cfmgr_install_source/modules/helpers/probe.sh
+	if [ "${cfmgr_dependencies_snapshot_ready:-0}" = 1 ]; then
+		cfmgr_dependencies_operation_probe=$cfmgr_install_context/repair-probe.sh
+		if [ "${cfmgr_dependencies_cleaning:-0}" != 1 ] && [ "${cfmgr_dependencies_claimed:-0}" = 1 ]; then cfmgr_dependencies_operation_context=$cfmgr_dependencies_context; fi
+	fi
+	case $cfmgr_dependencies_native_mode in
+	inventory) set -- "$cfmgr_install_context/repair-mountinfo.awk" "$@" ;;
+	awk) set -- "$cfmgr_dependencies_context/execution_view.sh" "$cfmgr_view_context" "$cfmgr_view_native_root" "$@" ;;
+	identity)
+		cfmgr_dependencies_identity_target=$2
+		set -- "$1"
+		;;
+	esac
+	# Snapshot-copy bootstrap can still use the admitted source parser before its
+	# private replacement exists; all later cleanup requires the RAM replacement.
+	if cfmgr_prerequisites_run "repair-$cfmgr_dependencies_native_mode" "$cfmgr_dependencies_operation_context" "$cfmgr_install_sh" "$cfmgr_dependencies_operation_probe" \
+		"$cfmgr_install_env" "$cfmgr_install_awk" "$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_dependencies_native_tool" "$@"; then :; else
+		cfmgr_dependencies_native_code=$?
+		if [ "$cfmgr_dependencies_native_code" -eq 3 ]; then
+			cfmgr_dependencies_native_unresolved=1 cfmgr_dependencies_state=retained
+			cfmgr_dependencies_native_pid=$cfmgr_probe_pid cfmgr_dependencies_native_start=$cfmgr_probe_start cfmgr_dependencies_native_boot=$cfmgr_probe_boot
+		fi
+		return "$cfmgr_dependencies_native_code"
+	fi
+	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	if [ "$cfmgr_dependencies_native_mode" = identity ]; then
+		cfmgr_dependencies_identity_raw=$cfmgr_probe_stdout
+		cfmgr_dependencies_native identity-parse "$cfmgr_dependencies_identity_raw" "$cfmgr_dependencies_identity_target"
+		return $?
+	fi
+	[ ! -s "$cfmgr_probe_stdout" ] || return 1
+}
+
+# Normal cleanup removes only a pinned private claim after verified root/thread
+# quiescence, keeper reap and an empty current mount inventory. No recursive rm.
+cfmgr_dependencies_cleanup() {
+	if [ "${cfmgr_dependencies_phase:-none}" != preparing ]; then
+		[ "$cfmgr_view_state:$cfmgr_keeper_state:$cfmgr_tasks_state" = released:released:quiescent ] || return 3
+	fi
+	cfmgr_dependencies_attachment_ok || return 3
+	cfmgr_dependencies_cleanup_count=0 cfmgr_dependencies_cleaning=1
+	cfmgr_dependencies_native inventory "$cfmgr_dependencies_context" "$cfmgr_install_context/repair-empty.mounts" || return 3
+	[ ! -s "$cfmgr_install_context/repair-empty.mounts" ] || return 3
+	_cfmgr_dependencies_tree_check "$cfmgr_dependencies_context" 0 || return 3
+	cfmgr_dependencies_cleanup_count=0
+	_cfmgr_dependencies_remove_tree "$cfmgr_dependencies_context" 0 || return 3
+}
+
+_cfmgr_dependencies_remove_tree() {
+	[ "$2" -le 3 ] && [ -d "$1" ] && [ ! -L "$1" ] || return 3
+	for cfmgr_dependencies_cleanup_item in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+		[ -e "$cfmgr_dependencies_cleanup_item" ] || [ -L "$cfmgr_dependencies_cleanup_item" ] || continue
+		[ "$cfmgr_dependencies_cleanup_item" != "$cfmgr_dependencies_context/owner" ] || continue
+		cfmgr_dependencies_cleanup_count=$((cfmgr_dependencies_cleanup_count + 1))
+		[ "$cfmgr_dependencies_cleanup_count" -le 4096 ] && [ ! -L "$cfmgr_dependencies_cleanup_item" ] || return 3
+		if [ -d "$cfmgr_dependencies_cleanup_item" ]; then
+			_cfmgr_dependencies_remove_tree "$cfmgr_dependencies_cleanup_item" "$(($2 + 1))" || return 3
+		elif [ -f "$cfmgr_dependencies_cleanup_item" ]; then
+			cfmgr_dependencies_native remove "$cfmgr_dependencies_cleanup_item" || return 3
+		elif [ -p "$cfmgr_dependencies_cleanup_item" ]; then
+			case $cfmgr_dependencies_cleanup_item in "$cfmgr_dependencies_context/keeper/control" | "$cfmgr_dependencies_context/gate") ;; *) return 3 ;; esac
+			cfmgr_dependencies_native remove "$cfmgr_dependencies_cleanup_item" || return 3
+		else return 3; fi
+	done
+	if [ "$1" = "$cfmgr_dependencies_context" ]; then cfmgr_dependencies_native remove "$1/owner" || return 3; fi
+	cfmgr_dependencies_native rmdir "$1"
+}
+
+_cfmgr_dependencies_tree_check() {
+	[ "$2" -le 3 ] && [ -d "$1" ] && [ ! -L "$1" ] || return 3
+	for cfmgr_dependencies_check_item in "$1"/* "$1"/.[!.]* "$1"/..?*; do
+		[ -e "$cfmgr_dependencies_check_item" ] || [ -L "$cfmgr_dependencies_check_item" ] || continue
+		cfmgr_dependencies_cleanup_count=$((cfmgr_dependencies_cleanup_count + 1))
+		[ "$cfmgr_dependencies_cleanup_count" -le 4096 ] && [ ! -L "$cfmgr_dependencies_check_item" ] || return 3
+		if [ -d "$cfmgr_dependencies_check_item" ]; then
+			_cfmgr_dependencies_tree_check "$cfmgr_dependencies_check_item" "$(($2 + 1))" || return 3
+		elif [ -f "$cfmgr_dependencies_check_item" ]; then
+			:
+		elif [ -p "$cfmgr_dependencies_check_item" ]; then
+			case $cfmgr_dependencies_check_item in "$cfmgr_dependencies_context/keeper/control" | "$cfmgr_dependencies_context/gate") ;; *) return 3 ;; esac
+		else return 3; fi
+	done
+}
+
+# Native syslog submission is an attempt, never a claim that a lost destination
+# stored it. Console evidence remains available even when logger cannot complete.
+cfmgr_dependencies_report() {
+	case $1 in
+	storage-lost) printf '[CFMGR] dependencies: error: Entware attachment lost; cleanup pending\n' >&2 ;;
+	cleanup-pending) printf '[CFMGR] dependencies: error: dependency cleanup pending\n' >&2 ;;
+	cleanup-complete) printf '[CFMGR] dependencies: error: Entware operation stopped; owned mounts released\n' >&2 ;;
+	*) return 2 ;;
+	esac
+	# Loss console evidence is immediate. Native submission follows cancellation,
+	# so an unresolved logger can never prevent the owned opkg stop attempt.
+	[ "$1" != storage-lost ] || return 0
+	if [ "${cfmgr_dependencies_logger_admitted:-0}" != 1 ]; then
+		printf '[CFMGR] dependencies: warning: native system log unavailable\n' >&2
+		return 0
+	fi
+	[ "${cfmgr_dependencies_native_unresolved:-0}" = 0 ] || return 3
+	cfmgr_dependencies_native report "$1"
+}
+
+cfmgr_dependencies_inside_tools() {
+	cfmgr_dependencies_inside_shell=/bin/sh cfmgr_dependencies_inside_awk=/usr/bin/awk
+	cfmgr_dependencies_inside_readlink=/usr/bin/readlink cfmgr_dependencies_inside_usleep=/bin/usleep
 }
