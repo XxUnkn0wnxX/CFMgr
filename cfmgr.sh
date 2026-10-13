@@ -33,14 +33,27 @@ case ${1-} in
 			CFMGR_INTERNAL_LAUNCH=1 /bin/sh "$cfmgr_default_entry" --internal-launch
 	fi
 	printf '%s\n' 'CFMgr: --install (trusted complete local package), --version, --help.' \
-		'Fresh base installation checks and repairs required Entware tools. Acquisition and feature menus remain unavailable.'
+		'Installed package: --reinstall-dependencies (interactive confirmation required).' \
+		'Fresh base installation checks and repairs required Entware tools. Other feature operations remain unavailable.'
 	if [ -e /jffs/addons/CFMgr.d ] || [ -L /jffs/addons/CFMgr.d ]; then
 		printf '%s\n' 'An installed or retained package exists; fresh installation will not reset it. Recovery/update is not implemented.'
 	fi
 	exit 0
 	;;
+--reinstall-dependencies)
+	[ "$#" -eq 1 ] || exit 2
+	cfmgr_default_entry=$(/usr/bin/readlink -f "$0") || exit 1
+	[ "$cfmgr_default_entry" = /jffs/scripts/cfmgr.sh ] && [ -f "$0" ] && [ ! -L "$0" ] || {
+		printf '[CFMGR] dependencies: error: use the installed entry\n' >&2
+		exit 1
+	}
+	exec /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= \
+		CFMGR_INTERNAL_LAUNCH=1 /bin/sh /jffs/scripts/cfmgr.sh --internal-launch reinstall
+	;;
 --internal-launch)
-	[ "$#" -eq 1 ] && [ "${CFMGR_INTERNAL_LAUNCH-}" = 1 ] && [ "$0" = /jffs/scripts/cfmgr.sh ] || exit 2
+	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && [ "${CFMGR_INTERNAL_LAUNCH-}" = 1 ] && [ "$0" = /jffs/scripts/cfmgr.sh ] || exit 2
+	cfmgr_entry_action=${2:-normal}
+	case $cfmgr_entry_action in normal | reinstall) ;; *) exit 2 ;; esac
 	cfmgr_source=/jffs/addons/CFMgr.d
 	# Root-protected literal imports, never a config-selected source. Structural
 	# package admission precedes repair; full digests follow healthy SHA probes.
@@ -62,7 +75,11 @@ case ${1-} in
 	. "$cfmgr_source/modules/lib/dependencies.sh" || exit 1
 	. "$cfmgr_source/modules/helpers/bootstrap.sh" || exit 1
 	. "$cfmgr_source/modules/helpers/launch.sh" || exit 1
-	if cfmgr_launch_native "$cfmgr_source"; then exit 0; fi
+	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
+		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else exit 0; fi
+	fi
+	if cfmgr_launch_native "$cfmgr_source" "$cfmgr_entry_action"; then exit 0; else cfmgr_entry_status=$?; fi
+	[ "$cfmgr_entry_status" -ne 4 ] || exit 0
 	printf '[CFMGR] launch: error: retained launch blocked or incomplete\n' >&2
 	exit 1
 	;;

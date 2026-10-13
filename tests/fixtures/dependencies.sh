@@ -77,8 +77,12 @@ case $1 in
 --version) exit 0 ;;
 status)
     # Actual opkg ignores every status operand after the first.
-    [ "$2" = flock ] && [ -f /opt/bin/flock ] || exit 0
-    printf 'Package: flock\nVersion: fixture-1\nStatus: install user installed\n\n'
+    case $2 in
+    jq-full | coreutils-timeout | coreutils-sha256sum) [ -e /opt/force-fixture ] || exit 0 ;;
+    flock) [ -f /opt/bin/flock ] || exit 0 ;;
+    *) exit 0 ;;
+    esac
+    printf 'Package: %s\nVersion: fixture-1\nStatus: install user installed\n\n' "$2"
     ;;
 update)
     [ -r /tmp/feed/Packages ] || exit 1
@@ -87,6 +91,11 @@ update)
     ;;
 install)
     shift
+    if [ -e /opt/force-fixture ]; then
+        [ "$#" = 5 ] && [ "$1:$2:$3:$4:$5" = --force-reinstall:jq-full:coreutils-timeout:coreutils-sha256sum:flock ] || exit 2
+        printf 'force jq-full coreutils-timeout coreutils-sha256sum flock\n' >>/opt/operations
+        exit 0
+    fi
     [ "$#" = 1 ] && [ "$1" = flock ] || exit 2
     printf 'install flock\n' >>/opt/operations
     cp /bin/busybox /opt/bin/flock && chmod 755 /opt/bin/flock || exit 1

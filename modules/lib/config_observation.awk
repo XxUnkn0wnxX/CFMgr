@@ -7,7 +7,7 @@
 BEGIN {
     if (!cfmgr_json_tree_ready || cfmgr_json_mode != "tree") reject()
     if (cfmgr_config_mode != "check" && cfmgr_config_mode != "observe" &&
-        cfmgr_config_mode != "patch") reject()
+        cfmgr_config_mode != "patch" && cfmgr_config_mode != "scope") reject()
 
     for (co_i = 2; co_i <= cfmgr_json_tree_count; co_i++)
         co_child[cfmgr_json_tree_parent[co_i], cfmgr_json_tree_location[co_i]] = co_i
@@ -63,6 +63,10 @@ BEGIN {
     co_field(co_sync, "credentials", "object|string|null")
     co_field(co_sync, "targets", "array")
     co_cloud = co_field(1, "cloudflared", "object")
+    co_cloud_configured = co_field(co_cloud, "configured", "boolean")
+    co_cloud_enabled = co_field(co_cloud, "enabled", "boolean")
+    if (cfmgr_json_tree_kind[co_cloud_enabled] == "true" &&
+        cfmgr_json_tree_kind[co_cloud_configured] != "true") reject()
     co_field(co_cloud, "installed", "boolean")
     co_field(co_cloud, "maintenance_enabled", "boolean")
     co_field(co_cloud, "binary_auto_update", "boolean|null")
@@ -76,6 +80,12 @@ BEGIN {
     co_field(1, "backup", "object")
     co_field(1, "credentials", "object")
     co_field(1, "ownership", "object")
+
+    if (cfmgr_config_mode == "scope") {
+        printf "CFMGR-SCOPE 1 %s %s END\n", co_old,
+            (cfmgr_json_tree_kind[co_cloud_configured] == "true" ? "tunnel" : "shared")
+        exit 0
+    }
 
     co_changed = 0
     co_result = document

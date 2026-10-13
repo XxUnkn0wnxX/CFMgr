@@ -345,6 +345,10 @@ def test_real_retained_repair_and_later_return(
         in result.stdout
     )
     assert b"Entware attachment unavailable" in result.stderr
+    assert (
+        b"PASS: actual healthy force, alternate jq-full, settings/history/Off and released guards"
+        in result.stdout
+    )
 
 
 @pytest.mark.parametrize("invocation", ["absolute", "relative", "help", "source"])

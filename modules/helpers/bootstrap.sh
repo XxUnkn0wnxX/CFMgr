@@ -594,8 +594,13 @@ cfmgr_bootstrap_native_admission() {
 # The outer admission function owns the single RAM claim and its cleanup.
 # shellcheck disable=SC2034,SC2154
 cfmgr_bootstrap_shared_requirements() {
-	[ "$#" -eq 1 ] && { [ "$1" = fresh ] || [ "$1" = retained ]; } || return 2
+	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && { [ "$1" = fresh ] || [ "$1" = retained ]; } || return 2
 	cfmgr_install_consumer=$1
+	cfmgr_install_dependency_action=${2:-normal}
+	case $cfmgr_install_consumer:$cfmgr_install_dependency_action in fresh:normal | retained:normal | retained:reinstall) ;; *) return 2 ;; esac
+	cfmgr_install_force_flock=0 cfmgr_install_force_dig=0
+	cfmgr_install_dependency_scope=shared
+	if [ "$cfmgr_install_dependency_action" = reinstall ]; then cfmgr_launch_reinstall_scope || return $?; fi
 	cfmgr_bootstrap_native_admission || return $?
 	cfmgr_bootstrap_action install-nvram || return $?
 	IFS= read -r cfmgr_install_scripts_enabled <"$cfmgr_install_output" || return 1
@@ -616,6 +621,25 @@ cfmgr_bootstrap_shared_requirements() {
 	1) [ "$cfmgr_prereq_result" = capabilities-checked ] || return 2 ;;
 	*) return "$cfmgr_install_inventory_code" ;;
 	esac
+	if [ "$cfmgr_install_dependency_action" = reinstall ]; then
+		# Explicit action chooses the direct logical set even when healthy. The
+		# existing status mapper preserves installed alternatives such as jq-full.
+		cfmgr_install_selected='jq coreutils-timeout coreutils-sha256sum'
+		if [ "$cfmgr_prereq_flock_provider" != native ]; then
+			cfmgr_install_selected="$cfmgr_install_selected flock"
+			cfmgr_install_force_flock=1
+		fi
+		cfmgr_install_dns_native=not-required
+		if [ "$cfmgr_install_dependency_scope" = tunnel ]; then
+			cfmgr_bootstrap_reinstall_dns pre || return $?
+			if [ "$cfmgr_install_dns_native" = unsupported ]; then
+				cfmgr_install_selected="$cfmgr_install_selected bind-dig"
+				cfmgr_install_force_dig=1
+			fi
+		fi
+		cfmgr_prereq_missing=$cfmgr_install_selected
+		cfmgr_install_inventory_code=1
+	fi
 	if [ "$cfmgr_install_inventory_code" -eq 1 ]; then
 		# Flock has released4/5. Phase-swap the two retained directories without
 		# allocating a hidden/high ash descriptor: source0, stable preflight9.
@@ -633,21 +657,165 @@ cfmgr_bootstrap_shared_requirements() {
 		fi
 		exec 4<&0 0<&9 9<&4 4<&-
 		cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
+		if [ "$cfmgr_install_dependency_action" = reinstall ] && [ "$cfmgr_dependencies_result" != repaired ]; then
+			printf '[CFMGR] dependencies: warning: concurrent repair completed; reinstall deferred; retry explicitly\n' >&2
+			return 1
+		fi
 		# Fresh post-probe context; no original probe file is rewritten or reused.
 		cfmgr_install_original_context=$cfmgr_install_context
 		cfmgr_bootstrap_action install-mkdir-private "$cfmgr_install_original_context.post" || return $?
 		exec 3<&0 0<"$cfmgr_install_original_context.post"
 		cfmgr_install_context=$cfmgr_install_original_context.post
 		cfmgr_install_context_fd=0
-		if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_post_code=0; else cfmgr_install_post_code=$?; fi
+		cfmgr_install_post_native_flock=$cfmgr_install_native_flock
+		# A newly healthy native provider cannot hide a broken selected reinstall.
+		if [ "$cfmgr_install_force_flock" = 1 ]; then cfmgr_install_post_native_flock=-; fi
+		if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_post_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_post_code=0; else cfmgr_install_post_code=$?; fi
 		# Reaped fresh probes allow bounded cleanup of the original owned context.
 		[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		if [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_install_dependency_action:$cfmgr_install_dependency_scope" = reinstall:tunnel ]; then
+			if cfmgr_bootstrap_reinstall_dns post; then :; else cfmgr_install_post_code=$?; fi
+			[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		fi
 		if [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_install_consumer" = retained ]; then cfmgr_launch_migrate_snapshot || return $?; fi
 		cfmgr_install_post_context=$cfmgr_install_context
 		cfmgr_install_context=$cfmgr_install_original_context cfmgr_install_context_fd=3
 		cfmgr_bootstrap_cleanup || return 3
 		cfmgr_install_context=$cfmgr_install_post_context cfmgr_install_context_fd=0 cfmgr_install_private_context=$cfmgr_install_post_context
 		[ "$cfmgr_install_post_code" -eq 0 ] || return "$cfmgr_install_post_code"
+	fi
+}
+
+# The repair controller calls this immediately before its one opkg request. An
+# explicit action revalidates live generation/scope through native JSON parsing.
+cfmgr_dependencies_before_repair() {
+	if [ "${cfmgr_install_dependency_action:-normal}" = reinstall ]; then cfmgr_launch_reinstall_recheck || return $?; fi
+}
+
+cfmgr_bootstrap_dns_run() {
+	cfmgr_bootstrap_dns_mode=$1 cfmgr_bootstrap_dns_tool=$2
+	shift 2
+	cfmgr_prerequisites_run "$cfmgr_bootstrap_dns_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
+		"$cfmgr_install_source/modules/helpers/probe.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
+		"$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_bootstrap_dns_tool" "$@"
+}
+
+cfmgr_bootstrap_dns_admit_native() {
+	cfmgr_install_dns_tool=/usr/bin/nslookup
+	[ -e "$cfmgr_install_dns_tool" ] || [ -L "$cfmgr_install_dns_tool" ] || return 1
+	cfmgr_install_dns_resolved=$("$cfmgr_install_readlink" -f "$cfmgr_install_dns_tool") || return 2
+	case $cfmgr_install_dns_resolved in /usr/bin/nslookup | /bin/busybox) ;; *) return 2 ;; esac
+	# Admit both the literal applet parents and its root-protected native target.
+	for cfmgr_install_dns_parent in /usr/bin /usr /; do
+		[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_dns_parent")" = "$cfmgr_install_dns_parent" ] || return 2
+		if cfmgr_bootstrap_metadata "$cfmgr_install_dns_parent" 0 protected; then :; else
+			cfmgr_install_dns_admit_code=$?
+			[ "$cfmgr_install_dns_admit_code" -ne 3 ] || return 3
+			return 2
+		fi
+	done
+	if cfmgr_bootstrap_native_protected "$cfmgr_install_dns_resolved" executable; then return 0; else
+		cfmgr_install_dns_admit_code=$?
+		[ "$cfmgr_install_dns_admit_code" -ne 3 ] || return 3
+		return 2
+	fi
+}
+
+cfmgr_bootstrap_dns_answers() {
+	# PROVIDER TOOL SYNTAX SRV_OUTPUT. Pure bounded parsers exclude server
+	# addresses, validate the fixed service/port and emit at most two hostnames.
+	cfmgr_install_dns_provider=$1 cfmgr_install_dns_query_tool=$2 cfmgr_install_dns_syntax=$3
+	cfmgr_bootstrap_dns_run native-dns-parse-srv "$cfmgr_install_awk" "$1" "$4" || return $?
+	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	IFS=' ' read -r cfmgr_install_dns_first cfmgr_install_dns_second cfmgr_install_dns_extra <"$cfmgr_probe_stdout" || return 1
+	[ -n "$cfmgr_install_dns_first" ] && [ -z "$cfmgr_install_dns_extra" ] || return 1
+	for cfmgr_install_dns_target in "$cfmgr_install_dns_first" "$cfmgr_install_dns_second"; do
+		[ -n "$cfmgr_install_dns_target" ] || continue
+		cfmgr_bootstrap_dns_run "native-dns-$cfmgr_install_dns_provider-a" "$cfmgr_install_dns_query_tool" "$cfmgr_install_dns_syntax" "$cfmgr_install_dns_target" || return $?
+		[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_install_dns_answer=$cfmgr_probe_stdout
+		cfmgr_bootstrap_dns_run native-dns-parse-a "$cfmgr_install_awk" "$cfmgr_install_dns_provider" "$cfmgr_install_dns_target" "$cfmgr_install_dns_answer" || return $?
+		[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	done
+}
+
+cfmgr_bootstrap_reinstall_dns() {
+	[ "$#" -eq 1 ] && { [ "$1" = pre ] || [ "$1" = post ]; } || return 2
+	cfmgr_install_dns_phase=$1 cfmgr_install_dns_native=unknown
+	if [ "$cfmgr_install_dns_phase:${cfmgr_install_force_dig:-0}" = post:1 ]; then
+		cfmgr_install_dns_native=unsupported
+		cfmgr_bootstrap_dns_verify_dig
+		return $?
+	fi
+	if cfmgr_bootstrap_dns_admit_native; then
+		cfmgr_install_dns_usages=0
+		for cfmgr_install_dns_variant in q type long; do
+			if cfmgr_bootstrap_dns_run native-dns-native-srv "$cfmgr_install_dns_tool" "$cfmgr_install_dns_variant"; then :; else
+				cfmgr_install_dns_code=$?
+				[ "$cfmgr_install_dns_code" -ne 3 ] || return 3
+				cfmgr_bootstrap_dns_deferred
+				return 1
+			fi
+			cfmgr_install_dns_srv=$cfmgr_probe_stdout cfmgr_install_dns_error=$cfmgr_probe_stderr cfmgr_install_dns_exit=$cfmgr_probe_exit
+			cfmgr_bootstrap_dns_run native-dns-classify "$cfmgr_install_awk" "$cfmgr_install_dns_srv" "$cfmgr_install_dns_error" "$cfmgr_install_dns_exit" || return $?
+			[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+			IFS= read -r cfmgr_install_dns_class <"$cfmgr_probe_stdout" || return 1
+			case $cfmgr_install_dns_class in
+			unsupported)
+				cfmgr_install_dns_native=unsupported
+				break
+				;;
+			usage) cfmgr_install_dns_usages=$((cfmgr_install_dns_usages + 1)) ;;
+			syntax) ;;
+			answer)
+				if cfmgr_bootstrap_dns_answers native "$cfmgr_install_dns_tool" "$cfmgr_install_dns_variant" "$cfmgr_install_dns_srv"; then
+					cfmgr_install_dns_native=srv-a-verified
+					return 0
+				else cfmgr_install_dns_code=$?; fi
+				[ "$cfmgr_install_dns_code" -ne 3 ] || return 3
+				cfmgr_bootstrap_dns_deferred
+				return 1
+				;;
+			*)
+				cfmgr_bootstrap_dns_deferred
+				return 1
+				;;
+			esac
+		done
+		if [ "$cfmgr_install_dns_usages" -eq 3 ]; then cfmgr_install_dns_native=unsupported; fi
+	else
+		cfmgr_install_dns_code=$?
+		case $cfmgr_install_dns_code in 1) cfmgr_install_dns_native=unsupported ;; *) return "$cfmgr_install_dns_code" ;; esac
+	fi
+	[ "$cfmgr_install_dns_native" = unsupported ] || {
+		cfmgr_bootstrap_dns_deferred
+		return 1
+	}
+	[ "$cfmgr_install_dns_phase" = post ] || return 0
+	cfmgr_bootstrap_dns_verify_dig
+}
+
+cfmgr_bootstrap_dns_verify_dig() {
+	# Known missing native capability selects dig, but version/executability alone
+	# cannot establish that the reinstall's required DNS behavior now works.
+	cfmgr_prerequisites_admit_tool /opt/bin/dig || return $?
+	cfmgr_bootstrap_dns_run native-dns-dig-srv /opt/bin/dig || return $?
+	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || {
+		cfmgr_bootstrap_dns_deferred
+		return 1
+	}
+	cfmgr_install_dns_srv=$cfmgr_probe_stdout
+	if cfmgr_bootstrap_dns_answers dig /opt/bin/dig short "$cfmgr_install_dns_srv"; then return 0; else cfmgr_install_dns_code=$?; fi
+	[ "$cfmgr_install_dns_code" -ne 3 ] || return 3
+	cfmgr_bootstrap_dns_deferred
+	return 1
+}
+
+cfmgr_bootstrap_dns_deferred() {
+	if [ "$cfmgr_install_dns_phase" = post ]; then
+		printf '[CFMGR] dependencies: warning: opkg completed; DNS verification deferred; retry explicitly\n' >&2
+	else
+		printf '[CFMGR] dependencies: warning: native DNS capability unverified; reinstall deferred\n' >&2
 	fi
 }
 

@@ -211,7 +211,19 @@ cfmgr_dependencies_repair() {
 			if cfmgr_dependencies_select "$cfmgr_dependencies_awk" "$cfmgr_dependencies_missing" "$cfmgr_dependencies_context/receipt" "$cfmgr_dependencies_wc" >"$cfmgr_dependencies_context/selection"; then
 				IFS= read -r cfmgr_dependencies_selection <"$cfmgr_dependencies_context/selection" || return 3
 				cfmgr_dependencies_phase=repair
-				if cfmgr_execution_tasks_run "$cfmgr_dependencies_selection"; then cfmgr_dependencies_code=0; else cfmgr_dependencies_code=$?; fi
+				cfmgr_dependencies_code=0
+				if type cfmgr_dependencies_before_repair >/dev/null 2>&1; then
+					if cfmgr_dependencies_before_repair; then :; else cfmgr_dependencies_code=$?; fi
+				fi
+				if [ "$cfmgr_dependencies_code" -eq 3 ]; then
+					# The native recheck's unresolved child must retain every guard;
+					# do not issue a worker request or begin further cleanup probes.
+					cfmgr_dependencies_native_unresolved=1
+					return 3
+				fi
+				if [ "$cfmgr_dependencies_code" -eq 0 ]; then
+					if cfmgr_execution_tasks_run "$cfmgr_dependencies_selection"; then cfmgr_dependencies_code=0; else cfmgr_dependencies_code=$?; fi
+				fi
 			else cfmgr_dependencies_code=1; fi
 		else cfmgr_dependencies_code=$?; fi
 	else cfmgr_dependencies_code=$?; fi

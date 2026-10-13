@@ -131,6 +131,44 @@ def test_generated_config_check_and_noop_are_exact(commands, config, tmp_path) -
     )
 
 
+@pytest.mark.parametrize(
+    ("configured", "enabled", "installed", "maintenance", "scope"),
+    [
+        (False, False, False, False, "shared"),
+        (False, False, True, True, "shared"),
+        (True, False, True, True, "tunnel"),
+        (True, True, True, False, "tunnel"),
+        (False, True, True, True, None),
+    ],
+)
+def test_dependency_scope_uses_configured_tunnel_including_off(
+    commands, config, tmp_path, configured, enabled, installed, maintenance, scope
+) -> None:
+    value = json.loads(config)
+    value["cloudflared"].update(
+        configured=configured,
+        enabled=enabled,
+        installed=installed,
+        maintenance_enabled=maintenance,
+    )
+    value["history"]["cloudflared"] = {"private": "must-not-appear"}
+    data = json.dumps(value).encode()
+    result = invoke(commands, tmp_path, data, "scope")
+    if scope is None:
+        assert result.returncode != 0 and result.stdout == b""
+    else:
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            f"CFMGR-SCOPE 1 1 {scope} END\n".encode(),
+            b"",
+        )
+    # Scope never edits the original data or relaxes full-schema validation.
+    assert (tmp_path / "private immutable config").read_bytes() == data
+    del value["history"]
+    invalid = invoke(commands, tmp_path, json.dumps(value).encode(), "scope")
+    assert invalid.returncode != 0 and invalid.stdout == b""
+
+
 def test_changed_observation_preserves_unrelated_bytes_and_reparses(
     commands, config, tmp_path
 ) -> None:

@@ -3,6 +3,37 @@
 # Never constructs defaults, starts features or invokes the fresh transaction.
 # shellcheck disable=SC2034,SC2154 # Explicit bootstrap/storage/parser result fields.
 
+# The limited menu exposes only the complete dependency action. Exact tokens,
+# back/EOF and default-no confirmation never reach RAM/native preparation.
+cfmgr_launch_menu() {
+	[ -t 0 ] || return 1
+	while :; do
+		printf '%s\n' 'CFMgr: other feature operations unavailable' 'ao Advanced options' 'e Exit'
+		IFS= read -r cfmgr_launch_choice || return 1
+		case $cfmgr_launch_choice in
+		e) return 1 ;;
+		ao)
+			while :; do
+				printf '%s\n' 'Advanced options: other actions unavailable' '1 Reinstall Entware dependencies' 'e Back'
+				IFS= read -r cfmgr_launch_choice || return 1
+				case $cfmgr_launch_choice in 1) return 0 ;; e) break ;; esac
+			done
+			;;
+		esac
+	done
+}
+
+cfmgr_launch_confirm_reinstall() {
+	[ -t 0 ] || {
+		printf '[CFMGR] dependencies: warning: interactive confirmation required\n' >&2
+		return 1
+	}
+	printf 'Reinstall selected Entware dependencies? [y/N] '
+	IFS= read -r cfmgr_launch_answer || return 4
+	case $cfmgr_launch_answer in y | Y | yes | YES) return 0 ;; esac
+	return 4
+}
+
 cfmgr_launch_attachment_ok() {
 	cfmgr_bootstrap_native_attached || return 1
 	if [ "${cfmgr_launch_storage_required:-0}" = 1 ]; then cfmgr_storage_attached || return 1; fi
@@ -77,14 +108,52 @@ cfmgr_launch_config() {
 	# MODE SNAPSHOT. Data enters ENV only after the supervisor env-i boundary.
 	cfmgr_launch_size "$2" 65536 || return $?
 	cfmgr_launch_input_bytes=$cfmgr_launch_bytes
-	if [ "$1" = check ]; then
-		cfmgr_launch_action launch-config-check "$cfmgr_launch_input_bytes" "$cfmgr_install_source/modules/lib/json.awk" \
+	if [ "$1" = check ] || [ "$1" = scope ]; then
+		cfmgr_launch_action "launch-config-$1" "$cfmgr_launch_input_bytes" "$cfmgr_install_source/modules/lib/json.awk" \
 			"$cfmgr_install_source/modules/lib/config_observation.awk" "$2"
 	else
 		cfmgr_launch_action "launch-config-$1" "$cfmgr_launch_input_bytes" "$cfmgr_install_source/modules/lib/json.awk" \
 			"$cfmgr_install_source/modules/lib/config_observation.awk" "$2" "$cfmgr_storage_uuid_value" \
 			"$cfmgr_storage_filesystem" "$cfmgr_storage_fsroot" "$cfmgr_storage_relative"
 	fi
+}
+
+# The parser emits only framed generation/scope after complete schema validation.
+# Native rechecks before opkg do not depend on a usable jq or SHA implementation.
+cfmgr_launch_scope() {
+	cfmgr_launch_config scope "$1" || return $?
+	cfmgr_launch_scope_receipt=$cfmgr_install_output
+	cfmgr_launch_size "$cfmgr_launch_scope_receipt" 96 || return $?
+	cfmgr_launch_scope_line='' cfmgr_launch_scope_tail=''
+	{
+		IFS= read -r cfmgr_launch_scope_line || return 1
+		if IFS= read -r cfmgr_launch_scope_tail; then return 1; fi
+		[ -z "$cfmgr_launch_scope_tail" ] || return 1
+	} <"$cfmgr_launch_scope_receipt" || return 1
+	[ "$cfmgr_launch_bytes" -eq "$((${#cfmgr_launch_scope_line} + 1))" ] || return 1
+	IFS=' ' read -r cfmgr_launch_scope_tag cfmgr_launch_scope_schema cfmgr_launch_scope_generation cfmgr_launch_scope_value cfmgr_launch_scope_end cfmgr_launch_scope_extra <<EOF_SCOPE
+$cfmgr_launch_scope_line
+EOF_SCOPE
+	[ "$cfmgr_launch_scope_tag:$cfmgr_launch_scope_schema:$cfmgr_launch_scope_end:$cfmgr_launch_scope_extra" = CFMGR-SCOPE:1:END: ] || return 1
+	case $cfmgr_launch_scope_generation in '' | 0* | *[!0-9]*) return 1 ;; esac
+	[ "${#cfmgr_launch_scope_generation}" -le 20 ] || return 1
+	case $cfmgr_launch_scope_value in shared | tunnel) ;; *) return 1 ;; esac
+	[ "$cfmgr_launch_scope_line" = "CFMGR-SCOPE 1 $cfmgr_launch_scope_generation $cfmgr_launch_scope_value END" ]
+}
+
+cfmgr_launch_reinstall_scope() {
+	cfmgr_launch_scope "$cfmgr_launch_snapshot" || return $?
+	[ "$cfmgr_launch_scope_generation" = "$cfmgr_launch_generation" ] || return 1
+	cfmgr_install_dependency_scope=$cfmgr_launch_scope_value
+}
+
+cfmgr_launch_reinstall_recheck() {
+	cfmgr_launch_metadata "$cfmgr_launch_live" config || return $?
+	cfmgr_launch_scope "$cfmgr_launch_live" || return $?
+	[ "$cfmgr_launch_scope_generation:$cfmgr_launch_scope_value" = "$cfmgr_launch_generation:$cfmgr_install_dependency_scope" ] || {
+		printf '[CFMGR] dependencies: warning: configuration changed; retry explicitly\n' >&2
+		return 1
+	}
 }
 
 cfmgr_launch_receipt() {
@@ -370,18 +439,34 @@ cfmgr_launch_work() {
 		return $?
 	fi
 	cfmgr_launch_storage_required=1
-	cfmgr_bootstrap_shared_requirements retained || return $?
+	cfmgr_bootstrap_shared_requirements retained "${cfmgr_launch_requested_action:-normal}" || return $?
 	# Shared post-probes leave4/5 free. Preserve context through all file loops.
 	exec 5<&0 0<&-
 	cfmgr_install_context_fd=5
 	cfmgr_launch_package_digests || return $?
 	cfmgr_launch_observation || return $?
 	cfmgr_launch_attachment_ok || return 1
-	printf '[CFMGR] launch: notice: shared dependencies verified; feature operations unavailable\n'
+	if [ "${cfmgr_launch_requested_action:-normal}" = reinstall ]; then
+		printf '[CFMGR] dependencies: notice: selected dependencies reinstalled and verified\n'
+	else
+		printf '[CFMGR] launch: notice: shared dependencies verified; feature operations unavailable\n'
+	fi
 }
 
 cfmgr_launch_native() {
-	[ "$#" -eq 1 ] && [ "$1" = /jffs/addons/CFMgr.d ] || return 2
+	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && [ "$1" = /jffs/addons/CFMgr.d ] || return 2
+	cfmgr_launch_requested_action=${2:-normal}
+	case $cfmgr_launch_requested_action in
+	normal) ;;
+	reinstall)
+		if cfmgr_launch_confirm_reinstall; then :; else
+			cfmgr_launch_confirm_code=$?
+			printf '[CFMGR] dependencies: notice: reinstall cancelled\n' >&2
+			return "$cfmgr_launch_confirm_code"
+		fi
+		;;
+	*) return 2 ;;
+	esac
 	cfmgr_launch_storage_required=0 cfmgr_launch_guard_owned=0 cfmgr_launch_retiring=0 cfmgr_launch_migrating=0 cfmgr_launch_recovery=0
 	cfmgr_bootstrap_native_prepare "$1" launch || return $?
 	if cfmgr_launch_work; then cfmgr_launch_status=0; else cfmgr_launch_status=$?; fi

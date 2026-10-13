@@ -119,7 +119,7 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
-	launch-config-check) [ "$#" -eq 13 ] || return 2 ;;
+	launch-config-check | launch-config-scope) [ "$#" -eq 13 ] || return 2 ;;
 	launch-config-observe | launch-config-patch) [ "$#" -eq 17 ] || return 2 ;;
 	launch-copy) [ "$#" -eq 11 ] || return 2 ;;
 	launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-report | launch-readonly) [ "$#" -eq 10 ] || return 2 ;;
@@ -131,6 +131,10 @@ cfmgr_prerequisites_run() {
 	native-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
 	native-curl-https) [ "$#" -eq 12 ] || return 2 ;;
 	native-curl-version) [ "$#" -eq 9 ] || return 2 ;;
+	native-dns-native-srv) [ "$#" -eq 10 ] || return 2 ;;
+	native-dns-dig-srv) [ "$#" -eq 9 ] || return 2 ;;
+	native-dns-native-a | native-dns-dig-a | native-dns-parse-srv) [ "$#" -eq 11 ] || return 2 ;;
+	native-dns-classify | native-dns-parse-a) [ "$#" -eq 12 ] || return 2 ;;
 	native-curl-features | native-ca-pem | native-ca-decode | native-rmdir) [ "$#" -eq 10 ] || return 2 ;;
 	install-copy | install-rename | install-publish) [ "$#" -eq 11 ] || return 2 ;;
 	install-sha | install-wc | install-ls | install-config-check | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df) [ "$#" -eq 10 ] || return 2 ;;
@@ -153,6 +157,7 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_reason=native-supervisor
 	cfmgr_prerequisites_supervisor || return 2
 	cfmgr_probe_deadline=$((cfmgr_probe_now + 2))
+	case $cfmgr_probe_mode in native-dns-native-srv | native-dns-native-a | native-dns-dig-srv | native-dns-dig-a) cfmgr_probe_deadline=$((cfmgr_probe_now + 4)) ;; esac
 	case $cfmgr_probe_mode in repair-*)
 		case ${cfmgr_dependencies_operation_deadline:-} in
 		'') ;;

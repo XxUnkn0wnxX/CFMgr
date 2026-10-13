@@ -18,14 +18,104 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Paused — ready for the next session
+## Active — finish S02.06 selected dependency reinstall
+
+The user resumed on 2026-10-14: identify any genuinely small independent task
+under the corrected acceptance rules; otherwise start and finish S02.06. Parent
+and Astra Max reviewed the remaining IDs and found no qualifying smaller complete
+runtime task. S02.06 is now authorized through implementation, focused local/
+static checks, review, exact-candidate grouped Quick CI and its completion receipt.
+Stop at this requested subgoal boundary; no next package is selected. No router
+execution, deployment, main promotion or release is authorized.
+
+Baseline: clean `a9e7e25699d9859510b09ecdfabe907cdcb8f5f7`, verified local/remote
+develop. Acceptance stays **5/157 (3.2%); 0/16 (0%)** until the new gate passes.
+Goal 2 is **4/9 (44.4%)**. S02.04 and all other partial foundations earn no
+incidental ticks. Final documentation remains deferred.
+
+| Package / consumer | Exclusive ownership | Required result / gate |
+| --- | --- | --- |
+| S02.06 installed Advanced options and `--reinstall-dependencies` action | `runtime_reinstall` strong worker: `cfmgr.sh`, `modules/helpers/{launch,bootstrap,probe}.sh`, `modules/lib/{config_observation.awk,prerequisites.sh,dependencies.sh}`, narrowly needed source-inert dependency/DNS helper, and affected `tests/test_*`/existing fixtures. No overlapping writers. | One confirmed action; selected mandatory/active scoped direct set; native-first optional tools; installed alternate provider; guarded current-state/storage checks; actual force completion and fresh post-probes; unchanged feature settings. Written consumer and core failure proof, then parent review and complete affected focused gates. |
+| Integration / acceptance / CI | Parent only: all planning files, README if accepted, generated catalog/manifest, gate mapping and publication. | Preserve source/host/BusyBox/live evidence boundaries, package integrity and existing safety guards. Complete grouped Quick runs at the exact candidate SHA; no full suite for this subgoal. |
+| Read-only support | `native_dns_contract`: pinned/upstream query syntax/output evidence; `reinstall_entry_review`: entry, scope and before-repair guard review. Neither writes or runs tests. | Parent resolves findings with the sole runtime writer before final integration; no independent acceptance or publication. |
+
+Settled design: reuse retained launch and installed-opkg repair/supervision; do
+not build another controller. Confirmation occurs once before native preparation
+replaces stdin or creates action state; cancellation/EOF/non-TTY cannot authorize
+reinstall. The narrow menu supplies this actual action only and does not complete
+general navigation. Native schema-checked extraction supplies only current
+generation/scope, rechecked before mutation. Configured tunnel scope includes Off
+but excludes installed-only/idle maintenance. Native DNS inability must be
+positively identified, never inferred from a network outage; unknown/unsafe
+capability defers. Fixed bounded SRV/A checks qualify selected DNS tools separately
+from feature readiness. A coalesced repair is deferred reinstall, never success.
+Preserve existing unresolved-child/guard, FD phase and snapshot-migration rules.
+
+DNS refinement supersedes the earlier no-host proposal in the private snapshot:
+usage with no hostname is ambiguous. Complete fixed SRV invocations using the
+supported `-q`, `--type=` and `-type=` grammars distinguish known option/type
+rejection from accepted-query failure. All three pinned ordinary implementations
+reject leading options before resolver work; pinned LEDE explicitly rejects SRV.
+The positive parser follows [BusyBox 1.36.1's SRV/A formatting](https://github.com/mirror/busybox/blob/1_36_1/networking/nslookup.c#L370),
+excluding server-address preambles and not requiring a non-authoritative marker.
+This defines a supported parser interface, not another firmware-support claim.
+
+Implementation is integrated in the current dirty tree based on `a9e7e25`;
+the strong worker has released all source/test ownership. Parent/static review
+resolved the BusyBox callback-discovery issue (`type`, because the pinned ash
+omits `command -v`) and verifies fresh post-probes for every selected optional
+Entware tool even if a native provider changes during the action. The completed
+test package covers actual entry/confirmation, stale generation/scope refusal,
+native-versus-dig DNS policy, coalesced/failed/unresolved repair and one real
+retained force lifecycle with `jq-full` and byte-preserved settings/Off. DNS
+responses are controlled adapters, not live provider evidence. Parent owns all
+remaining integration/gates; no worker is authorized to start another package.
+
+Final local gate on the reviewed dirty tree based on `a9e7e25`: **258 passed,
+55 platform skips, four optional diagnostics excluded**, 185.60s pytest; wall
+187.16s, user 71.39s, sys 55.02s. Command: `.venv/bin/python tools/test.py --focused`
+with all modules in groups A–D below. Its planning/package, shell syntax, Ruff,
+format, compile and ShellCheck stages passed; it stopped at shfmt differences in
+bootstrap. Parent applied shfmt, verified byte-identical normalized `shfmt -mn`
+commands before/after, rechecked syntax/format/package/whitespace, and resumed
+the complete same pytest selection using `/usr/local/bin/bash --posix`, strict
+config/markers, `--maxfail=1 --durations=10 -m 'not diagnostic'`, with plugin
+autoload disabled. Receipts: `.tmp/s0206-local-focused.log` and
+`.tmp/s0206-local-pytest.log`. No full suite ran. Required Linux/BusyBox proof
+remains pending groups A–D; S02.06 is focused-local-passed, not accepted.
+
+Parent regenerated `manifest.txt`; catalog inventory is unchanged. An earlier
+worker ShellCheck against superseded source was cancelled (exit 130), supplying
+no proof; final runner ShellCheck passed. All workers and local commands are
+complete. Next: normal candidate commit/push with group A trailer, manually
+dispatch B–D at that same head, inspect all jobs and timings, repair if needed,
+then record acceptance/README/handoff and pause. No other package may start.
+
+Required focused groups, each at the final candidate SHA (whole modules; optional
+diagnostics excluded):
+
+| Group | Test modules under `tests/` | Purpose |
+| --- | --- | --- |
+| A | `test_dependency_reinstall.py`, `test_config.py`, `test_config_observation.py`, `test_dependency_selection.py`, `test_prerequisites.py`, `test_native.py`, `test_dependency_consumer.py`, `test_execution_tasks.py` | Entry/confirmation, current schema/scope, package selection, finite DNS, native supervision and shared repair dispatch. |
+| B | `test_install.py`, `test_package.py`, `test_storage.py`, `test_storage_mounts.py`, `test_mount_keeper.py` | Fresh-consumer regression, regenerated package identity and retained storage/worker protection. |
+| C | `test_dependencies.py` | Actual installed-opkg controller, selected force worker, cancellation/loss/cleanup and concurrency. |
+| D | `test_retained_launch.py` | Retained launch integration, real healthy force/alternate provider, immutable snapshots, current scope and settings/Off preservation. |
+
+Run applicable local statics and these focused modules before publication; Linux
+skips remain pending their grouped Quick runs. Reuse existing immutable fixtures
+and fresh mutable state, adding one force scenario to the existing retained
+lifecycle instead of duplicating its setup. Review group wall/CPU timing before
+acceptance. No full-suite run is due. Required publication stays on develop;
+the earlier force-push grant is consumed.
+
+## Prior accepted runtime checkpoint
 
 The requested **S02.05 normal dependency repair** and **S02.08 storage identity/loss**
 are complete and accepted after focused tests, parent review and exact full CI.
 The user accepted the **8m09s** combined runtime; stop cost tuning here.
 **5/157 accepted (3.2%); 0/16 main goals.** Goal 2: **4/9**; Goal 3: **1/10**.
 Accepted IDs: S02.03, S02.05, S02.08, S02.09, S03.01. No main-goal audit/full-local
-completion is claimed. No new runtime package has started. **Resume only on request.**
+completion is claimed. The active S02.06 package above supersedes the former pause.
 
 ## Documentation reset and final-readiness decision
 
@@ -61,13 +151,12 @@ the preserved dirty patch or recover selected files from the verified tar.
 All unrelated ignored reference, firmware and test/dependency caches remain in
 place. The full hidden parent-session record above is preserved.
 
-Only this replacement documentation checkpoint is authorized for a force push,
-with an explicit lease against remote head
-`72abde8c1ed8b12792577c153c77f4ecf9631635`. Verify exact remote/local equality
-after publication and remain paused. This authority does not permit another
-reset, later work, router actions, main promotion or release.
+That replacement documentation checkpoint was force-pushed with an exact lease
+against `72abde8c1ed8b12792577c153c77f4ecf9631635` and verified at `a9e7e25`.
+The one-time rewrite authority is consumed; later work uses ordinary checkpoint
+publication. It grants no other reset, router action, main promotion or release.
 
-S02.06 remains unimplemented. Its read-only design findings are retained in the
+S02.06 was unimplemented at that pause. Its read-only design findings remain in the
 private snapshot's handoff and safety history: configured-tunnel-only DNS scope,
 truthful coalesced-repair deferral and capability-versus-outage classification
 need implementation before a genuine reinstall action can pass its focused gates.
@@ -290,7 +379,8 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-Resume only when the user requests it. Follow smallest independently completable
+Finish only the active S02.06 package and its required checkpoint, then pause.
+After a later user resumption, follow smallest independently completable
 runtime subgoals first, then shared-module batches, then remaining main-goal work.
 Final documentation subgoals follow the explicit phase gate in the specification
 and checklist; do not select interim documentation as an early completion. Finish

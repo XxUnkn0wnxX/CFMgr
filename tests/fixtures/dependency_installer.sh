@@ -23,7 +23,8 @@ mkdir -m 755 "$fixture/jffs"
 # Reapply the explicitly selected vendor applet before any supervised operation.
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 cfmgr_dependencies_repair() {
-	[ "$#" = 12 ] && [ "$1" = flock ] && [ "$2" = /tmp/cfmgr ] && [ "$3" = "$installer_package" ] || return 91
+	[ "$#" = 12 ] && [ "$2" = /tmp/cfmgr ] && [ "$3" = "$installer_package" ] || return 91
+	case ${cfmgr_install_dependency_action:-normal}:$1 in normal:flock | 'reinstall:jq coreutils-timeout coreutils-sha256sum flock') ;; *) return 91 ;; esac
 	[ "$4:$5:$6" = /:/bin/sh:/usr/bin/env ] || return 91
 	cfmgr_test_real_repair "$1" "$view_ram" "$installer_package" "$view_native_root" "$view_ram/ash" "$view_ram/env" \
 		"$view_ram/awk" "$view_ram/readlink" "$view_ram/usleep" "$view_ram/wc" "$view_ram/mknod" "$view_ram/chroot"

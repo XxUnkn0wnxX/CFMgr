@@ -88,5 +88,17 @@ cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'returned volume was not freshl
 [ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'healthy return retried opkg unnecessarily'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'return changed unrelated settings'
 [ ! -e "$retained_support/.storage-observation" ] || fail 'unchanged return created observation guard'
+# One explicit healthy force consumer uses the real worker/view/storage guards.
+# DNS query responses are controlled adapters, not public-network evidence.
+cfmgr_launch_confirm_reinstall() { return 0; }
+cfmgr_bootstrap_reinstall_dns() { cfmgr_install_dns_native=srv-a-verified; }
+: >"$cfmgr_storage_opt/force-fixture"
+installer_probe_count=0
+cfmgr_launch_native /jffs/addons/CFMgr.d reinstall || fail 'healthy explicit force consumer failed'
+[ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ] || fail 'force did not run fresh full capability probes'
+[ "$(tail -n 2 "$cfmgr_storage_opt/operations")" = "$(printf 'update\nforce jq-full coreutils-timeout coreutils-sha256sum flock')" ] || fail 'force selected unrelated or incorrect direct packages'
+cmp "$fixture/retained.original" "$retained_support/config" || fail 'force changed settings/history/Off'
+[ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state" = released:released ] || fail 'force retained resolved protection'
 exec 6<&- 7<&- 8<&- 9<&-
 printf 'PASS: actual retained repair, immutable migration, missing-message and returned-volume no-op\n'
+printf 'PASS: actual healthy force, alternate jq-full, settings/history/Off and released guards\n'

@@ -45,8 +45,113 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
-launch-config-check | launch-config-observe | launch-config-patch)
-	case "$mode:$#" in launch-config-check:4 | launch-config-observe:8 | launch-config-patch:8) ;; *) exit 2 ;; esac
+native-dns-native-srv | native-dns-native-a)
+	case $mode:$# in native-dns-native-srv:1) dns_host=_v2-origintunneld._tcp.argotunnel.com ;; native-dns-native-a:2) dns_host=$2 ;; *) exit 2 ;; esac
+	case $mode in
+	*-srv) dns_type=SRV ;;
+	*)
+		dns_type=A
+		case $dns_host in '' | -* | *[!A-Za-z0-9.-]*) exit 2 ;; *.argotunnel.com) ;; *) exit 2 ;; esac
+		[ "${#dns_host}" -le 253 ] || exit 2
+		;;
+	esac
+	# Complete fixed argv always includes a host. No-host Usage is ambiguous.
+	case $1 in
+	q) exec "$tool" -q "$dns_type" "$dns_host" ;;
+	long) exec "$tool" "--type=$dns_type" "$dns_host" ;;
+	type) exec "$tool" "-type=$dns_type" -retry=1 -timeout=2 "$dns_host" ;;
+	*) exit 2 ;;
+	esac
+	;;
+native-dns-dig-srv)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" +time=2 +tries=1 +short SRV _v2-origintunneld._tcp.argotunnel.com
+	;;
+native-dns-dig-a)
+	[ "$#" -eq 2 ] && [ "$1" = short ] || exit 2
+	case $2 in '' | -* | *[!A-Za-z0-9.-]*) exit 2 ;; *.argotunnel.com) ;; *) exit 2 ;; esac
+	[ "${#2}" -le 253 ] || exit 2
+	exec "$tool" +time=2 +tries=1 +short A "$2"
+	;;
+native-dns-classify)
+	[ "$#" -eq 3 ] || exit 2
+	case $3 in '' | *[!0-9]*) exit 2 ;; esac
+	# shellcheck disable=SC2016 # Fixed awk code, operands remain file data.
+	exec "$tool" -v query_exit="$3" '
+	 FILENAME==ARGV[1] { output=output $0 "\n"; next }
+	 { error=error $0 "\n" }
+	 END {
+	   if (query_exit==0 && output!="" && error=="") { print "answer"; exit }
+	   if (query_exit==1 && output=="" && error=="Invalid query type \"SRV\"\n") { print "unsupported"; exit }
+	   if (query_exit==1 && output=="" && error=="nslookup: invalid query type \"\"\n") { print "syntax"; exit }
+	   if (query_exit!=0 && output=="") {
+	     count=split(error,lines,"\n"); usage=banner=description=optional=0; bad=0
+	     for(i=1;i<=count;i++) {
+	       if(lines[i]=="") continue
+	       if(lines[i] ~ /^BusyBox v[0-9]+\.[0-9]+\.[0-9]+ .*multi-call binary\.$/) { banner++; continue }
+	       if(lines[i]=="Usage: nslookup [HOST] [SERVER]") { usage++; continue }
+	       if(lines[i]=="Query the nameserver for the IP address of the given HOST") { description++; continue }
+	       if(lines[i]=="optionally using a specified DNS server") { optional++; continue }
+	       bad=1
+	     }
+	     if(usage==1 && banner==1 && description==1 && optional==1 && !bad) { print "usage"; exit }
+	   }
+	   print "deferred"
+	 }' "$1" "$2"
+	;;
+native-dns-parse-srv)
+	[ "$#" -eq 2 ] || exit 2
+	case $1 in native | dig) ;; *) exit 2 ;; esac
+	# shellcheck disable=SC2016
+	exec "$tool" -v provider="$1" '
+	 function hostname(s,    n,a,i) {
+	   sub(/\.$/,"",s)
+	   if(length(s)>253 || s !~ /^[A-Za-z0-9.-]+$/ || s !~ /\.argotunnel\.com$/) return 0
+	   n=split(s,a,"."); for(i=1;i<=n;i++) if(length(a[i])<1 || length(a[i])>63 || a[i] !~ /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$/) return 0
+	   return 1
+	 }
+	 function record(priority,weight,port,target) {
+	   target=tolower(target)
+	   if(priority !~ /^[0-9]+$/ || weight !~ /^[0-9]+$/ || length(priority)>5 || length(weight)>5 || priority>65535 || weight>65535 || port!="7844" || !hostname(target)) { bad=1; return }
+	   sub(/\.$/,"",target)
+	   if(!seen[target]++ && count<2) { count++; targets[count]=target }
+	 }
+	 length($0)>1024 || NR>64 || $0 ~ /[^ -~\t]/ { bad=1 }
+	 provider=="dig" { if(NF!=4) bad=1; else record($1,$2,$3,$4); next }
+	 provider=="native" && tolower($1)=="_v2-origintunneld._tcp.argotunnel.com" && $2=="service" && $3=="=" {
+	   if(NF!=7) bad=1; else record($4,$5,$6,$7); next
+	 }
+	 provider=="native" && ($0=="" || $0=="Non-authoritative answer:" || $1=="Server:" || $1=="Address:") { next }
+	 { bad=1 }
+	 END { if(bad || !count) exit 1; for(i=1;i<=count;i++) printf "%s%s",targets[i],(i==count ? "\n" : " ") }
+	' "$2"
+	;;
+native-dns-parse-a)
+	[ "$#" -eq 3 ] || exit 2
+	case $1 in native | dig) ;; *) exit 2 ;; esac
+	# shellcheck disable=SC2016
+	exec "$tool" -v provider="$1" -v target="$2" '
+	 function ipv4(s,    a,n,i) {
+	   n=split(s,a,"."); if(n!=4) return 0
+	   for(i=1;i<=4;i++) if(a[i] !~ /^(0|[1-9][0-9]*)$/ || length(a[i])>3 || a[i]>255) return 0
+	   return a[1]!=0 && a[1]!=127 && a[1]<224 && !(a[1]==169 && a[2]==254)
+	 }
+	 length($0)>1024 || NR>64 || $0 ~ /[^ -~\t]/ { bad=1 }
+	 provider=="dig" { if(NF!=1 || !ipv4($1)) bad=1; else answers++; next }
+	 provider=="native" && $1=="Name:" {
+	   name=tolower($2); sub(/\.$/,"",name); if(NF!=2 || name!=target) bad=1; answer_name=1; next
+	 }
+	 provider=="native" && $1=="Address:" {
+	   if(answer_name) { if(NF!=2 || !ipv4($2)) bad=1; else answers++ }
+	   next
+	 }
+	 provider=="native" && ($0=="" || $0=="Non-authoritative answer:" || $1=="Server:") { next }
+	 { bad=1 }
+	 END { if(bad || !answers) exit 1; print "verified" }
+	' "$3"
+	;;
+launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch)
+	case "$mode:$#" in launch-config-check:4 | launch-config-scope:4 | launch-config-observe:8 | launch-config-patch:8) ;; *) exit 2 ;; esac
 	case $1 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "${#1}" -le 5 ] && [ "$1" -le 65536 ] || exit 2
 	for path in "$2" "$3" "$4"; do
@@ -54,7 +159,7 @@ launch-config-check | launch-config-observe | launch-config-patch)
 		[ -f "$path" ] && [ ! -L "$path" ] || exit 2
 	done
 	config_mode=${mode#launch-config-}
-	if [ "$config_mode" != check ]; then
+	if [ "$config_mode" = observe ] || [ "$config_mode" = patch ]; then
 		CFMGR_CONFIG_UUID=$5 CFMGR_CONFIG_FILESYSTEM=$6 CFMGR_CONFIG_ROOT=$7 CFMGR_CONFIG_RELATIVE=$8
 		export CFMGR_CONFIG_UUID CFMGR_CONFIG_FILESYSTEM CFMGR_CONFIG_ROOT CFMGR_CONFIG_RELATIVE
 	fi
