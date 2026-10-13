@@ -62,6 +62,7 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
     )
     launch = (ROOT / "modules/helpers/launch.sh").read_text()
     launch = launch.replace("/jffs", str(jffs))
+    (support / "modules/status.sh").write_text((ROOT / "modules/status.sh").read_text())
     (support / "modules/helpers/launch.sh").write_text(
         launch
         + '\ncfmgr_launch_work() { cfmgr_install_interrupted=0; printf "action=%s\\n" "$cfmgr_launch_requested_action"; }\n'

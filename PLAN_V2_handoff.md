@@ -18,7 +18,117 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Paused — route A complete; S02.04 accepted
+## Active — S03.07 basic status dashboard
+
+The user resumed on 2026-10-14: work on the next smallest task, allow automatic
+checkpoint publication after its test/review gate, and pause before a large
+multi-goal crossover. Reuse the existing `develop` checkout; no worktrees.
+Starting HEAD is `2e68bda5a977a33a093e8ee207708f84f8a5f193`, clean, with the two
+local instruction commits following the published S02.04 receipt. Those commits
+remain preserved. This permission covers the selected runtime candidate's normal
+focused Quick Checks checkpoint and acceptance/documentation receipt; award a
+tick only after all required exact-candidate groups pass. No full-suite checkpoint,
+history rewrite, deployment, router execution or release is authorized.
+
+The Astra smallest-task audit scanned all 157 rows and returned PASS WITH NOTES:
+S03.07 is the smallest demonstrated ready full product outcome. Missing provider
+writers do not block its read-only consumer; the plan permits absent evidence.
+The selected independent package is **S03.07 only**, using the real installed
+choice `0` before operational prerequisite repair. Provide bounded native router,
+resource, mount, selected-WAN/address and NTP observations, manager/source and
+separate feature settings, safe bounded typed local outcome/history reading,
+ages, concise issues and truthful next actions. Invalid/unavailable config or
+records must not suppress independent resource checks. No network/provider call,
+repair, feature activation, operational history writer or live-router execution.
+Supporting read/privacy/native-entry contracts overlap S03.08/S02.07; neither ID
+earns acceptance from this package. Do not expand into full diagnostics, Save,
+hooks, lifecycle, logging or provider implementation. Pause if a large coordinated
+cross-goal prerequisite proves necessary.
+
+Runtime/test owner: `s0204_runtime` strong worker completed entry/launch integration,
+the source-inert status module/parsers and required native supervision adapters/tests;
+all write ownership is released. Parent owns the planning files, generated package
+metadata, gate selection, integration and publication. Freeze the bounded typed local-evidence contract in runtime
+comments/tests; never infer provider success or connected state from PID/file
+presence or invented placeholders. Preserve existing JSON/parser and launch
+contracts; status must show invalid configured/enabled combinations rather than
+using operational config rejection as an all-or-nothing report gate.
+
+Parent-approved reader design: project a bounded snapshot of existing private
+config only; no new history file/writer. Optional `history.<feature>.status`
+and `history.network.status` envelopes carry typed schema/generation/timestamps,
+family outcomes, allowlisted reasons and at most five events. Family publication
+records stay historical. A current runtime observation additionally needs explicit
+runtime origin, matching boot/config generation and bounded nonfuture age;
+restored/absent-origin evidence cannot establish current connectivity. Network
+freshness also binds the selected WAN. Unknown/raw fields are never printed.
+
+Native evidence: retained cache source/image facts were checked by
+`status_native_evidence` (completed); parent additionally fetched pinned Merlin
+revision `433fc608f5fc1689f3d3c3ab5cd2a7d57102260f` source into ignored
+`.tmp/s0307-source/` and matched each Git blob SHA against GitHub's contents API:
+`rtstate.c` (`5b7f52fa39e32e62bbe3cb1f6b4d0db123c8c213`),
+`misc.c` (`6206ab19f1a958f26c25aea51d7377c8251f2ed5`) and
+`df.c` (`d79c11a6c0efb9008d2bfd8f76b386c2d594ffae`).
+`shared/rtstate.c:564` selects native primary via `wanN_primary`, not the
+last-configured `wan_unit`; `:359` distinguishes PPP from ordinary interfaces.
+`shared/misc.c:2346` reads that unit's `ipaddr`. BusyBox `coreutils/df.c`
+supports `-Pk` independently of DF_FANCY; clear POSIXLY_CORRECT for KiB output.
+Cached image inventory confirms `/bin/nvram`; pinned init uses
+`firmver.buildno_extendno`, and original common code treats `ntp_ready=1` as ready.
+These are source/static facts only, not live router or complete firmware proof.
+
+Focused gate map (whole modules; optional diagnostics excluded):
+
+- **A — status:** `tests/test_status.py`; real choice-0/PTY consumer, typed native
+  and historical evidence, privacy, malformed/unavailable configuration, bounded
+  snapshots, normal Linux supervision and stalled-probe aggregate deadline.
+- **B — entry/package:** `tests/test_dependency_reinstall.py`,
+  `tests/test_retained_launch.py`, `tests/test_install.py`, `tests/test_package.py`;
+  changed entry/import ordering, menu return, mandatory package inventory and
+  existing installation/reinstall consumers.
+- **C — shared foundations:** `tests/test_config.py`,
+  `tests/test_config_observation.py`, `tests/test_prerequisites.py`,
+  `tests/test_native.py`, `tests/test_execution_tasks.py`; reused JSON/default
+  contracts and changed shared supervisor/probe dispatch with native ownership.
+
+Run the complete affected local gate with static/planning/package checks and parent
+review, then all three Quick groups at the exact candidate. Record results and
+measured group costs before acceptance; no full suite is due. Lightweight isolated
+PTY status/back/exit checks use fixture data only, without router access.
+
+Parent review passed after fixing direct-child ownership for native collectors,
+reserved-address classification, malformed IPv6 rejection, stale cleanup-warning
+visibility and mandatory status-package inventory. The independent analyst found
+no remaining material safety issue after its cleanup warning was corrected and
+covered by the typed-history tests. No gates or requirements were relaxed.
+
+Complete local command on `2e68bda` plus the candidate runtime/tests/generated
+metadata (planning evidence edits follow the run):
+
+```sh
+CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l \
+  .venv/bin/python tools/test.py --focused tests/test_status.py \
+  tests/test_dependency_reinstall.py tests/test_retained_launch.py \
+  tests/test_install.py tests/test_package.py tests/test_config.py \
+  tests/test_config_observation.py tests/test_prerequisites.py \
+  tests/test_native.py tests/test_execution_tasks.py
+```
+
+Passed **230 tests; 15 required Linux/platform cases skipped locally** in 122.62s.
+Ruff lint/format, Python compile, shell syntax, ShellCheck, shfmt, planning, package
+and whitespace checks passed. Whole local command: 250.86s wall, 169.95s user,
+46.08s system; no full suite ran. Log: `.tmp/s0307-local-final.log`.
+Status alone previously passed 28 with its two Linux cases skipped, 10.89s.
+Its installed-menu PTY journey left settings unchanged, performed no operational
+preparation and cleaned the private context. The new Linux status group must pass
+and have its cost reviewed before acceptance. Candidate push/Quick gates are next;
+do not start another implementation package while required CI is pending.
+
+Accepted progress remains
+**7/157 (4.5%), 0/16 main goals (0%)**; Goal 2 remains **6/9 (66.7%)**.
+
+## Completed checkpoint — route A; S02.04 accepted
 
 The user selected route A on 2026-10-14: complete S02.04 only, including its
 normal-operation tunnel DNS dependency path, focused tests and required CI, then
@@ -591,8 +701,9 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-S02.06 and S02.04 are complete through their required checkpoints. The selected
-route A is finished; pause until the user resumes. The user has set project-wide
+S02.06 and S02.04 are complete through their required checkpoints. Their selected
+route A is finished; the user has now resumed the next-smallest-task selection
+under the active scope above. The user has set project-wide
 selection order: follow the [work ordering rule](AGENTS.md#implementation-and-preservation),
 finishing independent subgoals and prerequisites before larger features. Use a
 coordinated multi-goal batch only when no smaller ready, independently completable
@@ -603,7 +714,8 @@ and checklist; do not select interim documentation as an early completion. Finis
 started libraries/subgoals before switching; inspect existing consumers, tests and
 checklist before choosing the next smallest item. Return toward Goal 2, originally
 a prerequisite for Goal 1; S04.01/S04.08/S04.09 foundations earn no extra ticks.
-No package after S02.04 is selected or authorized. Full local suites remain main-goal
+Select only the next smallest independently completable package; pause before a
+large multi-goal crossover. Full local suites remain main-goal
 gates. Required development CI is Ubuntu/vendor BusyBox; exact firmware/ARM/flash/
 hooks/provider qualification remains separately authorized beta work.
 

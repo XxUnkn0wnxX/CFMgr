@@ -17,4 +17,7 @@ modules/lib/mount_keeper.sh	library
 modules/lib/mountinfo.awk	library
 modules/lib/native.sh	library
 modules/lib/prerequisites.sh	library
+modules/lib/status.awk	library
+modules/lib/status_native.awk	library
 modules/lib/storage.sh	library
+modules/status.sh	data

@@ -45,6 +45,67 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
+status-date)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" +%s
+	;;
+status-native)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" -f "$1" resources "$2"
+	;;
+status-fields)
+	[ "$#" -eq 4 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f "$3" ] && [ ! -L "$3" ] || exit 2
+	case $2 in nvram | space | mount | metadata | setup) ;; *) exit 2 ;; esac
+	exec "$tool" -f "$1" "$2" "$3" "$4"
+	;;
+status-metadata)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -ildn "$1"
+	;;
+status-count)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
+	exec "$tool" -c <"$1"
+	;;
+status-snapshot)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
+	# Only the owned wrapper opens the source; no child is spawned before exec.
+	# Native metadata was separately admitted. Pin and recheck its regular inode;
+	# capped dd cannot follow a growing source indefinitely. Caller compares
+	# immutable output size and fresh metadata before interpreting any JSON.
+	exec 8<"$1" || exit 1
+	[ -f /proc/self/fd/8 ] && [ ! -L "$1" ] && [ "$1" -ef /proc/self/fd/8 ] || exit 1
+	exec "$tool" bs=4096 count=17 <&8 2>/dev/null
+	;;
+status-config)
+	[ "$#" -eq 11 ] || exit 2
+	case $4 in select | render) ;; *) exit 2 ;; esac
+	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done
+	[ -f "$3" ] && [ ! -L "$3" ] || exit 1
+	case ${11} in '' | *[!0-9]*) exit 1 ;; esac
+	[ "${11}" -gt 0 ] && [ "${11}" -le 65536 ] || exit 1
+	export CFMGR_STATUS_MODE="$4" CFMGR_STATUS_NOW="$5" CFMGR_STATUS_BOOT="$6" CFMGR_STATUS_REPOSITORY="$7" CFMGR_STATUS_BRANCH="$8" CFMGR_STATUS_WAN="$9" CFMGR_STATUS_CLOCK="${10}"
+	exec "$tool" -v cfmgr_json_size="${11}" -v cfmgr_json_mode=tree -f "$1" -f "$2" <"$3"
+	;;
+status-nvram)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in productid | firmver | buildno | extendno | ntp_ready | wan0_primary | wan1_primary | wan0_proto | wan1_proto | wan0_ifname | wan1_ifname | wan0_pppoe_ifname | wan1_pppoe_ifname | wan0_ipaddr | wan1_ipaddr) ;; *) exit 2 ;; esac
+	exec "$tool" get "$1"
+	;;
+status-realpath)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /jffs | /opt) ;; *) exit 2 ;; esac
+	exec "$tool" -f "$1"
+	;;
+status-mount)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in /*) ;; *) exit 2 ;; esac
+	exec "$tool" -f "$1" "$2" /proc/self/mountinfo
+	;;
+status-space)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /jffs | /opt) ;; *) exit 2 ;; esac
+	exec "$tool" -Pk "$1"
+	;;
 native-dns-native-srv | native-dns-native-a)
 	case $mode:$# in native-dns-native-srv:1) dns_host=_v2-origintunneld._tcp.argotunnel.com ;; native-dns-native-a:2) dns_host=$2 ;; *) exit 2 ;; esac
 	case $mode in

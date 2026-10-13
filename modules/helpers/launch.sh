@@ -3,15 +3,16 @@
 # Never constructs defaults, starts features or invokes the fresh transaction.
 # shellcheck disable=SC2034,SC2154 # Explicit bootstrap/storage/parser result fields.
 
-# The limited menu exposes only the complete dependency action. Exact tokens,
+# The limited menu exposes status and the complete dependency action. Exact tokens,
 # back/EOF and default-no confirmation never reach RAM/native preparation.
 cfmgr_launch_menu() {
 	[ -t 0 ] || return 1
 	while :; do
-		printf '%s\n' 'CFMgr: other feature operations unavailable' 'ao Advanced options' 'e Exit'
+		printf '%s\n' 'CFMgr: other feature operations unavailable' '0 Check status' 'ao Advanced options' 'e Exit'
 		IFS= read -r cfmgr_launch_choice || return 1
 		case $cfmgr_launch_choice in
 		e) return 1 ;;
+		0) cfmgr_status_native || : ;;
 		ao)
 			while :; do
 				printf '%s\n' 'Advanced options: other actions unavailable' '1 Reinstall Entware dependencies' 'e Back'

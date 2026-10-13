@@ -1,4 +1,5 @@
 #!/bin/sh
+# shellcheck disable=SC1091 # Fixed literal installed imports are admitted below.
 # Trusted entry defaults. Fork maintainers change this one source-selection block.
 CFMGR_REPOSITORY=https://github.com/XxUnkn0wnxX/CFMgr
 CFMGR_BRANCH=develop
@@ -55,6 +56,20 @@ case ${1-} in
 	cfmgr_entry_action=${2:-normal}
 	case $cfmgr_entry_action in normal | reinstall) ;; *) exit 2 ;; esac
 	cfmgr_source=/jffs/addons/CFMgr.d
+	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
+		# Status/navigation are admitted before any operational library/preflight.
+		for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
+			"$cfmgr_source/modules/helpers/launch.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/prerequisites.sh"; do
+			[ ! -L "$cfmgr_import" ] && [ "$(/usr/bin/readlink -f "$cfmgr_import")" = "$cfmgr_import" ] || exit 1
+			# shellcheck disable=SC2016
+			/bin/ls -ldn "$cfmgr_import" | /usr/bin/awk 'NR!=1 || $3!=0 || $1 !~ /^[-d]/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad ? 1 : 0 }' || exit 1
+		done
+		# shellcheck disable=SC1091
+		. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1
+		. "$cfmgr_source/modules/status.sh" || exit 1
+		. "$cfmgr_source/modules/helpers/launch.sh" || exit 1
+		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else exit 0; fi
+	fi
 	# Root-protected literal imports, never a config-selected source. Structural
 	# package admission precedes repair; full digests follow healthy SHA probes.
 	for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
@@ -75,9 +90,6 @@ case ${1-} in
 	. "$cfmgr_source/modules/lib/dependencies.sh" || exit 1
 	. "$cfmgr_source/modules/helpers/bootstrap.sh" || exit 1
 	. "$cfmgr_source/modules/helpers/launch.sh" || exit 1
-	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
-		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else exit 0; fi
-	fi
 	if cfmgr_launch_native "$cfmgr_source" "$cfmgr_entry_action"; then exit 0; else cfmgr_entry_status=$?; fi
 	[ "$cfmgr_entry_status" -ne 4 ] || exit 0
 	printf '[CFMGR] launch: error: retained launch blocked or incomplete\n' >&2
