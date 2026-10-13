@@ -18,18 +18,22 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active — route A: finish S02.04, then pause
+## Paused — route A complete; S02.04 accepted
 
 The user selected route A on 2026-10-14: complete S02.04 only, including its
 normal-operation tunnel DNS dependency path, focused tests and required CI, then
-pause. Baseline is pushed `807aa1b3845ab7a355c758ccf91f6a1a2e9a98ab` with a clean
-tree. Existing accepted progress remains 6/157 (3.8%), 0/16 main goals; Goal 2 is
-5/9 (55.6%). Target after acceptance is 7/157 (4.5%) and Goal 2 6/9 (66.7%).
+pause. S02.04 is now accepted at tested code
+`e4adda50d141234da6c1f650df6cb7f57fcbeef5`, committed, pushed and remote-verified.
+Baseline was clean pushed `807aa1b3845ab7a355c758ccf91f6a1a2e9a98ab`.
+Accepted progress is **7/157 (4.5%), 0/16 main goals (0%)**; Goal 2 is **6/9
+(66.7%)**. Accepted IDs: S02.03, S02.04, S02.05, S02.06, S02.08, S02.09 and
+S03.01. No main goal completed and no other ID receives new credit.
 S02.01/S02.02/S02.07 and wider feature work remain outside this package.
+No known required S02.04 finishing work is deferred to project 100%.
 
 Consumer: installed normal retained launch through shared prerequisite admission
 and installed-opkg repair; fresh setup remains shared-only until tunnel setup.
-Missing acceptance: normal scoped native-versus-dig selection, real bounded SRV/A
+Completed acceptance: normal scoped native-versus-dig selection, real bounded SRV/A
 verification, missing/unusable-only repair, fresh post-probes and safe failure
 without configuration/activation changes. Reuse S02.05/S02.06/S02.08 foundations;
 S06.03 shares the readiness interface but receives no completion credit.
@@ -45,8 +49,9 @@ S06.03 still owns full tunnel launch/readiness, NTP and reachability integration
 Completed runtime/test owner: `s0204_runtime` strong worker for
 `modules/helpers/{bootstrap,launch,probe}.sh`, `modules/lib/{prerequisites,dependencies}.sh`,
 and directly affected dependency/retained-launch/config-scope tests and fixtures.
-The worker has released all files; no overlapping writers. Parent owns plans, generated metadata, integration,
-review, gate selection, acceptance and publication. `s0204_scope_audit` is read-only.
+The worker has released all files; no overlapping writers. Parent owns plans,
+generated metadata, integration, review, gate selection, acceptance and publication.
+`s0204_scope_audit` completed its read-only review.
 `s0204_safety_review` independently reviewed the DNS-only repair-failure exception
 and post-repair cleanup. Its resolved-migration cleanup finding and real-worker
 failure-origin assertion are fixed; the focused follow-up passed. No edits or
@@ -57,8 +62,9 @@ shared-foundation groups, static/package/planning checks and parent review;
 complete applicable Quick Checks groups at the exact candidate SHA, with runtime
 cost review. Full suites are not due. The selected route includes the normal
 subgoal pause checkpoint push/CI/acceptance receipt; no force-push, deployment,
-router execution, release or next-package authority is added. Local gates passed;
-the four exact-candidate Quick groups remain pending before acceptance/pause.
+router execution, release or next-package authority is added. Local gates and all
+four exact-candidate Quick groups passed. Workers, local tests and CI monitoring
+are complete; no required job remains active. Pause here with no next package.
 
 The Astra audit required revising the initial failure handling; its three
 findings are incorporated into the worker contract: separate shared/DNS outcomes,
@@ -72,8 +78,8 @@ The complete local gate passed on the reviewed dirty tree based on `807aa1b`:
 **299 passed, 55 platform/tool skips, four optional diagnostics deselected**,
 137.02s pytest; 137.48s wall / 59.03s user / 43.83s system. Python 3.14.0,
 pytest 9.1.1, Homebrew Bash POSIX on macOS; no Linux or router proof is implied.
-Exact grouped Linux/BusyBox proof remains pending. Acceptance stays 6/157,
-Goal 2 5/9 until it passes; S02.04 is focused-local-passed only.
+Exact grouped Linux/BusyBox proof subsequently passed as recorded below; S02.04
+is accepted. Main-goal full suites remain due only when every Goal 2 subgoal is done.
 
 Exact local selection is every module in groups A–D below. Initial command:
 `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python tools/test.py --focused <A–D modules>`.
@@ -82,11 +88,22 @@ gates passed; the behavior stage found one obsolete shared-inventory test argume
 expectation (225 passed, 19 skips before stop). Parent updated that adapter to the
 now-explicit dig path while retaining its shared-only scope assertion; targeted
 case, changed-file lint/format/compile and planning/package/whitespace checks pass.
-Final complete selection used `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q -ra
---strict-config --strict-markers --maxfail=1 --durations=10 -m 'not diagnostic'
-<A–D modules>`, reusing unchanged successful statics. Logs:
-`.tmp/s0204-local-focused.log`, `.tmp/s0204-local-final.log`.
+Final complete selection reused unchanged successful statics:
+
+```sh
+CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+  /usr/bin/time -l .venv/bin/python -m pytest -q -ra --strict-config \
+  --strict-markers --maxfail=1 --durations=10 -m 'not diagnostic' \
+  tests/test_dependency_reinstall.py tests/test_config.py \
+  tests/test_config_observation.py tests/test_dependency_selection.py \
+  tests/test_prerequisites.py tests/test_native.py \
+  tests/test_dependency_consumer.py tests/test_execution_tasks.py \
+  tests/test_install.py tests/test_package.py tests/test_storage.py \
+  tests/test_storage_mounts.py tests/test_mount_keeper.py \
+  tests/test_dependencies.py tests/test_retained_launch.py
+```
+
+Logs: `.tmp/s0204-local-focused.log`, `.tmp/s0204-local-final.log`.
 
 Complete focused gate mapped to final changed consumers and foundations:
 
@@ -97,11 +114,35 @@ Complete focused gate mapped to final changed consumers and foundations:
 | C | `test_dependencies.py` | Real installed-opkg controller/receipts, cancellation, storage loss, cleanup and concurrency; prior 229.42s, including distinct full-supervision installer proof. |
 | D | `test_retained_launch.py` | Actual normal scoped DNS, retained repair/post-probes, force/alternate-provider regression and settings/Off preservation; prior 84.27s. |
 
-Groups are disjoint and exclude optional diagnostics. These old costs guide
-scheduling, not acceptance. Run the new normal-consumer group with its own
-timing before accepting the combined focused gate; every group must pass at the
-same final SHA. Reuse pinned setup, keep mutable fixtures isolated and launch no
-full host/CI suite. Local platform skips must be resolved by applicable Quick CI.
+Groups are disjoint and exclude optional diagnostics. Prior costs guided scheduling;
+the actual acceptance costs are below. The new normal-consumer group ran and was
+reviewed separately. Every group passed at the same final SHA using pinned setup
+and isolated mutable fixtures. No full host/CI suite ran. Applicable Quick CI
+resolved the local platform skips.
+
+Candidate `e4adda50d141234da6c1f650df6cb7f57fcbeef5` is committed, pushed and
+remote-verified. Every run below targets that same SHA; at most two groups ran
+together. `s0204_ci_wait` completed wait-only monitoring. Parent verified logs,
+measured cost, run conclusions and all four required jobs through the exact-SHA
+check-run records. A transient Actions jobs-list HTTP 502 was resolved through
+that independent endpoint; no test or job failure was waived.
+
+| Group | Exact Quick Checks run | Result / pytest cost |
+| --- | --- | --- |
+| A | [38468697992](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38468697992) | Passed: 225 passed, one workstation-only skip; 48.82s. |
+| B | [38469080381](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38469080381) | Passed: 92 passed; 53.96s. |
+| C | [38468896698](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38468896698) | Passed: 21 passed, four optional diagnostics deselected; 145.14s, within the practical three-to-four-minute range. |
+| D | [38468709628](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38468709628) | Passed: 15 passed; 108.11s. New normal DNS integration remains within the two-minute target. |
+
+Combined focused CI: **353 passed, one workstation-only skip**, four optional
+diagnostics excluded. Captured logs: `.tmp/s0204-ci-{a,b,c,d}.log`; exact job/SHA
+receipt: `.tmp/s0204-ci-check-runs.json`. Normal required proof uses Ubuntu 24.04
+and pinned native-host vendor BusyBox, controlled DNS responses and isolated
+storage fixtures; it does not establish Merlin/ARM/live-provider qualification.
+This later checklist/README/handoff receipt changes no tested runtime or tests.
+Its own gate is planning/count/link/privacy, package identity, whitespace and
+parent review; it names the tested code SHA without claiming runtime tests at the
+documentation commit. Final docs subgoals remain deferred under their readiness gate.
 
 ## Previous checkpoint — instruction maintenance
 
@@ -136,7 +177,7 @@ No router execution, deployment, main promotion or release is authorized.
 Accepted progress: **6/157 (3.8%); 0/16 main goals (0%)**. Goal 2 is **5/9
 (55.6%)**; Goal 3 remains **1/10**. The sole new accepted ID is **S02.06**.
 Accepted IDs are S02.03, S02.05, S02.06, S02.08, S02.09 and S03.01. No main goal
-completed. Goal 2 still needs S02.01, S02.02, S02.04 and S02.07. No known required
+completed. At that checkpoint Goal 2 still needed S02.01, S02.02, S02.04 and S02.07. No known required
 S02.06 finishing work is deferred to project 100%; final guide subgoals remain
 deferred under the approved readiness phase gate. Baseline was `a9e7e25`.
 
@@ -396,9 +437,9 @@ necessary coverage grows, never beyond 40 minutes. Current eight-minute cost is 
 
 ## Ownership and implemented boundary
 
-The active ownership and pause boundary are recorded at the top of this handoff.
+The completed ownership and pause boundary are recorded at the top of this handoff.
 Parent owns the four planning files, integration, CI decisions and acceptance.
-S02.06 is accepted; route A authorizes S02.04 only. S02.01, S02.02 and S02.07
+S02.06 and S02.04 are accepted. S02.01, S02.02 and S02.07
 require a later user resumption after the selected checkpoint.
 
 Implemented consumers:
@@ -550,8 +591,9 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-S02.06 and its required checkpoint are complete. The current user-selected route
-is A: finish S02.04 through its focused checkpoint, then pause. Follow smallest
+S02.06 and S02.04 are complete through their required checkpoints. The selected
+route A is finished; pause until the user resumes. Under future authorization,
+follow smallest
 independently completable runtime subgoals first, then shared-module batches,
 then remaining main-goal work under future authorization.
 Final documentation subgoals follow the explicit phase gate in the specification
