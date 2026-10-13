@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**7 of 157 product subgoals accepted — 4.5% overall subgoal completion.**
+**8 of 157 product subgoals accepted — 5.1% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and every applicable focused CI group passing at the
@@ -147,19 +147,30 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | [ ] | [ ] | S03.04 | **Feature submenus:** Own setup, On/Off, explicit operation, status and scoped logging/repair; only relevant options. |
 | [ ] | [ ] | S03.05 | **Quick service commands:** Shared case-insensitive start/stop handlers, ipsync alias, configure-first validation and truthful results. |
 | [ ] | [ ] | S03.06 | **Manager/diagnostic commands:** Update/force aliases, help/version and identical standalone health/doctor/diagnostic reports without implicit repair consent. |
-| [ ] | [x] | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
+| [x] | [x] | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
 | [ ] | [ ] | S03.08 | **Bounded history and privacy:** Small recorded observations, accurate Unknown/Never/stale labels, no basic-status network calls or secret/raw-data dumps. |
 | [ ] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
 | [ ] | [ ] | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
 
-S03.07 focused local gate passed on `2e68bda` plus the status candidate changes:
-**230 passed, 15 Linux/platform skips**, 122.62s pytest; 250.86s including all
-applicable static, planning and package checks. Actual installed choice `0`, menu
-return, read-only configuration/history projection and native resource failure
-isolation passed. Parent review passed; complete exact-candidate Quick groups
-remain pending, including real Linux ownership and aggregate-deadline proof.
-The acceptance box stays unchecked until those groups pass. No other Goal 3
-subgoal or main-goal completion is claimed.
+S03.07 accepted at `d173d691254023a757361996c5b86ff8f8c609bd`: actual installed
+choice `0`, menu return before operational preparation, native resource/WAN/NTP/
+mount readings, separate settings and typed historical outcomes, age/privacy and
+configuration-failure isolation. Local gate: **230 passed, 15 platform skips**,
+122.62s pytest; 250.86s including statics/planning/package checks. A fixture-mode
+correction retained identical runtime; the complete local status module then
+passed **28 with two Linux skips** in 6.26s. Parent review passed.
+
+All complete Quick groups passed at that same final revision:
+[A — status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38479557168)
+**30 passed, 18.59s**;
+[B — entry/package](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38479679230)
+**126 passed, 140.76s**;
+[C — shared foundations](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38479691428)
+**88 passed, one workstation-only skip, 32.06s**. Linux normal reporting,
+owned stalled-probe cancellation, aggregate deadline and cleanup passed. Costs
+reviewed; no full suite was due. Representative Ubuntu/vendor BusyBox evidence
+does not establish live Merlin/ARM qualification. Only S03.07 earns this tick;
+history writers, full diagnostics and final terminal presentation remain separate.
 
 ### 4. Save, cancellation and recovery
 

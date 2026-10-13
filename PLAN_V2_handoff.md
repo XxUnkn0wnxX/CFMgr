@@ -18,41 +18,41 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active — S03.07 basic status dashboard
+## Paused — S03.07 accepted; larger shared dependencies remain
 
 The user resumed on 2026-10-14: work on the next smallest task, allow automatic
 checkpoint publication after its test/review gate, and pause before a large
 multi-goal crossover. Reuse the existing `develop` checkout; no worktrees.
-Starting HEAD is `2e68bda5a977a33a093e8ee207708f84f8a5f193`, clean, with the two
-local instruction commits following the published S02.04 receipt. Those commits
-remain preserved. This permission covers the selected runtime candidate's normal
-focused Quick Checks checkpoint and acceptance/documentation receipt; award a
-tick only after all required exact-candidate groups pass. No full-suite checkpoint,
-history rewrite, deployment, router execution or release is authorized.
+Starting HEAD was `2e68bda5a977a33a093e8ee207708f84f8a5f193`, clean, with two local
+instruction commits following the published S02.04 receipt. Those commits are
+preserved and now published with this checkpoint. S03.07 passed its complete local
+and exact-candidate Quick gates; this receipt closes acceptance. No full-suite
+checkpoint, history rewrite, deployment, router execution or release was performed.
+Do not interpret this completed task's auto-push permission as authority to start
+the next coordinated feature package.
 
 The Astra smallest-task audit scanned all 157 rows and returned PASS WITH NOTES:
 S03.07 is the smallest demonstrated ready full product outcome. Missing provider
 writers do not block its read-only consumer; the plan permits absent evidence.
-The selected independent package is **S03.07 only**, using the real installed
-choice `0` before operational prerequisite repair. Provide bounded native router,
+The completed independent package is **S03.07 only**, using the real installed
+choice `0` before operational prerequisite repair. It provides bounded native router,
 resource, mount, selected-WAN/address and NTP observations, manager/source and
 separate feature settings, safe bounded typed local outcome/history reading,
 ages, concise issues and truthful next actions. Invalid/unavailable config or
-records must not suppress independent resource checks. No network/provider call,
+records do not suppress independent resource checks. No network/provider call,
 repair, feature activation, operational history writer or live-router execution.
 Supporting read/privacy/native-entry contracts overlap S03.08/S02.07; neither ID
-earns acceptance from this package. Do not expand into full diagnostics, Save,
-hooks, lifecycle, logging or provider implementation. Pause if a large coordinated
-cross-goal prerequisite proves necessary.
+earns acceptance from this package. Full diagnostics, Save, hooks, lifecycle,
+logging and provider implementation remain outside this completed task.
 
 Runtime/test owner: `s0204_runtime` strong worker completed entry/launch integration,
 the source-inert status module/parsers and required native supervision adapters/tests;
 all write ownership is released. Parent owns the planning files, generated package
-metadata, gate selection, integration and publication. Freeze the bounded typed local-evidence contract in runtime
-comments/tests; never infer provider success or connected state from PID/file
-presence or invented placeholders. Preserve existing JSON/parser and launch
-contracts; status must show invalid configured/enabled combinations rather than
-using operational config rejection as an all-or-nothing report gate.
+metadata, gate selection, integration and publication. The bounded typed local
+evidence contract is recorded in runtime comments/tests. It never infers provider
+success or connected state from PID/file presence. Existing JSON/parser and launch
+contracts are preserved; invalid configured/enabled combinations are reported
+without rejecting the entire native resource page.
 
 Parent-approved reader design: project a bounded snapshot of existing private
 config only; no new history file/writer. Optional `history.<feature>.status`
@@ -92,10 +92,9 @@ Focused gate map (whole modules; optional diagnostics excluded):
   `tests/test_native.py`, `tests/test_execution_tasks.py`; reused JSON/default
   contracts and changed shared supervisor/probe dispatch with native ownership.
 
-Run the complete affected local gate with static/planning/package checks and parent
-review, then all three Quick groups at the exact candidate. Record results and
-measured group costs before acceptance; no full suite is due. Lightweight isolated
-PTY status/back/exit checks use fixture data only, without router access.
+The complete affected local/static/planning/package gate and parent review passed,
+followed by all three Quick groups at the same candidate. Lightweight isolated
+PTY status/back/exit checks used fixture data only, without router access.
 
 Parent review passed after fixing direct-child ownership for native collectors,
 reserved-address classification, malformed IPv6 rejection, stale cleanup-warning
@@ -121,20 +120,51 @@ and whitespace checks passed. Whole local command: 250.86s wall, 169.95s user,
 46.08s system; no full suite ran. Log: `.tmp/s0307-local-final.log`.
 Status alone previously passed 28 with its two Linux cases skipped, 10.89s.
 Its installed-menu PTY journey left settings unchanged, performed no operational
-preparation and cleaned the private context. The new Linux status group must pass
-and have its cost reviewed before acceptance. Candidate push/Quick gates are next;
-do not start another implementation package while required CI is pending.
+preparation and cleaned the private context. Linux status proof and all remaining
+groups subsequently passed at the final candidate below.
 
 First candidate `19bc32c847ecceff97ca57621805a76703963e01` was pushed and
 remote-verified. Quick A run `38479329681` failed after 28 passes: the new Linux
 fixture wrote its probe helper without preserving executable mode, so the real
 supervisor correctly refused it before spawning. The fixture now preserves source
 modes and explicitly verifies executable admission. Runtime bytes are unchanged;
-the full status module and relevant Python/planning checks are repeated before
-the corrected candidate push. No required failure is waived or checkbox awarded.
+the complete local status module then passed 28 with two Linux skips in 6.26s
+(6.63s wall, 2.92s user, 2.82s system), plus Python/planning/package checks, before
+the corrected candidate push. Log: `.tmp/s0307-local-fixture-fix.log`.
+The failed candidate is not accepted evidence.
 
-Accepted progress remains
-**7/157 (4.5%), 0/16 main goals (0%)**; Goal 2 remains **6/9 (66.7%)**.
+Final tested code: **`d173d691254023a757361996c5b86ff8f8c609bd`**.
+All complete groups and their only required jobs passed at that exact SHA;
+parent verified run logs, selectors and the commit's check-run records:
+
+| Group | Quick run / job | Result and pytest cost |
+| --- | --- | --- |
+| A | [38479557168](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38479557168) / `115578519467` | 30 passed; 18.59s. Actual Linux normal report 4.62s; stalled-probe budget case 9.52s. |
+| B | [38479679230](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38479679230) / `115578927859` | 126 passed; 140.76s. |
+| C | [38479691428](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38479691428) / `115578968777` | 88 passed, one workstation-without-proc skip; 32.06s. |
+
+Total: **244 passed, one expected workstation-only skip**. Every Linux case
+skipped locally ran successfully. A ran first; B/C then ran concurrently with no
+overlap in their selected modules. Cost review passed: new status well under two
+minutes; larger entry/package regression within the practical range. No timeout
+limit increase, omitted core proof, full suite or router run. Logs are retained as
+`.tmp/s0307-ci-{a,b,c}.log`, the first failed run as
+`.tmp/s0307-ci-a-first.log`, and exact-SHA jobs as
+`.tmp/s0307-ci-check-runs.json`. Workers and required CI jobs are complete.
+
+Accepted progress is **8/157 (5.1%), 0/16 main goals (0%)**.
+Goal 3 is **2/10 (20%)**; Goal 2 remains **6/9 (66.7%)**.
+README/checklist updates in this documentation receipt refer to the tested code
+SHA above; the receipt itself is checked proportionately, not runtime-tested anew.
+
+**Pause boundary:** the next small-looking candidates need larger shared behavior:
+S07.01 needs real coupled settings and safe native Save; S14.02 needs exact mounted
+selection and persisted backup destination; S13.13 needs real syslog/eligible-file
+delivery and deduplication. Their missing consumers cannot earn helper-only ticks.
+Do not start those Save/storage/logging batches under the completed status task.
+On resumption, propose the smallest coherent prerequisite/consumer batch and its
+return path toward Goal 2; complete Goal 4 is not automatically required. Remaining
+Goal 2 IDs are S02.01, S02.02 and S02.07; basic status alone does not finish them.
 
 ## Completed checkpoint — route A; S02.04 accepted
 
@@ -709,9 +739,9 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-S02.06 and S02.04 are complete through their required checkpoints. Their selected
-route A is finished; the user has now resumed the next-smallest-task selection
-under the active scope above. The user has set project-wide
+S02.06, S02.04 and now S03.07 are complete through their required checkpoints.
+The next-smallest-task request is finished, and the user-required pause before
+larger shared/cross-goal work is active as recorded above. The user has set project-wide
 selection order: follow the [work ordering rule](AGENTS.md#implementation-and-preservation),
 finishing independent subgoals and prerequisites before larger features. Use a
 coordinated multi-goal batch only when no smaller ready, independently completable
