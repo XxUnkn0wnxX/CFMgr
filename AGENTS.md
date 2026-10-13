@@ -1,10 +1,15 @@
 # CFMgr project instructions
 
-Global instructions and matching skills apply; explicit user decisions override
-stale text. This file owns repository workflow; product behavior belongs in
+Apply global instructions and matching skills where this file is silent.
+CFMgr-specific rules here take precedence over conflicting global or skill
+guidance, including blocker handling, acceptance, test cadence and permissions.
+Explicit user decisions override stale text. This file owns repository workflow;
+product behavior belongs in
 [PLAN_V2.md](PLAN_V2.md). Keep this file below 32,000 bytes. To prevent recurring
 ceiling pressure, consolidate proactively at 28,000 bytes; prefer 21–23 KB.
-General testing, CI, Git and Markdown procedures belong in their named skills.
+Use `zr0-agents-governance` for instruction changes and
+`zr0-git-repository-workflow` for Git/privacy procedures. General planning,
+testing, CI, delegation and Markdown procedures belong in the skills named below.
 
 ## Planning authority
 
@@ -17,14 +22,14 @@ Read at session start/resume:
 | [PLAN_V2_handoff.md](PLAN_V2_handoff.md) | Current task/permissions, resumable state, owners/jobs, pending proof, blockers and next steps; replace stale notes. |
 | [PLAN_V2_review_notes.md](PLAN_V2_review_notes.md) | Only relaxed acceptance points and significant risks for later review. Mirror goal headings and subgoal descriptions; replace checkboxes with concise review notes. |
 
-Checklist mirrors the specification's main-goal/subgoal tables. The parent alone
-edits these four files. Preserve user decisions; make every approved plan change
-and matching checklist change together, checking both directions; update handoff
-when current work changes. Never rewrite requirements to fit code, weaken tests
-to manufacture compliance, or infer approval from a worker/handoff. Keep review
-notes current when an exception is accepted, resolved or changes; omit unaffected
-goals, routine progress and session history. Link from checklist instead of copying
-the notes. Review notes neither change requirements nor waive unresolved serious failures.
+The parent alone edits these four files. Apply `zr0-multi-session-projects`
+for paired specification/checklist changes, evidence, handoff preservation and
+verified parent-session lineage. Preserve the existing root-level files and
+Sxx.yy IDs; new-project defaults do not relocate them. Checklist mirrors the
+specification's main-goal/subgoal tables. Keep review notes current when an
+exception changes; omit unaffected goals, routine progress and session history.
+Link from checklist instead of copying the notes. Review notes neither change
+requirements nor waive unresolved serious failures.
 
 Significant objective, behavior, scope, accepted-edge-case changes or extensive
 feature rework need prior user approval. Explain the change, reason, tradeoffs
@@ -37,17 +42,10 @@ pause safely. Ordinary implementation/test failures are not approval blockers;
 fix them autonomously. Silence or elapsed time is never approval; do not repeat
 answered gates.
 
-Do not routinely trim handoff. Consolidate it if it approaches 500–600 KB or
-becomes hard to follow, preserving permissions, open questions, proof/blockers,
-owners/jobs, unfinished work and recovery references. Resolve conflicts by
-checking source, plans, diffs, receipts and agent state; use focused checks only
-where uncertainty requires them. Record unknowns and report drift; housekeeping
-cannot award ticks or discard work.
-
 Preserve [.old/PLAN.md](.old/PLAN.md) as reference. Preserve the complete hidden
-session-ID HTML comment immediately below the handoff title. Append only verified
-new parent session IDs, never child IDs or entries for a turn/compaction. Keep
-this record only in handoff.
+session-ID HTML comment immediately below the handoff title; keep the verified
+parent-session record only there. Follow the continuity skill's 500–600 KB or
+hard-to-follow consolidation threshold, not routine trimming.
 
 ## Implementation and preservation
 
@@ -130,9 +128,12 @@ separate authorization. Optional polish may follow implementation completion.
 
 ### Practical test policy
 
-Apply `zr0-test-efficiency`; pass its current requirements to test workers.
+Apply `zr0-test-efficiency` and `zr0-ci-optimization`; pass their applicable
+requirements to test workers. Use `zr0-interactive-testing` for end-user journeys
+and its scoped campaign permissions; it adds no product acceptance gate or router
+permission. CFMgr's blocker handling below remains authoritative.
 Plan-specified core edge cases are the mandatory minimum; cost cuts must preserve
-their proof. Reuse immutable setup and fresh mutable state. Prioritize boot-loop, router-hang,
+their proof. Prioritize boot-loop, router-hang,
 unbounded-work, unsafe-write and serious-corruption failures. Keep mandatory CI
 small and focused; rare synthetic process/thread stress is optional diagnostic
 work. Relax incidental output/timing assertions or defer rare low-risk cases with
@@ -148,20 +149,16 @@ setup. Keep today's accepted eight-minute baseline lean; raise the lower configu
 runner limit only when measured growth justifies it, never beyond 40 minutes.
 Remove redundant work and costly low-value variants before adding coverage; retain
 core plan proof. Record measured cost using the required acceptance run.
-If a full run becomes unexpectedly slow or obscures the culprit, stop repeating
-it: use meaningful, disjoint Quick Checks groups with visible test names and
-wall/CPU timings to locate the cost. Isolated CI groups may run concurrently;
-avoid duplicating heavy work already running. Optimize the slow groups, preserve
-required coverage, then pass the complete affected focused groups before subgoal
-acceptance; reserve full Checks for main-goal completion. Do not keep rerunning
-the whole suite to diagnose one slow group.
+For slow or opaque runs, use meaningful, disjoint Quick Checks groups and the
+skills' diagnosis procedure, with visible test names and wall/CPU timings.
+Isolated CI groups may run concurrently. Complete every affected group before
+subgoal acceptance; reserve full Checks for main-goal completion.
 For each Linux-dependent subgoal or substantial library package, run its own
 focused Quick Checks batch and review both correctness and measured runtime
 before adding it to the combined full gate. Split and optimize unexpectedly slow
 batches first: aim for two minutes or less, with a practical upper range of three
 to four minutes where feasible. Preserve core proof when trimming. A pass alone
-does not establish acceptable cost. Reuse
-already-proved cheap groups instead of restarting unrelated tests during diagnosis.
+does not establish acceptable cost.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
 format, Python compile, shell syntax, ShellCheck, shfmt, planning/link/whitespace
@@ -267,13 +264,10 @@ accepted without approval.
 
 ## CI requirements
 
-Use **Quick Checks** for focused subgoal/shared-foundation gates on annotated
-develop pushes or explicit dispatch, with planning consistency. Include changed
-code, tests, tools, workflow paths, commands and dependencies with their tests.
-All applicable grouped CI tests must pass before acceptance; smaller repair runs
-only diagnose failures. **Checks** runs the full required suite by manual dispatch
-at a complete main-goal checkpoint. Optional diagnostic stress remains excluded
-and is never claimed passed. Later release-branch scope needs review.
+Use the **Quick Checks** and **Checks** routes above, including planning
+consistency and tests for changed code, tools, workflows, commands and
+dependencies. Optional diagnostic stress remains excluded and is never claimed
+passed. Later release-branch scope needs review.
 
 Use one Ubuntu runner for full host integration and cached native-host vendor
 BusyBox checks, planning and static gates. This is representative development
@@ -285,36 +279,25 @@ weakening safety contracts or gates. Adapt CI as approved tests grow, keeping
 coverage and modest resource use; this permission changes no goals, acceptance,
 agent rules or publication gates.
 
-During shared CI failure repair, retrieve the first useful failure and cancel
-redundant work promptly. This applies to explicitly run optional kernel diagnostics;
-multiple profiles are only for profile-specific investigation. Cancelled jobs
-are not proof; subgoal acceptance requires all applicable focused groups green
-at the exact repaired SHA. Main-goal acceptance requires full Checks. CI/cache/test methodology belongs to the corresponding skills.
+Apply the CI skill's failure capture and redundant-run cancellation to shared CI
+repair, including explicitly run optional kernel diagnostics. Multiple kernel
+profiles are only for profile-specific investigation. Exact-SHA acceptance still
+requires the complete applicable gate above.
 
 ## Delegation and integration
 
-Concurrent independent work is authorized; apply `zr0-parallel-execution`.
-Record exclusive files, interfaces/dependencies and integration gates in handoff;
-never overlap writers. Normally use at most two implementation packages; a third
-needs settled interfaces and easy integration. Finish the active set before its
-combined checkpoint. Custom workers do not spawn agents. Each brief names scope,
-consumer, owned files/interfaces, exclusions, checks and stop condition. Keep
-architecture, uncertain root cause/security, planning files, integration and
-final review with the parent. Use the configured worker role suited to the work:
-worker for bounded tests/routine support, worker_strong for substantial or
-uncertain runtime/cross-file work, explorer for bounded read-only mapping,
-awaiter only for monitoring an existing job, analyst/deep only for deliberate
-difficult review where available. Respect active profile routing; report
-unavailable roles. Workers return files, behavior, checks/skips and risks; cannot
-award ticks, expand scope, discard work or publish. Parent reviews real call/
-failure paths, integrates, updates ownership/handoff and resolves discrepancies.
-No worker self-advancement.
+Concurrent independent work is authorized. Apply `zr0-parallel-execution` for
+exclusive ownership, briefs, dependency ordering and parent integration; use the
+active profile's routing and planner policy. Normally use
+at most two implementation packages; a third needs settled interfaces and easy
+integration. Finish the active set before its combined checkpoint. Record owners
+and integration gates in the existing handoff. Workers cannot award ticks,
+expand scope, discard work, publish or advance themselves to another package.
 
 ## Documentation
 
 Apply `zr0-github-documentation` to repository Markdown, including AGENTS and
-plans: accurate claims, working links, sanitized paths and proportional detail.
-Workers may edit guides, never the four planning files.
+plans. Workers may edit guides, never the four planning files.
 
 README is the implementation overview: concise warning, all 16 goals and their
 subgoals/scope/guide links; separate intended from available behavior. Progress
@@ -401,9 +384,8 @@ unrelated package; choose the last acceptable checkpoint based on progress:
 - **Immediate stop:** stop at once and preserve truthful partial state.
 
 Then update justified checklist/README and refresh handoff for new session or
-same-session resumption: commits, checks/skips/pending gates, staged/unstaged/
-untracked work, recovery paths, agents/commands/jobs, unresolved findings,
-completion target and exact next actions. Publish any documentation receipt with
-proportionate checks and tested code SHA. Leave no required worker/job active.
+same-session resumption using the continuity skill's state/evidence inventory.
+Publish any documentation receipt with proportionate checks and tested code SHA.
+Leave no required worker/job active.
 Never tick partial work. If a real blocker prevents the agreed checkpoint,
 preserve it unchecked and report it; resume only as instructed.

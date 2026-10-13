@@ -18,6 +18,23 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Instruction maintenance — runtime work remains paused
+
+The user authorized using refreshed skills and removing superseded duplication
+from this repository's AGENTS.md, after confirming that CFMgr rules override
+conflicting global guidance. Parent owns this instruction-only cleanup and this
+handoff receipt. Preserve all product contracts, acceptance, root-level records,
+the 3–5-minute blocker rule and existing runtime/publishing permissions.
+The scope is skill references and redundant procedure removal; no Sxx.yy target
+is selected or started. Astra Max's read-only audit passed with one procedural
+note: retain CFMgr's disjoint Quick Checks groups. That wording is retained;
+parent review confirms the removed procedure is covered by available skill text.
+On the instruction-only tree based on `edcb8cd`, `.venv/bin/python tools/check.py`
+and `git diff --check` pass. Product plan, checklist, review notes, README and
+runtime are unchanged; the pre-existing handoff/session ledger is preserved.
+No runtime tests or CI are due. Keep this cleanup as a local documentation commit;
+no new push or history-rewrite permission is inferred. Runtime work remains paused.
+
 ## Paused — S02.06 selected dependency reinstall accepted
 
 The user resumed on 2026-10-14: identify any genuinely small independent task
