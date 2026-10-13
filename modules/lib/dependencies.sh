@@ -235,6 +235,14 @@ cfmgr_dependencies_repair() {
 		fi
 		;;
 	esac
+	# A view/sweep refusal can bypass the task runner's normal final storage
+	# observation. Recheck only after owned work is resolved, before releasing
+	# protection; unresolved native children retain every guard without probes.
+	[ "${cfmgr_dependencies_native_unresolved:-0}" = 0 ] || return 3
+	if ! cfmgr_storage_attached; then
+		cfmgr_tasks_loss=1
+		cfmgr_execution_tasks_event storage-lost || return 3
+	fi
 	cfmgr_dependencies_phase=cleanup
 	_cfmgr_tasks_now || return 3
 	cfmgr_dependencies_operation_deadline=$((cfmgr_tasks_now + 60))

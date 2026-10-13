@@ -105,9 +105,24 @@ reproduced the original argv rejection (exit 2, no shell error), corrected the
 fixture and verified acceptance (exit 0) plus refusal of misplaced flags/unrelated
 packages. Focused fixture syntax, ShellCheck, shfmt and whitespace passed. C
 `38440595213` was cancelled as superseded; no acceptance from partial runs.
-Runtime remains unchanged. Run D first at the new candidate, then repeat A–C
-there. Inspect all jobs and timings before acceptance/README/handoff and pause.
-No other package may start.
+Runtime remained unchanged through candidate `fd91e893f65ca90da770a2942b54e8196e4a9bfb`.
+D `38441351653` passed **15 tests**, 100.09s pytest (100.27s wall, 52.10s user,
+47.75s sys); A `38441692910` and B `38441697923` also passed. C `38441702494`
+failed the real storage-loss case: owned cleanup resolved, but the required
+storage-loss reason/report was absent. No acceptance is awarded. Source review
+found that an exceptional task return can reach resolved controller cleanup
+without the final attachment observation performed on the normal task path.
+The correction adds a final observation/report after resolved task cleanup;
+unresolved native children, task cleanup or event reporting retain guards without
+proceeding to release. The new controller regression reuses the existing adapter
+and actual repair/event bodies: old source reproduces missing loss reporting;
+five scenarios cover lost/attached completion and unresolved task/native/event
+states. Parent and independent analyst reviewed the eight-line runtime change
+and test assertions. The shared adapter now explicitly supplies its attached
+storage assumption; the real detach assertion remains intact and gains bounded
+failure labels. Run that detach case and the new regression first, then all
+groups at the final candidate. Inspect every job and timing before acceptance/
+README/handoff and pause. No other package may start.
 
 Required focused groups, each at the final candidate SHA (whole modules; optional
 diagnostics excluded):

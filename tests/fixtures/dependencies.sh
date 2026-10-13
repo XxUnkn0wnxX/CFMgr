@@ -379,7 +379,9 @@ dependency_loss)
 		fail "detach actor failed exit=$dependency_observer_exit; observer=$(dependency_observer_detail)"
 	fi
 	[ "$(dependency_observer_detail)" = complete ] || fail "detach actor did not complete; observer=$(dependency_observer_detail)"
-	if [ -f "$view_ram/loss.guards" ] && [ "$cfmgr_dependencies_reason" = storage-lost ]; then :; else fail 'loss reason/guard proof absent'; fi
+	if [ -f "$view_ram/loss.guards" ] && [ "$cfmgr_dependencies_reason" = storage-lost ]; then :; else
+		fail "loss reason/guard proof absent: reason=$cfmgr_dependencies_reason loss=$cfmgr_dependencies_loss task-loss=${cfmgr_tasks_loss:-unset} task-code=${cfmgr_tasks_exit:-unset}"
+	fi
 	if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_keeper_state" = released ]; then :; else fail 'loss cleanup retained live protection unexpectedly'; fi
 	exec 0<&- 9<&-
 	printf 'PASS: production loss cancellation with readonly fallback\n'

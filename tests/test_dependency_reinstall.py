@@ -327,6 +327,126 @@ cfmgr_execution_view_release() { : >"$cfmgr_test_marker/release-view"; cfmgr_vie
         assert b"state=retained\nnative-unresolved=1\n" in result.stdout
 
 
+@pytest.mark.parametrize(
+    ("scenario", "status", "observed", "released", "loss", "reason"),
+    [
+        ("lost", 1, True, True, 1, "storage-lost"),
+        ("attached-failure", 1, True, True, 0, "admission"),
+        ("finish-unresolved", 3, False, False, 0, "cleanup-pending"),
+        ("event-unresolved", 3, True, False, 1, "storage-lost"),
+        ("native-unresolved", 3, False, False, 0, "admission"),
+    ],
+)
+def test_actual_controller_observes_loss_only_after_resolved_owned_work(
+    shell, tmp_path, scenario, status, observed, released, loss, reason
+) -> None:
+    # Reuse the controller/cleanup adapter; replace only Linux kernel inputs
+    # unavailable on macOS. Actual repair and storage-event bodies stay intact.
+    boot = tmp_path / "kernel-boot-id"
+    boot.write_text("12345678-1234-1234-1234-123456789abc\n")
+    source = (ROOT / "modules/lib/dependencies.sh").read_text()
+    adapted = source.replace("/proc/sys/kernel/random/boot_id", str(boot))
+    assert adapted.replace(str(boot), "/proc/sys/kernel/random/boot_id") == source
+    controller = tmp_path / "controller.sh"
+    controller.write_text(adapted)
+    parent = tmp_path / "claims"
+    marker = tmp_path / "markers"
+    parent.mkdir(mode=0o700)
+    marker.mkdir(mode=0o700)
+    anchor = 'if [ "$cfmgr_test_role" = waiter ]; then'
+    addition = r"""
+cfmgr_test_observation_scenario=$CFMGR_TEST_OBSERVATION_SCENARIO
+cfmgr_test_mark() { printf '%s\n' "$1" >>"$cfmgr_test_marker/trace"; }
+_cfmgr_tasks_now() { cfmgr_tasks_now=100; }
+cfmgr_prerequisites_identity() { cfmgr_identity_start=1234; }
+cfmgr_dependencies_claim_admit() { [ -d "$1" ] && [ ! -L "$1" ]; }
+cfmgr_dependencies_attachment_ok() { [ -d "$cfmgr_dependencies_context" ]; }
+cfmgr_execution_view_create() {
+    cfmgr_view_state=active cfmgr_keeper_state=quiescent
+    if [ "$cfmgr_test_observation_scenario" = native-unresolved ]; then
+        cfmgr_dependencies_native_unresolved=1
+        return 3
+    fi
+}
+cfmgr_execution_tasks_run() {
+    cfmgr_test_mark run
+    if [ "$cfmgr_test_observation_scenario" = attached-failure ]; then cfmgr_tasks_state=quiescent; return 1; fi
+    cfmgr_tasks_state=retained
+    return 3
+}
+cfmgr_execution_tasks_finish() {
+    cfmgr_test_mark finish
+    [ "$cfmgr_test_observation_scenario" != finish-unresolved ] || return 3
+    cfmgr_tasks_state=quiescent
+}
+cfmgr_storage_attached() {
+    cfmgr_test_mark observation
+    [ "$cfmgr_test_observation_scenario" = attached-failure ]
+}
+cfmgr_dependencies_report() {
+    cfmgr_test_mark "report:$1"
+    if [ "$cfmgr_test_observation_scenario:$1" = event-unresolved:storage-lost ]; then return 3; fi
+    return 0
+}
+cfmgr_execution_view_release() {
+    cfmgr_test_mark release
+    cfmgr_view_state=released cfmgr_keeper_state=released
+}
+"""
+    assert LINUX_REPAIR_CONTROLLER.count(anchor) == 1
+    script = LINUX_REPAIR_CONTROLLER.replace(anchor, addition + anchor)
+    script = script.replace(
+        '. "$CFMGR_TEST_ROOT/modules/lib/dependencies.sh"',
+        '. "$CFMGR_TEST_CONTROLLER"',
+    )
+    script = script.replace(
+        'echo "postprobe=$cfmgr_test_postprobe"',
+        'echo "postprobe=$cfmgr_test_postprobe"\necho "loss=$cfmgr_dependencies_loss"\necho "reason=$cfmgr_dependencies_reason"',
+    )
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "resolved-loss-observation",
+            str(parent),
+            str(ROOT),
+            str(marker),
+            "owner",
+        ],
+        env={
+            **os.environ,
+            "CFMGR_TEST_ROOT": str(ROOT),
+            "CFMGR_TEST_UID": str(os.getuid()),
+            "CFMGR_TEST_USLEEP": "/bin/true",
+            "CFMGR_TEST_CONTROLLER": str(controller),
+            "CFMGR_TEST_OBSERVATION_SCENARIO": scenario,
+        },
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 0, result.stderr
+    assert f"result={status}\n".encode() in result.stdout, result.stdout
+    assert f"loss={loss}\nreason={reason}\n".encode() in result.stdout
+    trace_file = marker / "trace"
+    trace = trace_file.read_text().splitlines() if trace_file.exists() else []
+    assert ("observation" in trace) == observed
+    assert ("release" in trace) == released
+    assert (parent / "dependencies").exists() == (status == 3)
+    if scenario == "lost":
+        assert trace == [
+            "run",
+            "finish",
+            "observation",
+            "report:storage-lost",
+            "release",
+            "report:cleanup-complete",
+        ]
+    elif scenario == "native-unresolved":
+        assert trace == []
+
+
 DNS_CONSUMER = r"""
 . "$1/modules/helpers/bootstrap.sh"
 cfmgr_install_source=$1 cfmgr_install_context=$2 cfmgr_install_sh=$3

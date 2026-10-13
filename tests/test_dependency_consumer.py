@@ -403,6 +403,7 @@ cfmgr_dependencies_state=complete
 case $CFMGR_TEST_UID in '' | *[!0-9]*) exit 83 ;; esac
 cfmgr_test_uid=$CFMGR_TEST_UID
 cfmgr_dependencies_admit() { return 0; }
+cfmgr_storage_attached() { return 0; }
 cfmgr_dependencies_claim_admit() {
     [ -d "$1" ] && [ ! -L "$1" ] || return 2
     [ "$(/usr/bin/stat -c '%a:%u' "$1")" = "700:$cfmgr_test_uid" ] || return 2
