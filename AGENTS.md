@@ -51,11 +51,16 @@ hard-to-follow consolidation threshold, not routine trimming.
 
 Follow the active handoff boundary; writing a handoff does not start later work.
 Past cleanup, branch deletion, history resets or publication grants do not recur.
-Order dependencies first and work in coherent units: finish implementation,
-integration and required focused checks before switching targets. Prefer small
-independent subgoals, then shared-module batches, then remaining work to close
-the active main goal. Do not start a large target while smaller independent ones
-remain. Before a package, inspect code/tests/ownership and record
+Select work across the approved plan by dependency readiness and smallest fully
+completable scope, rather than main-goal number. Finish small independent subgoals
+and prerequisites before larger features, including ready independent subgoals in
+another main goal. Judge size by the full implementation, integration and required
+validation, not by a small helper or partial result. Use coordinated multi-goal
+batches for larger features only when no smaller ready, independently completable
+outcome remains; include only the necessary prerequisites and shared integration.
+Finish each active coherent package and its required focused checks before
+switching targets. Existing authorization, pause and acceptance gates still apply.
+Before a package, inspect code/tests/ownership and record
 its Sxx.yy, real consumer, missing acceptance and focused checks in handoff.
 Name dependencies and return paths; notify the user before switching to a
 prerequisite in another goal. Goal 1 requires all three features and source parity,

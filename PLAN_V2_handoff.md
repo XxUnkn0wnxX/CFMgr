@@ -592,10 +592,12 @@ Source pins and evidence for that decision:
 ## Next-session boundaries
 
 S02.06 and S02.04 are complete through their required checkpoints. The selected
-route A is finished; pause until the user resumes. Under future authorization,
-follow smallest
-independently completable runtime subgoals first, then shared-module batches,
-then remaining main-goal work under future authorization.
+route A is finished; pause until the user resumes. The user has set project-wide
+selection order: follow the [work ordering rule](AGENTS.md#implementation-and-preservation),
+finishing independent subgoals and prerequisites before larger features. Use a
+coordinated multi-goal batch only when no smaller ready, independently completable
+outcome remains. This records the ordering policy; no new implementation package
+is selected by this instruction update.
 Final documentation subgoals follow the explicit phase gate in the specification
 and checklist; do not select interim documentation as an early completion. Finish
 started libraries/subgoals before switching; inspect existing consumers, tests and
