@@ -182,6 +182,10 @@ focused gates and earn no product percentage.
 
 ## Validation and publication gates
 
+Use the existing checkout; do not create or adopt additional Git worktrees for
+CFMgr unless the user explicitly changes this decision. Preserve existing
+worktree registrations; this decision does not authorize cleanup.
+
 `develop` is the only active/default branch until reviewed product 100%. Do not
 recreate local/origin `main`, change default, rewrite history or promote runtime
 incidentally. Main's return is a separate readiness action. Set the first release

@@ -607,6 +607,10 @@ No package after S02.04 is selected or authorized. Full local suites remain main
 gates. Required development CI is Ubuntu/vendor BusyBox; exact firmware/ARM/flash/
 hooks/provider qualification remains separately authorized beta work.
 
+The user has chosen to keep CFMgr in the existing checkout without additional
+worktrees; follow the [checkout policy](AGENTS.md#validation-and-publication-gates).
+Existing detached-worktree metadata remains preserved; no cleanup is authorized.
+
 Use the existing `.venv` and pinned dependencies. ShellCheck is pinned to 0.11.0.
 Regenerate changed runtime metadata with `.venv/bin/python tools/package.py --write`,
 then `--check`. Preserve optional guest tooling/caches as unaccepted diagnostics.
