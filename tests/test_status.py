@@ -247,6 +247,8 @@ def status_fixture(tmp_path, tools, shell):
                 '"$1" -ef /dev/fd/8', "-f /dev/fd/8"
             )
         (source / relative).write_text(adapted)
+        (source / relative).chmod((ROOT / relative).stat().st_mode & 0o777)
+    assert os.access(source / "modules/helpers/probe.sh", os.X_OK)
     proc = tmp_path / "proc"
     (proc / "sys/kernel/random").mkdir(parents=True)
     (proc / "self").mkdir()

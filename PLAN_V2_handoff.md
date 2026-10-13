@@ -125,6 +125,14 @@ preparation and cleaned the private context. The new Linux status group must pas
 and have its cost reviewed before acceptance. Candidate push/Quick gates are next;
 do not start another implementation package while required CI is pending.
 
+First candidate `19bc32c847ecceff97ca57621805a76703963e01` was pushed and
+remote-verified. Quick A run `38479329681` failed after 28 passes: the new Linux
+fixture wrote its probe helper without preserving executable mode, so the real
+supervisor correctly refused it before spawning. The fixture now preserves source
+modes and explicitly verifies executable admission. Runtime bytes are unchanged;
+the full status module and relevant Python/planning checks are repeated before
+the corrected candidate push. No required failure is waived or checkbox awarded.
+
 Accepted progress remains
 **7/157 (4.5%), 0/16 main goals (0%)**; Goal 2 remains **6/9 (66.7%)**.
 
