@@ -286,7 +286,7 @@ def test_linux_actual_repair_invokes_late_scope_callback_before_worker(
 cfmgr_install_dependency_action=reinstall
 cfmgr_launch_reinstall_recheck() { : >"$cfmgr_test_marker/scope-recheck"; return "$CFMGR_TEST_SCOPE_CODE"; }
 cfmgr_execution_tasks_finish() { : >"$cfmgr_test_marker/finish"; cfmgr_tasks_state=quiescent; }
-cfmgr_execution_view_release() { : >"$cfmgr_test_marker/release-view"; cfmgr_view_state=released; }
+cfmgr_execution_view_release() { : >"$cfmgr_test_marker/release-view"; cfmgr_view_state=released cfmgr_keeper_state=released; }
 """
     assert LINUX_REPAIR_CONTROLLER.count(anchor) == 1
     script = LINUX_REPAIR_CONTROLLER.replace(anchor, addition + anchor)
@@ -317,8 +317,8 @@ cfmgr_execution_view_release() { : >"$cfmgr_test_marker/release-view"; cfmgr_vie
         timeout=3,
     )
     assert result.returncode == 0, result.stderr
-    assert f"result={code}\n".encode() in result.stdout
     assert (marker / "scope-recheck").exists()
+    assert f"result={code}\n".encode() in result.stdout, result.stderr.decode()
     assert not (marker / "repair-once").exists()
     assert (marker / "finish").exists() == (code == 1)
     assert (marker / "release-view").exists() == (code == 1)

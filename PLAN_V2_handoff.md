@@ -87,9 +87,17 @@ remains pending groups A–D; S02.06 is focused-local-passed, not accepted.
 Parent regenerated `manifest.txt`; catalog inventory is unchanged. An earlier
 worker ShellCheck against superseded source was cancelled (exit 130), supplying
 no proof; final runner ShellCheck passed. All workers and local commands are
-complete. Next: normal candidate commit/push with group A trailer, manually
-dispatch B–D at that same head, inspect all jobs and timings, repair if needed,
-then record acceptance/README/handoff and pause. No other package may start.
+complete. Candidate `b56026f948d25706f754c8e051f7a25a72fc36f2` is committed,
+normally pushed and remote-verified. Required Quick runs at that exact head:
+A `38439720618` failed in the new Linux callback fixture: its release adapter
+omitted keeper state `released`, correctly causing production cleanup to retain
+the claim. The assertion alone did not establish whether the callback had run.
+Parent restored the complete adapter state and moved the callback-marker check
+before the result assertion. Runtime is unchanged. B `38439743516`, C
+`38439748042`, D `38439753616` were cancelled promptly; none supplies acceptance.
+Repeat A at the repaired candidate first, then B–D at that same SHA. Inspect all
+jobs and timings before acceptance/README/handoff and pause. No other package
+may start.
 
 Required focused groups, each at the final candidate SHA (whole modules; optional
 diagnostics excluded):
