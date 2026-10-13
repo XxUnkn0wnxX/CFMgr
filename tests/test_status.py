@@ -172,6 +172,63 @@ def test_partial_invalid_and_terminal_unsafe_config_sections(
 
 
 @pytest.mark.parametrize(
+    ("check", "auto", "developer", "expected", "suppression"),
+    [
+        (
+            True,
+            False,
+            False,
+            "Manager updates: saved Check=On; saved Auto=Off; effective Check=On; effective Auto=Off",
+            False,
+        ),
+        (
+            False,
+            True,
+            False,
+            "Manager updates: saved Check=Off; saved Auto=On; effective Check=Off; effective Auto=Off",
+            False,
+        ),
+        (
+            True,
+            True,
+            True,
+            "Manager updates: saved Check=On; saved Auto=On; effective Check=Off; effective Auto=Off",
+            True,
+        ),
+        (
+            "true",
+            True,
+            False,
+            "Manager updates: saved Check=Unknown; saved Auto=On; effective Check=Unknown; effective Auto=Unknown",
+            False,
+        ),
+        (
+            True,
+            True,
+            "false",
+            "Manager updates: saved Check=On; saved Auto=On; effective Check=Unknown; effective Auto=Unknown",
+            False,
+        ),
+    ],
+)
+def test_manager_status_distinguishes_saved_and_effective_updates(
+    commands, config, tmp_path, check, auto, developer, expected, suppression
+):
+    value = json.loads(config)
+    value["manager"].update(
+        check_updates=check,
+        auto_update=auto,
+        developer=developer,
+    )
+    result = project(commands, tmp_path, value)
+    assert result.returncode == 0
+    output = result.stdout.decode()
+    assert expected in output
+    note = "developer mode suppresses manager updates; saved preferences are retained"
+    assert (note in output) is suppression
+
+
+@pytest.mark.parametrize(
     ("ip", "classification"),
     [
         ("10.0.0.1", "Private"),
@@ -325,7 +382,16 @@ printf 'status-code=%s\n' "$code"
 
 @pytest.mark.parametrize(
     "scenario",
-    ["normal", "corrupt", "symlink", "fifo", "oversized", "budget", "unresolved"],
+    [
+        "normal",
+        "corrupt",
+        "symlink",
+        "fifo",
+        "oversized",
+        "budget",
+        "unresolved",
+        "save-guards",
+    ],
 )
 def test_real_status_consumer_native_resources_and_failure_survival(
     status_fixture, config, tools, shell, tmp_path, scenario
@@ -346,6 +412,10 @@ def test_real_status_consumer_native_resources_and_failure_survival(
             candidate.symlink_to(source / "setup-state")
         else:
             os.mkfifo(candidate, 0o600)
+    if scenario == "save-guards":
+        (source / ".config-save.preparing").write_text("in progress\n")
+        (source / ".config-save").mkdir()
+        (source / ".config-save.retired").symlink_to(source / "missing-target")
     before = (source / "setup-state").read_bytes()
     result = subprocess.run(
         [
@@ -380,6 +450,14 @@ def test_real_status_consumer_native_resources_and_failure_survival(
         assert "Configuration: Unavailable" in out
     if scenario == "budget":
         assert "probe budget exhausted" in out
+    if scenario == "save-guards":
+        warning = (
+            "Issue: pending configuration Save/recovery guard; use explicit recovery"
+        )
+        assert out.count(warning) == 1
+        assert (source / ".config-save.preparing").read_text() == "in progress\n"
+        assert (source / ".config-save").is_dir()
+        assert (source / ".config-save.retired").is_symlink()
     assert (
         "status-code=3" in out if scenario == "unresolved" else "status-code=0" in out
     )

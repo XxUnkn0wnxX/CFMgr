@@ -18,7 +18,186 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Paused — S03.07 accepted; larger shared dependencies remain
+## Active — S07.01 with native Save support
+
+The user authorized this recommended Goal 7 + Goal 4 package on 2026-10-14:
+"ok start & pause on the next large cross-over". Baseline is clean, published
+`fd1ea8aef7b51d180348fea499eb4f08000289d2` on the existing `develop` checkout.
+No worktree changes. Finish the complete S07.01 consumer and required focused
+local/static/review/exact-candidate Quick gates, publish the accepted receipt, and
+pause before the next substantial crossover. The agreed checkpoint publication
+permission continues for this package; no history rewrite, live deployment,
+router execution or release is authorized.
+
+Continuity skill refreshed from its installed `SKILL.md` and all four current
+references on 2026-10-14, including `resumption-and-audits.md`. Lightweight
+reconciliation found 157 matching unique plan/checklist IDs, 8 accepted, and all
+five parent-session ledger entries/provenance unchanged from HEAD. No new session
+was created or inferred. The roughly 64 KB handoff is navigable; no consolidation
+or extra accumulated-code/full-suite audit is due. Historical ownership wording
+was clarified without changing contracts or receipts. The approved root-level
+tracked plans, existing checkout, recovery evidence and S07.01 scope stay intact.
+
+Native storage design evidence was refreshed against retained source/provenance
+and the official Merlin Addons API, User scripts and Custom config files guidance.
+This package keeps the existing private add-on configuration; no firmware service
+config, shared custom settings or hooks are added. All three retained image
+inventories contain native flock/fsync and OpenSSL. Pinned 3004/3006 flock source
+supports inherited numeric descriptors, nonblocking exclusion and contention
+exit 1. Existing prerequisite tests exercise that interface. The retained fsync
+source can print syscall failure on stderr while returning zero, so both status
+and stderr remain mandatory checks. Retained mv can copy/remove after EXDEV;
+the Save candidate and destination must remain on the same pinned filesystem.
+JFFS2 can discard internal flash-flush errors as already documented in the plan;
+cached readback does not prove reboot persistence. OpenSSL digest support is
+not established by its existing CA parser admission: the new native digest mode
+needs a known-vector check and strict bounded output framing before use. No
+firmware image or router code was executed for this evidence refresh.
+
+Completion target: **S07.01 only** — real `ao → CFMgr updates` Check/Auto controls,
+coupled effective values, private persistent Save, and correct reopened menu/status
+values independent of Cloudflared and working Entware. Necessary support comes
+from S04.02 scoped concurrent Save and S04.03 staged durable commit, with applicable
+S04.01/S04.08/S04.09 parsing, ownership and generation safeguards. Preserve unrelated
+settings/guards, detect raw edits, bound retries, handle cancellation and exposed
+write/rename/flush/interruption failures, and preserve unresolved recovery material.
+No generic-framework expansion, updater/downloader, schedules, provider actions or
+whole Goal 4 completion. Supporting IDs remain unchecked unless their complete
+original contracts are proved; do not rewrite acceptance to fit this package.
+
+The prior Astra scope audit confirmed this is the next smallest demonstrated full
+subgoal. S03.08 still needs production history writers; S03.10 covers both status
+and the absent full-health consumer. No independent shortcut is selected.
+
+The Astra `s0204_scope_audit` DESIGN is integrated. Parent owns decisions, all
+four planning records, package metadata and final review/publication. Native
+evidence exploration is complete. Implementation proceeds in two dependent
+stages of this one package, without parallel writers on shared files:
+
+1. Strong worker `s0204_runtime` owns `modules/lib/config_store.sh`, narrowly
+   required probe/supervisor adapters, common-lock/recovery admission in the
+   observation writer and focused store/coordination tests. Its initial fixed
+   settings parser modes are implemented and released: Luna `s0701_settings_ui`
+   completed that parser test package: 26 tests passed in 2.41s with Ruff and
+   whitespace checks. Luna also completed the independent saved/effective/
+   recovery status display (`modules/status.sh`, `modules/lib/status.awk`,
+   `tests/test_status.py`) using its existing snapshot interface: 34 passed,
+   2 Linux-only skips in 8.20s; Ruff, shell syntax/format/ShellCheck and whitespace
+   passed. Parent reviewed both diffs; all five files are released. Commands used
+   `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' .venv/bin/pytest -q` with the
+   respective complete module on dirty `fd1ea8a`; this is partial local evidence,
+   not S07.01 acceptance. The first complete host Store batch passed 8 tests in
+   20.56s; added concurrency/interruption cases and actual Linux supervisor proof
+   are still being finished. Strong has released `launch.sh` after completing
+   the common-lock wrapper; its remaining ownership is the Store/probe/supervisor
+   and their tests. Analyst `s0204_safety_review` is reviewing those native paths.
+2. Luna `s0701_settings_ui` completed the source-inert settings screen and isolated
+   interface tests (`modules/manager_settings.sh`, `tests/test_manager_settings.py`):
+   21 passed in 1.28s with Ruff, POSIX syntax, shfmt, ShellCheck and whitespace
+   checks. These use a finite Store adapter and are provisional consumer evidence.
+   It now owns installed-entry imports in `cfmgr.sh`, the released launch menu,
+   bootstrap's mandatory-module inventory, the old inert entry fixture and new
+   `tests/test_manager_settings_entry.py`. Real Store PTY Save/cancel/reopen/
+   recovery and prompt-time lock tests are the next integration gate. It must
+   not edit Strong's files or package metadata. Acceptance still requires the
+   complete combined focused gates; no product tick is earned yet.
+
+Public frame: `CFMGR-STORE 1 RESULT GENERATION CHECK AUTO DEVELOPER PENDING END`
+plus one newline. Success results are read/saved/unchanged/recovered; failure
+results are busy/stale/unavailable/recovery/unresolved. Typed flags are 0/1;
+generation 0 is only a failed/unavailable placeholder. Invalid arguments return
+2 without requiring a frame. UI must validate framing, result/status agreement
+and operation; only successful receipts establish saved values. Explicit recovery
+may return `unchanged` when no pending operation remains; this is idempotent
+recovery, not a claim that a Save occurred.
+
+The store exposes only native `read`, `save(mask, check, auto)` and explicit
+`recover`; no arbitrary JSON mutation API. Check On and Auto Off own their single
+field; Auto On and Check Off own both coupled fields. Save reapplies accumulated
+reviewed intent to fresh authority under a stable private RAM config lock and
+preserves all other raw bytes. Viewing contradictory saved values does not change
+them: effective Auto requires Check; developer mode suppresses effective activity
+while preserving preferences. Prompts remain outside the transaction subprocess.
+
+Use a finite preparing → active → retired journal on the same pinned JFFS mount,
+with verified private old/candidate/intent data, strict raw-content identities,
+checked writes/flushes and bounded freshness retries. No live mutation precedes
+an armed guard. Recovery is separately confirmed: an exact old match retains old
+settings without replaying opt-in; an exact candidate match verifies/flushes it;
+divergent, missing or corrupt live data is preserved and stays blocked. Unknown
+journal contents are never deleted. Both current configuration writers acquire
+the same stable lock and honor pending recovery; the old observation writer
+rechecks raw freshness after acquisition. FD0 is borrowed only in transactions,
+explicitly inherited by mutating asynchronous children, and released by close
+after ownership resolves, never by unlink or early flock unlock. These inherited
+descriptor and native digest contracts require real Linux proof. Preserve the
+accepted JFFS2 limit; no new flash/reboot durability claim is implied.
+
+Initial focused gate scope: actual settings menu/Save/reopen/status consumer,
+coupling and unchanged preferences on cancel; preserved unrelated raw settings,
+content-change concurrency and idempotent/no-op Save; guarded write/rename/flush/
+signal/restart recovery failures; real Linux ownership/locking/bounds; all affected
+entry/config/parser/storage/retained-launch/package groups. Final groups and costs
+will follow the actual change map. Full local/full CI suites are not due. Accepted
+progress remains **8/157 (5.1%), 0/16 main goals (0%)**; Goal 7 starts **0/11**,
+Goal 2 remains **6/9**, Goal 3 **2/10**.
+
+Early read-only analyst review of the first native-store draft found premature
+retired-journal cleanup and three branches that collapsed unresolved ownership
+into ordinary failure. Parent verified and returned both for correction and
+regression proof. The final runtime review confirms both corrected, and reviewed
+Store/probe/supervisor blobs `8b95450`/`250401b`/`ae70b46` and launch `37aaed8`
+without another runtime blocker. It required actual borrowed-observation lock
+proof because earlier fixtures bypassed that helper. Added test blob `9064cf2`
+closes that review finding: Linux executes the real helper/wrapper, FD5/8/9 and
+mountinfo checks, native/admitted Entware flock branches, release and recovery
+crossguard; the host contention test also uses the real helper. Analyst result
+is PASS WITH NOTES: firmware roots/tool admission and the publication body are
+adapted, so this is shared-lock integration proof, not router qualification.
+Runtime and test ownership is now released to the parent. The final Store +
+prerequisites host batch passed **33 tests, 11 Linux skips in 64.46s** (wall65.14,
+user22.92, sys20.15). The completed Store + retained batch passed **27 tests,
+3 skips in 106.21s** before the final added Store-only observation proofs;
+retained behavior is unchanged afterward. The final UI + actual entry + reinstall
+batch passed **102 tests, 2 Linux skips in 64.71s**, including separate reopen,
+cancel, explicit recovery and no lock during confirmation. Changed-file static
+checks passed. These batches used the selected Homebrew POSIX shell on dirty
+`fd1ea8a`; firmware paths/admission are labelled host adapters. No live router
+execution occurred.
+
+Parent regenerated catalog/manifest and started the complete repository static
+gate plus the remaining focused local regressions in
+`.tmp/s0701-local-final.log`. Do not rerun completed unchanged groups merely for
+bookkeeping. Final exact-candidate Quick groups are disjoint whole modules:
+
+| Group | Modules under `tests/` | Required proof |
+| --- | --- | --- |
+| A | `test_config_store.py`, `test_config_observation.py`, `test_config.py` | Native Save/recovery, shared lock, raw-preserving intent and schema/default regression; review the new Store batch cost independently. |
+| B | `test_manager_settings.py`, `test_manager_settings_entry.py`, `test_status.py`, `test_dependency_reinstall.py` | Actual settings/menu/reopen/status and existing entry/reinstall routing. |
+| C | `test_prerequisites.py`, `test_native.py`, `test_dependency_consumer.py`, `test_dependency_selection.py`, `test_execution_tasks.py` | Shared async supervisor/FD changes and existing native/dependency consumers. |
+| D | `test_install.py`, `test_package.py`, `test_storage.py`, `test_storage_mounts.py`, `test_mount_keeper.py` | Fresh/retained package inventory and shared storage/worker regressions. |
+| E | `test_dependencies.py` | Actual repair controller, cancellation, loss and cleanup under the shared supervisor. |
+| F | `test_retained_launch.py` | Existing retained observation and operational admission after common locking. |
+
+The parent local gate passed: **170 passed, 44 platform skips, 4 optional
+diagnostics deselected in 124.45s**; complete runner wall392.53/user242.94/sys50.50
+seconds, maximum RSS5,491,232,768 bytes. Command was
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python tools/test.py --focused`
+with `test_config.py`, `test_dependency_selection.py`, `test_native.py`,
+`test_dependency_consumer.py`, `test_execution_tasks.py`, `test_install.py`,
+`test_package.py`, `test_storage.py`, `test_storage_mounts.py`,
+`test_mount_keeper.py` and `test_dependencies.py` under `tests/`.
+Planning/package/whitespace, all shell syntax, Ruff lint/format, Python compile,
+ShellCheck and shfmt passed. Whole-repository ShellCheck dominated local static
+cost and memory; no gate was weakened or duplicated. This is not a new full-suite
+benchmark or justification for increasing CI limits. Final parent source/package
+review passed; exact-SHA CI must execute the skipped Linux/BusyBox proof.
+
+No full suite or main-goal audit is due. The complete local focused scope is
+passed; exact-SHA CI remains pending. All acceptance boxes and README counts
+remain unchanged until every prescribed group passes.
+
+## Completed checkpoint — S03.07 accepted
 
 The user resumed on 2026-10-14: work on the next smallest task, allow automatic
 checkpoint publication after its test/review gate, and pause before a large
@@ -566,8 +745,9 @@ optional diagnostic limits are in [review notes](PLAN_V2_review_notes.md).
 
 S02.06's workers and required CI completed at `03a4f01`; its documentation receipt
 used proportionate planning/link/privacy, counts/session-record and whitespace
-checks. Current S02.04 ownership and required proof are recorded at the top of this
-handoff. Before any later resumption, verify `git status --short` and exact
+checks. Current package ownership and required proof are recorded at the top of
+this handoff; S02.04's receipt remains in its completed section. Before any later
+resumption, verify `git status --short` and exact
 local/remote develop state. The earlier reset grant has been consumed.
 
 AGENTS owns standing routes: focused local work commits/continues; required Linux
@@ -585,7 +765,7 @@ necessary coverage grows, never beyond 40 minutes. Current eight-minute cost is 
 
 ## Ownership and implemented boundary
 
-The completed ownership and pause boundary are recorded at the top of this handoff.
+Current ownership and the next stop boundary are recorded at the top of this handoff.
 Parent owns the four planning files, integration, CI decisions and acceptance.
 S02.06 and S02.04 are accepted. S02.01, S02.02 and S02.07
 require a later user resumption after the selected checkpoint.
@@ -617,7 +797,9 @@ Implemented consumers:
 Parent review integrated post-repair record/snapshot migration, live-old/candidate
 hash checks, native logger symlink admission and storage-loss reporting outside
 opkg. Failed publication retains recovery evidence. Final guard-removal durability
-failure retains RAM evidence; do not invent an automatic recovery/adoption subsystem.
+failure retains RAM evidence. That accepted storage-observation checkpoint did
+not implement automatic recovery/adoption; the currently authorized native
+settings recovery is described separately at the top of this handoff.
 
 Keep these settled contracts:
 
@@ -739,14 +921,15 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-S02.06, S02.04 and now S03.07 are complete through their required checkpoints.
-The next-smallest-task request is finished, and the user-required pause before
-larger shared/cross-goal work is active as recorded above. The user has set project-wide
+S02.06, S02.04 and S03.07 are complete through their required checkpoints.
+The user has now authorized the bounded S07.01/native Save package recorded at
+the top of this handoff. Finish that checkpoint and pause before another large
+shared/cross-goal package. The user has set project-wide
 selection order: follow the [work ordering rule](AGENTS.md#implementation-and-preservation),
 finishing independent subgoals and prerequisites before larger features. Use a
 coordinated multi-goal batch only when no smaller ready, independently completable
-outcome remains. This records the ordering policy; no new implementation package
-is selected by this instruction update.
+outcome remains. The current S07.01 selection follows the prior smallest-task
+audit; this ordering policy does not authorize an additional package.
 Final documentation subgoals follow the explicit phase gate in the specification
 and checklist; do not select interim documentation as an early completion. Finish
 started libraries/subgoals before switching; inspect existing consumers, tests and

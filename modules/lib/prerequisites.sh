@@ -92,9 +92,11 @@ cfmgr_prerequisites_pause() {
 }
 
 _cfmgr_prerequisites_attachment() {
+	if [ "${cfmgr_config_lock_fd0:-0}" = 1 ]; then cfmgr_store_fd_is "${cfmgr_store_lock:-}" 0 || return 1; fi
 	case ${cfmgr_probe_mode:-none} in
 	launch-*) cfmgr_launch_attachment_ok ;;
 	status-*) cfmgr_status_attachment_ok ;;
+	store-*) cfmgr_store_attachment_ok ;;
 	repair-*) cfmgr_dependencies_attachment_ok ;;
 	*) cfmgr_prerequisites_attachment_ok ;;
 	esac
@@ -120,6 +122,10 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	store-settings) [ "$#" -eq 17 ] || return 2 ;;
+	store-copy | store-move | store-intent | store-space-frame) [ "$#" -eq 11 ] || return 2 ;;
+	store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;
+	store-count | store-meta | store-meta-frame | store-snapshot | store-digest | store-digest-frame | store-lock-create | store-lock-test | store-mkdir | store-remove | store-rmdir | store-space) [ "$#" -eq 10 ] || return 2 ;;
 	status-config) [ "$#" -eq 20 ] || return 2 ;;
 	status-snapshot | status-nvram | status-space | status-realpath | status-metadata | status-count) [ "$#" -eq 10 ] || return 2 ;;
 	status-fields) [ "$#" -eq 13 ] || return 2 ;;
@@ -164,6 +170,16 @@ cfmgr_prerequisites_run() {
 	cfmgr_prerequisites_supervisor || return 2
 	cfmgr_probe_deadline=$((cfmgr_probe_now + 2))
 	case $cfmgr_probe_mode in native-dns-native-srv | native-dns-native-a | native-dns-dig-srv | native-dns-dig-a) cfmgr_probe_deadline=$((cfmgr_probe_now + 4)) ;; esac
+	case $cfmgr_probe_mode in store-*)
+		case ${cfmgr_store_deadline:-} in
+		'' | *[!0-9]*) return 2 ;;
+		*)
+			[ "$cfmgr_probe_now" -lt "$cfmgr_store_deadline" ] || return 1
+			[ "$cfmgr_store_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_store_deadline
+			;;
+		esac
+		;;
+	esac
 	case $cfmgr_probe_mode in status-*)
 		case ${cfmgr_status_deadline:-} in
 		[0-9]*) [ "$cfmgr_status_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_status_deadline ;;
@@ -187,7 +203,7 @@ cfmgr_prerequisites_run() {
 	}
 	cfmgr_probe_label=$cfmgr_probe_mode
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-*)
+	install-* | native-* | repair-* | launch-* | status-* | store-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
 		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
@@ -203,26 +219,11 @@ cfmgr_prerequisites_run() {
 		set -C
 		: >"$cfmgr_probe_stdout" && : >"$cfmgr_probe_stderr"
 	) || return 2
-	(
-		# Clear loader/config input before even execing the env utility. env-i
-		# sanitizes its child, but cannot protect env own dynamic-loader startup.
-		unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE \
-			LD_ORIGIN_PATH LD_ASSUME_KERNEL LD_BIND_NOW LD_TRACE_LOADED_OBJECTS \
-			DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH \
-			DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
-			OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
-		case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; status-snapshot) ulimit -f 128 || exit 2 ;; install-copy | launch-copy) ulimit -f 2048 || exit 2 ;; launch-config-patch) ulimit -f 128 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
-		case "$cfmgr_probe_mode" in
-		install-* | native-* | repair-* | launch-* | status-*)
-			shift 9
-			exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
-			;;
-		timeout-exit) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" ;;
-		timeout-expiry) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_sleep" ;;
-		blkid) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" blkid "$cfmgr_probe_tool" "$cfmgr_probe_context" "${10}" ;;
-		*) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" ;;
-		esac
-	) >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+	if [ "${cfmgr_config_lock_fd0:-0}" = 1 ]; then
+		(_cfmgr_prerequisites_exec "$@") 0<&0 >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+	else
+		(_cfmgr_prerequisites_exec "$@") >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+	fi
 	cfmgr_probe_pid=$!
 	# Save identity before supervising. A vanished immediate child is already reapable.
 	if cfmgr_prerequisites_identity "$cfmgr_probe_pid"; then
@@ -530,4 +531,27 @@ cfmgr_prerequisites_check() {
 	fi
 	cfmgr_prereq_result=capabilities-checked
 	[ -z "$cfmgr_prereq_missing" ]
+}
+
+# Only a settings/observation lock owner requests explicit stdin inheritance.
+# POSIX async shells may otherwise replace FD0 with /dev/null.
+_cfmgr_prerequisites_exec() {
+	# Clear loader/config input before even execing the env utility. env-i
+	# sanitizes its child, but cannot protect env own dynamic-loader startup.
+	unset LD_PRELOAD LD_LIBRARY_PATH LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE \
+		LD_ORIGIN_PATH LD_ASSUME_KERNEL LD_BIND_NOW LD_TRACE_LOADED_OBJECTS \
+		DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH \
+		DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
+		OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
+	case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; status-snapshot | store-snapshot | store-settings | store-copy) ulimit -f 128 || exit 2 ;; install-copy | launch-copy) ulimit -f 2048 || exit 2 ;; launch-config-patch) ulimit -f 128 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
+	case "$cfmgr_probe_mode" in
+	install-* | native-* | repair-* | launch-* | status-* | store-*)
+		shift 9
+		exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
+		;;
+	timeout-exit) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" ;;
+	timeout-expiry) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_sleep" ;;
+	blkid) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" blkid "$cfmgr_probe_tool" "$cfmgr_probe_context" "${10}" ;;
+	*) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" ;;
+	esac
 }

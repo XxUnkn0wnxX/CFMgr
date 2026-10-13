@@ -174,6 +174,14 @@ cfmgr_status_work() {
 	else
 		[ "$?" != 3 ] || return 3
 	fi
+	cfmgr_status_save_pending=0
+	for cfmgr_status_save_guard in .config-save.preparing .config-save .config-save.retired; do
+		if [ -e "$cfmgr_source/$cfmgr_status_save_guard" ] || [ -L "$cfmgr_source/$cfmgr_status_save_guard" ]; then
+			cfmgr_status_save_pending=1
+			break
+		fi
+	done
+	[ "$cfmgr_status_save_pending" = 0 ] || printf 'Issue: pending configuration Save/recovery guard; use explicit recovery\n'
 	if [ "$cfmgr_status_config" != unavailable ] && cfmgr_status_project render; then
 		# The parser emits only a safe typed projection, never input bytes/errors.
 		while IFS= read -r cfmgr_status_line; do printf '%s\n' "$cfmgr_status_line"; done <"$cfmgr_probe_stdout"

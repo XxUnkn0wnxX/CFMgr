@@ -4,6 +4,7 @@
 # Fixed firmware roots/native admission are caller adapters, never product env.
 # shellcheck disable=SC2034,SC2154,SC3013,SC1090,SC1091
 . "$installer_package/modules/helpers/launch.sh"
+. "$installer_package/modules/lib/config_store.sh"
 retained_support=$fixture/jffs/addons/CFMgr.d
 mkdir -p "$fixture/jffs/addons" "$fixture/jffs/scripts"
 mkdir -m 700 "$retained_support"

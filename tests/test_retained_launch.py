@@ -71,6 +71,9 @@ HOST_LAUNCH = r"""
 . "$1/modules/lib/prerequisites.sh"
 . "$1/modules/helpers/bootstrap.sh"
 . "$1/modules/helpers/launch.sh"
+# Native lock/supervisor proof is in test_config_store; old host transaction
+# fixtures adapt firmware lock admission along with their mount admission.
+cfmgr_config_store_observation_lock() { return 0; }
 shift
 cfmgr_install_source=$1 cfmgr_install_jffs=$2 cfmgr_install_context=$3
 cfmgr_install_private_context=$3 cfmgr_install_source_fd=9 cfmgr_install_context_fd=0

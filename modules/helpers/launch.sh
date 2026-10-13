@@ -15,9 +15,13 @@ cfmgr_launch_menu() {
 		0) cfmgr_status_native || : ;;
 		ao)
 			while :; do
-				printf '%s\n' 'Advanced options: other actions unavailable' '1 Reinstall Entware dependencies' 'e Back'
+				printf '%s\n' 'Advanced options: other actions unavailable' '1 Reinstall Entware dependencies' '2 CFMgr updates' 'e Back'
 				IFS= read -r cfmgr_launch_choice || return 1
-				case $cfmgr_launch_choice in 1) return 0 ;; e) break ;; esac
+				case $cfmgr_launch_choice in
+				1) return 0 ;;
+				2) cfmgr_manager_settings || : ;;
+				e) break ;;
+				esac
 			done
 			;;
 		esac
@@ -189,7 +193,7 @@ EOF_RECEIPT
 # post-probes. Installed cfmgr.sh maps to the external scripts entry, never reset.
 cfmgr_launch_package_structure() {
 	cfmgr_launch_guard=$cfmgr_install_source/.storage-observation
-	for cfmgr_launch_blocker in "$cfmgr_launch_guard" "$cfmgr_install_source/entry.stage" "$cfmgr_install_source/.setup.complete"; do
+	for cfmgr_launch_blocker in "$cfmgr_launch_guard" "$cfmgr_install_source/entry.stage" "$cfmgr_install_source/.setup.complete" "$cfmgr_install_source/.config-save.preparing" "$cfmgr_install_source/.config-save" "$cfmgr_install_source/.config-save.retired"; do
 		[ ! -e "$cfmgr_launch_blocker" ] && [ ! -L "$cfmgr_launch_blocker" ] || return 1
 	done
 	cfmgr_launch_metadata "$cfmgr_install_source" private || return $?
@@ -349,6 +353,16 @@ cfmgr_launch_observation() {
 }
 
 cfmgr_launch_publish_observation() {
+	# Inline wrapper preserves the original transaction's recovery/child state.
+	if cfmgr_config_store_observation_lock && cfmgr_launch_publish_observation_locked; then cfmgr_launch_lock_code=0; else cfmgr_launch_lock_code=$?; fi
+	if [ "$cfmgr_launch_lock_code" != 3 ]; then
+		exec 0<&-
+		cfmgr_config_lock_fd0=0
+	fi
+	return "$cfmgr_launch_lock_code"
+}
+
+cfmgr_launch_publish_observation_locked() {
 	cfmgr_launch_attachment_ok && cfmgr_launch_live_unchanged || return $?
 	[ ! -e "$cfmgr_launch_guard" ] && [ ! -L "$cfmgr_launch_guard" ] || return 1
 	cfmgr_bootstrap_action install-mkdir-private "$cfmgr_launch_guard" || return $?

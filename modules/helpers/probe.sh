@@ -45,6 +45,97 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
+store-settings)
+	[ "$#" -eq 8 ] || exit 2
+	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done
+	[ -f "$4" ] && [ ! -L "$4" ] || exit 1
+	case $3 in settings-read | settings-observe | settings-patch) ;; *) exit 2 ;; esac
+	case $5 in '' | *[!0-9]*) exit 2 ;; esac
+	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
+	export CFMGR_SETTINGS_MASK="$6" CFMGR_SETTINGS_CHECK="$7" CFMGR_SETTINGS_AUTO="$8"
+	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -f "$1" -f "$2" <"$4"
+	;;
+store-count | store-meta | store-snapshot | store-digest)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
+	case $mode in
+	store-count) exec "$tool" -c <"$1" ;;
+	store-meta) exec "$tool" -ildn "$1" ;;
+	store-snapshot)
+		exec 8<"$1" || exit 1
+		[ -f /proc/self/fd/8 ] && [ ! -L "$1" ] && [ "$1" -ef /proc/self/fd/8 ] || exit 1
+		# BusyBox dd has no status=none. Errors still return nonzero; caller
+		# requires exact metadata/size before and after this capped read.
+		exec "$tool" bs=4096 count=17 <&8 2>/dev/null
+		;;
+	store-digest) exec "$tool" dgst -sha256 -r <"$1" ;;
+	esac
+	;;
+store-meta-frame)
+	[ "$#" -eq 1 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" 'NR!=1 || NF<7 || $1!~/^[0-9]+$/ || $2!="-rw-------" || $4!=0 || $6!~/^[0-9]+$/ || $6<1 || $6>65536 {bad=1; exit 1} {print $1 ":" $6} END {if(bad || NR!=1) exit 1}' "$1"
+	;;
+store-digest-frame)
+	[ "$#" -eq 1 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" 'NR!=1 || length($0)!=71 || substr($0,65)!=" *stdin" || substr($0,1,64)~/[^0-9a-fA-F]/ {bad=1; exit 1} {print tolower(substr($0,1,64))} END {if(bad || NR!=1) exit 1}' "$1"
+	;;
+store-lock-create)
+	[ "$#" -eq 1 ] || exit 2
+	if [ -e "$1" ] || [ -L "$1" ]; then exit 0; fi
+	umask 077
+	set -C
+	: >"$1"
+	;;
+store-lock)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -n 0
+	;;
+store-lock-test)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
+	exec 4<>"$1" || exit 1
+	exec "$tool" -n 4
+	;;
+store-flush)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" /proc/self/fd/3
+	;;
+store-copy)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ ! -e "$2" ] && [ ! -L "$2" ] || exit 1
+	exec "$tool" "$1" "$2"
+	;;
+store-mkdir)
+	[ "$#" -eq 1 ] && [ ! -e "$1" ] && [ ! -L "$1" ] || exit 1
+	exec "$tool" -m 700 "$1"
+	;;
+store-move)
+	[ "$#" -eq 2 ] && [ ! -L "$1" ] && [ ! -L "$2" ] || exit 1
+	exec "$tool" "$1" "$2"
+	;;
+store-remove | store-rmdir)
+	[ "$#" -eq 1 ] && [ ! -L "$1" ] || exit 1
+	case $mode in store-remove) exec "$tool" -f "$1" ;; *) exec "$tool" "$1" ;; esac
+	;;
+store-space)
+	[ "$#" -eq 1 ] || exit 2
+	exec "$tool" -Pk "$1"
+	;;
+store-space-frame)
+	[ "$#" -eq 2 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" -v needed="$2" 'NR>2 || length($0)>1024 {bad=1; exit 1} NR==2 {if(NF!=6 || $4!~/^[0-9]+$/ || $4<needed) bad=1} END {if(bad || NR!=2) exit 1}' "$1"
+	;;
+store-intent)
+	[ "$#" -eq 2 ] || exit 2
+	# Fixed ASCII frame; decimal generation increment is string arithmetic.
+	# shellcheck disable=SC2016
+	exec "$tool" -v size="$2" '
+	function gen(s) {return s~/^[1-9][0-9]*$/ && length(s)<=20}
+	function inc(s, i,d,r,c) {c=1;r="";for(i=length(s);i>0;i--){d=substr(s,i,1)+c;c=d>9;r=(d%10) r}return (c?"1":"") r}
+	NR!=1 || length($0)+1!=size || NF!=9 || $1!="CFMGR-SETTINGS-INTENT" || $2!="1" || $9!="END" || !gen($3) || !gen($4) || ("g" inc($3))!=("g" $4) || $5!~/^[1-9][0-9]*$/ || $6!~/^[1-9][0-9]*$/ || $5>65536 || $6>65536 || length($7)!=64 || length($8)!=64 || $7~/[^0-9a-f]/ || $8~/[^0-9a-f]/ {bad=1;exit 1}
+	{if($0!=$1 " " $2 " " $3 " " $4 " " $5 " " $6 " " $7 " " $8 " " $9){bad=1;exit 1};print $3 " " $4 " " $5 " " $6 " " $7 " " $8}
+	END {if(bad || NR!=1) exit 1}' "$1"
+	;;
 status-date)
 	[ "$#" -eq 0 ] || exit 2
 	exec "$tool" +%s

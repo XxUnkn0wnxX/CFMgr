@@ -7,7 +7,9 @@
 BEGIN {
     if (!cfmgr_json_tree_ready || cfmgr_json_mode != "tree") reject()
     if (cfmgr_config_mode != "check" && cfmgr_config_mode != "observe" &&
-        cfmgr_config_mode != "patch" && cfmgr_config_mode != "scope") reject()
+        cfmgr_config_mode != "patch" && cfmgr_config_mode != "scope" &&
+        cfmgr_config_mode != "settings-read" && cfmgr_config_mode != "settings-observe" &&
+        cfmgr_config_mode != "settings-patch") reject()
 
     for (co_i = 2; co_i <= cfmgr_json_tree_count; co_i++)
         co_child[cfmgr_json_tree_parent[co_i], cfmgr_json_tree_location[co_i]] = co_i
@@ -21,9 +23,9 @@ BEGIN {
     co_new = co_old
 
     co_manager = co_field(1, "manager", "object")
-    co_field(co_manager, "check_updates", "boolean")
-    co_field(co_manager, "auto_update", "boolean")
-    co_field(co_manager, "developer", "boolean")
+    co_check = co_field(co_manager, "check_updates", "boolean")
+    co_auto = co_field(co_manager, "auto_update", "boolean")
+    co_developer = co_field(co_manager, "developer", "boolean")
     co_field(co_manager, "developer_log_directory", "string|null")
     co_source = co_field(co_manager, "source", "object")
     co_field(co_source, "repository", "string")
@@ -80,6 +82,52 @@ BEGIN {
     co_field(1, "backup", "object")
     co_field(1, "credentials", "object")
     co_field(1, "ownership", "object")
+
+    if (cfmgr_config_mode ~ /^settings-/) {
+        co_settings_check = (cfmgr_json_tree_kind[co_check] == "true" ? 1 : 0)
+        co_settings_auto = (cfmgr_json_tree_kind[co_auto] == "true" ? 1 : 0)
+        co_settings_developer = (cfmgr_json_tree_kind[co_developer] == "true" ? 1 : 0)
+        if (cfmgr_config_mode == "settings-read") {
+            printf "CFMGR-SETTINGS 1 %s %d %d %d END\n", co_old,
+                co_settings_check, co_settings_auto, co_settings_developer
+            exit 0
+        }
+        co_settings_mask = ENVIRON["CFMGR_SETTINGS_MASK"]
+        co_settings_want_check = ENVIRON["CFMGR_SETTINGS_CHECK"]
+        co_settings_want_auto = ENVIRON["CFMGR_SETTINGS_AUTO"]
+        if (co_settings_mask !~ /^(check|auto|both)$/ || co_settings_want_check !~ /^[01]$/ ||
+            co_settings_want_auto !~ /^[01]$/) reject()
+        co_target_check = co_settings_check
+        co_target_auto = co_settings_auto
+        if (co_settings_mask == "check" || co_settings_mask == "both") co_target_check = co_settings_want_check + 0
+        if (co_settings_mask == "auto" || co_settings_mask == "both") co_target_auto = co_settings_want_auto + 0
+        # The reviewed intent closure is applied to a fresh locked base: Check
+        # Off also disables Auto; Auto On also enables Check. Own-field changes
+        # preserve the other fresh value. Contradictory explicit pairs refuse.
+        if (co_settings_mask == "check" && !co_target_check) co_target_auto = 0
+        if (co_settings_mask == "auto" && co_target_auto) co_target_check = 1
+        if (co_target_auto && !co_target_check) reject()
+        co_changed = (co_target_check != co_settings_check || co_target_auto != co_settings_auto)
+        co_result = document
+        if (co_changed) {
+            co_new = co_increment(co_old)
+            co_replacement[co_generation] = co_new
+            if (co_target_check != co_settings_check) co_replacement[co_check] = (co_target_check ? "true" : "false")
+            if (co_target_auto != co_settings_auto) co_replacement[co_auto] = (co_target_auto ? "true" : "false")
+            co_result = ""; co_cursor = 1
+            for (co_i = 1; co_i <= cfmgr_json_tree_count; co_i++) {
+                if (!(co_i in co_replacement)) continue
+                co_result = co_result substr(document, co_cursor, cfmgr_json_tree_start[co_i] - co_cursor) co_replacement[co_i]
+                co_cursor = cfmgr_json_tree_end[co_i] + 1
+            }
+            co_result = co_result substr(document, co_cursor)
+        }
+        if (length(co_result) > 65536) reject()
+        if (cfmgr_config_mode == "settings-patch") printf "%s", co_result
+        else printf "CFMGR-SETTINGS-PATCH 1 %s %s %d %d %d %d %d %d END\n", co_old, co_new,
+            co_changed, co_target_check, co_target_auto, co_settings_developer, expected_size, length(co_result)
+        exit 0
+    }
 
     if (cfmgr_config_mode == "scope") {
         printf "CFMGR-SCOPE 1 %s %s END\n", co_old,

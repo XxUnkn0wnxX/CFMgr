@@ -9,6 +9,7 @@ modules/hooks/.gitkeep	data
 modules/lib/.gitkeep	library
 modules/lib/config.sh	library
 modules/lib/config_observation.awk	library
+modules/lib/config_store.sh	library
 modules/lib/dependencies.sh	library
 modules/lib/execution_tasks.sh	library
 modules/lib/execution_view.sh	library
@@ -20,4 +21,5 @@ modules/lib/prerequisites.sh	library
 modules/lib/status.awk	library
 modules/lib/status_native.awk	library
 modules/lib/storage.sh	library
+modules/manager_settings.sh	data
 modules/status.sh	data

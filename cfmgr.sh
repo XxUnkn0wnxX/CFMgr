@@ -59,7 +59,8 @@ case ${1-} in
 	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
 		# Status/navigation are admitted before any operational library/preflight.
 		for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
-			"$cfmgr_source/modules/helpers/launch.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/prerequisites.sh"; do
+			"$cfmgr_source/modules/helpers/launch.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/prerequisites.sh" \
+			"$cfmgr_source/modules/lib/config_store.sh" "$cfmgr_source/modules/manager_settings.sh"; do
 			[ ! -L "$cfmgr_import" ] && [ "$(/usr/bin/readlink -f "$cfmgr_import")" = "$cfmgr_import" ] || exit 1
 			# shellcheck disable=SC2016
 			/bin/ls -ldn "$cfmgr_import" | /usr/bin/awk 'NR!=1 || $3!=0 || $1 !~ /^[-d]/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad ? 1 : 0 }' || exit 1
@@ -67,13 +68,15 @@ case ${1-} in
 		# shellcheck disable=SC1091
 		. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1
 		. "$cfmgr_source/modules/status.sh" || exit 1
+		. "$cfmgr_source/modules/lib/config_store.sh" || exit 1
+		. "$cfmgr_source/modules/manager_settings.sh" || exit 1
 		. "$cfmgr_source/modules/helpers/launch.sh" || exit 1
 		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else exit 0; fi
 	fi
 	# Root-protected literal imports, never a config-selected source. Structural
 	# package admission precedes repair; full digests follow healthy SHA probes.
 	for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
-		"$cfmgr_source/modules/lib/storage.sh" "$cfmgr_source/modules/lib/prerequisites.sh" "$cfmgr_source/modules/lib/native.sh" \
+		"$cfmgr_source/modules/lib/storage.sh" "$cfmgr_source/modules/lib/prerequisites.sh" "$cfmgr_source/modules/lib/native.sh" "$cfmgr_source/modules/lib/config_store.sh" \
 		"$cfmgr_source/modules/lib/mount_keeper.sh" "$cfmgr_source/modules/lib/execution_view.sh" "$cfmgr_source/modules/lib/execution_tasks.sh" \
 		"$cfmgr_source/modules/lib/dependencies.sh" "$cfmgr_source/modules/helpers/bootstrap.sh" "$cfmgr_source/modules/helpers/launch.sh"; do
 		[ ! -L "$cfmgr_import" ] && [ "$(/usr/bin/readlink -f "$cfmgr_import")" = "$cfmgr_import" ] || exit 1
@@ -84,6 +87,7 @@ case ${1-} in
 	. "$cfmgr_source/modules/lib/storage.sh" || exit 1
 	. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1
 	. "$cfmgr_source/modules/lib/native.sh" || exit 1
+	. "$cfmgr_source/modules/lib/config_store.sh" || exit 1
 	. "$cfmgr_source/modules/lib/mount_keeper.sh" || exit 1
 	. "$cfmgr_source/modules/lib/execution_view.sh" || exit 1
 	. "$cfmgr_source/modules/lib/execution_tasks.sh" || exit 1

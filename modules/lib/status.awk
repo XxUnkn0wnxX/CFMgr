@@ -41,7 +41,18 @@ BEGIN {
         } else print "Manager source: developer " repository " / " branch (commit!="" ? " @ " commit : "")
     } else if(developer=="Off") print "Manager source: default " repository " / " branch
     else print "Manager source: Unknown (invalid developer setting)"
-    print "Manager check updates: " boolean(field(manager,"check_updates")) "; auto-update: " boolean(field(manager,"auto_update"))
+    check_updates=boolean(field(manager,"check_updates")); auto_update=boolean(field(manager,"auto_update"))
+    if(developer=="On") {
+        effective_check=(check_updates=="Unknown" ? "Unknown" : "Off")
+        effective_auto=(check_updates=="Unknown" || auto_update=="Unknown" ? "Unknown" : "Off")
+    } else if(developer=="Off") {
+        effective_check=check_updates
+        effective_auto=(check_updates=="Unknown" || auto_update=="Unknown" ? "Unknown" : (check_updates=="On" && auto_update=="On" ? "On" : "Off"))
+    } else {
+        effective_check="Unknown"; effective_auto="Unknown"
+    }
+    print "Manager updates: saved Check=" check_updates "; saved Auto=" auto_update "; effective Check=" effective_check "; effective Auto=" effective_auto
+    if(developer=="On") print "Note: developer mode suppresses manager updates; saved preferences are retained"
     history=object(field(1,"history")); logging=object(field(1,"logging"))
     if(wan=="unknown") print "Issue: invalid selected WAN; recover network settings"
     addresses(object(field(object(field(history,"network")),"status")))

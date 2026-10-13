@@ -30,6 +30,7 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
     scripts.mkdir(parents=True)
     (support / "modules/lib").mkdir(parents=True)
     (support / "modules/helpers").mkdir()
+    (support / "modules/manager_settings.sh").write_text("# inert adapter\n")
     original = (ROOT / "cfmgr.sh").read_text()
     adapted = (
         original.replace("/jffs", str(jffs))
@@ -49,6 +50,7 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
         "storage",
         "prerequisites",
         "native",
+        "config_store",
         "mount_keeper",
         "execution_view",
         "execution_tasks",
