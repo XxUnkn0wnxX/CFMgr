@@ -18,22 +18,29 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active — finish S02.06 selected dependency reinstall
+## Paused — S02.06 selected dependency reinstall accepted
 
 The user resumed on 2026-10-14: identify any genuinely small independent task
 under the corrected acceptance rules; otherwise start and finish S02.06. Parent
 and Astra Max reviewed the remaining IDs and found no qualifying smaller complete
-runtime task. S02.06 is now authorized through implementation, focused local/
-static checks, review, exact-candidate grouped Quick CI and its completion receipt.
-Stop at this requested subgoal boundary; no next package is selected. No router
-execution, deployment, main promotion or release is authorized.
+runtime task. S02.06 is complete after implementation, focused local/static checks,
+parent/independent review and every complete applicable Quick CI group at exact
+`03a4f01bc3860be11b5cff2d1faf61f595b589f2`. This documentation receipt records that
+tested code SHA; it does not claim a new runtime test on its own later commit.
+Pause at the requested subgoal boundary; no next package is selected or started.
+No router execution, deployment, main promotion or release is authorized.
 
-Baseline: clean `a9e7e25699d9859510b09ecdfabe907cdcb8f5f7`, verified local/remote
-develop. Acceptance stays **5/157 (3.2%); 0/16 (0%)** until the new gate passes.
-Goal 2 is **4/9 (44.4%)**. S02.04 and all other partial foundations earn no
-incidental ticks. Final documentation remains deferred.
+Accepted progress: **6/157 (3.8%); 0/16 main goals (0%)**. Goal 2 is **5/9
+(55.6%)**; Goal 3 remains **1/10**. The sole new accepted ID is **S02.06**.
+Accepted IDs are S02.03, S02.05, S02.06, S02.08, S02.09 and S03.01. No main goal
+completed. Goal 2 still needs S02.01, S02.02, S02.04 and S02.07. No known required
+S02.06 finishing work is deferred to project 100%; final guide subgoals remain
+deferred under the approved readiness phase gate. Baseline was `a9e7e25`.
 
-| Package / consumer | Exclusive ownership | Required result / gate |
+All source/test ownership below is released; workers, local commands and required
+CI jobs are complete. Parent owns this acceptance receipt and final verification.
+
+| Package / consumer | Completed ownership | Verified result / gate |
 | --- | --- | --- |
 | S02.06 installed Advanced options and `--reinstall-dependencies` action | `runtime_reinstall` strong worker: `cfmgr.sh`, `modules/helpers/{launch,bootstrap,probe}.sh`, `modules/lib/{config_observation.awk,prerequisites.sh,dependencies.sh}`, narrowly needed source-inert dependency/DNS helper, and affected `tests/test_*`/existing fixtures. No overlapping writers. | One confirmed action; selected mandatory/active scoped direct set; native-first optional tools; installed alternate provider; guarded current-state/storage checks; actual force completion and fresh post-probes; unchanged feature settings. Written consumer and core failure proof, then parent review and complete affected focused gates. |
 | Integration / acceptance / CI | Parent only: all planning files, README if accepted, generated catalog/manifest, gate mapping and publication. | Preserve source/host/BusyBox/live evidence boundaries, package integrity and existing safety guards. Complete grouped Quick runs at the exact candidate SHA; no full suite for this subgoal. |
@@ -60,7 +67,7 @@ The positive parser follows [BusyBox 1.36.1's SRV/A formatting](https://github.c
 excluding server-address preambles and not requiring a non-authoritative marker.
 This defines a supported parser interface, not another firmware-support claim.
 
-Implementation is integrated in the current dirty tree based on `a9e7e25`;
+Implementation is committed and normally pushed through `03a4f01`;
 the strong worker has released all source/test ownership. Parent/static review
 resolved the BusyBox callback-discovery issue (`type`, because the pinned ash
 omits `command -v`) and verifies fresh post-probes for every selected optional
@@ -69,9 +76,9 @@ test package covers actual entry/confirmation, stale generation/scope refusal,
 native-versus-dig DNS policy, coalesced/failed/unresolved repair and one real
 retained force lifecycle with `jq-full` and byte-preserved settings/Off. DNS
 responses are controlled adapters, not live provider evidence. Parent owns all
-remaining integration/gates; no worker is authorized to start another package.
+acceptance and publication; no worker is authorized to start another package.
 
-Final local gate on the reviewed dirty tree based on `a9e7e25`: **258 passed,
+Initial complete local gate on the reviewed dirty tree based on `a9e7e25`: **258 passed,
 55 platform skips, four optional diagnostics excluded**, 185.60s pytest; wall
 187.16s, user 71.39s, sys 55.02s. Command: `.venv/bin/python tools/test.py --focused`
 with all modules in groups A–D below. Its planning/package, shell syntax, Ruff,
@@ -82,7 +89,7 @@ the complete same pytest selection using `/usr/local/bin/bash --posix`, strict
 config/markers, `--maxfail=1 --durations=10 -m 'not diagnostic'`, with plugin
 autoload disabled. Receipts: `.tmp/s0206-local-focused.log` and
 `.tmp/s0206-local-pytest.log`. No full suite ran. Required Linux/BusyBox proof
-remains pending groups A–D; S02.06 is focused-local-passed, not accepted.
+is now complete in groups A–D at the final candidate below.
 
 Parent regenerated `manifest.txt`; catalog inventory is unchanged. An earlier
 worker ShellCheck against superseded source was cancelled (exit 130), supplying
@@ -109,7 +116,7 @@ Runtime remained unchanged through candidate `fd91e893f65ca90da770a2942b54e8196e
 D `38441351653` passed **15 tests**, 100.09s pytest (100.27s wall, 52.10s user,
 47.75s sys); A `38441692910` and B `38441697923` also passed. C `38441702494`
 failed the real storage-loss case: owned cleanup resolved, but the required
-storage-loss reason/report was absent. No acceptance is awarded. Source review
+storage-loss reason/report was absent. That candidate was not accepted. Source review
 found that an exceptional task return can reach resolved controller cleanup
 without the final attachment observation performed on the normal task path.
 The correction adds a final observation/report after resolved task cleanup;
@@ -120,9 +127,37 @@ five scenarios cover lost/attached completion and unresolved task/native/event
 states. Parent and independent analyst reviewed the eight-line runtime change
 and test assertions. The shared adapter now explicitly supplies its attached
 storage assumption; the real detach assertion remains intact and gains bounded
-failure labels. Run that detach case and the new regression first, then all
-groups at the final candidate. Inspect every job and timing before acceptance/
-README/handoff and pause. No other package may start.
+failure labels. Old-source regression: four failures/one pass, 4.74s; fixed:
+five passed, 1.69s. Final local action/consumer modules: **57 passed, 9 Linux
+skips**, 17.45s, using `CFMGR_TEST_SHELL="/usr/local/bin/bash --posix"`, strict
+config/markers and the pinned pytest. Relevant statics passed. Receipt:
+`.tmp/s0206-loss-local-regression.log`. Diagnostic [38443197208](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38443197208)
+passed the real detach case and all five new controller cases at `03a4f01`: six
+passed, 14.34s. This diagnostic did not award acceptance.
+
+Complete acceptance gate at **`03a4f01bc3860be11b5cff2d1faf61f595b589f2`**:
+
+| Group / run | Result | Pytest / wall / user / sys seconds |
+| --- | --- | --- |
+| [A — 38443406448](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38443406448) | 189 passed, one workstation-without-proc skip | 39.60 / 39.79 / 14.29 / 14.15 |
+| [B — 38443410771](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38443410771) | 92 passed | 55.75 / 56.01 / 27.95 / 26.47 |
+| [C — 38443415356](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38443415356) | 21 passed, four optional diagnostics excluded | 229.42 / 229.67 / 111.85 / 109.37 |
+| [D — 38443419914](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38443419914) | 15 passed | 84.27 / 84.43 / 45.61 / 36.29 |
+
+Parent verified exact SHA, terminal success and every required job/step in all
+four runs. The unrequested full-host diagnostic step was intentionally skipped;
+no required Linux case was skipped. Total **317 passed, one workstation-only
+skip** across the complete 15-module gate. Logs: `.tmp/s0206-{A,B,C,D}-final.log`;
+verified job receipts: `.tmp/s0206-acceptance-runs.json`. Gate commands were
+`gh workflow run quick-checks.yml --ref develop -f host_baseline=false` with each
+complete module selection below and the S02.06 group labels.
+
+Cost review: A/B/D remain below two minutes. C's test stage is within the practical
+three-to-four-minute range; its required fully supervised fresh-installer integration
+accounts for 181.28s of 229.42s. Job totals including setup/cleanup were A 57s,
+B 72s, C 249s and D 108s. Retain that distinct safety/consumer proof; no
+extra full run or coverage cut was warranted. These grouped timings do not
+measure a new full-suite baseline. No other package may start.
 
 Required focused groups, each at the final candidate SHA (whole modules; optional
 diagnostics excluded):
@@ -134,12 +169,10 @@ diagnostics excluded):
 | C | `test_dependencies.py` | Actual installed-opkg controller, selected force worker, cancellation/loss/cleanup and concurrency. |
 | D | `test_retained_launch.py` | Retained launch integration, real healthy force/alternate provider, immutable snapshots, current scope and settings/Off preservation. |
 
-Run applicable local statics and these focused modules before publication; Linux
-skips remain pending their grouped Quick runs. Reuse existing immutable fixtures
-and fresh mutable state, adding one force scenario to the existing retained
-lifecycle instead of duplicating its setup. Review group wall/CPU timing before
-acceptance. No full-suite run is due. Required publication stays on develop;
-the earlier force-push grant is consumed.
+Local statics and all complete focused modules passed before acceptance. The
+retained lifecycle reuses immutable setup with fresh mutable state and adds one
+real force scenario. No full-suite run was due for this subgoal. Publication
+stays on develop; the earlier force-push grant is consumed.
 
 ## Prior accepted runtime checkpoint
 
@@ -148,7 +181,7 @@ are complete and accepted after focused tests, parent review and exact full CI.
 The user accepted the **8m09s** combined runtime; stop cost tuning here.
 **5/157 accepted (3.2%); 0/16 main goals.** Goal 2: **4/9**; Goal 3: **1/10**.
 Accepted IDs: S02.03, S02.05, S02.08, S02.09, S03.01. No main-goal audit/full-local
-completion is claimed. The active S02.06 package above supersedes the former pause.
+completion is claimed. The accepted S02.06 checkpoint above supersedes these historical counts.
 
 ## Documentation reset and final-readiness decision
 
@@ -239,13 +272,13 @@ permissions and recovery references are preserved. The completed 18-module cost
 review and required core edge coverage are retained; actual test composition/
 optional diagnostic limits are in [review notes](PLAN_V2_review_notes.md).
 
-Prior runtime workers released their files; no required runtime CI job, local
-test or unfinished implementation package remains. The last tested checkpoints
-above remain the runtime evidence. The current replacement is planning-only and
-uses planning/link/privacy, paired-requirement/count/session-record and whitespace
-checks; no runtime Quick group or full suite is due. Before resuming, verify
-`git status --short` and exact local/remote develop state. The narrowly authorized
-publication/reset boundary above supersedes the old receipt instructions.
+All runtime workers released their files; no required runtime CI job, local test
+or unfinished S02.06 package remains. Current runtime evidence is `03a4f01` and
+the four complete Quick groups above. This acceptance/README/handoff receipt uses
+planning/link/privacy, counts/session-record and whitespace checks; runtime files
+remain unchanged from that tested SHA. It requires no extra runtime or full-suite
+run. Before a later resumption, verify `git status --short` and exact local/remote
+develop state. The earlier reset grant has been consumed.
 
 AGENTS owns standing routes: focused local work commits/continues; required Linux
 proof uses small repair selections followed by all applicable grouped focused CI;
@@ -265,7 +298,8 @@ necessary coverage grows, never beyond 40 minutes. Current eight-minute cost is 
 All runtime/test/parser workers have released their files. Parent owns the four
 planning files, integration, CI decisions and acceptance. All delegated work and
 CI monitoring are complete. No new implementation target is authorized during the
-requested pause; S02.04/S02.06 and other independent work wait for resume.
+requested pause. S02.06 is accepted; remaining Goal 2 IDs S02.01, S02.02, S02.04
+and S02.07 wait for a later user resumption.
 
 Implemented consumers:
 
@@ -275,6 +309,10 @@ Implemented consumers:
   isolated retained-launch controller. Explicit help/source-copy defaults remain
   harmless. A bounded immutable private config snapshot and complete setup/layout
   are checked before repair; full package digests follow healthy SHA admission.
+- Confirmed Advanced options / `--reinstall-dependencies` force only the selected
+  mapped direct set, including a usable alternate provider and configured-tunnel
+  DNS additions where native capability is positively absent. Fresh probes and
+  stale-state/storage guards preserve settings/history/Off.
 - Shared missing/unusable-only repair uses installed opkg, selected direct packages,
   normal feeds/scripts/resolution, bounded coalescence and fresh post-probes. Healthy
   tools are preserved; resolved failure permits later retry. Unresolved children
@@ -412,7 +450,7 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-Finish only the active S02.06 package and its required checkpoint, then pause.
+S02.06 and its required checkpoint are complete; remain paused.
 After a later user resumption, follow smallest independently completable
 runtime subgoals first, then shared-module batches, then remaining main-goal work.
 Final documentation subgoals follow the explicit phase gate in the specification
