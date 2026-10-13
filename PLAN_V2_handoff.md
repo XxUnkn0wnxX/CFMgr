@@ -95,9 +95,19 @@ the claim. The assertion alone did not establish whether the callback had run.
 Parent restored the complete adapter state and moved the callback-marker check
 before the result assertion. Runtime is unchanged. B `38439743516`, C
 `38439748042`, D `38439753616` were cancelled promptly; none supplies acceptance.
-Repeat A at the repaired candidate first, then B–D at that same SHA. Inspect all
-jobs and timings before acceptance/README/handoff and pause. No other package
-may start.
+Repaired candidate `6eeccb07d6e0b2220976c29cb3b1ba84c37faa41` is committed/pushed.
+A `38440334338` passed: **184 passed, one workstation-only skip**, 33.01s pytest
+(33.17s wall, 12.19s user, 8.79s sys). B `38440589853` passed **92 tests**, 53.12s
+pytest (53.30s wall, 27.42s user, 24.45s sys). D `38440600062` then found a second
+fixture issue: synthetic opkg expected the force flag after `install`, although
+the unchanged real worker passes `opkg --force-reinstall install ...`. Parent
+reproduced the original argv rejection (exit 2, no shell error), corrected the
+fixture and verified acceptance (exit 0) plus refusal of misplaced flags/unrelated
+packages. Focused fixture syntax, ShellCheck, shfmt and whitespace passed. C
+`38440595213` was cancelled as superseded; no acceptance from partial runs.
+Runtime remains unchanged. Run D first at the new candidate, then repeat A–C
+there. Inspect all jobs and timings before acceptance/README/handoff and pause.
+No other package may start.
 
 Required focused groups, each at the final candidate SHA (whole modules; optional
 diagnostics excluded):

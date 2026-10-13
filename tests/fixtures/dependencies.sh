@@ -89,13 +89,13 @@ update)
     printf 'update\n' >>/opt/operations
     [ ! -e /opt/fail-update ] || exit 1
     ;;
+--force-reinstall)
+    [ -e /opt/force-fixture ] && [ "$#" = 6 ] || exit 2
+    [ "$2:$3:$4:$5:$6" = install:jq-full:coreutils-timeout:coreutils-sha256sum:flock ] || exit 2
+    printf 'force jq-full coreutils-timeout coreutils-sha256sum flock\n' >>/opt/operations
+    ;;
 install)
     shift
-    if [ -e /opt/force-fixture ]; then
-        [ "$#" = 5 ] && [ "$1:$2:$3:$4:$5" = --force-reinstall:jq-full:coreutils-timeout:coreutils-sha256sum:flock ] || exit 2
-        printf 'force jq-full coreutils-timeout coreutils-sha256sum flock\n' >>/opt/operations
-        exit 0
-    fi
     [ "$#" = 1 ] && [ "$1" = flock ] || exit 2
     printf 'install flock\n' >>/opt/operations
     cp /bin/busybox /opt/bin/flock && chmod 755 /opt/bin/flock || exit 1
