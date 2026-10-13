@@ -49,10 +49,10 @@ cfmgr_prerequisites_admit_tool() {
 	[ -f "$1" ] && [ -x "$1" ]
 }
 cfmgr_prerequisites_check() {
-	[ "$#" = 15 ] && [ "$1" = shared ] && [ "$2" = "$cfmgr_install_context" ] || return 92
+	[ "$#" = 15 ] && { [ "$1" = shared ] || [ "$1" = tunnel ]; } && [ "$2" = "$cfmgr_install_context" ] || return 92
 	installer_probe_count=$((installer_probe_count + 1))
-	cfmgr_test_real_shared_check shared "$2" "$view_ram/ash" "$installer_package/modules/helpers/probe.sh" \
-		"$view_ram/env" "$view_ram/awk" /bin/sleep "$view_ram/wc" - "$installer_jq" "$installer_timeout" "$installer_sha" "$cfmgr_storage_opt/bin/flock" - unknown
+	cfmgr_test_real_shared_check "$1" "$2" "$view_ram/ash" "$installer_package/modules/helpers/probe.sh" \
+		"$view_ram/env" "$view_ram/awk" /bin/sleep "$view_ram/wc" - "$installer_jq" "$installer_timeout" "$installer_sha" "$cfmgr_storage_opt/bin/flock" - "${15}"
 }
 cfmgr_bootstrap_transaction() {
 	[ "$1:$2" = "$installer_package:/jffs" ] && [ "$installer_probe_count" = 2 ] && [ -z "$cfmgr_prereq_missing" ] || return 93

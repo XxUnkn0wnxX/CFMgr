@@ -550,9 +550,10 @@ cfmgr_prerequisites_check() {
     shift 9
     [ "$1" = /opt/bin/jq ] && [ "$2" = /opt/bin/timeout ] &&
         [ "$3" = /opt/bin/sha256sum ] && [ "$4" = /opt/bin/flock ] &&
-        [ "$5" = - ] && [ "$6" = unknown ] || return 93
+        [ "$5" = /opt/bin/dig ] && [ "$6" = unknown ] || return 93
     printf 'shared inventory\n'
     cfmgr_prereq_result=capabilities-checked cfmgr_prereq_missing='jq coreutils-timeout'
+    cfmgr_prereq_dns_provider=none
     return 1
 }
 cfmgr_dependencies_repair() {

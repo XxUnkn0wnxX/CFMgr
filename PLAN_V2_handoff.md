@@ -18,7 +18,92 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Instruction maintenance — runtime work remains paused
+## Active — route A: finish S02.04, then pause
+
+The user selected route A on 2026-10-14: complete S02.04 only, including its
+normal-operation tunnel DNS dependency path, focused tests and required CI, then
+pause. Baseline is pushed `807aa1b3845ab7a355c758ccf91f6a1a2e9a98ab` with a clean
+tree. Existing accepted progress remains 6/157 (3.8%), 0/16 main goals; Goal 2 is
+5/9 (55.6%). Target after acceptance is 7/157 (4.5%) and Goal 2 6/9 (66.7%).
+S02.01/S02.02/S02.07 and wider feature work remain outside this package.
+
+Consumer: installed normal retained launch through shared prerequisite admission
+and installed-opkg repair; fresh setup remains shared-only until tunnel setup.
+Missing acceptance: normal scoped native-versus-dig selection, real bounded SRV/A
+verification, missing/unusable-only repair, fresh post-probes and safe failure
+without configuration/activation changes. Reuse S02.05/S02.06/S02.08 foundations;
+S06.03 shares the readiness interface but receives no completion credit.
+Scope refinement from the independent Astra review: configured tunnel (including
+Off) makes DNS tools applicable, not tunnel launch eligible. Normal shared/safety
+admission must distinguish DNS not-required/verified/deferred. Ordinary DNS
+outages never reinstall healthy tools or block manager/DDNS/IP-Sync; strict
+reinstall verification remains unchanged. Storage/ownership/supervisor failures
+and stale-scope refusal remain fatal. A resolved DNS-only package failure may
+defer only DNS after fresh shared-tool post-probes prove manager admission safe.
+S06.03 still owns full tunnel launch/readiness, NTP and reachability integration.
+
+Completed runtime/test owner: `s0204_runtime` strong worker for
+`modules/helpers/{bootstrap,launch,probe}.sh`, `modules/lib/{prerequisites,dependencies}.sh`,
+and directly affected dependency/retained-launch/config-scope tests and fixtures.
+The worker has released all files; no overlapping writers. Parent owns plans, generated metadata, integration,
+review, gate selection, acceptance and publication. `s0204_scope_audit` is read-only.
+`s0204_safety_review` independently reviewed the DNS-only repair-failure exception
+and post-repair cleanup. Its resolved-migration cleanup finding and real-worker
+failure-origin assertion are fixed; the focused follow-up passed. No edits or
+acceptance authority were delegated to reviewers.
+
+Required gates: written focused consumer/capability tests, applicable existing
+shared-foundation groups, static/package/planning checks and parent review;
+complete applicable Quick Checks groups at the exact candidate SHA, with runtime
+cost review. Full suites are not due. The selected route includes the normal
+subgoal pause checkpoint push/CI/acceptance receipt; no force-push, deployment,
+router execution, release or next-package authority is added. Local gates passed;
+the four exact-candidate Quick groups remain pending before acceptance/pause.
+
+The Astra audit required revising the initial failure handling; its three
+findings are incorporated into the worker contract: separate shared/DNS outcomes,
+separate configured scope from effective inventory scope when native DNS is
+unknown, and preserve fatal supervision/storage/stale-scope failures. It confirmed
+that the real normal retained consumer can close S02.04 without Goal 6 lifecycle.
+No requirement or acceptance gate changed. Final worker host checks passed
+107 tests with 10 platform/tool skips in 63.09s after the cleanup fix. Parent
+regenerated package metadata and reviewed the production calls/failure paths.
+The complete local gate passed on the reviewed dirty tree based on `807aa1b`:
+**299 passed, 55 platform/tool skips, four optional diagnostics deselected**,
+137.02s pytest; 137.48s wall / 59.03s user / 43.83s system. Python 3.14.0,
+pytest 9.1.1, Homebrew Bash POSIX on macOS; no Linux or router proof is implied.
+Exact grouped Linux/BusyBox proof remains pending. Acceptance stays 6/157,
+Goal 2 5/9 until it passes; S02.04 is focused-local-passed only.
+
+Exact local selection is every module in groups A–D below. Initial command:
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python tools/test.py --focused <A–D modules>`.
+All planning/package, Ruff lint/format, compile, shell syntax, ShellCheck and shfmt
+gates passed; the behavior stage found one obsolete shared-inventory test argument
+expectation (225 passed, 19 skips before stop). Parent updated that adapter to the
+now-explicit dig path while retaining its shared-only scope assertion; targeted
+case, changed-file lint/format/compile and planning/package/whitespace checks pass.
+Final complete selection used `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q -ra
+--strict-config --strict-markers --maxfail=1 --durations=10 -m 'not diagnostic'
+<A–D modules>`, reusing unchanged successful statics. Logs:
+`.tmp/s0204-local-focused.log`, `.tmp/s0204-local-final.log`.
+
+Complete focused gate mapped to final changed consumers and foundations:
+
+| Group | Whole test modules under `tests/` | Purpose / prior BusyBox cost |
+| --- | --- | --- |
+| A | `test_dependency_reinstall.py`, `test_config.py`, `test_config_observation.py`, `test_dependency_selection.py`, `test_prerequisites.py`, `test_native.py`, `test_dependency_consumer.py`, `test_execution_tasks.py` | Scoped native/dig policy, shared tools, normal/force dispatch, schema/current scope and fatal supervision; prior 39.60s. |
+| B | `test_install.py`, `test_package.py`, `test_storage.py`, `test_storage_mounts.py`, `test_mount_keeper.py` | Fresh shared-only consumer, package identity, storage/worker protection; prior 55.75s. |
+| C | `test_dependencies.py` | Real installed-opkg controller/receipts, cancellation, storage loss, cleanup and concurrency; prior 229.42s, including distinct full-supervision installer proof. |
+| D | `test_retained_launch.py` | Actual normal scoped DNS, retained repair/post-probes, force/alternate-provider regression and settings/Off preservation; prior 84.27s. |
+
+Groups are disjoint and exclude optional diagnostics. These old costs guide
+scheduling, not acceptance. Run the new normal-consumer group with its own
+timing before accepting the combined focused gate; every group must pass at the
+same final SHA. Reuse pinned setup, keep mutable fixtures isolated and launch no
+full host/CI suite. Local platform skips must be resolved by applicable Quick CI.
+
+## Previous checkpoint — instruction maintenance
 
 The user authorized using refreshed skills and removing superseded duplication
 from this repository's AGENTS.md, after confirming that CFMgr rules override
@@ -32,10 +117,11 @@ parent review confirms the removed procedure is covered by available skill text.
 On the instruction-only tree based on `edcb8cd`, `.venv/bin/python tools/check.py`
 and `git diff --check` pass. Product plan, checklist, review notes, README and
 runtime are unchanged; the pre-existing handoff/session ledger is preserved.
-No runtime tests or CI are due. Keep this cleanup as a local documentation commit;
-no new push or history-rewrite permission is inferred. Runtime work remains paused.
+No runtime tests or CI were due. The user subsequently authorized its normal push;
+`807aa1b` was pushed and remote-verified. That instruction-only checkpoint did not
+resume runtime work; the route A authorization above now sets the active boundary.
 
-## Paused — S02.06 selected dependency reinstall accepted
+## Previous checkpoint — S02.06 selected dependency reinstall accepted
 
 The user resumed on 2026-10-14: identify any genuinely small independent task
 under the corrected acceptance rules; otherwise start and finish S02.06. Parent
@@ -246,7 +332,7 @@ need implementation before a genuine reinstall action can pass its focused gates
 Pinned native nslookup source inspection found no SRV support in either variant;
 source evidence is not live capability proof. No runtime attempt was discarded.
 
-## Verified checkpoint
+## Prior verified checkpoint — shared repair and CI policy
 
 - Latest policy/workflow checkpoint: **`3d47219d6f3c93f0152d7b812830067f8290a000`**,
   committed, pushed and remote-verified. [Focused CI 38276757146](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38276757146)
@@ -279,23 +365,21 @@ source evidence is not live capability proof. No runtime attempt was discarded.
   Earlier run history is retained at `81d2b29:PLAN_V2_handoff.md`. Cancelled runs
   supply no acceptance.
 
-## Final documentation and work state
+## Preserved documentation and checkpoint policy
 
 README and checklist reflect only accepted progress. Development and compatibility
 remain approximately 3 KB each; commands, links and evidence limits were checked.
 Compatibility covers router/Merlin targets, not verified hardware support. AGENTS
-is approximately 26 KB, below 32 KB. Handoff session IDs, retained design evidence,
+is approximately 25 KB, below 32 KB. Handoff session IDs, retained design evidence,
 permissions and recovery references are preserved. The completed 18-module cost
 review and required core edge coverage are retained; actual test composition/
 optional diagnostic limits are in [review notes](PLAN_V2_review_notes.md).
 
-All runtime workers released their files; no required runtime CI job, local test
-or unfinished S02.06 package remains. Current runtime evidence is `03a4f01` and
-the four complete Quick groups above. This acceptance/README/handoff receipt uses
-planning/link/privacy, counts/session-record and whitespace checks; runtime files
-remain unchanged from that tested SHA. It requires no extra runtime or full-suite
-run. Before a later resumption, verify `git status --short` and exact local/remote
-develop state. The earlier reset grant has been consumed.
+S02.06's workers and required CI completed at `03a4f01`; its documentation receipt
+used proportionate planning/link/privacy, counts/session-record and whitespace
+checks. Current S02.04 ownership and required proof are recorded at the top of this
+handoff. Before any later resumption, verify `git status --short` and exact
+local/remote develop state. The earlier reset grant has been consumed.
 
 AGENTS owns standing routes: focused local work commits/continues; required Linux
 proof uses small repair selections followed by all applicable grouped focused CI;
@@ -312,11 +396,10 @@ necessary coverage grows, never beyond 40 minutes. Current eight-minute cost is 
 
 ## Ownership and implemented boundary
 
-All runtime/test/parser workers have released their files. Parent owns the four
-planning files, integration, CI decisions and acceptance. All delegated work and
-CI monitoring are complete. No new implementation target is authorized during the
-requested pause. S02.06 is accepted; remaining Goal 2 IDs S02.01, S02.02, S02.04
-and S02.07 wait for a later user resumption.
+The active ownership and pause boundary are recorded at the top of this handoff.
+Parent owns the four planning files, integration, CI decisions and acceptance.
+S02.06 is accepted; route A authorizes S02.04 only. S02.01, S02.02 and S02.07
+require a later user resumption after the selected checkpoint.
 
 Implemented consumers:
 
@@ -368,7 +451,7 @@ Keep these settled contracts:
   repair, migration and later no-op; its absent-volume phase is a pin-adapter
   refusal. Separate real detach/cancellation coverage supplies mount-loss proof.
 
-No normal feature menus, remote package acquisition/update, selected reinstall,
+No normal feature menus, remote package acquisition/update,
 complete native recovery/safe Off, provider activation or general Save workflow is
 accepted. Goal 4 foundations earn no separate credit. Detailed prior design and
 worker history remain recoverable from `b90eb6e:PLAN_V2_handoff.md`.
@@ -467,15 +550,16 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-S02.06 and its required checkpoint are complete; remain paused.
-After a later user resumption, follow smallest independently completable
-runtime subgoals first, then shared-module batches, then remaining main-goal work.
+S02.06 and its required checkpoint are complete. The current user-selected route
+is A: finish S02.04 through its focused checkpoint, then pause. Follow smallest
+independently completable runtime subgoals first, then shared-module batches,
+then remaining main-goal work under future authorization.
 Final documentation subgoals follow the explicit phase gate in the specification
 and checklist; do not select interim documentation as an early completion. Finish
 started libraries/subgoals before switching; inspect existing consumers, tests and
 checklist before choosing the next smallest item. Return toward Goal 2, originally
 a prerequisite for Goal 1; S04.01/S04.08/S04.09 foundations earn no extra ticks.
-No next package has been selected or started. Full local suites remain main-goal
+No package after S02.04 is selected or authorized. Full local suites remain main-goal
 gates. Required development CI is Ubuntu/vendor BusyBox; exact firmware/ARM/flash/
 hooks/provider qualification remains separately authorized beta work.
 

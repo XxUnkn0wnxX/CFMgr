@@ -136,7 +136,7 @@ cfmgr_dependencies_repair() {
 	shift 9
 	cfmgr_dependencies_wc=$1 cfmgr_dependencies_mknod=$2 cfmgr_dependencies_chroot=$3
 	cfmgr_dependencies_context=$cfmgr_dependencies_parent/dependencies
-	cfmgr_dependencies_result=invalid cfmgr_dependencies_loss=0 cfmgr_dependencies_reason=admission
+	cfmgr_dependencies_result=invalid cfmgr_dependencies_loss=0 cfmgr_dependencies_reason=admission cfmgr_dependencies_failure=none cfmgr_dependencies_worker_failed=0
 	cfmgr_dependencies_claimed=0 cfmgr_dependencies_snapshot_ready=0 cfmgr_dependencies_cleaning=0 cfmgr_dependencies_native_unresolved=0
 	if [ -e "$cfmgr_dependencies_context" ] || [ -L "$cfmgr_dependencies_context" ]; then
 		_cfmgr_dependencies_wait
@@ -222,7 +222,10 @@ cfmgr_dependencies_repair() {
 					return 3
 				fi
 				if [ "$cfmgr_dependencies_code" -eq 0 ]; then
-					if cfmgr_execution_tasks_run "$cfmgr_dependencies_selection"; then cfmgr_dependencies_code=0; else cfmgr_dependencies_code=$?; fi
+					if cfmgr_execution_tasks_run "$cfmgr_dependencies_selection"; then cfmgr_dependencies_code=0; else
+						cfmgr_dependencies_code=$?
+						[ "$cfmgr_dependencies_code" -ne 1 ] || cfmgr_dependencies_worker_failed=1
+					fi
 				fi
 			else cfmgr_dependencies_code=1; fi
 		else cfmgr_dependencies_code=$?; fi
@@ -253,6 +256,18 @@ cfmgr_dependencies_repair() {
 			[ "$?" -ne 3 ] || return 3
 		fi
 		cfmgr_dependencies_code=1
+	fi
+	# Only a complete ordinary worker failure receipt qualifies as DNS-only
+	# opkg failure. Refusal, loss, interruption and unknown ownership never do.
+	if [ "$cfmgr_dependencies_worker_failed" = 1 ] && [ "${cfmgr_install_dependency_action:-normal}" = normal ] &&
+		[ "${cfmgr_tasks_state:-none}:${cfmgr_tasks_exit:-0}:${cfmgr_tasks_survivors:-1}" = quiescent:1:0 ] &&
+		[ "${cfmgr_install_interrupted:-0}:${cfmgr_tasks_action_refused:-1}:${cfmgr_tasks_loss:-1}:$cfmgr_dependencies_loss" = 0:0:0:0 ]; then
+		# shellcheck disable=SC2016 # Fixed awk program reads the bounded worker receipt.
+		if "$cfmgr_dependencies_awk" '
+		  length($0)>4096 || NR>512 { bad=1; exit 1 }
+		  /^failed (update|install) [1-9][0-9]* END$/ { n++; terminal=NR }
+		  END { exit bad || n!=1 || terminal!=NR ? 1 : 0 }
+		' "$cfmgr_dependencies_context/receipt"; then cfmgr_dependencies_failure=opkg; fi
 	fi
 	cfmgr_dependencies_cleanup || return 3
 	# A resolved full cleanup retires transient ownership uncertainty for retry.

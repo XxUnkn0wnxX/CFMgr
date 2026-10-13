@@ -71,10 +71,29 @@ chmod 755 "$retained_fixture_logger"
 # Keep real view operations bounded in the foreground for this retained case.
 cfmgr_execution_view_native() { view_native "$@"; }
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
+# Firmware admission is adapted, but normal DNS uses the real bounded
+# supervisor, dispatcher and SRV/A parsers with controlled executable answers.
+retained_dns_tool=$view_ram/retained-nslookup
+cat >"$retained_dns_tool" <<EOF_DNS
+#!/bin/sh
+printf '%s\\n' "\$*" >>"$view_ram/retained-dns-queries"
+if [ -e "$view_ram/retained-dns-outage" ]; then
+    printf 'nslookup: SERVFAIL\\n' >&2
+    exit 1
+fi
+case "\$2" in
+SRV) printf '_v2-origintunneld._tcp.argotunnel.com service = 0 1 7844 region1.v2.argotunnel.com\\n' ;;
+A) printf 'Name: %s\\nAddress: 192.0.2.1\\n' "\$3" ;;
+*) exit 2 ;;
+esac
+EOF_DNS
+chmod 755 "$retained_dns_tool"
+cfmgr_bootstrap_dns_admit_native() { cfmgr_install_dns_tool=$retained_dns_tool; }
 cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'actual retained launch repair failed'
 if [ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ]; then :; else
 	fail 'retained launch did not repair and fully re-probe'
 fi
+[ "$cfmgr_install_dns_result" = verified ] && [ -s "$view_ram/retained-dns-queries" ] || fail 'normal retained launch did not qualify native SRV/A'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'retained repair changed passive settings'
 if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state" = released:released ]; then :; else
 	fail 'retained repair did not normally release protection'
@@ -88,6 +107,13 @@ cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'returned volume was not freshl
 [ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'healthy return retried opkg unnecessarily'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'return changed unrelated settings'
 [ ! -e "$retained_support/.storage-observation" ] || fail 'unchanged return created observation guard'
+# Reaped DNS outage defers tunnel proof without blocking the healthy manager,
+# changing configured-Off settings, or reinstalling a healthy dependency.
+: >"$view_ram/retained-dns-outage"
+cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'ordinary DNS outage blocked shared manager admission'
+[ "$cfmgr_install_dns_result" = deferred ] || fail 'DNS outage was reported verified'
+[ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'DNS outage reinstalled a healthy tool'
+cmp "$fixture/retained.original" "$retained_support/config" || fail 'DNS outage changed configured-Off settings'
 # One explicit healthy force consumer uses the real worker/view/storage guards.
 # DNS query responses are controlled adapters, not public-network evidence.
 cfmgr_launch_confirm_reinstall() { return 0; }
@@ -101,4 +127,5 @@ cmp "$fixture/retained.original" "$retained_support/config" || fail 'force chang
 [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state" = released:released ] || fail 'force retained resolved protection'
 exec 6<&- 7<&- 8<&- 9<&-
 printf 'PASS: actual retained repair, immutable migration, missing-message and returned-volume no-op\n'
+printf 'PASS: actual normal native SRV/A and scoped outage with configured-Off settings\n'
 printf 'PASS: actual healthy force, alternate jq-full, settings/history/Off and released guards\n'

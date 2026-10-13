@@ -335,6 +335,12 @@ cfmgr_execution_view_release() { : >"$cfmgr_test_marker/release-view"; cfmgr_vie
         ("finish-unresolved", 3, False, False, 0, "cleanup-pending"),
         ("event-unresolved", 3, True, False, 1, "storage-lost"),
         ("native-unresolved", 3, False, False, 0, "admission"),
+        ("opkg-update", 1, True, True, 0, "admission"),
+        ("opkg-install", 1, True, True, 0, "admission"),
+        ("opkg-refused", 1, True, True, 0, "admission"),
+        ("opkg-interrupted", 1, True, True, 0, "admission"),
+        ("opkg-malformed", 1, True, True, 0, "admission"),
+        ("opkg-cleanup", 3, True, True, 0, "admission"),
     ],
 )
 def test_actual_controller_observes_loss_only_after_resolved_owned_work(
@@ -370,6 +376,20 @@ cfmgr_execution_view_create() {
 }
 cfmgr_execution_tasks_run() {
     cfmgr_test_mark run
+    case $cfmgr_test_observation_scenario in opkg-*)
+        cfmgr_tasks_state=quiescent cfmgr_tasks_exit=1 cfmgr_tasks_survivors=0
+        cfmgr_tasks_action_refused=0 cfmgr_tasks_loss=0
+        operation=update
+        [ "$cfmgr_test_observation_scenario" != opkg-install ] || operation=install
+        printf 'failed %s 7 END\n' "$operation" >>"$cfmgr_dependencies_context/receipt"
+        case $cfmgr_test_observation_scenario in
+        opkg-refused) cfmgr_tasks_action_refused=1 ;;
+        opkg-interrupted) cfmgr_install_interrupted=1 ;;
+        opkg-malformed) printf 'unexpected suffix\n' >>"$cfmgr_dependencies_context/receipt" ;;
+        esac
+        return 1
+        ;;
+    esac
     if [ "$cfmgr_test_observation_scenario" = attached-failure ]; then cfmgr_tasks_state=quiescent; return 1; fi
     cfmgr_tasks_state=retained
     return 3
@@ -381,7 +401,7 @@ cfmgr_execution_tasks_finish() {
 }
 cfmgr_storage_attached() {
     cfmgr_test_mark observation
-    [ "$cfmgr_test_observation_scenario" = attached-failure ]
+    case $cfmgr_test_observation_scenario in attached-failure | opkg-*) return 0 ;; *) return 1 ;; esac
 }
 cfmgr_dependencies_report() {
     cfmgr_test_mark "report:$1"
@@ -390,6 +410,7 @@ cfmgr_dependencies_report() {
 }
 cfmgr_execution_view_release() {
     cfmgr_test_mark release
+    [ "$cfmgr_test_observation_scenario" != opkg-cleanup ] || return 3
     cfmgr_view_state=released cfmgr_keeper_state=released
 }
 """
@@ -401,7 +422,7 @@ cfmgr_execution_view_release() {
     )
     script = script.replace(
         'echo "postprobe=$cfmgr_test_postprobe"',
-        'echo "postprobe=$cfmgr_test_postprobe"\necho "loss=$cfmgr_dependencies_loss"\necho "reason=$cfmgr_dependencies_reason"',
+        'echo "postprobe=$cfmgr_test_postprobe"\necho "loss=$cfmgr_dependencies_loss"\necho "reason=$cfmgr_dependencies_reason"\necho "failure=$cfmgr_dependencies_failure"',
     )
     result = subprocess.run(
         [
@@ -429,6 +450,8 @@ cfmgr_execution_view_release() {
     assert result.returncode == 0, result.stderr
     assert f"result={status}\n".encode() in result.stdout, result.stdout
     assert f"loss={loss}\nreason={reason}\n".encode() in result.stdout
+    expected_failure = "opkg" if scenario in {"opkg-update", "opkg-install"} else "none"
+    assert f"failure={expected_failure}\n".encode() in result.stdout
     trace_file = marker / "trace"
     trace = trace_file.read_text().splitlines() if trace_file.exists() else []
     assert ("observation" in trace) == observed
@@ -448,6 +471,7 @@ cfmgr_execution_view_release() {
 
 
 DNS_CONSUMER = r"""
+. "$1/modules/lib/prerequisites.sh"
 . "$1/modules/helpers/bootstrap.sh"
 cfmgr_install_source=$1 cfmgr_install_context=$2 cfmgr_install_sh=$3
 cfmgr_install_env=$4 cfmgr_install_awk=$5 cfmgr_install_sleep=$6 cfmgr_install_wc=$7
@@ -475,24 +499,7 @@ printf 'status=%s native=%s\n' "$status" "$cfmgr_install_dns_native"
 """
 
 
-@pytest.mark.parametrize(
-    ("scenario", "phase", "status", "native", "dig_used"),
-    [
-        ("lede", "pre", 0, "unsupported", False),
-        ("ordinary", "pre", 0, "unsupported", False),
-        ("modern", "pre", 0, "srv-a-verified", False),
-        ("server-only", "pre", 1, "unknown", False),
-        ("outage", "pre", 1, "unknown", False),
-        ("malformed", "pre", 1, "unknown", False),
-        ("unknown", "pre", 3, "unknown", False),
-        ("lede", "post", 0, "unsupported", True),
-        ("dig-outage", "post", 1, "unsupported", True),
-        ("selected-dig", "post", 0, "unsupported", True),
-    ],
-)
-def test_actual_dns_syntax_and_response_policy_adapters(
-    shell, tools, tmp_path, scenario, phase, status, native, dig_used
-) -> None:
+def dns_tools(tmp_path: Path, scenario: str) -> tuple[Path, Path, Path]:
     native_tool = tmp_path / "native-nslookup"
     query_log = tmp_path / "query-argv"
     srv = (
@@ -528,6 +535,7 @@ def test_actual_dns_syntax_and_response_policy_adapters(
     dig = tmp_path / "dig"
     dig.write_text(
         header
+        + "case $1 in -v) printf 'DiG fixture\\n'; exit 0 ;; esac\n"
         + (
             "printf '%s\\n' 'dig: network unavailable' >&2; exit 1\n"
             if scenario == "dig-outage"
@@ -535,6 +543,28 @@ def test_actual_dns_syntax_and_response_policy_adapters(
         )
     )
     dig.chmod(0o700)
+    return native_tool, dig, query_log
+
+
+@pytest.mark.parametrize(
+    ("scenario", "phase", "status", "native", "dig_used"),
+    [
+        ("lede", "pre", 0, "unsupported", False),
+        ("ordinary", "pre", 0, "unsupported", False),
+        ("modern", "pre", 0, "srv-a-verified", False),
+        ("server-only", "pre", 1, "unknown", False),
+        ("outage", "pre", 1, "unknown", False),
+        ("malformed", "pre", 1, "unknown", False),
+        ("unknown", "pre", 3, "unknown", False),
+        ("lede", "post", 0, "unsupported", True),
+        ("dig-outage", "post", 1, "unsupported", True),
+        ("selected-dig", "post", 0, "unsupported", True),
+    ],
+)
+def test_actual_dns_syntax_and_response_policy_adapters(
+    shell, tools, tmp_path, scenario, phase, status, native, dig_used
+) -> None:
+    native_tool, dig, query_log = dns_tools(tmp_path, scenario)
     result = subprocess.run(
         [
             *shell,
@@ -648,3 +678,291 @@ def test_actual_native_scope_recheck_preserves_settings_and_refuses_stale_state(
     assert (tmp_path / "snapshot").read_bytes() == snapshot
     assert (tmp_path / "live").read_bytes() == live
     assert b"private-history" not in result.stdout + result.stderr
+
+
+@pytest.fixture(scope="module")
+def normal_inventory(tmp_path_factory) -> Path:
+    """Share only source text; each consumer owns fresh probe and config files."""
+    source = (ROOT / "modules/lib/prerequisites.sh").read_text()
+    definition = "cfmgr_prerequisites_check() {"
+    renamed = "normal_actual_inventory() {"
+    assert source.count(definition) == 1
+    adapted = source.replace(definition, renamed, 1)
+    assert adapted.replace(renamed, definition, 1) == source
+    target = tmp_path_factory.mktemp("normal-inventory") / "prerequisites.sh"
+    target.write_text(adapted)
+    return target
+
+
+NORMAL_CONSUMER = r"""
+. "$1/modules/helpers/bootstrap.sh"
+. "$1/modules/helpers/launch.sh"
+base=$2 scenario=$3
+. "$4"
+shift 4
+cfmgr_install_source=$1 cfmgr_install_context=$base/ram
+cfmgr_install_sh=$2 cfmgr_install_env=$3 cfmgr_install_awk=$4
+cfmgr_install_sleep=$5 cfmgr_install_wc=$6 cfmgr_install_ls=$7
+normal_jq=$8 normal_timeout=$9
+shift 9
+normal_sha=$1 normal_flock=$2 normal_native=$3 normal_dig=$4
+cfmgr_install_private_context=$cfmgr_install_context
+cfmgr_install_source_fd=9 cfmgr_install_context_fd=0 cfmgr_install_interrupted=0
+cfmgr_storage_source=/fixture/device
+cfmgr_launch_snapshot=$base/snapshot cfmgr_launch_live=$base/live cfmgr_launch_generation=1
+exec 0<"$cfmgr_install_context" 9<"$cfmgr_install_source"
+mark() { printf '%s\n' "$1" >>"$base/trace"; }
+cfmgr_bootstrap_native_admission() { return 0; }
+cfmgr_bootstrap_action() {
+    case $1 in install-nvram) cfmgr_install_output=$base/nvram ;;
+    install-mkdir-private) mkdir "$2" ;; *) return 88 ;; esac
+}
+cfmgr_storage_uuid() { return 0; }
+cfmgr_bootstrap_metadata() { return 0; }
+cfmgr_launch_metadata() { [ -f "$1" ] && [ ! -L "$1" ]; }
+cfmgr_prerequisites_attachment_ok() { return 0; }
+cfmgr_prerequisites_supervisor() { return 0; }
+cfmgr_bootstrap_dns_admit_native() {
+    cfmgr_install_dns_tool=$normal_native
+    case $scenario in unsafe-native) return 2 ;; absent-native) return 1 ;;
+    post-new-dns) [ ! -e "$base/repaired" ] || return 1 ;;
+    post-unsafe-native) [ ! -e "$base/repaired" ] || return 2 ;;
+    esac
+}
+cfmgr_prerequisites_admit_tool() {
+    case $1 in
+    /opt/bin/dig | "$normal_dig")
+        mark admit-dig
+        [ "$scenario" != unsafe-dig ] || return 2
+        [ "$scenario" != post-new-dns ] || return 1
+        case $scenario in missing-dig | repair-outage | repair-failed | repair-unsafe | repair-unresolved | stale | coalesced | post-shared-fail | post-stale | post-unsafe-native | migration-failed | migration-unresolved)
+            [ -e "$base/repaired" ] || return 1 ;;
+        esac
+        [ -f "$normal_dig" ] && [ -x "$normal_dig" ]
+        return $?
+        ;;
+    "$normal_jq")
+        case $scenario in shared-missing | outage-shared | post-new-dns)
+            [ -e "$base/repaired" ] || return 1 ;;
+        post-shared-fail) [ ! -e "$base/repaired" ] || return 1 ;;
+        esac ;;
+    esac
+    [ -f "$1" ] && [ -x "$1" ]
+}
+cfmgr_prerequisites_run() {
+    mode=$1 context=$2 selected_sh=$3 helper=$4 selected_env=$5 selected_tool=$9
+    shift 9
+    cfmgr_probe_serial=$((${cfmgr_probe_serial:-0}+1))
+    cfmgr_probe_stdout=$context/$mode.$cfmgr_probe_serial.out
+    cfmgr_probe_stderr=$context/$mode.$cfmgr_probe_serial.err
+    case $mode in native-dns-* | launch-*) ;; *)
+        cfmgr_probe_stdout=$context/$mode.out cfmgr_probe_stderr=$context/$mode.err ;;
+    esac
+    case $mode in
+    timeout-exit) set -- "$selected_sh" "$helper" ;;
+    timeout-expiry) set -- "$selected_sh" "$helper" "$cfmgr_install_sleep" ;;
+    esac
+    cfmgr_probe_reason='' cfmgr_probe_exit=0
+    mark "$mode"
+    if [ "$selected_tool" = host-flock-adapter ]; then
+        : >"$cfmgr_probe_stdout"; : >"$cfmgr_probe_stderr"
+        [ "$mode" != flock-compete ] || cfmgr_probe_exit=1
+        return 0
+    fi
+    if [ "$mode" = blkid ]; then
+        cfmgr_probe_stdout=$base/blkid cfmgr_probe_stderr=$base/err
+        return 0
+    fi
+    if [ "$mode" = native-dns-native-srv ]; then
+        case $scenario in
+        attachment | clock) cfmgr_probe_reason=$scenario; return 1 ;;
+        query-timeout) cfmgr_probe_reason=deadline; return 1 ;;
+        helper-invalid) return 2 ;;
+        unresolved) return 3 ;;
+        esac
+
+    fi
+    [ "$selected_tool" != /opt/bin/dig ] || selected_tool=$normal_dig
+    "$normal_timeout" --foreground --kill-after=0.1s 3s "$selected_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C \
+        "$selected_sh" "$helper" "$mode" "$selected_tool" "$context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"
+    cfmgr_probe_exit=$?
+    return 0
+}
+cfmgr_prerequisites_check() {
+    mark "inventory:$1:${15}"
+    if normal_actual_inventory "$1" "$2" "$cfmgr_install_sh" "$cfmgr_install_source/modules/helpers/probe.sh" \
+        "$cfmgr_install_env" "$cfmgr_install_awk" "$cfmgr_install_sleep" "$cfmgr_install_wc" \
+        "$normal_flock" "$normal_jq" "$normal_timeout" "$normal_sha" - "$normal_dig" "${15}"; then code=0; else code=$?; fi
+    mark "missing:$cfmgr_prereq_missing"
+    return "$code"
+}
+cfmgr_dependencies_repair() {
+    mark "repair:$1"
+    if [ "$scenario" = stale ]; then cp "$base/stale" "$base/live"; fi
+    cfmgr_dependencies_before_repair || return $?
+    mark mutation
+    case $scenario in
+    repair-failed) cfmgr_dependencies_failure=opkg cfmgr_dependencies_state=complete cfmgr_dependencies_loss=0 cfmgr_dependencies_native_unresolved=0; return 1 ;;
+    repair-unsafe | shared-missing) return 1 ;;
+    repair-unresolved) return 3 ;;
+    esac
+    : >"$base/repaired"
+    [ "$scenario" != post-stale ] || cp "$base/stale" "$base/live"
+    cfmgr_dependencies_result=repaired
+    [ "$scenario" != coalesced ] || cfmgr_dependencies_result=coalesced
+}
+cfmgr_launch_migrate_snapshot() {
+    mark migrate
+    case $scenario in migration-failed) return 1 ;; migration-unresolved) return 3 ;; esac
+}
+cfmgr_bootstrap_cleanup() { mark cleanup-original; exec 3<&-; }
+consumer=retained
+[ "$scenario" != fresh ] || consumer=fresh
+if cfmgr_bootstrap_shared_requirements "$consumer"; then code=0; else code=$?; fi
+printf 'status=%s dns=%s scope=%s source-fd=%s context-fd=%s\n' "$code" "$cfmgr_install_dns_result" \
+    "$cfmgr_install_dependency_scope" "$cfmgr_install_source_fd" "$cfmgr_install_context_fd"
+exec 0<&- 3<&- 9<&-
+"""
+
+
+@pytest.mark.parametrize(
+    ("scenario", "response", "status", "dns", "repair"),
+    [
+        ("fresh", "modern", 0, "not-required", None),
+        ("shared", "modern", 0, "not-required", None),
+        ("native", "modern", 0, "verified", None),
+        ("missing-dig", "lede", 0, "verified", "bind-dig"),
+        ("absent-native", "lede", 0, "verified", None),
+        ("healthy-dig", "lede", 0, "verified", None),
+        ("outage", "outage", 0, "deferred", None),
+        ("malformed", "malformed", 0, "deferred", None),
+        ("dig-outage", "dig-outage", 0, "deferred", None),
+        ("repair-outage", "dig-outage", 0, "deferred", "bind-dig"),
+        ("repair-failed", "lede", 0, "deferred", "bind-dig"),
+        ("repair-unsafe", "lede", 1, "not-required", "bind-dig"),
+        ("repair-unresolved", "lede", 3, "not-required", "bind-dig"),
+        ("stale", "lede", 1, "not-required", "bind-dig"),
+        ("coalesced", "lede", 0, "verified", "bind-dig"),
+        ("shared-missing", "outage", 1, "deferred", "jq"),
+        ("outage-shared", "outage", 0, "deferred", "jq"),
+        ("post-shared-fail", "lede", 1, "not-required", "bind-dig"),
+        ("post-stale", "lede", 1, "not-required", "bind-dig"),
+        ("post-unsafe-native", "lede", 2, "not-required", "bind-dig"),
+        ("post-new-dns", "outage", 0, "deferred", "jq"),
+        ("migration-failed", "lede", 1, "verified", "bind-dig"),
+        ("migration-unresolved", "lede", 3, "verified", "bind-dig"),
+        ("unsafe-native", "modern", 2, "not-required", None),
+        ("unsafe-dig", "lede", 2, "not-required", None),
+        ("attachment", "modern", 2, "not-required", None),
+        ("clock", "modern", 2, "not-required", None),
+        ("helper-invalid", "modern", 2, "not-required", None),
+        ("unresolved", "modern", 3, "not-required", None),
+        ("query-timeout", "modern", 0, "deferred", None),
+    ],
+)
+def test_normal_retained_scope_inventory_and_real_dns_queries(
+    shell,
+    tools,
+    config,
+    normal_inventory,
+    tmp_path,
+    scenario,
+    response,
+    status,
+    dns,
+    repair,
+) -> None:
+    import json
+    import shutil
+
+    for name in ("source", "ram"):
+        (tmp_path / name).mkdir()
+    # The production consumer reads a validated retained snapshot. Settings stay
+    # configured but Off; native query qualification is never feature activation.
+    settings = json.loads(config)
+    settings["cloudflared"].update(configured=scenario != "shared", enabled=False)
+    original = json.dumps(settings, indent=2).encode()
+    for name in ("snapshot", "live"):
+        (tmp_path / name).write_bytes(original)
+    settings["generation"] = 2
+    (tmp_path / "stale").write_text(json.dumps(settings))
+    for name, value in (("nvram", "1\n"), ("blkid", "uuid\n"), ("err", "")):
+        (tmp_path / name).write_text(value)
+    native, dig, query_log = dns_tools(tmp_path, response)
+    flock = shutil.which("flock")
+    # macOS lacks flock; real native/Entware lock qualification remains in the
+    # existing Linux retained integration. Other inventory probes run for real.
+    flock = flock or "host-flock-adapter"
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            NORMAL_CONSUMER,
+            "normal-consumer",
+            str(ROOT),
+            str(tmp_path),
+            scenario,
+            str(normal_inventory),
+            str(ROOT),
+            tools["sh"],
+            tools["env"],
+            tools["awk"],
+            tools["sleep"],
+            tools["wc"],
+            tools["ls"],
+            tools["jq"],
+            tools["timeout"],
+            tools["sha256sum"],
+            flock,
+            str(native),
+            str(dig),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=12,
+    )
+    assert result.returncode == 0, result.stderr
+    scope = "shared" if scenario in {"fresh", "shared"} else "tunnel"
+    assert f"status={status} dns={dns} scope={scope} ".encode() in result.stdout, (
+        result.stdout,
+        result.stderr,
+    )
+    trace = (tmp_path / "trace").read_text().splitlines()
+    assert [line for line in trace if line.startswith("repair:")] == (
+        [] if repair is None else [f"repair:{repair}"]
+    )
+    assert ("mutation" in trace) == (repair is not None and scenario != "stale")
+    assert (tmp_path / "snapshot").read_bytes() == original
+    expected_live = (
+        (tmp_path / "stale").read_bytes()
+        if scenario in {"stale", "post-stale"}
+        else original
+    )
+    assert (tmp_path / "live").read_bytes() == expected_live
+    assert result.stderr.count(b"tunnel DNS verification deferred") == (
+        dns == "deferred"
+    )
+    if scenario in {"fresh", "shared"}:
+        assert not query_log.exists()
+        assert "admit-dig" not in trace
+    if (response == "outage" and scenario != "post-new-dns") or scenario in {
+        "malformed",
+        "query-timeout",
+    }:
+        assert "admit-dig" not in trace
+        assert "inventory:shared:unknown" in trace
+    if scenario == "native":
+        assert "inventory:tunnel:srv-a-verified" in trace
+        assert "admit-dig" not in trace
+    if repair is not None and status == 0:
+        assert trace.count("cleanup-original") == 1 and "migrate" in trace
+        assert len([line for line in trace if line.startswith("inventory:")]) == 2
+    if status == 3:
+        assert "cleanup-original" not in trace
+    if scenario in {"post-stale", "post-unsafe-native", "post-shared-fail"}:
+        assert trace.count("cleanup-original") == 1
+        assert "migrate" not in trace
+    if scenario == "migration-failed":
+        assert "migrate" in trace and trace.count("cleanup-original") == 1
+    if scenario == "migration-unresolved":
+        assert "migrate" in trace and "cleanup-original" not in trace

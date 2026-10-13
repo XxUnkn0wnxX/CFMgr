@@ -1,5 +1,5 @@
 #!/bin/sh
-# Source-inert retained launch. Only shared dependency admission/repair is enabled.
+# Source-inert retained launch. Dependency scope follows validated settings.
 # Never constructs defaults, starts features or invokes the fresh transaction.
 # shellcheck disable=SC2034,SC2154 # Explicit bootstrap/storage/parser result fields.
 
@@ -449,7 +449,7 @@ cfmgr_launch_work() {
 	if [ "${cfmgr_launch_requested_action:-normal}" = reinstall ]; then
 		printf '[CFMGR] dependencies: notice: selected dependencies reinstalled and verified\n'
 	else
-		printf '[CFMGR] launch: notice: shared dependencies verified; feature operations unavailable\n'
+		printf '[CFMGR] launch: notice: shared dependencies verified; tunnel DNS %s; feature operations unavailable\n' "${cfmgr_install_dns_result:-not-required}"
 	fi
 }
 

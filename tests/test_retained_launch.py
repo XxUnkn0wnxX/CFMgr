@@ -345,6 +345,12 @@ def test_real_retained_repair_and_later_return(
         in result.stdout
     )
     assert b"Entware attachment unavailable" in result.stderr
+    assert b"shared dependencies verified; tunnel DNS verified" in result.stdout
+    assert b"shared dependencies verified; tunnel DNS deferred" in result.stdout
+    assert (
+        b"PASS: actual normal native SRV/A and scoped outage with configured-Off settings"
+        in result.stdout
+    )
     assert (
         b"PASS: actual healthy force, alternate jq-full, settings/history/Off and released guards"
         in result.stdout

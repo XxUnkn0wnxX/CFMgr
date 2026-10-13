@@ -599,8 +599,8 @@ cfmgr_bootstrap_shared_requirements() {
 	cfmgr_install_dependency_action=${2:-normal}
 	case $cfmgr_install_consumer:$cfmgr_install_dependency_action in fresh:normal | retained:normal | retained:reinstall) ;; *) return 2 ;; esac
 	cfmgr_install_force_flock=0 cfmgr_install_force_dig=0
-	cfmgr_install_dependency_scope=shared
-	if [ "$cfmgr_install_dependency_action" = reinstall ]; then cfmgr_launch_reinstall_scope || return $?; fi
+	cfmgr_install_dependency_scope=shared cfmgr_install_dns_result=not-required cfmgr_install_dns_warned=0
+	if [ "$cfmgr_install_consumer" = retained ]; then cfmgr_launch_reinstall_scope || return $?; fi
 	cfmgr_bootstrap_native_admission || return $?
 	cfmgr_bootstrap_action install-nvram || return $?
 	IFS= read -r cfmgr_install_scripts_enabled <"$cfmgr_install_output" || return 1
@@ -615,12 +615,15 @@ cfmgr_bootstrap_shared_requirements() {
 	# native flock never inspects an unused optional Entware executable.
 	cfmgr_install_native_flock=/usr/bin/flock cfmgr_install_entware_flock=/opt/bin/flock
 	if [ ! -f /usr/bin/flock ] || [ ! -x /usr/bin/flock ]; then cfmgr_install_native_flock=-; fi
-	if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_inventory_code=0; else cfmgr_install_inventory_code=$?; fi
+	cfmgr_install_inventory_scope=shared cfmgr_install_inventory_native_dns=unknown
+	if [ "$cfmgr_install_dependency_action" = normal ]; then cfmgr_bootstrap_normal_dns pre || return $?; fi
+	if cfmgr_prerequisites_check "$cfmgr_install_inventory_scope" "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" /opt/bin/dig "$cfmgr_install_inventory_native_dns"; then cfmgr_install_inventory_code=0; else cfmgr_install_inventory_code=$?; fi
 	case $cfmgr_install_inventory_code in
 	0) [ ! -e /tmp/cfmgr/dependencies ] && [ ! -L /tmp/cfmgr/dependencies ] || cfmgr_install_inventory_code=1 ;;
 	1) [ "$cfmgr_prereq_result" = capabilities-checked ] || return 2 ;;
 	*) return "$cfmgr_install_inventory_code" ;;
 	esac
+	if [ "$cfmgr_install_dependency_action" = normal ] && [ "$cfmgr_prereq_dns_provider" = entware ]; then cfmgr_bootstrap_normal_dns_query || return $?; fi
 	if [ "$cfmgr_install_dependency_action" = reinstall ]; then
 		# Explicit action chooses the direct logical set even when healthy. The
 		# existing status mapper preserves installed alternatives such as jq-full.
@@ -645,6 +648,7 @@ cfmgr_bootstrap_shared_requirements() {
 		# allocating a hidden/high ash descriptor: source0, stable preflight9.
 		exec 4<&9 9<&0 0<&4 4<&-
 		cfmgr_install_source_fd=0 cfmgr_install_context_fd=9
+		cfmgr_install_repair_missing=$cfmgr_prereq_missing cfmgr_install_repair_code=0
 		if cfmgr_dependencies_repair "$cfmgr_prereq_missing" /tmp/cfmgr "$cfmgr_install_source" / /bin/sh /usr/bin/env /usr/bin/awk /usr/bin/readlink /bin/usleep /usr/bin/wc /bin/mknod /usr/sbin/chroot; then :; else
 			cfmgr_install_repair_code=$?
 			# Unknown gate/root/native children retain the phase mapping and FD4.
@@ -652,11 +656,18 @@ cfmgr_bootstrap_shared_requirements() {
 				exec 4<&0 0<&9 9<&4 4<&-
 				cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
 			fi
-			printf '[CFMGR] install: error: dependency repair failed (%s)\n' "${cfmgr_dependencies_phase:-admission}" >&2
-			return "$cfmgr_install_repair_code"
+			if [ "$cfmgr_install_dependency_action:$cfmgr_install_repair_missing:$cfmgr_install_repair_code" = normal:bind-dig:1 ] &&
+				[ "${cfmgr_dependencies_failure:-none}:${cfmgr_dependencies_state:-none}:${cfmgr_dependencies_loss:-0}:${cfmgr_dependencies_native_unresolved:-0}" = opkg:complete:0:0 ]; then
+				cfmgr_bootstrap_dns_deferred
+			else
+				printf '[CFMGR] install: error: dependency repair failed (%s)\n' "${cfmgr_dependencies_phase:-admission}" >&2
+				return "$cfmgr_install_repair_code"
+			fi
 		fi
-		exec 4<&0 0<&9 9<&4 4<&-
-		cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
+		if [ "$cfmgr_install_repair_code" -eq 0 ]; then
+			exec 4<&0 0<&9 9<&4 4<&-
+			cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
+		fi
 		if [ "$cfmgr_install_dependency_action" = reinstall ] && [ "$cfmgr_dependencies_result" != repaired ]; then
 			printf '[CFMGR] dependencies: warning: concurrent repair completed; reinstall deferred; retry explicitly\n' >&2
 			return 1
@@ -670,14 +681,41 @@ cfmgr_bootstrap_shared_requirements() {
 		cfmgr_install_post_native_flock=$cfmgr_install_native_flock
 		# A newly healthy native provider cannot hide a broken selected reinstall.
 		if [ "$cfmgr_install_force_flock" = 1 ]; then cfmgr_install_post_native_flock=-; fi
-		if cfmgr_prerequisites_check shared "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_post_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" - unknown; then cfmgr_install_post_code=0; else cfmgr_install_post_code=$?; fi
+		cfmgr_install_inventory_scope=shared cfmgr_install_inventory_native_dns=unknown
+		cfmgr_install_post_code=0 cfmgr_install_post_inventory=0
+		if [ "$cfmgr_install_dependency_action" = normal ]; then
+			if [ "$cfmgr_install_consumer" = retained ]; then
+				if cfmgr_launch_reinstall_recheck; then :; else cfmgr_install_post_code=$?; fi
+			fi
+			if [ "$cfmgr_install_post_code" -eq 0 ]; then
+				if cfmgr_bootstrap_normal_dns pre; then :; else cfmgr_install_post_code=$?; fi
+			fi
+		fi
+		[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		if [ "$cfmgr_install_post_code" -eq 0 ]; then
+			if cfmgr_prerequisites_check "$cfmgr_install_inventory_scope" "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/probe.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_post_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" /opt/bin/dig "$cfmgr_install_inventory_native_dns"; then cfmgr_install_post_code=0; else cfmgr_install_post_code=$?; fi
+			cfmgr_install_post_inventory=1
+		fi
 		# Reaped fresh probes allow bounded cleanup of the original owned context.
+		[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		if [ "$cfmgr_install_dependency_action" = normal ]; then
+			if [ "$cfmgr_install_post_inventory:$cfmgr_install_post_code:$cfmgr_prereq_missing" = 1:1:bind-dig ]; then
+				# One normal repair attempt only; shared capabilities passed.
+				cfmgr_bootstrap_dns_deferred
+				cfmgr_install_post_code=0
+			elif [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_prereq_dns_provider" = entware ]; then
+				if cfmgr_bootstrap_normal_dns_query; then :; else cfmgr_install_post_code=$?; fi
+			fi
+		fi
 		[ "$cfmgr_install_post_code" -ne 3 ] || return 3
 		if [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_install_dependency_action:$cfmgr_install_dependency_scope" = reinstall:tunnel ]; then
 			if cfmgr_bootstrap_reinstall_dns post; then :; else cfmgr_install_post_code=$?; fi
 			[ "$cfmgr_install_post_code" -ne 3 ] || return 3
 		fi
-		if [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_install_consumer" = retained ]; then cfmgr_launch_migrate_snapshot || return $?; fi
+		if [ "$cfmgr_install_post_code" -eq 0 ] && [ "$cfmgr_install_consumer" = retained ]; then
+			if cfmgr_launch_migrate_snapshot; then :; else cfmgr_install_post_code=$?; fi
+			[ "$cfmgr_install_post_code" -ne 3 ] || return 3
+		fi
 		cfmgr_install_post_context=$cfmgr_install_context
 		cfmgr_install_context=$cfmgr_install_original_context cfmgr_install_context_fd=3
 		cfmgr_bootstrap_cleanup || return 3
@@ -686,10 +724,10 @@ cfmgr_bootstrap_shared_requirements() {
 	fi
 }
 
-# The repair controller calls this immediately before its one opkg request. An
-# explicit action revalidates live generation/scope through native JSON parsing.
+# The repair controller calls this immediately before its one opkg request. A
+# retained action revalidates live generation/scope through native JSON parsing.
 cfmgr_dependencies_before_repair() {
-	if [ "${cfmgr_install_dependency_action:-normal}" = reinstall ]; then cfmgr_launch_reinstall_recheck || return $?; fi
+	if [ "${cfmgr_install_consumer:-fresh}" = retained ] || [ "${cfmgr_install_dependency_action:-normal}" = reinstall ]; then cfmgr_launch_reinstall_recheck || return $?; fi
 }
 
 cfmgr_bootstrap_dns_run() {
@@ -698,6 +736,8 @@ cfmgr_bootstrap_dns_run() {
 	cfmgr_prerequisites_run "$cfmgr_bootstrap_dns_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
 		"$cfmgr_install_source/modules/helpers/probe.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
 		"$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_bootstrap_dns_tool" "$@"
+	cfmgr_bootstrap_dns_run_code=$?
+	cfmgr_prerequisites_probe_code "$cfmgr_bootstrap_dns_run_code"
 }
 
 cfmgr_bootstrap_dns_admit_native() {
@@ -752,7 +792,7 @@ cfmgr_bootstrap_reinstall_dns() {
 		for cfmgr_install_dns_variant in q type long; do
 			if cfmgr_bootstrap_dns_run native-dns-native-srv "$cfmgr_install_dns_tool" "$cfmgr_install_dns_variant"; then :; else
 				cfmgr_install_dns_code=$?
-				[ "$cfmgr_install_dns_code" -ne 3 ] || return 3
+				[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
 				cfmgr_bootstrap_dns_deferred
 				return 1
 			fi
@@ -772,7 +812,7 @@ cfmgr_bootstrap_reinstall_dns() {
 					cfmgr_install_dns_native=srv-a-verified
 					return 0
 				else cfmgr_install_dns_code=$?; fi
-				[ "$cfmgr_install_dns_code" -ne 3 ] || return 3
+				[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
 				cfmgr_bootstrap_dns_deferred
 				return 1
 				;;
@@ -806,13 +846,43 @@ cfmgr_bootstrap_dns_verify_dig() {
 	}
 	cfmgr_install_dns_srv=$cfmgr_probe_stdout
 	if cfmgr_bootstrap_dns_answers dig /opt/bin/dig short "$cfmgr_install_dns_srv"; then return 0; else cfmgr_install_dns_code=$?; fi
-	[ "$cfmgr_install_dns_code" -ne 3 ] || return 3
+	[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
 	cfmgr_bootstrap_dns_deferred
 	return 1
 }
 
+# Native ambiguity never selects dig. Configuration scope remains unchanged
+# for late generation checks; only positive incapability admits tunnel inventory.
+cfmgr_bootstrap_normal_dns() {
+	[ "$cfmgr_install_dependency_scope" = tunnel ] || return 0
+	if cfmgr_bootstrap_reinstall_dns "$1"; then
+		case $cfmgr_install_dns_native in
+		srv-a-verified) cfmgr_install_dns_result=verified cfmgr_install_inventory_scope=tunnel cfmgr_install_inventory_native_dns=srv-a-verified ;;
+		unsupported) cfmgr_install_inventory_scope=tunnel ;;
+		esac
+	else
+		cfmgr_install_dns_code=$?
+		[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
+		cfmgr_bootstrap_dns_deferred
+	fi
+}
+
+cfmgr_bootstrap_normal_dns_query() {
+	if cfmgr_bootstrap_dns_verify_dig; then cfmgr_install_dns_result=verified; else
+		cfmgr_install_dns_code=$?
+		[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
+		cfmgr_bootstrap_dns_deferred
+	fi
+}
+
 cfmgr_bootstrap_dns_deferred() {
-	if [ "$cfmgr_install_dns_phase" = post ]; then
+	if [ "${cfmgr_install_dependency_action:-reinstall}" = normal ]; then
+		cfmgr_install_dns_result=deferred
+		if [ "${cfmgr_install_dns_warned:-0}" = 0 ]; then
+			printf '[CFMGR] dependencies: warning: tunnel DNS verification deferred\n' >&2
+			cfmgr_install_dns_warned=1
+		fi
+	elif [ "$cfmgr_install_dns_phase" = post ]; then
 		printf '[CFMGR] dependencies: warning: opkg completed; DNS verification deferred; retry explicitly\n' >&2
 	else
 		printf '[CFMGR] dependencies: warning: native DNS capability unverified; reinstall deferred\n' >&2

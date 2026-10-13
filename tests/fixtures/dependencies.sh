@@ -315,6 +315,7 @@ dependency_update_failure)
 	[ "$(cat "$cfmgr_storage_opt/operations")" = update ] && [ ! -e "$cfmgr_storage_opt/bin/flock" ] ||
 		fail 'failed update proceeded to installation'
 	exec 0<&- 9<&-
+	[ "$cfmgr_dependencies_failure" = opkg ] || fail 'actual worker update failure did not retain its narrow opkg origin'
 	printf 'PASS: production dependency update failure retires ownership without installation\n'
 	return 0
 	;;
