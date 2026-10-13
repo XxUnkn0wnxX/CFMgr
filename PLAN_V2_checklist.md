@@ -364,19 +364,33 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [ ] | [ ] | S16.01 | **Usable integrated product:** Required workflows are implemented through actual user entry paths, with representative automated acceptance and declared beta target limits. |
-| [ ] | [ ] | S16.02 | **Evidence and limitations:** Separate source/Linux/BusyBox evidence from deferred live beta qualification; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
-| [ ] | [ ] | S16.03 | **Complete practical guides:** Keep developer notes to essential tools/setup/check commands throughout implementation; expand at the final 100% readiness stage and complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before declaring beta readiness. |
-| [ ] | [ ] | S16.04 | **Cloudflare prerequisites:** Account/domain/DNS and policy wiring guidance in docs, no extra runtime prompts or private-network restriction. |
-| [ ] | [ ] | S16.05 | **Safe reproducible delivery:** Sanitized examples/screenshots and validated real installer command/failure behavior. |
+| [ ] | [ ] | S16.02 | **Evidence and limitations:** At final documentation readiness, separate source/Linux/BusyBox evidence from deferred live beta qualification across the completed product; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
+| [ ] | [ ] | S16.03 | **Complete practical guides:** Keep developer notes to essential tools/setup/check commands throughout implementation; after runtime acceptance, complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before declaring 100% implementation/beta readiness. |
+| [ ] | [ ] | S16.04 | **Cloudflare prerequisites:** At final documentation readiness, complete account/domain/DNS and policy wiring guidance verified against implemented setup, with no extra runtime prompts or private-network restriction. |
+| [ ] | [ ] | S16.05 | **Safe reproducible delivery:** At final documentation readiness, sanitized examples/screenshots and validated real installer command/failure behavior match the completed product. |
 | [ ] | [ ] | S16.06 | **Release readiness:** Coherent first version, automated development acceptance and extended router beta before stable qualification; required functionality/documentation before optional final polish. |
 
 Development acceptance requires representative normal-operation and serious-failure
 tests under [specification section 16](PLAN_V2.md#16-product-readiness-and-documentation).
 Relaxed acceptance points and deferred risks belong in [review notes](PLAN_V2_review_notes.md).
 
+**Documentation phase gate:** complete and accept S16.02–S16.05 only after the
+required runtime work in goals 1–15 passes its applicable acceptance gates, then
+finish documentation before declaring 100% implementation/beta readiness. Earlier
+installer implementation/failure-path tests remain evidence for their owning
+requirements but do not complete S16.05's final delivery obligation. Accurately
+deferred live beta proof does not block documentation acceptance.
+
+Necessary current README/status, proven compatibility/evidence limits, contributor
+setup/check commands and guidance directly required by earlier runtime work may
+be maintained, but earn no final-documentation ticks. Acceptance requires the
+entire required result with no known finishing work deferred to the final audit.
+Later behavior/evidence changes require maintenance and revalidation.
+
 ### Planned documentation coverage for S16.03
 
-Developer notes stay minimal until the final 100% readiness stage.
+Developer notes stay minimal until runtime acceptance; complete the full guides
+before declaring 100% implementation/beta readiness.
 The following final-guide obligations mirror specification section 16; existing
 README and temporary developer notes do not complete them. These checks belong
 to S16.03 and do not change the 16-goal denominator. Final review checks actual

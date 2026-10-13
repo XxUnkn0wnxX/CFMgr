@@ -11,6 +11,9 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a12e40-f76a-7710-9c55-a4b89970cbd2
 Fourth ID verified 2026-10-12 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a13107-3627-7803-aa3d-4fb1c1974dea
+Fifth ID verified 2026-10-14 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
@@ -22,7 +25,54 @@ are complete and accepted after focused tests, parent review and exact full CI.
 The user accepted the **8m09s** combined runtime; stop cost tuning here.
 **5/157 accepted (3.2%); 0/16 main goals.** Goal 2: **4/9**; Goal 3: **1/10**.
 Accepted IDs: S02.03, S02.05, S02.08, S02.09, S03.01. No main-goal audit/full-local
-completion is claimed. No new product package has started. **Resume only on request.**
+completion is claimed. No new runtime package has started. **Resume only on request.**
+
+## Documentation reset and final-readiness decision
+
+On 2026-10-14 the user clarified that accepted subgoals must be fully finished,
+with no known required work deferred to project 100%. The early S16.02/S16.04
+documentation package did not meet that intent. The user explicitly authorized
+resetting it, dropping/amending its commits and force-pushing, and clarifying
+the specification/checklist so documentation needing the completed codebase is
+deferred until final readiness.
+
+The three documentation-only commits `a54ecf8`, `aa3269c` and `72abde8` are removed
+from develop's replacement history, based on `29d661f0a1fc550994eafcf1cf2c28d0607a852a`.
+README and compatibility text return to that baseline; the premature credentials
+page is removed. All runtime/tests/tools/workflows and prior five accepted IDs
+remain unchanged. S16.02/S16.04 and all of Goal 16 remain unchecked. The only
+replacement changes are the paired plan/checklist timing clarification and this
+handoff. Final docs follow implemented/validated runtime, then precede overall
+100% implementation readiness; necessary interim corrections earn no docs ticks.
+Astra Max's focused audit passed with notes; the replacement resolves its
+conflicting-timing, S16.02–S16.05 consistency and essential-current-guidance notes.
+Planning consistency (all 157 mirrored rows and 16 README links), privacy/local
+links and whitespace checks pass. README/compatibility and all runtime files
+match the pre-attempt baseline; no runtime test or new CI claim is made.
+
+Before reset, all agents were complete and there were no staged or untracked
+files. Verified preservation includes all 78 tracked working files with byte/mode
+checks (including the uncommitted acceptance correction), patches, index/status
+inventories and a complete verified commit bundle. Recovery is private under
+`.tmp/doc-reset-preservation-20261014-72abde8/`; local-only safety ref
+`refs/safety/docs-before-reset-20261014` retains the former head. See its
+`RECOVERY.md`: create a separate recovery branch from that ref/bundle, then apply
+the preserved dirty patch or recover selected files from the verified tar.
+All unrelated ignored reference, firmware and test/dependency caches remain in
+place. The full hidden parent-session record above is preserved.
+
+Only this replacement documentation checkpoint is authorized for a force push,
+with an explicit lease against remote head
+`72abde8c1ed8b12792577c153c77f4ecf9631635`. Verify exact remote/local equality
+after publication and remain paused. This authority does not permit another
+reset, later work, router actions, main promotion or release.
+
+S02.06 remains unimplemented. Its read-only design findings are retained in the
+private snapshot's handoff and safety history: configured-tunnel-only DNS scope,
+truthful coalesced-repair deferral and capability-versus-outage classification
+need implementation before a genuine reinstall action can pass its focused gates.
+Pinned native nslookup source inspection found no SRV support in either variant;
+source evidence is not live capability proof. No runtime attempt was discarded.
 
 ## Verified checkpoint
 
@@ -67,15 +117,13 @@ permissions and recovery references are preserved. The completed 18-module cost
 review and required core edge coverage are retained; actual test composition/
 optional diagnostic limits are in [review notes](PLAN_V2_review_notes.md).
 
-All workers released their files; no required CI job, local test, unanswered
-question or unfinished active package remains. Only this final documentation
-receipt follows the tested checkpoints. Its commit is not claimed runtime-tested.
-Planning/link/privacy, accepted-count/session-record and whitespace checks passed.
-Publication is authorized: commit/push this receipt, verify clean local/remote
-state, then remain paused. Before new work, verify `git status --short` and
-`git rev-parse HEAD origin/develop`; if receipt publication was interrupted,
-finish that boundary first. No destructive cleanup, new target or router action
-is authorized by this record.
+Prior runtime workers released their files; no required runtime CI job, local
+test or unfinished implementation package remains. The last tested checkpoints
+above remain the runtime evidence. The current replacement is planning-only and
+uses planning/link/privacy, paired-requirement/count/session-record and whitespace
+checks; no runtime Quick group or full suite is due. Before resuming, verify
+`git status --short` and exact local/remote develop state. The narrowly authorized
+publication/reset boundary above supersedes the old receipt instructions.
 
 AGENTS owns standing routes: focused local work commits/continues; required Linux
 proof uses small repair selections followed by all applicable grouped focused CI;
@@ -243,7 +291,9 @@ Source pins and evidence for that decision:
 ## Next-session boundaries
 
 Resume only when the user requests it. Follow smallest independently completable
-subgoals first, then shared-module batches, then remaining main-goal work. Finish
+runtime subgoals first, then shared-module batches, then remaining main-goal work.
+Final documentation subgoals follow the explicit phase gate in the specification
+and checklist; do not select interim documentation as an early completion. Finish
 started libraries/subgoals before switching; inspect existing consumers, tests and
 checklist before choosing the next smallest item. Return toward Goal 2, originally
 a prerequisite for Goal 1; S04.01/S04.08/S04.09 foundations earn no extra ticks.

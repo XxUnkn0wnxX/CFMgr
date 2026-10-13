@@ -1405,11 +1405,25 @@ Preserve Off as operationally unhooked even when reconstructing its binary/data;
 | ID | Subgoal | Required result |
 | --- | --- | --- |
 | S16.01 | Usable integrated product | Required workflows are implemented through actual user entry paths, with representative automated acceptance and declared beta target limits. |
-| S16.02 | Evidence and limitations | Separate source/Linux/BusyBox evidence from deferred live beta qualification; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
-| S16.03 | Complete practical guides | Keep developer notes to essential tools/setup/check commands throughout implementation; expand at the final 100% readiness stage and complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before declaring beta readiness. |
-| S16.04 | Cloudflare prerequisites | Account/domain/DNS and policy wiring guidance in docs, no extra runtime prompts or private-network restriction. |
-| S16.05 | Safe reproducible delivery | Sanitized examples/screenshots and validated real installer command/failure behavior. |
+| S16.02 | Evidence and limitations | At final documentation readiness, separate source/Linux/BusyBox evidence from deferred live beta qualification across the completed product; no unearned hardware or stable-support claims, IPv6 provisional explicit. |
+| S16.03 | Complete practical guides | Keep developer notes to essential tools/setup/check commands throughout implementation; after runtime acceptance, complete architecture/developer and install/setup/credentials/operation/update/recovery/logging/archive/removal guides before declaring 100% implementation/beta readiness. |
+| S16.04 | Cloudflare prerequisites | At final documentation readiness, complete account/domain/DNS and policy wiring guidance verified against implemented setup, with no extra runtime prompts or private-network restriction. |
+| S16.05 | Safe reproducible delivery | At final documentation readiness, sanitized examples/screenshots and validated real installer command/failure behavior match the completed product. |
 | S16.06 | Release readiness | Coherent first version, automated development acceptance and extended router beta before stable qualification; required functionality/documentation before optional final polish. |
+
+Complete and accept S16.02–S16.05 during final documentation/readiness, after
+the required runtime work in goals 1–15 has passed its applicable acceptance
+gates and before declaring 100% implementation/beta readiness. Do not select
+these as early standalone quick-completion tasks. Earlier installer implementation
+and failure-path verification remain valid evidence for their owning requirements;
+they do not independently complete S16.05's final delivery obligation. Documentation
+must accurately state deferred live beta limits; live qualification is not a
+prerequisite for accepting that statement.
+
+A tick means the entire required result is complete with no known finishing
+work deferred. Final review checks that completed work rather than finishing
+obligations hidden behind earlier ticks. Later behavior or evidence changes
+still require proportionate maintenance and revalidation.
 
 The completed implementation is the full CLI described here, with real consumers,
 integrated behavior, required automated safety tests and practical documentation.
@@ -1431,11 +1445,12 @@ publication still require their explicit authorization. Keep the product in beta
 while real use and feedback qualify support; stable readiness requires appropriate
 live evidence and a separate release decision, not an automatic promotion.
 
-During implementation, keep README focused on the implementation overview and
-main-goal status. Keep temporary developer/tool notes small and accurate. Build
-the full documentation set, including architecture and developer guides, when
-most or all implementation goals are met; complete required guides before
-claiming 100% implementation/beta readiness. Do not expand interim notes into a premature manual.
+During implementation, permit necessary corrections to README implementation
+claims/status, proven compatibility/evidence limits, contributor setup/check
+commands and guidance directly required by earlier runtime work. Keep these
+supporting notes concise; they earn no final documentation-subgoal ticks. Build
+the full documentation set only in the runtime-first final-readiness stage above,
+before declaring 100%. Do not expand interim notes into a premature manual.
 
 User documentation must cover installation, dependencies, dedicated feature setup,
 credentials and permissions, current operation/status, updates, outages/repair,
@@ -1453,7 +1468,8 @@ tools and kernel/userspace/ABI boundaries without claiming universal router supp
 ### Documentation set
 
 The following set defines S16.03 coverage; substantial developer documentation
-waits for the final 100% readiness stage. Paths name planned deliverables, not
+waits until runtime acceptance and is completed before declaring 100%
+implementation/beta readiness. Paths name planned deliverables, not
 currently available pages. Keep README as the overview and the development note
 limited to essential tools, setup and check commands throughout implementation.
 Describe actual delivered behavior and limits when writing each guide; shared
