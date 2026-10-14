@@ -420,6 +420,17 @@ def test_fixed_digest_and_intent_frames_reject_ambiguous_receipts(
 )
 def test_linux_actual_supervisor_save_and_cleanup(shell, tools, store_fixture):
     source, ram, *_ = store_fixture
+    # Private fixture alias keeps the exact cleanup body. Capture only bounded
+    # synthetic probe output before cleanup deletes it, then emit on failure;
+    # successful lock-test contention stays silent and supervision is unchanged.
+    library = source / "modules/lib/config_store.sh"
+    body = library.read_text()
+    assert body.count("cfmgr_store_cleanup() {") == 1
+    library.write_text(
+        body.replace(
+            "cfmgr_store_cleanup() {", "cfmgr_store_diagnostic_cleanup_core() {", 1
+        )
+    )
     script = ADAPTER[: ADAPTER.index("cfmgr_prerequisites_run() {")]
     script = script.replace(
         "cfmgr_store_deadline=120",
@@ -431,7 +442,40 @@ def test_linux_actual_supervisor_save_and_cleanup(shell, tools, store_fixture):
         f". {shlex.quote(str(ROOT / 'modules/lib/prerequisites.sh'))}\n"
         + pause_definition(shell)
     )
-    script += '\ncfmgr_config_store "$@"\n'
+    script += r"""
+cfmgr_store_cleanup() {
+    diagnostic_mode=${cfmgr_probe_mode:-unset} diagnostic_status=${cfmgr_probe_status:-unset}
+    diagnostic_reason=${cfmgr_probe_reason:-unset} diagnostic_exit=${cfmgr_probe_exit:-unset}
+    diagnostic_stdout='' diagnostic_stderr=''
+    for diagnostic_stream in stdout stderr; do
+        case $diagnostic_stream in
+        stdout) diagnostic_file=${cfmgr_probe_stdout:-} ;;
+        stderr) diagnostic_file=${cfmgr_probe_stderr:-} ;;
+        esac
+        diagnostic_text='' diagnostic_lines=0
+        if [ -f "$diagnostic_file" ] && [ ! -L "$diagnostic_file" ]; then
+            while IFS= read -r diagnostic_line || [ -n "$diagnostic_line" ]; do
+                diagnostic_lines=$((diagnostic_lines+1))
+                # Four lines, 256 bytes each. No context/environment dump.
+                diagnostic_text=$diagnostic_text$(printf '%.256s' "$diagnostic_line")'
+'
+                [ "$diagnostic_lines" -lt 4 ] || break
+            done <"$diagnostic_file"
+        fi
+        case $diagnostic_stream in
+        stdout) diagnostic_stdout=$diagnostic_text ;;
+        stderr) diagnostic_stderr=$diagnostic_text ;;
+        esac
+    done
+    if cfmgr_store_diagnostic_cleanup_core; then diagnostic_cleanup=0; else diagnostic_cleanup=$?; fi
+    if [ "${cfmgr_store_code:-0}" != 0 ] || [ "$diagnostic_cleanup" != 0 ]; then
+        printf 'STORE probe diagnostic: mode=%s status=%s reason=%s exit=%s cleanup=%s\n' "$diagnostic_mode" "$diagnostic_status" "$diagnostic_reason" "$diagnostic_exit" "$diagnostic_cleanup" >&2
+        printf 'probe stdout: %s\nprobe stderr: %s\n' "$diagnostic_stdout" "$diagnostic_stderr" >&2
+    fi
+    return "$diagnostic_cleanup"
+}
+cfmgr_config_store "$@"
+"""
     fixture = store_fixture
     if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1":
         fsync = ram / "fsync"

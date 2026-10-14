@@ -197,6 +197,19 @@ No full suite or main-goal audit is due. The complete local focused scope is
 passed; exact-SHA CI remains pending. All acceptance boxes and README counts
 remain unchanged until every prescribed group passes.
 
+Candidate `b513f4503cd7599d602bc963e402904bdb97fa56` was committed, pushed to
+`origin/develop` and verified against the remote ref. Group A push run
+`38487295216` / job `115603908097` failed after 13 passes at
+`test_linux_actual_supervisor_save_and_cleanup`: unavailable receipt before any
+recovery guard, 1.07s case time; no detailed failed-probe information yet. Failure
+log is `.tmp/s0701-ci-A-b513f45-failed.log`. Group B run `38487306839` / job
+`115603951722` passed at this SHA (focused step about 50s); it does not waive A.
+No C–F jobs were launched, and neither run remains active. Strong owns only
+`tests/test_config_store.py` for bounded failure diagnostics and a concrete fix;
+runtime changes require parent review of the finding. Parent owns commits/pushes
+and the final complete A–F gate at the corrected candidate. No unrelated package
+may start. All product boxes remain unchecked for this package.
+
 ## Completed checkpoint — S03.07 accepted
 
 The user resumed on 2026-10-14: work on the next smallest task, allow automatic
