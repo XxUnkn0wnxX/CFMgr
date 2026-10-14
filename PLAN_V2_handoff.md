@@ -18,7 +18,82 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active — S07.01 with native Save support
+## Paused checkpoint — S07.01 accepted
+
+**Stop here.** The authorized S07.01/native Save package is complete through
+parent review, focused local/statics and all six exact-candidate Quick CI groups.
+The user requested a pushed handoff ready for a new session and a pause before
+the next substantial crossover. No next package is selected or started.
+
+- Runtime tested and published: `576584885befb84f10bf8c10365a872a0b9fa406`
+  on `origin/develop`. The documentation commit containing this receipt changes
+  only README/checklist/handoff; its identity is available with
+  `git log -1 --format='%H %s' -- PLAN_V2_handoff.md`. Runtime CI applies to the
+  named runtime SHA, not to a claim that this later receipt reran runtime tests.
+- Accepted progress: **9/157 subgoals (5.7%); 0/16 main goals (0%)**.
+  Goal 7 is **1/11 (9.1%)**, S07.01 only. Goal 2 remains **6/9** and Goal 3
+  **2/10**. Goal 4 support remains unchecked; no main-goal full suite/audit is due.
+- Delivered consumer: `ao → CFMgr updates` with Check/Auto intent and coupling,
+  default-no confirmed native Save, cancel/reopen, explicit guarded recovery and
+  saved/effective status. Updater/checker/scheduling/provider/lifecycle expansion
+  remains outside this accepted settings package.
+- All implementation/review owners released their files; the final CI awaiter
+  completed. No required worker or job remains active. No unresolved S07.01 gate,
+  blocker or unanswered approval is carried forward.
+- Existing checkout, all five verified parent IDs/provenance, approved plan and
+  requirements, private evidence and detached-worktree metadata are preserved.
+  No new session ID, worktree, history rewrite, router execution or release.
+- This checkpoint's publication permission does not authorize another package.
+  On a user-requested resume, read this boundary and the applicable instructions,
+  verify Git/receipt state, then inspect remaining dependencies toward Goal 2.
+  Keep the smallest-independent-first rule; present the next material crossover
+  for selection before starting it. Do not automatically begin S07.02.
+
+### Exact-candidate acceptance and cost
+
+Every run below completed successfully at
+`576584885befb84f10bf8c10365a872a0b9fa406`. Parent independently verified each
+job and required step. The diagnostic full-host-baseline step is intentionally
+excluded from this focused route; it is not missing required proof.
+
+| Group | Run / successful job | Pytest result | Pytest / command wall seconds |
+| --- | --- | --- | --- |
+| A | [38488764958](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38488764958) / `115608712512` | 49 passed | 46.97 / 47.14 |
+| B | [38488912894](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38488912894) / `115609193071` | 140 passed | 48.78 / 48.96 |
+| C | [38489196075](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38489196075) / `115610110082` | 121 passed, 1 workstation-only skip | 37.36 / 37.55 |
+| D | [38489342960](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38489342960) / `115610584814` | 92 passed | 57.44 / 57.68 |
+| E | [38488768533](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38488768533) / `115608724097` | 21 passed, 4 optional diagnostics excluded | 218.17 / 218.34 |
+| F | [38489164759](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38489164759) / `115610012216` | 15 passed | 115.70 / 115.96 |
+
+The six whole-module groups are disjoint: **438 passed**, one workstation-only
+no-`/proc` boundary skipped on Linux, four optional diagnostics excluded. Their
+module map and host commands/results remain below. Native Store group A is under
+one minute; retained launch F is under two. Existing dependency group E is within
+the practical three-to-four-minute range and below its prior 229.42s accepted
+checkpoint: actual installer repair/publication accounts for 176.64s. No coverage
+or runner limit was changed. These separate focused timings are not a new full
+suite benchmark. Whole-repository local ShellCheck cost remains recorded below
+for the next required main-goal cost audit; no duplicate full run was performed.
+
+CI logs: `.tmp/s0701-ci-{a,b,c,d,e,f}-5765848.log`; independently verified remote
+run/job/step metadata: `.tmp/s0701-final-ci-receipt.json`. Earlier failed runs,
+bounded diagnostics and ash source provenance remain below, now resolved by the
+final accepted candidate. Do not rerun them or discard their recovery evidence.
+Representative Ubuntu/vendor BusyBox is the development proof; live Merlin/ARM,
+flash/reboot persistence and provider qualification remain beta-only. The accepted
+JFFS2 hidden-flush-error limitation is unchanged.
+
+The receipt uses proportionate planning/link/privacy, package and whitespace
+checks. Final publication/ref and clean-tree verification is recorded locally in
+`.tmp/s0701-publication-receipt.json` after push. A new clone can identify the
+receipt from Git history and the six linked runs without that private file.
+
+## Completed implementation and diagnostic record — S07.01
+
+The following chronological record preserves implementation, review, failed-run
+and recovery evidence. Its earlier pending gates, ownership and next actions are
+historical and superseded by the accepted pause receipt above; they grant no new
+work or publication permission.
 
 The user authorized this recommended Goal 7 + Goal 4 package on 2026-10-14:
 "ok start & pause on the next large cross-over". Baseline is clean, published
@@ -236,6 +311,21 @@ The user explicitly confirmed that the final checkpoint must leave a pushed,
 new-session-ready handoff with exact refs/gates, preserved session lineage,
 permissions, recovery evidence and a clear pause/resume boundary. Preserve that
 requirement while finishing this package; do not start the next crossover.
+
+Corrected candidate `576584885befb84f10bf8c10365a872a0b9fa406` is committed,
+pushed and remote-verified. The narrow fix passed changed-file statics and the
+whole host prerequisite module (20 passed, 8 Linux skips in 3.12s). Parent reviewed
+the fix and regenerated/checked the manifest. Diagnostic run `38488628486` /
+job `115608265796` now passes all three actual Linux/vendor-ash cases in 12.00s:
+supervised Save 9.71s, borrowed observation 1.54s, orphaned child lock 0.44s.
+Log: `.tmp/s0701-ci-lock-5765848.log`. The child assertion verifies that FD0
+identifies the lock and temporary FD9 is closed. This resolves the concrete
+failure; it is not a substitute for the complete focused gate.
+
+Complete A–F subsequently passed at this corrected SHA, with at most two groups
+running concurrently. `s0204_ci_wait` finished recording the per-group logs;
+parent independently verified every job/required step and reviewed counts/cost.
+The final accepted receipt above supersedes the earlier pending state.
 
 ## Completed checkpoint — S03.07 accepted
 
@@ -961,14 +1051,16 @@ Source pins and evidence for that decision:
 
 ## Next-session boundaries
 
-S02.06, S02.04 and S03.07 are complete through their required checkpoints.
-The user has now authorized the bounded S07.01/native Save package recorded at
-the top of this handoff. Finish that checkpoint and pause before another large
-shared/cross-goal package. The user has set project-wide
+S02.06, S02.04, S03.07 and S07.01 are complete through their required checkpoints.
+The session is paused after the S07.01/native Save checkpoint recorded at the top
+of this handoff. No further package has been selected or started. On a new
+user-requested resume, first reconcile branch/HEAD/status and the receipt against
+the actual code and six exact-candidate CI runs; preserve completed proof instead
+of automatically repeating tests. The user has set project-wide
 selection order: follow the [work ordering rule](AGENTS.md#implementation-and-preservation),
 finishing independent subgoals and prerequisites before larger features. Use a
 coordinated multi-goal batch only when no smaller ready, independently completable
-outcome remains. The current S07.01 selection follows the prior smallest-task
+outcome remains. The completed S07.01 selection followed the prior smallest-task
 audit; this ordering policy does not authorize an additional package.
 Final documentation subgoals follow the explicit phase gate in the specification
 and checklist; do not select interim documentation as an early completion. Finish

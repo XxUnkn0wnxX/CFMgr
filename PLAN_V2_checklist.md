@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**8 of 157 product subgoals accepted — 5.1% overall subgoal completion.**
+**9 of 157 product subgoals accepted — 5.7% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and every applicable focused CI group passing at the
@@ -224,7 +224,7 @@ history writers, full diagnostics and final terminal presentation remain separat
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S07.01 | **Check and auto settings:** Default-On checks/default-Off opt-in install, coupled effective settings independent of tunnel/Entware. |
+| [x] | [x] | S07.01 | **Check and auto settings:** Default-On checks/default-Off opt-in install, coupled effective settings independent of tunnel/Entware. |
 | [ ] | [ ] | S07.02 | **Launch/daily checks:** Bounded coalesced source checks, once-per-launch y/n update offer, RAM metadata and truthful unknown/error without redraw or boot blocking. |
 | [ ] | [ ] | S07.03 | **Manual update/force:** Explicit revalidation/confirmation, current skip or complete reinstall; compatible older manager snapshot only through confirmed developer force. |
 | [ ] | [ ] | S07.04 | **Unattended installation:** Saved opt-in and source/ownership rechecked at switch; active transactions defer safely. |
@@ -235,6 +235,32 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S07.09 | **State-preserving update:** No healthy feature reinstall/restart/provider call or config loss; guarded actual owned drift only. |
 | [ ] | [ ] | S07.10 | **Self-update failure recovery:** Distinct transfer/storage/switch/hook-reinjection/overlap/opt-out/rollback boundaries preserve last trusted complete package and report incomplete integration honestly. |
 | [ ] | [ ] | S07.11 | **Optional amtm:** User-chosen personal launcher; official updater conditional with separate opt-in, no private registry hacks. |
+
+S07.01 accepted at `576584885befb84f10bf8c10365a872a0b9fa406`: actual installed
+`ao → CFMgr updates` supports reviewed native Save, coupled intent, cancellation,
+reopening and saved/effective status independently of Cloudflared and Entware.
+Complete focused host modules and required statics passed; parent, independent
+runtime and Astra design/fix reviews completed. Linux/vendor BusyBox proved the
+actual supervised Save, child-held exclusion, restored observation descriptors,
+shared-writer coordination and guarded recovery at the accepted revision.
+
+All six complete Quick groups passed at that same revision:
+[A — settings/store](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38488764958)
+**49 passed, 46.97s**;
+[B — menu/status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38488912894)
+**140 passed, 48.78s**;
+[C — shared consumers](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38489196075)
+**121 passed, one workstation-only skip, 37.36s**;
+[D — package/storage](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38489342960)
+**92 passed, 57.44s**;
+[E — dependency repair](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38488768533)
+**21 passed, four optional diagnostics excluded, 218.17s**;
+[F — retained launch](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38489164759)
+**15 passed, 115.70s**. Every required job/step passed and cost was reviewed.
+Full local/full CI was not due. Host commands, module mapping and bounded firmware
+evidence are retained in the [checkpoint receipt](PLAN_V2_handoff.md#paused-checkpoint--s0701-accepted).
+Only S07.01 earns acceptance; shared Save support does not complete Goal 4.
+Live Merlin/ARM and flash persistence remain separately authorized beta proof.
 
 ### 8. Shared address discovery and reconciliation
 
