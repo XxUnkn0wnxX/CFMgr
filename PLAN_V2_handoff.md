@@ -210,6 +210,33 @@ runtime changes require parent review of the finding. Parent owns commits/pushes
 and the final complete A–F gate at the corrected candidate. No unrelated package
 may start. All product boxes remain unchecked for this package.
 
+Diagnostic-only candidate `4b00501819fb0d37dbebff376c95cecf67e4d115` was pushed
+and remote-verified. Run `38487829438` / job `115605643278` identifies the cause:
+`store-lock-test` unexpectedly exits 0 after successful acquisition. The parent
+therefore does not retain the helper's lock; the mandatory admission refuses Save
+before any persistent write. Log: `.tmp/s0701-ci-diagnostic-4b00501.log`.
+Fresh retrieval of the exact CI baseline ash source at commit
+`433fc608f5fc1689f3d3c3ab5cd2a7d57102260f` matches retained source SHA-256
+`28fcb7d7f9428e44bad4299bffdc7c30c8c83468c479305b60f0c690e57b7b09`.
+It resets background FD0 to `/dev/null` before applying redirections and skips
+the existing same-descriptor `0<&0` operation. Source evidence is retained at
+`.tmp/s0701-ash-baseline.c`; it was not executed.
+
+Parent and Astra audited the narrow fix (PASS WITH NOTES): call a tiny ordinary
+launch function with scoped `9<&0`, then give its direct async child `0<&9 9<&-`.
+The shell restores the parent's support FD9 when the function returns, before
+identity/attachment checks. FD6/7 storage pins and FD8 snapshot behavior stay
+intact; no helper consumes FD9. Handle bridge-call/redirection failure before
+supervision. Strong now owns this fix in `prerequisites.sh` plus the Linux child
+fixture's FD0/closed-FD9 assertions. The three real Linux cases remain the first
+diagnostic gate, followed by complete A–F at the final candidate. No acceptance
+or scope change follows merely from the source explanation.
+
+The user explicitly confirmed that the final checkpoint must leave a pushed,
+new-session-ready handoff with exact refs/gates, preserved session lineage,
+permissions, recovery evidence and a clear pause/resume boundary. Preserve that
+requirement while finishing this package; do not start the next crossover.
+
 ## Completed checkpoint — S03.07 accepted
 
 The user resumed on 2026-10-14: work on the next smallest task, allow automatic

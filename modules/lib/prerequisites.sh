@@ -220,11 +220,14 @@ cfmgr_prerequisites_run() {
 		: >"$cfmgr_probe_stdout" && : >"$cfmgr_probe_stderr"
 	) || return 2
 	if [ "${cfmgr_config_lock_fd0:-0}" = 1 ]; then
-		(_cfmgr_prerequisites_exec "$@") 0<&0 >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+		if _cfmgr_prerequisites_start_locked "$@" 9<&0; then :; else
+			cfmgr_probe_reason=lock-inheritance
+			return 2
+		fi
 	else
 		(_cfmgr_prerequisites_exec "$@") >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+		cfmgr_probe_pid=$!
 	fi
-	cfmgr_probe_pid=$!
 	# Save identity before supervising. A vanished immediate child is already reapable.
 	if cfmgr_prerequisites_identity "$cfmgr_probe_pid"; then
 		cfmgr_probe_start=$cfmgr_identity_start
@@ -533,8 +536,16 @@ cfmgr_prerequisites_check() {
 	[ -z "$cfmgr_prereq_missing" ]
 }
 
-# Only a settings/observation lock owner requests explicit stdin inheritance.
-# POSIX async shells may otherwise replace FD0 with /dev/null.
+# Pinned ash resets background FD0 before command redirects; 0<&0 is a no-op.
+# Invocation-scoped 9<&0 preserves the lock across that fork. This tiny function
+# performs no attachment checks while parent9 aliases the lock; return restores
+# its support pin before supervision. Child9 closes after duplication to0, and
+# no probe mode consumes9. Independent contention still admits lock semantics.
+_cfmgr_prerequisites_start_locked() {
+	(_cfmgr_prerequisites_exec "$@") 0<&9 9<&- >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+	cfmgr_probe_pid=$!
+}
+
 _cfmgr_prerequisites_exec() {
 	# Clear loader/config input before even execing the env utility. env-i
 	# sanitizes its child, but cannot protect env own dynamic-loader startup.

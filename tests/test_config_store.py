@@ -501,7 +501,15 @@ def test_linux_owned_mutator_keeps_lock_after_controller_closes(
     context.mkdir(mode=0o700)
     mutator = tmp_path / "owned-mutator"
     mutator.write_text(
-        f"#!{Path(sys.executable).resolve()}\nimport time\ntime.sleep(0.4)\n"
+        f"#!{Path(sys.executable).resolve()}\n"
+        "import errno,fcntl,os,time\n"
+        f"expected=os.stat({str(lock)!r})\n"
+        "actual=os.fstat(0)\n"
+        "assert (actual.st_dev,actual.st_ino)==(expected.st_dev,expected.st_ino), 'FD0 lost the lock inode'\n"
+        "try: fcntl.fcntl(9,fcntl.F_GETFD)\n"
+        "except OSError as error: assert error.errno==errno.EBADF\n"
+        "else: raise AssertionError('temporary child FD9 alias leaked')\n"
+        "time.sleep(0.4)\n"
     )
     mutator.chmod(0o700)
     script = f'''
