@@ -112,7 +112,7 @@ def expected_catalog() -> bytes:
 
 def expected_manifest(files: dict[str, tuple[bytes, int]]) -> bytes:
     packaged = {**files, "catalog.txt": (expected_catalog(), 0o644)}
-    lines = ["CFMGR-MANIFEST 1 0.1.0"]
+    lines = ["CFMGR-MANIFEST 2 0.1.0 1 1"]
     for relative in sorted(packaged):
         contents, mode = packaged[relative]
         lines.append(
@@ -235,6 +235,31 @@ def test_check_rejects_stale_package_metadata(
     with pytest.raises(SystemExit) as rejected:
         invoke(monkeypatch, source, "--check")
     assert rejected.value.code == 1
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        b"#!/bin/sh\n# CFMGR_VERSION=0.1.0\n",
+        b"#!/bin/sh\nCFMGR_VERSION=0.1.0\nCFMGR_VERSION=0.1.0\n",
+    ],
+    ids=["substring-only", "duplicate-assignment"],
+)
+def test_entry_requires_one_anchored_plain_version_assignment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: bytes
+) -> None:
+    source = tmp_path / "source"
+    source_tree(source)
+    entry_path = source / "cfmgr.sh"
+    entry_path.write_bytes(entry)
+    entry_path.chmod(0o755)
+    destination = tmp_path / "rejected-output"
+
+    with pytest.raises(SystemExit) as rejected:
+        invoke(monkeypatch, source, "--output", str(destination))
+
+    assert rejected.value.code == 1
+    assert not destination.exists()
 
 
 @pytest.mark.parametrize("unsafe_input", ["symlink", "nonregular", "mode", "path"])

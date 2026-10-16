@@ -44,7 +44,131 @@ shift 2
 case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
+# Acquisition aliases retain the supervisor's distinct native-only admission;
+# their executable/grammar is the same fixed trusted bootstrap implementation.
+case $mode in
+acquire-curl-version) mode=native-curl-version ;;
+acquire-curl-offline) mode=native-curl-offline ;;
+acquire-curl-features) mode=native-curl-features ;;
+acquire-ca-pem) mode=native-ca-pem ;;
+acquire-ca-decode) mode=native-ca-decode ;;
+acquire-wc) mode=install-wc ;;
+acquire-ls) mode=install-ls ;;
+esac
 case "$mode" in
+acquire-lines)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" -l <"$1"
+	;;
+acquire-text)
+	[ "$#" -eq 4 ] || exit 2
+	case $2:$3:$4 in *[!0-9:]* | :* | *:) exit 2 ;; esac
+	case $4 in 0 | 1) ;; *) exit 2 ;; esac
+	# Native WC LF count + byte count detect NUL splitting/truncation in old
+	# awk. A strict frame additionally requires its final LF; scripts may omit it.
+	# shellcheck disable=SC2016
+	exec "$tool" 'BEGIN{bytes=ARGV[1];lines=ARGV[2];strict=ARGV[3];ARGV[1]=ARGV[2]=ARGV[3]=""}
+		{total+=length($0)+1}
+		END{if(NR==lines){if(total!=bytes)exit 1}else if(strict || NR!=lines+1 || total-1!=bytes)exit 1}' "$2" "$3" "$4" "$1"
+	;;
+acquire-api | acquire-raw)
+	[ "$#" -eq 5 ] || exit 2
+	case "$1:$2:$4" in /*:/*:/*) ;; *) exit 2 ;; esac
+	case $2 in *:*) exit 2 ;; esac
+	case $5 in '' | *[!0-9]*) exit 2 ;; esac
+	[ "$5" -gt 0 ] && [ "$5" -le 1048576 ] || exit 2
+	case $mode:$3 in acquire-api:https://api.github.com/repos/*/commits/* | acquire-raw:https://raw.githubusercontent.com/*) ;; *) exit 2 ;; esac
+	[ ! -e "$4" ] && [ ! -L "$4" ] || exit 1
+	# Pin a new private body before curl. Neither its path nor a substituted
+	# stage can redirect a write after this open; no redirects/fallback are used.
+	umask 077
+	set -C
+	exec 8>"$4" || exit 1
+	if [ "$mode" = acquire-api ]; then
+		set -- "$1" "$2" "$3" "$5" --header 'Accept: application/vnd.github.sha' --header 'X-GitHub-Api-Version: 2022-11-28'
+	else set -- "$1" "$2" "$3" "$5"; fi
+	cfmgr_acquire_ca=$1 cfmgr_acquire_capath=$2 cfmgr_acquire_url=$3 cfmgr_acquire_limit=$4
+	shift 4
+	exec "$tool" -q --silent --show-error --proto '=https' --proto-redir '=https' \
+		--tlsv1.2 --cacert "$cfmgr_acquire_ca" --capath "$cfmgr_acquire_capath" --proxy '' --noproxy '*' \
+		--connect-timeout 5 --max-time 10 --max-filesize "$cfmgr_acquire_limit" \
+		--output /proc/self/fd/8 --write-out '%{http_code}\n' "$@" --url "$cfmgr_acquire_url"
+	;;
+acquire-digest)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" dgst -sha256 -r <"$1"
+	;;
+acquire-shell)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" -n "$1"
+	;;
+acquire-awk)
+	[ "$#" -eq 2 ] && [ "$1" = "$context/acquire.syntax.awk" ] || exit 2
+	[ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	# Every file is parsed before the trusted first BEGIN terminates fatally.
+	# Plain exit is unsafe: candidate END rules would still run. Config's tree
+	# consumer is parsed with its already hash-verified companion definitions.
+	case $2 in */modules/lib/config_observation.awk) exec "$tool" -f "$1" -f "${2%/*}/json.awk" -f "$2" /dev/null ;;
+	*) exec "$tool" -f "$1" -f "$2" /dev/null ;;
+	esac
+	;;
+acquire-mkdir)
+	[ "$#" -eq 1 ] && [ ! -e "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" -m 700 "$1"
+	;;
+acquire-chmod)
+	[ "$#" -eq 2 ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	case $1 in 0644 | 0755) ;; *) exit 2 ;; esac
+	exec "$tool" "$1" "$2"
+	;;
+acquire-remove | acquire-rmdir)
+	[ "$#" -eq 1 ] && [ ! -L "$1" ] || exit 2
+	case $mode in acquire-remove)
+		[ -f "$1" ] || exit 2
+		exec "$tool" -f "$1"
+		;;
+	*)
+		[ -d "$1" ] || exit 2
+		exec "$tool" "$1"
+		;;
+	esac
+	;;
+acquire-entry)
+	[ "$#" -eq 2 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" 'BEGIN {version=ARGV[1];ARGV[1]=""} /^CFMGR_VERSION=/ {n++;if($0!="CFMGR_VERSION=" version)bad=1} END{exit (n!=1 || bad)}' "$2" "$1"
+	;;
+acquire-manifest)
+	[ "$#" -eq 2 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" '
+		BEGIN {FS="\t";version=ARGV[1];ARGV[1]=""}
+		NR==1 {if($0!="CFMGR-MANIFEST 2 " version " 1 1")bad=1;next}
+		{
+			if(NF!=4 || length($0)>512 || $1!~/^0(644|755)$/ || $2!~/^(0|[1-9][0-9]*)$/ || $2>1048576 ||
+			length($3)!=64 || $3~/[^0-9a-f]/ || length($4)>256 || $4!~/^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
+			$4~/(^|\/)(\.|\.\.)(\/|$)/ || seen[$4]++ || (prev!="" && $4<=prev)){bad=1;next}
+			if($4!="cfmgr.sh" && $4!="catalog.txt" && $4!~/^modules\//)bad=1
+			if($4=="cfmgr.sh" && $1!="0755")bad=1
+			path=$4;depth=0;while(sub(/\/[^\/]+$/,"",path)){if(seen[path] || ++depth>16)bad=1}
+			prev=$4;total+=$2;count++;if(count>512 || total>16777216)bad=1
+			print
+		}
+		END {
+			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/acquire.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
+			n=split(required,names," ");for(i=1;i<=n;i++)if(!seen[names[i]])bad=1
+			if(bad || count<2)exit 1
+		}' "$2" "$1"
+	;;
+acquire-catalog)
+	[ "$#" -eq 3 ] || exit 2
+	# shellcheck disable=SC2016
+	exec "$tool" 'BEGIN{FS="\t";version=ARGV[1];ARGV[1]=""}
+		NR==FNR{if($4~/^modules\//)expected[$4]=1;next}
+		FNR==1{if($0!="CFMGR-CATALOG 1 " version)bad=1;next}
+		{kind=($1~/^modules\/lib\//?"library":($1~/^modules\/helpers\//?"helper":"data"));if(NF!=2 || !expected[$1] || seen[$1]++ || $2!=kind)bad=1}
+		END{for(path in expected)if(!seen[path])bad=1;if(bad)exit 1}' "$3" "$1" "$2"
+	;;
 store-backup-config)
 	[ "$#" -eq 9 ] || exit 2
 	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done

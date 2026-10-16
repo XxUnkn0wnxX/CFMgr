@@ -30,6 +30,51 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## S07.08 acquisition and pre-execution design review
+
+2026-10-16, baseline `167ef28`: parent and independent Astra design review agreed
+**PASS WITH NOTES** for explicitly trusted complete bootstrap → pinned remote
+snapshot → existing fresh installer. This implements the S07.08 consumer without
+claiming standalone entry distribution, self-update or complete S07.06/S02.01.
+The handoff owns implementation state, exclusive owners and pending gates.
+
+The trusted bootstrap must remain separate from downloaded candidates. Resolve
+one source pin; validate bounded manifest 2 metadata, complete inventory, native
+SHA-256, embedded version, compatibility and syntax before candidate execution.
+The existing installer runs only after validation, in its own subshell; pass the
+canonical owned stage pathname because installer storage pinning replaces FD6/7.
+Preserve the parent's staging pin and unresolved-child evidence. Provenance is
+action-local and does not overwrite developer source-selection intent.
+
+[GitHub's commit endpoint](https://docs.github.com/en/rest/commits/commits#get-a-commit)
+supports a SHA-only media type. A read-only host request using that media type and
+API version `2022-11-28` returned the exact baseline full SHA. This establishes
+the response contract, not router transport qualification.
+
+The [BusyBox 1.25.1 AWK source](https://raw.githubusercontent.com/mirror/busybox/1_25_1/editors/awk.c)
+parses all `-f` inputs before BEGIN evaluation; its division-by-zero fatal path
+bypasses END. A trusted first program can emit a parse receipt, flush it and
+evaluate `1/(NR-NR)` to prevent candidate BEGIN/END execution. Parent and an
+independent safety reviewer accepted this limited syntax-check design. Tiny host
+probes suppressed both candidate markers, and malformed later code produced no
+receipt. **Actual vendor BusyBox execution remains a required pending proof.**
+Ordinary `awk -f candidate` and a prefix using `exit` are unsafe alternatives.
+
+Official [Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts) and
+[Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
+were consulted for the installer boundary. This package retains existing native
+storage/publication admission and adds no new hook or firmware capability claim.
+
+The integrated runtime received parent review and an independent read-only
+**PASS WITH LIMITS** on the dirty baseline. Review corrections preserve a
+nonzero interrupted result, keep FD0 pinned while reading records through FD4,
+bound streams by declared file sizes, reject ambiguous SHA/text framing, and
+permit only attached known-inventory RAM cleanup after owned children finish.
+The immutable acquisition deadline is separate from the existing installer
+budget. Required Linux/vendor BusyBox execution and exact-candidate CI are still
+pending; this review alone awards no acceptance.
+
 ## S14.02 destination foundation design review
 
 2026-10-16, baseline `506e97f`: parent and dedicated read-only Astra reviewer

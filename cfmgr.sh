@@ -33,7 +33,8 @@ case ${1-} in
 		exec /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= \
 			CFMGR_INTERNAL_LAUNCH=1 /bin/sh "$cfmgr_default_entry" --internal-launch
 	fi
-	printf '%s\n' 'CFMgr: --install (trusted complete local package), --version, --help.' \
+	printf '%s\n' 'CFMgr: --install (trusted complete local package), --install-remote, --version, --help.' \
+		'Remote install requires a trusted COMPLETE local bootstrap and uses its one configured repository/branch.' \
 		'Installed package: --reinstall-dependencies (interactive confirmation required).' \
 		'Fresh base installation checks and repairs required Entware tools. Other feature operations remain unavailable.'
 	if [ -e /jffs/addons/CFMgr.d ] || [ -L /jffs/addons/CFMgr.d ]; then
@@ -102,7 +103,7 @@ case ${1-} in
 	printf '[CFMGR] launch: error: retained launch blocked or incomplete\n' >&2
 	exit 1
 	;;
---install)
+--install | --install-remote)
 	[ "$#" -eq 1 ] || exit 2
 	if [ -e /jffs/addons/CFMgr.d ] || [ -L /jffs/addons/CFMgr.d ] || [ -e /jffs/scripts/cfmgr.sh ] || [ -L /jffs/scripts/cfmgr.sh ]; then
 		printf '%s\n' 'Existing or retained CFMgr installation: recovery/update required; fresh defaults were not generated.' >&2
@@ -110,10 +111,12 @@ case ${1-} in
 	fi
 	cfmgr_entry=$(/usr/bin/readlink -f "$0") || exit 1
 	case $cfmgr_entry in /*/cfmgr.sh) ;; *) exit 1 ;; esac
+	cfmgr_internal_install=--internal-install
+	[ "$1" != --install-remote ] || cfmgr_internal_install=--internal-install-remote
 	exec /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= \
-		CFMGR_INTERNAL_INSTALL=1 /bin/sh "$cfmgr_entry" --internal-install
+		CFMGR_INTERNAL_INSTALL=1 /bin/sh "$cfmgr_entry" "$cfmgr_internal_install"
 	;;
---internal-install)
+--internal-install | --internal-install-remote)
 	[ "$#" -eq 1 ] && [ "${CFMGR_INTERNAL_INSTALL-}" = 1 ] || exit 2
 	cfmgr_entry=$(/usr/bin/readlink -f "$0") || exit 1
 	case $cfmgr_entry in /*/cfmgr.sh) ;; *) exit 1 ;; esac
@@ -128,12 +131,21 @@ case ${1-} in
 	. "$cfmgr_source/modules/lib/execution_tasks.sh" || exit 1
 	. "$cfmgr_source/modules/lib/dependencies.sh" || exit 1
 	. "$cfmgr_source/modules/helpers/bootstrap.sh" || exit 1
-	if cfmgr_bootstrap_native "$cfmgr_source"; then
+	cfmgr_entry_status=1
+	if [ "$1" = --internal-install-remote ]; then
+		# Acquisition is trusted bootstrap code; downloaded helpers remain inert
+		# until its complete package/compatibility/syntax gate has passed.
+		. "$cfmgr_source/modules/lib/acquire.sh" || exit 1
+		if cfmgr_acquire_native "$cfmgr_source"; then cfmgr_entry_status=0; else cfmgr_entry_status=$?; fi
+	else
+		if cfmgr_bootstrap_native "$cfmgr_source"; then cfmgr_entry_status=0; fi
+	fi
+	if [ "$cfmgr_entry_status" = 0 ]; then
 		printf '%s\n' 'CFMgr fresh installation complete.'
 		exit 0
 	fi
 	printf '%s\n' 'CFMgr installation blocked or incomplete; existing data was not reset. Recovery may be required.' >&2
-	exit 1
+	exit "$cfmgr_entry_status"
 	;;
 *)
 	printf '%s\n' 'Unsupported command; use --help.' >&2

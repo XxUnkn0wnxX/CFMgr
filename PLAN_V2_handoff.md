@@ -21,6 +21,114 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active S07.08 — trusted complete package foundation
+
+The user approved starting the recommended S07.08 package after the accepted
+S14.02 checkpoint, and explicitly requested handoff-ready records at every
+major checkpoint. Current baseline: clean `develop` at
+`167ef2837eb6510c535bb50499a1c76399fbe081`. Use the existing checkout only.
+
+Completion target: **S07.08**, with only necessary effective-source/pin work
+from S07.06 and package/installer support from S02.01. No supporting tick follows
+from partial work. The real consumer is acquisition and pre-execution validation
+of one immutable complete snapshot, then the existing fresh installation path.
+Manual/automatic self-update transactions, feature work, router deployment and
+release remain outside this package. No product requirement or gate changes are
+currently proposed. Accepted totals remain 10/157 (6.4%), 0/16 main goals (0%).
+
+Current checkpoint: runtime and consumer tests integrated on the dirty baseline
+above; available local gates and parent review passed, exact-candidate CI pending. Astra's independent
+design review passed with a pending BusyBox syntax-safety proof. Parent owns
+trust/integration decisions and all five V2 records. Existing local-package
+admission remains the explicitly trusted bootstrap prerequisite; it is not
+evidence of remote package validation.
+
+Frozen implementation contract (a refinement of existing S07.08 requirements):
+
+- Add explicit `--install-remote` from an explicitly trusted **complete** local
+  bootstrap, with no public source URL operands or environment overrides. Keep
+  the existing `--install` trusted-local path. Standalone entry distribution and
+  full developer-source/update consumers remain unclaimed supporting work.
+- Resolve the central entry repository/branch once through GitHub's SHA response;
+  fetch every manifest/member from that immutable full SHA. Require isolated
+  native HTTPS, no redirect/fallback, native SHA-256, a shared action deadline,
+  bounded individual transfers and complete private staging before execution.
+- Manifest header: `CFMGR-MANIFEST 2 VERSION 1 1` (package/helper ABI 1 and config
+  schema 1). Keep catalog schema 1 and the existing inventory bounds. Remote
+  schema 1 is unsupported; the explicitly trusted local route may retain it.
+  Compare the unique literal embedded entry version as data; check the complete
+  required inventory, hashes, sizes, paths, catalog and syntax before candidate
+  code executes. Safe AWK syntax checking still needs actual BusyBox proof; a
+  normal `awk -f` or `BEGIN { exit }` is not an acceptable pre-execution check.
+- Hand the validated canonical stage pathname to the existing trusted installer
+  in an isolated subshell. Its own source pin replaces child FD6/7; the parent
+  retains its independent stage pin. Preserve unresolved children and staging;
+  cleanup is bounded to known owned files/empty directories. Keep provenance in
+  the action receipt, not the developer override field `manager.source.commit`.
+
+All workers released their files and finished; no local job remains active.
+Parent owns the integrated tree and publication. The real consumer fixture uses
+production acquisition, verification, supervision and installer transaction with
+isolated root/tool admission adapters; its four cases need Linux `/proc`.
+Parent and independent runtime review passed with that platform proof pending.
+No router actions or CI jobs have started. No acceptance is claimed.
+
+Completed focused evidence on the dirty baseline: manifest generator and unique
+literal entry-version validation, `tests/test_package.py`: **14 passed, 1.01s**.
+Changed Python lint/format/compile and whitespace checks passed. Parent reviewed
+the two-file diff. Initial acquisition module: **2 passed, 1 Linux-specific
+skip, 0.77s**; actual vendor AWK and TLS/supervisor execution remain pending CI.
+The TLS fixture covers fixed headers, redirects, incomplete/oversized bodies and
+a short whole-action deadline; it does not itself prove orchestration pinning.
+Runtime shell syntax/shfmt and preliminary review passed; package metadata was
+regenerated after the final SHA-response framing correction. Planning consistency
+still reports 157 aligned subgoals and 16 README goal links.
+
+Completed parent test job: local shell session `35631`, complete install/native/
+prerequisite/package modules, output `.tmp/s0708-ci/foundation-local.log`.
+Command: `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q
+tests/test_install.py tests/test_native.py tests/test_prerequisites.py
+tests/test_package.py --maxfail=1 --durations=8`. **75 passed, 10 platform skips**,
+128.91s pytest / 129.98s wall, 56.24s user + 36.57s system, 47,603,712-byte peak
+RSS. No failed case. The longest normal install was 25.56s and the existing
+native-to-installer consumer 19.46s; no group reached the three-to-four-minute
+diagnosis threshold. No full local suite is running or due.
+
+Final new-module command: `/usr/bin/time -l .venv/bin/python tools/test.py
+--focused tests/test_acquire.py tests/test_acquire_install.py --skip-shellcheck`:
+**2 passed, 5 Linux-specific skips**, 1.42s pytest / 3.66s total wall; planning,
+package, Ruff/format/compile, shell syntax, shfmt and whitespace passed.
+Log: `.tmp/s0708-ci/acquire-local-no-shellcheck.log`.
+Focused ShellCheck passed for all six changed runtime files after the worker's
+final edits. Parent's later one-line SHA text-framing change received a final
+`shellcheck modules/lib/acquire.sh` pass, 0.59s wall. Its log is
+`.tmp/s0708-ci/acquire-shellcheck.log`. The earlier all-files runner was manually
+stopped in ShellCheck at 209.55s, before pytest; it is **cancelled**, not a passing
+full lint/test receipt (`.tmp/s0708-ci/acquire-local.log`). Valid focused evidence
+was reused; no test or lint requirement was waived.
+
+Next safe actions:
+
+1. Commit/push the reviewed runtime candidate, then record its exact SHA and core
+   Checks run. Dispatch separate Quick groups for `tests/test_acquire.py` and
+   `tests/test_acquire_install.py` at that SHA to measure the new Linux scope.
+2. Wait for the prescribed CI. Repair any failure through the smallest focused
+   group, preserving evidence; require all affected final groups and exact core
+   Checks green. Stop/split unexpectedly slow groups at the agreed threshold.
+3. Only after passing required gates, accept S07.08 and update checklist/README/
+   handoff with exact receipts, push the documentation receipt and pause ready to
+   select the next task. Supporting S07.06/S02.01 remain unchecked.
+
+Use small meaningful tests and whole affected groups; aim for two minutes per
+focused group, splitting slow three-to-four-minute groups through Quick Checks.
+No full local suite is due. Required core CI remains automatic for code/Actions
+pushes; optional Lint/Diagnostics need no routine rerun. At each major checkpoint,
+refresh revision/dirty files, owners/jobs, completed/pending gates, blockers and
+next action so another session can resume without reconstructing the chat.
+The completed S14.02 record below retains its exact evidence; its prior pause
+is superseded only for the newly authorized S07.08 work.
+
 ## Paused after accepted S14.02 — implementation and gates complete
 
 The user authorized S14.02 implementation, required passing gates and a final

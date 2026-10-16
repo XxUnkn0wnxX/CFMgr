@@ -8,6 +8,7 @@ modules/helpers/mount_keeper.sh	helper
 modules/helpers/probe.sh	helper
 modules/hooks/.gitkeep	data
 modules/lib/.gitkeep	library
+modules/lib/acquire.sh	library
 modules/lib/config.sh	library
 modules/lib/config_observation.awk	library
 modules/lib/config_store.sh	library

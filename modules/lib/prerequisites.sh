@@ -94,6 +94,7 @@ cfmgr_prerequisites_pause() {
 _cfmgr_prerequisites_attachment() {
 	if [ "${cfmgr_config_lock_fd0:-0}" = 1 ]; then cfmgr_store_fd_is "${cfmgr_store_lock:-}" 0 || return 1; fi
 	case ${cfmgr_probe_mode:-none} in
+	acquire-*) cfmgr_acquire_attached ;;
 	install-report | install-report-ls) cfmgr_bootstrap_native_attached ;;
 	launch-*) cfmgr_launch_attachment_ok ;;
 	status-*) cfmgr_status_attachment_ok ;;
@@ -123,6 +124,12 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	acquire-api | acquire-raw) [ "$#" -eq 14 ] || return 2 ;;
+	acquire-curl-version) [ "$#" -eq 9 ] || return 2 ;;
+	acquire-curl-offline | acquire-manifest | acquire-entry | acquire-awk | acquire-chmod) [ "$#" -eq 11 ] || return 2 ;;
+	acquire-catalog) [ "$#" -eq 12 ] || return 2 ;;
+	acquire-text) [ "$#" -eq 13 ] || return 2 ;;
+	acquire-curl-features | acquire-ca-pem | acquire-ca-decode | acquire-wc | acquire-lines | acquire-ls | acquire-digest | acquire-shell | acquire-mkdir | acquire-remove | acquire-rmdir) [ "$#" -eq 10 ] || return 2 ;;
 	store-backup-config) [ "$#" -eq 18 ] || return 2 ;;
 	store-backup-mounts | store-backup-mount) [ "$#" -eq 11 ] || return 2 ;;
 	store-backup-blkid) [ "$#" -eq 10 ] || return 2 ;;
@@ -175,6 +182,13 @@ cfmgr_prerequisites_run() {
 	cfmgr_prerequisites_supervisor || return 2
 	cfmgr_probe_deadline=$((cfmgr_probe_now + 2))
 	case $cfmgr_probe_mode in native-dns-native-srv | native-dns-native-a | native-dns-dig-srv | native-dns-dig-a) cfmgr_probe_deadline=$((cfmgr_probe_now + 4)) ;; esac
+	case $cfmgr_probe_mode in acquire-api | acquire-raw) cfmgr_probe_deadline=$((cfmgr_probe_now + 12)) ;; esac
+	case $cfmgr_probe_mode in acquire-*)
+		case ${cfmgr_acquire_deadline:-} in '' | *[!0-9]*) return 2 ;; esac
+		[ "$cfmgr_probe_now" -lt "$cfmgr_acquire_deadline" ] || return 1
+		[ "$cfmgr_acquire_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_acquire_deadline
+		;;
+	esac
 	case $cfmgr_probe_mode in store-*)
 		case ${cfmgr_store_deadline:-} in
 		'' | *[!0-9]*) return 2 ;;
@@ -208,7 +222,7 @@ cfmgr_prerequisites_run() {
 	}
 	cfmgr_probe_label=$cfmgr_probe_mode
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-* | store-*)
+	install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
 		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
@@ -559,9 +573,23 @@ _cfmgr_prerequisites_exec() {
 		DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH \
 		DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 		OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
-	case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;; install-copy | launch-copy) ulimit -f 2048 || exit 2 ;; launch-config-patch) ulimit -f 128 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-* | store-*)
+	acquire-api | acquire-raw)
+		# Native ash uses 512-byte file-limit blocks; host bash may use1024.
+		# Exact native WC validation also enforces the declared byte boundary.
+		case ${14} in '' | *[!0-9]*) exit 2 ;; esac
+		[ "${14}" -gt 0 ] && [ "${14}" -le 1048576 ] || exit 2
+		ulimit -f "$(((${14} + 511) / 512))" || exit 2
+		;;
+	repair-*) ulimit -f 8192 || exit 2 ;;
+	acquire-manifest) ulimit -f 512 || exit 2 ;;
+	status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;;
+	install-copy | launch-copy) ulimit -f 2048 || exit 2 ;;
+	launch-config-patch) ulimit -f 128 || exit 2 ;;
+	*) ulimit -f 8 || exit 2 ;;
+	esac
+	case "$cfmgr_probe_mode" in
+	install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-*)
 		shift 9
 		exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
 		;;

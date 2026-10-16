@@ -187,3 +187,17 @@ cfmgr_native_https() {
 	cfmgr_native_http_status || return $?
 	case $cfmgr_native_status in [1-5][0-9][0-9]) return 0 ;; *) return 1 ;; esac
 }
+
+# Acquisition needs offline native TLS capability without Entware or the
+# installation mutation checks. The trusted controller owns RAM/FD admission
+# and separately qualifies native OpenSSL SHA-256 before any remote payload.
+# shellcheck disable=SC2034 # Paths exported to the trusted acquisition callback.
+cfmgr_native_acquire_check() {
+	[ "${cfmgr_native_unresolved:-0}" = 0 ] || return 3
+	[ "$#" -eq 4 ] || return 2
+	for cfmgr_native_argument; do cfmgr_native_path "$cfmgr_native_argument" || return 2; done
+	cfmgr_native_context=$1 cfmgr_native_curl=$2 cfmgr_native_openssl=$3 cfmgr_native_ca=$4
+	cfmgr_native_ready=0 cfmgr_native_reason=acquire-offline
+	cfmgr_native_offline || return $?
+	cfmgr_native_ready=1 cfmgr_native_reason=''
+}

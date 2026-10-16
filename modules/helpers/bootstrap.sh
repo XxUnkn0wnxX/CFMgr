@@ -150,7 +150,7 @@ cfmgr_bootstrap_manifest_records() {
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" '
 		BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
-		NR==1 { if ($0 != "CFMGR-MANIFEST 1 " version) bad=1; next }
+		NR==1 { modern=($0=="CFMGR-MANIFEST 2 " version " 1 1"); if ($0 != "CFMGR-MANIFEST 1 " version && !modern) bad=1; next }
 		{
 			if (NF!=4 || length($0)>512 || $1 !~ /^0(644|755)$/ ||
 			    $2 !~ /^(0|[1-9][0-9]*)$/ || $2>1048576 ||
@@ -165,6 +165,7 @@ cfmgr_bootstrap_manifest_records() {
 		}
 		END {
 			required="cfmgr.sh catalog.txt modules/lib/config.sh modules/lib/config_store.sh modules/manager_settings.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
+			if (modern) required=required " modules/backup.sh modules/lib/acquire.sh"
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
 			if (bad || count<2) exit 1
 		}
@@ -461,7 +462,7 @@ cfmgr_bootstrap_cleanup() {
 # receiving fields keep their fixed positions even when policy needs a subset.
 # shellcheck disable=SC2034,SC2154
 cfmgr_bootstrap_native_prepare() {
-	[ "$#" -eq 2 ] && { [ "$2" = install ] || [ "$2" = launch ]; } && cfmgr_bootstrap_path "$1" || return 2
+	[ "$#" -eq 2 ] && { [ "$2" = install ] || [ "$2" = launch ] || [ "$2" = acquire ]; } && cfmgr_bootstrap_path "$1" || return 2
 	cfmgr_install_source=$1 cfmgr_install_jffs=/jffs cfmgr_install_opt=/opt cfmgr_install_owner=0
 	cfmgr_install_sh=/bin/sh cfmgr_install_env=/usr/bin/env cfmgr_install_awk=/usr/bin/awk
 	cfmgr_install_readlink=/usr/bin/readlink cfmgr_install_sleep=/bin/sleep cfmgr_install_wc=/usr/bin/wc
@@ -628,6 +629,10 @@ cfmgr_bootstrap_native_protected() {
 # Finite direct-exec dispatcher shared with the prerequisite supervisor.
 # shellcheck disable=SC2034,SC2154 # Exports bounded native callback result fields.
 cfmgr_native_action() {
+	if [ "${cfmgr_acquire_active:-0}" = 1 ]; then
+		cfmgr_acquire_native_action "$@"
+		return $?
+	fi
 	case $1 in
 	install-*) cfmgr_bootstrap_action "$@" || return $? ;;
 	native-*)

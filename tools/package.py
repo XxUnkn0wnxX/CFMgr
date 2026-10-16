@@ -56,8 +56,9 @@ def inventory(root: Path) -> list[Path]:
     if len(files) > 512 or sum(item.stat().st_size for item in files) > 16777216:
         raise ValueError("Package exceeds bounded inventory")
     entry = (root / "cfmgr.sh").read_text()
+    entry_versions = re.findall(r"(?m)^CFMGR_VERSION=([^\n]*)$", entry)
     if (
-        f"CFMGR_VERSION={VERSION}\n" not in entry
+        entry_versions != [VERSION]
         or (root / "cfmgr.sh").stat().st_mode & 0o777 != 0o755
     ):
         raise ValueError("Entry version/mode mismatch")
@@ -90,7 +91,7 @@ def catalog(root: Path) -> bytes:
 
 
 def manifest(root: Path) -> bytes:
-    lines = [f"CFMGR-MANIFEST 1 {VERSION}"]
+    lines = [f"CFMGR-MANIFEST 2 {VERSION} 1 1"]
     for item in inventory(root):
         content = item.read_bytes()
         lines.append(
