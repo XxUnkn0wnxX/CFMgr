@@ -1,6 +1,6 @@
 # CFMgr — product and implementation plan v2
 
-> **Product specification.** This plan defines the intended CFMgr behavior, requirements and open product decisions. Delivery status and acceptance evidence live in [PLAN_V2_checklist.md](PLAN_V2_checklist.md). Current authorization, ownership and next actions belong in [PLAN_V2_handoff.md](PLAN_V2_handoff.md); standing implementation rules belong in [AGENTS.md](AGENTS.md).
+> **Product specification.** This plan defines the intended CFMgr behavior, requirements and open product decisions. Delivery status and acceptance evidence live in [PLAN_V2_checklist.md](PLAN_V2_checklist.md). Current authorization, ownership and next actions belong in [PLAN_V2_handoff.md](PLAN_V2_handoff.md); standing implementation rules belong in [AGENTS.md](AGENTS.md). Substantive audit findings and repair dispositions belong in [PLAN_V2_audit.md](PLAN_V2_audit.md).
 
 CFMgr is a terminal menu and command-line manager for Cloudflare DDNS, one Cloudflared tunnel, and Cloudflare IP-Sync on Asuswrt-Merlin. Each feature has its own setup and saved activation state, with shared infrastructure where their requirements overlap.
 

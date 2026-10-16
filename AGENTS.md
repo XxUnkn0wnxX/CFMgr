@@ -21,12 +21,16 @@ Read at session start/resume:
 | [PLAN_V2_checklist.md](PLAN_V2_checklist.md) | Matching requirements, acceptance, totals/boxes, focused results, outstanding gates and concise accepted evidence. No issue/risk notes, diary, ownership, queue, next actions or publication authority. |
 | [PLAN_V2_handoff.md](PLAN_V2_handoff.md) | Current task/permissions, resumable state, owners/jobs, pending proof, blockers and next steps; replace stale notes. |
 | [PLAN_V2_review_notes.md](PLAN_V2_review_notes.md) | Only relaxed acceptance points and significant risks for later review. Mirror goal headings and subgoal descriptions; replace checkboxes with concise review notes. |
+| [PLAN_V2_audit.md](PLAN_V2_audit.md) | Substantive audit findings, evidence, parent/reviewer agreement or user decisions, and verified repair dispositions linked to existing IDs. No requirements, acceptance totals, worker queue or session lineage. |
 
-The parent alone edits these four files. Apply `zr0-multi-session-projects`
+The parent alone edits these five files. Apply `zr0-multi-session-projects`
 for paired specification/checklist changes, evidence, handoff preservation and
 verified parent-session lineage. Preserve the existing root-level files and
-Sxx.yy IDs; new-project defaults do not relocate them. Checklist mirrors the
-specification's main-goal/subgoal tables. Keep review notes current when an
+Sxx.yy IDs; new-project defaults do not relocate them. The user-requested audit
+companion is tracked at the repository root alongside the other V2 records.
+Keep audit reports there and link from handoff/checklist; current work and
+permissions stay in the handoff, deferred risks in review notes. Checklist mirrors
+the specification's main-goal/subgoal tables. Keep review notes current when an
 exception changes; omit unaffected goals, routine progress and session history.
 Link from checklist instead of copying the notes. Review notes neither change
 requirements nor waive unresolved serious failures.
@@ -276,7 +280,8 @@ just the latest diff:
   substantial rework needs prior approval.
 - Verify runtime, assertions, docs, acceptance and completion against the spec
   and user decisions. Review retained docs and test cost. Record findings/fixes
-  or justified deferrals in handoff and accepted audit revision in checklist.
+  in the audit record, significant deferrals in review notes, current actions in
+  handoff and accepted audit revision in checklist.
 
 Use already-required gates, not a second full run. No audit, no checkbox.
 Immediately report drift, its impact and correction; resolve and revalidate before
@@ -318,7 +323,7 @@ expand scope, discard work, publish or advance themselves to another package.
 ## Documentation
 
 Apply `zr0-github-documentation` to repository Markdown, including AGENTS and
-plans. Workers may edit guides, never the four planning files.
+plans. Workers may edit guides, never the five planning/audit files.
 
 README is the implementation overview: concise warning, all 16 goals and their
 subgoals/scope/guide links; separate intended from available behavior. Progress

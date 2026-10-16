@@ -1,6 +1,6 @@
 # CFMgr v2 — project checklist
 
-[Product specification](PLAN_V2.md) · [Review notes](PLAN_V2_review_notes.md) · [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
+[Product specification](PLAN_V2.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Current handoff](PLAN_V2_handoff.md) · [Working rules](AGENTS.md)
 
 This checklist owns product acceptance and delivery status. The specification owns
 required behavior; the handoff owns current work and pending evidence; AGENTS.md
