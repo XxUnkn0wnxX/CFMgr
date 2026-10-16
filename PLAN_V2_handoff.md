@@ -22,8 +22,9 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 **Stop here.** The user-authorized audit and reopened S02.08 repair are complete.
 Do not begin S14.02 or another package. Runtime and its required focused gates
-are published; this documentation receipt records acceptance without claiming
-that its later documentation-only SHA reran runtime tests.
+are published. The user subsequently requested the full CI suite and its measured
+cost; that successful run is recorded below. Later documentation-only receipts
+do not claim another runtime test run.
 
 - Tested runtime: `1d892a4efc7356508ed306f469f7d3dcc9b11fd2` on
   `origin/develop`; initial reporting fix `bf3f8ca70633a9c2ba8ea99ba47a42b766543991`.
@@ -91,7 +92,8 @@ job/step, actual selector and log result: **465 passed, one workstation-without-
 skip, four optional diagnostics excluded**. Only the diagnostic full-host workflow
 step was skipped. No required platform case was skipped. This is representative
 Ubuntu/vendor BusyBox proof, not live Merlin/ARM/syslog/flash qualification.
-No complete main-goal marker was reached; full local/full Checks were not run.
+No complete main-goal marker was reached. Full local/Checks were not run for the
+original subgoal checkpoint; the subsequent explicitly requested full CI follows.
 
 The user reaffirmed the existing cost rule: aim for two minutes per focused group;
 investigate/split groups exceeding roughly three to four minutes, preserve core
@@ -108,6 +110,47 @@ race; D `38831350219` stopped during loss cleanup. B/C/F passed; E `38831353447`
 was cancelled after failure capture. The unchanged-SHA isolated loss diagnostic
 `38831632976` passed in 9.63s. Those runs supply no final acceptance credit.
 Private local logs remain under `.tmp/s0208-*`; no failure evidence was discarded.
+
+### User-requested full CI timing baseline
+
+The user explicitly requested full CI after the focused checkpoint, overriding
+the ordinary main-goal-only cadence for this measurement. Parent dispatched
+`gh workflow run checks.yml --ref develop` and verified the exact head, sole job,
+every required step and logs of [Checks 38833527680](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38833527680):
+**success at `41e176568d679ebd8c69fa8dc0ff195d966ad9f3`**. No code, tests, workflow,
+timeout or acceptance requirements changed; no additional local full suite ran.
+
+| Stage | Result | Process wall | User + system CPU |
+| --- | --- | --- | --- |
+| Full host tests and statics: `.venv/bin/python tools/test.py` | 552 passed, 26 platform/tool skips, 4 optional diagnostics excluded | 185.82s | 126.79s + 23.97s |
+| Full vendor BusyBox: `.venv/bin/python tools/test.py --require-busybox --reuse-static` | 577 passed, 1 workstation-only skip, 4 optional diagnostics excluded | 569.77s | 265.91s + 270.78s |
+
+Both commands used `/usr/bin/time -v`. Host pytest itself took 67.45s; BusyBox
+pytest took 569.40s. The BusyBox stage covered the host's platform/tool skips;
+its sole remaining skip specifically checks a workstation without `/proc`.
+Every workflow step succeeded. Developer-tool and verified BusyBox caches hit;
+preparation took about 12s. Job time was **12m51s** (01:08:57–01:21:48 UTC on
+2026-10-16), or **12m56s** from dispatch to final workflow status.
+
+Largest measured costs: actual installer repair/publication **186.89s**, actual
+retained repair/later return **128.03s**, and host ShellCheck **117.58s** from
+adjacent command timestamps. The first two account for 55.3% of BusyBox pytest
+time. No hang appeared; all remaining reported BusyBox cases were 16.99s or less.
+Host/static maximum RSS was 6,077,464 KiB; BusyBox maximum RSS was 44,524 KiB.
+
+The prior [full run 38274552711](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38274552711)
+at `81d2b29fa42374283f3b18d9de37e32f2880628e` took **8m14s** from dispatch to
+status: 105.42s host/statics and 365.86s BusyBox, with 355/380 passing tests.
+The current full total is **4m42s longer** and includes the intervening status,
+settings/Save, dependency-reinstall and reporting work. This comparison does not
+attribute all growth to one change. Reuse these timings; any further diagnosis
+starts with the named slow cases through Quick Checks, preserving required proof.
+Raw current and prior logs are retained privately as `.tmp/full-ci-38833527680.log`
+and `.tmp/full-ci-previous-baseline.log`.
+
+This adds full representative Ubuntu/vendor BusyBox evidence, not a main-goal
+completion or live-router qualification. Progress remains **9/157 subgoals (5.7%)
+and 0/16 main goals (0%)**. Stop at this completed checkpoint; S14.02 is not started.
 
 ### Completed acceptance audit and next boundary
 
