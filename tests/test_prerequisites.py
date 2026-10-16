@@ -220,6 +220,25 @@ def test_fixed_probe_rejects_commands_and_non_block_operands(
     assert (context / "bytes").read_bytes() == b"abc"
 
 
+def test_install_remove_only_accepts_one_regular_completion_guard(
+    shell: list[str], context: Path
+) -> None:
+    unrelated = context / "bytes"
+    guard = context / ".setup.complete"
+    guard.symlink_to(unrelated)
+    for operands in ((unrelated,), (guard,), (guard, unrelated)):
+        rejected = probe(shell, "install-remove", "/bin/rm", context, *operands)
+        assert rejected.returncode != 0
+        assert unrelated.read_bytes() == b"abc"
+        assert guard.is_symlink()
+    guard.unlink()
+    guard.write_text("CFMGR-SETUP 1 0.1.0 complete\n")
+    removed = probe(shell, "install-remove", "/bin/rm", context, guard)
+    assert (removed.returncode, removed.stdout, removed.stderr) == (0, b"", b"")
+    assert not guard.exists()
+    assert unrelated.read_bytes() == b"abc"
+
+
 def test_invalid_scope_and_dns_evidence_fail_before_files(
     shell: list[str], tools: dict[str, str], tmp_path: Path
 ) -> None:

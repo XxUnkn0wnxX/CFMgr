@@ -93,9 +93,19 @@ cfmgr_prerequisites_run() {
     cfmgr_probe_stdout=$cfmgr_test_context/$cfmgr_test_mode.$cfmgr_probe_serial.out
     cfmgr_probe_stderr=$cfmgr_test_context/$cfmgr_test_mode.$cfmgr_probe_serial.err
     shift 9
-    case "$cfmgr_test_fault:$cfmgr_test_mode:${2-}" in copy:install-copy:*/modules/*) return 1 ;; esac
+    case "$cfmgr_test_fault:$cfmgr_test_mode:${2-}" in
+        copy:install-copy:*/modules/*) return 1 ;;
+    esac
+    if [ "$cfmgr_test_fault" = completion-remove-fail ] &&
+        [ "$cfmgr_test_mode" = install-remove ]; then
+        : >"$cfmgr_test_context/completion-remove-attempted"
+        return 1
+    fi
     cfmgr_test_fsync_fault=clean
     if [ "$cfmgr_test_fault" = fsync ] && [ -d "$cfmgr_install_support" ]; then cfmgr_test_fsync_fault=fsync; fi
+    if [ "$cfmgr_test_fault" = cleanup-flush ] && [ "$cfmgr_test_mode" = install-flush ]; then
+        [ ! -e "$cfmgr_test_context/guard-retired" ] || cfmgr_test_fsync_fault=fsync
+    fi
     if [ "$cfmgr_test_fault" = complete-flush ] && [ "$cfmgr_test_mode" = install-flush ] && [ -f "$cfmgr_install_support/setup-state" ]; then
         IFS= read -r cfmgr_test_guard < "$cfmgr_install_support/setup-state"
         case "$cfmgr_test_guard" in *' complete') cfmgr_test_fsync_fault=fsync ;; esac
@@ -109,6 +119,10 @@ cfmgr_prerequisites_run() {
     ) > "$cfmgr_probe_stdout" 2> "$cfmgr_probe_stderr"
     cfmgr_probe_exit=$?
     cfmgr_probe_status=reaped
+    if [ "$cfmgr_test_fault" = cleanup-flush ] &&
+        [ "$cfmgr_test_mode" = install-remove ] && [ "$cfmgr_probe_exit" -eq 0 ]; then
+        : >"$cfmgr_test_context/guard-retired"
+    fi
     if [ "$cfmgr_test_mode" = install-copy ]; then
         case "${2-}" in
             */setup-state) [ "$cfmgr_test_fault" != interrupt ] || kill -TERM $$ ;;
@@ -224,6 +238,7 @@ def test_fresh_install_publishes_passive_private_config_and_rejects_repeat(
     ).read_bytes()
     assert (jffs / "scripts/cfmgr.sh").stat().st_mode & 0o777 == 0o755
     assert (support / "setup-state").read_bytes() == b"CFMGR-SETUP 1 0.1.0 complete\n"
+    assert not (support / ".setup.complete").exists()
     assert not (support / "entry.stage").exists()
     assert (
         data["manager"]["source"]["repository"] == "https://github.com/example/fixture"
@@ -382,9 +397,8 @@ def test_failed_or_interrupted_publication_preserves_guard_and_blocks_reset(
     if fault == "complete-flush":
         assert (jffs / "scripts/cfmgr.sh").is_file()
         assert (support / "config").is_file()
-        assert (
-            support / "setup-state"
-        ).read_bytes() == b"CFMGR-SETUP 1 0.1.0 installing\n"
+        assert (support / ".setup.complete").is_file()
+        assert (support / "setup-state").is_file()
     else:
         assert not (jffs / "scripts/cfmgr.sh").exists()
         assert not (support / "config").exists()
@@ -392,6 +406,41 @@ def test_failed_or_interrupted_publication_preserves_guard_and_blocks_reset(
     repeated = install(shell, tools, legacy_fsync, package, tmp_path)
     assert repeated.returncode == 1
     assert snapshot(jffs) == before
+
+
+@pytest.mark.parametrize("fault", ["completion-remove-fail", "cleanup-flush"])
+def test_completion_guard_cleanup_failures_are_reported_and_contained(
+    shell: list[str],
+    tools: dict[str, str],
+    legacy_fsync: Path,
+    package: Path,
+    tmp_path: Path,
+    fault: str,
+) -> None:
+    result = install(
+        shell,
+        tools,
+        legacy_fsync,
+        package,
+        tmp_path,
+        fault=fault,
+    )
+    assert result.returncode != 0
+    support = tmp_path / "jffs/addons/CFMgr.d"
+    assert (tmp_path / "jffs/scripts/cfmgr.sh").is_file()
+    assert (support / "config").is_file()
+    assert (support / "setup-state").read_bytes() == b"CFMGR-SETUP 1 0.1.0 complete\n"
+    if fault == "completion-remove-fail":
+        assert (tmp_path / "ram-0/completion-remove-attempted").is_file()
+        assert (support / ".setup.complete").is_file()
+    else:
+        assert (tmp_path / "ram-0/guard-retired").is_file()
+        assert not (support / ".setup.complete").exists()
+        assert b"completion guard cleanup could not be verified" in result.stderr
+    before = snapshot(tmp_path / "jffs")
+    repeated = install(shell, tools, legacy_fsync, package, tmp_path)
+    assert repeated.returncode == 1
+    assert snapshot(tmp_path / "jffs") == before
 
 
 def test_package_builder_and_native_read_only_entry_are_fork_neutral(

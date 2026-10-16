@@ -161,7 +161,7 @@ cfmgr_prerequisites_run() {
 	native-dns-classify | native-dns-parse-a) [ "$#" -eq 12 ] || return 2 ;;
 	native-curl-features | native-ca-pem | native-ca-decode | native-rmdir) [ "$#" -eq 10 ] || return 2 ;;
 	install-copy | install-rename | install-publish) [ "$#" -eq 11 ] || return 2 ;;
-	install-report | install-report-ls | install-sha | install-wc | install-ls | install-config-check | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df) [ "$#" -eq 10 ] || return 2 ;;
+	install-report | install-report-ls | install-sha | install-wc | install-ls | install-config-check | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df | install-remove) [ "$#" -eq 10 ] || return 2 ;;
 	install-flush | install-nvram) [ "$#" -eq 9 ] || return 2 ;;
 	install-config) [ "$#" -eq 16 ] || return 2 ;;
 	jq-good | jq-bad | sha-bytes | sha-good | sha-bad | wc-jq | wc-sha | timeout-exit | timeout-expiry | flock-first | flock-compete | flock-after | flock-release | flock-finish | flock-entware-first | flock-entware-compete | flock-entware-after | flock-entware-release | flock-entware-finish | dig-version) [ "$#" -eq 9 ] || return 2 ;;

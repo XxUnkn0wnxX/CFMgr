@@ -366,6 +366,8 @@ cfmgr_launch_publish_observation() {
 cfmgr_launch_publish_observation_locked() {
 	cfmgr_launch_attachment_ok && cfmgr_launch_live_unchanged || return $?
 	[ ! -e "$cfmgr_launch_guard" ] && [ ! -L "$cfmgr_launch_guard" ] || return 1
+	cfmgr_launch_space_needed=$(((cfmgr_launch_snapshot_bytes + cfmgr_launch_target_bytes + 262144 + 1023) / 1024))
+	cfmgr_bootstrap_space "$cfmgr_install_jffs" "$cfmgr_launch_space_needed" || return $?
 	cfmgr_bootstrap_action install-mkdir-private "$cfmgr_launch_guard" || return $?
 	cfmgr_launch_recovery=1 cfmgr_launch_guard_owned=1
 	exec 4<"$cfmgr_launch_guard" || return 3

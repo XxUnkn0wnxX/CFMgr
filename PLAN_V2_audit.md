@@ -30,6 +30,78 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## S04.03 durable staged commit review
+
+2026-10-16, baseline `358ed0c`: the user approved the smallest independently
+completable foundation package, S04.03. Parent and independent Astra scope review
+agree that the current authority writers below define the closure inventory.
+Unfinished provider, tunnel, updater and restore consumers are outside this
+package; their future transactions still need their own integration proof.
+
+| Current writer | Publication and failure contract |
+| --- | --- |
+| Update-settings Save | The native Store takes the shared lock, checks space, preserves old/candidate bytes and a hash/generation intent, then publishes within JFFS. Exact-old recovery never replays a candidate; exact-candidate recovery verifies it; divergent data remains guarded. |
+| Backup destination Save | The same Store first prepares an inert folder on the pinned drive, then publishes its identity in JFFS. Drive loss preserves that folder and JFFS evidence; explicit JFFS recovery works without the drive. These are recoverable stages, not cross-filesystem atomicity. |
+| Retained storage observation | The separate `.storage-observation` protocol preserves old/candidate/intent before publication, checks exposed flush/readback results, and blocks subsequent admission while guarded. A missing pre-change space check requires repair. |
+| Fresh installation | The private fresh directory and `installing` record block reset while package/config/entry are staged and verified. Completion-marker retirement needs correction so a failed final write/flush cannot become an unguarded `complete` installation. |
+
+The baseline Store tests did not reach a failure after a successful live rename.
+New focused tests exercise exit-zero flush errors on stderr, post-rename damaged
+readback, failed candidate staging, and conservative recovery. Their host module
+passes **16 tests with four Linux skips**, 45.73s wall, 22.00s user and 17.13s system.
+Recovery assertions follow the actual faults; redundant standalone variants were
+removed while retaining the existing exact-old phase proof.
+This is interim dirty-tree proof, not acceptance; platform and checkpoint gates
+remain pending in the handoff.
+
+The installer currently renames `.setup.complete` away before final verification,
+then attempts a best-effort rewrite to `installing` on failure. A deterministic
+double-fault test demonstrates that a failed rewrite can leave `complete` without
+its admission blocker. Parent and independent Astra repair review agree to retain
+the existing `.setup.complete` while the complete record is copied, flushed and
+verified; remove only that exact regular file through the native supervisor after
+verification. Preserve unresolved status and avoid a new rollback write. Retained
+launch already rejects this marker. Add the observation space check before guard
+creation, using bounded old/candidate sizes and the existing native `df` route.
+The space check and guarded completion repair are implemented. Independent Astra
+implementation review returned PASS WITH NOTES, with no blocking runtime finding.
+Parent confirmed the removal's fixed path/one-operand contract, unresolved-status
+propagation and guard ordering. The review's test-comment correction is applied:
+retained intent binds the old snapshot digest and target generation/size, not a
+persisted candidate digest. No recovery format change was needed.
+
+Complete local installer proof passes **21 tests, one Linux skip**, 125.21s wall
+(48.14s user / 33.43s system). Complete retained-launch proof passes **19 tests,
+one Linux skip**, 108.66s wall (42.85s user / 30.65s system). The early apparent
+successful injected retained failure was a fixture taking the unchanged no-op
+path; the corrected marked publication path rejects the exposed fault. Existing
+entry-route fixtures needed quoted absolute substitutions for workspace paths
+with spaces; their byte-for-byte inverse and all four routing cases now pass.
+Remaining local groups also pass: backup/settings **50 passed**, 69.49s wall,
+and shared dispatch/installed/dependency consumers **84 passed, 28 platform skips**,
+30.08s wall. Across distinct complete selections: **190 passed, 34 platform skips**,
+four optional diagnostics excluded. Required statics and parent review pass;
+changed runtime ShellCheck was checked separately after stopping an unnecessarily
+broad whole-tree scan above three minutes. Relevant ShellCheck cost was 12.90s.
+Exact-candidate Quick and final core CI remain required before acceptance.
+
+Once live data and its complete record have passed exposed flush/readback checks,
+a failure flushing the final guard deletion is cleanup uncertainty. Return
+non-success without claiming rollback or recreating a guard after verified commit.
+Earlier publication failures must preserve their existing recovery evidence.
+
+The documented firmware limit is unchanged. Cached JFFS2 source at Merlin revision
+`433fc608f5fc1689f3d3c3ab5cd2a7d57102260f` was rechecked against the five recorded
+SHA-256 hashes in the ignored provenance inventory: `jffs2_fsync` ignores the
+return from `jffs2_flush_wbuf_gc`. Successful exposed calls and cached readback
+therefore do not certify persistence across restart. Official
+[Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts) and
+[Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
+were consulted for the existing storage/entry boundaries; no hook, service or
+live-router operation is part of this repair. Representative host/BusyBox proof
+remains distinct from deferred Merlin/ARM/flash beta qualification.
+
 ## Installer and retained-test cost review
 
 2026-10-16, baseline `33bc998`: user requested optimization of the existing

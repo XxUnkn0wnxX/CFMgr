@@ -20,7 +20,11 @@ candidate revision. Quick Checks supplies focused diagnosis and interim evidence
 local suite and exact full core CI at the complete main-goal checkpoint. Full
 local suites remain reserved for that boundary; core CI runs for code, tests,
 tooling and Actions changes on develop pushes and PRs targeting develop; documentation-only changes
-do not trigger CI. Manual Lint and Diagnostics are optional.
+do not trigger CI. Manual Lint and Diagnostics are optional. Full core CI runs
+last at the checkpoint after all applicable focused local/Quick groups pass;
+local platform skips still require CI proof. Automatically pause after each
+cleared checkpoint under the standing
+[validation rules](AGENTS.md#validation-and-publication-gates).
 Publication rules: [AGENTS.md](AGENTS.md); the current user-approved CI decision
 is recorded in [the handoff](PLAN_V2_handoff.md).
 
@@ -195,13 +199,20 @@ history writers, full diagnostics and final terminal presentation remain separat
 | --- | --- | --- | --- |
 | [ ] | [ ] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
 | [ ] | [ ] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
-| [ ] | [ ] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
+| [ ] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
 | [ ] | [ ] | S04.05 | **Cloudflared Save boundary:** Pre-Save cancellation; mutation-time e disabled; signals honored with bounded cleanup and guarded recovery. |
 | [ ] | [ ] | S04.06 | **Input/terminal handling:** No EOF/default-yes or noninteractive prompting; restore echo, reject unsafe controls and preserve literal data. |
 | [ ] | [ ] | S04.07 | **Restart recovery:** Inspect guards before activation, preserve damaged/recoverable data and never repeat uncertain provider creation. |
 | [ ] | [ ] | S04.08 | **Ownership and locks:** Stable lock identities, verified process start/boot identity, correct provider-child versus connector descriptor lifetime. |
 | [ ] | [ ] | S04.09 | **Generation and resource bounds:** Compatible package per invocation, current-state checks, late-result rejection and bounded whole-action cleanup. |
+
+S04.03 focused local proof: **190 passed, 34 platform skips**, with four optional
+diagnostics excluded, across the complete affected Store/settings/backup,
+installer/retained and shared dispatch/consumer modules. Relevant statics and
+parent review passed. [The durable-commit audit](PLAN_V2_audit.md#s0403-durable-staged-commit-review)
+records scope, failure evidence and firmware limits. Required focused Linux/
+BusyBox and final exact-candidate core CI remain pending; no final tick is earned.
 
 ### 5. Cloudflared setup and credentials
 

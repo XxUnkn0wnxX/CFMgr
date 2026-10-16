@@ -721,13 +721,18 @@ install-copy | install-rename | install-publish)
 	install-publish) exec "$tool" -n "$1" "$2" ;;
 	esac
 	;;
-install-sha | install-wc | install-ls | install-config-check | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df)
+install-sha | install-wc | install-ls | install-config-check | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df | install-remove)
 	[ "$#" -eq 1 ] || exit 2
 	case "$1" in /*) ;; *) exit 2 ;; esac
 	case "$mode" in
 	install-sha) exec "$tool" <"$1" ;;
 	install-wc) exec "$tool" -c <"$1" ;;
 	install-ls) exec "$tool" -ldn "$1" ;;
+	install-remove)
+		case $1 in */.setup.complete) ;; *) exit 2 ;; esac
+		[ -f "$1" ] && [ ! -L "$1" ] || exit 1
+		exec "$tool" "$1"
+		;;
 	install-config-check)
 		# shellcheck disable=SC2016
 		exec "$tool" -e '.schema == 1 and .generation == 1 and

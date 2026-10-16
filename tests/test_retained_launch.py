@@ -83,8 +83,8 @@ cfmgr_install_sh=$1 cfmgr_install_env=$2 cfmgr_install_awk=$3 cfmgr_install_read
 cfmgr_install_sleep=$5 cfmgr_install_wc=$6 cfmgr_install_ls=$7 cfmgr_install_fsync=$8
 cfmgr_install_mkdir=$9
 shift 9
-cfmgr_install_cp=$1 cfmgr_install_chmod=$2 cfmgr_install_mv=$3 cfmgr_install_sha=$4
-host_timeout=$5 host_scenario=$6
+cfmgr_install_cp=$1 cfmgr_install_chmod=$2 cfmgr_install_mv=$3 cfmgr_install_sha=$4 cfmgr_install_df=$5
+host_timeout=$6 host_scenario=$7
 CFMGR_VERSION=0.1.0
 cfmgr_launch_storage_required=0 cfmgr_launch_guard_owned=0 cfmgr_launch_migrating=0
 cfmgr_install_interrupted=0 cfmgr_probe_status=reaped
@@ -102,7 +102,11 @@ cfmgr_storage_pin() {
 cfmgr_bootstrap_shared_requirements() {
     [ "$1" = retained ] && [ -r "$cfmgr_launch_snapshot" ] || return 99
     printf 'shared\n' >>"$cfmgr_install_jffs/routes"
-    if [ "$host_scenario" = replace ] || [ "$host_scenario" = publish-fail ]; then cfmgr_storage_uuid_value=87654321-4321-4321-4321-cba987654321; fi
+    case "$host_scenario" in
+    replace | publish-fail | postrename-flush | postrename-readback | cleanup-flush | low-space)
+        cfmgr_storage_uuid_value=87654321-4321-4321-4321-cba987654321
+        ;;
+    esac
 }
 cfmgr_launch_metadata() {
     [ ! -L "$1" ] || return 1
@@ -134,9 +138,27 @@ cfmgr_prerequisites_run() {
         "$selected_tool" "$1" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"
         cfmgr_probe_exit=$?
     else
-        "$host_timeout" --foreground --kill-after=0.1s 2s "$selected_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= \
+        cfmgr_test_fsync_fault=clean
+        case "$host_scenario:$mode" in
+        postrename-flush:install-flush)
+            [ ! -e "$cfmgr_install_context/postrename-published" ] || cfmgr_test_fsync_fault=fsync
+            ;;
+        cleanup-flush:install-flush)
+            [ ! -e "$cfmgr_install_context/guard-retired" ] || cfmgr_test_fsync_fault=fsync
+            ;;
+        esac
+        "$host_timeout" --foreground --kill-after=0.1s 2s "$selected_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= CFMGR_FSYNC_FAULT="$cfmgr_test_fsync_fault" \
             "$selected_sh" "$helper" "$mode" "$selected_tool" "$context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"
         cfmgr_probe_exit=$?
+    fi
+    if [ "$host_scenario" = postrename-readback ] && [ "$mode" = install-rename ] && [ "${2-}" = "$cfmgr_install_source/config" ]; then
+        printf 'corrupt' >>"$cfmgr_install_source/config"
+    fi
+    if [ "$host_scenario" = postrename-flush ] && [ "$mode" = install-rename ] && [ "${2-}" = "$cfmgr_install_source/config" ]; then
+        : >"$cfmgr_install_context/postrename-published"
+    fi
+    if [ "$host_scenario" = cleanup-flush ] && [ "$mode" = launch-rmdir ] && [ "$cfmgr_probe_exit" -eq 0 ]; then
+        : >"$cfmgr_install_context/guard-retired"
     fi
 }
 cfmgr_bootstrap_native_prepare() { [ "$1:$2" = /jffs/addons/CFMgr.d:launch ]; }
@@ -172,6 +194,8 @@ def launch_host(
     if scenario == "guard":
         (support / ".storage-observation").mkdir(mode=0o700)
         (support / ".storage-observation/sentinel").write_text("keep\n")
+    if scenario == "setup-complete-guard":
+        (support / ".setup.complete").write_text("CFMGR-SETUP 1 0.1.0 complete\n")
     if scenario == "incomplete":
         (support / "setup-state").write_text("CFMGR-SETUP 1 0.1.0 installing\n")
     context = workspace / "private RAM"
@@ -183,6 +207,16 @@ def launch_host(
         + "\n"
     )
     logger.chmod(0o700)
+    selected_df = tools["df"]
+    if scenario == "low-space":
+        selected_df_path = context / "df-low-space"
+        selected_df_path.write_text(
+            "#!/bin/sh\nprintf 'called\\n' >"
+            + shlex.quote(str(context / "df-called"))
+            + "\nprintf 'Filesystem 1024-blocks Used Available Capacity Mounted on\\n'\nprintf '/dev/fixture 1000000 1000000 0 100%% /\\n'\n"
+        )
+        selected_df_path.chmod(0o700)
+        selected_df = str(selected_df_path)
     result = subprocess.run(
         [
             *shell,
@@ -207,6 +241,7 @@ def launch_host(
             tools["chmod"],
             tools["mv"],
             tools["sha256sum"],
+            selected_df,
             tools["timeout"],
             scenario,
         ],
@@ -246,9 +281,14 @@ def test_source_inert(shell: list[str], tmp_path: Path) -> None:
         "healthy",
         "replace",
         "publish-fail",
+        "postrename-flush",
+        "postrename-readback",
+        "cleanup-flush",
+        "low-space",
         "absent",
         "lost",
         "guard",
+        "setup-complete-guard",
         "incomplete",
         "corrupt",
         "unresolved",
@@ -275,19 +315,27 @@ def test_actual_retained_consumer_and_preserved_config(
         result.stderr,
     )
     current = (support / "config").read_bytes()
+    candidate = retained_config.replace(
+        b'"generation": 19', b'"generation": 20'
+    ).replace(
+        b"12345678-1234-1234-1234-123456789abc",
+        b"87654321-4321-4321-4321-cba987654321",
+    )
     if scenario == "replace":
-        expected = retained_config.replace(
-            b'"generation": 19', b'"generation": 20'
-        ).replace(
-            b"12345678-1234-1234-1234-123456789abc",
-            b"87654321-4321-4321-4321-cba987654321",
-        )
-        assert current == expected
+        assert current == candidate
         assert not (support / ".storage-observation").exists()
+    elif scenario in {"postrename-flush", "postrename-readback", "cleanup-flush"}:
+        assert current != original
     else:
         assert current == original
     routes = support.parents[1] / "routes"
-    if scenario in {"guard", "incomplete", "corrupt", "unresolved"}:
+    if scenario in {
+        "guard",
+        "setup-complete-guard",
+        "incomplete",
+        "corrupt",
+        "unresolved",
+    }:
         assert not routes.exists(), (
             "invalid retained state reached storage/dependency work"
         )
@@ -296,6 +344,33 @@ def test_actual_retained_consumer_and_preserved_config(
         assert (support / ".storage-observation").is_dir()
         assert (tmp_path / "private RAM/config.snapshot").read_bytes() == original
         assert not (support.parents[1] / "cleanup-route").exists()
+    if scenario in {"postrename-flush", "postrename-readback"}:
+        guard = support / ".storage-observation"
+        assert guard.is_dir()
+        assert (guard / "old").read_bytes() == original
+        # The same-filesystem publication rename consumes candidate. Verify
+        # its exact bytes at config; intent separately binds target generation
+        # and size while retaining the old snapshot digest.
+        assert not (guard / "candidate").exists()
+        assert (guard / "intent").is_file()
+        assert (tmp_path / "private RAM/config.snapshot").read_bytes() == original
+        if scenario == "postrename-flush":
+            assert (tmp_path / "private RAM/postrename-published").is_file()
+            assert any(
+                path.read_bytes()
+                for path in (tmp_path / "private RAM").glob("install-flush.*.err")
+            ), "exit-zero/stderr flush fault was not exercised"
+            assert current == candidate
+        else:
+            assert current == candidate + b"corrupt"
+    if scenario == "cleanup-flush":
+        assert (tmp_path / "private RAM/guard-retired").is_file()
+        assert not (support / ".storage-observation").exists()
+        assert json.loads(current)["generation"] == 20
+    if scenario == "low-space":
+        assert (tmp_path / "private RAM/df-called").is_file()
+        assert current == original
+        assert not (support / ".storage-observation").exists()
     if scenario == "unresolved":
         assert not (support.parents[1] / "cleanup-route").exists()
         assert not (support.parents[1] / "system-message").exists()
@@ -385,14 +460,14 @@ def test_entry_default_routes_only_the_installed_entry(
     env_sink.chmod(0o700)
     original = (ROOT / "cfmgr.sh").read_text()
     adapted = (
-        original.replace("/jffs", str(jffs))
-        .replace("/usr/bin/readlink", tools["readlink"])
-        .replace("/usr/bin/env", str(env_sink))
+        original.replace("/jffs", shlex.quote(str(jffs.resolve())))
+        .replace("/usr/bin/readlink", shlex.quote(tools["readlink"]))
+        .replace("/usr/bin/env", shlex.quote(str(env_sink.resolve())))
     )
     assert (
-        adapted.replace(str(env_sink), "/usr/bin/env")
-        .replace(tools["readlink"], "/usr/bin/readlink")
-        .replace(str(jffs), "/jffs")
+        adapted.replace(shlex.quote(str(env_sink.resolve())), "/usr/bin/env")
+        .replace(shlex.quote(tools["readlink"]), "/usr/bin/readlink")
+        .replace(shlex.quote(str(jffs.resolve())), "/jffs")
         == original
     )
     entry = scripts / "cfmgr.sh"

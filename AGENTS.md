@@ -212,14 +212,22 @@ not authorize pushes. Checkpoint routes:
 
 | Situation | Required route |
 | --- | --- |
-| Ordinary locally provable work | Focused local tests/statics → parent review → commit → continue without push or pause. |
-| Needed proof unavailable locally | Available focused checks/review → commit and authorized push → focused Quick diagnosis/fixes when needed → exact core Checks pass → accept. |
-| User-requested pause after substantial subgoal work | Finish subgoal → focused checks/review → commit/push → exact core Checks pass → checklist/README/handoff and pause. |
+| Interim locally provable work within the active package | Focused local tests/statics → parent review → commit → continue the same package without push or pause. |
+| Needed proof unavailable locally | Available focused checks/review → commit and authorized push → complete affected Quick groups → final exact core Checks pass → accept/update records and pause at the package checkpoint. |
+| User-requested pause after substantial subgoal work | Finish subgoal → focused checks/review → commit/push through the authorized pause checkpoint → applicable Quick groups → final exact core Checks pass → checklist/README/handoff and pause. |
 | Complete main-goal marker | All subgoals → accumulated audit → full local suite → push → exact full CI → acceptance/README/handoff and pause. |
 
 **Full local suites run only when a main goal reaches 100%.** Subgoals,
 shared-foundation batches and early pauses use complete focused local gates;
-required core CI runs automatically for code/test/tooling/Actions pushes and PRs.
+**full core CI runs last, at the checkpoint**, after implementation/review and
+all applicable focused groups pass. Use local checks for locally executable proof
+and focused Quick first for required Linux/BusyBox proof unavailable locally;
+local skips stay pending until CI proves them. Do not force artificial local
+passes or duplicate remote diagnosis for adequate local-only proof. During
+development/repairs use focused checks. Core still triggers automatically on code/
+test/tooling/Actions pushes and PRs: cancel premature owned core runs while Quick
+diagnosis is pending, then run the complete gate at the final candidate. Cancelled
+runs provide no acceptance. Preserve workflow triggers and publication permissions.
 Lint and Diagnostics are separate manual workflows, optional for acceptance.
 Their failures stay visible; a demonstrated serious product failure still needs
 assessment regardless of the workflow that exposed it. During
@@ -263,8 +271,11 @@ wait again; verify remote state and record accepted SHAs. Documentation receipts
 may follow within the same checkpoint with proportionate checks, naming the tested
 code SHA and not implying the receipt SHA was runtime-tested. Never award an
 unearned tick or README completion. A genuine checkpoint blocker stays unchecked
-and is reported. A pause boundary is a completed main goal unless the user
-explicitly requests an earlier pause.
+and is reported. **Automatically pause after every cleared checkpoint, including
+single-subgoal checkpoints, until the user explicitly changes this rule.** Finish
+the required gates and records, leave no required job/worker active, and wait for
+the next instruction. Interim commits/diagnostic runs are not cleared checkpoints;
+do not start another target merely because the current checkpoint passed.
 
 ## Main-goal audit
 

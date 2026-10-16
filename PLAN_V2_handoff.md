@@ -17,9 +17,136 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a1420b-3ef8-7c80-a5f1-aa989e2fae32
 Sixth ID verified 2026-10-16 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a143d6-a984-7c11-923a-4c30a037c5f5
+Seventh ID verified 2026-10-16 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
+
+## Active S04.03 durable-commit closure
+
+The user approved starting the recommended **S04.03** foundation package, then
+explicitly requested preserving strict local-versus-CI gates, running full core
+CI last, and automatically pausing after each cleared checkpoint until instructed
+otherwise. The user authorized recording these workflow rules in AGENTS. Product
+requirements and acceptance gates are unchanged. This package ends with its
+required checkpoint and pause; no next target is authorized.
+
+Baseline: clean `develop` at `358ed0c98e62a614b3bb19a1c0d1d22703cae230`, matching
+the local `origin/develop` ref. Accepted runtime remains `1ed124b`; the latest
+tested fixture candidate is `9f62a4a`. Current progress: **12/157 accepted (7.6%)**,
+**0/16 main goals (0%)**; Goal 4 has **0/9 accepted**. No S04.03 credit yet.
+
+Route A targets S04.03 alone, using accepted settings/backup/package/storage
+foundations. Parent and the independent Astra scope audit agree PASS WITH NOTES:
+close the durable-commit contract across current real authority writers, without
+requiring unfinished updater/provider/tunnel/restore consumers. Existing parsing,
+locking and scoped-merge support overlaps S04.01/.02/.08/.09 without extra credit.
+
+| Current writer/consumer | Required closure review |
+| --- | --- |
+| `ao` update-settings Save/recovery | Native Store pre-change intent/copies, coherent publication, exposed failures, verified recovery and truthful receipts. |
+| Backup destination Save/recovery | Same Store plus pinned inert folder preparation; preserve staged folder and recover JFFS independently, without claiming cross-filesystem atomicity. |
+| Retained-launch storage observation | Separate `.storage-observation` writer: compare its complete intent/publication/failure protocol against S04.03. |
+| Fresh installation | Compare private fresh config/setup publication and incomplete-install guards; reuse valid existing proof where sufficient. |
+
+The [S04.03 audit](PLAN_V2_audit.md#s0403-durable-staged-commit-review) records the
+writer inventory and independent scope/repair review. New Store proof passes
+post-live-rename flush/verification failure, failed candidate staging and
+old/candidate/divergent recovery. Retained observation lacked a space check;
+fresh completion could lose its guard before final verification and then fail
+its corrective rewrite. Parent repaired these boundaries using the existing
+guard and native supervisor. Publication tests and complete affected gates remain
+pending; no S04.03 credit is earned by this implementation alone.
+
+Parent owns runtime decisions, integration, generated metadata and all V2 records.
+Delegated ownership: `store_failure_proof` completed only
+`tests/test_config_store.py`; `publication_failure_proof` completed only
+`tests/test_install.py` and `tests/test_retained_launch.py`. Parent owns
+`tests/test_backup_storage.py`; `candidate_readiness` completed read-only writer
+inventory and `foundation_scope_audit` completed the independent design reviews.
+No delegated writer remains active; parent owns integration. Focused pytest jobs
+use one local execution slot.
+
+Current local evidence on the dirty working tree: complete Store module
+**16 passed, four Linux skips**, 45.73s wall / 22.00s user / 17.13s system after
+removing redundant standalone recovery cases. These assertions now follow the
+actual publication faults. Changed runtime shell syntax, ShellCheck and shfmt
+passed. Planning/link/privacy and whitespace passed after the rule changes.
+The retained fault trace confirms that exposed flush errors propagate. The test
+oracle was corrected: successful rename consumes the staged candidate, leaving
+the live candidate plus old/intent recovery evidence. Final complete installer
+module: **21 passed, one Linux skip**, 125.21s wall / 48.14s user / 33.43s system.
+The extra guard/failure proof stays within the practical three-to-four-minute
+budget; no additional full suite is justified for timing.
+Final retained module: **19 passed, one Linux skip**, 108.66s wall / 42.85s user /
+30.65s system. Existing entry-path fixtures now quote canonical absolute paths;
+their four cases pass with the original absolute-routing contract preserved.
+New backup post-publication drive-loss/failed-recovery/successful-recovery sequence
+passes locally (one diagnostic case, 19.81s wall). Complete backup/settings and
+shared dispatch/consumer groups are next. Independent implementation review is
+PASS WITH NOTES; the only requested test-comment correction is applied.
+The optional whole-tree ShellCheck step in the first focused runner invocation
+was stopped after exceeding three minutes; it supplied no pass. The four changed
+shell files then passed explicit ShellCheck in **12.90s** (11.13s user / 0.49s
+system). Subsequent focused runner invocations use `--skip-shellcheck` and reuse
+that relevant proof while retaining planning/package, Ruff/format, compile,
+shell syntax, shfmt and behavioral gates. The stopped log is preserved separately.
+
+Validation: reuse the pinned venv; focused diagnostics then complete affected
+Store/settings/backup groups, plus retained/install groups if changed or needed
+to close evidence. Local Linux skips remain pending for vendor BusyBox Quick.
+Keep groups near two minutes, split meaningful slow groups, preserve every core
+assertion and review measured wall/CPU costs. Full local suite is not due.
+Finish focused/Quick gates before the final exact-candidate core Checks gate;
+cancel premature automatic core runs during diagnosis. Follow the authorized
+pause-checkpoint publication route, update accepted evidence only after its gate,
+then pause with no required job/worker active. No router work, deployment, release,
+dependency installation, worktree creation or scope changes are authorized.
+
+Final local focused groups pass on the prepared tree based on `358ed0c`:
+
+| Selection | Result | Wall / user / system |
+| --- | --- | --- |
+| `test_config_store.py` | 16 passed, four Linux skips | 45.73s / 22.00s / 17.13s |
+| `test_install.py` | 21 passed, one Linux skip | 125.21s / 48.14s / 33.43s |
+| `test_retained_launch.py` | 19 passed, one Linux skip | 108.66s / 42.85s / 30.65s |
+| Backup storage, manager settings, installed settings entry, backup menu | 50 passed | 69.49s / 31.30s / 29.90s, including common statics |
+| Prerequisites, install reporting, installed package entry, dependency consumer, dependencies | 84 passed, 28 platform skips, four optional diagnostics excluded | 30.08s / 15.07s / 10.96s |
+
+Total: **190 passed, 34 platform skips**. No full local suite ran. The complete
+focused runner passed planning/package, whitespace, Ruff/format, Python compile,
+shell syntax and shfmt; changed runtime ShellCheck passed separately as above.
+Only formatting and unused fixture-branch removal followed applicable behavior
+proof; required Quick will test the exact published candidate. Parent review and
+cost review are complete. S04.03 is focused-local-passed, still not accepted;
+Goal 4 active focused completion is **1/9 (11.1%)**, accepted remains **0/9**.
+
+Commands: `.venv/bin/python tools/test.py --skip-shellcheck --focused` with the
+four backup/settings modules; other selections use
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`
+and `.venv/bin/python -m pytest -m 'not diagnostic'` with the named modules.
+`/usr/bin/time -l` supplies the recorded costs. Exact commands/results and prior
+diagnostic failures remain private under `.tmp/s0403/`.
+
+Next: commit/push this checkpoint candidate, cancel its premature automatic core
+run, complete Quick groups A–D below at that SHA, then run final core Checks.
+Accept only after all required evidence passes, update the receipt and pause.
+
+Required focused CI selections (whole modules, optional diagnostics excluded):
+
+| Group | Modules under `tests/` | Purpose |
+| --- | --- | --- |
+| A | `test_config_store.py`, `test_backup_storage.py`, `test_manager_settings.py`, `test_manager_settings_entry.py`, `test_backup_menu.py` | Store failures/recovery and actual settings/backup consumers. |
+| B | `test_install.py`, `test_install_reporting.py`, `test_prerequisites.py`, `test_entry_package.py`, `test_dependency_consumer.py`, `test_acquire_install.py` | Completion guard, native dispatch/ownership, installed admission and acquired-package install. |
+| C | `test_retained_launch.py` | Observation publication, guard admission and complete retained consumer. |
+| D | `test_dependencies.py` | Real supervised fresh installer and shared repair integration; reuse its measured cost diagnosis. |
+
+Run applicable local groups first; Linux-only acquisition/namespace/process proof
+goes directly to Quick instead of simulated local passes. All four Quick groups
+must pass the same candidate before the final required core run. None is accepted
+yet. Manual Lint/Diagnostics remain optional; no workflow triggers were changed.
 
 ## Paused after verified test-cost checkpoint
 

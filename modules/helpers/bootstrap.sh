@@ -20,6 +20,7 @@ cfmgr_bootstrap_action() {
 	install-wc) cfmgr_install_tool=$cfmgr_install_wc ;;
 	install-ls) cfmgr_install_tool=$cfmgr_install_ls ;;
 	install-copy) cfmgr_install_tool=$cfmgr_install_cp ;;
+	install-remove) cfmgr_install_tool=/bin/rm ;;
 	install-rename | install-publish) cfmgr_install_tool=$cfmgr_install_mv ;;
 	install-mkdir-*) cfmgr_install_tool=$cfmgr_install_mkdir ;;
 	install-chmod-*) cfmgr_install_tool=$cfmgr_install_chmod ;;
@@ -236,6 +237,15 @@ cfmgr_bootstrap_copy() {
 	cfmgr_bootstrap_flush "${2%/*}"
 }
 
+# Callers calculate their reserve from already validated package/config sizes.
+cfmgr_bootstrap_space() {
+	cfmgr_bootstrap_action install-df "$1" || return $?
+	# shellcheck disable=SC2016
+	"$cfmgr_install_awk" 'BEGIN { need=ARGV[1]; ARGV[1]="" }
+		NR==2 { n++; if ($4 !~ /^[0-9]+$/ || $4<need) bad=1 }
+		END { if (n!=1 || bad) exit 1 }' "$2" "$cfmgr_install_output"
+}
+
 # Exports the installation result and recovery phase to the trusted entry.
 # shellcheck disable=SC2034
 cfmgr_bootstrap_transaction() {
@@ -266,15 +276,11 @@ cfmgr_bootstrap_transaction() {
 	cfmgr_bootstrap_metadata "$cfmgr_install_source" "$cfmgr_install_owner" protected &&
 		cfmgr_bootstrap_metadata "$cfmgr_install_jffs" "$cfmgr_install_owner" protected || return $?
 	cfmgr_bootstrap_manifest || return $?
-	cfmgr_bootstrap_action install-df "$cfmgr_install_jffs" || return $?
 	# The validated inventory bounds the sum. Reserve two copies plus native
 	# erase-block/config/metadata allowance, rather than requiring an unused maximum.
 	# shellcheck disable=SC2016
 	cfmgr_install_needed=$("$cfmgr_install_awk" '{ total+=$2 } END { print int((2*total+262144+1023)/1024) }' "$cfmgr_install_context/records") || return 1
-	# shellcheck disable=SC2016
-	"$cfmgr_install_awk" 'BEGIN { need=ARGV[1]; ARGV[1]="" }
-		NR==2 { n++; if ($4 !~ /^[0-9]+$/ || $4<need) bad=1 }
-		END { if (n!=1 || bad) exit 1 }' "$cfmgr_install_needed" "$cfmgr_install_output" || return 1
+	cfmgr_bootstrap_space "$cfmgr_install_jffs" "$cfmgr_install_needed" || return $?
 	# Prepare defaults only after retained-state and package/tool admission. They
 	# remain private RAM data until the claimed installation guard is durable.
 	cfmgr_bootstrap_action install-config "$cfmgr_install_source" "$CFMGR_REPOSITORY" "$CFMGR_BRANCH" "$cfmgr_install_uuid" "$cfmgr_install_filesystem" "$cfmgr_install_fsroot" "$cfmgr_install_relative_opt" || return $?
@@ -344,17 +350,24 @@ cfmgr_bootstrap_transaction() {
 	cfmgr_install_expected_size=$cfmgr_install_entry_size
 	cfmgr_install_expected_digest=$cfmgr_install_entry_digest
 	cfmgr_bootstrap_file "$cfmgr_install_jffs/scripts/cfmgr.sh" || return $?
-	# Complete is the last published record. A failed final flush returns failure;
-	# existing installation paths always prevent reset, even if recovery recording fails.
+	# Keep the durable completion guard through the last record's copy, flush and
+	# readback. Retained launch must reject even a complete-looking partial commit.
 	(
 		umask 077
 		printf 'CFMGR-SETUP 1 %s complete\n' "$CFMGR_VERSION" >"$cfmgr_install_context/setup.complete"
 	) || return 1
 	cfmgr_bootstrap_copy "$cfmgr_install_context/setup.complete" "$cfmgr_install_support/.setup.complete" 0600 || return $?
-	cfmgr_bootstrap_action install-rename "$cfmgr_install_support/.setup.complete" "$cfmgr_install_support/setup-state" || return $?
-	if ! cfmgr_bootstrap_record "$cfmgr_install_support/setup-state" complete || ! cfmgr_bootstrap_flush "$cfmgr_install_support/setup-state" || ! cfmgr_bootstrap_flush "$cfmgr_install_support" || ! cfmgr_bootstrap_attached; then
-		cfmgr_bootstrap_copy "$cfmgr_install_context/setup.installing" "$cfmgr_install_support/setup-state" 0600 || :
-		return 1
+	cfmgr_bootstrap_record "$cfmgr_install_support/.setup.complete" complete || return $?
+	cfmgr_bootstrap_copy "$cfmgr_install_context/setup.complete" "$cfmgr_install_support/setup-state" 0600 || return $?
+	cfmgr_bootstrap_record "$cfmgr_install_support/setup-state" complete || return $?
+	cfmgr_bootstrap_action install-remove "$cfmgr_install_support/.setup.complete" || return $?
+	[ ! -e "$cfmgr_install_support/.setup.complete" ] && [ ! -L "$cfmgr_install_support/.setup.complete" ] || return 1
+	# Data and record are verified before removal. Failure here is uncertainty
+	# clearing the guard, never permission for a fallible rollback of valid state.
+	if cfmgr_bootstrap_flush "$cfmgr_install_support"; then :; else
+		cfmgr_install_failure=$?
+		printf '[CFMGR] install: error: completion guard cleanup could not be verified\n' >&2
+		return "$cfmgr_install_failure"
 	fi
 	cfmgr_install_result=complete
 }

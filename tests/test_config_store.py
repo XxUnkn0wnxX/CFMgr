@@ -119,9 +119,16 @@ cfmgr_prerequisites_run() {
         if [ "$scenario" = raw-edit ] && [ "${raw_edited:-0}" = 0 ]; then printf ' ' >>"$source/config"; raw_edited=1; fi ;;
 
     store-flush)
-        if [ "$scenario" = flush-error ]; then
-            : >"$cfmgr_probe_stdout"; printf 'fsync: error\n' >"$cfmgr_probe_stderr"; cfmgr_probe_exit=0; return 0
+        if [ "$scenario" = flush-error ] || { [ "$scenario" = post-publish-flush ] && [ "${published:-0}" = 1 ]; }; then
+            : >"$cfmgr_probe_stdout"; printf 'fsync: error\n' >"$cfmgr_probe_stderr"; cfmgr_probe_exit=0
+            [ "$scenario" != post-publish-flush ] || printf 'exit=0 stderr=fsync error\n' >"$ram/post-publish-flush.injected"
+            return 0
         fi ;;
+    store-copy)
+        case $2 in
+        */.config-save.preparing/candidate)
+            if [ "$scenario" = candidate-copy-error ]; then : >"$cfmgr_probe_stdout"; : >"$cfmgr_probe_stderr"; cfmgr_probe_exit=1; return 0; fi ;;
+        esac ;;
     store-move)
         case $2 in
         */.config-save)
@@ -137,6 +144,15 @@ cfmgr_prerequisites_run() {
     esac
     (umask 077; LC_ALL=C LANGUAGE= "$cfmgr_store_sh" "$helper" "$mode" "$tool" "$context" "$@") >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"
     cfmgr_probe_exit=$?
+    if [ "$mode" = store-move ] && [ "$2" = "$source/config" ] && [ "$cfmgr_probe_exit" = 0 ]; then
+        case $scenario in
+        post-publish-flush) published=1 ;;
+        post-publish-corrupt)
+            cat "$source/config" >"$ram/post-publish-corrupt.candidate"
+            printf 'corrupt-after-rename\n' >"$source/config"
+            ;;
+        esac
+    fi
     return 0
 }
 cfmgr_config_store "$@"
@@ -241,6 +257,97 @@ def test_flush_stderr_and_divergent_recovery_preserve_evidence(
     assert recovered.returncode == 1 and guard.exists()
 
 
+def test_live_rename_flush_error_keeps_candidate_and_guard(shell, tools, store_fixture):
+    source, *_ = store_fixture
+    before = (source / "config").read_bytes()
+    failed = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "auto",
+        "0",
+        "1",
+        scenario="post-publish-flush",
+    )
+    guard = source / ".config-save"
+    candidate = before.replace(b'"generation":1', b'"generation":2').replace(
+        b'"auto_update":false', b'"auto_update":true'
+    )
+    assert failed.returncode == 1, (failed.stdout, failed.stderr)
+    assert b"recovery 0 0 0 0 1" in failed.stdout
+    assert (
+        source.parent / "ram/post-publish-flush.injected"
+    ).read_bytes() == b"exit=0 stderr=fsync error\n"
+    assert (source / "config").read_bytes() == candidate
+    assert (guard / "old").read_bytes() == before
+    assert not (guard / "candidate").exists()
+    assert (guard / "intent").is_file()
+    recovered = run_store(shell, tools, store_fixture, "recover")
+    assert recovered.returncode == 0, (recovered.stdout, recovered.stderr)
+    assert b"recovered" in recovered.stdout
+    assert (source / "config").read_bytes() == candidate
+    assert not list(source.glob(".config-save*"))
+
+
+def test_live_rename_verification_corruption_preserves_guard(
+    shell, tools, store_fixture
+):
+    source, *_ = store_fixture
+    before = (source / "config").read_bytes()
+    failed = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "auto",
+        "0",
+        "1",
+        scenario="post-publish-corrupt",
+    )
+    guard = source / ".config-save"
+    assert failed.returncode == 1, (failed.stdout, failed.stderr)
+    assert b"recovery 0 0 0 0 1" in failed.stdout
+    assert (source / "config").read_bytes() == b"corrupt-after-rename\n"
+    assert (guard / "old").read_bytes() == before
+    assert (
+        source.parent / "ram/post-publish-corrupt.candidate"
+    ).read_bytes() == before.replace(b'"generation":1', b'"generation":2').replace(
+        b'"auto_update":false', b'"auto_update":true'
+    )
+    assert (source.parent / "ram/post-publish-corrupt.candidate").read_bytes() != (
+        source / "config"
+    ).read_bytes()
+    assert (guard / "intent").is_file()
+    evidence = {item.name: item.read_bytes() for item in guard.iterdir()}
+    divergent = (source / "config").read_bytes()
+    recovered = run_store(shell, tools, store_fixture, "recover")
+    assert recovered.returncode == 1
+    assert (source / "config").read_bytes() == divergent
+    assert evidence == {item.name: item.read_bytes() for item in guard.iterdir()}
+
+
+def test_candidate_copy_failure_prevents_live_mutation(shell, tools, store_fixture):
+    source, *_ = store_fixture
+    before = (source / "config").read_bytes()
+    failed = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "auto",
+        "0",
+        "1",
+        scenario="candidate-copy-error",
+    )
+    guard = source / ".config-save.preparing"
+    assert failed.returncode == 1, (failed.stdout, failed.stderr)
+    assert b"recovery 0 0 0 0 1" in failed.stdout
+    assert (source / "config").read_bytes() == before
+    assert (guard / "old").read_bytes() == before
+    assert not (guard / "candidate").exists()
+
+
 def test_active_divergent_and_retired_invalid_live_are_preserved(
     shell, tools, store_fixture
 ):
@@ -341,8 +448,8 @@ def test_external_lock_busy_prevents_save_and_observation(shell, tools, store_fi
     library = source / "modules/lib/config_store.sh"
     library.write_text(
         library.read_text()
-        .replace("/tmp/cfmgr", str(ram))
-        .replace("/opt/bin/flock", flock)
+        .replace("/tmp/cfmgr", shlex.quote(str(ram)))
+        .replace("/opt/bin/flock", shlex.quote(flock))
     )
     lock = ram / "config.lock"
     lock.touch(mode=0o600)
@@ -350,7 +457,11 @@ def test_external_lock_busy_prevents_save_and_observation(shell, tools, store_fi
     with lock.open("r+b") as owner:
         fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
         result = run_store(shell, tools, store_fixture, "save", "auto", "0", "1")
-        assert result.returncode == 1 and b"busy" in result.stdout
+        assert result.returncode == 1 and b"busy" in result.stdout, (
+            result.returncode,
+            result.stdout,
+            result.stderr,
+        )
         # Actual launch wrapper/common acquisition; only borrowed firmware path
         # setup is forwarded. A refused lock never enters the publication body.
         script = ADAPTER.replace(

@@ -226,6 +226,64 @@ def test_drive_loss_before_publication_preserves_inert_folder_and_jffs_recovery(
     assert not list(source.glob(".config-save*"))
 
 
+def test_drive_loss_after_publication_preserves_candidate_until_verified_recovery(
+    shell, tools, backup_fixture
+):
+    source, ram, *_ = backup_fixture
+    before = (source / "config").read_bytes()
+    script = BACKUP_ADAPTER.replace(
+        "post-publish-flush) published=1 ;;",
+        'post-publish-loss) : >"$ram/lost" ;;\n'
+        "        post-publish-flush) published=1 ;;",
+    )
+    assert script != BACKUP_ADAPTER
+    stopped = run_store(
+        shell,
+        tools,
+        backup_fixture,
+        "save",
+        *selection(),
+        scenario="post-publish-loss",
+        script=script,
+    )
+    assert stopped.returncode == 1, (stopped.stdout, stopped.stderr)
+    assert stopped.stdout == b"CFMGR-BACKUP 1 recovery 0 1 unavailable 0 END\n"
+    candidate = (source / "config").read_bytes()
+    current = json.loads(candidate)
+    assert current["generation"] == 2
+    assert current["backup"]["destination"] == DESTINATION
+    guard = source / ".config-save"
+    assert (guard / "old").read_bytes() == before
+    intent = (guard / "intent").read_bytes()
+    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    # An exposed recovery flush error cannot erase evidence or claim recovery.
+    failed = run_store(
+        shell,
+        tools,
+        backup_fixture,
+        "recover",
+        scenario="flush-error",
+        script=BACKUP_ADAPTER,
+    )
+    assert failed.returncode == 1, (failed.stdout, failed.stderr)
+    assert failed.stdout == b"CFMGR-BACKUP 1 recovery 0 1 unavailable 0 END\n"
+    assert (source / "config").read_bytes() == candidate
+    assert (guard / "old").read_bytes() == before
+    assert (guard / "intent").read_bytes() == intent
+    # JFFS-only recovery verifies the committed candidate without the drive.
+    recovered = run_store(
+        shell, tools, backup_fixture, "recover", script=BACKUP_ADAPTER
+    )
+    assert recovered.returncode == 0, (recovered.stdout, recovered.stderr)
+    assert recovered.stdout.startswith(
+        b"CFMGR-BACKUP 1 recovered 2 0 unavailable 0 END\n"
+    )
+    assert b"CFMGR-BACKUP-DEST 1 " in recovered.stdout
+    assert (source / "config").read_bytes() == candidate
+    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    assert not list(source.glob(".config-save*"))
+
+
 def test_stale_selection_and_read_only_check_never_prepare_folder(
     shell, tools, backup_fixture
 ):

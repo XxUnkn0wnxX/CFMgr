@@ -17,3 +17,9 @@ Use the existing goal/subgoal IDs; these notes do not award acceptance or change
 | Review note | ID | Subgoal and required result |
 | --- | --- | --- |
 | **Host fixture timing:** the complete installed status-menu journey uses a ten-second process timeout instead of the shared three-second navigation timeout. It completed in 4.87s during isolated macOS diagnosis; the earlier limit interrupted a report still in progress. Production deadlines, return/no-preparation assertions and shorter navigation-test limits remain unchanged. This is host test tolerance, not router latency qualification. | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
+
+## 4. Save, cancellation and recovery
+
+| Review note | ID | Subgoal and required result |
+| --- | --- | --- |
+| **Existing firmware limit:** the approved contract checks all exposed write, rename, flush and verification results, but qualified JFFS2 firmware can hide internal flash-flush errors. Cached readback cannot certify restart persistence. The [durable-commit audit](PLAN_V2_audit.md#s0403-durable-staged-commit-review) records the rechecked source evidence and staging protections; actual flash/Merlin qualification remains deferred to beta. No raw-flash workaround or additional waiver is introduced. | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
