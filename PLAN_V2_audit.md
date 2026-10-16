@@ -50,8 +50,8 @@ successful manager admission, unchanged opkg/config, no observation guard and
 deferred DNS together. Initial repair already proves normal SRV/A verification;
 forced reinstall stays separate. The specification does not require separate
 successful-DNS and failed-DNS return permutations. This removes a repeated
-launch while preserving distinct required assertions; final measured proof is
-pending. No product requirement, runtime deadline or accepted count changes.
+launch while preserving distinct required assertions. No product requirement,
+runtime deadline or accepted count changes.
 
 The [complete dependency module 38870338830](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38870338830)
 passed at the same SHA: 21 core tests, four optional diagnostics excluded,
@@ -61,6 +61,60 @@ accounts for 115.85s and real publication 64.84s; pre/post capability checks are
 wait. Keep the full supervision/repair/publication connection. Isolate this
 consumer from the remaining dependency cases for bounded Quick feedback; any
 larger production optimization requires its own evidence and scope review.
+
+Final candidate `9f62a4a5d9a532f661f835205a420f0fffa8fdc4` preserves all runtime
+bytes and all 36 affected core test cases. Final local modules passed 27 tests
+with nine Linux skips and four optional diagnostics excluded, 25.42s pytest /
+25.97s wall. Relevant static checks and parent review passed. Complete focused
+vendor BusyBox evidence at that exact revision:
+
+| Selection | Result | Pytest / process wall | User / system CPU |
+| --- | --- | --- | --- |
+| [Installer 38871209489](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871209489) | 1 passed | 185.35s / 185.54s | 96.52s / 87.86s |
+| [Other dependencies 38871213036](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871213036) | 20 passed | 38.81s / 38.96s | 19.73s / 14.79s |
+| [Retained module 38871217086](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871217086) | 15 passed | 124.03s / 124.33s | 63.63s / 59.74s |
+
+Pytest collection proves the first two selections are disjoint and together cover
+all 21 core dependency nodes. Every required Quick step passed; its optional
+host baseline was not requested. Private selectors, JSON/logs and local receipts
+are retained under `.tmp/test-cost-20261016/`.
+
+**Measured outcome:** retained full launches fell from five to four. Combined
+return/DNS admission took 22.77s versus the previous separate 19.30s + 18.88s.
+However, unchanged repair/force rose from 34.30s/33.94s to 41.75s/40.83s, and the
+whole group changed from 122.53s wall / 117.95s CPU to 124.33s / 123.37s. Those
+runs do not establish a reliable whole-group speedup or CPU reduction. Runner
+variation is a plausible explanation, not proven causation. Preserve the
+redundancy reduction without advertising a guaranteed saving or adding benchmark
+reruns. The group stays close to the two-minute target. Installer repair was
+114.19s, checks 1.01s/1.55s and publication 62.85s; its isolated 3m06s group stays
+within the practical three-to-four-minute range. The remaining dependency group
+is under 40s. No safe additional small shortcut was identified.
+
+Instrumentation history: `3612adf` Quick runs 38869722557/38869726230 passed but
+pytest descriptor capture hid their successful phase reports. `de66d22` scopes
+`capfd.disabled()` to these two helper invocations while child output remains
+captured; full module runs 38870338830/38870343255 then exposed the phase costs
+above. The dependency run completed successfully in 3m50s; a stale late monitor
+alert led to a cancellation request after completion, which GitHub refused.
+Cancelled core preflight runs 38869708922, 38870326329 and attempt 1 of
+38871191644 supply no acceptance.
+
+Final [core Checks 38871191644, attempt 2](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871191644)
+passed every required job/step at `9f62a4a5d9a532f661f835205a420f0fffa8fdc4`.
+Job duration was **16m07s**. Host/common: **612 passed, 28 platform skips**, 171.02s
+process wall, 41.15s user + 47.63s system. Vendor BusyBox: **639 passed, one
+workstation-only skip**, 773.52s wall, 355.83s user + 347.17s system. Four optional
+diagnostics were excluded per phase. This prescribed final gate does not establish
+an overall speedup over the previous 13m52s run: host and BusyBox system CPU both
+increased, and the installer call rose from 153.07s to 188.55s while retained
+remained essentially flat at 110.52s versus 110.06s. Runtime bytes are unchanged;
+these runs alone cannot attribute the timing difference to a specific cause.
+Keep the 20-minute configured limit, visible phase measurements and bounded
+focused selections; do not launch extra full runs solely to improve the timing
+claim. The removed repeated launch and complete coverage are verified, while a
+whole-group wall/CPU reduction remains unproved. Representative host/vendor
+BusyBox proof does not establish live Merlin/ARM/router qualification.
 
 ## S02.01 modular distribution closure review
 

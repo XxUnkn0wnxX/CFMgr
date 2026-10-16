@@ -21,90 +21,80 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active test-cost review — installer and retained repair
+## Paused after verified test-cost checkpoint
 
-The user approved investigating and optimizing the two slow existing tests before
-another product target. Baseline is clean `develop` at `33bc998`; tested runtime
-remains `1ed124b`. This is maintenance of S02.05/S02.06/S02.08 evidence, with
-S02.01/S07.08 consumer overlap, and earns no new product credit: **12/157 accepted
-(7.6%)**, **0/16 main goals (0%)**. Preserve required safety assertions and runtime
-budgets; significant redesign or reduced assurance needs a user decision.
-
-Measured baseline from core 38865532262: actual installer repair/publication
-153.07s and real retained repair/later return 110.52s under vendor BusyBox. The
-parent owns runtime judgement, global instructions, V2 records and integration.
-Read-only fixture investigation is complete: immutable setup is already shared,
-the installer retains full per-view-operation supervision, and the retained test
-already layers that boundary while proving five distinct launch outcomes.
-`test_cost_timing` finished and released `tests/test_dependencies.py` and
-`tests/fixtures/{dependency_installer,retained_launch}.sh`. Finite monotonic phase
-timings preserve operations, return codes and assertions; only strict known
-fixture timing records are separated from stderr. Parent corrected numeric label
-parsing and reviewed conditional-call semantics. Ruff/format/compile, shell
-syntax/shfmt, ShellCheck, package/planning and whitespace passed; the focused
-fixture syntax test passed in 2.24s. No speedup is claimed yet. Next run the
-two distinct vendor Quick nodes to measure prerequisites/repair/publication and
-the five retained launch outcomes. No router execution, new dependency or product
-scope change.
-
-Instrumentation candidate `3612adf6ad740e5ba9a8f377c7b77bbcaaeaa98d` is pushed.
-Quick installer `38869722557` and retained `38869726230` both passed at that SHA:
-189.36s / 133.53s pytest, respectively. User+system CPU was 188.01s / 132.52s;
-the work is CPU-heavy rather than an idle wait. Their phase records were valid
-but pytest's descriptor capture hid the success report. Parent fixed reporting
-with `capfd.disabled()` around only these two helper calls; child output remains
-captured and all original result assertions remain. The awaiter finished. Raw
-receipts: `installer-before.{json,log}` and `retained-before.{json,log}` in the
-private measurement directory. Automatically triggered core `38869708922` was
-cancelled during focused diagnosis and supplies no acceptance. Next publish the
-reporting correction and run each complete affected module separately with
-visible phase measurements; no runtime/coverage change has been made.
-
-Reporting correction `de66d22ecbe164b07030e78edd76b614e74777fa` is pushed. Complete
-local dependency/retained modules passed **27 tests, 9 Linux skips**, four optional
-diagnostics excluded, 25.23s pytest / 25.74s wall (12.28s user + 8.94s system).
-Ruff/format/compile/planning/whitespace passed. Complete vendor Quick modules are
-running separately: dependencies `38870338830`, retained `38870343255`; awaiter
-`s0208_local_wait` monitors their bounds. Core `38870326329` was cancelled during
-focused diagnosis. Independent reviewer `audit_repair_storage` is read-only,
-checking whether a small fixture optimization preserves the core wiring. Parent
-owns decisions and records; no active file writer or further product target.
-
-Both complete modules passed at `de66d22`: dependencies 21 passed / 4 optional
-diagnostics excluded, 229.52s pytest (229.74s wall); retained 15 passed, 122.33s
-pytest (122.53s wall). Installer phase costs were repair 115.85s, pre/post checks
-1.03s/1.59s and publication 64.84s. Its final step completed in 3m50s; a late stale
-monitor alert prompted a cancellation attempt after completion, which GitHub
-correctly refused. It remains a successful run, not a cancelled run.
-
-Parent and independent reviewer found one safe consolidation: combine healthy
-drive return and ordinary DNS outage in one fresh retained launch, preserving
-all distinct assertions. Normal DNS is proved on initial repair; actual force
-and missing-attachment reporting remain separate. `test_cost_timing` exclusively
-owns the retained fixture and finite timing-label tuples in test_dependencies.py
-for this edit. Installer's complete production-supervised path remains intact.
-Next final gate: complete retained module plus disjoint dependency core selections
-that cover every collected core node, isolating the expensive installer case.
-Raw profile receipts are `installer-profile.{json,log}` and
-`retained-profile.{json,log}` under `.tmp/test-cost-20261016/`.
-
-The consolidation is implemented and parent-reviewed; the worker released its
-files. All runtime files, timeout budgets, test cases and distinct assertions
-are preserved. ShellCheck/syntax/shfmt and Ruff/format/compile/planning/whitespace
-passed. Final local modules passed again; see `local-final.log` for exact cost.
-The private `final-gates.json` maps final Quick runs: installer alone (1 test),
-all other dependency core nodes (20 tests across eight selectors), and the whole
-retained module (15 tests). Actual pytest collection confirms disjoint union
-coverage of every applicable test. Next push this candidate, dispatch those
-three groups, verify SHA/results/cost, record the measured saving and pause.
-
-Use existing timings first, then separate focused Quick selections for the two
-Linux-only consumers. Complete affected modules and relevant statics must pass
-at the final candidate before checkpoint/pause; no extra full local timing run.
-Keep raw measurements under ignored `.tmp/test-cost-20261016/`. The explicit user
-request also authorized a global AGENTS rule: review measured test cost and apply
+The user approved optimizing the two slow existing tests before another product
+target, then requested a global AGENTS rule to review measured cost and apply
 small verified optimizations before advancing to another target/checklist item.
-That narrow global rule is applied; repository requirements remain unchanged.
+That scoped global rule is applied. Product requirements, safety assertions,
+runtime deadlines and repository CI policy are unchanged. This maintenance earns
+no new product credit: **12/157 accepted (7.6%)**, **0/16 main goals (0%)**;
+Goal 2 remains **7/9 (77.8%)**. No next product target has started.
+
+Baseline is `33bc998`, with accepted runtime `1ed124b`. Final test candidate
+**`9f62a4a5d9a532f661f835205a420f0fffa8fdc4`** is pushed on `develop`. Runtime
+files are unchanged. Finite phase reports now expose repair, prerequisite and
+publication costs. The retained fixture combines returned-volume admission and
+DNS outage in one fresh launch, preserving every distinct required assertion;
+initial normal DNS, missing attachment and explicit force remain separate.
+The real installer retains its full production-supervised repair/publication
+path. Parent and independent review agree with this bounded consolidation;
+[the cost audit](PLAN_V2_audit.md#installer-and-retained-test-cost-review) owns
+findings and measured limits.
+
+Final local dependency/retained modules: **27 passed, 9 Linux skips**, four
+optional diagnostics excluded, 25.42s pytest / 25.97s wall (11.91s user + 8.82s
+system). Relevant Ruff/format/compile, shell syntax/shfmt/ShellCheck, package,
+planning and whitespace checks passed. Final vendor BusyBox Quick evidence is
+complete at the candidate above:
+
+| Group | Complete affected selection | Passed | Process wall | User / system CPU |
+| --- | --- | --- | --- | --- |
+| [Installer 38871209489](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871209489) | Actual installer repair/publication node | 1 | 185.54s | 96.52s / 87.86s |
+| [Dependency core 38871213036](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871213036) | All other core nodes in `test_dependencies.py` | 20 | 38.96s | 19.73s / 14.79s |
+| [Retained 38871217086](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871217086) | Complete `test_retained_launch.py` | 15 | 124.33s | 63.63s / 59.74s |
+
+Parent verified the exact SHA and every required job/step. Pytest collection
+confirms the first two disjoint groups cover all 21 core dependency tests;
+`final-gates.json` records the eight-selector limit and complete mapping. Four
+optional diagnostics remain excluded. Quick's unrequested diagnostic host phase
+is intentionally skipped, not accepted evidence. The retained whole-group result
+is effectively flat against its preceding 122.53s / 117.95s CPU run: no reliable
+end-to-end speedup is claimed. The repeated launch is removed; measured combined
+return/DNS work is 22.77s versus 38.18s previously; the unchanged phases also
+ran slower. Do not run extra benchmarks solely to improve a claim.
+
+[Core Checks 38871191644](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871191644)
+**attempt 2 passed** at the same final candidate. Every required job/step passed;
+the Ubuntu job ran **16m07s**, 08:08:47–08:24:54 UTC on 2026-10-16.
+
+| Required core phase | Result | Process wall | User / system CPU |
+| --- | --- | --- | --- |
+| Host/common | 612 passed, 28 platform skips, 4 optional diagnostics excluded | 171.02s | 41.15s / 47.63s |
+| Vendor BusyBox | 639 passed, 1 workstation-only skip, 4 optional diagnostics excluded | 773.52s | 355.83s / 347.17s |
+
+The full job is slower than the preceding 13m52s core run, with higher system CPU
+in both host and BusyBox phases. Installer call cost is 188.55s versus 153.07s;
+retained is 110.06s versus 110.52s. No overall CI speedup is established. The
+20-minute configured limit is unchanged. Focused groups remain within the
+practical range, and no safe further small fixture reduction was identified.
+No extra benchmark or full local suite was run. Optional diagnostics are not
+claimed passed; live Merlin/ARM/provider qualification remains beta-only.
+
+This documentation receipt records the tested code/test SHA above; it does not
+claim a runtime rerun at its own revision. Planning/link/privacy and whitespace
+checks pass. All workers and the awaiter finished; no local test, required CI,
+implementation writer, unresolved failure or user question remains. Parent review
+is complete. Pause at this checkpoint and wait for the user's next-task
+authorization. On resume, verify clean `develop` against `origin/develop` and
+this receipt. No additional product target is selected or started.
+
+Private evidence is in `.tmp/test-cost-20261016/`: `local-final.log`,
+`{installer,dependency-core,retained}-final.{json,log}`, `final-gates.json` and
+`dependency-core-nodes.txt`, plus `core-final.{json,log}`. Earlier profile receipts
+and cancelled/superseded runs are described in the audit. Preserve them separately
+from final passing proof. No router actions, new dependency, release or product
+scope change is authorized by this checkpoint.
 
 ## Accepted S02.01 checkpoint
 
@@ -1779,17 +1769,16 @@ Historical review: [Retained execution and storage source review](PLAN_V2_audit.
 
 ## Next-session boundaries
 
-S02.06, S02.04, S03.07 and S07.01 are complete through their required checkpoints.
-The session is paused after the S07.01/native Save checkpoint recorded at the top
-of this handoff. No further package has been selected or started. On a new
-user-requested resume, first reconcile branch/HEAD/status and the receipt against
-the actual code and six exact-candidate CI runs; preserve completed proof instead
-of automatically repeating tests. The user has set project-wide
-selection order: follow the [work ordering rule](AGENTS.md#implementation-and-preservation),
-finishing independent subgoals and prerequisites before larger features. Use a
-coordinated multi-goal batch only when no smaller ready, independently completable
-outcome remains. The completed S07.01 selection followed the prior smallest-task
-audit; this ordering policy does not authorize an additional package.
+The completed test-cost checkpoint and exact passing gates are recorded at the
+top of this handoff; S02.01 is the latest accepted product subgoal. At the next
+user-authorized resume, first reconcile branch/HEAD/status and the documentation
+receipt with the exact tested candidate and CI runs above. Reuse valid proof
+instead of automatically repeating tests. No next product target is selected.
+The user has set project-wide selection order: follow the
+[work ordering rule](AGENTS.md#implementation-and-preservation), finishing
+independent subgoals and prerequisites before larger features. Use a coordinated
+multi-goal batch only when no smaller ready, independently completable outcome
+remains. This ordering policy does not authorize another package.
 Final documentation subgoals follow the explicit phase gate in the specification
 and checklist; do not select interim documentation as an early completion. Finish
 started libraries/subgoals before switching; inspect existing consumers, tests and

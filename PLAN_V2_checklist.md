@@ -142,6 +142,16 @@ published candidate before CI-dependent acceptance or a requested pause. Local
 packages retain focused tests/commits; full local suites remain reserved for a
 main goal reaching 100%. Lint and Diagnostics run manually and are optional.
 
+Test-cost maintenance at `9f62a4a5d9a532f661f835205a420f0fffa8fdc4`: complete
+local dependency/retained modules **27 passed, 9 Linux skips**; all affected core
+vendor Quick groups **36 passed**. [Final core Checks, attempt 2](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38871191644)
+passed every required job/step: host **612 passed, 28 skips**, vendor BusyBox
+**639 passed, 1 skip**, four optional diagnostics excluded per phase, **16m07s**
+job duration. Parent review and statics passed. The
+[cost audit](PLAN_V2_audit.md#installer-and-retained-test-cost-review) records
+retained-launch consolidation, preserved safety proof and the unproved overall
+speedup. Product requirements and accepted counts are unchanged.
+
 Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies).
 
 ### 3. Configuration, menus and status
