@@ -150,24 +150,30 @@ changes; after 3–5 unanswered minutes, pause as above. Do not spend hours prov
 rare possibilities. Test counts are not targets; review cost before each develop
 push and after about three batches using existing timings, not extra full runs.
 At product 100%, target a full suite no longer than roughly 40 minutes including
-setup. Keep today's accepted eight-minute baseline lean; raise the lower configured
+setup. Keep the measured core baseline lean; raise the lower configured
 runner limit only when measured growth justifies it, never beyond 40 minutes.
 Remove redundant work and costly low-value variants before adding coverage; retain
 core plan proof. Record measured cost using the required acceptance run.
 For slow or opaque runs, use meaningful, disjoint Quick Checks groups and the
 skills' diagnosis procedure, with visible test names and wall/CPU timings.
 Isolated CI groups may run concurrently. Complete every affected group before
-subgoal acceptance; reserve full Checks for main-goal completion.
-For each Linux-dependent subgoal or substantial library package, run its own
-focused Quick Checks batch and review both correctness and measured runtime
-before adding it to the combined full gate. Split and optimize unexpectedly slow
+subgoal acceptance. Required core Checks runs automatically for code, tests,
+tooling and Actions changes on develop pushes and PRs targeting develop;
+documentation-only changes do not trigger CI.
+For each Linux-dependent subgoal or substantial library package, identify its
+focused Quick Checks selection and review correctness and measured runtime in
+required core CI. Use focused Quick runs to isolate failures or slow batches.
+Split and optimize unexpectedly slow
 batches first: aim for two minutes or less, with a practical upper range of three
 to four minutes where feasible. Preserve core proof when trimming. A pass alone
 does not establish acceptable cost.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
-format, Python compile, shell syntax, ShellCheck, shfmt, planning/link/whitespace
-and behavior. Python tools remain developer-only. Planning checks complement
+format, Python compile, shell syntax, shfmt, planning/link/whitespace and behavior.
+ShellCheck runs through optional manual Lint; the normal local runner includes it
+unless `--skip-shellcheck` is selected. Optional Diagnostics runs only the existing
+diagnostic-marked cases and does not gate core acceptance. Python tools remain
+developer-only. Planning checks complement
 runtime proof; do not remove valid runtime code to satisfy obsolete empty-tree
 rules. Runners never commit, push or watch CI.
 
@@ -194,39 +200,45 @@ upgrade order before packaging. Stable promotion, release and live deployment
 need separate authorization.
 
 Each subgoal needs complete implementation, written focused tests, relevant static
-checks and parent review. CI-dependent acceptance needs **all tests in every
-applicable focused group at the exact candidate SHA**, including shared foundations
-across goals. A narrow diagnostic pass cannot award a checkbox. Local commits do
+checks and parent review. CI-dependent acceptance needs **required core Checks
+passing at the exact published candidate SHA**, including shared foundations
+across goals. Quick Checks supplies focused diagnosis and interim evidence. A
+narrow diagnostic pass cannot award a checkbox. Local commits do
 not authorize pushes. Checkpoint routes:
 
 | Situation | Required route |
 | --- | --- |
 | Ordinary locally provable work | Focused local tests/statics → parent review → commit → continue without push or pause. |
-| Needed proof unavailable locally | Available focused checks/review → commit and authorized Quick Checks push → small focused fixes until green → all applicable grouped CI tests pass → accept. |
-| User-requested pause after substantial subgoal work | Finish subgoal → focused checks/review → commit/push → all applicable grouped CI tests pass → checklist/README/handoff and pause. |
+| Needed proof unavailable locally | Available focused checks/review → commit and authorized push → focused Quick diagnosis/fixes when needed → exact core Checks pass → accept. |
+| User-requested pause after substantial subgoal work | Finish subgoal → focused checks/review → commit/push → exact core Checks pass → checklist/README/handoff and pause. |
 | Complete main-goal marker | All subgoals → accumulated audit → full local suite → push → exact full CI → acceptance/README/handoff and pause. |
 
-**Full local and full CI suites run only when a main goal reaches 100%.** Subgoals,
-shared-foundation batches and early pauses use their complete focused gate. During
+**Full local suites run only when a main goal reaches 100%.** Subgoals,
+shared-foundation batches and early pauses use complete focused local gates;
+required core CI runs automatically for code/test/tooling/Actions pushes and PRs.
+Lint and Diagnostics are separate manual workflows, optional for acceptance.
+Their failures stay visible; a demonstrated serious product failure still needs
+assessment regardless of the workflow that exposed it. During
 repair, use the smallest relevant test selection; once failures are fixed, rerun
 all tests in every affected group at the final SHA. Record scope, results and group
 timings in handoff so later main-goal cost can be estimated. Required core plan
 edges and applicable static checks remain mandatory; do not narrow away failures.
 
 Quick Checks accepts one to eight validated pytest nodes or whole test modules
-(never mixed) in a final `CFMgr-Quick-Tests:` trailer or manual dispatch. Prefer
-whole modules for complete focused gates; split larger shared scopes into multiple
+(never mixed) through manual dispatch. Commit trailers no longer trigger Quick.
+Prefer whole modules for complete focused gates; split larger shared scopes into multiple
 runs at the same SHA and require every group to pass. Module groups exclude
 optional diagnostics; explicit nodes can target them. Parent maps all affected
 subgoals/consumers/foundations before selecting the gate. Small node selections
 remain diagnosis unless they demonstrably cover the complete required scope.
 
-Manual Quick runs have separate concurrency groups; pushes cancel superseded
-same-ref runs. Its full-host baseline is an explicit diagnostic facility, not a
-routine subgoal gate. Full Checks is manual at main-goal checkpoints, preventing
-an ordinary push/PR from starting a full suite. Runtime subgoal/pause pushes use
-Quick's trailer or dispatch. Invalid/ambiguous selection fails; cancelled/skipped
-required groups supply no acceptance. The retired `CFMgr-Focused-Tests:` selector
+Manual Quick runs have separate concurrency groups. They diagnose focused core
+groups, large core failures and selected optional tests. Its full-host baseline
+is an explicit diagnostic facility, not a routine subgoal gate. Core Checks
+keeps manual dispatch as well as automatic code/test/tooling/Actions triggers;
+new same-ref/PR runs cancel superseded core runs. Invalid/ambiguous selections
+fail; cancelled/skipped required proof supplies no acceptance. The retired
+`CFMgr-Focused-Tests:` selector
 is not a supported gate.
 
 Main-goal checkpoint:
@@ -388,8 +400,8 @@ unrelated package; choose the last acceptable checkpoint based on progress:
 - **Substantial progress (about halfway or near completion):** finish the subgoal,
   pass focused tests/static checks and review, fix failures, commit/push through the authorized
   pause checkpoint and wait for exact required CI. Do not pause with failed or
-  pending applicable grouped CI. Full local/full CI suites remain for a complete
-  main-goal marker.
+  pending required core CI. Full local suites remain for a complete main-goal
+  marker; documentation-only receipts do not trigger CI.
 - **Immediate stop:** stop at once and preserve truthful partial state.
 
 Then update justified checklist/README and refresh handoff for new session or

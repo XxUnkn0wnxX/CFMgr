@@ -18,7 +18,12 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active CI follow-up — automatic core and manual optional workflows
+## Paused CI checkpoint — automatic core and manual optional workflows verified
+
+**Stop here.** The requested CI split, both optional launches, focused follow-up
+and cost review are complete. No worker or required CI job remains active. Do not
+begin S14.02. Product acceptance remains **9/157 subgoals (5.7%), 0/16 main goals
+(0%)**; Goal 2 remains **6/9 (66.7%)**.
 
 The user's final decision supersedes the initial required-Lint-job proposal:
 **Checks** runs the full core host/vendor BusyBox suite automatically on pushes
@@ -27,15 +32,15 @@ optional manual workflows. **Quick Checks** is manual focused core/optional-test
 diagnosis and repair. Required normal behavior and core safety proof remain in
 Checks; only ShellCheck and the four already-optional diagnostic cases are outside
 its gate. All other core statics and the normal local runner's lint default stay.
-These explicit decisions override AGENTS' older full-CI cadence/ShellCheck wording;
-that protected instruction file is unchanged pending a separately approved edit.
+The user separately approved the scoped AGENTS update; its CI cadence, optional
+ShellCheck/diagnostics, Quick purpose and documentation exemption are synchronized.
 No product scope, product IDs or acceptance credit changes.
 
 The user additionally approved excluding documentation-only pushes/PRs from CI:
 Markdown and documentation image changes do not trigger Checks; code, tests,
 tooling and Actions changes still do. No documentation-only CI workflow is added.
 
-Current baseline: full Checks `38833527680` at `41e1765` passed in 12m51s runner
+Prior baseline: full Checks `38833527680` at `41e1765` passed in 12m51s runner
 time; its receipt `74d0bca4053790d42755990a68f07ba01064539d` is pushed. ShellCheck
 alone occupied 117.58s. Parent owns integration/planning records. The runner/tool
 worker completed the shared pinned ShellCheck action and explicit runner modes;
@@ -45,9 +50,52 @@ Parent reviewed the complete diff and passed
 **34 passed in 0.22s**, all remaining statics passed; 1.54s wall, 0.93s user +
 0.43s system. YAML parsing and planning/whitespace checks passed; actionlint is
 unavailable. Diagnostic collection selects exactly the existing four optional
-cases (584 collected total, 580 deselected). Published CI remains pending.
+cases (584 collected total, 580 deselected). The actual GitHub workflows below
+also validated their runtime wiring; no PR was created merely for this check.
 The user explicitly requested running **both optional workflows after the split**
 and looking for further core cost savings. No S14.02 work is authorized.
+
+### Published CI results and measured cost
+
+Implementation split: `d46217b95dc42ac7b84aea3d357d22d0684b2644`.
+Final code/workflow candidate, including the approved documentation filter:
+**`36199d63296cfc1d0c38d58b174287f78aa75184`**, pushed to develop.
+Parent verified exact SHAs, required job/steps, selectors and logs.
+
+| Run | Scope and result | Measured process wall / CPU |
+| --- | --- | --- |
+| [Core Checks 38836060014](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38836060014) at `36199d6` | Automatic push; host **554 passed, 26 platform/tool skips**, BusyBox **579 passed, one workstation-without-proc skip**; four optional cases excluded in each. Every required step passed. | Host 61.89s / 14.78s user + 11.13s system; BusyBox 454.80s / 252.99s user + 162.27s system |
+| [Lint 38835845325](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38835845325) at `d46217b` | Manual; pinned ShellCheck over the unchanged complete shell-file selection **passed**. | 107.50s / 102.12s user + 5.58s system |
+| [Quick 38835900202](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38835900202) at `d46217b` | Manual whole `tests/test_dev_runners.py`; **34 passed** in 0.11s pytest. | 0.30s / 0.20s user + 0.04s system |
+| [Diagnostics 38835851877](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38835851877) at `d46217b` | Manual four-case batch; **cancelled for cost**, not a passing workflow. Repair, retry and threads completed PASS before cancellation; mixed-root was unfinished. | Verbose completion timestamps show approximately 87s, 165s and 87s respectively, including fixture transitions; no complete process timing |
+| [Quick mixed-root 38836566052](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38836566052) at `36199d6` | Only `tests/test_dependencies.py::test_normal_repair_and_owned_cleanup[dependency_mixed]`; **1 passed** in 87.98s pytest. | 88.15s / 47.86s user + 30.61s system |
+
+The core job ran **8m54s** (01:37:11–01:46:05 UTC on 2026-10-16), versus the
+prior 12m51s: an observed **3m57s reduction**. Dispatch-to-final-status was 9m18s,
+including queue/supersession delay. The host stage fell from 185.82s to 61.89s;
+BusyBox also fell from 569.77s to 454.80s without runtime/test changes. Attribute
+the removed lint work to this split; the further BusyBox variation is not a proved
+algorithmic saving. Current largest core cases are actual installer 147.19s and
+retained repair/return 104.24s. Host/core maximum RSS is now 48,336 KiB; the separate
+optional Lint measured 5,548,840 KiB. Required setup remained about 13 seconds.
+
+The initial core run `38835837070` was superseded/cancelled when the user approved
+the documentation filter; it supplies no full pass. `36199d6` changes only the
+Checks trigger filters and documentation relative to `d46217b`, so optional and
+Quick evidence is reused only for their unchanged workflow/tool/test inputs.
+
+The optional diagnostic batch exceeded four minutes; cancellation was requested
+and GitHub finished stopping it at 6m10s of test-stage time. Its verbose log shows
+three successful cases, not a demonstrated hang. Only the unfinished mixed-root
+case was rerun through Quick. All four optional cases now have individual passing
+results across those runs; the cancelled combined workflow is never called green.
+For short future diagnosis, keep retry alone and select other named cases/groups
+through Quick; do not repeat healthy groups or reclassify core safety tests.
+
+Private evidence is retained in `.tmp/ci-split-*.log`, including the cancelled runs.
+The documentation-only receipt receives planning/whitespace checks and is expected
+to trigger no CI under the approved filter. It names the tested candidate above
+without claiming its later receipt SHA reran runtime tests.
 
 Further expensive optional diagnostics may be separated when justified; required
 normal-behavior/core-safety proof cannot be downgraded merely to reduce runtime.
