@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**13 of 157 product subgoals accepted — 8.3% overall subgoal completion.**
+**14 of 157 product subgoals accepted — 8.9% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -198,7 +198,7 @@ history writers, full diagnostics and final terminal presentation remain separat
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [ ] | [ ] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
-| [ ] | [x] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
+| [x] | [x] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
 | [x] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
 | [ ] | [ ] | S04.05 | **Cloudflared Save boundary:** Pre-Save cancellation; mutation-time e disabled; signals honored with bounded cleanup and guarded recovery. |
@@ -207,7 +207,8 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S04.08 | **Ownership and locks:** Stable lock identities, verified process start/boot identity, correct provider-child versus connector descriptor lifetime. |
 | [ ] | [ ] | S04.09 | **Generation and resource bounds:** Compatible package per invocation, current-state checks, late-result rejection and bounded whole-action cleanup. |
 
-S04.02 focused local proof passed on the prepared tree based on `95ecbdd`:
+S04.02 accepted at **`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`**.
+Focused local proof passed on the prepared tree based on `95ecbdd`:
 **123 passed, five platform skips** across complete Store/parser, manager
 settings/installed entry, backup storage/menu and retained-launch modules.
 Planning/package, Ruff/format/compile, shell syntax, shfmt and whitespace passed;
@@ -215,8 +216,18 @@ parent and independent Astra review passed. The
 [scoped-Save audit](PLAN_V2_audit.md#s0402-scoped-concurrent-save-review)
 records meaningful same-generation merge/refusal, confirmed-field precedence,
 unrelated-byte preservation and later-Off rejection through current consumers.
-Required focused Linux/vendor BusyBox proof and final exact-candidate core Checks
-remain pending; S04.02 receives no accepted credit yet.
+Complete focused Linux/vendor BusyBox proof passed at that candidate:
+[Quick A](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38885975614)
+**106 passed, 85.69s** and [Quick B](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38885979958)
+**22 passed, 152.81s**. Final
+[core Checks 38886407905](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38886407905)
+passed at the same exact candidate after both focused gates: host **628 passed,
+28 platform skips**, 172.93s wall; vendor BusyBox **655 passed, one workstation-only
+skip**, 716.70s wall. Four optional diagnostics were excluded in each phase;
+every required job/step passed. The job took **15m09s**. This accepts the shared
+foundation across current Save/observation consumers; future feature consumers
+retain their own integration gates. Live Merlin/ARM qualification remains beta-only.
+No other subgoal or main-goal gate receives credit from this checkpoint.
 
 S04.03 accepted at **`457296c79bd786083eb944e0c1cea2ecc9ddce10`**. Focused local
 proof: **190 passed, 34 platform skips**, with four optional

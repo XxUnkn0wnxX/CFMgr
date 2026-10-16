@@ -55,12 +55,12 @@ writes after the final check.
 Missing evidence at baseline: the Store raw-edit fixture appends whitespace;
 parser tests provide an already-current document; borrowed observation lock tests
 replace the publication body. These prove freshness/parsing/exclusion respectively,
-but not complete semantic interleavings. Closure needs actual Store/consumer
+but not complete semantic interleavings. Closure required actual Store/consumer
 proof of same-field precedence, unrelated-data preservation, meaningful
 same-generation remerge and bounded conflict refusal, plus the actual observation
 publisher's refusal to overwrite later Off/config authority. No runtime defect
-is inferred solely from these coverage gaps. Current execution and gates are in
-the handoff; no S04.02 acceptance is claimed here.
+was inferred solely from these coverage gaps. The closure evidence below covers
+the current consumers; the handoff records the resulting checkpoint state.
 
 The implemented proof strengthens the two existing installed-menu journeys and
 adds two Store and two retained-publication cases. No production change was
@@ -90,7 +90,32 @@ The four new interleavings and two strengthened menu journeys also passed their
 small diagnostic selections before these final groups. No full local suite ran.
 Planning/package, Ruff/format/compile, shell syntax, shfmt and whitespace passed.
 ShellCheck was not rerun for this tests-only change; production files are unchanged.
-Exact-candidate platform/core proof remains pending.
+At published candidate **`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`**, complete
+focused Ubuntu/vendor BusyBox groups passed:
+
+| Group | Result | Process wall / user / system |
+| --- | --- | --- |
+| [Quick A 38885975614](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38885975614): Store/parser/settings/backup | 106 passed | 85.69s / 46.80s / 34.96s |
+| [Quick B 38885979958](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38885979958): retained launch | 22 passed | 152.81s / 74.29s / 77.98s |
+
+Parent verified exact SHA and every required job/step. All five local platform
+skips are covered; only the separate optional diagnostic host-baseline step was
+skipped. The measured groups remain within the practical budget. The measured
+retained group is about nine seconds above the previous 143.66s gate while
+covering both required later-Off boundaries; no expensive duplicate journey or new fixture
+framework was introduced.
+
+Final [core Checks 38886407905](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38886407905)
+passed at the same exact candidate after both focused gates. Host proof:
+**628 passed, 28 platform skips**, 172.93s wall (37.98s user / 45.31s system).
+Vendor BusyBox proof: **655 passed, one workstation-only skip**, 716.70s wall
+(338.37s user / 286.18s system). Four optional diagnostics were excluded per phase.
+Parent verified every required job/step; the complete job took **15m09s**, within
+the unchanged 20-minute core runner limit. No extra full local suite or timing-only
+run was introduced. Parent review agrees that S04.02's current-consumer evidence
+is complete. Future feature consumers retain integration gates, and real
+Merlin/ARM qualification remains beta-only. No runtime repair or acceptance
+relaxation was required.
 
 ## S04.03 durable staged commit review
 

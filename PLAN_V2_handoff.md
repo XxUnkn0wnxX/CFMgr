@@ -24,24 +24,27 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S04.02 scoped concurrent Save
+## Paused after accepted S04.02 checkpoint
 
 The user approved starting the recommended **S04.02** package after the completed
-S04.03 checkpoint. Route A closes this one foundation across the current manager
+S04.03 checkpoint. Route A completed this one foundation across the current manager
 preferences Save, backup-destination Save and retained-observation writer.
-Baseline is clean `develop` at **`95ecbdd0d22eaed6c82c5c7fa7ea4c3fc74c9e2d`**;
-accepted runtime/test candidate remains `457296c79bd786083eb944e0c1cea2ecc9ddce10`.
-Progress stays **13/157 accepted (8.3%)**, **0/16 main goals (0%)**, Goal 4
-**1/9 accepted (11.1%)** until S04.02's required gates pass.
+Baseline was clean `develop` at `95ecbdd0d22eaed6c82c5c7fa7ea4c3fc74c9e2d`;
+accepted runtime/test candidate is now
+**`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`**, published on `develop`.
+Progress: **14/157 accepted (8.9%)**, **0/16 main goals (0%)**, Goal 4
+**2/9 accepted (22.2%)**. Only S04.02 earns new credit; 143 product subgoals
+remain unaccepted. **The checkpoint is complete and paused. Wait for the next
+user instruction; no next target is selected or started.**
 
 Parent and independent Astra scope audit agree PASS WITH NOTES. Existing durable
 publication and verified common-lock interfaces supply the prerequisites;
 S04.01/.08/.09 overlap does not require completing those whole subgoals first.
 No future provider/updater/connector workflow or additional Goal 4 credit is in
 scope. The [S04.02 audit](PLAN_V2_audit.md#s0402-scoped-concurrent-save-review)
-records the precedence contract and current evidence gaps.
+records the precedence contract, baseline evidence gaps and verified closure.
 
-Required closure:
+Verified closure:
 
 1. Reviewed Save owns explicitly accepted fields, including approved Check/Auto
    coupling, while preserving fresh unrelated settings, ownership and guard data.
@@ -60,17 +63,15 @@ Both implementation workers are complete: `store_failure_proof` changed only
 existing installed manager/backup Save journeys. No runtime change was needed.
 Parent and independent Astra implementation review agree PASS WITH NOTES; the
 audit records the opaque-data and host-adapter qualifications. Files are frozen
-for publication; parent owns remaining CI and acceptance/receipt updates.
+at the tested candidate. All implementation/review workers and the CI waiter are
+complete; no required job remains active.
 
-Focused gate: complete config Store/parser, manager settings/installed entry,
-backup storage/menu and retained-launch modules, with relevant statics. Reuse
-the pinned venv and valid unchanged evidence; add installer/supervisor groups only
-if a changed interface or missing required integration warrants them. Run quick
-diagnostics first, then every affected group. Use focused Linux/vendor BusyBox
-Quick for unavailable platform proof, review measured cost, then run final core
-Checks at the exact published candidate. Full local suite is not due. Keep groups
-near two minutes and within the practical three-to-four-minute range where
-feasible without losing core proof. Private commands/logs go in `.tmp/s0402/`.
+The completed gate covered config Store/parser, manager settings/installed entry,
+backup storage/menu and retained launch, with relevant statics. Small diagnostics
+preceded complete local groups; focused Linux/vendor BusyBox Quick supplied
+unavailable platform proof; final exact-candidate core Checks ran last. No main
+goal completed, so no full local suite was due. Private commands/logs remain in
+`.tmp/s0402/`.
 
 Final local proof on the prepared tree based on `95ecbdd`:
 
@@ -96,19 +97,40 @@ above; retained used `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` and
 An unnecessary overlapping Store rerun was stopped without credit; the final
 six-module group above reran its complete final assertions serially afterward.
 
-Next gate: publish this candidate, cancel its premature automatic core run,
-dispatch Quick A with the six Store/parser/settings/backup modules and Quick B
-with retained launch. Verify every job, exact candidate and measured group cost,
-then dispatch final core Checks. S04.02 is focused-local-passed and remains
-unchecked for acceptance until the complete required core gate passes.
+Published candidate: **`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`** on `develop`.
+Premature automatic core run **38885944709** is verified cancelled and supplies
+no acceptance.
+Focused [Quick A 38885975614](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38885975614)
+covers the six Store/parser/settings/backup modules;
+[Quick B 38885979958](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38885979958)
+covers retained launch. Both passed at that exact candidate: **106 passed** in
+85.69s wall (46.80s user / 34.96s system), and **22 passed** in 152.81s wall
+(74.29s user / 77.98s system). Parent verified every required job/step and exact SHA;
+the optional diagnostic host baseline was the only skipped step. All five local
+platform skips are covered. Costs fit the focused budget with existing fixture
+reuse and mandatory safety proof retained.
 
-Finish this authorized package through its checkpoint commit/push and exact
-required gates, update accepted records/README, publish the documentation receipt
-and **pause automatically**. Do not start another target. No router work,
+Final [core Checks 38886407905](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38886407905)
+was manually dispatched **after both Quick gates passed** at the same candidate.
+It passed: host **628 passed, 28 platform skips**, 172.93s wall (37.98s user /
+45.31s system); vendor BusyBox **655 passed, one workstation-only skip**, 716.70s
+wall (338.37s user / 286.18s system). Four optional diagnostics were excluded in
+each phase. Parent verified the exact SHA and every required job/step. Total job
+time was **15m09s**, within the unchanged 20-minute runner limit. Local and Quick
+logs plus final core metadata/logs are retained under `.tmp/s0402/`.
+
+Checklist and README now record justified acceptance. This documentation receipt
+names the tested candidate; it does not claim a separate runtime test of its own
+receipt SHA. Planning/link/privacy and whitespace checks accompany the receipt,
+which does not trigger runtime CI. Representative Linux/vendor BusyBox proof
+does not replace later real Merlin/ARM qualification.
+
+The standing rule remains **pause automatically after every cleared checkpoint**.
+No further implementation or next target is authorized by this handoff. No router work,
 deployment, release, dependency installation, worktree creation, history changes
 or product-scope changes are authorized.
 
-## Paused after accepted S04.03 checkpoint
+## Previous accepted S04.03 checkpoint
 
 The user approved starting the recommended **S04.03** foundation package, then
 explicitly requested preserving strict local-versus-CI gates, running full core
