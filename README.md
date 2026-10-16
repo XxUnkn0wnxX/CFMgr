@@ -10,11 +10,13 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 14 of 157 subgoals accepted (8.9%).**
+**0 of 16 main goals complete (0%); 15 of 157 subgoals accepted (9.6%).**
 The development code provides trusted-local fresh installation, private passive
 defaults, scoped checks for shared tools and tunnel DNS, normal dependency repair,
 confirmed selected dependency reinstall, Entware storage-loss handling and a
 native read-only status dashboard available before operational preparation.
+Typed configuration separates saved settings, credentials and observations while
+preserving legacy configurations and unrelated values during scoped Saves.
 CFMgr update preferences can be reviewed and saved through Advanced options,
 with coupled Check/Auto settings and saved/effective status. Backup storage can
 be explicitly selected and saved, with exact drive checks and safe root-level
@@ -32,7 +34,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | --- | --- | --- |
 | [Product scope](PLAN_V2.md#1-product-scope-and-boundaries) | Independent DDNS, one Cloudflared tunnel and IP-Sync in a native shell CLI. | Planned |
 | [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | 7/9 accepted |
-| [Menus, settings and status](PLAN_V2.md#3-configuration-menus-and-status) | Separate setup and On/Off controls, a compact dashboard and full health diagnostics. | 2/10 accepted |
+| [Menus, settings and status](PLAN_V2.md#3-configuration-menus-and-status) | Separate setup and On/Off controls, a compact dashboard and full health diagnostics. | 3/10 accepted |
 | [Settings and recovery](PLAN_V2.md#4-save-cancellation-and-recovery) | Reviewed saves, resumable drafts, cancellation and safe interruption recovery. | 2/9 accepted |
 | [Cloudflared setup](PLAN_V2.md#5-cloudflared-setup-and-credentials) | Token, guided and advanced credential/configuration paths with reviewed hostname routing. | Planned |
 | [Tunnel lifecycle](PLAN_V2.md#6-tunnel-lifecycle-and-binary-maintenance) | Guarded Start/Stop/Restart, readiness, watchdog recovery and verified binary maintenance. | Planned |

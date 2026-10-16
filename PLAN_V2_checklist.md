@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**14 of 157 product subgoals accepted — 8.9% overall subgoal completion.**
+**15 of 157 product subgoals accepted — 9.6% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -163,7 +163,7 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [x] | [x] | S03.01 | **Passive fresh state:** All three unconfigured/Off; no tunnel/logging/backup setup; manager check On and auto-install Off. |
-| [ ] | [x] | S03.02 | **Distinct state and settings:** Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
+| [x] | [x] | S03.02 | **Distinct state and settings:** Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
 | [ ] | [ ] | S03.03 | **Main menu and navigation:** 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects. |
 | [ ] | [ ] | S03.04 | **Feature submenus:** Own setup, On/Off, explicit operation, status and scoped logging/repair; only relevant options. |
 | [ ] | [ ] | S03.05 | **Quick service commands:** Shared case-insensitive start/stop handlers, ipsync alias, configure-first validation and truthful results. |
@@ -225,9 +225,29 @@ module passed 68 cases in 76.21 seconds; other groups ranged from 2.84 to 210.50
 seconds. Planning/package, Ruff/format/compile, shell syntax, focused ShellCheck,
 shfmt and whitespace passed. Parent and independent source review passed;
 [audit dispositions](PLAN_V2_audit.md#s0302-schema-implementation-readiness-review)
-include preserved backup extensions and measured host-harness timing. Required
-exact-candidate Linux/vendor BusyBox Quick and final core CI remain pending;
-S03.02 is not accepted yet.
+include preserved backup extensions and measured host-harness timing.
+
+Complete Linux/vendor BusyBox Quick groups passed at
+`2dec8a623dba36a4e4718e69b6881918120e2a13`: **548 passed, one
+workstation-without-proc skip**, four optional diagnostics excluded, 25.14–231.16
+seconds per group. All required jobs/steps passed:
+[schema/package](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899821975),
+[Store/settings](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899827147),
+[menus](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899831811),
+[retained launch](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899837709),
+[installation](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899842459),
+[integration](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899846841),
+[dependencies](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899851735).
+S03.02 accepted at that exact candidate after
+[final core Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38900418249)
+passed every required job/step, dispatched after all focused groups: host
+**697 passed, 28 platform skips** in 169.60 seconds wall; mandatory vendor
+BusyBox **724 passed, one workstation-only skip** in 687.40 seconds wall.
+Four optional diagnostics were excluded per phase. Total job time **14m44s**;
+the measured previous checkpoint was 15m09s. Required coverage and the 20-minute
+runner limit stayed intact. No full local suite was due. Parent review and test
+cost review passed; native DDNS application, provider/lifecycle operations,
+logging execution and later feature workflows receive no additional credit.
 
 S03.07 accepted at `d173d691254023a757361996c5b86ff8f8c609bd`: actual installed
 choice `0`, menu return before operational preparation, native resource/WAN/NTP/

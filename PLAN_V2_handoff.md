@@ -24,21 +24,26 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## S03.02 — approved configuration foundation implementation
+## S03.02 — accepted configuration foundation; paused
+
+The user reconfirmed that **this is the last checkpoint for this work session**.
+The exact-candidate core gate passed and this documentation receipt records
+acceptance. **Paused: start no next target without a new instruction.** This
+confirms the standing automatic checkpoint pause; later approved product goals
+remain open.
 
 The user approved starting the recommended **S03.02** foundation package with
 “ok start” after the accepted S04.02 checkpoint. Route A selects this one complete
-existing subgoal. Baseline is clean `develop` at
+existing subgoal. Baseline was clean `develop` at
 **`d0da7ec51a28ba7084a9561b4ea64a64c42daab1`**, the documentation receipt for tested
-candidate `dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea` below. Progress remains
-**14/157 accepted (8.9%)**, **0/16 main goals (0%)**; Goal 3 is **2/10 accepted
-(20%)**. No new implementation or proof has been credited.
+candidate `dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea` below. Progress is now
+**15/157 accepted (9.6%)**, **0/16 main goals (0%)**; Goal 3 is **3/10 accepted
+(30%)**. Only S03.02 earns new credit; 142 product subgoals remain unaccepted.
 
 The user approved proceeding with **“ok start”** on 2026-10-16 after reviewing
 the schema/option inventory and the logging, native DDNS and developer-control
-corrections. Implement schema 2 with explicit lossless schema-1 compatibility
-and the corrected option contract. This is implementation authorization, not an
-accepted product checkpoint. The approved design record is
+corrections. The package implemented schema 2 with explicit lossless schema-1
+compatibility and the corrected option contract. The approved design record is
 `.tmp/s0302/schema-proposal.md`, including the field/credential contract, concrete
 bounds table, source evidence/limits and exact paired specification/checklist
 additions. Parent owns this design record and all V2 records. Read-only
@@ -46,14 +51,47 @@ additions. Parent owns this design record and all V2 records. Read-only
 are complete, including the bounded read-only native DDNS service follow-up.
 Parent verified the key backend findings and native UI trace; the
 [source review](PLAN_V2_audit.md#s0905s0908-native-ddns-ownership-source-review)
-records the evidence and remaining qualification. `schema_foundation` now owns
-the runtime/test implementation and the serial focused-test slot; no CI run is
-active. Parent owns planning records and final integration. Read-only
+records the evidence and remaining qualification. Parent owns planning records,
+publication and final integration. Read-only
 `schema_review` and parent final source review are complete with no unresolved
 material findings. `schema_foundation` completed the runtime/test package and all
-assigned focused local groups; no writer or local test remains active. All
-complete affected local groups passed. Exact-candidate CI and final acceptance
-remain pending.
+assigned focused local groups. All complete affected local groups and final
+required CI passed. No writer, test, required CI job or delegated work remains active.
+
+Published candidate: **`2dec8a623dba36a4e4718e69b6881918120e2a13`** on `develop`.
+Local and remote heads matched after the authorized checkpoint push. Every
+required job/step in all seven exact-candidate Quick runs passed; parent inspected
+the results and cost. Automatic core `38899785187` completed cancelled and earns
+no acceptance. [Final required core **38900418249**](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38900418249)
+passed at the same candidate, dispatched only after all Quick runs passed.
+Parent verified the exact SHA and every required job/step; none was skipped.
+Host: **697 passed, 28 platform skips**, 168.99 seconds pytest / 169.60 wall.
+Vendor BusyBox: **724 passed, one workstation-only skip**, 687.12 seconds pytest /
+687.40 wall. Four optional diagnostics remained excluded per phase. The complete
+job took **14m44s**, against **15m09s** for the previous accepted checkpoint,
+with 69 additional cases. This observed comparison is not an isolated causal
+benchmark. Test-cost review is complete; required coverage and the 20-minute
+runner limit are unchanged. Evidence is retained in `.tmp/s0302/core-result.json`
+and `core.log`. This documentation-only receipt names the tested code SHA above;
+it does not claim runtime CI for its own later commit.
+
+| Exact-candidate Quick group | Result | Pytest / wall seconds |
+| --- | --- | --- |
+| [Schema/package](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899821975) | 177 passed | 54.53 / 54.91 |
+| [Store/settings](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899827147) | 61 passed | 57.13 / 57.28 |
+| [Installed menus](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899831811) | 11 passed | 25.14 / 25.36 |
+| [Retained launch](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899837709) | 22 passed | 152.45 / 152.64 |
+| [Installation](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899842459) | 22 passed | 48.44 / 48.62 |
+| [Integration](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899846841) | 234 passed, one workstation-without-proc skip | 216.02 / 216.20 |
+| [Dependency bootstrap](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38899851735) | 21 passed, four optional diagnostics excluded | 231.16 / 231.36 |
+
+Total **548 passed, one expected workstation-only skip**. All groups stay within
+the practical four-minute range; schema/menus/Store/install stay below a minute.
+Acquisition and dependency bootstrap retain the actual native installation,
+supervision and publication proof responsible for their cost. Immutable package
+setup is already reused; no further cheap coverage-preserving reduction was
+identified. Core runner limit remains 20 minutes. Representative Ubuntu/vendor
+BusyBox proof does not qualify Merlin/ARM or authorize router deployment.
 
 The populated schema-2 module now passes completely: **68 passed, no skips**,
 76.21 seconds pytest / 77.21 real / 36.84 user / 23.68 system. Private evidence:
@@ -73,8 +111,8 @@ package, syntax, Ruff/format/compile and shfmt checks passed. The redundant whol
 repository ShellCheck was stopped after more than three minutes; all changed
 shell files have completed focused proof, including the final constructor
 (0.24 seconds), probe (2.51 seconds) and platform fixture (1.12 seconds) checks. Parent rechecked final test-file
-lint/format/compile and planning/package/whitespace. Source review is complete;
-acceptance and all candidate CI remain pending.
+lint/format/compile and planning/package/whitespace. Source review, exact-candidate
+CI and S03.02 acceptance are complete.
 
 Final local evidence on the prepared tree based on `d0da7ec` (no full suite):
 
@@ -92,13 +130,13 @@ Final local evidence on the prepared tree based on `d0da7ec` (no full suite):
 Total: **506 passed, 43 platform skips**, four optional diagnostics excluded;
 all required local checks and parent review passed. Logs use
 `.tmp/s0302/local-A.log` through `local-G.log`. Reuse this evidence; do not rerun
-unaffected work. Publish the reviewed candidate, complete the same affected Linux/vendor BusyBox
-Quick selections, then dispatch required core Checks last. No automatic core
-run triggered prematurely by candidate publication earns the final gate.
+unaffected work. The reviewed candidate passed the same affected Linux/vendor
+BusyBox Quick selections, then required core Checks last. The automatic core
+run triggered prematurely by candidate publication was cancelled and earns no proof.
 The installation-heavy E group is within the practical three-to-four-minute
-range; its fresh/completion/recovery cases account for most cost. Split
-`test_install.py` into its own Quick run, and combine reporting/prerequisite
-modules with the smaller integration selection. Retain every affected module.
+range; its fresh/completion/recovery cases account for most cost. For Quick CI,
+`test_install.py` ran separately and reporting/prerequisite modules joined the
+smaller integration selection. Every affected module was retained.
 
 The approved design uses root config schema 2 for fresh typed authority, with
 explicit schema-1 compatibility for current retained launch, manager/backup Save,
@@ -107,8 +145,8 @@ automatic credential conversion or inferred sharing. Package compatibility must
 declare config schema 2 coherently; separate bootstrap/receipt/guard protocol
 versions stay unchanged. Existing defaults are preserved, future unselected
 policies stay null, and non-null settings receive the approved explicit limits.
-The paired plan/checklist schema contract is applied and focused local proof is
-complete. Product acceptance and exact-candidate CI remain pending.
+The paired plan/checklist schema contract, focused local proof and exact-candidate
+CI are complete; S03.02 is accepted.
 
 User's final logging decision, 2026-10-16: **no fixed CFMgr product maximum for
 tunnel log size or retained-file count; optional maximum age is 1–30 days; defaults
@@ -118,8 +156,7 @@ The safe proposed setup defaults remain **10 MiB/five total files**, with fresh
 logging inactive. Positive finite numeric/tool/filesystem validation, bounded
 operation, mounted `/opt` storage and no JFFS/RAM fallback remain required. Values
 are rotation thresholds, not a hard disk quota; Scribe cadence and the
-no-separate-aggregate-budget contract remain intact. This decision does not
-approve the whole schema proposal or the other proposed option ranges.
+no-separate-aggregate-budget contract remain intact.
 
 User clarification, 2026-10-16: the native forced-DDNS-refresh maximum must follow
 the matched Merlin setting, not an independently chosen CFMgr cap; default 14
@@ -139,8 +176,7 @@ On/Off, Custom provider, primary hostname and refresh days. Parent mirrored the
 representation boundary in S03.02 and runtime acceptance in S09.05–S09.08:
 NVRAM/config writes alone are insufficient; preserve Off on settings Save,
 verify native apply/lifecycle effects and readback, guard partial/stale work,
-preserve unrelated settings/IP-Sync and respect later ownership. This is an
-explicit user refinement, not approval of the remaining schema proposal.
+preserve unrelated settings/IP-Sync and respect later ownership.
 
 The user also reconfirmed hidden developer/source controls. Existing
 `manager.developer`, `manager.source.repository/branch/commit` and
@@ -167,7 +203,7 @@ plan and matching S06.06/S12.11 checklist acceptance. There is no total retry-co
 or elapsed-time cutoff. The proposal now labels its distinct setting **routine
 native address discovery**; it cannot change outage recovery, and a provider
 batch's bounded attempts cannot exhaust the recovery loop. This precise user
-clarification does not approve the broader schema or proposed option ranges.
+clarification is included in the subsequently approved schema contract.
 
 Approval, 2026-10-16: the user's latest **“ok start”** answers the pending schema-2
 design/compatibility/option question and authorizes the paired plan/checklist
@@ -175,26 +211,23 @@ contract plus implementation within S03.02. It does not waive validation or
 settle unrelated open product behavior. `foundation_scope_audit` returned
 PASS WITH NOTES; parent resolved the policy/record/numeric representation notes
 and froze them in the private design record and paired contract. Parent owns
-the plan/checklist/handoff/audit. `schema_foundation` (Sol Strong) owns the coherent
+the plan/checklist/handoff/audit. `schema_foundation` (Sol Strong) owned the coherent
 S03.02 runtime/parser/constructor/status/package and affected-test implementation
-package and has been released to implement with small serial focused tests.
-No other runtime/test writer is active. Worker must not commit, publish,
-award acceptance or expand into feature operations. Parent owns integration and
-the focused-local → affected Quick → final core → pause gate.
+package; that work and its assigned local proof are complete. No runtime/test
+writer is active. Parent completed acceptance through the
+focused-local → affected Quick → final core → pause gate.
 
-Safe resume: runtime/test work is now in progress in the existing checkout; do
-not discard or overwrite the worker's changes. Parent record edits include the
-approved schema contract, user corrections and source evidence. The design
-record remains ignored local recovery data. No runtime gate or new acceptance
-is claimed yet. Finish the complete populated schema-2 contract and explicit
-legacy preservation through current consumers, then parent review and focused
-gates. Pending validation must remain unchecked; nullable placeholders alone
-cannot complete the subgoal.
+Safe resume: the complete runtime/test candidate is published and accepted; all
+focused local, Quick and final core gates passed. This receipt records the
+completed checkpoint; the design record remains ignored local recovery data.
+The user requested a pause here. No next target has been selected or started;
+resume only on a new user instruction. Preserve the exact tested code SHA and
+the separate documentation receipt when checking repository state.
 
 Real consumers are fresh installation, retained-launch admission and storage
 observation, the accepted config Store and manager/backup scoped Saves, and
-installed status. Missing acceptance is the complete typed contract and its
-integration through these consumers, not another set of empty flags. Accepted
+installed status. The typed contract and populated integration through these
+consumers have passed focused and final core proof. Accepted
 S03.01/S03.07 and S04.02/S04.03 provide current foundations. Later provider,
 lifecycle, history-writing and recovery workflows remain separate subgoals and
 receive no credit from this package.
@@ -205,12 +238,12 @@ status, secret-free output, and byte-preserving unrelated-field Save behavior.
 Do not silently reset, discard or reinterpret retained configuration or treat
 observations/guards as user activation.
 
-Planned gates: focused constructor/schema/status checks plus all affected Store,
-manager/backup Save, retained-launch and installation/package groups and statics;
-focused Linux/vendor BusyBox Quick groups at the candidate; **final required core
-Checks last**, followed by justified acceptance records and the automatic pause.
-Reuse the measured baseline below to size groups and review cost. No full local
-suite is due because no main goal will complete. No router work, deployment,
+Completed gates: focused constructor/schema/status checks, all affected Store,
+manager/backup Save, retained-launch and installation/package groups and statics,
+and exact-candidate Linux/vendor BusyBox Quick groups, followed by **final
+required core Checks last** and acceptance records. The checkpoint is complete;
+reuse the measured evidence above. No full local
+suite was due because no main goal completed. No router work, deployment,
 release, dependency installation, worktree or history changes are authorized.
 
 ## Previous accepted S04.02 checkpoint

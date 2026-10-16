@@ -104,8 +104,27 @@ all 68 cases in 76.21 seconds. All complete affected local groups subsequently
 passed: 506 cases, 43 platform skips and four optional diagnostics excluded.
 Group times ranged from 2.84 to 210.50 seconds; installation's actual failure/
 recovery proof dominated the longest group. Changed-file ShellCheck and common
-statics passed. Parent final review is complete; exact-candidate Linux/vendor
-BusyBox Quick selections and final required core Checks remain pending.
+statics passed. Parent final review is complete. Seven complete Linux/vendor
+BusyBox Quick selections passed at `2dec8a623dba36a4e4718e69b6881918120e2a13`:
+548 passed, one workstation-only skip and four optional diagnostics excluded.
+Group costs were 25.14–231.16 seconds; all remain within the practical range.
+Immutable package setup is already reused, and the remaining acquisition/
+dependency cost is actual native supervision/installation/publication proof.
+No speculative test matrix or full local suite was added.
+
+Verified closure: [final core Checks 38900418249](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38900418249)
+passed every required job/step at that exact candidate, after all Quick groups.
+Host: 697 passed/28 platform skips, 169.60 seconds wall. Mandatory vendor BusyBox:
+724 passed/one workstation-only skip, 687.40 seconds wall. Four optional
+diagnostics remained excluded per phase. Total job time was **14m44s**, compared
+with the previous accepted **15m09s**, despite 69 additional cases. This is an
+observed required-run comparison, not an isolated benchmark attributing the
+difference to one optimization. Existing immutable fixture reuse, cheap combined
+parser cases, reused valid statics and focused grouping kept the new proof lean;
+required safety assertions, local/CI boundaries and the 20-minute runner limit
+remain intact. No additional cheap coverage-preserving reduction was identified.
+Parent accepts S03.02 only. Live Merlin/ARM, provider and future lifecycle/logging
+qualification remain with their owning goals and beta gates.
 
 ## S09.05–S09.08 native DDNS ownership source review
 
