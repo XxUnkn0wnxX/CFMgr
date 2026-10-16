@@ -18,6 +18,36 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Completed timing check — combined Diagnostics passed
+
+The user requested the actual combined workflow duration after the separate
+Quick runs. Manual [Diagnostics 38845454335](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38845454335)
+**passed all four cases** at `19af505b13266cda55e8cb3dc9f7e0be5a63809b`.
+Parent verified the exact SHA, job and every step. Only documentation differs
+from fixture/core candidate `565e8df`; no code change or new core run was needed.
+
+- Complete job: **3m07s**, 03:25:41–03:28:48 UTC on 2026-10-16.
+- Dispatch to final status: **3m12s**, including queue time.
+- Pytest: **4 passed, 580 deselected**, 164.64s; process wall **164.90s**.
+- CPU: **90.20s user + 72.32s system**; maximum RSS **46,784 KiB**.
+- Case calls: fully supervised repair **114.68s**, retry **22.16s**, threads
+  **12.29s**, mixed-root **11.67s**. Shared pytest setup: 2.96s.
+- Logs/metadata: `.tmp/diagnostics-audit-20261016/combined-diagnostics.log` and
+  `combined-diagnostics.json`.
+
+No failure, hang or manual cancellation occurred. Every individual case remains
+below two minutes; the complete batch fits the practical three-to-four-minute
+range including setup. The unchanged fully supervised reference accounts for
+most of the cost and varied from its 82.17s standalone process run. Preserve it;
+no further changes are justified by this measurement. All jobs/owners are done.
+This later combined pass supersedes earlier statements that it had not been
+rerun; the original cancelled run remains a cancellation, not a retrospective pass.
+
+The user then asked for the next planned target. The existing next candidate
+remains S14.02: mount identity/admission and typed guarded persistence foundations,
+then menu-4 selection/Save/reopen. This is a scope/status answer, not authorization
+to start a new product package. Product progress remains 9/157 (5.7%), 0/16 goals.
+
 ## Paused maintenance — diagnostics optimized and audit records separated
 
 The user authorized optimizing optional diagnostics, separate named Quick Checks,
@@ -42,7 +72,7 @@ Each run selects exactly
 candidate, with pinned vendor BusyBox on Ubuntu. All four selected tests and every
 applicable workflow step passed; the unrequested full-host baseline step is
 intentionally skipped. These four passes cover the full current optional
-selection, not a claim that the separate Diagnostics workflow ran again.
+selection. The subsequent combined Diagnostics pass is recorded above.
 
 | Group / CASE | Exact-candidate run | Pytest / process wall | User + system CPU | Earlier observed time |
 | --- | --- | --- | --- | --- |
@@ -81,7 +111,7 @@ cases are excluded from core, and production/core paths are unchanged. Installer
 core optimization or second benchmark run was attempted. Core log/metadata are
 private at `.tmp/diagnostics-audit-20261016/core.log` and `core.json`.
 All workers, Quick jobs and the core awaiter are complete; no required work remains
-active. No new combined Diagnostics run was needed or claimed passed.
+active. The later user-requested combined Diagnostics result is recorded above.
 
 ### Audit record and stop boundary
 

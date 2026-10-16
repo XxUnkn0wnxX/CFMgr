@@ -58,7 +58,11 @@ results. This changes the layering of optional S02.05/S02.08 evidence, not produ
 requirements or completion credit. Parent verified the final two-line fixture
 diff, all four exact-candidate Quick passes and successful required core CI
 `38843069635`. No new product acceptance was awarded. Exact receipts are recorded in the
-[handoff](PLAN_V2_handoff.md#named-quick-results).
+[handoff](PLAN_V2_handoff.md#named-quick-results). The subsequent combined
+Diagnostics run `38845454335` also passed all four cases at `19af505b13266cda55e8cb3dc9f7e0be5a63809b`:
+164.90s process wall, 3m07s whole job. Its fully supervised repair call took
+114.68s and each other case remained below 23s. This confirms combined completion
+within the practical group budget; it does not imply constant runner timings.
 
 ## CI core integration cost review
 
