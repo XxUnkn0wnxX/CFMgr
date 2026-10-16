@@ -476,6 +476,14 @@ done <"$cfmgr_install_context/records"
     )
     child = None
     child_start = None
+
+    def read_proc(path: Path, *, binary: bool = False) -> bytes | str | None:
+        try:
+            return path.read_bytes() if binary else path.read_text()
+        except (FileNotFoundError, ProcessLookupError):
+            # The writer can exit between listing /proc and opening its entry.
+            return None
+
     try:
         deadline = time.monotonic() + 1.5
         while time.monotonic() < deadline:
@@ -485,15 +493,14 @@ done <"$cfmgr_install_context/records"
             )
             for candidate in children:
                 cmdline = Path(f"/proc/{candidate}/cmdline")
-                if cmdline.exists() and cmdline.read_bytes().split(b"\0", 1)[
-                    0
-                ] == os.fsencode(tools["cp"]):
-                    identity = (
-                        Path(f"/proc/{candidate}/stat")
-                        .read_text()
-                        .rsplit(") ", 1)[1]
-                        .split()
-                    )
+                command = read_proc(cmdline, binary=True)
+                if command is not None and command.split(b"\0", 1)[0] == os.fsencode(
+                    tools["cp"]
+                ):
+                    stat = read_proc(Path(f"/proc/{candidate}/stat"))
+                    if stat is None:
+                        continue
+                    identity = stat.rsplit(") ", 1)[1].split()
                     assert int(identity[1]) == process.pid
                     child_start = identity[19]
                     child = int(candidate)
@@ -516,14 +523,17 @@ done <"$cfmgr_install_context/records"
         if process.poll() is None:
             process.kill()
             process.wait(timeout=3)
-        if child is not None and Path(f"/proc/{child}").exists():
-            identity = (
-                Path(f"/proc/{child}/stat").read_text().rsplit(") ", 1)[1].split()
-            )
+        if child is not None:
+            stat = read_proc(Path(f"/proc/{child}/stat"))
             # Preserve uncertainty if a PID was reused; cleanup targets only the
             # original recorded direct child's unchanged process-start identity.
-            if identity[19] == child_start:
-                os.kill(child, signal.SIGKILL)
+            if stat is not None:
+                identity = stat.rsplit(") ", 1)[1].split()
+                if identity[19] == child_start:
+                    try:
+                        os.kill(child, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
 
 
 def test_native_install_routes_all_tool_admission_through_inventory(

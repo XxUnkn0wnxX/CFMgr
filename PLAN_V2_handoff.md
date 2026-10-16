@@ -57,9 +57,34 @@ all passed. Whole invocation: **659.76s wall, 350.72s user + 111.98s system**;
 maximum resident size 5,663,363,072 bytes, dominated by the existing broad static
 analysis. The isolated new reporting module passed **21 tests, five Linux skips**
 in 14.21s (15.11s wall, 9.28s combined CPU); publication fault proof cost 12.34s.
-Required Linux/BusyBox gates remain pending; do not accept S02.08 yet. Push this
-reviewed candidate with A's trailer, dispatch B-F at the same SHA, verify every
-required job/result and measured group cost, then publish the acceptance receipt.
+Required Linux/BusyBox gates remain pending; do not accept S02.08 yet. Runtime
+candidate `bf3f8ca70633a9c2ba8ea99ba47a42b766543991` is pushed to `origin/develop`.
+First Quick A-F: `38831307892` failed, `38831332138` passed, `38831346956` passed,
+`38831350219` failed, `38831353447` was cancelled after failure capture, and
+`38831357099` passed. All six heads match that SHA; none closes this checkpoint.
+The new reporting tests all passed in A. Its existing Linux copy-signal observer
+hit `ProcessLookupError` reading an already-exited temporary process's cmdline;
+the fixture now tolerates only expected disappearance while preserving identity,
+deadline, signal/reap and publication assertions.
+
+D failed during the real dependency-loss case after 27.55s of tests. One isolated
+unchanged-SHA diagnostic, [38831632976](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38831632976),
+passed the same case in **9.63s**. Source review found a real fatal-open path in
+`_cfmgr_tasks_thread`: failed redirection on special builtin `exec` exits pinned
+noninteractive ash before its intended retry return. The exact failed task in D
+was not recorded, so attribution remains an inference. A deterministic missing-root
+regression reproduced caller termination locally before the fix. The correction
+opens through a compound command, preserves FD4 and restores stdin; failed opens
+return 3 to the existing bounded complete-snapshot retry. Pinned ash source and
+independent review support this behavior. The complete execution-task module and
+relevant Python/shell static checks pass; Linux diagnostic and final groups remain.
+
+The user reaffirmed the existing test-cost policy: aim for two minutes per group,
+investigate/split groups exceeding roughly three to four minutes, retain required
+safety proof and avoid speculative edge-case expansion. AGENTS and the testing
+skill already contain it; no rule edit is required. Only the two observed failures
+and one cheap missing-root regression are included. Reuse unaffected local proof;
+run a three-node Linux diagnostic for these corrections before complete final A-F.
 
 Affected gate map for the bootstrap/native-admission and finite shared-supervisor
 changes (whole modules, same final runtime SHA; A on push, B-F manual Quick):

@@ -217,3 +217,43 @@ def test_identity_rejects_oversized_multiline_and_truncated_input(
     result = identity_result(shell, awk, tmp_path, proc_path)
     assert result.returncode == 3
     assert result.stdout == b""
+
+
+def test_thread_missing_proc_root_returns_without_exiting_caller(
+    shell: list[str], awk: str, tmp_path: Path
+) -> None:
+    context = tmp_path / "thread context"
+    context.mkdir()
+    proc_path = write_stat(tmp_path, stat_record("worker", pid=12345))
+    script = r"""
+cfmgr_tasks_context=$2 cfmgr_tasks_awk=$3
+cfmgr_tasks_rows=observed cfmgr_tasks_group_start=987654
+cfmgr_mount_keeper_check() { return 0; }
+. "$1"
+if _cfmgr_tasks_thread 12345 "$4"; then rc=0; else rc=$?; fi
+IFS= read -r input || exit 90
+printf 'rc=%s input=%s\n' "$rc" "$input"
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "execution-tasks-missing-root-test",
+            str(LIBRARY),
+            str(context),
+            awk,
+            str(proc_path),
+        ],
+        input=b"caller stdin remains available\n",
+        env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
+        check=False,
+        capture_output=True,
+        timeout=5,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"rc=3 input=caller stdin remains available\n",
+        b"",
+    )
+    assert not (context / "observed").exists()

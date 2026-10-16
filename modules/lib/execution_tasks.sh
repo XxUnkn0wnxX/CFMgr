@@ -100,7 +100,9 @@ _cfmgr_tasks_thread() {
 	case $cfmgr_tasks_identity_state in Z | X | x) return 0 ;; esac
 	# Positive PF_KTHREAD exclusion; zero/unreadable flags are not an exclusion.
 	if "$cfmgr_tasks_awk" -v flags="$cfmgr_tasks_flags" 'BEGIN { exit int(flags/2097152)%2 ? 0 : 1 }'; then return 0; fi
-	if ! { exec 4<"$2/root"; } 2>/dev/null; then return 3; fi
+	# Keep a missing-root open failure inside the compound command; exec is a
+	# POSIX special builtin and its failing redirection can otherwise exit ash.
+	if { exec 4<&0; } 2>/dev/null <"$2/root"; then :; else return 3; fi
 	"$cfmgr_tasks_awk" '/^mnt_id:/ { n++; if (NF!=2 || $2 !~ /^[1-9][0-9]*$/) bad=1; id=$2 }
 	  END { if (n!=1 || bad) exit 1; print id }' /proc/self/fdinfo/4 >"$cfmgr_tasks_context/root.id" || {
 		exec 4<&-
