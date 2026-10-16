@@ -1,0 +1,50 @@
+name: Diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  diagnostics:
+    name: Diagnostics
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Restore and verify developer tools
+        uses: ./.github/actions/setup-tools
+        with:
+          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo time util-linux
+          python-tools: 'true'
+
+      - name: Prepare verified native vendor BusyBox
+        uses: ./.github/actions/setup-busybox
+
+      - name: Run optional diagnostic pytest cases
+        env:
+          CFMGR_TESTED_SHA: ${{ github.sha }}
+          CFMGR_TEST_SHELL: busybox ash
+          CFMGR_REQUIRE_BUSYBOX: '1'
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: |
+          if [[ -n "${PYTEST_ADDOPTS:-}" ]]; then
+            echo 'PYTEST_ADDOPTS must be empty for visible diagnostic selection.' >&2
+            exit 2
+          fi
+          export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
+          echo "OPTIONAL diagnostic tests only for $CFMGR_TESTED_SHA"
+          /usr/bin/time -v .venv/bin/python -m pytest -vv -ra \
+            --strict-config --strict-markers --maxfail=1 --durations=10 \
+            -m diagnostic tests

@@ -18,6 +18,46 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active CI follow-up — automatic core and manual optional workflows
+
+The user's final decision supersedes the initial required-Lint-job proposal:
+**Checks** runs the full core host/vendor BusyBox suite automatically on pushes
+to develop and PRs targeting develop; **Lint** and **Diagnostics** are separate,
+optional manual workflows. **Quick Checks** is manual focused core/optional-test
+diagnosis and repair. Required normal behavior and core safety proof remain in
+Checks; only ShellCheck and the four already-optional diagnostic cases are outside
+its gate. All other core statics and the normal local runner's lint default stay.
+These explicit decisions override AGENTS' older full-CI cadence/ShellCheck wording;
+that protected instruction file is unchanged pending a separately approved edit.
+No product scope, product IDs or acceptance credit changes.
+
+Current baseline: full Checks `38833527680` at `41e1765` passed in 12m51s runner
+time; its receipt `74d0bca4053790d42755990a68f07ba01064539d` is pushed. ShellCheck
+alone occupied 117.58s. Parent owns integration/planning records. The runner/tool
+worker completed the shared pinned ShellCheck action and explicit runner modes;
+the workflow worker completed the four workflow files. Both released ownership.
+Parent reviewed the complete diff and passed
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python tools/test.py --skip-shellcheck --focused tests/test_dev_runners.py`:
+**34 passed in 0.22s**, all remaining statics passed; 1.54s wall, 0.93s user +
+0.43s system. YAML parsing and planning/whitespace checks passed; actionlint is
+unavailable. Diagnostic collection selects exactly the existing four optional
+cases (584 collected total, 580 deselected). Published CI remains pending.
+The user explicitly requested running **both optional workflows after the split**
+and looking for further core cost savings. No S14.02 work is authorized.
+
+Further expensive optional diagnostics may be separated when justified; required
+normal-behavior/core-safety proof cannot be downgraded merely to reduce runtime.
+No additional test reclassification is part of this split.
+
+The read-only cost review found no demonstrated cheap duplicate in the two largest
+core cases. Installer integration performs actual repair/full probes/guard cleanup
+and per-file supervised publication; retained integration already shares setup
+across distinct repair, absent/returned storage, DNS outage and explicit force
+paths. Cheaper adapted/component tests do not replace their actual integration
+proof. A future bounded investigation can add fixture-only phase timings and use
+those two named Quick nodes before changing anything. No runtime/test coverage
+was cut for an unmeasured saving.
+
 ## Paused checkpoint — S02.08 repaired and accepted
 
 **Stop here.** The user-authorized audit and reopened S02.08 repair are complete.

@@ -1,13 +1,17 @@
 name: Checks
 
 on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -38,13 +42,13 @@ jobs:
       - name: Prepare verified native vendor BusyBox
         uses: ./.github/actions/setup-busybox
 
-      - name: Run full host suite and static checks
+      - name: Run core host suite and common checks
         run: |
-          echo "FULL host checks for $GITHUB_SHA"
-          /usr/bin/time -v .venv/bin/python tools/test.py
+          echo "CORE host checks for $GITHUB_SHA"
+          /usr/bin/time -v .venv/bin/python tools/test.py --skip-shellcheck
 
-      - name: Run full suite with mandatory BusyBox ash checks
+      - name: Run core suite with mandatory BusyBox ash checks
         run: |
           export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
-          echo "FULL BusyBox checks for $GITHUB_SHA"
+          echo "CORE BusyBox checks for $GITHUB_SHA"
           /usr/bin/time -v .venv/bin/python tools/test.py --require-busybox --reuse-static

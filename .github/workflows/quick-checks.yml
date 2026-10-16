@@ -2,14 +2,6 @@ name: Quick Checks
 run-name: "Quick Checks: ${{ inputs.label || 'selected CI evidence' }}"
 
 on:
-  push:
-    branches: [develop]
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.markdown'
-      - 'docs/**'
-      - '.images/**'
-      - '**/.gitkeep'
   workflow_dispatch:
     inputs:
       label:
@@ -30,14 +22,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  group: ${{ github.workflow }}-${{ github.run_id }}
   cancel-in-progress: true
 
 jobs:
   quick-checks:
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch' ||
-          contains(github.event.head_commit.message, 'CFMgr-Quick-Tests') }}
     name: Ubuntu 24.04 focused CI evidence
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -49,11 +38,10 @@ jobs:
           persist-credentials: false
 
       - name: Select and validate quick test nodes
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
+        if: ${{ inputs.host_baseline != true }}
         id: selection
         env:
           CFMGR_EVENT_NAME: ${{ github.event_name }}
-          CFMGR_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           CFMGR_DISPATCH_NODES: ${{ inputs.test_nodes }}
         run: |
           python3 - <<'PY'
@@ -67,7 +55,7 @@ jobs:
           try:
               nodes = quick_selection(
                   os.environ.get("CFMGR_EVENT_NAME", ""),
-                  os.environ.get("CFMGR_COMMIT_MESSAGE", ""),
+                  "",
                   os.environ.get("CFMGR_DISPATCH_NODES", ""),
               )
           except ValueError as error:
@@ -78,7 +66,7 @@ jobs:
           PY
 
       - name: Run lightweight planning and package checks
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
+        if: ${{ inputs.host_baseline != true }}
         run: |
           python3 tools/check.py
           python3 tools/package.py --check
@@ -91,7 +79,7 @@ jobs:
           python-tools: 'true'
 
       - name: Prepare verified native vendor BusyBox
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
+        if: ${{ inputs.host_baseline != true }}
         uses: ./.github/actions/setup-busybox
 
       - name: Run diagnostic-only full host baseline
@@ -100,10 +88,10 @@ jobs:
           CFMGR_TESTED_SHA: ${{ github.sha }}
         run: |
           echo "DIAGNOSTIC HOST BASELINE ONLY — not main acceptance for $CFMGR_TESTED_SHA"
-          /usr/bin/time -v .venv/bin/python tools/test.py
+          /usr/bin/time -v .venv/bin/python tools/test.py --skip-shellcheck
 
       - name: Run focused pytest selection with BusyBox ash
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.host_baseline != true }}
+        if: ${{ inputs.host_baseline != true }}
         env:
           CFMGR_QUICK_NODES: ${{ steps.selection.outputs.nodes }}
           CFMGR_TESTED_SHA: ${{ github.sha }}
@@ -125,9 +113,8 @@ jobs:
               raise SystemExit(f"Invalid validated quick-test output: {error}")
 
           print(
-              "FOCUSED CI EVIDENCE — all applicable focused groups must pass "
-              "for subgoal acceptance; narrow selections are diagnostic. "
-              "Main-goal acceptance requires full Checks.",
+              "FOCUSED CI EVIDENCE — diagnosis and interim evidence for selected "
+              "core or optional tests. Published acceptance requires core Checks.",
               flush=True,
           )
           print(f"Tested SHA: {os.environ['CFMGR_TESTED_SHA']}", flush=True)

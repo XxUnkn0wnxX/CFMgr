@@ -238,7 +238,15 @@ def _shell_syntax_checks(test_shell: list[str]) -> int:
     return 0
 
 
-def _static_checks() -> int:
+def _shellcheck_checks(shell_files: list[Path]) -> int:
+    if not shell_files:
+        print("SKIP ShellCheck: no runtime shell files found.")
+        return 0
+    shellcheck = _require_tool("shellcheck")
+    return _run([shellcheck, *map(str, shell_files)])
+
+
+def _static_checks(*, skip_shellcheck: bool = False) -> int:
     python_files = _files(("modules", "tests", "tools"), (".py",))
     shell_files = _shell_files()
 
@@ -256,15 +264,14 @@ def _static_checks() -> int:
         print("SKIP Python static checks: no runtime Python files found.")
 
     if shell_files:
-        shellcheck = _require_tool("shellcheck")
-        shfmt = _require_tool("shfmt")
-        for command in (
-            [shellcheck, *map(str, shell_files)],
-            [shfmt, "-d", *map(str, shell_files)],
-        ):
-            code = _run(command)
+        if not skip_shellcheck:
+            code = _shellcheck_checks(shell_files)
             if code:
                 return code
+        shfmt = _require_tool("shfmt")
+        code = _run([shfmt, "-d", *map(str, shell_files)])
+        if code:
+            return code
     else:
         print("SKIP ShellCheck/shfmt: no runtime shell files found.")
     return 0
@@ -310,6 +317,17 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="reuse successful common checks from this job's host stage; requires --require-busybox",
     )
+    shellcheck_mode = parser.add_mutually_exclusive_group()
+    shellcheck_mode.add_argument(
+        "--shellcheck-only",
+        action="store_true",
+        help="run pinned ShellCheck over all runtime shell files without other checks",
+    )
+    shellcheck_mode.add_argument(
+        "--skip-shellcheck",
+        action="store_true",
+        help="skip ShellCheck while retaining all other local checks",
+    )
     parser.add_argument(
         "--include-diagnostics",
         action="store_true",
@@ -320,6 +338,21 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.shellcheck_only:
+        if (
+            args.focused is not None
+            or args.keyword
+            or args.require_busybox
+            or args.reuse_static
+            or args.include_diagnostics
+        ):
+            print(
+                "ERROR: --shellcheck-only cannot be combined with test selection or other modes.",
+                file=sys.stderr,
+            )
+            return 2
+        return _shellcheck_checks(_shell_files())
+
     if sys.version_info < (3, 11):
         print("Python 3.11 or newer is required.", file=sys.stderr)
         return 2
@@ -380,8 +413,8 @@ def main() -> int:
 
     if args.reuse_static:
         print(
-            "Reusing successful planning, package, Ruff, compile, ShellCheck and "
-            "shfmt checks from the earlier host stage."
+            "Reusing successful planning, package, Ruff, compile and shfmt checks "
+            "from the earlier host stage; ShellCheck is a separate optional manual check."
         )
     else:
         for command in ([sys.executable, "tools/check.py"], ["git", "diff", "--check"]):
@@ -398,7 +431,7 @@ def main() -> int:
     if code:
         return code
     if not args.reuse_static:
-        code = _static_checks()
+        code = _static_checks(skip_shellcheck=args.skip_shellcheck)
         if code:
             return code
 

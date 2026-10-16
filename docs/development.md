@@ -28,6 +28,8 @@ python3 -m venv .venv
 The runner also applies **Ruff lint/format, Python compilation, shell syntax,
 ShellCheck, shfmt, package, planning/link and whitespace checks**. By
 default pytest excludes optional diagnostic cases; `--include-diagnostics` opts in.
+Use `--shellcheck-only` for shell lint alone, or `--skip-shellcheck` to run the
+other checks without it.
 `--focused` accepts test paths; add `-k expression` to filter them. Add
 `--require-busybox` for required BusyBox ash proof. Its Linux mount cases require
 passwordless `sudo` and the `coreutils`, `e2fsprogs`, `mount`, `sudo` and `util-linux`
@@ -46,8 +48,12 @@ Use `--output PATH` to build a package in an absent or empty directory.
 
 ## CI and optional platform diagnostics
 
-Manual [Checks](../.github/workflows/checks.yml) runs the full suite on Ubuntu host and
-vendor BusyBox ash, with common statics once. Router qualification remains beta work.
+[Checks](../.github/workflows/checks.yml) runs the core suite on Ubuntu host and
+vendor BusyBox ash for develop pushes and PRs, with common statics once.
+[Lint](../.github/workflows/lint.yml) runs ShellCheck manually;
+[Diagnostics](../.github/workflows/diagnostics.yml) runs optional stress cases manually.
+[Quick Checks](../.github/workflows/quick-checks.yml) manually selects focused
+modules or individual tests for diagnosis. Router qualification remains beta work.
 
 An optional Linux x86_64 guest diagnostic can build and run a pinned kernel
 profile. It is not required CI or accepted router proof:

@@ -80,40 +80,6 @@ runs:
         path: .tmp/ci-tools/apt/*.deb
         key: cfmgr-apt-debs-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.apt-input.outputs.package-hash }}-${{ steps.apt-input.outputs.image-hash }}
 
-    - name: Install pinned ShellCheck 0.11.0
-      shell: bash
-      run: |
-        set -euo pipefail
-        if [[ "$RUNNER_OS:$RUNNER_ARCH" != Linux:X64 ]]; then
-          printf 'Pinned ShellCheck binary requires Linux x86_64; found %s:%s.\n' \
-            "$RUNNER_OS" "$RUNNER_ARCH" >&2
-          exit 2
-        fi
-
-        version='0.11.0'
-        expected_sha256='b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6'
-        release="https://github.com/koalaman/shellcheck/releases/download/v${version}/shellcheck-v${version}.linux.x86_64.tar.gz"
-        install_root="$(mktemp -d "$RUNNER_TEMP/cfmgr-shellcheck.XXXXXX")"
-        archive="$install_root/shellcheck.tar.gz"
-        extract_root="$install_root/extract"
-        bin="$install_root/bin"
-
-        curl --fail --show-error --silent --location --proto '=https' --proto-redir '=https' \
-          --connect-timeout 10 --max-time 90 --retry 3 --retry-all-errors --retry-delay 2 \
-          "$release" --output "$archive"
-        printf '%s  %s\n' "$expected_sha256" "$archive" | sha256sum --check --status
-
-        mkdir -p "$extract_root" "$bin"
-        tar -xzf "$archive" -C "$extract_root" "shellcheck-v${version}/shellcheck"
-        install -m 0755 "$extract_root/shellcheck-v${version}/shellcheck" "$bin/shellcheck"
-        version_line="$("$bin/shellcheck" --version | sed -n '2p')"
-        if [[ "$version_line" != "version: $version" ]]; then
-          printf 'Expected ShellCheck %s, found %s.\n' "$version" "$version_line" >&2
-          exit 2
-        fi
-        printf 'Verified ShellCheck %s (pinned archive SHA-256).\n' "$version"
-        printf '%s\n' "$bin" >>"$GITHUB_PATH"
-
     - name: Validate Python tools option
       id: python-identity
       shell: bash

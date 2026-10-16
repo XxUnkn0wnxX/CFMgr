@@ -84,7 +84,8 @@ def _capture_runner(
         commands.append((command, env))
         return 0
 
-    def fake_static() -> int:
+    def fake_static(*, skip_shellcheck: bool = False) -> int:
+        del skip_shellcheck
         return 0
 
     def fake_syntax(shell: list[str]) -> int:
@@ -162,7 +163,7 @@ def test_runner_stops_after_a_failed_static_gate(
         lambda command, **kwargs: commands.append(command) or 0,
     )
     monkeypatch.setattr(runner, "_default_shell", lambda: ["/bin/test-shell"])
-    monkeypatch.setattr(runner, "_static_checks", lambda: 7)
+    monkeypatch.setattr(runner, "_static_checks", lambda **kwargs: 7)
     assert runner.main() == 7
     assert not any("pytest" in command for command in commands)
 
@@ -498,10 +499,11 @@ def test_runner_reuses_common_checks_but_keeps_busybox_syntax_and_suite(
     assert pytest_env is not None
     assert pytest_env["CFMGR_TEST_SHELL"] == "busybox ash"
     assert pytest_env["CFMGR_REQUIRE_BUSYBOX"] == "1"
+    output = capsys.readouterr().out
     assert (
-        "Reusing successful planning, package, Ruff, compile, ShellCheck and shfmt checks"
-        in capsys.readouterr().out
+        "Reusing successful planning, package, Ruff, compile and shfmt checks" in output
     )
+    assert "ShellCheck is a separate optional manual check" in output
 
 
 def test_runner_rejects_static_reuse_without_required_busybox(
@@ -513,3 +515,82 @@ def test_runner_rejects_static_reuse_without_required_busybox(
     assert runner.main() == 2
     assert commands == []
     assert "--reuse-static requires --require-busybox" in capsys.readouterr().err
+
+
+def test_shellcheck_only_uses_all_shell_files_and_propagates_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for directory, filename in (
+        ("modules", "module.sh"),
+        ("tests", "test_fixture.sh"),
+        ("tools", "runner.sh"),
+    ):
+        target = tmp_path / directory / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(":\n", encoding="utf-8")
+    (tmp_path / "cfmgr.sh").write_text(":\n", encoding="utf-8")
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--shellcheck-only"])
+    monkeypatch.setattr(runner, "_require_tool", lambda name: "/tools/shellcheck")
+    commands: list[list[str]] = []
+
+    def fail_shellcheck(command: list[str], **kwargs) -> int:
+        del kwargs
+        commands.append(command)
+        return 17
+
+    monkeypatch.setattr(runner, "_run", fail_shellcheck)
+    monkeypatch.setattr(
+        runner,
+        "_shell_syntax_checks",
+        lambda shell: pytest.fail("unexpected syntax checks"),
+    )
+    monkeypatch.setattr(
+        runner,
+        "_static_checks",
+        lambda **kwargs: pytest.fail("unexpected static checks"),
+    )
+
+    shell_files = runner._shell_files()
+    assert runner.main() == 17
+    assert commands == [["/tools/shellcheck", *map(str, shell_files)]]
+    assert len(shell_files) == 4
+
+
+def test_static_checks_keep_shellcheck_by_default_and_skip_only_when_requested(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    python_files = [Path("tests/test_dev_runners.py")]
+    shell_files = [Path("modules/example.sh"), Path("cfmgr.sh")]
+    monkeypatch.setattr(
+        runner,
+        "_files",
+        lambda directories, suffixes: python_files if suffixes == (".py",) else [],
+    )
+    monkeypatch.setattr(runner, "_shell_files", lambda: shell_files)
+    monkeypatch.setattr(runner, "_require_tool", lambda name: f"/tools/{name}")
+    commands: list[list[str]] = []
+
+    def record(command: list[str], **kwargs) -> int:
+        del kwargs
+        commands.append(command)
+        return 0
+
+    monkeypatch.setattr(runner, "_run", record)
+    assert runner._static_checks() == 0
+    assert ["/tools/shellcheck", *map(str, shell_files)] in commands
+    assert ["/tools/shfmt", "-d", *map(str, shell_files)] in commands
+
+    commands.clear()
+    assert runner._static_checks(skip_shellcheck=True) == 0
+    assert not any(command[0] == "/tools/shellcheck" for command in commands)
+    assert ["/tools/ruff", "check", *map(str, python_files)] in commands
+    assert ["/tools/ruff", "format", "--check", *map(str, python_files)] in commands
+    assert [
+        sys.executable,
+        "-m",
+        "compileall",
+        "-q",
+        *map(str, python_files),
+    ] in commands
+    assert ["/tools/shfmt", "-d", *map(str, shell_files)] in commands

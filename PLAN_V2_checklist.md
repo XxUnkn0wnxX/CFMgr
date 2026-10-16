@@ -14,11 +14,14 @@ earn product ticks.
 **9 of 157 product subgoals accepted — 5.7% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
-static checks, parent review and every applicable focused CI group passing at the
-exact candidate revision when platform proof is required.
+static checks, parent review and required core CI passing at the exact published
+candidate revision. Quick Checks supplies focused diagnosis and interim evidence.
 **Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
-local suite and exact full CI at the complete main-goal checkpoint. Subgoals do
-not trigger full local or full CI suites. Publication and execution rules: [AGENTS.md](AGENTS.md).
+local suite and exact full core CI at the complete main-goal checkpoint. Full
+local suites remain reserved for that boundary; core CI runs on every develop
+push and PR targeting develop. Manual Lint and Diagnostics are optional.
+Publication rules: [AGENTS.md](AGENTS.md); the current user-approved CI decision
+is recorded in [the handoff](PLAN_V2_handoff.md).
 
 **Development platform gate:** representative Ubuntu integration and native-host
 vendor BusyBox execution. Exact firmware/ARM/kernel-VM execution is not a required
@@ -30,9 +33,9 @@ to separately authorized real-router beta; support stays provisional.
 Each product subgoal below has separate **focused local** evidence and **final
 status**. Focused evidence means the relevant written tests passed, not merely
 syntax or smoke checks. Final subgoal status also requires any specific platform
-proof; unavailable BusyBox evidence remains pending until all tests in every
-applicable focused group pass at the exact candidate revision. Include affected
-shared foundations across goals. Small diagnostic selections alone earn no tick.
+proof; unavailable BusyBox evidence remains pending until required core CI passes
+at the exact published candidate revision, including shared foundations across
+goals. Small diagnostic selections alone earn no tick.
 
 A main goal needs every required subgoal complete, the codebase audit, and full
 local/full CI suites before its final tick. Product completion is the number of
@@ -130,11 +133,11 @@ are distinct from still-required remote acquisition/update-source proof.
 
 Focused commands use `.venv/bin/python tools/test.py --focused` followed by the
 listed modules under `tests/`. No partial row earns a focused-complete or accepted
-subgoal tick. Quick Checks supports small diagnostic fixes followed by the complete
-applicable grouped CI gate. All affected subgoal/shared-foundation groups must pass
-at the exact candidate revision before CI-dependent acceptance or a requested pause.
-Local packages retain focused tests/commits. Full local/full CI suites run only when
-a main goal reaches 100%.
+subgoal tick. Manual Quick Checks supports focused diagnosis and fixes for core
+groups or selected optional tests. Required core Checks must pass at the exact
+published candidate before CI-dependent acceptance or a requested pause. Local
+packages retain focused tests/commits; full local suites remain reserved for a
+main goal reaching 100%. Lint and Diagnostics run manually and are optional.
 
 Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies).
 
