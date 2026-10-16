@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**12 of 157 product subgoals accepted — 7.6% overall subgoal completion.**
+**13 of 157 product subgoals accepted — 8.3% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -199,7 +199,7 @@ history writers, full diagnostics and final terminal presentation remain separat
 | --- | --- | --- | --- |
 | [ ] | [ ] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
 | [ ] | [ ] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
-| [ ] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
+| [x] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
 | [ ] | [ ] | S04.05 | **Cloudflared Save boundary:** Pre-Save cancellation; mutation-time e disabled; signals honored with bounded cleanup and guarded recovery. |
 | [ ] | [ ] | S04.06 | **Input/terminal handling:** No EOF/default-yes or noninteractive prompting; restore echo, reject unsafe controls and preserve literal data. |
@@ -207,12 +207,21 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S04.08 | **Ownership and locks:** Stable lock identities, verified process start/boot identity, correct provider-child versus connector descriptor lifetime. |
 | [ ] | [ ] | S04.09 | **Generation and resource bounds:** Compatible package per invocation, current-state checks, late-result rejection and bounded whole-action cleanup. |
 
-S04.03 focused local proof: **190 passed, 34 platform skips**, with four optional
+S04.03 accepted at **`457296c79bd786083eb944e0c1cea2ecc9ddce10`**. Focused local
+proof: **190 passed, 34 platform skips**, with four optional
 diagnostics excluded, across the complete affected Store/settings/backup,
 installer/retained and shared dispatch/consumer modules. Relevant statics and
 parent review passed. [The durable-commit audit](PLAN_V2_audit.md#s0403-durable-staged-commit-review)
-records scope, failure evidence and firmware limits. Required focused Linux/
-BusyBox and final exact-candidate core CI remain pending; no final tick is earned.
+records scope, failure evidence, all four passing Quick groups (**227 passed,
+one workstation-only skip**) and measured costs. Final
+[core Checks 38880966640](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38880966640)
+passed at that exact candidate after the focused gates: host **624 passed,
+28 platform skips**, 164.71s wall; vendor BusyBox **651 passed, one workstation-only
+skip**, 690.62s wall. Four optional diagnostics were excluded in each phase;
+every required job/step passed. The job took 14m40s. Store/backup recovery,
+retained-observation space and failure boundaries, and guarded fresh completion
+are accepted within documented firmware limits. Live Merlin/ARM/flash proof
+remains beta-only. No other Goal 4 subgoal or main-goal gate receives credit.
 
 ### 5. Cloudflared setup and credentials
 

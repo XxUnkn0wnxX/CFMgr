@@ -42,8 +42,8 @@ package; their future transactions still need their own integration proof.
 | --- | --- |
 | Update-settings Save | The native Store takes the shared lock, checks space, preserves old/candidate bytes and a hash/generation intent, then publishes within JFFS. Exact-old recovery never replays a candidate; exact-candidate recovery verifies it; divergent data remains guarded. |
 | Backup destination Save | The same Store first prepares an inert folder on the pinned drive, then publishes its identity in JFFS. Drive loss preserves that folder and JFFS evidence; explicit JFFS recovery works without the drive. These are recoverable stages, not cross-filesystem atomicity. |
-| Retained storage observation | The separate `.storage-observation` protocol preserves old/candidate/intent before publication, checks exposed flush/readback results, and blocks subsequent admission while guarded. A missing pre-change space check requires repair. |
-| Fresh installation | The private fresh directory and `installing` record block reset while package/config/entry are staged and verified. Completion-marker retirement needs correction so a failed final write/flush cannot become an unguarded `complete` installation. |
+| Retained storage observation | The separate `.storage-observation` protocol preserves old/candidate/intent before publication, checks exposed flush/readback results, and blocks subsequent admission while guarded. The repair adds its missing pre-change space check. |
+| Fresh installation | The private fresh directory and `installing` record block reset while package/config/entry are staged and verified. Corrected completion-marker retirement prevents a failed final record write/flush from becoming an unguarded `complete` installation. |
 
 The baseline Store tests did not reach a failure after a successful live rename.
 New focused tests exercise exit-zero flush errors on stderr, post-rename damaged
@@ -51,12 +51,12 @@ readback, failed candidate staging, and conservative recovery. Their host module
 passes **16 tests with four Linux skips**, 45.73s wall, 22.00s user and 17.13s system.
 Recovery assertions follow the actual faults; redundant standalone variants were
 removed while retaining the existing exact-old phase proof.
-This is interim dirty-tree proof, not acceptance; platform and checkpoint gates
-remain pending in the handoff.
+These local results describe the prepared working tree; the exact-candidate
+platform results below supply separate evidence.
 
-The installer currently renames `.setup.complete` away before final verification,
-then attempts a best-effort rewrite to `installing` on failure. A deterministic
-double-fault test demonstrates that a failed rewrite can leave `complete` without
+The baseline installer renamed `.setup.complete` away before final verification,
+then attempted a best-effort rewrite to `installing` on failure. A deterministic
+double-fault test demonstrated that a failed rewrite could leave `complete` without
 its admission blocker. Parent and independent Astra repair review agree to retain
 the existing `.setup.complete` while the complete record is copied, flushed and
 verified; remove only that exact regular file through the native supervisor after
@@ -83,7 +83,41 @@ and shared dispatch/installed/dependency consumers **84 passed, 28 platform skip
 four optional diagnostics excluded. Required statics and parent review pass;
 changed runtime ShellCheck was checked separately after stopping an unnecessarily
 broad whole-tree scan above three minutes. Relevant ShellCheck cost was 12.90s.
-Exact-candidate Quick and final core CI remain required before acceptance.
+The four complete vendor BusyBox Quick groups pass at
+`457296c79bd786083eb944e0c1cea2ecc9ddce10`: **227 passed, one workstation-only
+skip**, four optional diagnostics excluded. Parent verified every required job
+and step. The skipped non-Linux supervisor case passed locally.
+
+| Focused CI group | Required proof | Result | Process wall / user / system |
+| --- | --- | --- | --- |
+| [A 38880057746](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38880057746) | Store faults/recovery and settings/backup consumers | 70 passed | 83.91s / 38.99s / 40.33s |
+| [B 38880061478](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38880061478) | Completion guard, native dispatch/ownership, installed admission and acquired package | 116 passed, one workstation-only skip | 176.38s / 86.15s / 44.43s |
+| [C 38880065872](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38880065872) | Complete retained observation/admission consumer | 20 passed | 143.66s / 70.54s / 72.97s |
+| [D 38880070154](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38880070154) | Shared repair and actual supervised fresh installation | 21 passed, four optional diagnostics excluded | 230.38s / 119.97s / 109.48s |
+
+All groups fit the practical three-to-four-minute limit. The roughly 230s
+dependency group retains the required production-supervised installer, including
+the new removal action; the direct probe test alone would not establish this
+wiring. Its cost is effectively unchanged from the prior roughly 230s baseline.
+No further small safe reduction or extra benchmark is justified.
+
+Final [core Checks 38880966640](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38880966640)
+passed at the same candidate after all four Quick groups. Parent verified the
+exact SHA and every required job/step. The single Ubuntu job took **14m40s**,
+09:30:54–09:45:34 UTC on 2026-10-16.
+
+| Required core phase | Result | Process wall / user / system |
+| --- | --- | --- |
+| Host/common | 624 passed, 28 platform skips, four optional diagnostics excluded | 164.71s / 36.01s / 41.30s |
+| Vendor BusyBox | 651 passed, one workstation-only skip, four optional diagnostics excluded | 690.62s / 329.51s / 270.99s |
+
+The mandatory BusyBox phase closes the host-only platform skips; the remaining
+workstation-without-proc boundary passed locally. Installer call cost is 157.39s,
+retained repair/return 87.44s. The job fits the unchanged 20-minute limit, compared
+with the preceding 16m07s run; this single run does not establish a general speedup.
+Parent review accepts the scoped S04.03 repair and current-writer failure/recovery
+proof. No additional full local suite, benchmark, optional diagnostic or live
+router execution was needed; this is a subgoal checkpoint, not main-goal acceptance.
 
 Once live data and its complete record have passed exposed flush/readback checks,
 a failure flushing the final guard deletion is cleanup uncertainty. Return

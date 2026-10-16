@@ -407,7 +407,7 @@ authorize deleting retained evidence.
 
 ## Pause and handoff
 
-An explicit pause request overrides the normal main-goal boundary. Start no
+An explicit earlier pause request overrides the current checkpoint boundary. Start no
 unrelated package; choose the last acceptable checkpoint based on progress:
 
 - **Barely started:** user permits discarding that small owned subgoal attempt to
