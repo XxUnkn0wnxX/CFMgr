@@ -71,7 +71,7 @@ def entry_run(
     data: bytes,
     *,
     terminal: bool,
-    timeout: float = 3,
+    timeout: float = 8,
 ) -> subprocess.CompletedProcess[bytes]:
     environment = {**os.environ, "CFMGR_INTERNAL_LAUNCH": "1", "CFMGR_CONSENT": "yes"}
     if not terminal:
@@ -93,7 +93,12 @@ def entry_run(
             env=environment,
         )
         os.write(master, data)
-        out, err = child.communicate(timeout=timeout)
+        try:
+            out, err = child.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.communicate()
+            raise
         return subprocess.CompletedProcess(child.args, child.returncode, out, err)
     finally:
         os.close(master)

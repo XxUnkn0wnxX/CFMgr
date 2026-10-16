@@ -21,90 +21,84 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S02.01 — missing CI BusyBox applet corrected; final CI pending
+## Active S02.01 — final consumer gates passed; CI pending
 
-The user approved the recommended S02.01 package after the checkpoint below.
-Baseline: clean `develop` at `a17a66d859d047bb47cb67575ac086e11d65a23f`.
-Finish this complete subgoal, push, wait for exact required core CI, publish the
-acceptance receipt and pause before another target. Existing checkout only; no
-router work, standalone bootstrap, updater, release or future feature work.
+The user approved the smallest independent S02.01 closure, with push and pause
+after its required gate. Use this checkout and `develop`; do not start another
+package, deploy to a router, release or implement the updater/standalone bootstrap.
+Original baseline: `a17a66d859d047bb47cb67575ac086e11d65a23f`. Current published
+head: `13e6807f3f6686ff00ef2e1dbcc079ec85047f70`; the final receipt-order repair
+and narrow PTY fixture correction are ready to commit/push.
 
-Route A: smallest independent closure of **S02.01**, reusing accepted S07.08
-acquisition and existing status/settings/backup consumers. S04.09 generation
-admission and S02.07 native status are supporting overlaps without extra credit.
-Requirements remain unchanged. Accepted totals stay **11/157 (7.0%)**, **0/16 main
-goals (0%)**, until required CI passes. Goal 2 currently has 6/9 accepted.
+Route A targets **S02.01** only. Accepted S07.08 acquisition and existing
+status/settings/backup consumers provide its foundations. S04.09 generation
+admission and S02.07 native status overlap without extra credit. Requirements
+remain unchanged. Accepted totals stay **11/157 (7.0%)**, **0/16 main goals (0%)**,
+Goal 2 **6/9**, until exact required CI passes.
 
-Parent owns final architecture/security review, integration and all V2 records.
-Fixture mapping/regression, independent Astra design and independent runtime review
-are complete. Implementation worker released all files; no worker/local test is
-active. Parent agrees with the runtime review's **PASS WITH NOTES**: no must-fix
-issue remains; representative Linux/vendor BusyBox proof is pending. The source
-finding, baseline failure and fixture corrections are recorded in
-[the audit](PLAN_V2_audit.md#s0201-modular-distribution-closure-review).
+Parent owns architecture/security decisions, integration and all V2 records.
+Fixture/regression implementation, independent Astra design and independent
+runtime review are complete; all workers released their files. Parent agrees
+with the final independent **PASS** on strict reader/hash receipts in either
+order. No worker, local test or CI remains active. No pending user question.
 
-Implemented contract: trusted entry reads the protected bounded manifest and
-verifies its own installed record plus fixed inert `modules/lib/package.sh`
-before sourcing that verifier. The verifier checks complete manifest/catalog,
-exact payload inventory/mapping, protection, sizes and hashes before either
-installed import path. Fixed native tools, an SHA-256 known vector, capped reads
-and independent reader/hash status require no Entware, network, RAM files or
-preparation. Both supported manifest headers require the verifier in installed
-and trusted-local admission. Unrelated legacy allowances remain unchanged.
-Config/setup/Save-recovery data stays outside package inventory. This establishes
-entry-time consistency, not hostile-root resistance or future concurrent-update
-pinning. Existing status, settings, backup and selected reinstall behavior remains.
+Implemented: trusted entry verifies its own installed record and fixed inert
+`modules/lib/package.sh` using the protected bounded manifest before sourcing
+that verifier. Full manifest/catalog/inventory/mapping, protection, sizes and
+hashes then precede both installed import paths. Native bounded reads and an
+SHA-256 known vector require no Entware, network or operational preparation.
+Both manifest schemas require the verifier in installed/trusted-local admission.
+Config/setup/Save-recovery data stays outside payload inventory. This proves
+entry-time consistency, not hostile-root resistance or concurrent updater
+pinning. Existing consumer behavior and passive extensibility are preserved.
 
-All runnable affected local tests and statics passed on the dirty tree based on
-the baseline above. Linux-only cases are pending CI, not claimed passed. Commands
-use `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'` and the pinned venv. Parent
-runs also set `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` and use `/usr/bin/time -l`.
+The two CI findings and disposition are in
+[the audit](PLAN_V2_audit.md#s0201-modular-distribution-closure-review):
 
-| Group | Complete affected scope | Local evidence |
+- At `62ceee4`, Quick 38863530377 failed because the vendor fixture omitted `dd`.
+  Traced one-node Quick 38863974045 at `56091bd` confirmed reader status 127.
+  Enable `CONFIG_DD=y`; the existing verified config cache key rebuilds correctly.
+- At `13e6807`, Quick 38864297451 found valid digest/status lines in reverse order
+  on BusyBox. The corrected parser requires exactly one success receipt and one
+  valid digest in either order, rejecting missing/duplicate/other records and
+  retaining OpenSSL exit checking. No hash/read requirement was relaxed.
+- Superseded core runs 38863512606, 38863966533 and 38864287101 were cancelled;
+  they supply no acceptance. Raw `quick-first.log`, `quick-trace.log`,
+  `quick-dd.{json,log}`, `core-first.{json,log}` and `core-dd.{json,log}` are retained
+  under `.tmp/s0201-ci/`.
+
+Complete affected local consumer groups passed after the final runtime repair:
+
+| Group | Complete selection under `tests/` | Result / pytest / process wall / user + system |
 | --- | --- | --- |
-| A | `test_entry_package.py`, `test_dependency_reinstall.py`, `test_manager_settings_entry.py`, `test_backup_menu.py` | Initial group: 99 passed, 2 Linux skips, 4 backup fixture failures in 116.40s. Only the four stale adapter-metadata fixtures changed afterward; complete backup rerun: 8 passed, 46.06s pytest / 47.07s wall, 19.11s user + 20.22s system. Combined final unique scope: 103 passed, 2 skips. |
-| B | `test_status.py`, `test_retained_launch.py` | 48 passed, 3 Linux skips; 49.44s pytest / 52.41s runner wall, 23.20s user + 18.27s system. Real native status/menu return and aggregate inert-import checks passed. |
-| C | `test_package.py`, `test_install.py` | 33 passed, 1 Linux skip; 66.29s pytest / 67.16s wall, 30.83s user + 20.87s system. Includes missing mandatory verifier refusal under legacy header. |
-| D | `test_acquire.py`, `test_acquire_install.py` | 2 passed, 5 Linux skips; 0.59s pytest / 1.17s wall. Real acquisition/installer remains for CI. |
+| A | `test_entry_package.py test_dependency_reinstall.py` | 92 passed, 2 Linux skips / 86.65s / 87.52s / 36.06s + 31.43s |
+| B | `test_manager_settings_entry.py test_backup_menu.py` | 11 passed / 65.57s / 66.46s / 26.99s + 29.18s |
+| C | `test_status.py test_retained_launch.py` | 48 passed, 3 Linux skips / 52.57s / 53.14s / 22.43s + 18.15s |
 
-Group B used `tools/test.py --skip-shellcheck --focused` with its two modules,
-passing planning/package, whole-tree Ruff/format/compile, shell syntax and shfmt.
-Other groups used `-m pytest -q -ra --strict-config --strict-markers --maxfail=1
---durations=10 -m 'not diagnostic'` with the listed modules, except worker group A
-whose exact command is in its receipt. Final changed-runtime ShellCheck passed
-for entry, verifier, bootstrap and probe in 12.447s. Whitespace passed. Receipts:
-`.tmp/s0201-ci/{worker-focused-history.txt,worker-backup-final.log,
-worker-final-statics.json,local-status-retained.log,local-package-install.log,
-local-acquisition.log}`. No full local suite is due for this subgoal.
+These use `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q
+-ra --strict-config --strict-markers --maxfail=1 --durations=8 -m 'not diagnostic'`
+with the listed modules. Logs: `local-final-{a,b,c}.log`. The first A attempt's
+3-second test watchdog was too tight for normal 2.3–3.3s complete-entry work.
+Only that fixture now allows 8s and kills/reaps a timed-out child. The exact Ctrl-D
+retry passed in 3.17s; original failure and honest retry receipt are preserved as
+`local-first-failure-a.log` and `local-ctrl-d-retry.txt`. Runtime deadlines and
+assertions are unchanged.
 
-Runtime candidate **`62ceee4cce664f4ba8db7679e9bbeb149b6b37cb`** is committed and
-pushed to `origin/develop`. Exact-candidate runs:
-[core Checks 38863512606](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38863512606)
-and [focused package Quick 38863530377](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38863530377),
-the latter selecting complete `test_entry_package.py` and `test_package.py` modules
-under vendor BusyBox. **Quick failed the intact-package control immediately**
-(0.28s pytest): the entry reported package verification failure. Parent captured
-`quick-first.log`, `core-first.json` and `core-first.log` in the receipt directory,
-then cancelled the superseded core run during its host stage; BusyBox was skipped.
-Neither run supplies acceptance. Awaiter is finished; no CI remains active.
+Additional unchanged-boundary local evidence: package/install 33 passed, 1 Linux
+skip (66.29s pytest / 67.16s wall); acquisition 2 passed, 5 Linux skips (0.59s /
+1.17s); platform fixture 40 passed (1.54s / 2.46s). Their raw receipts are
+`local-package-install.log`, `local-acquisition.log`, `local-platform-fixture.log`.
+Linux-only tests remain pending. Final four-file ShellCheck passed in 20.28s
+(11.76s user + 0.59s system), with syntax/shfmt, relevant Ruff/format/compile,
+package/planning and whitespace passed. Earlier whole-tree common statics passed
+in the status/retained runner. No full local milestone suite is due.
 
-Failure-only tracing was pushed as `56091bd4e764f9a8290a276c8f9d40640cdb8c4e`.
-The complete entry module still passed locally: 14 passed, 12.95s pytest / 13.69s
-wall; Ruff/format passed (`local-entry-trace.log`). The
-[one-node trace 38863974045](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38863974045)
-confirmed `CFMGR-READ 1 127`: the vendor fixture omitted `CONFIG_DD`, so its `dd`
-symlink could not run. Runtime correctly rejected the failed read. Its redundant
-core run 38863966533 was cancelled; neither supplies acceptance. `quick-trace.log`
-preserves exact evidence. Parent and independent reviewer agree on this cause.
-
-Only `CONFIG_DD=y` was added to the existing BusyBox fixture. Its verified cache
-key includes that config, so CI will rebuild it. No runtime change or relaxed
-assertion is necessary. Complete `test_platforms.py` passed **40 tests in 1.54s**
-(2.46s process wall), including verified fixture/cache-key behavior; receipt
-`local-platform-fixture.log`. Planning/whitespace passed. No user decision is
-pending. Next: commit/push this correction, rerun complete focused
-entry/package proof and exact core CI, then accept only S02.01, publish the
-documentation receipt and pause. Do not start another package.
+Next: commit/push final entry/manifest and PTY fixture correction plus these
+parent records, run complete focused vendor entry/package modules and automatic
+core Checks at exactly that SHA. Freeze implementation while waiting. On green,
+accept only S02.01, update README/checklist/audit/handoff, publish the documentation
+receipt and pause. Keep all failed/cancelled evidence distinct from the final gate.
 
 ## Paused after accepted S07.08 — ready to select the next task
 

@@ -41,13 +41,13 @@ cfmgr_entry_hash() {
 			} | /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C OPENSSL_CONF=/dev/null /usr/sbin/openssl dgst -sha256 -r
 		} 3>&1
 	) || return 1
-	# The producer retains its pipe until after the status receipt; the digest
-	# follows EOF. Both statuses matter, including a producer failing after data.
+	# Shells may close the producer pipe before its final redirected receipt.
+	# Require both typed records, in either order, including reader success.
 	# shellcheck disable=SC2016
 	cfmgr_entry_digest=$(printf '%s\n' "$cfmgr_entry_hash_frame" | /usr/bin/awk '
-		NR==1 {if($0!="CFMGR-READ 1 0")bad=1;next}
-		NR==2 {if(NF!=2 || length($1)!=64 || $1~/[^0-9a-f]/ || $2!="*stdin")bad=1;hash=$1;next}
-		{bad=1} END {if(NR!=2 || bad)exit 1;print hash}') || return 1
+		$0=="CFMGR-READ 1 0" {reader++;next}
+		NF==2 && length($1)==64 && $1!~/[^0-9a-f]/ && $2=="*stdin" {digests++;hash=$1;next}
+		{bad=1} END {if(NR!=2 || reader!=1 || digests!=1 || bad)exit 1;print hash}') || return 1
 }
 
 cfmgr_entry_file() {

@@ -93,6 +93,14 @@ its content already participates in the verified cache key. No runtime change
 or weakened assertion is needed. Superseded core runs were cancelled after
 capturing the failure; final complete focused/core proof remains required.
 
+With `dd` present, Quick at `13e6807` revealed valid digest/status lines in the
+opposite order during a real 69 KiB bootstrap read. BusyBox may close the pipe
+before its final redirected status print. Parent and independent reviewer agree
+the correction is to require the same two uniquely typed records in either
+order, retaining successful OpenSSL exit and reader status; other, missing or
+duplicate records still fail closed. This is an observed portability repair,
+not a relaxed hash/read contract. Complete entry/consumer tests are being rerun.
+
 ## S07.08 acquisition and pre-execution design review
 
 2026-10-16, baseline `167ef28`: parent and independent Astra design review agreed
