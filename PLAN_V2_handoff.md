@@ -29,8 +29,37 @@ the final work pushed. This supersedes the historical stop notices below only
 for this package. Start revision: `506e97fded9ac29d865c38e67c8f5aaaef7ac40f`,
 clean `develop`, matching the local origin/develop tracking ref.
 
-Published candidate: `2e94e2b0957e928bdee101a8fa07ce250eab132b`, verified on
-origin/develop. Required [core Checks 38850890760](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38850890760)
+Last published candidate: `f51894703cdf3366027d23c87dba12b9c18340c6`.
+Its [core Checks 38851879877](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38851879877)
+was deliberately cancelled after review found that the installed-menu fixture
+re-executed system `/bin/sh` instead of retaining the selected test interpreter.
+Host checks passed in 1m14s; BusyBox ran 6m15s before cancellation. This is not
+a passed core gate. Logs and metadata are retained in `.tmp/s1402-ci/core-second.*`.
+A fixture-only correction now selects the safely quoted host shell/arguments or
+the existing vendor BusyBox `sh` symlink for the exact default-entry re-exec.
+Production isolation and runtime bytes are unchanged. Reuse all eight backup
+and three settings journeys locally and in a focused whole-module Quick run,
+then require a complete replacement-candidate core pass before acceptance.
+Final fixture review passed. The complete local affected group passed: 11 tests,
+no skips, 50.48s pytest / 51.43s process wall, 20.18s user + 20.51s system,
+43,098,112-byte peak RSS, using Homebrew Bash with `--posix` throughout.
+Command: `CFMGR_TEST_SHELL='<resolved Homebrew bash> --posix' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q tests/test_backup_menu.py tests/test_manager_settings_entry.py --durations=5`.
+Tested dirty tree based on `f518947`; log: `.tmp/s1402-ci/menu-selected-local.log`.
+Changed-file Ruff lint/format and compile, planning/package and whitespace
+checks passed. No runtime or package byte changes followed earlier statics.
+Focused [retained-launch Quick 38851883264](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38851883264)
+passed: one case, no skips, 126.67s pytest / 126.88s process wall, 67.28s user +
+58.34s system, 37,028 KiB peak RSS. The full job ran 2m21s,
+04:41:38–04:43:59 UTC; parent verified the exact SHA, job and every applicable
+step. Only the unrequested full-host baseline skipped. The actual retained
+consumer call took 125.61s, close to the earlier 124.40s reference and within
+the practical three-to-four-minute group budget. All preservation/repair/return
+assertions remain. Logs/metadata: `.tmp/s1402-ci/retained-quick.log` and
+`retained-quick.json`. Candidate `f518947` changed only the retained-launch
+fixture's passive backup object; runtime code and package bytes are unchanged.
+
+Initial candidate: `2e94e2b0957e928bdee101a8fa07ce250eab132b`. Its required
+[core Checks 38850890760](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38850890760)
 failed in the BusyBox retained-launch fixture after host success. The failure
 occurred before dependency work: its handwritten `backup:{}` omitted the
 `destination:null` that production defaults already emitted at `506e97f`.
@@ -38,8 +67,8 @@ Parent reproduced parser refusal for that exact fixture and success with the
 actual passive backup defaults; independent review confirmed a fixture-only
 correction. Strict production validation and all retained-launch assertions are
 unchanged. The initial run had 495 BusyBox passes/one skip before stopping, so
-it is not complete core proof. Repair candidate, focused retained-launch CI and
-new exact-candidate core remain pending.
+it is not complete core proof. The repaired fixture's focused retained-launch
+pass is recorded above; complete final-candidate core proof remains pending.
 
 [Quick Checks 38850933797](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38850933797)
 passed the two new real-mount cases and inherited backup-mkdir lock case:

@@ -22,7 +22,7 @@ __all__ = ["commands", "config", "legacy_fsync", "shell", "store_fixture", "tool
 
 
 @pytest.fixture
-def installed_settings_entry(tmp_path: Path, store_fixture, tools):
+def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
     source, ram, flock, fsync = store_fixture
     jffs = tmp_path / "jffs"
     support = jffs / "addons/CFMgr.d"
@@ -74,6 +74,18 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools):
         original.replace("/jffs", str(jffs))
         .replace("/usr/bin/readlink", tools["readlink"])
         .replace("$3!=0", f"$3!={os.geteuid()}")
+    )
+    # Keep the real isolated re-exec under the selected test interpreter too.
+    # The BusyBox tools fixture already supplies a sh-named applet symlink.
+    reexec = 'CFMGR_INTERNAL_LAUNCH=1 /bin/sh "$cfmgr_default_entry"'
+    assert adapted.count(reexec) == 1
+    shell_args = [] if shell[1:] == ["ash"] else shell[1:]
+    adapted = adapted.replace(
+        reexec,
+        "CFMGR_INTERNAL_LAUNCH=1 "
+        + shlex.join([tools["sh"], *shell_args])
+        + ' "$cfmgr_default_entry"',
+        1,
     )
     source_line = '. "$cfmgr_source/modules/lib/config_store.sh" || exit 1'
     assert source_line in adapted

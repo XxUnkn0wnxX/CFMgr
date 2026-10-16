@@ -110,7 +110,24 @@ included `destination`, `retention` and `last_backup` as null. Parent reproduced
 the new typed parser's rejection of that fixture and acceptance with the actual
 passive defaults. Independent review agreed with correcting only the fixture;
 no parser requirement, runtime behavior or preservation assertion was weakened.
-Focused real retained-launch and replacement-candidate core proof remain pending.
+Focused real retained-launch Quick `38851883264` passed at replacement candidate
+`f51894703cdf3366027d23c87dba12b9c18340c6`: 126.88s process wall, preserving all
+repair/return/config assertions.
+
+Subsequent independent review found a test-coverage gap: the installed-menu
+fixture retained the production `/bin/sh` re-exec, so its successful menu paths
+ran under the host system shell even in the vendor BusyBox group. Parent and
+reviewer agreed on a fixture-only correction of the exact default-entry re-exec
+to the selected, safely quoted interpreter, preserving isolation and host shell
+arguments. The first local fixture guard caught a too-broad replacement needle;
+it was narrowed to the default-entry token before publication. The existing
+eight backup and three settings journeys are reused; no new matrix or runtime
+change is required. Core run `38851879877` was deliberately cancelled after host
+success; it supplies no completed core acceptance. Complete final-candidate
+core proof and actual vendor BusyBox menu execution remain pending. Final
+fixture review passed; all 11 affected journeys passed locally under selected
+Homebrew Bash `--posix` in 51.43s wall, with no skips. Changed-file statics and
+planning/package/whitespace checks passed.
 
 ## Diagnostics fixture optimization review
 
