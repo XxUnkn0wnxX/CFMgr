@@ -31,6 +31,10 @@ These explicit decisions override AGENTS' older full-CI cadence/ShellCheck wordi
 that protected instruction file is unchanged pending a separately approved edit.
 No product scope, product IDs or acceptance credit changes.
 
+The user additionally approved excluding documentation-only pushes/PRs from CI:
+Markdown and documentation image changes do not trigger Checks; code, tests,
+tooling and Actions changes still do. No documentation-only CI workflow is added.
+
 Current baseline: full Checks `38833527680` at `41e1765` passed in 12m51s runner
 time; its receipt `74d0bca4053790d42755990a68f07ba01064539d` is pushed. ShellCheck
 alone occupied 117.58s. Parent owns integration/planning records. The runner/tool

@@ -18,8 +18,9 @@ static checks, parent review and required core CI passing at the exact published
 candidate revision. Quick Checks supplies focused diagnosis and interim evidence.
 **Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
 local suite and exact full core CI at the complete main-goal checkpoint. Full
-local suites remain reserved for that boundary; core CI runs on every develop
-push and PR targeting develop. Manual Lint and Diagnostics are optional.
+local suites remain reserved for that boundary; core CI runs for code, tests,
+tooling and Actions changes on develop pushes and PRs targeting develop; documentation-only changes
+do not trigger CI. Manual Lint and Diagnostics are optional.
 Publication rules: [AGENTS.md](AGENTS.md); the current user-approved CI decision
 is recorded in [the handoff](PLAN_V2_handoff.md).
 

@@ -50,6 +50,7 @@ Use `--output PATH` to build a package in an absent or empty directory.
 
 [Checks](../.github/workflows/checks.yml) runs the core suite on Ubuntu host and
 vendor BusyBox ash for develop pushes and PRs, with common statics once.
+Documentation-only changes do not trigger CI.
 [Lint](../.github/workflows/lint.yml) runs ShellCheck manually;
 [Diagnostics](../.github/workflows/diagnostics.yml) runs optional stress cases manually.
 [Quick Checks](../.github/workflows/quick-checks.yml) manually selects focused
