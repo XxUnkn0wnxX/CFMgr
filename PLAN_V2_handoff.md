@@ -18,48 +18,102 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active maintenance — optional diagnostics and audit-record migration
+## Paused maintenance — diagnostics optimized and audit records separated
 
-The user authorized optimizing the slow optional diagnostics, using separate
-named Quick Checks to identify expensive or stalled cases, and reporting which
-parts need work. They also requested a root-level `PLAN_V2_audit.md` alongside
-the existing tracked V2 records, moving audit reports out of this handoff.
-This maintenance does not start S14.02 or alter product acceptance.
+The user authorized optimizing optional diagnostics, separate named Quick Checks,
+small automatic timing-led fixture tweaks, manual cancellation/retry of
+three-to-four-minute groups, and a report of the remaining expensive parts.
+Sweeping changes need a user decision. If a question is unanswered within the
+applicable window, preserve the safe state and end the turn to wait. No question
+is pending. This maintenance does not start S14.02 or change product acceptance.
 
-Baseline: clean published `8e6b79ffa8d2697c4232d3b978e13eea1517e23b`, existing
-develop checkout. Parent owns all planning/audit/instruction records, integration,
-publication and CI selection. The read-only scope reviewer checks the proposed
-fixture adapter; a separate read-only reviewer inventories audit passages and
-will check relocation preservation. Only the fixture worker may edit the selected
-diagnostic fixture after design review; no overlapping writers.
+Published test candidate: **`565e8dfa9af66fad2679052dd88cf40939a0abc0`**, verified
+on origin/develop. Only `tests/fixtures/dependencies.sh` changes executable test
+behavior: retry, threads and mixed-root reuse the existing foreground view
+adapter. Fully supervised repair and installer references, production code,
+timeouts, assertions and installed-flock probes remain unchanged. The coverage
+boundary and parent/Astra design review are in the
+[audit record](PLAN_V2_audit.md#diagnostics-fixture-optimization-review).
 
-Implemented diagnostic scope: preserve fully supervised `dependency_repair`; reuse
-the existing real-mount fixture adapter for retry, thread and mixed-root cases,
-keeping actual worker/keeper/task supervision, assertions and budgets. No
-production behavior change. Validate syntax/format and available focused local
-checks, then separate exact-candidate Quick nodes: threads first, mixed roots,
-retry and full-supervision reference. Required automatic core CI remains due on
-the code push. Target each group below two minutes; split/reassess at three to
-four minutes. Record wall/CPU time and truthful pass/fail/cancel state.
+### Named Quick results
 
-The user additionally authorized small automatic timing-led tweaks, manual
-cancellation of over-budget Quick groups and narrower retries. Sweeping changes
-need a concrete user decision first. Parent and Astra design review agreed PASS
-WITH NOTES; the coverage tradeoff is recorded in the audit. The fixture worker
-finished its single file and released ownership. Changed-file POSIX syntax,
-ShellCheck, shfmt and whitespace checks passed. Available local dependency group:
+Each run selects exactly
+`tests/test_dependencies.py::test_normal_repair_and_owned_cleanup[CASE]` at that
+candidate, with pinned vendor BusyBox on Ubuntu. All four selected tests and every
+applicable workflow step passed; the unrequested full-host baseline step is
+intentionally skipped. These four passes cover the full current optional
+selection, not a claim that the separate Diagnostics workflow ran again.
+
+| Group / CASE | Exact-candidate run | Pytest / process wall | User + system CPU | Earlier observed time |
+| --- | --- | --- | --- | --- |
+| A / `dependency_threads` | [38843097190](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38843097190) | 13.12s / 13.33s | 7.23s + 5.55s | about 87s |
+| B / `dependency_mixed` | [38843169647](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38843169647) | 10.50s / 10.67s | 5.20s + 3.17s | 88.15s |
+| C / `dependency_retry` | [38843172113](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38843172113) | 25.43s / 25.65s | 13.21s + 10.96s | about 165s |
+| D / `dependency_repair` | [38843242908](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38843242908) | 82.03s / 82.17s | 46.81s + 29.45s | about 87s; unchanged reference |
+
+Threads passed first; mixed/retry then ran independently, followed by the
+unchanged reference, with at most two optional jobs active. Every group finished
+under two minutes; no new cancellation or second tweak was needed. The three
+changed cases total 49.65s process wall versus about 340s previously. The four
+new process walls sum to 131.82s; this is separate-run test work, not a measured
+combined-workflow duration. Prior non-mixed timings are verbose completion
+intervals including fixture transitions; runner variation is not an algorithmic
+saving. Mixed-root CPU fell from 78.47s to 8.37s. Raw logs remain private under
+`.tmp/diagnostics-audit-20261016/quick-*.log`.
+
+Available local gate on the prepared tree based on `8e6b79f`:
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python tools/test.py --skip-shellcheck --focused tests/test_dependencies.py`.
 **13 passed, eight Linux/tool skips, four diagnostics excluded**, 2.56s pytest;
-4.37s wall, 1.43s user + 2.15s system, with all core static/planning checks.
-Command: `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python tools/test.py --skip-shellcheck --focused tests/test_dependencies.py`.
-Linux optional nodes and automatic core remain pending publication/CI.
+4.37s wall, 1.43s user + 2.15s system. Core statics/planning and changed-file
+ShellCheck/shfmt/POSIX syntax/whitespace passed. The Linux Quick results above
+supply the optional platform evidence unavailable on macOS. No full local suite.
 
-Audit relocation preserves evidence, scope, decisions and historical review
-limits; it does not retroactively declare reviewer agreement. Session lineage,
-permissions, current queue and CI receipts remain here with links to the audit.
-Private originals are verified at `.tmp/diagnostics-audit-20261016/`.
-Product counts remain **9/157 (5.7%), 0/16 main goals (0%)**. Stop after the
-requested maintenance and results report; earlier stop notices below are
-historical checkpoints superseded only for this maintenance scope.
+Required automatic [core Checks 38843069635](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38843069635)
+**passed at the same candidate**; parent verified the exact SHA, job and every
+required step. Host **554 passed, 26 platform/tool skips, four optional excluded**;
+BusyBox **579 passed, one workstation-without-proc skip, four optional excluded**.
+Host pytest/process wall: 66.24s/67.98s, CPU 14.70s user + 17.06s system.
+BusyBox pytest/process wall: 548.79s/549.13s, CPU 262.91s user + 255.93s system.
+The complete job ran **10m38s**, 02:57:29–03:08:07 UTC. Its longer elapsed time
+than the prior 8m54s run does not measure this optional-fixture change: all changed
+cases are excluded from core, and production/core paths are unchanged. Installer
+178.71s and retained integration 124.40s remain the largest core cases; no new
+core optimization or second benchmark run was attempted. Core log/metadata are
+private at `.tmp/diagnostics-audit-20261016/core.log` and `core.json`.
+All workers, Quick jobs and the core awaiter are complete; no required work remains
+active. No new combined Diagnostics run was needed or claimed passed.
+
+### Audit record and stop boundary
+
+At the user's request, `PLAN_V2_audit.md` is a tracked root-level companion to
+the existing V2 documents. Parent moved 20 cohesive audit/source-review passages,
+left links in the handoff, and synchronized navigation and the narrow AGENTS
+file-role/location rules. Independent read-only migration review and parent
+preservation checks passed: all bodies, 36 historical CI links, session ledger,
+permissions/recovery and next-session boundaries remain intact. This relocation
+does not grant retrospective review agreement or new acceptance.
+Private originals and the relocation inventory are verified under
+`.tmp/diagnostics-audit-20261016/`.
+
+The last acceptance audit covered the nine accepted product IDs; none has been
+newly accepted since. Follow the continuity skill's small-batch review trigger
+(three newly accepted IDs across goals/sessions, or earlier affected-foundation
+risk), while preserving the required main-goal audit. Audit findings belong in
+[the audit record](PLAN_V2_audit.md#accepted-subgoals-audit), not this queue.
+
+Product counts remain **9/157 (5.7%), 0/16 main goals (0%)**; Goal 2 **6/9
+(66.7%)**. Parent reviewed the final fixture diff, measured results and relocated
+documents. The documentation-only receipt receives planning/link/whitespace and
+privacy checks; it names the tested candidate without claiming its own later SHA
+reran runtime tests. Identify the receipt with
+`git log -1 --format='%H %s' -- PLAN_V2_handoff.md`.
+
+**Stop here.** All four optional cases fit the two-minute group target. Retain the
+full-supervision reference and every current assertion; further tuning is not
+justified by these measurements. No S14.02, next product package, router execution,
+deployment, release, new worktree or history rewrite is authorized. Earlier
+checkpoint notices below are historical and were superseded only for this
+completed maintenance scope.
 
 ## Paused CI checkpoint — automatic core and manual optional workflows verified
 

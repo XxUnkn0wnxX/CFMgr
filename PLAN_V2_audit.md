@@ -41,11 +41,24 @@ supervision, ownership/refusal/recovery and every existing assertion. They no
 longer independently prove per-view-command deadline/unresolved-child accounting.
 Production code, deadlines and the full installed-flock post-probe stay unchanged.
 
-The initial design is to validate threads first, then mixed-root, retry and the
-fully supervised reference as separate Quick selections at one candidate SHA,
-plus the required automatic core gate. Existing logs support repeated supervised
-view operations as the primary cost hypothesis; savings remain unverified until
-those runs finish. Run state and measured results belong in the handoff.
+The reviewed implementation at `565e8dfa9af66fad2679052dd88cf40939a0abc0`
+changes only the three fixture case selectors and their explanatory comment.
+Separate Quick runs passed for threads (13.33s), mixed roots (10.67s), retry
+(25.65s), and the unchanged full-supervision reference (82.17s). Earlier times
+were about 87s, 88.15s, 165s and 87s respectively; the unchanged reference's
+variation is not credited to the optimization. Mixed-root user+system CPU fell
+from 78.47s to 8.37s. All assertions, including the distinct ownership/refusal
+and fresh installed-flock checks, remain intact.
+
+**Finding:** repeated per-view-operation supervision was the demonstrated main
+cost in the three changed scenarios; no hang or new runtime failure was observed.
+The fully supervised reference fits the two-minute group target and remains
+unchanged. No further probe removal or broad redesign is justified by these
+results. This changes the layering of optional S02.05/S02.08 evidence, not product
+requirements or completion credit. Parent verified the final two-line fixture
+diff, all four exact-candidate Quick passes and successful required core CI
+`38843069635`. No new product acceptance was awarded. Exact receipts are recorded in the
+[handoff](PLAN_V2_handoff.md#named-quick-results).
 
 ## CI core integration cost review
 
