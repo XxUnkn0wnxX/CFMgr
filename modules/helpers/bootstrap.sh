@@ -367,23 +367,24 @@ cfmgr_bootstrap_attached() {
 	cfmgr_storage_attached && cfmgr_bootstrap_native_attached
 }
 
-# Native-only admission is reserved for finite launch-* pre-storage probes.
+# Native-only admission is reserved for finite launch/report pre-storage probes.
 # Native BusyBox test -ef is verified by the descriptor and kernel fixtures.
 # shellcheck disable=SC3013
 cfmgr_bootstrap_native_attached() {
 	[ "${cfmgr_install_interrupted:-0}" = 0 ] || return 1
 	if [ "${cfmgr_launch_guard_owned:-0}" = 1 ]; then cfmgr_launch_guard_attachment || return 1; fi
 	if [ "${cfmgr_launch_migrating:-0}" = 1 ]; then cfmgr_launch_original_attached || return 1; fi
-	if [ -n "${cfmgr_install_context:-}" ]; then
-		case $cfmgr_install_context_fd in 0 | 3 | 5 | 9) ;; *) return 1 ;; esac
-		[ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef "/proc/self/fd/$cfmgr_install_context_fd" ] || return 1
-		[ "$("$cfmgr_install_awk" -f "$cfmgr_install_source/modules/lib/mountinfo.awk" "$cfmgr_install_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ] || return 1
-	fi
+	# Reject a replaced source before using even its mount parser.
 	[ ! -L "$cfmgr_install_source" ] && [ ! -L "$cfmgr_install_jffs" ] &&
 		[ "$cfmgr_install_source" -ef "/proc/self/fd/${cfmgr_install_source_fd:-9}" ] &&
 		[ "$cfmgr_install_jffs" -ef /proc/self/fd/8 ] || return 1
 	[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_source")" = "$cfmgr_install_source" ] &&
 		[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_jffs")" = "$cfmgr_install_jffs" ] || return 1
+	if [ -n "${cfmgr_install_context:-}" ]; then
+		case $cfmgr_install_context_fd in 0 | 3 | 5 | 9) ;; *) return 1 ;; esac
+		[ ! -L "$cfmgr_install_context" ] && [ "$cfmgr_install_context" -ef "/proc/self/fd/$cfmgr_install_context_fd" ] || return 1
+		[ "$("$cfmgr_install_awk" -f "$cfmgr_install_source/modules/lib/mountinfo.awk" "$cfmgr_install_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ] || return 1
+	fi
 	for cfmgr_install_attachment_path in "$cfmgr_install_jffs" "$cfmgr_install_jffs/scripts" "$cfmgr_install_jffs/addons"; do
 		if [ -e "$cfmgr_install_attachment_path" ] || [ -L "$cfmgr_install_attachment_path" ]; then
 			[ -d "$cfmgr_install_attachment_path" ] && [ ! -L "$cfmgr_install_attachment_path" ] || return 1
@@ -520,9 +521,26 @@ EOF
 cfmgr_bootstrap_native() {
 	[ "$#" -eq 1 ] || return 2
 	cfmgr_bootstrap_native_prepare "$1" install || return $?
+	cfmgr_install_storage_pinned=0
 	if cfmgr_storage_pin /opt /usr/bin/readlink /usr/bin/awk "$cfmgr_install_source/modules/lib/mountinfo.awk" /proc/self; then
+		cfmgr_install_storage_pinned=1
 		if cfmgr_bootstrap_native_work; then cfmgr_install_native_status=0; else cfmgr_install_native_status=$?; fi
 	else cfmgr_install_native_status=$?; fi
+	# Never start another probe (which resets identities) or clean evidence while
+	# a previous native/dependency child may still own work or inherited FDs.
+	if [ "$cfmgr_install_native_status" -eq 3 ] ||
+		[ "${cfmgr_dependencies_state:-none}" = retained ] ||
+		[ "${cfmgr_dependencies_native_unresolved:-0}" != 0 ] ||
+		{ [ -n "${cfmgr_probe_pid:-}" ] && [ "${cfmgr_probe_status:-}" != reaped ]; }; then
+		return 3
+	fi
+	if [ "$cfmgr_install_storage_pinned" = 1 ] && [ "$cfmgr_install_native_status" -ne 0 ] &&
+		[ "${cfmgr_dependencies_loss:-0}" != 1 ] && ! cfmgr_storage_attached; then
+		if cfmgr_bootstrap_storage_lost; then :; else
+			cfmgr_install_report_status=$?
+			[ "$cfmgr_install_report_status" -ne 3 ] || return 3
+		fi
+	fi
 	if ! cfmgr_bootstrap_cleanup; then
 		printf '[CFMGR] install: error: retained preflight context requires recovery (%s)\n' "$cfmgr_install_context" >&2
 		return 1
@@ -530,6 +548,63 @@ cfmgr_bootstrap_native() {
 	[ "$cfmgr_install_interrupted" = 0 ] || return 1
 	trap - HUP INT TERM
 	return "$cfmgr_install_native_status"
+}
+
+# These two fixed modes retain all native source/JFFS/RAM admission while
+# deliberately avoiding Entware. Ordinary install-* actions still require it.
+cfmgr_bootstrap_report_action() {
+	cfmgr_bootstrap_native_attached || return 1
+	case $1 in
+	install-report) cfmgr_install_report_tool=/usr/bin/logger ;;
+	install-report-ls) cfmgr_install_report_tool=$cfmgr_install_ls ;;
+	*) return 2 ;;
+	esac
+	cfmgr_prerequisites_run "$1" "$cfmgr_install_context" "$cfmgr_install_sh" \
+		"$cfmgr_install_source/modules/helpers/probe.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
+		"$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_install_report_tool" "$2" || return $?
+	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	[ "$1" != install-report ] || [ ! -s "$cfmgr_probe_stdout" ]
+}
+
+# Admit both the applet's literal ancestry and its resolved native executable.
+# Use bounded native listings, never the Entware-attached install metadata path.
+cfmgr_bootstrap_logger_admit() {
+	[ -f /usr/bin/logger ] && [ -x /usr/bin/logger ] || return 1
+	cfmgr_bootstrap_native_attached || return 1
+	cfmgr_install_logger_resolved=$("$cfmgr_install_readlink" -f /usr/bin/logger) || return 1
+	case $cfmgr_install_logger_resolved in /usr/bin/logger | /bin/busybox) ;; *) return 1 ;; esac
+	for cfmgr_install_logger_root in /usr/bin "$cfmgr_install_logger_resolved"; do
+		cfmgr_install_logger_parent=$cfmgr_install_logger_root
+		while :; do
+			cfmgr_bootstrap_report_action install-report-ls "$cfmgr_install_logger_parent" || return $?
+			IFS=' ' read -r cfmgr_install_mode cfmgr_install_links cfmgr_install_uid cfmgr_install_gid cfmgr_install_rest <"$cfmgr_probe_stdout" || return 1
+			[ "$cfmgr_install_uid" = 0 ] || return 1
+			case $cfmgr_install_mode in
+			d????????? | -?????????) case $cfmgr_install_mode in ?????w???? | ????????w?) return 1 ;; esac ;;
+			*) return 1 ;;
+			esac
+			[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_logger_parent")" = "$cfmgr_install_logger_parent" ] || return 1
+			[ "$cfmgr_install_logger_parent" != / ] || break
+			cfmgr_install_logger_parent=${cfmgr_install_logger_parent%/*}
+			[ -n "$cfmgr_install_logger_parent" ] || cfmgr_install_logger_parent=/
+		done
+	done
+}
+
+cfmgr_bootstrap_storage_lost() {
+	printf '[CFMGR] Manager: Error: Entware storage lost; installation stopped\n' >&2
+	if cfmgr_bootstrap_logger_admit; then :; else
+		cfmgr_install_log_status=$?
+		printf '[CFMGR] Manager: Warning: native system log unavailable\n' >&2
+		[ "$cfmgr_install_log_status" -ne 3 ] || return 3
+		return 1
+	fi
+	if cfmgr_bootstrap_report_action install-report storage-lost; then return 1; else
+		cfmgr_install_log_status=$?
+		printf '[CFMGR] Manager: Warning: native system log delivery unconfirmed\n' >&2
+		[ "$cfmgr_install_log_status" -ne 3 ] || return 3
+		return 1
+	fi
 }
 
 # Fixed native tools/CA are root-protected through their resolved ancestry.

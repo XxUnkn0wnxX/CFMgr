@@ -18,7 +18,142 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active repair — S02.08 fresh-install storage-loss reporting
+
+The user authorized completing the audit, fixing the reopened S02.08 subgoal,
+passing its required gates, pushing the completed checkpoint and ending the turn.
+This supersedes the audit-only boundary below. Stop after S02.08 reacceptance and
+the pushed receipt; do not begin S14.02. Existing checkout/develop, router limits,
+review notes, requirements and the complete session ledger remain unchanged.
+
+Base is `1b0a691aaa29709958e2499a509b1c7a1e01aad9` plus the parent's three local
+audit-record corrections. Acceptance remains **8/157 (5.1%), 0/16 main goals (0%)**
+until the corrected complete affected gate passes. Goal 2 is **5/9**; S02.08 has
+no focused-complete or accepted tick while its required reporting is missing.
+
+The real consumer is trusted-local fresh installation through
+`cfmgr_bootstrap_native` and its publication transaction. Complete the final
+reporting/ownership audit, then implement bounded native storage-loss reporting
+before safe cleanup. A logger result cannot turn installation failure into
+success; unresolved owned work must retain its identity/context and prevent new
+probes or destructive cleanup. Preserve existing safe refusal, guards, normal
+success, retained-launch and active-repair behavior; no general logging feature.
+
+Parent owns design/integration, metadata and all planning records. Read-only
+`audit_repair_storage` completed the focused ownership/reporting audit with notes:
+inspect unresolved ownership before any new probe (which resets identity fields),
+use only explicit reporting-mode native admission, preserve source-loss uncertainty
+and suppress duplicate repair-loss notification. No other blocker was found.
+Strong worker `s0208_reporting_fix` completed bootstrap/probe/supervisor support
+and the corresponding focused tests and released all files. Parent integrated
+the fix and regenerated the manifest; independent runtime and test reviews passed.
+No main-goal full local/full CI suite is due. No router execution is authorized.
+
+The final dirty candidate based on `1b0a691` passed the 20-module focused command
+below using `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'`: **400 passed,
+65 platform/tool skips, four optional diagnostics excluded**, 354.02s pytest.
+Planning/package, Ruff/format/compile, shell syntax, ShellCheck, shfmt and whitespace
+all passed. Whole invocation: **659.76s wall, 350.72s user + 111.98s system**;
+maximum resident size 5,663,363,072 bytes, dominated by the existing broad static
+analysis. The isolated new reporting module passed **21 tests, five Linux skips**
+in 14.21s (15.11s wall, 9.28s combined CPU); publication fault proof cost 12.34s.
+Required Linux/BusyBox gates remain pending; do not accept S02.08 yet. Push this
+reviewed candidate with A's trailer, dispatch B-F at the same SHA, verify every
+required job/result and measured group cost, then publish the acceptance receipt.
+
+Affected gate map for the bootstrap/native-admission and finite shared-supervisor
+changes (whole modules, same final runtime SHA; A on push, B-F manual Quick):
+
+| Group | Complete test modules | Consumer/foundation proof |
+| --- | --- | --- |
+| A | `test_install_reporting.py`, `test_install.py`, `test_native.py`, `test_package.py` | Fresh outer wrapper, publication/guards, native source admission and package integrity. |
+| B | `test_prerequisites.py`, `test_dependency_consumer.py`, `test_dependency_selection.py`, `test_dependency_reinstall.py`, `test_execution_tasks.py` | Shared finite supervisor, normal prerequisites, selected reinstall and owned execution. |
+| C | `test_storage.py`, `test_storage_mounts.py`, `test_mount_keeper.py` | Attachment identity/loss, storage refusal and retained ownership. |
+| D | `test_dependencies.py` | Actual repair integration, loss reporting and unresolved child preservation; optional diagnostics excluded. |
+| E | `test_retained_launch.py` | Retained native launch/admission and reporting regression. |
+| F | `test_config_store.py`, `test_manager_settings.py`, `test_manager_settings_entry.py`, `test_status.py`, `test_config_observation.py`, `test_config.py` | Existing Save/settings/status consumers of shared native admission/supervision; defaults and snapshot preservation. |
+
+Local validation uses these 20 modules in one focused `tools/test.py` invocation,
+with its normal static/planning/package checks and explicit workstation skips.
+Linux/BusyBox ownership and supervisor proof remains pending complete Quick A-F.
+No development-runner/router-tool/platform-fixture-only or full-suite gate is added.
+Existing accepted consumers S02.03/.04/.05/.06/.09, S03.01/.07 and S07.01 receive
+regression proof; only S02.08 can gain an acceptance tick from this repair.
+
+## Completed acceptance audit — S02.08 reopened
+
+On 2026-10-16 the user reaffirmed dependency-ready, foundations-first work across
+main goals, smallest complete outcomes before larger packages, and requested an
+audit of existing acceptance. This rule already exists in AGENTS; no requirement,
+scope, gate or instruction change is needed. The audit inspected current code,
+written tests, recorded ordering and live GitHub acceptance receipts. It did not
+execute tests, access a router or start implementation.
+
+- Audited HEAD: `1b0a691aaa29709958e2499a509b1c7a1e01aad9` on `develop`, matching
+  `origin/develop` before these local record corrections. Since the last tested
+  runtime `576584885befb84f10bf8c10365a872a0b9fa406`, only README/checklist/handoff
+  changed. The preceding README wording edit was separately authorized and pushed.
+- Current accepted progress is **8/157 subgoals (5.1%); 0/16 main goals (0%)**.
+  Goal 2 is **5/9**, Goal 3 **2/10**, Goal 7 **1/11**. S02.03/S02.04/S02.05/S02.06/
+  S02.09/S03.01/S03.07/S07.01 retain acceptance. Supporting Goal 4 contracts and all
+  main-goal gates remain unchecked; no helper-only credit was found for those IDs.
+- **S02.08 is reopened for a specific missing consumer outcome.** If Entware is
+  lost during fresh-install publication outside active dependency repair,
+  `cfmgr_bootstrap_action` refuses further work and preserves recovery, but
+  `cfmgr_bootstrap_native` returns failure after cleanup and the entry prints only
+  a generic installation error. Section 2 requires unavailable-storage reporting
+  through native system messages. Retained launch and active repair have that
+  reporting; this fresh path does not. The existing publication-detach test
+  checks refusal/guards/preservation, not the missing notification. This omission
+  also exists at the original `81d2b29` acceptance; it is not later runtime drift
+  or evidence of unsafe continuation. Preserve the existing passing safety proof.
+- Live verification covered all **20** recorded acceptance runs for defaults,
+  native capability admission, repair/storage, reinstall, normal prerequisites,
+  status and manager settings. Every run matched its named full SHA and every
+  required job/step succeeded. Only optional cache-save or diagnostic full-host
+  steps were skipped. The six final `5765848` logs also match the whole-module
+  A-F map below: **438 passed**, one workstation-only skip and four optional
+  diagnostics excluded. Green tests did not cover the newly identified reporting
+  requirement; no fresh runtime or live-router qualification is claimed.
+- Recorded ordering supports the current approach, with one historical exception:
+  the premature S16.02/S16.04 documentation package was already reversed as
+  recorded below. Those IDs remain unchecked. The audit does not claim every
+  past effort estimate was globally optimal.
+- Parent integrated the read-only planner/explorer/analyst reviews. All review
+  owners are finished; no implementation worker or CI job was started. Current
+  parent session ID is unavailable/unverified; the verified ledger above is
+  preserved without adding an inferred ID.
+- Local record corrections are limited to README/checklist/handoff and remain
+  uncommitted/unpushed. `.venv/bin/python tools/check.py` passed all 157 aligned
+  subgoals, 16 README goal links and document links/privacy; `git diff --check`
+  passed. Independent row counting confirms eight accepted IDs. The complete
+  parent-session comment has the same SHA-256 as HEAD. Runtime tests were not rerun.
+
+**Next dependency-ready work:** finish the narrow S02.08 fresh-consumer reporting
+gap, with bounded native reporting after safe ownership resolution, preserved
+guards and truthful unavailable/unconfirmed delivery. Add focused proof for
+publication loss and reporting failure without weakening safe stop/cleanup.
+Map every changed consumer/shared foundation to complete affected local/static
+and required exact-candidate Quick groups before reacceptance. No full suite is
+due. Runtime work and publication have not started under this audit.
+
+After that correction, the proposed next full outcome remains **S14.02**. Its
+dependency order is backup-specific storage admission (S02.02, reusing validated
+S02.08 foundations), typed destination parsing and scoped durable Save/recovery
+(S04.01/S04.02/S04.03/S04.07/S04.08/S04.09), then the real menu-4 consumer and
+input/cancellation handling (S03.03/S04.06). Complete select/Save/reopen/revalidate,
+exact mount identity, safe root CFBackup creation/reuse and no stale/fallback
+writes. Backup policy must not inherit Entware-only filesystem/noexec restrictions;
+honor usable drives without POSIX modes and best-effort privacy modes. Handle
+partial folder/config completion honestly. Only S14.02 is the proposed acceptance
+target; broader support IDs and archive creation/restore remain separately gated.
+The user permits cross-goal prerequisites under the existing ordering rule; no
+additional A/B choice is needed merely because those foundations cross goals.
+
 ## Paused checkpoint — S07.01 accepted
+
+Historical checkpoint receipt: the current audit and acceptance counts above
+supersede this receipt's nine-subgoal total; S07.01 itself remains accepted.
 
 **Stop here.** The authorized S07.01/native Save package is complete through
 parent review, focused local/statics and all six exact-candidate Quick CI groups.

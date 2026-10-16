@@ -345,6 +345,15 @@ launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-reado
 		;;
 	esac
 	;;
+install-report-ls)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /usr/bin/logger | /usr/bin | /usr | /bin/busybox | /bin | /) ;; *) exit 2 ;; esac
+	exec "$tool" -ldn "$1"
+	;;
+install-report)
+	[ "$#" -eq 1 ] && [ "$1" = storage-lost ] || exit 2
+	exec "$tool" -p user.err -t CFMGR '[CFMGR] Manager: Error: Entware storage lost; installation stopped'
+	;;
 launch-report)
 	[ "$#" -eq 1 ] && [ "$1" = storage-unavailable ] || exit 2
 	exec "$tool" -t CFMGR '[CFMGR] launch: error: Entware attachment unavailable; operation stopped'
