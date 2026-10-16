@@ -99,7 +99,22 @@ before its final redirected status print. Parent and independent reviewer agree
 the correction is to require the same two uniquely typed records in either
 order, retaining successful OpenSSL exit and reader status; other, missing or
 duplicate records still fail closed. This is an observed portability repair,
-not a relaxed hash/read contract. Complete entry/consumer tests are being rerun.
+not a relaxed hash/read contract. Final local entry/reinstall, settings/backup and
+status/retained groups passed 151 tests with five Linux-only skips, each group
+under 90s. At `1ed124bb5ad19c13b507af61e56f796b1c995118`,
+[complete focused vendor proof 38865544386](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38865544386)
+passed all 28 entry/package tests without skips in 3.12s pytest / 3.29s wall.
+At the same exact SHA,
+[core Checks 38865532262](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38865532262)
+passed every required job/step: host **612 passed, 28 skipped** in 153.75s process
+wall; vendor BusyBox **639 passed, 1 workstation-only skip** in 654.72s wall.
+Four optional diagnostic cases were excluded per phase and are not claimed
+passed. Total job duration was 13m52s; the focused package gate remains well below
+the two-minute target. Parent verified the exact SHA, terminal conclusions and
+raw logs, closing the earlier review's platform-proof condition. **S02.01 alone
+is accepted**; no supporting overlap gains credit. Full local main-goal and live
+Merlin/ARM/provider qualification remain separate gates. Final local commands,
+timings and private receipt locations are recorded in the handoff.
 
 ## S07.08 acquisition and pre-execution design review
 

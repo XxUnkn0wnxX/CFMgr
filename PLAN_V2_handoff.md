@@ -21,26 +21,31 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S02.01 — final consumer gates passed; CI pending
+## Paused after accepted S02.01 — ready to select the next task
 
 The user approved the smallest independent S02.01 closure, with push and pause
 after its required gate. Use this checkout and `develop`; do not start another
 package, deploy to a router, release or implement the updater/standalone bootstrap.
-Original baseline: `a17a66d859d047bb47cb67575ac086e11d65a23f`. Current published
-head: `13e6807f3f6686ff00ef2e1dbcc079ec85047f70`; the final receipt-order repair
-and narrow PTY fixture correction are ready to commit/push.
+Original baseline: `a17a66d859d047bb47cb67575ac086e11d65a23f`. Final tested and
+published code: **`1ed124bb5ad19c13b507af61e56f796b1c995118`**, including the
+receipt-order repair and narrow PTY fixture correction. Complete focused local
+gates, parent review, focused vendor Quick and exact-candidate core CI passed.
+This documentation receipt updates README/checklist/audit/handoff only; it does
+not imply a runtime rerun at its own revision.
 
 Route A targets **S02.01** only. Accepted S07.08 acquisition and existing
 status/settings/backup consumers provide its foundations. S04.09 generation
 admission and S02.07 native status overlap without extra credit. Requirements
-remain unchanged. Accepted totals stay **11/157 (7.0%)**, **0/16 main goals (0%)**,
-Goal 2 **6/9**, until exact required CI passes.
+remain unchanged. Accepted totals are **12/157 (7.6%)**, **0/16 main goals (0%)**,
+Goal 2 **7/9 (77.8%)**. Only S02.01 gained credit; 145 product subgoals and all
+16 main-goal completion gates remain.
 
 Parent owns architecture/security decisions, integration and all V2 records.
 Fixture/regression implementation, independent Astra design and independent
 runtime review are complete; all workers released their files. Parent agrees
 with the final independent **PASS** on strict reader/hash receipts in either
-order. No worker, local test or CI remains active. No pending user question.
+order. All workers and the CI awaiter finished and released their files. No local
+test, required CI job, unresolved implementation failure or user question remains.
 
 Implemented: trusted entry verifies its own installed record and fixed inert
 `modules/lib/package.sh` using the protected bounded manifest before sourcing
@@ -89,16 +94,43 @@ Additional unchanged-boundary local evidence: package/install 33 passed, 1 Linux
 skip (66.29s pytest / 67.16s wall); acquisition 2 passed, 5 Linux skips (0.59s /
 1.17s); platform fixture 40 passed (1.54s / 2.46s). Their raw receipts are
 `local-package-install.log`, `local-acquisition.log`, `local-platform-fixture.log`.
-Linux-only tests remain pending. Final four-file ShellCheck passed in 20.28s
+Local Linux-only skips are covered by the required CI below. Final four-file
+ShellCheck passed in 20.28s
 (11.76s user + 0.59s system), with syntax/shfmt, relevant Ruff/format/compile,
 package/planning and whitespace passed. Earlier whole-tree common statics passed
 in the status/retained runner. No full local milestone suite is due.
 
-Next: commit/push final entry/manifest and PTY fixture correction plus these
-parent records, run complete focused vendor entry/package modules and automatic
-core Checks at exactly that SHA. Freeze implementation while waiting. On green,
-accept only S02.01, update README/checklist/audit/handoff, publish the documentation
-receipt and pause. Keep all failed/cancelled evidence distinct from the final gate.
+Passed at the final tested code revision:
+[core Checks 38865532262](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38865532262)
+and [complete focused package gate 38865544386](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38865544386).
+The focused run selects `test_entry_package.py` and `test_package.py` under actual
+vendor BusyBox. **Quick passed all 28 tests, no skips**, 3.12s pytest / 3.29s wall,
+2.24s user + 1.52s system, maximum RSS 37,480 KiB. Every required step passed at
+the final SHA; its unrequested diagnostic-host step was intentionally skipped.
+Raw `quick-final.{json,log}` is retained.
+
+Core Checks passed every required job/step at that same SHA. The job ran
+**13m52s**, 07:10:31–07:24:23 UTC on 2026-10-16.
+
+| Required core phase | Result | Process wall | User / system CPU | Peak RSS |
+| --- | --- | --- | --- | --- |
+| Host/common | 612 passed, 28 platform skips; 4 optional diagnostics excluded | 153.75s | 39.01s / 30.49s | 49,332 KiB |
+| Native-host vendor BusyBox | 639 passed, 1 workstation-only skip; 4 optional diagnostics excluded | 654.72s | 351.15s / 219.95s | 46,488 KiB |
+
+Parent verified exact `headSha`, terminal conclusions, every required step and
+test counts/timings from `core-final.{json,log}` under `.tmp/s0201-ci/`. Optional
+diagnostics are not claimed passed. Representative Ubuntu/vendor BusyBox proves
+development acceptance; live Merlin/ARM/router/provider qualification remains
+beta-only. No router actions occurred. The new focused package group is 3.12s;
+no broad optimization or extra full local run was needed for this closure.
+
+Resume by checking clean `develop` against `origin/develop` and reading this
+section with the current specification/checklist/audit. The authorized package
+is complete and the requested pause boundary has been reached. Wait for the
+user's next-task authorization; then compare remaining cross-goal prerequisites
+and the smallest independently completable outcomes before selecting scope.
+No next target has been started. Preserve failed/cancelled receipts separately
+from the successful final gate. The specification and task contracts are unchanged.
 
 ## Paused after accepted S07.08 — ready to select the next task
 
