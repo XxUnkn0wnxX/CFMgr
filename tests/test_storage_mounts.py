@@ -172,6 +172,12 @@ def test_read_only_and_noexec_ext4_mounts_are_denied(
     assert_fixture_passed(result, "ro_noexec")
 
 
+@pytest.mark.parametrize("case", ["backup_folder", "backup_replacement"])
+def test_backup_destination_real_mount_safety(fixture_tools, tmp_path, case):
+    result = run_fixture(fixture_tools, case, tmp_path)
+    assert_fixture_passed(result, case)
+
+
 def test_fixture_rejects_wrong_argument_count_before_setup(
     selected_shell: list[str],
 ) -> None:

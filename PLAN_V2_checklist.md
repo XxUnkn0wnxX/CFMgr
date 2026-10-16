@@ -387,7 +387,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [ ] | [ ] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
-| [ ] | [ ] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
+| [ ] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
 | [ ] | [ ] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
 | [ ] | [ ] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
 | [ ] | [ ] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
@@ -397,6 +397,19 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | [ ] | [ ] | S14.09 | **Safe current-code restore:** Exact input/schema/hash/path/type/size validation, supported migration and current components, no archive code/downgrade. |
 | [ ] | [ ] | S14.10 | **State-aware reconstruction:** Never-configured/draft/maintenance/On/Off rules, independent logging preference and explicitly deferred optional history. |
 | [ ] | [ ] | S14.11 | **Guarded restore/recovery:** Fresh local ownership/generation, current auth/source admission, local rollback distinct from new auth-Off and no stale replay. |
+
+S14.02 is locally focused-tested on the prepared tree based on `506e97f`:
+typed destination persistence, exact mounted-drive admission and menu-4
+selection/Save/reopen are integrated. Parser/Store/storage checks passed 69 cases
+with 14 platform/tool skips in 64.33s wall, plus two list-framing cases in 1.58s.
+All eight menu journeys passed in 27.96s; affected settings/status/dependency,
+package/retained-launch and shared-supervisor regressions passed in bounded
+groups. Common statics and parent/independent runtime review passed.
+Final independent written-test review passed. Real Linux/vendor BusyBox mount
+and inherited-child proof and exact-candidate core Checks remain required; no acceptance credit
+yet. The [audit record](PLAN_V2_audit.md#s1402-destination-foundation-design-review)
+records design/implementation findings. Supporting portions of S02.02,
+S03.03 and Goal 4 receive no additional ticks.
 
 ### 15. Uninstall, retained installation and reset
 

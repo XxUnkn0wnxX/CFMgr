@@ -608,3 +608,69 @@ def test_candidate_size_limit_is_checked_before_output(
     for mode in ("observe", "patch"):
         result = invoke(commands, tmp_path, original, mode, observation)
         assert (result.returncode, result.stdout, result.stderr) == (1, b"", b"")
+
+
+BACKUP_DESTINATION = {
+    "schema": 1,
+    "mountpoint": "/tmp/mnt/Backup Drive\\literal",
+    "uuid": "abcd-1234",
+    "filesystem": "vfat",
+    "root": "/",
+}
+
+
+def test_backup_scoped_patch_preserves_bytes_and_semantic_noop(
+    commands, config, tmp_path
+):
+    destination = BACKUP_DESTINATION
+    environment = {
+        "CFMGR_BACKUP_MOUNT": destination["mountpoint"],
+        "CFMGR_BACKUP_UUID": destination["uuid"].upper(),
+        "CFMGR_BACKUP_FILESYSTEM": destination["filesystem"],
+        "CFMGR_BACKUP_ROOT": destination["root"],
+    }
+    result = invoke(commands, tmp_path, config, "backup-patch", environment)
+    assert result.returncode == 0, result.stderr
+    expected = config.replace(b'"generation":1', b'"generation":2').replace(
+        b'"destination":null',
+        b'"destination":' + json.dumps(destination, separators=(",", ":")).encode(),
+    )
+    assert result.stdout == expected
+    assert json.loads(result.stdout)["backup"]["destination"] == destination
+    # Formatting and field order are semantically irrelevant to a no-op.
+    formatted = result.stdout.replace(
+        json.dumps(destination, separators=(",", ":")).encode(),
+        json.dumps(dict(reversed(list(destination.items()))), indent=1).encode(),
+    )
+    noop = invoke(commands, tmp_path, formatted, "backup-patch", environment)
+    assert (noop.returncode, noop.stdout, noop.stderr) == (0, formatted, b"")
+    read = invoke(commands, tmp_path, formatted, "backup-read")
+    fields = read.stdout.decode().split()
+    assert fields[:4] == ["CFMGR-BACKUP-CONFIG", "1", "2", "1"]
+    assert [bytes.fromhex(value).decode() for value in fields[4:8]] == [
+        destination[key] for key in ("mountpoint", "uuid", "filesystem", "root")
+    ]
+    assert fields[8:] == ["END"]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"schema": 2},
+        {"mountpoint": "/mnt/usb"},
+        {"mountpoint": "/tmp/mnt/stale/../usb"},
+        {"uuid": ""},
+        {"uuid": "x\ny"},
+        {"root": "relative"},
+        {"extra": True},
+    ],
+)
+def test_backup_typed_destination_rejects_ambiguous_or_unsafe_data(
+    commands, config, tmp_path, change
+):
+    destination = {**BACKUP_DESTINATION, **change}
+    data = config.replace(
+        b'"destination":null', b'"destination":' + json.dumps(destination).encode()
+    )
+    result = invoke(commands, tmp_path, data, "backup-read")
+    assert (result.returncode, result.stdout, result.stderr) == (1, b"", b"")

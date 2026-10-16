@@ -9,7 +9,8 @@ BEGIN {
     if (cfmgr_config_mode != "check" && cfmgr_config_mode != "observe" &&
         cfmgr_config_mode != "patch" && cfmgr_config_mode != "scope" &&
         cfmgr_config_mode != "settings-read" && cfmgr_config_mode != "settings-observe" &&
-        cfmgr_config_mode != "settings-patch") reject()
+        cfmgr_config_mode != "settings-patch" && cfmgr_config_mode != "backup-read" &&
+        cfmgr_config_mode != "backup-observe" && cfmgr_config_mode != "backup-patch") reject()
 
     for (co_i = 2; co_i <= cfmgr_json_tree_count; co_i++)
         co_child[cfmgr_json_tree_parent[co_i], cfmgr_json_tree_location[co_i]] = co_i
@@ -79,9 +80,72 @@ BEGIN {
     co_network = co_field(1, "network", "object")
     co_field(co_network, "address_family", "string")
     co_field(co_network, "selected_wan", "string|number|null")
-    co_field(1, "backup", "object")
+    co_backup = co_field(1, "backup", "object")
+    co_destination = co_field(co_backup, "destination", "object|null")
+    co_backup_present = (cfmgr_json_tree_kind[co_destination] == "object")
+    if (co_backup_present) {
+        co_backup_schema = co_field(co_destination, "schema", "number")
+        if (cfmgr_json_tree_payload[co_backup_schema] != "n1") reject()
+        co_backup_keys[1] = "mountpoint"; co_backup_keys[2] = "uuid"
+        co_backup_keys[3] = "filesystem"; co_backup_keys[4] = "root"
+        co_backup_fields = 0
+        for (co_i = 1; co_i <= cfmgr_json_tree_count; co_i++)
+            if (cfmgr_json_tree_parent[co_i] == co_destination) co_backup_fields++
+        if (co_backup_fields != 5) reject()
+        for (co_i = 1; co_i <= 4; co_i++) {
+            co_bi = co_field(co_destination, co_backup_keys[co_i], "string")
+            co_backup_saved[co_i] = co_decode(substr(cfmgr_json_tree_payload[co_bi], 2))
+        }
+        co_backup_valid(co_backup_saved[1], co_backup_saved[2], co_backup_saved[3], co_backup_saved[4])
+        if (co_backup_saved[2] ~ /^[0-9A-Fa-f-]+$/) co_backup_saved[2] = tolower(co_backup_saved[2])
+    }
     co_field(1, "credentials", "object")
     co_field(1, "ownership", "object")
+
+    if (cfmgr_config_mode ~ /^backup-/) {
+        if (cfmgr_config_mode == "backup-read") {
+            printf "CFMGR-BACKUP-CONFIG 1 %s %d %s %s %s %s END\n", co_old, co_backup_present,
+                (co_backup_present ? co_hex(co_backup_saved[1]) : "-"),
+                (co_backup_present ? co_hex(co_backup_saved[2]) : "-"),
+                (co_backup_present ? co_hex(co_backup_saved[3]) : "-"),
+                (co_backup_present ? co_hex(co_backup_saved[4]) : "-")
+            exit 0
+        }
+        co_backup_want[1] = ENVIRON["CFMGR_BACKUP_MOUNT"]
+        co_backup_want[2] = ENVIRON["CFMGR_BACKUP_UUID"]
+        co_backup_want[3] = ENVIRON["CFMGR_BACKUP_FILESYSTEM"]
+        co_backup_want[4] = ENVIRON["CFMGR_BACKUP_ROOT"]
+        co_backup_valid(co_backup_want[1], co_backup_want[2], co_backup_want[3], co_backup_want[4])
+        if (co_backup_want[2] ~ /^[0-9A-Fa-f-]+$/) co_backup_want[2] = tolower(co_backup_want[2])
+        co_changed = !co_backup_present
+        co_backup_json = "{\"schema\":1"
+        co_backup_keys[1] = "mountpoint"; co_backup_keys[2] = "uuid"
+        co_backup_keys[3] = "filesystem"; co_backup_keys[4] = "root"
+        for (co_i = 1; co_i <= 4; co_i++) {
+            if ("v" co_backup_want[co_i] != "v" co_backup_saved[co_i]) co_changed = 1
+            co_backup_json = co_backup_json ",\"" co_backup_keys[co_i] "\":" co_quote(co_backup_want[co_i])
+        }
+        co_backup_json = co_backup_json "}"
+        co_result = document
+        if (co_changed) {
+            co_new = co_increment(co_old)
+            co_replacement[co_generation] = co_new
+            co_replacement[co_destination] = co_backup_json
+            co_result = ""; co_cursor = 1
+            for (co_i = 1; co_i <= cfmgr_json_tree_count; co_i++) {
+                if (!(co_i in co_replacement)) continue
+                co_result = co_result substr(document, co_cursor, cfmgr_json_tree_start[co_i] - co_cursor) co_replacement[co_i]
+                co_cursor = cfmgr_json_tree_end[co_i] + 1
+            }
+            co_result = co_result substr(document, co_cursor)
+        }
+        if (length(co_result) > 65536) reject()
+        if (cfmgr_config_mode == "backup-patch") printf "%s", co_result
+        else printf "CFMGR-BACKUP-PATCH 1 %s %s %d %d %d %d %d %d END\n", co_old, co_new,
+            co_changed, (cfmgr_json_tree_kind[co_check] == "true"), (cfmgr_json_tree_kind[co_auto] == "true"),
+            (cfmgr_json_tree_kind[co_developer] == "true"), expected_size, length(co_result)
+        exit 0
+    }
 
     if (cfmgr_config_mode ~ /^settings-/) {
         co_settings_check = (cfmgr_json_tree_kind[co_check] == "true" ? 1 : 0)
@@ -228,6 +292,16 @@ function co_observation_valid(uuid, filesystem, root, relative,    groups, count
     if (filesystem != "ext2" && filesystem != "ext3" && filesystem != "ext4") reject()
     co_path(root, 1)
     co_path(relative, 0)
+}
+
+function co_backup_valid(point, uuid, filesystem, root,    i, value) {
+    co_path(point, 1); co_path(root, 1)
+    if (substr(point, 1, 9) != "/tmp/mnt/" || length(point) > 1024 || length(root) > 1024 ||
+        length(uuid) > 128 || uuid !~ /^[A-Za-z0-9][A-Za-z0-9._:-]*$/ ||
+        length(filesystem) > 32 || filesystem !~ /^[A-Za-z0-9][A-Za-z0-9_+.-]*$/) reject()
+    value = point root
+    for (i = 1; i <= length(value); i++)
+        if (byte_value["b" substr(value, i, 1)] > 126) reject()
 }
 
 function co_increment(value,    i, digit_value, carry, result) {

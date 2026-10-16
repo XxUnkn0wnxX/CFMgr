@@ -505,7 +505,7 @@ def test_installed_choice_zero_returns_without_operational_preparation(
             + functions
         )
     original = data.read_bytes()
-    result = entry_run(shell, entry, [], b"0\nao\ne\ne\n", terminal=True)
+    result = entry_run(shell, entry, [], b"0\nao\ne\ne\n", terminal=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert b"CFMgr 0.1.0 - local status" in result.stdout
     assert result.stdout.count(b"0 Check status") >= 2

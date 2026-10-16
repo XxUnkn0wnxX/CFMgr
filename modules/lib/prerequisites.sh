@@ -123,6 +123,10 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	store-backup-config) [ "$#" -eq 18 ] || return 2 ;;
+	store-backup-mounts | store-backup-mount) [ "$#" -eq 11 ] || return 2 ;;
+	store-backup-blkid) [ "$#" -eq 10 ] || return 2 ;;
+	store-backup-mkdir | store-backup-chmod) [ "$#" -eq 9 ] || return 2 ;;
 	store-settings) [ "$#" -eq 17 ] || return 2 ;;
 	store-copy | store-move | store-intent | store-space-frame) [ "$#" -eq 11 ] || return 2 ;;
 	store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;
@@ -555,7 +559,7 @@ _cfmgr_prerequisites_exec() {
 		DYLD_INSERT_LIBRARIES DYLD_LIBRARY_PATH DYLD_FRAMEWORK_PATH \
 		DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 		OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
-	case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; status-snapshot | store-snapshot | store-settings | store-copy) ulimit -f 128 || exit 2 ;; install-copy | launch-copy) ulimit -f 2048 || exit 2 ;; launch-config-patch) ulimit -f 128 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
+	case "$cfmgr_probe_mode" in repair-*) ulimit -f 8192 || exit 2 ;; status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;; install-copy | launch-copy) ulimit -f 2048 || exit 2 ;; launch-config-patch) ulimit -f 128 || exit 2 ;; *) ulimit -f 8 || exit 2 ;; esac
 	case "$cfmgr_probe_mode" in
 	install-* | native-* | repair-* | launch-* | status-* | store-*)
 		shift 9

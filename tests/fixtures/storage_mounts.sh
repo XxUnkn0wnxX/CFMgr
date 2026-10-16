@@ -24,7 +24,7 @@ dependency_process=${10:-}
 # shellcheck disable=SC2034 # Installer fixture extension consumes this private adapter.
 dependency_install_adapter=${11:-}
 case "$case_name" in
-valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | view_compat | view_detach | view_cleanup | dependency_repair | dependency_update_failure | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer) ;;
+valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | backup_folder | backup_replacement | view_compat | view_detach | view_cleanup | dependency_repair | dependency_update_failure | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer) ;;
 *)
 	printf 'storage mount fixture: invalid case\n' >&2
 	exit 2
@@ -249,7 +249,7 @@ blkid "$device" >"$fixture/blkid-main"
 main_uuid=$(blkid -s UUID -o value "$device")
 [ -n "$main_uuid" ] || fail 'ext4 UUID was not observed'
 
-if [ "$case_name" = lazy_replacement ] || [ "$case_name" = view_detach ]; then
+if [ "$case_name" = lazy_replacement ] || [ "$case_name" = view_detach ] || [ "$case_name" = backup_replacement ]; then
 	truncate -s 32M "$replacement_image"
 	mkfs.ext4 -q -F -U random "$replacement_image"
 	replacement_device=$(losetup --find --show "$replacement_image") ||
@@ -446,6 +446,72 @@ view_chroot() {
 # Globals below are outputs from cfmgr_storage_pin in the sourced library.
 # shellcheck disable=SC2154
 case "$case_name" in
+backup_folder | backup_replacement)
+	# Only the fixed /tmp/mnt prefix is adapted into the owned fixture tree.
+	# Production parsing, exact mount snapshots, FD identity, helper, native
+	# supervisor and all real mounts remain unchanged. No host /tmp/mnt writes.
+	sed "s|in /tmp/mnt/?\*)|in $fixture/?*)|" "$root/modules/lib/storage.sh" >"$fixture/backup-storage.sh"
+	# shellcheck disable=SC1091 # Private copy differs only in the fixture root.
+	. "$fixture/backup-storage.sh"
+	# shellcheck disable=SC1091
+	. "$root/modules/lib/prerequisites.sh"
+	# shellcheck disable=SC1091
+	. "$root/modules/lib/config_store.sh"
+	for backup_applet in sh awk sleep wc; do ln -s "$view_busybox" "$fixture/$backup_applet"; done
+	mkdir -m 700 "$fixture/backup-probes"
+	mkdir -p "$fixture/backup-source/modules/helpers" "$fixture/backup-source/modules/lib"
+	sed "s|/tmp/mnt|$fixture|g" "$root/modules/helpers/probe.sh" >"$fixture/backup-source/modules/helpers/probe.sh"
+	chmod 700 "$fixture/backup-source/modules/helpers/probe.sh"
+	cp "$root/modules/lib/mountinfo.awk" "$fixture/backup-source/modules/lib/mountinfo.awk"
+	cfmgr_store_source=$fixture/backup-source cfmgr_store_context=$fixture/backup-probes
+	cfmgr_store_sh=$fixture/sh cfmgr_store_awk=$fixture/awk cfmgr_store_wc=$fixture/wc cfmgr_store_sleep=$fixture/sleep
+	cfmgr_store_env=/usr/bin/env cfmgr_store_readlink=$readlink
+	cfmgr_store_backup_gate=0 cfmgr_config_lock_fd0=0 cfmgr_probe_serial=0
+	cfmgr_store_attachment_ok() { [ "$cfmgr_store_backup_gate" = 0 ] || cfmgr_backup_attached; }
+	cfmgr_prerequisites_pause() { "$view_busybox" usleep 50000; }
+	cfmgr_prerequisites_now || fail 'backup native clock unavailable'
+	cfmgr_store_deadline=$((cfmgr_probe_now + 20))
+	mount -o remount,noexec "$mount_dir" || fail 'backup noexec remount failed'
+	cfmgr_backup_want_mount=$mount_dir cfmgr_backup_want_uuid=$main_uuid cfmgr_backup_want_filesystem=ext4 cfmgr_backup_want_root=/
+	cfmgr_backup_want_snapshot=$("$awk" -f "$root/modules/lib/mountinfo.awk" "$mount_dir" /proc/self/mountinfo)
+	cfmgr_backup_pin_selected || fail 'real noexec backup drive was not admitted'
+	cfmgr_backup_prepare_folder || fail 'root backup folder was not created through the pinned mount'
+	[ -d "$mount_dir/CFBackup" ] || fail 'backup folder was not created at the drive root'
+	printf 'unrelated backup content\n' >"$mount_dir/CFBackup/keep"
+	cfmgr_backup_prepare_folder || fail 'existing root backup folder was not prepared'
+	[ "$(cat "$mount_dir/CFBackup/keep")" = 'unrelated backup content' ] || fail 'backup contents were changed'
+	if [ "$case_name" = backup_folder ]; then
+		exec 7<&-
+		cfmgr_backup_folder_pinned=0
+		mv "$mount_dir/CFBackup" "$mount_dir/CFBackup.saved"
+		ln -s "$mount_dir/CFBackup.saved" "$mount_dir/CFBackup"
+		if cfmgr_backup_folder_admit; then fail 'backup folder symlink was admitted'; fi
+		rm "$mount_dir/CFBackup"
+		mv "$mount_dir/CFBackup.saved" "$mount_dir/CFBackup"
+		mount -t tmpfs -o size=64k tmpfs "$mount_dir/CFBackup"
+		if cfmgr_backup_folder_admit; then fail 'nested backup mount was admitted'; fi
+		umount "$mount_dir/CFBackup"
+		exec 6<&- 7<&-
+		cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+		mount --bind "$mount_dir/entware" "$bind_dir"
+		if cfmgr_backup_observe_mount "$bind_dir"; then fail 'Entware subtree bind was admitted as a backup drive'; fi
+		printf 'PASS: noexec backup folder preserves contents; symlink, nested mount and Entware subtree bind refused\n'
+	else
+		umount -l "$mount_dir" || fail 'backup lazy detach failed'
+		if cfmgr_backup_prepare_folder; then fail 'backup prepared folder on bare mountpoint'; fi
+		[ ! -e "$mount_dir/CFBackup" ] || fail 'bare mountpoint received backup writes'
+		mount -t ext4 "$replacement_device" "$mount_dir" || fail 'backup replacement mount failed'
+		if cfmgr_backup_attached; then fail 'backup attachment adopted replacement'; fi
+		if cfmgr_backup_prepare_folder; then fail 'backup prepared folder on replacement'; fi
+		[ ! -e "$mount_dir/CFBackup" ] || fail 'replacement received backup writes'
+		[ "$(cat /proc/self/fd/7/keep)" = 'unrelated backup content' ] || fail 'original pinned backup content changed'
+		exec 6<&- 7<&-
+		cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+		if cfmgr_backup_pin_selected; then fail 'stale selected snapshot admitted replacement'; fi
+		printf 'PASS: backup lazy detach and replacement refuse writes and stale selection; original contents preserved\n'
+	fi
+	exec 6<&- 7<&-
+	;;
 dependency_repair | dependency_update_failure | dependency_retry | dependency_daemon | dependency_threads | dependency_mixed | dependency_loss | dependency_installer)
 	# shellcheck disable=SC1091 # Fixed repository fixture extension, no user input.
 	. "$root/tests/fixtures/dependencies.sh"

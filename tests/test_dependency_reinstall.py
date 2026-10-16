@@ -31,6 +31,7 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
     (support / "modules/lib").mkdir(parents=True)
     (support / "modules/helpers").mkdir()
     (support / "modules/manager_settings.sh").write_text("# inert adapter\n")
+    (support / "modules/backup.sh").write_text("# inert adapter\n")
     original = (ROOT / "cfmgr.sh").read_text()
     adapted = (
         original.replace("/jffs", str(jffs))
@@ -73,7 +74,13 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
 
 
 def entry_run(
-    shell: list[str], entry: Path, args: list[str], data: bytes, *, terminal: bool
+    shell: list[str],
+    entry: Path,
+    args: list[str],
+    data: bytes,
+    *,
+    terminal: bool,
+    timeout: float = 3,
 ) -> subprocess.CompletedProcess[bytes]:
     environment = {**os.environ, "CFMGR_INTERNAL_LAUNCH": "1", "CFMGR_CONSENT": "yes"}
     if not terminal:
@@ -82,7 +89,7 @@ def entry_run(
             input=data,
             env=environment,
             capture_output=True,
-            timeout=3,
+            timeout=timeout,
             check=False,
         )
     master, slave = pty.openpty()
@@ -95,7 +102,7 @@ def entry_run(
             env=environment,
         )
         os.write(master, data)
-        out, err = child.communicate(timeout=3)
+        out, err = child.communicate(timeout=timeout)
         return subprocess.CompletedProcess(child.args, child.returncode, out, err)
     finally:
         os.close(master)

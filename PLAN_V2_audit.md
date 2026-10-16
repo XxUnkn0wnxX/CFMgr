@@ -30,6 +30,80 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## S14.02 destination foundation design review
+
+2026-10-16, baseline `506e97f`: parent and dedicated read-only Astra reviewer
+agreed **PASS WITH NOTES** for one backup feature module, policy-separated
+storage helpers and the existing native configuration transaction. This is
+design review; the implementation review below is separate from acceptance.
+
+The backup action owns one bounded native context and private descriptor scope.
+It records a typed destination, compares the selected transient attachment before
+Save, creates/reuses only root `CFBackup` through the pinned mount, and verifies
+the complete destination after config publication. The existing journal, lock,
+raw-content freshness checks and JFFS recovery remain shared. Backup attachment
+checks must be read-only and nonrecursive. After owned work is quiescent,
+cleanup/recovery can proceed without the drive; no recovery operation recreates
+a folder or replays a selection. Failed Save may leave an inert prepared folder,
+whose contents are preserved. No cross-filesystem atomicity is claimed.
+
+The accepted Entware policy requires executable ext storage and a GUID-shaped
+UUID. Backup admission must separately accept `noexec` and valid filesystems
+without POSIX modes. [BusyBox 1.25.1 UUID formatting](https://raw.githubusercontent.com/mirror/busybox/1_25_1/util-linux/volume_id/util.c)
+uses shorter FAT/NTFS identifiers. The
+[reviewed Merlin mount dispatch](https://raw.githubusercontent.com/RMerl/asuswrt-merlin.ng/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/rc/usb.c)
+also uses driver aliases: a shared `ufsd` driver does not itself prove NTFS.
+Positive identity/type evidence and explicit driver compatibility are required;
+missing or ambiguous identity is unavailable, never a guessed substitute.
+These are source findings, not live filesystem qualification.
+
+The official [Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts) and
+[Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
+were consulted. The current destination operation introduces no hooks, firmware
+config overrides or service changes. Firmware/live qualification stays deferred
+to beta under the existing project boundary.
+
+Required review conditions: preserve the S07.01 public Store API/receipts; typed
+bounded destination parsing and complete readback; no stale-path writes; strict
+bounded encoded receipts; one whole-action deadline; final-directory identity
+checks; and truthful partial preparation/failure. Lean proof combines parser and
+Store regressions, real Linux/BusyBox mount cases, and the menu selection/Save/
+reopen journey at the required exact-candidate core gate. No new acceptance rule
+or product scope was introduced.
+
+Implementation review identified one additional ordering condition: the shared
+writer lock must be held before folder creation or mode changes, so an unresolved
+native folder mutator retains writer exclusion through the existing inherited
+descriptor mechanism. Preparing the folder before acquiring the Store lock would
+leave that overlap unguarded. Parent and an independent read-only analyst agreed
+on the finding and the fixed ordering. The dirty implementation now prepares
+the folder after lock/setup/pending admission, before both unchanged and changed
+Save outcomes. Focused local tests verify admission and refusal; the additional
+Linux case reuses the existing inherited-mutator fixture for folder operations.
+Its platform execution and final acceptance review remain pending.
+
+The independent backend implementation review returned **PASS WITH NOTES** on
+the dirty tree based on `506e97f`; parent agreed. It confirmed scoped destination
+patching, complete identity checks, pinned folder mutation, inherited writer
+exclusion, read-only status and drive-independent recovery. No backend blocker
+remained. The review excluded the then-active menu additions. Host foundation
+proof passed 69 cases with 14 platform/tool skips in 64.33s wall; two subsequent
+list-framing cases passed in 1.58s. Real Linux/vendor BusyBox mount and inherited
+child execution, final menu integration and exact-candidate core CI remain
+required before S14.02 acceptance.
+
+Final source/consumer and written-test review returned **PASS** after menu
+integration. Failed discovery renders unknown/unavailable rather than an empty
+list; successful receipts must match the requested action, destination, pending
+state and record count. The installed-entry tests prove explicit single-drive
+choice and confirmation before mutation, Save/reopen, duplicate labels,
+cancellation/EOF/SIGINT, failed Save/recovery and malformed-output refusal.
+Backend tests cover scoped persistence and drive loss; the separate Linux mount
+and inherited-lock fixtures still await the exact-candidate gate. Parent agrees
+the package is ready for publication and required core CI, with no additional
+supporting-subgoal, archive/restore or live-filesystem credit.
+
 ## Diagnostics fixture optimization review
 
 2026-10-16, baseline `8e6b79f`: parent and dedicated read-only Astra reviewer

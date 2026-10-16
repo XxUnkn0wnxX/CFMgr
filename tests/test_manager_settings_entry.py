@@ -34,6 +34,8 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools):
     for relative in (
         "modules/lib/prerequisites.sh",
         "modules/lib/mountinfo.awk",
+        "modules/lib/storage.sh",
+        "modules/backup.sh",
         "modules/helpers/launch.sh",
         "modules/manager_settings.sh",
         "modules/status.sh",

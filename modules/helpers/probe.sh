@@ -45,6 +45,37 @@ case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
 case "$mode" in
+store-backup-config)
+	[ "$#" -eq 9 ] || exit 2
+	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done
+	[ -f "$4" ] && [ ! -L "$4" ] || exit 1
+	case $3 in backup-read | backup-observe | backup-patch) ;; *) exit 2 ;; esac
+	case $5 in '' | *[!0-9]*) exit 2 ;; esac
+	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
+	export CFMGR_BACKUP_MOUNT="$6" CFMGR_BACKUP_UUID="$7" CFMGR_BACKUP_FILESYSTEM="$8" CFMGR_BACKUP_ROOT="$9"
+	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -f "$1" -f "$2" <"$4"
+	;;
+store-backup-mounts | store-backup-mount)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in /tmp/mnt | /tmp/mnt/?*) ;; *) exit 2 ;; esac
+	case $mode in
+	store-backup-mounts) exec "$tool" -f "$1" subtree-v1 "$2" /proc/self/mountinfo ;;
+	*) exec "$tool" -f "$1" "$2" /proc/self/mountinfo ;;
+	esac
+	;;
+store-backup-blkid)
+	[ "$#" -eq 1 ] && [ -b "$1" ] || exit 2
+	exec "$tool" "$1"
+	;;
+store-backup-mkdir)
+	[ "$#" -eq 0 ] && [ -d /proc/self/fd/6 ] || exit 2
+	[ ! -e /proc/self/fd/6/CFBackup ] && [ ! -L /proc/self/fd/6/CFBackup ] || exit 1
+	exec "$tool" /proc/self/fd/6/CFBackup
+	;;
+store-backup-chmod)
+	[ "$#" -eq 0 ] && [ -d /proc/self/fd/7 ] || exit 2
+	exec "$tool" 700 /proc/self/fd/7
+	;;
 store-settings)
 	[ "$#" -eq 8 ] || exit 2
 	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done

@@ -8,11 +8,12 @@
 cfmgr_launch_menu() {
 	[ -t 0 ] || return 1
 	while :; do
-		printf '%s\n' 'CFMgr: other feature operations unavailable' '0 Check status' 'ao Advanced options' 'e Exit'
+		printf '%s\n' 'CFMgr: backup destination selection available; archive and restore unavailable' '0 Check status' '4 Backup / Restore' 'ao Advanced options' 'e Exit'
 		IFS= read -r cfmgr_launch_choice || return 1
 		case $cfmgr_launch_choice in
 		e) return 1 ;;
 		0) cfmgr_status_native || : ;;
+		4) cfmgr_backup_menu || : ;;
 		ao)
 			while :; do
 				printf '%s\n' 'Advanced options: other actions unavailable' '1 Reinstall Entware dependencies' '2 CFMgr updates' 'e Back'

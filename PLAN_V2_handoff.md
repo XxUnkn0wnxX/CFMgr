@@ -18,6 +18,115 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active S14.02 checkpoint — implement, verify, push and pause
+
+The user authorized starting the previously reviewed S14.02 package, then
+explicitly requested a pause after implementation and its passing gate, with
+the final work pushed. This supersedes the historical stop notices below only
+for this package. Start revision: `506e97fded9ac29d865c38e67c8f5aaaef7ac40f`,
+clean `develop`, matching the local origin/develop tracking ref.
+
+Chosen route: the minimum coordinated foundation/consumer batch previously
+described to the user. Complete mounted-drive discovery/admission (the backup
+portion of S02.02, reusing S02.08), typed guarded destination persistence
+(applicable S04.01–.03 and S04.06–.09), then menu-4 navigation (S03.03 portion)
+and the full S14.02 selection/Save/reopen outcome. Supporting IDs receive no
+credit unless their complete original contracts are independently satisfied.
+Archive creation, retention and restore are outside this package.
+
+Parent owns architecture, integration, all five V2 records and publication.
+Read-only storage/persistence mapping is complete. The Astra design reviewer
+approved one backup feature owner borrowing the native Store context and its
+existing transaction; a fixed read-only attachment gate protects backup writes.
+Both implementation workers completed and released their files. Parent reviewed
+the integrated menu, backend and package metadata. Independent backend review
+returned PASS WITH NOTES; the stable UI/entry review passed after correcting
+unknown-versus-empty display and action-specific receipt validation. Final
+independent written-test review also passed; exact-candidate Linux/core CI
+remains pending. No writer
+or local test is active. Parent owns publication and all acceptance records.
+Backend interface is frozen for integration: `cfmgr_backup_action list|check|recover`
+or `save MOUNT_HEX UUID_HEX FILESYSTEM_HEX ROOT_HEX SNAPSHOT_HEX`. Strict bounded
+ASCII receipts carry encoded literal paths, saved identity and numbered drive
+rows. `check` distinguishes unset, available and unavailable saved destinations.
+The Save input includes the exact listing's transient attachment snapshot;
+persistent settings store the canonical mountpoint, UUID, filesystem and root.
+The backup action owns private FD6/7 and backup-prefixed state in a subshell;
+it does not replace the accepted Entware controller's globals or claim future
+simultaneous source/destination archive handling. Generic recovery remains
+independent of backup storage; the explicit backup-menu recovery route reuses
+that same JFFS-only transaction without folder creation or selection replay.
+Once owned work is reaped, cleanup may proceed
+without the backup drive. A prepared inert folder is never deleted to simulate
+cross-filesystem rollback.
+Storage and Save foundations must pass focused checks before menu integration.
+Required proof covers explicit single/multiple-drive selection, spaces/duplicate
+labels, exact identity revalidation, unavailable/replaced drives, safe CFBackup
+creation/reuse, unrelated-setting preservation, cancelled input and failed Save.
+Use focused local groups and applicable statics; Linux mount/BusyBox proof and
+the exact published candidate's automatic core Checks remain required. Aim for
+two-minute groups; split diagnostic Quick selections if a group reaches roughly
+three to four minutes. No full local suite or optional diagnostic rerun is due.
+
+Foundation implementation is locally focused-tested on the dirty tree based on
+`506e97f`. Command:
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' /usr/bin/time -l .venv/bin/python -m pytest -q tests/test_backup_storage.py tests/test_config_observation.py tests/test_config_store.py tests/test_storage_mounts.py --durations=5`.
+Result: **69 passed, 14 platform/tool skips**, 63.34s pytest / 64.33s wall,
+30.53s user + 22.36s system, approximately 45.7 MB maximum RSS. Two subsequent
+cheap list-framing tests passed in 1.58s with no intervening runtime edit.
+Linux mount/ownership proof remains pending CI; local skips are not passes.
+Changed-file Ruff lint/format, Python compile, shfmt, POSIX syntax, runtime
+ShellCheck and whitespace passed. The existing mount fixture retains two
+pre-existing unused-variable ShellCheck warnings; optional full Lint is not due.
+The menu package exercised short isolated PTY journeys through the installed
+entry; no router or user-data interaction was included.
+
+Shared-supervisor/storage regressions on the same dirty foundation passed with
+`CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q tests/test_prerequisites.py tests/test_mountinfo.py tests/test_storage.py --durations=5`:
+58 passed, 18 platform/tool skips, 7.82s pytest / 8.93s wall, 4.17s user +
+2.58s system. The slowest case was the bounded mount-inventory parser at 0.91s.
+The generated catalog/manifest include the backup module. Package/retained-launch
+regressions (`tests/test_package.py tests/test_retained_launch.py`, same direct
+pytest command/environment) passed 26 cases with one Linux/tool skip in 34.62s
+pytest / 35.19s wall, 15.51s user + 11.29s system. Passive config defaults
+(`tests/test_config.py`) passed seven cases in 0.58s pytest / 1.16s wall.
+
+Menu/entry proof used `.venv/bin/python -m pytest -q` with the named modules:
+
+| Focused scope | Final applicable result | Pytest time |
+| --- | --- | --- |
+| `tests/test_backup_menu.py` | 8 passed; real entry/Store single-drive Save/reopen, duplicate labels, no drives, cancellation/EOF/SIGINT, failed Save/recovery and malformed/unknown replies | 27.96s |
+| `tests/test_manager_settings_entry.py` | 3 passed in the combined run; unchanged after that valid result | Included below |
+| `tests/test_dependency_reinstall.py` | 78 passed, 2 platform skips after its fixture helper change | 68.35s |
+| `tests/test_status.py` | 34 passed, 2 platform skips after the scoped timeout correction | 30.63s |
+
+The initial four-module run had 122 passes, four skips and one status-fixture
+timeout in 126.15s. Its three-second process bound expired mid-report; the
+isolated status journey completed in 4.87s with a ten-second bound. Only that
+call now uses ten seconds; shared navigation defaults, production deadlines and
+behavior assertions are unchanged. The complete affected status and dependency
+modules then passed separately above. This is reused evidence across runs,
+equivalent to 123 passed/four skipped for the four-module scope, not a claimed
+single passing combined run. The [review note](PLAN_V2_review_notes.md#3-configuration-menus-and-status)
+records the host-only timing tolerance.
+
+Parent final common statics passed: shell syntax, pinned Ruff lint/format, Python
+compile and pinned `.venv/bin/shfmt`, plus planning/package/whitespace checks.
+Changed-runtime ShellCheck also passed; optional full Lint/Diagnostics were not
+run. Every final focused group remains under two minutes; the first combined
+entry group was split after its existing short fixture deadline failed.
+Prepared platform Quick selection: `tests/test_backup_storage.py
+tests/test_backup_menu.py tests/test_storage_mounts.py tests/test_config_store.py
+tests/test_config_observation.py`; use disjoint smaller selections for any
+Linux failure/slow group. Acceptance requires the exact published candidate's
+complete automatic core Checks, not a narrow diagnostic pass.
+
+Current acceptance remains 9/157 subgoals (5.7%), 0/16 main goals (0%); Goal 14
+1/11 locally focused-tested, with Linux/core CI still pending. No new acceptance
+yet. After review and green required
+CI, publish the acceptance/README/handoff receipt, verify origin and pause.
+No next subgoal, router execution, deployment, release or worktree is authorized.
+
 ## Completed timing check — combined Diagnostics passed
 
 The user requested the actual combined workflow duration after the separate
