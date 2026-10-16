@@ -71,7 +71,11 @@ def test_complete_installed_package_reaches_real_menu_and_exits(
     ).read_bytes()
     assert manifest.read_bytes() == (support / "manifest.txt").read_bytes()
 
-    result = entry_run(shell, entry, ["--internal-launch"], b"e\n", terminal=True)
+    # Keep native admission diagnostics in pytest's failure-only capture. This
+    # isolated fixture contains no live configuration or private credentials.
+    result = entry_run(
+        [*shell, "-x"], entry, ["--internal-launch"], b"e\n", terminal=True
+    )
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert b"0 Check status" in result.stdout
     assert b"e Exit" in result.stdout

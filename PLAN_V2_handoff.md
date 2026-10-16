@@ -21,7 +21,7 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S02.01 — local gates passed; publication/CI pending
+## Active S02.01 — BusyBox admission failure under focused diagnosis
 
 The user approved the recommended S02.01 package after the checkpoint below.
 Baseline: clean `develop` at `a17a66d859d047bb47cb67575ac086e11d65a23f`.
@@ -77,14 +77,25 @@ for entry, verifier, bootstrap and probe in 12.447s. Whitespace passed. Receipts
 worker-final-statics.json,local-status-retained.log,local-package-install.log,
 local-acquisition.log}`. No full local suite is due for this subgoal.
 
-Current uncommitted files are the entry/verifier, bootstrap/probe required lists,
-regenerated catalog/manifest, installed-fixture helper and seven affected tests,
-plus parent audit/handoff. No pending user question or unresolved runtime failure.
-Remote `develop` was verified unchanged at the baseline before publication.
-Next: final diff/planning review, commit/push this candidate, dispatch focused
-vendor BusyBox entry/package proof and wait for automatic core Checks at exactly
-that SHA. On green, accept only S02.01, update README/checklist/audit/handoff,
-push the documentation receipt and pause. Do not start another package.
+Runtime candidate **`62ceee4cce664f4ba8db7679e9bbeb149b6b37cb`** is committed and
+pushed to `origin/develop`. Exact-candidate runs:
+[core Checks 38863512606](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38863512606)
+and [focused package Quick 38863530377](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38863530377),
+the latter selecting complete `test_entry_package.py` and `test_package.py` modules
+under vendor BusyBox. **Quick failed the intact-package control immediately**
+(0.28s pytest): the entry reported package verification failure. Parent captured
+`quick-first.log`, `core-first.json` and `core-first.log` in the receipt directory,
+then cancelled the superseded core run during its host stage; BusyBox was skipped.
+Neither run supplies acceptance. Awaiter is finished; no CI remains active.
+
+Parent is isolating this platform difference with failure-only shell tracing in
+the existing intact control, without a speculative runtime change. The complete
+entry module still passes locally: 14 passed, 12.95s pytest / 13.69s wall; Ruff and
+format passed. Trace receipt: `local-entry-trace.log`. This focused diagnostic
+change will be pushed for a one-node Quick run; cancel its redundant core run
+while the cause remains unresolved. No user decision is pending. After fixing the
+observed cause, rerun complete affected groups and exact core CI, then accept only
+S02.01, publish the documentation receipt and pause. Do not start another package.
 
 ## Paused after accepted S07.08 — ready to select the next task
 
