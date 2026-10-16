@@ -21,15 +21,60 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S14.02 checkpoint — implement, verify, push and pause
+## Paused after accepted S14.02 — implementation and gates complete
 
-The user authorized starting the previously reviewed S14.02 package, then
-explicitly requested a pause after implementation and its passing gate, with
-the final work pushed. This supersedes the historical stop notices below only
-for this package. Start revision: `506e97fded9ac29d865c38e67c8f5aaaef7ac40f`,
-clean `develop`, matching the local origin/develop tracking ref.
+The user authorized S14.02 implementation, required passing gates and a final
+push, then an explicit pause. **S14.02 is accepted; do not start another package.**
+Implementation began at `506e97fded9ac29d865c38e67c8f5aaaef7ac40f`. The tested
+candidate is `f762dd731a7284a7a6377ffebb738209b9fd49a8`, verified on
+origin/develop. This final documentation receipt changes no executable files and
+records that tested code SHA; it does not claim a new runtime test run.
 
-Last published candidate: `f51894703cdf3366027d23c87dba12b9c18340c6`.
+Required [core Checks 38852845631](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38852845631)
+**passed** at that exact candidate. Parent verified the SHA, sole required job,
+every job step, complete host/BusyBox results and expected exclusions. The job
+ran **11m14s**, 04:52:31–05:03:45 UTC on 2026-10-16.
+
+| Required core phase | Result | Process wall | User / system CPU | Peak RSS |
+| --- | --- | --- | --- | --- |
+| Host plus common statics | 588 passed, 28 platform-specific skips, 4 optional diagnostics deselected | 73.44s | 17.24s / 19.80s | 48,444 KiB |
+| Vendor BusyBox ash | 615 passed, 1 non-Linux boundary skipped, 4 optional diagnostics deselected | 585.68s | 279.43s / 275.64s | 44,240 KiB |
+
+Commands: `.venv/bin/python tools/test.py --skip-shellcheck`, then
+`.venv/bin/python tools/test.py --require-busybox --reuse-static`, each measured
+by `/usr/bin/time -v`. Host-only skips delegate mount/keeper/fsync proof to the
+required BusyBox phase. Its sole skip is `tests/test_prerequisites.py:254`, the
+workstation-without-proc boundary exercised by the focused macOS group below.
+No required Linux storage or ownership case skipped. Optional Lint/Diagnostics
+were not rerun or claimed passed. Logs/metadata: `.tmp/s1402-ci/core-final.log`
+and `core-final.json`.
+
+Focused [menu Quick 38852858797](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38852858797)
+passed both complete backup-menu and manager-settings-entry modules under vendor
+BusyBox, including internal re-exec: 11 passed, no skips, 20.91s pytest / 21.15s
+process wall, 10.40s user + 11.00s system, 32,584 KiB peak RSS. Whole job: 38s,
+04:52:41–04:53:19 UTC. Parent verified exact SHA and all applicable steps;
+only the unrequested host baseline skipped. Logs/metadata:
+`.tmp/s1402-ci/menu-quick.log` and `menu-quick.json`.
+
+The final core's largest cases remain the existing installer publication
+(181.81s) and retained repair/return (126.05s). Their combined cost is 307.86s;
+these are required integrated consumer checks, not optional stress. The new
+menu's full focused group remains far below two minutes. No runtime or package
+byte changes followed `2e94e2b`; subsequent fixes corrected two test fixtures.
+
+Parent review, final acceptance and publication are complete for S14.02 only.
+All workers, local commands and required CI jobs are finished. Progress is
+**10/157 accepted subgoals (6.4%)**, **0/16 main goals (0%)**; Goal 14 is
+**1/11 accepted (9.1%)**. The other 147 subgoals remain unfinished. Supporting
+portions of S02.02, S03.03 and Goal 4 earn no additional credit. Resume only after
+a new user instruction, selecting the next smallest ready complete subgoal by
+cross-goal prerequisites. No next target has been started. Router execution,
+deployment, releases and additional worktrees remain outside this checkpoint.
+
+### S14.02 focused evidence and repaired gate history
+
+Previous published candidate: `f51894703cdf3366027d23c87dba12b9c18340c6`.
 Its [core Checks 38851879877](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38851879877)
 was deliberately cancelled after review found that the installed-menu fixture
 re-executed system `/bin/sh` instead of retaining the selected test interpreter.
@@ -37,13 +82,13 @@ Host checks passed in 1m14s; BusyBox ran 6m15s before cancellation. This is not
 a passed core gate. Logs and metadata are retained in `.tmp/s1402-ci/core-second.*`.
 A fixture-only correction now selects the safely quoted host shell/arguments or
 the existing vendor BusyBox `sh` symlink for the exact default-entry re-exec.
-Production isolation and runtime bytes are unchanged. Reuse all eight backup
-and three settings journeys locally and in a focused whole-module Quick run,
-then require a complete replacement-candidate core pass before acceptance.
+Production isolation and runtime bytes are unchanged. All eight backup and
+three settings journeys were repeated locally and in the complete focused
+Quick group, followed by the passing final core gate recorded above.
 Final fixture review passed. The complete local affected group passed: 11 tests,
 no skips, 50.48s pytest / 51.43s process wall, 20.18s user + 20.51s system,
 43,098,112-byte peak RSS, using Homebrew Bash with `--posix` throughout.
-Command: `CFMGR_TEST_SHELL='<resolved Homebrew bash> --posix' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q tests/test_backup_menu.py tests/test_manager_settings_entry.py --durations=5`.
+Command: `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix' PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /usr/bin/time -l .venv/bin/python -m pytest -q tests/test_backup_menu.py tests/test_manager_settings_entry.py --durations=5`.
 Tested dirty tree based on `f518947`; log: `.tmp/s1402-ci/menu-selected-local.log`.
 Changed-file Ruff lint/format and compile, planning/package and whitespace
 checks passed. No runtime or package byte changes followed earlier statics.
@@ -68,7 +113,7 @@ actual passive backup defaults; independent review confirmed a fixture-only
 correction. Strict production validation and all retained-launch assertions are
 unchanged. The initial run had 495 BusyBox passes/one skip before stopping, so
 it is not complete core proof. The repaired fixture's focused retained-launch
-pass is recorded above; complete final-candidate core proof remains pending.
+pass is recorded above; the final candidate subsequently passed complete core CI.
 
 [Quick Checks 38850933797](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38850933797)
 passed the two new real-mount cases and inherited backup-mkdir lock case:
@@ -77,12 +122,11 @@ passed the two new real-mount cases and inherited backup-mkdir lock case:
 exact SHA and all applicable steps; only the unrequested host baseline skipped.
 The three calls took 0.98s, 0.96s and 0.45s respectively. This is interim
 platform evidence, not the core acceptance gate. Logs/metadata are private in
-`.tmp/s1402-ci/quick.log` and `quick.json`. The existing awaiter only monitors
-core when launched; parent owns interpretation and any repair.
-Do not start further implementation while the required candidate gate runs.
+`.tmp/s1402-ci/quick.log` and `quick.json`. Final core repeated the required
+platform scope at the accepted SHA. The awaiter has finished monitoring.
 
 Chosen route: the minimum coordinated foundation/consumer batch previously
-described to the user. Complete mounted-drive discovery/admission (the backup
+described to the user. Completed mounted-drive discovery/admission (the backup
 portion of S02.02, reusing S02.08), typed guarded destination persistence
 (applicable S04.01–.03 and S04.06–.09), then menu-4 navigation (S03.03 portion)
 and the full S14.02 selection/Save/reopen outcome. Supporting IDs receive no
@@ -97,10 +141,10 @@ Both implementation workers completed and released their files. Parent reviewed
 the integrated menu, backend and package metadata. Independent backend review
 returned PASS WITH NOTES; the stable UI/entry review passed after correcting
 unknown-versus-empty display and action-specific receipt validation. Final
-independent written-test review also passed; exact-candidate Linux/core CI
-remains pending. No writer
-or local test is active. Parent owns publication and all acceptance records.
-Backend interface is frozen for integration: `cfmgr_backup_action list|check|recover`
+independent written-test review and the selected-shell fixture correction passed.
+Exact-candidate core CI subsequently passed above. No writer or local test is
+active. Parent owns publication and all acceptance records.
+Integrated backend interface: `cfmgr_backup_action list|check|recover`
 or `save MOUNT_HEX UUID_HEX FILESYSTEM_HEX ROOT_HEX SNAPSHOT_HEX`. Strict bounded
 ASCII receipts carry encoded literal paths, saved identity and numbered drive
 rows. `check` distinguishes unset, available and unavailable saved destinations.
@@ -114,12 +158,12 @@ that same JFFS-only transaction without folder creation or selection replay.
 Once owned work is reaped, cleanup may proceed
 without the backup drive. A prepared inert folder is never deleted to simulate
 cross-filesystem rollback.
-Storage and Save foundations must pass focused checks before menu integration.
+Storage and Save foundations passed focused checks before menu integration.
 Required proof covers explicit single/multiple-drive selection, spaces/duplicate
 labels, exact identity revalidation, unavailable/replaced drives, safe CFBackup
 creation/reuse, unrelated-setting preservation, cancelled input and failed Save.
-Use focused local groups and applicable statics; Linux mount/BusyBox proof and
-the exact published candidate's automatic core Checks remain required. Aim for
+Focused local groups, applicable statics, Linux mount/BusyBox proof and the
+exact published candidate's automatic core Checks all passed. Aim for
 two-minute groups; split diagnostic Quick selections if a group reaches roughly
 three to four minutes. No full local suite or optional diagnostic rerun is due.
 
@@ -129,7 +173,8 @@ Foundation implementation is locally focused-tested on the dirty tree based on
 Result: **69 passed, 14 platform/tool skips**, 63.34s pytest / 64.33s wall,
 30.53s user + 22.36s system, approximately 45.7 MB maximum RSS. Two subsequent
 cheap list-framing tests passed in 1.58s with no intervening runtime edit.
-Linux mount/ownership proof remains pending CI; local skips are not passes.
+Linux mount/ownership proof subsequently passed in the initial focused Quick
+recorded above; these local skips remain skips.
 Changed-file Ruff lint/format, Python compile, shfmt, POSIX syntax, runtime
 ShellCheck and whitespace passed. The existing mount fixture retains two
 pre-existing unused-variable ShellCheck warnings; optional full Lint is not due.
@@ -150,8 +195,8 @@ Menu/entry proof used `.venv/bin/python -m pytest -q` with the named modules:
 
 | Focused scope | Final applicable result | Pytest time |
 | --- | --- | --- |
-| `tests/test_backup_menu.py` | 8 passed; real entry/Store single-drive Save/reopen, duplicate labels, no drives, cancellation/EOF/SIGINT, failed Save/recovery and malformed/unknown replies | 27.96s |
-| `tests/test_manager_settings_entry.py` | 3 passed in the combined run; unchanged after that valid result | Included below |
+| `tests/test_backup_menu.py` | Initial 8 passed; repeated with settings under the selected internal shell in the final 11-case local group above | 27.96s initial |
+| `tests/test_manager_settings_entry.py` | Initial 3 passed; repeated in the final 11-case selected-shell local group above | Included above |
 | `tests/test_dependency_reinstall.py` | 78 passed, 2 platform skips after its fixture helper change | 68.35s |
 | `tests/test_status.py` | 34 passed, 2 platform skips after the scoped timeout correction | 30.63s |
 
@@ -168,19 +213,17 @@ records the host-only timing tolerance.
 Parent final common statics passed: shell syntax, pinned Ruff lint/format, Python
 compile and pinned `.venv/bin/shfmt`, plus planning/package/whitespace checks.
 Changed-runtime ShellCheck also passed; optional full Lint/Diagnostics were not
-run. Every final focused group remains under two minutes; the first combined
+run. Every final local focused group remains under two minutes; the first combined
 entry group was split after its existing short fixture deadline failed.
-Prepared platform Quick selection: `tests/test_backup_storage.py
-tests/test_backup_menu.py tests/test_storage_mounts.py tests/test_config_store.py
-tests/test_config_observation.py`; use disjoint smaller selections for any
-Linux failure/slow group. Acceptance requires the exact published candidate's
-complete automatic core Checks, not a narrow diagnostic pass.
+The three actual-mount/lock cases and retained-launch repair passed focused
+Quick runs recorded above. The final selected-shell menu group and complete
+automatic core Checks also passed at the accepted SHA. Narrow diagnostic passes alone earned no acceptance.
 
-Current acceptance remains 9/157 subgoals (5.7%), 0/16 main goals (0%); Goal 14
-1/11 locally focused-tested, with Linux/core CI still pending. No new acceptance
-yet. After review and green required
-CI, publish the acceptance/README/handoff receipt, verify origin and pause.
-No next subgoal, router execution, deployment, release or worktree is authorized.
+The final acceptance counts and pause boundary are recorded at the top.
+Representative Ubuntu/vendor BusyBox acceptance does not qualify Merlin/ARM
+or live FAT/NTFS behavior; real-router/provider qualification remains beta work.
+The earlier checkpoint records below preserve prior evidence and decisions;
+their old status and next-target statements are historical.
 
 ## Completed timing check — combined Diagnostics passed
 

@@ -77,11 +77,12 @@ writer lock must be held before folder creation or mode changes, so an unresolve
 native folder mutator retains writer exclusion through the existing inherited
 descriptor mechanism. Preparing the folder before acquiring the Store lock would
 leave that overlap unguarded. Parent and an independent read-only analyst agreed
-on the finding and the fixed ordering. The dirty implementation now prepares
+on the finding and the fixed ordering. The reviewed implementation prepares
 the folder after lock/setup/pending admission, before both unchanged and changed
 Save outcomes. Focused local tests verify admission and refusal; the additional
 Linux case reuses the existing inherited-mutator fixture for folder operations.
-Its platform execution and final acceptance review remain pending.
+The actual Linux inherited-child case subsequently passed in focused Quick
+`38850933797`, then the complete final-candidate core gate recorded below.
 
 The independent backend implementation review returned **PASS WITH NOTES** on
 the dirty tree based on `506e97f`; parent agreed. It confirmed scoped destination
@@ -90,8 +91,8 @@ exclusion, read-only status and drive-independent recovery. No backend blocker
 remained. The review excluded the then-active menu additions. Host foundation
 proof passed 69 cases with 14 platform/tool skips in 64.33s wall; two subsequent
 list-framing cases passed in 1.58s. Real Linux/vendor BusyBox mount and inherited
-child execution, final menu integration and exact-candidate core CI remain
-required before S14.02 acceptance.
+child execution, final menu integration and exact-candidate core CI remained
+required at this review; their completed outcomes are recorded below.
 
 Final source/consumer and written-test review returned **PASS** after menu
 integration. Failed discovery renders unknown/unavailable rather than an empty
@@ -100,9 +101,9 @@ state and record count. The installed-entry tests prove explicit single-drive
 choice and confirmation before mutation, Save/reopen, duplicate labels,
 cancellation/EOF/SIGINT, failed Save/recovery and malformed-output refusal.
 Backend tests cover scoped persistence and drive loss; the separate Linux mount
-and inherited-lock fixtures still await the exact-candidate gate. Parent agrees
-the package is ready for publication and required core CI, with no additional
-supporting-subgoal, archive/restore or live-filesystem credit.
+and inherited-lock fixtures subsequently passed the exact-candidate gate.
+Parent approved the package for publication and required core CI, with no
+additional supporting-subgoal, archive/restore or live-filesystem credit.
 
 The first core run at `2e94e2b` exposed a stale handwritten retained-launch
 fixture: it used `backup:{}` while production defaults at the baseline already
@@ -123,11 +124,26 @@ arguments. The first local fixture guard caught a too-broad replacement needle;
 it was narrowed to the default-entry token before publication. The existing
 eight backup and three settings journeys are reused; no new matrix or runtime
 change is required. Core run `38851879877` was deliberately cancelled after host
-success; it supplies no completed core acceptance. Complete final-candidate
-core proof and actual vendor BusyBox menu execution remain pending. Final
-fixture review passed; all 11 affected journeys passed locally under selected
-Homebrew Bash `--posix` in 51.43s wall, with no skips. Changed-file statics and
-planning/package/whitespace checks passed.
+success; it supplies no completed core acceptance. Final fixture review passed;
+all 11 affected journeys passed locally under selected Homebrew Bash `--posix`
+in 51.43s wall, with no skips. Changed-file statics and planning/package/whitespace
+checks passed. [Menu Quick 38852858797](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38852858797)
+then passed all 11 journeys, no skips, with the selected vendor BusyBox shell
+through internal re-exec at `f762dd731a7284a7a6377ffebb738209b9fd49a8`:
+21.15s process wall, 38s whole job. Parent verified SHA and all applicable steps.
+Final [core Checks 38852845631](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38852845631)
+passed at that same exact SHA: 588 host passes with 28 platform-specific skips;
+615 vendor BusyBox passes with only the workstation-without-proc case skipped.
+Each phase excluded four optional diagnostics. All required Linux mount and
+inherited-lock cases executed. Every required job step passed; whole job 11m14s,
+host process 73.44s and BusyBox process 585.68s. Parent verified the logs, SHA,
+steps, exclusions and measured cost, and accepted S14.02's complete consumer
+scope. The largest existing consumer cases were installer publication (181.81s)
+and retained repair/return (126.05s); no new S14.02 focused group needed expansion.
+No archive/restore or supporting-subgoal credit is implied. Actual firmware/ARM
+and live filesystem qualification remain beta boundaries. The failed and
+cancelled earlier runs remain failed/cancelled; this final complete pass closes
+the required gate.
 
 ## Diagnostics fixture optimization review
 
