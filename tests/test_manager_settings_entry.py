@@ -146,7 +146,7 @@ def wait_for_output(
     return bytes(output)
 
 
-def test_installed_menu_saves_with_no_lock_during_confirmation(
+def test_installed_menu_saves_reviewed_fields_over_fresh_edits_without_prompt_lock(
     shell, installed_settings_entry
 ):
     entry, support, ram, _ = installed_settings_entry
@@ -166,6 +166,25 @@ def test_installed_menu_saves_with_no_lock_during_confirmation(
         output.extend(wait_for_output(child, b"Save these preferences? [y/N/e] "))
         with lock.open("r+b") as owner:
             fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # An earlier editor can commit while review is waiting. Save owns
+            # both reviewed preferences, including Check Off's Auto Off closure,
+            # but must reread and preserve unrelated authority without relying
+            # on an editor bumping the generation.
+            live = support / "config"
+            current = live.read_bytes()
+            fresh = (
+                current.replace(b'"auto_update":false', b'"auto_update":true')
+                .replace(b'"developer":false', b'"developer":true')
+                .replace(
+                    b'"ownership":{}',
+                    b'"ownership":{"auth_fault":{"scope":"ddns","keep":true}}',
+                )
+            )
+            assert fresh != current and b'"generation":1' in fresh
+            assert b'"auto_update":true' in fresh
+            assert b'"developer":true' in fresh
+            assert b'"auth_fault":{"scope":"ddns","keep":true}' in fresh
+            live.write_bytes(fresh)
             fcntl.flock(owner, fcntl.LOCK_UN)
         os.write(master, b"y\ne\ne\ne\n")
         remaining, stderr = child.communicate(timeout=30)
@@ -182,9 +201,13 @@ def test_installed_menu_saves_with_no_lock_during_confirmation(
     assert b"Preferences saved." in output
     assert b"Saved: Check for updates=Off; Auto-update CFMgr=Off" in output
     saved = (support / "config").read_bytes()
-    assert b'"generation":2' in saved
-    assert b'"check_updates":false' in saved
-    assert b'"auto_update":false' in saved
+    expected = (
+        fresh.replace(b'"generation":1', b'"generation":2')
+        .replace(b'"check_updates":true', b'"check_updates":false')
+        .replace(b'"auto_update":true', b'"auto_update":false')
+    )
+    assert saved == expected
+    assert b"Developer mode suppresses manager updates" in output
     routes = (ram / "routes").read_text().splitlines()
     assert "store-lock" in routes
     assert not any("opkg" in route or route.startswith("install-") for route in routes)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import pty
@@ -113,7 +114,7 @@ cfmgr_backup_folder_admit() { cfmgr_backup_attached; }
     return entry, support, ram
 
 
-def test_backup_menu_saves_and_reopens_destination_through_real_store(
+def test_backup_menu_scoped_save_preserves_edits_during_review_and_reopens(
     shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
@@ -154,6 +155,36 @@ def test_backup_menu_saves_and_reopens_destination_through_real_store(
         output.extend(wait_for_output(child, b"Prepare /tmp/mnt/Drive one/CFBackup"))
         assert (support / "config").read_bytes() == before
         assert not (ram / "Drive one/CFBackup").exists()
+        # Review holds no writer lock. A concurrent editor selects another
+        # destination and changes unrelated settings without a generation bump;
+        # this reviewed Save may replace only the destination and generation.
+        lock = ram / "config.lock"
+        lock.touch(mode=0o600)
+        other_destination = {
+            "schema": 1,
+            "mountpoint": "/tmp/mnt/nested/Drive two",
+            "uuid": "abcd-1234",
+            "filesystem": "vfat",
+            "root": "/",
+        }
+        prior_destination = json.dumps(
+            other_destination, separators=(",", ":")
+        ).encode()
+        fresh = (
+            before.replace(b'"destination":null', b'"destination":' + prior_destination)
+            .replace(b'"check_updates":true', b'"check_updates":false')
+            .replace(
+                b'"ownership":{}',
+                b'"ownership":{"removal":{"scope":"ip_sync","keep":true}}',
+            )
+        )
+        assert fresh != before and b'"generation":1' in fresh
+        assert b'"check_updates":false' in fresh
+        assert b'"removal":{"scope":"ip_sync","keep":true}' in fresh
+        with lock.open("r+b") as owner:
+            fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            (support / "config").write_bytes(fresh)
+            fcntl.flock(owner, fcntl.LOCK_UN)
         os.write(master, b"y\n")
         output.extend(
             wait_for_output(child, b"Destination saved: /tmp/mnt/Drive one/CFBackup\n")
@@ -171,8 +202,13 @@ def test_backup_menu_saves_and_reopens_destination_through_real_store(
     assert b"4 Backup / Restore" in output
     assert b"Prepare /tmp/mnt/Drive one/CFBackup" in output
     assert (ram / "Drive one/CFBackup").is_dir()
-    saved = json.loads((support / "config").read_text())
-    assert saved["backup"]["destination"]["mountpoint"] == "/tmp/mnt/Drive one"
+    selected_destination = dict(other_destination, mountpoint="/tmp/mnt/Drive one")
+    expected = fresh.replace(b'"generation":1', b'"generation":2').replace(
+        prior_destination,
+        json.dumps(selected_destination, separators=(",", ":")).encode(),
+    )
+    assert (support / "config").read_bytes() == expected
+    assert not (ram / "Drive two/CFBackup").exists()
 
     reopened = run_entry(shell, entry, b"4\ne\ne\n")
     assert reopened.returncode == 0, reopened.stderr

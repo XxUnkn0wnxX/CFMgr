@@ -30,6 +30,68 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## S04.02 scoped concurrent Save review
+
+2026-10-16, baseline `95ecbdd`: parent and independent Astra scope audit agree
+PASS WITH NOTES that S04.02 is the next smallest independently completable
+foundation. The user approved starting this package. Current consumers are
+manager preference Save, backup-destination Save and retained storage observation;
+future provider/updater/connector workflows keep their own integration gates.
+
+Existing Store code acquires the common writer lock, rereads authority, patches
+only reviewed fields, compares exact content and permits two merge attempts.
+The manager and backup menus confirm before entering the Store. S04.03 supplies
+accepted durable publication; relevant shared-lock proof already exists without
+claiming the complete S04.08 provider/connector contract.
+
+Two precedence directions must remain distinct: reviewed Save may replace earlier
+same-field manual edits within its explicit intent, while a later committed Off
+or config change defeats an older worker snapshot. Check/Auto intent coupling
+remains unchanged. Preserve unrelated saved guard data, but refuse a currently
+active transaction marker. The contract uses cooperative locks and immediate
+content checks, not an atomic compare-and-swap guarantee against arbitrary root
+writes after the final check.
+
+Missing evidence at baseline: the Store raw-edit fixture appends whitespace;
+parser tests provide an already-current document; borrowed observation lock tests
+replace the publication body. These prove freshness/parsing/exclusion respectively,
+but not complete semantic interleavings. Closure needs actual Store/consumer
+proof of same-field precedence, unrelated-data preservation, meaningful
+same-generation remerge and bounded conflict refusal, plus the actual observation
+publisher's refusal to overwrite later Off/config authority. No runtime defect
+is inferred solely from these coverage gaps. Current execution and gates are in
+the handoff; no S04.02 acceptance is claimed here.
+
+The implemented proof strengthens the two existing installed-menu journeys and
+adds two Store and two retained-publication cases. No production change was
+needed. Parent and independent Astra implementation review agree PASS WITH NOTES:
+the Store mutation occurs after old-state staging, same-generation semantic edits
+require a second scoped merge, repeated edits refuse within two attempts, and
+both real menu confirmations permit another owner to acquire the common lock.
+Exact expected bytes retain fresh unrelated settings and opaque ownership data.
+The real retained publisher rejects newer Off/config authority both before
+preparation and after candidate staging, with the appropriate recovery evidence.
+
+The ownership payloads are preservation fixtures, not implementation or acceptance
+of future auth/removal workflows. Retained publication adapts host lock admission
+and supervision; actual Linux flock/descriptor proof remains in the complete
+Store module. Together these tests cover the current consumers without claiming
+an entirely unadapted router execution. Existing failure cases remain intact.
+Cost containment reuses the existing installed-menu runs and shared package
+fixtures; only the four required interleaving cases add executions.
+
+Final complete local gates passed on the prepared tree based on `95ecbdd`:
+Store/parser/settings/backup **102 passed, four Linux skips**, 203.15s wall
+(92.55s user / 78.58s system), including common statics; retained launch
+**21 passed, one Linux skip**, 150.00s wall (67.11s user / 46.60s system).
+The combined local group is within the practical three-to-four-minute range;
+its slowest cases remain required recovery and real installed-menu proof.
+The four new interleavings and two strengthened menu journeys also passed their
+small diagnostic selections before these final groups. No full local suite ran.
+Planning/package, Ruff/format/compile, shell syntax, shfmt and whitespace passed.
+ShellCheck was not rerun for this tests-only change; production files are unchanged.
+Exact-candidate platform/core proof remains pending.
+
 ## S04.03 durable staged commit review
 
 2026-10-16, baseline `358ed0c`: the user approved the smallest independently

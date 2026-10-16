@@ -24,6 +24,90 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active S04.02 scoped concurrent Save
+
+The user approved starting the recommended **S04.02** package after the completed
+S04.03 checkpoint. Route A closes this one foundation across the current manager
+preferences Save, backup-destination Save and retained-observation writer.
+Baseline is clean `develop` at **`95ecbdd0d22eaed6c82c5c7fa7ea4c3fc74c9e2d`**;
+accepted runtime/test candidate remains `457296c79bd786083eb944e0c1cea2ecc9ddce10`.
+Progress stays **13/157 accepted (8.3%)**, **0/16 main goals (0%)**, Goal 4
+**1/9 accepted (11.1%)** until S04.02's required gates pass.
+
+Parent and independent Astra scope audit agree PASS WITH NOTES. Existing durable
+publication and verified common-lock interfaces supply the prerequisites;
+S04.01/.08/.09 overlap does not require completing those whole subgoals first.
+No future provider/updater/connector workflow or additional Goal 4 credit is in
+scope. The [S04.02 audit](PLAN_V2_audit.md#s0402-scoped-concurrent-save-review)
+records the precedence contract and current evidence gaps.
+
+Required closure:
+
+1. Reviewed Save owns explicitly accepted fields, including approved Check/Auto
+   coupling, while preserving fresh unrelated settings, ownership and guard data.
+2. Meaningful same-generation edits trigger a bounded fresh merge or safe refusal;
+   repeated edits do not loop or publish an invalid/stale result.
+3. The actual retained-observation publisher rejects a later valid Off/config
+   change instead of restoring its older snapshot. Existing lock-body stubs are
+   exclusion proof only and cannot substitute for this publication test.
+4. Preserve shared-lock exclusion, unresolved-child/recovery behavior and the
+   existing separation of user input from locked transactions. A currently active
+   transaction marker blocks Save; unrelated saved guard data is preserved.
+
+Both implementation workers are complete: `store_failure_proof` changed only
+`tests/test_config_store.py`; `publication_failure_proof` changed only
+`tests/test_retained_launch.py`. Parent integrated both and strengthened the two
+existing installed manager/backup Save journeys. No runtime change was needed.
+Parent and independent Astra implementation review agree PASS WITH NOTES; the
+audit records the opaque-data and host-adapter qualifications. Files are frozen
+for publication; parent owns remaining CI and acceptance/receipt updates.
+
+Focused gate: complete config Store/parser, manager settings/installed entry,
+backup storage/menu and retained-launch modules, with relevant statics. Reuse
+the pinned venv and valid unchanged evidence; add installer/supervisor groups only
+if a changed interface or missing required integration warrants them. Run quick
+diagnostics first, then every affected group. Use focused Linux/vendor BusyBox
+Quick for unavailable platform proof, review measured cost, then run final core
+Checks at the exact published candidate. Full local suite is not due. Keep groups
+near two minutes and within the practical three-to-four-minute range where
+feasible without losing core proof. Private commands/logs go in `.tmp/s0402/`.
+
+Final local proof on the prepared tree based on `95ecbdd`:
+
+| Complete selection | Result | Wall / user / system |
+| --- | --- | --- |
+| Store, config observation, manager settings/installed entry, backup storage/menu | 102 passed, four Linux skips | 203.15s / 92.55s / 78.58s, including common statics |
+| Retained launch | 21 passed, one Linux skip | 150.00s / 67.11s / 46.60s |
+
+Total **123 passed, five platform skips**. The two installed-menu diagnostics
+passed in 36.85s wall; Store and retained semantic selections also passed before
+the complete gates. Planning/package, Ruff/format/compile, shell syntax, shfmt and
+whitespace passed. No full local suite ran; ShellCheck was not rerun because
+production files are unchanged. Costs retain all core proof, reuse the existing
+UI journeys/package fixtures and stay within the practical focused range.
+
+Commands: `CFMGR_TEST_SHELL='/usr/local/bin/bash --posix'` with
+`.venv/bin/python tools/test.py --skip-shellcheck --focused` and the six modules
+above; retained used `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1` and
+`.venv/bin/python -m pytest -vv -ra --strict-config --strict-markers --maxfail=1
+--durations=10 -m 'not diagnostic' tests/test_retained_launch.py`.
+`/usr/bin/time -l` supplied costs. Final logs are
+`.tmp/s0402/store-consumers-final.log` and `.tmp/s0402/retained-module-final.log`.
+An unnecessary overlapping Store rerun was stopped without credit; the final
+six-module group above reran its complete final assertions serially afterward.
+
+Next gate: publish this candidate, cancel its premature automatic core run,
+dispatch Quick A with the six Store/parser/settings/backup modules and Quick B
+with retained launch. Verify every job, exact candidate and measured group cost,
+then dispatch final core Checks. S04.02 is focused-local-passed and remains
+unchecked for acceptance until the complete required core gate passes.
+
+Finish this authorized package through its checkpoint commit/push and exact
+required gates, update accepted records/README, publish the documentation receipt
+and **pause automatically**. Do not start another target. No router work,
+deployment, release, dependency installation, worktree creation, history changes
+or product-scope changes are authorized.
+
 ## Paused after accepted S04.03 checkpoint
 
 The user approved starting the recommended **S04.03** foundation package, then

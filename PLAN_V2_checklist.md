@@ -198,7 +198,7 @@ history writers, full diagnostics and final terminal presentation remain separat
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [ ] | [ ] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
-| [ ] | [ ] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
+| [ ] | [x] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
 | [x] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
 | [ ] | [ ] | S04.05 | **Cloudflared Save boundary:** Pre-Save cancellation; mutation-time e disabled; signals honored with bounded cleanup and guarded recovery. |
@@ -206,6 +206,17 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S04.07 | **Restart recovery:** Inspect guards before activation, preserve damaged/recoverable data and never repeat uncertain provider creation. |
 | [ ] | [ ] | S04.08 | **Ownership and locks:** Stable lock identities, verified process start/boot identity, correct provider-child versus connector descriptor lifetime. |
 | [ ] | [ ] | S04.09 | **Generation and resource bounds:** Compatible package per invocation, current-state checks, late-result rejection and bounded whole-action cleanup. |
+
+S04.02 focused local proof passed on the prepared tree based on `95ecbdd`:
+**123 passed, five platform skips** across complete Store/parser, manager
+settings/installed entry, backup storage/menu and retained-launch modules.
+Planning/package, Ruff/format/compile, shell syntax, shfmt and whitespace passed;
+parent and independent Astra review passed. The
+[scoped-Save audit](PLAN_V2_audit.md#s0402-scoped-concurrent-save-review)
+records meaningful same-generation merge/refusal, confirmed-field precedence,
+unrelated-byte preservation and later-Off rejection through current consumers.
+Required focused Linux/vendor BusyBox proof and final exact-candidate core Checks
+remain pending; S04.02 receives no accepted credit yet.
 
 S04.03 accepted at **`457296c79bd786083eb944e0c1cea2ecc9ddce10`**. Focused local
 proof: **190 passed, 34 platform skips**, with four optional

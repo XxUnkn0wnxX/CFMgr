@@ -100,6 +100,22 @@ cfmgr_store_prepare() {
 cfmgr_store_attachment_ok() { [ -d "$cfmgr_store_context" ] && [ ! -L "$cfmgr_store_context" ]; }
 cfmgr_store_fd_is() { [ -f "$1" ] && [ ! -L "$1" ]; }
 cfmgr_store_native_tool() { [ -x "$1" ]; }
+cfmgr_test_semantic_edit() {
+    case $scenario in
+    semantic-remerge)
+        [ "${semantic_edited:-0}" = 0 ] || return 0
+        (umask 077; "$TEST_JQ" '.manager.check_updates=false | .manager.auto_update=false | .manager.developer=true | .manager.developer_log_directory="/jffs/addons/CFMgr.d/logs" | .cloudflared.configured=true | .cloudflared.enabled=true | .cloudflared.maintenance_enabled=true | .credentials={"cloudflared":{"runtime":"fixture-ref"}} | .ownership={"config_save":{"owner":"fixture","generation":1}}' "$source/config" >"$ram/semantic-new") || return 1
+        "$TEST_MV" "$ram/semantic-new" "$source/config" || return 1
+        "$TEST_CP" "$source/config" "$ram/semantic-live" || return 1
+        semantic_edited=1
+        ;;
+    semantic-churn)
+        (umask 077; "$TEST_JQ" '.manager.developer |= (not)' "$source/config" >"$ram/semantic-new") || return 1
+        "$TEST_MV" "$ram/semantic-new" "$source/config" || return 1
+        "$TEST_CP" "$source/config" "$ram/semantic-live" || return 1
+        ;;
+    esac
+}
 cfmgr_prerequisites_run() {
     mode=$1 context=$2 helper=$4 tool=$9 cfmgr_probe_mode=$1
     shift 9
@@ -127,6 +143,7 @@ cfmgr_prerequisites_run() {
     store-copy)
         case $2 in
         */.config-save.preparing/candidate)
+            case $scenario in semantic-remerge | semantic-churn) cfmgr_test_semantic_edit || return 1 ;; esac
             if [ "$scenario" = candidate-copy-error ]; then : >"$cfmgr_probe_stdout"; : >"$cfmgr_probe_stderr"; cfmgr_probe_exit=1; return 0; fi ;;
         esac ;;
     store-move)
@@ -420,6 +437,80 @@ def test_fresh_retry_preserves_raw_edit_and_armed_stale_blocks(
         json.loads((source / "config").read_bytes())["manager"]["auto_update"] is True
     )
     assert (source / ".config-save").is_dir()
+
+
+def test_fresh_retry_remerges_reviewed_intent_and_preserves_other_bytes(
+    shell, tools, store_fixture
+):
+    source, ram, *_ = store_fixture
+    saved = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "auto",
+        "0",
+        "1",
+        scenario="semantic-remerge",
+    )
+    fresh = (ram / "semantic-live").read_bytes()
+    expected = (
+        fresh.replace(b'"generation": 1', b'"generation": 2', 1)
+        .replace(b'"check_updates": false', b'"check_updates": true')
+        .replace(b'"auto_update": false', b'"auto_update": true')
+    )
+    fresh_value = json.loads(fresh)
+    assert fresh_value["generation"] == 1
+    assert fresh_value["manager"]["check_updates"] is False
+    assert fresh_value["manager"]["auto_update"] is False
+    assert saved.returncode == 0, (saved.stdout, saved.stderr)
+    assert saved.stdout == b"CFMGR-STORE 1 saved 2 1 1 1 0 END\n"
+    assert (source / "config").read_bytes() == expected
+    saved_value = json.loads(expected)
+    assert saved_value["manager"]["developer"] is True
+    assert saved_value["ownership"]["config_save"] == {
+        "owner": "fixture",
+        "generation": 1,
+    }
+    assert saved_value["cloudflared"]["enabled"] is True
+    assert saved_value["credentials"]["cloudflared"]["runtime"] == "fixture-ref"
+    assert (ram / "routes").read_text().count("store-mkdir\n") == 2
+    assert not list(source.glob(".config-save*"))
+
+    saved_config = (source / "config").read_bytes()
+    (source / ".config-save").mkdir(mode=0o700)
+    blocked = run_store(shell, tools, store_fixture, "save", "auto", "0", "0")
+    assert blocked.returncode == 1
+    assert b"recovery 0 0 0 0 1" in blocked.stdout
+    assert (source / "config").read_bytes() == saved_config
+    assert (source / ".config-save").is_dir()
+
+
+def test_repeated_semantic_edits_refuse_without_replacing_latest_authority(
+    shell, tools, store_fixture
+):
+    source, ram, *_ = store_fixture
+    before = (source / "config").read_bytes()
+    refused = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "auto",
+        "0",
+        "1",
+        scenario="semantic-churn",
+    )
+    latest = (ram / "semantic-live").read_bytes()
+    assert refused.returncode == 1
+    assert b"CFMGR-STORE 1 stale 0 0 0 0 0 END\n" == refused.stdout
+    assert latest != before
+    assert (source / "config").read_bytes() == latest
+    assert json.loads(latest)["generation"] == 1
+    assert (ram / "routes").read_text().count("store-mkdir\n") == 2
+    assert not list(source.glob(".config-save*"))
+    assert not (ram / "context").exists()
+    assert not (ram / "semantic-new").exists()
 
 
 @pytest.mark.parametrize(

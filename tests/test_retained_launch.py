@@ -73,7 +73,6 @@ HOST_LAUNCH = r"""
 . "$1/modules/helpers/launch.sh"
 # Native lock/supervisor proof is in test_config_store; old host transaction
 # fixtures adapt firmware lock admission along with their mount admission.
-cfmgr_config_store_observation_lock() { return 0; }
 shift
 cfmgr_install_source=$1 cfmgr_install_jffs=$2 cfmgr_install_context=$3
 cfmgr_install_private_context=$3 cfmgr_install_source_fd=9 cfmgr_install_context_fd=0
@@ -83,14 +82,28 @@ cfmgr_install_sh=$1 cfmgr_install_env=$2 cfmgr_install_awk=$3 cfmgr_install_read
 cfmgr_install_sleep=$5 cfmgr_install_wc=$6 cfmgr_install_ls=$7 cfmgr_install_fsync=$8
 cfmgr_install_mkdir=$9
 shift 9
-cfmgr_install_cp=$1 cfmgr_install_chmod=$2 cfmgr_install_mv=$3 cfmgr_install_sha=$4 cfmgr_install_df=$5
-host_timeout=$6 host_scenario=$7
+cfmgr_install_cp=$1 cfmgr_install_chmod=$2 cfmgr_install_mv=$3 cfmgr_install_sha=$4 cfmgr_install_jq=$5 cfmgr_install_df=$6
+host_timeout=$7 host_scenario=$8
 CFMGR_VERSION=0.1.0
 cfmgr_launch_storage_required=0 cfmgr_launch_guard_owned=0 cfmgr_launch_migrating=0
 cfmgr_install_interrupted=0 cfmgr_probe_status=reaped
 cfmgr_storage_uuid_value=12345678-1234-1234-1234-123456789abc
 cfmgr_storage_filesystem=ext4 cfmgr_storage_fsroot=/ cfmgr_storage_relative=entware
 exec 0<"$cfmgr_install_context" 8<"$cfmgr_install_jffs" 9<"$cfmgr_install_source"
+cfmgr_test_later_config() {
+    [ ! -e "$cfmgr_install_context/later-config-mutated" ] || return 1
+    "$cfmgr_install_jq" '.ddns.enabled = false | .manager.check_updates = true' \
+        "$cfmgr_launch_live" >"$cfmgr_install_context/later-config.json" || return 1
+    "$cfmgr_install_chmod" 600 "$cfmgr_install_context/later-config.json" || return 1
+    "$cfmgr_install_cp" "$cfmgr_install_context/later-config.json" \
+        "$cfmgr_install_context/later-config.expected" || return 1
+    "$cfmgr_install_mv" "$cfmgr_install_context/later-config.json" "$cfmgr_launch_live" || return 1
+    : >"$cfmgr_install_context/later-config-mutated"
+}
+cfmgr_config_store_observation_lock() {
+    if [ "$host_scenario" = later-off-early ]; then cfmgr_test_later_config || return $?; fi
+    return 0
+}
 # Only unavailable host mount/process admission is adapted. The production
 # parser, manifest mapping, hashing, config guard and publication execute.
 cfmgr_bootstrap_native_attached() { [ -d "$cfmgr_install_context" ] && [ -d "$cfmgr_install_source" ]; }
@@ -103,7 +116,7 @@ cfmgr_bootstrap_shared_requirements() {
     [ "$1" = retained ] && [ -r "$cfmgr_launch_snapshot" ] || return 99
     printf 'shared\n' >>"$cfmgr_install_jffs/routes"
     case "$host_scenario" in
-    replace | publish-fail | postrename-flush | postrename-readback | cleanup-flush | low-space)
+    replace | publish-fail | postrename-flush | postrename-readback | cleanup-flush | later-off-early | later-off-final | low-space)
         cfmgr_storage_uuid_value=87654321-4321-4321-4321-cba987654321
         ;;
     esac
@@ -153,6 +166,10 @@ cfmgr_prerequisites_run() {
     fi
     if [ "$host_scenario" = postrename-readback ] && [ "$mode" = install-rename ] && [ "${2-}" = "$cfmgr_install_source/config" ]; then
         printf 'corrupt' >>"$cfmgr_install_source/config"
+    fi
+    if [ "$host_scenario" = later-off-final ] && [ "$mode" = install-copy ] &&
+        [ "${1-}" = "${cfmgr_launch_candidate-}" ] && [ "$cfmgr_probe_exit" -eq 0 ]; then
+        cfmgr_test_later_config || return 1
     fi
     if [ "$host_scenario" = postrename-flush ] && [ "$mode" = install-rename ] && [ "${2-}" = "$cfmgr_install_source/config" ]; then
         : >"$cfmgr_install_context/postrename-published"
@@ -241,6 +258,7 @@ def launch_host(
             tools["chmod"],
             tools["mv"],
             tools["sha256sum"],
+            tools["jq"],
             selected_df,
             tools["timeout"],
             scenario,
@@ -284,6 +302,8 @@ def test_source_inert(shell: list[str], tmp_path: Path) -> None:
         "postrename-flush",
         "postrename-readback",
         "cleanup-flush",
+        "later-off-early",
+        "later-off-final",
         "low-space",
         "absent",
         "lost",
@@ -304,6 +324,13 @@ def test_actual_retained_consumer_and_preserved_config(
     scenario: str,
 ) -> None:
     original = b"{broken\n" if scenario == "corrupt" else retained_config
+    if scenario in {"later-off-early", "later-off-final"}:
+        original_value = json.loads(original)
+        original_value["ddns"]["enabled"] = True
+        original = (json.dumps(original_value, indent=2) + "\n").encode()
+        later_value = json.loads(original)
+        later_value["ddns"]["enabled"] = False
+        later_value["manager"]["check_updates"] = True
     result, support = launch_host(
         shell, tools, legacy_fsync, retained_package, original, tmp_path, scenario
     )
@@ -315,9 +342,7 @@ def test_actual_retained_consumer_and_preserved_config(
         result.stderr,
     )
     current = (support / "config").read_bytes()
-    candidate = retained_config.replace(
-        b'"generation": 19', b'"generation": 20'
-    ).replace(
+    candidate = original.replace(b'"generation": 19', b'"generation": 20').replace(
         b"12345678-1234-1234-1234-123456789abc",
         b"87654321-4321-4321-4321-cba987654321",
     )
@@ -326,6 +351,23 @@ def test_actual_retained_consumer_and_preserved_config(
         assert not (support / ".storage-observation").exists()
     elif scenario in {"postrename-flush", "postrename-readback", "cleanup-flush"}:
         assert current != original
+    elif scenario in {"later-off-early", "later-off-final"}:
+        live = json.loads(current)
+        assert live == later_value
+        assert (support / "config").stat().st_mode & 0o777 == 0o600
+        assert (tmp_path / "private RAM/later-config-mutated").is_file()
+        assert current == (tmp_path / "private RAM/later-config.expected").read_bytes()
+        assert b"verified Entware observation updated" not in result.stdout
+        guard = support / ".storage-observation"
+        if scenario == "later-off-early":
+            assert not guard.exists()
+            assert b"recovery=0" in result.stdout
+        else:
+            assert guard.is_dir()
+            assert (guard / "old").read_bytes() == original
+            assert (guard / "candidate").read_bytes() == candidate
+            assert (guard / "intent").is_file()
+            assert b"recovery=1" in result.stdout
     else:
         assert current == original
     routes = support.parents[1] / "routes"
