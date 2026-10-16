@@ -220,8 +220,7 @@ def run_dependency_case(
         "installer-transaction",
         "retained-repair",
         "retained-absent",
-        "retained-return",
-        "retained-dns-outage",
+        "retained-return-dns",
         "retained-force",
     )
     timestamps: dict[str, float] = {}
@@ -307,8 +306,7 @@ done
             (
                 "retained-repair",
                 "retained-absent",
-                "retained-return",
-                "retained-dns-outage",
+                "retained-return-dns",
                 "retained-force",
             )
             if b"PASS: actual retained repair" in result.stdout

@@ -60,6 +60,44 @@ cancelled during focused diagnosis and supplies no acceptance. Next publish the
 reporting correction and run each complete affected module separately with
 visible phase measurements; no runtime/coverage change has been made.
 
+Reporting correction `de66d22ecbe164b07030e78edd76b614e74777fa` is pushed. Complete
+local dependency/retained modules passed **27 tests, 9 Linux skips**, four optional
+diagnostics excluded, 25.23s pytest / 25.74s wall (12.28s user + 8.94s system).
+Ruff/format/compile/planning/whitespace passed. Complete vendor Quick modules are
+running separately: dependencies `38870338830`, retained `38870343255`; awaiter
+`s0208_local_wait` monitors their bounds. Core `38870326329` was cancelled during
+focused diagnosis. Independent reviewer `audit_repair_storage` is read-only,
+checking whether a small fixture optimization preserves the core wiring. Parent
+owns decisions and records; no active file writer or further product target.
+
+Both complete modules passed at `de66d22`: dependencies 21 passed / 4 optional
+diagnostics excluded, 229.52s pytest (229.74s wall); retained 15 passed, 122.33s
+pytest (122.53s wall). Installer phase costs were repair 115.85s, pre/post checks
+1.03s/1.59s and publication 64.84s. Its final step completed in 3m50s; a late stale
+monitor alert prompted a cancellation attempt after completion, which GitHub
+correctly refused. It remains a successful run, not a cancelled run.
+
+Parent and independent reviewer found one safe consolidation: combine healthy
+drive return and ordinary DNS outage in one fresh retained launch, preserving
+all distinct assertions. Normal DNS is proved on initial repair; actual force
+and missing-attachment reporting remain separate. `test_cost_timing` exclusively
+owns the retained fixture and finite timing-label tuples in test_dependencies.py
+for this edit. Installer's complete production-supervised path remains intact.
+Next final gate: complete retained module plus disjoint dependency core selections
+that cover every collected core node, isolating the expensive installer case.
+Raw profile receipts are `installer-profile.{json,log}` and
+`retained-profile.{json,log}` under `.tmp/test-cost-20261016/`.
+
+The consolidation is implemented and parent-reviewed; the worker released its
+files. All runtime files, timeout budgets, test cases and distinct assertions
+are preserved. ShellCheck/syntax/shfmt and Ruff/format/compile/planning/whitespace
+passed. Final local modules passed again; see `local-final.log` for exact cost.
+The private `final-gates.json` maps final Quick runs: installer alone (1 test),
+all other dependency core nodes (20 tests across eight selectors), and the whole
+retained module (15 tests). Actual pytest collection confirms disjoint union
+coverage of every applicable test. Next push this candidate, dispatch those
+three groups, verify SHA/results/cost, record the measured saving and pause.
+
 Use existing timings first, then separate focused Quick selections for the two
 Linux-only consumers. Complete affected modules and relevant statics must pass
 at the final candidate before checkpoint/pause; no extra full local timing run.

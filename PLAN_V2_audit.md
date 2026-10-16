@@ -30,6 +30,38 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## Installer and retained-test cost review
+
+2026-10-16, baseline `33bc998`: user requested optimization of the existing
+installer and retained-repair tests before another product target. Existing
+module-scoped package/compiler fixtures are already reused; the reported slow
+durations are test calls. Fresh mutable ext4/mount/PID state remains necessary.
+The installer supplies the remaining core complete production-supervised view
+path; replacing it with foreground fixture operations would lose that wiring.
+Parent and independent reviewer retain this proof rather than changing its gate.
+
+Finite monotonic phase records at `de66d22` locate the retained cost:
+[complete retained module 38870343255](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38870343255)
+passed 15 tests in 122.33s pytest / 122.53s wall (73.17s user + 44.78s system).
+Repair was 34.30s, absent attachment 3.07s, healthy return 19.30s, DNS outage
+18.88s and force 33.94s. Parent and independent reviewer agree the return and
+DNS-outage requirements can share one fresh launch: prove current attachment,
+successful manager admission, unchanged opkg/config, no observation guard and
+deferred DNS together. Initial repair already proves normal SRV/A verification;
+forced reinstall stays separate. The specification does not require separate
+successful-DNS and failed-DNS return permutations. This removes a repeated
+launch while preserving distinct required assertions; final measured proof is
+pending. No product requirement, runtime deadline or accepted count changes.
+
+The [complete dependency module 38870338830](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38870338830)
+passed at the same SHA: 21 core tests, four optional diagnostics excluded,
+229.52s pytest / 229.74s wall (119.44s user + 109.08s system). Installer repair
+accounts for 115.85s and real publication 64.84s; pre/post capability checks are
+1.03s/1.59s. These are active production operations, not an unexplained idle
+wait. Keep the full supervision/repair/publication connection. Isolate this
+consumer from the remaining dependency cases for bounded Quick feedback; any
+larger production optimization requires its own evidence and scope review.
+
 ## S02.01 modular distribution closure review
 
 2026-10-16, baseline `a17a66d`: parent and independent Astra scope audit agreed

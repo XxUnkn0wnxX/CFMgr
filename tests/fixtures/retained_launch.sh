@@ -111,23 +111,17 @@ cfmgr_test_cost retained-absent-end
 [ "$retained_cost_status" != 0 ] || fail 'absent later attachment was accepted'
 [ -s "$view_ram/retained-system-messages" ] || fail 'absent retained launch did not submit native message'
 retained_absent=0
-cfmgr_test_cost retained-return-begin
-if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
-cfmgr_test_cost retained-return-end
-[ "$retained_cost_status" = 0 ] || fail 'returned volume was not freshly admitted'
-[ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'healthy return retried opkg unnecessarily'
-cmp "$fixture/retained.original" "$retained_support/config" || fail 'return changed unrelated settings'
-[ ! -e "$retained_support/.storage-observation" ] || fail 'unchanged return created observation guard'
-# Reaped DNS outage defers tunnel proof without blocking the healthy manager,
-# changing configured-Off settings, or reinstalling a healthy dependency.
+# A returned volume remains usable when DNS is down; this launch proves the
+# no-op dependency path and defers only the tunnel DNS check.
 : >"$view_ram/retained-dns-outage"
-cfmgr_test_cost retained-dns-outage-begin
+cfmgr_test_cost retained-return-dns-begin
 if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
-cfmgr_test_cost retained-dns-outage-end
-[ "$retained_cost_status" = 0 ] || fail 'ordinary DNS outage blocked shared manager admission'
+cfmgr_test_cost retained-return-dns-end
+[ "$retained_cost_status" = 0 ] || fail 'returned volume with DNS outage blocked shared manager admission'
 [ "$cfmgr_install_dns_result" = deferred ] || fail 'DNS outage was reported verified'
-[ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'DNS outage reinstalled a healthy tool'
-cmp "$fixture/retained.original" "$retained_support/config" || fail 'DNS outage changed configured-Off settings'
+[ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'returned volume with DNS outage retried opkg'
+cmp "$fixture/retained.original" "$retained_support/config" || fail 'returned volume with DNS outage changed settings'
+[ ! -e "$retained_support/.storage-observation" ] || fail 'returned volume with DNS outage created observation guard'
 # One explicit healthy force consumer uses the real worker/view/storage guards.
 # DNS query responses are controlled adapters, not public-network evidence.
 cfmgr_launch_confirm_reinstall() { return 0; }
