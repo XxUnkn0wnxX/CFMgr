@@ -25,7 +25,8 @@ cfmgr_bootstrap_action() {
 	install-mkdir-*) cfmgr_install_tool=$cfmgr_install_mkdir ;;
 	install-chmod-*) cfmgr_install_tool=$cfmgr_install_chmod ;;
 	install-flush) cfmgr_install_tool=$cfmgr_install_fsync ;;
-	install-config | install-config-check) cfmgr_install_tool=$cfmgr_install_jq ;;
+	install-config) cfmgr_install_tool=$cfmgr_install_jq ;;
+	install-config-check) cfmgr_install_tool=$cfmgr_install_awk ;;
 	install-df) cfmgr_install_tool=$cfmgr_install_df ;;
 	install-nvram) cfmgr_install_tool=$cfmgr_install_nvram ;;
 	*) return 2 ;;
@@ -151,7 +152,7 @@ cfmgr_bootstrap_manifest_records() {
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" '
 		BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
-		NR==1 { modern=($0=="CFMGR-MANIFEST 2 " version " 1 1"); if ($0 != "CFMGR-MANIFEST 1 " version && !modern) bad=1; next }
+		NR==1 { modern=($0=="CFMGR-MANIFEST 2 " version " 1 2"); if ($0 != "CFMGR-MANIFEST 1 " version && !modern) bad=1; next }
 		{
 			if (NF!=4 || length($0)>512 || $1 !~ /^0(644|755)$/ ||
 			    $2 !~ /^(0|[1-9][0-9]*)$/ || $2>1048576 ||
@@ -165,7 +166,7 @@ cfmgr_bootstrap_manifest_records() {
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/lib/package.sh modules/lib/config.sh modules/lib/config_store.sh modules/manager_settings.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
+			required="cfmgr.sh catalog.txt modules/lib/package.sh modules/lib/config.sh modules/lib/config_store.sh modules/manager_settings.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/lib/config_schema.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
 			if (modern) required=required " modules/backup.sh modules/lib/acquire.sh"
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
 			if (bad || count<2) exit 1
@@ -285,7 +286,10 @@ cfmgr_bootstrap_transaction() {
 	# remain private RAM data until the claimed installation guard is durable.
 	cfmgr_bootstrap_action install-config "$cfmgr_install_source" "$CFMGR_REPOSITORY" "$CFMGR_BRANCH" "$cfmgr_install_uuid" "$cfmgr_install_filesystem" "$cfmgr_install_fsroot" "$cfmgr_install_relative_opt" || return $?
 	cfmgr_install_config=$cfmgr_install_output
-	cfmgr_bootstrap_action install-config-check "$cfmgr_install_config" || return $?
+	cfmgr_bootstrap_size "$cfmgr_install_config" || return $?
+	[ "$cfmgr_install_size" -gt 0 ] && [ "$cfmgr_install_size" -le 65536 ] || return 1
+	cfmgr_install_config_bytes=$cfmgr_install_size
+	cfmgr_bootstrap_action install-config-check "$cfmgr_install_config" "$cfmgr_install_source" "$cfmgr_install_config_bytes" || return $?
 	cfmgr_bootstrap_digest "$cfmgr_install_config" || return $?
 	cfmgr_install_config_digest=$cfmgr_install_digest
 	cfmgr_bootstrap_retained && cfmgr_bootstrap_attached || return 1
@@ -328,7 +332,7 @@ cfmgr_bootstrap_transaction() {
 	cfmgr_bootstrap_metadata "$cfmgr_install_support/config" "$cfmgr_install_owner" 0600 || return $?
 	cfmgr_bootstrap_digest "$cfmgr_install_support/config" || return $?
 	[ "$cfmgr_install_digest" = "$cfmgr_install_config_digest" ] || return 1
-	cfmgr_bootstrap_action install-config-check "$cfmgr_install_support/config" || return $?
+	cfmgr_bootstrap_action install-config-check "$cfmgr_install_support/config" "$cfmgr_install_source" "$cfmgr_install_config_bytes" || return $?
 	cfmgr_install_walk_count=0
 	cfmgr_bootstrap_walk "$cfmgr_install_support" "$cfmgr_install_support" 0 >"$cfmgr_install_context/staged.inventory" || return 1
 	# shellcheck disable=SC2016

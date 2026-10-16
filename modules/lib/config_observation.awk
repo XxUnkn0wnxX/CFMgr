@@ -6,7 +6,7 @@
 # Caller must check status, receipt framing and independently measured output.
 BEGIN {
     if (!cfmgr_json_tree_ready || cfmgr_json_mode != "tree") reject()
-    if (cfmgr_config_mode != "check" && cfmgr_config_mode != "observe" &&
+    if (cfmgr_config_mode != "fresh" && cfmgr_config_mode != "check" && cfmgr_config_mode != "observe" &&
         cfmgr_config_mode != "patch" && cfmgr_config_mode != "scope" &&
         cfmgr_config_mode != "settings-read" && cfmgr_config_mode != "settings-observe" &&
         cfmgr_config_mode != "settings-patch" && cfmgr_config_mode != "backup-read" &&
@@ -17,7 +17,8 @@ BEGIN {
 
     co_type(1, "object")
     co_schema = co_field(1, "schema", "number")
-    if (cfmgr_json_tree_payload[co_schema] != "n1") reject()
+    co_version = cfmgr_json_tree_payload[co_schema]
+    if (co_version != "n1" && co_version != "n2") reject()
     co_generation = co_field(1, "generation", "number")
     co_old = substr(cfmgr_json_tree_payload[co_generation], 2)
     if (co_old !~ /^[1-9][0-9]*$/ || length(co_old) > 20) reject()
@@ -42,6 +43,8 @@ BEGIN {
         co_saved[co_i] = co_decode(substr(cfmgr_json_tree_payload[co_ids[co_i]], 2))
     co_observation_valid(co_saved[1], co_saved[2], co_saved[3], co_saved[4])
 
+    if (co_version == "n2") cs_validate()
+    else {
     co_features[1] = "ddns"
     co_features[2] = "ip_sync"
     co_features[3] = "cloudflared"
@@ -80,6 +83,7 @@ BEGIN {
     co_network = co_field(1, "network", "object")
     co_field(co_network, "address_family", "string")
     co_field(co_network, "selected_wan", "string|number|null")
+    }
     co_backup = co_field(1, "backup", "object")
     co_destination = co_field(co_backup, "destination", "object|null")
     co_backup_present = (cfmgr_json_tree_kind[co_destination] == "object")
@@ -91,7 +95,7 @@ BEGIN {
         co_backup_fields = 0
         for (co_i = 1; co_i <= cfmgr_json_tree_count; co_i++)
             if (cfmgr_json_tree_parent[co_i] == co_destination) co_backup_fields++
-        if (co_backup_fields != 5) reject()
+        if (co_version == "n1" && co_backup_fields != 5) reject()
         for (co_i = 1; co_i <= 4; co_i++) {
             co_bi = co_field(co_destination, co_backup_keys[co_i], "string")
             co_backup_saved[co_i] = co_decode(substr(cfmgr_json_tree_payload[co_bi], 2))
@@ -101,6 +105,12 @@ BEGIN {
     }
     co_field(1, "credentials", "object")
     co_field(1, "ownership", "object")
+
+    if (cfmgr_config_mode == "fresh") {
+        if (co_version != "n2") reject()
+        cs_fresh()
+        exit 0
+    }
 
     if (cfmgr_config_mode ~ /^backup-/) {
         if (cfmgr_config_mode == "backup-read") {
@@ -130,7 +140,13 @@ BEGIN {
         if (co_changed) {
             co_new = co_increment(co_old)
             co_replacement[co_generation] = co_new
-            co_replacement[co_destination] = co_backup_json
+            if (co_version == "n2" && co_backup_present) {
+                # Schema2 extensions are inert and remain byte-for-byte even
+                # inside the selected destination; only known saved fields move.
+                for (co_i = 1; co_i <= 4; co_i++)
+                    if ("v" co_backup_want[co_i] != "v" co_backup_saved[co_i])
+                        co_replacement[cs_id(co_destination, co_backup_keys[co_i])] = co_quote(co_backup_want[co_i])
+            } else co_replacement[co_destination] = co_backup_json
             co_result = ""; co_cursor = 1
             for (co_i = 1; co_i <= cfmgr_json_tree_count; co_i++) {
                 if (!(co_i in co_replacement)) continue

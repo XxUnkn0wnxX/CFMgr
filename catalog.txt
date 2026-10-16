@@ -11,6 +11,7 @@ modules/lib/.gitkeep	library
 modules/lib/acquire.sh	library
 modules/lib/config.sh	library
 modules/lib/config_observation.awk	library
+modules/lib/config_schema.awk	library
 modules/lib/config_store.sh	library
 modules/lib/dependencies.sh	library
 modules/lib/execution_tasks.sh	library

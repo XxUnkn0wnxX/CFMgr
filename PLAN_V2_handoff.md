@@ -24,7 +24,196 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Paused after accepted S04.02 checkpoint
+## S03.02 — approved configuration foundation implementation
+
+The user approved starting the recommended **S03.02** foundation package with
+“ok start” after the accepted S04.02 checkpoint. Route A selects this one complete
+existing subgoal. Baseline is clean `develop` at
+**`d0da7ec51a28ba7084a9561b4ea64a64c42daab1`**, the documentation receipt for tested
+candidate `dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea` below. Progress remains
+**14/157 accepted (8.9%)**, **0/16 main goals (0%)**; Goal 3 is **2/10 accepted
+(20%)**. No new implementation or proof has been credited.
+
+The user approved proceeding with **“ok start”** on 2026-10-16 after reviewing
+the schema/option inventory and the logging, native DDNS and developer-control
+corrections. Implement schema 2 with explicit lossless schema-1 compatibility
+and the corrected option contract. This is implementation authorization, not an
+accepted product checkpoint. The approved design record is
+`.tmp/s0302/schema-proposal.md`, including the field/credential contract, concrete
+bounds table, source evidence/limits and exact paired specification/checklist
+additions. Parent owns this design record and all V2 records. Read-only
+`foundation_scope_audit` design and `candidate_readiness` consumer/bounds review
+are complete, including the bounded read-only native DDNS service follow-up.
+Parent verified the key backend findings and native UI trace; the
+[source review](PLAN_V2_audit.md#s0905s0908-native-ddns-ownership-source-review)
+records the evidence and remaining qualification. `schema_foundation` now owns
+the runtime/test implementation and the serial focused-test slot; no CI run is
+active. Parent owns planning records and final integration. Read-only
+`schema_review` and parent final source review are complete with no unresolved
+material findings. `schema_foundation` completed the runtime/test package and all
+assigned focused local groups; no writer or local test remains active. All
+complete affected local groups passed. Exact-candidate CI and final acceptance
+remain pending.
+
+The populated schema-2 module now passes completely: **68 passed, no skips**,
+76.21 seconds pytest / 77.21 real / 36.84 user / 23.68 system. Private evidence:
+`.tmp/s0302/schema-final-repair-module.log` and `worker-validation.log`.
+The first parent group stopped after 100 passes at the populated retained
+replacement's 20-second host-harness deadline. Diagnosis proved continuous
+progress through 188 bounded probes, publication and final cleanup on a loaded
+host, with no orphan or failing final probe. Only the new populated fixture now
+allows 30 seconds overall; legacy fixtures retain 20 seconds and production/
+per-probe deadlines are unchanged. Final replacement passed in 18.25 seconds.
+Cheap existing parser cases now also prove shared IP-Sync, Cloudflared
+On/installed and record-level DDNS overrides. The original failure remains in
+`.tmp/s0302/local-schema-final.log`.
+
+The runtime/test tree is frozen. Parent owns final integration/publication. Common planning,
+package, syntax, Ruff/format/compile and shfmt checks passed. The redundant whole
+repository ShellCheck was stopped after more than three minutes; all changed
+shell files have completed focused proof, including the final constructor
+(0.24 seconds), probe (2.51 seconds) and platform fixture (1.12 seconds) checks. Parent rechecked final test-file
+lint/format/compile and planning/package/whitespace. Source review is complete;
+acceptance and all candidate CI remain pending.
+
+Final local evidence on the prepared tree based on `d0da7ec` (no full suite):
+
+| Complete focused selection | Result | Real / user / system |
+| --- | --- | --- |
+| Populated schema-2 parser, preservation and actual consumers | 68 passed | 77.21 / 36.84 / 23.68 seconds |
+| A: constructor, observation, status, package, acquisition and entry/package | 106 passed, three Linux skips | 35.75 / 17.17 / 15.35 seconds |
+| B: Store, manager settings and backup storage | 57 passed, four Linux skips | 101.40 / 46.60 / 35.88 seconds |
+| C: installed manager and backup menus | 11 passed | 107.34 / 42.99 / 42.67 seconds |
+| D: retained launch, including publication/recovery and later-Off preservation | 21 passed, one Linux skip | 127.85 / 58.91 / 40.31 seconds |
+| E: installation, failure reporting and prerequisites | 63 passed, 14 Linux skips | 211.72 / 96.79 / 59.04 seconds |
+| F: acquire-install, selected reinstall, dependency consumer, developer runner and platform fixture unit checks | 167 passed, 13 Linux skips | 111.10 / 49.72 / 37.58 seconds |
+| G: dependency bootstrap | 13 passed, eight platform skips, four optional diagnostics excluded | 4.08 / 1.74 / 1.70 seconds |
+
+Total: **506 passed, 43 platform skips**, four optional diagnostics excluded;
+all required local checks and parent review passed. Logs use
+`.tmp/s0302/local-A.log` through `local-G.log`. Reuse this evidence; do not rerun
+unaffected work. Publish the reviewed candidate, complete the same affected Linux/vendor BusyBox
+Quick selections, then dispatch required core Checks last. No automatic core
+run triggered prematurely by candidate publication earns the final gate.
+The installation-heavy E group is within the practical three-to-four-minute
+range; its fresh/completion/recovery cases account for most cost. Split
+`test_install.py` into its own Quick run, and combine reporting/prerequisite
+modules with the smaller integration selection. Retain every affected module.
+
+The approved design uses root config schema 2 for fresh typed authority, with
+explicit schema-1 compatibility for current retained launch, manager/backup Save,
+storage-observation and tolerant status. Legacy bytes remain preserved; no
+automatic credential conversion or inferred sharing. Package compatibility must
+declare config schema 2 coherently; separate bootstrap/receipt/guard protocol
+versions stay unchanged. Existing defaults are preserved, future unselected
+policies stay null, and non-null settings receive the approved explicit limits.
+The paired plan/checklist schema contract is applied and focused local proof is
+complete. Product acceptance and exact-candidate CI remain pending.
+
+User's final logging decision, 2026-10-16: **no fixed CFMgr product maximum for
+tunnel log size or retained-file count; optional maximum age is 1–30 days; defaults
+must be safe**. This supersedes both earlier suggested size/count caps. Parent
+updated the plan, mirrored checklist and private proposal for that stated scope.
+The safe proposed setup defaults remain **10 MiB/five total files**, with fresh
+logging inactive. Positive finite numeric/tool/filesystem validation, bounded
+operation, mounted `/opt` storage and no JFFS/RAM fallback remain required. Values
+are rotation thresholds, not a hard disk quota; Scribe cadence and the
+no-separate-aggregate-budget contract remain intact. This decision does not
+approve the whole schema proposal or the other proposed option ranges.
+
+User clarification, 2026-10-16: the native forced-DDNS-refresh maximum must follow
+the matched Merlin setting, not an independently chosen CFMgr cap; default 14
+days stays unchanged. Parent mirrored this in plan/checklist and replaced the
+proposal's 1–999 bound. Pinned 3004.388.12_2 source confirms native default 21,
+`CKN_STR3` and HTTP rejection of values longer than three characters; the watchdog
+has a nonzero integer-day timer but no explicit numeric maximum in the inspected
+path. The native interface suggests 999 for positive decimal input, but does not
+establish a universal runtime maximum. The final readiness audit accepted
+canonical positive 1–999 as the pinned backend setting-interface range, with
+default 14 and matched native application revalidation retained.
+
+User clarification, 2026-10-16: while CFMgr owns DDNS, it owns Merlin's native
+DDNS configuration, handler and lifecycle. CFMgr Save/On/Off must match native
+GUI Apply's DDNS backend effect and the native page must reflect applied
+On/Off, Custom provider, primary hostname and refresh days. Parent mirrored the
+representation boundary in S03.02 and runtime acceptance in S09.05–S09.08:
+NVRAM/config writes alone are insufficient; preserve Off on settings Save,
+verify native apply/lifecycle effects and readback, guard partial/stale work,
+preserve unrelated settings/IP-Sync and respect later ownership. This is an
+explicit user refinement, not approval of the remaining schema proposal.
+
+The user also reconfirmed hidden developer/source controls. Existing
+`manager.developer`, `manager.source.repository/branch/commit` and
+`manager.developer_log_directory` remain manual-file-only config settings;
+the private proposal now lists their existing contract explicitly. Source
+fields are present in the current constructor; complete developer source/update
+execution remains pending under Goal 7. No hidden menu UI was added or approved.
+
+User correction, 2026-10-16: **gzip is for backups only**. Parent removed the
+inherited log-compression and delay-compression proposals, defaults and schema
+fields from plan/checklist/private proposal. Owned live logs and numbered
+rotations stay uncompressed; owned rules explicitly override inherited
+compression settings. The S14.01 `.tar.gz` backup contract is unchanged.
+Source inspection found no compression handling in runtime modules or generated
+configuration defaults; existing gzip test uses are kernel fixture archive work,
+not product log rotation. No runtime change or rollback was needed. The schema
+report remains a configuration design proposal grounded in source review,
+not an audit certifying that all listed manager options already exist.
+
+User clarification, 2026-10-16: once network-outage backoff reaches five minutes,
+keep rechecking every five minutes until connectivity recovers while eligible
+recovery remains. Parent made the existing 1/2/4/5/5/... policy explicit in the
+plan and matching S06.06/S12.11 checklist acceptance. There is no total retry-count
+or elapsed-time cutoff. The proposal now labels its distinct setting **routine
+native address discovery**; it cannot change outage recovery, and a provider
+batch's bounded attempts cannot exhaust the recovery loop. This precise user
+clarification does not approve the broader schema or proposed option ranges.
+
+Approval, 2026-10-16: the user's latest **“ok start”** answers the pending schema-2
+design/compatibility/option question and authorizes the paired plan/checklist
+contract plus implementation within S03.02. It does not waive validation or
+settle unrelated open product behavior. `foundation_scope_audit` returned
+PASS WITH NOTES; parent resolved the policy/record/numeric representation notes
+and froze them in the private design record and paired contract. Parent owns
+the plan/checklist/handoff/audit. `schema_foundation` (Sol Strong) owns the coherent
+S03.02 runtime/parser/constructor/status/package and affected-test implementation
+package and has been released to implement with small serial focused tests.
+No other runtime/test writer is active. Worker must not commit, publish,
+award acceptance or expand into feature operations. Parent owns integration and
+the focused-local → affected Quick → final core → pause gate.
+
+Safe resume: runtime/test work is now in progress in the existing checkout; do
+not discard or overwrite the worker's changes. Parent record edits include the
+approved schema contract, user corrections and source evidence. The design
+record remains ignored local recovery data. No runtime gate or new acceptance
+is claimed yet. Finish the complete populated schema-2 contract and explicit
+legacy preservation through current consumers, then parent review and focused
+gates. Pending validation must remain unchecked; nullable placeholders alone
+cannot complete the subgoal.
+
+Real consumers are fresh installation, retained-launch admission and storage
+observation, the accepted config Store and manager/backup scoped Saves, and
+installed status. Missing acceptance is the complete typed contract and its
+integration through these consumers, not another set of empty flags. Accepted
+S03.01/S03.07 and S04.02/S04.03 provide current foundations. Later provider,
+lifecycle, history-writing and recovery workflows remain separate subgoals and
+receive no credit from this package.
+
+Preserve maintenance independent of tunnel activation, configured-but-uninstalled
+state, saved Check Off/Auto On with effective Auto Off, tolerant damaged-state
+status, secret-free output, and byte-preserving unrelated-field Save behavior.
+Do not silently reset, discard or reinterpret retained configuration or treat
+observations/guards as user activation.
+
+Planned gates: focused constructor/schema/status checks plus all affected Store,
+manager/backup Save, retained-launch and installation/package groups and statics;
+focused Linux/vendor BusyBox Quick groups at the candidate; **final required core
+Checks last**, followed by justified acceptance records and the automatic pause.
+Reuse the measured baseline below to size groups and review cost. No full local
+suite is due because no main goal will complete. No router work, deployment,
+release, dependency installation, worktree or history changes are authorized.
+
+## Previous accepted S04.02 checkpoint
 
 The user approved starting the recommended **S04.02** package after the completed
 S04.03 checkpoint. Route A completed this one foundation across the current manager
@@ -34,8 +223,8 @@ accepted runtime/test candidate is now
 **`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`**, published on `develop`.
 Progress: **14/157 accepted (8.9%)**, **0/16 main goals (0%)**, Goal 4
 **2/9 accepted (22.2%)**. Only S04.02 earns new credit; 143 product subgoals
-remain unaccepted. **The checkpoint is complete and paused. Wait for the next
-user instruction; no next target is selected or started.**
+remain unaccepted. This checkpoint completed and paused; the user's later
+instruction starts only the S03.02 package recorded above.
 
 Parent and independent Astra scope audit agree PASS WITH NOTES. Existing durable
 publication and verified common-lock interfaces supply the prerequisites;
@@ -126,7 +315,7 @@ which does not trigger runtime CI. Representative Linux/vendor BusyBox proof
 does not replace later real Merlin/ARM qualification.
 
 The standing rule remains **pause automatically after every cleared checkpoint**.
-No further implementation or next target is authorized by this handoff. No router work,
+The S04.02 receipt itself grants no further implementation authority. No router work,
 deployment, release, dependency installation, worktree creation, history changes
 or product-scope changes are authorized.
 

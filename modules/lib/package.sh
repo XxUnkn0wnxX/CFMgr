@@ -31,7 +31,7 @@ cfmgr_package_verify() {
 	# shellcheck disable=SC2016
 	cfmgr_package_records=$(/usr/bin/awk -v version="$CFMGR_VERSION" '
 		BEGIN {FS="\t"}
-		NR==1 {if($0!="CFMGR-MANIFEST 1 " version && $0!="CFMGR-MANIFEST 2 " version " 1 1")bad=1;next}
+		NR==1 {if($0!="CFMGR-MANIFEST 1 " version && $0!="CFMGR-MANIFEST 2 " version " 1 2")bad=1;next}
 		{
 			if(NF!=4 || length($0)>512 || $1!~/^0(644|755)$/ || $2!~/^(0|[1-9][0-9]*)$/ || $2>1048576 ||
 			length($3)!=64 || $3~/[^0-9a-f]/ || length($4)>256 || $4!~/^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
@@ -43,7 +43,7 @@ cfmgr_package_verify() {
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/package.sh modules/lib/acquire.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
+			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/package.sh modules/lib/acquire.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/lib/config_schema.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
 			n=split(required,names," ");for(i=1;i<=n;i++)if(!seen[names[i]])bad=1
 			if(bad || count<2)exit 1
 		}' "$cfmgr_source/manifest.txt") || return 1

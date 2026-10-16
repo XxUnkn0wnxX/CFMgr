@@ -75,7 +75,7 @@ cfmgr_entry_admit() {
 	# Only these two fixed records can select bootstrap verification input.
 	# shellcheck disable=SC2016
 	cfmgr_entry_records=$(/usr/bin/awk -v version="$CFMGR_VERSION" 'BEGIN {FS="\t"}
-		NR==1 {if($0!="CFMGR-MANIFEST 1 " version && $0!="CFMGR-MANIFEST 2 " version " 1 1")bad=1;next}
+		NR==1 {if($0!="CFMGR-MANIFEST 1 " version && $0!="CFMGR-MANIFEST 2 " version " 1 2")bad=1;next}
 		$4=="cfmgr.sh" || $4=="modules/lib/package.sh" {
 			if(NF!=4 || seen[$4]++ || $2!~/^(0|[1-9][0-9]*)$/ || $2>1048576 || length($3)!=64 || $3~/[^0-9a-f]/ || ($4=="cfmgr.sh" && $1!="0755") || ($4=="modules/lib/package.sh" && $1!="0644"))bad=1
 			print

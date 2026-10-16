@@ -35,6 +35,7 @@ def store_fixture(tmp_path, tools, legacy_fsync, config):
         "modules/lib/json.awk",
         "modules/lib/mountinfo.awk",
         "modules/lib/config_observation.awk",
+        "modules/lib/config_schema.awk",
         "modules/helpers/probe.sh",
     ):
         original = ROOT / relative

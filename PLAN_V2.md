@@ -220,7 +220,67 @@ Detect retained setup and incomplete guards **before** generating defaults. Miss
 
 Store schema/data generation, explicit typed credential references and expected identities; DDNS zones/logical records/TTL/proxy; IP-Sync target names/IDs/mappings; shared WAN/family/discovery settings; tunnel mode/readiness/watchdog/binary-update preferences; per-feature logging preferences and policy; backup destination/date/retention; manager check/auto settings; and ownership/migration data. Keep activation, installed components, logging readiness, auth faults and installation/removal guards distinct. Credential serialization is data, never shell code.
 
+Some saved choices also control native Merlin settings. For managed DDNS, retain
+the mapping to the native client switch, Custom provider, primary hostname and
+forced-refresh days described in section 9. Keep saved intent, observed NVRAM
+values and the verified native lifecycle result distinct; a successful config
+Save alone does not prove the firmware setting or service was applied.
+
 Expose actual user choices in their owning submenu. Internal schema/generation/guard controls are not product settings. Bound timeout/retry/schedule/retention values, reject invalid input without changing working settings and preserve unrelated fields. No developer toggle, arbitrary source-URL menu or arbitrary manager-check cron-expression UI.
+
+### Configuration format and validation
+
+Fresh configuration uses schema 2. Explicit schema-1 compatibility remains for
+retained admission, scoped manager/backup Save, storage observation and tolerant
+status; preserve unrelated original bytes without automatic conversion of opaque
+credentials, ownership or history. Unknown required schemas fail closed. Package
+metadata declares config schema 2 while unchanged bootstrap/receipt protocols
+retain their own versions. Fresh installation, retained admission and Store use
+one substantive schema contract; fresh admission also checks passive defaults.
+
+Schema 2 separates saved activation/maintenance, typed credential references and
+expected identities, settings, advisory ownership/migration and typed history.
+Use one credential registry with API-token, connector-token, structured tunnel
+JSON and certificate-association kinds. Validate all selected references and
+required selected-method data; advanced account/UUID/secret identity must agree,
+while A1 gains no certificate or management-account requirement. Certificate
+associations retain format, account, paths, digest, generation and provenance;
+structural admission does not prove certificate validity or authentication.
+Existing independent transaction guards remain authoritative. Unknown ordinary
+extensions stay inert and survive scoped writes; known unsupported or duplicate
+secret-authority controls are rejected in schema 2, preserving schema-1 behavior.
+
+Unselected policies remain null. Once selected, each related policy object is
+complete: shared discovery includes interval/request/connection; DDNS timeouts
+include request/connection/completion; IP-Sync retry includes attempts/request/
+connection/batch; tunnel readiness includes response/command, and watchdog
+includes reconnect/stability. Null siblings cannot bypass cross-field checks.
+Canonical numeric text is preserved; validate large values with exact decimal
+comparisons, not floating-point rounding or work proportional to selected counts.
+
+| Selected setting | Admitted values and relationships |
+| --- | --- |
+| Request / connection timeout | Request 1–30 seconds; connection 1–10 seconds and no greater than request. |
+| DDNS completion timeout | 5–90 seconds and at least request + 5 seconds; later execution must remain inside the matched firmware ceiling. |
+| Routine native discovery | 60–3600 seconds in whole minutes; unselected retains the five-minute policy. Independent of outage recovery. |
+| Native forced refresh | 1–999 canonical positive days for the pinned three-character native setting interface; default 14. Revalidate the matched firmware before application. |
+| IP-Sync retry policy | 1–4 attempts; batch timeout 1–300 seconds and no shorter than request. Expiry may stop before the attempt ceiling. |
+| Tunnel reachability | Response 1–2 seconds; command 1–3 seconds and no shorter than response; one packet stays fixed. |
+| Tunnel reconnect / stability | Reconnect grace 1–300 seconds; stability 60–3600 seconds. Neither bypasses shared backoff. |
+| DDNS TTL | Unselected, Auto or integer seconds 30–86400; effective proxied records require Auto. Provider/account capability remains a separate use-time gate. |
+| Tunnel log size / count | Positive canonical size in B/KiB/MiB/GiB; scaled bytes fit signed 64-bit. Positive total count includes live; total minus one fits signed 32-bit. These are representation/tool limits, not product quotas or disk guarantees. |
+| Tunnel log mode / age | Size/daily/weekly/monthly; optional age 1–30 days. No compression/delay-compression controls. Native policies are fixed version references. |
+| Backup retention / date | Unselected or 3/4/5 archives; unselected or DMY/MDY/YMD. No automatic choice of unresolved defaults. |
+
+The native day bound follows the pinned backend's three-character setting
+validation, not a claimed universal direct-NVRAM/watchdog limit. Log size/count
+representation follows the supported logrotate type contract: scaled bytes at
+most 9223372036854775807 and total count at most 2147483648, because history is
+total minus one. Actual installed-tool/filesystem support and bounded rotation
+remain required before use; schema admission does not qualify extreme operations.
+Typed history remains historical when stale, restored or future-dated; the
+existing five-event display limit is not a five-record storage limit. Ownership
+associations and backup history never authorize live mutation or pruning.
 
 ### Menu structure
 
@@ -765,7 +825,22 @@ After lost create/delete responses, re-enumerate exact managed scope before retr
 
 Normal reviewed DDNS Save/Enable replaces Merlin's existing DDNS provider/settings and the `ddns-start` provider handler. Explain replacement in the normal review; no extra takeover prompt and **no backup or restore of the displaced provider/settings/handler**. Do not run two provider handlers.
 
-Set DDNS client enabled, server Custom, the explicitly selected primary configured hostname and native forced-update interval in days (default **14**) using the supported firmware contract. The mapped fields are `ddns_enable_x=1`, `ddns_server_x=CUSTOM`, `ddns_hostname_x=<primary>` and `ddns_refresh_x=14` by default, with the scoped `service restart_ddns` apply route subject to matched-firmware persistence/side-effect verification. Multiple managed names still have one firmware primary field. In the pinned Merlin 3004.388.12_2 source, `ddns_refresh_x` is days and zero disables forced refresh; 14 is CFMgr's chosen default, not the firmware default. Validate CFMgr's supported positive-day setting against the matched firmware rather than treating frontend input width as a backend range guarantee. Enforce actual supported hostname bounds, including the matched frontend's 63-character limit where applicable.
+While CFMgr owns DDNS, it owns the native Merlin DDNS configuration, handler and
+lifecycle as one managed integration. CFMgr Save/On/Off must produce the equivalent
+native DDNS backend transition to applying those choices in Merlin's GUI. On/Off
+must update the owned `ddns_enable_x` value to `1`/`0` and perform the supported
+native service apply/start/stop action as required; an NVRAM write alone is not
+activation or shutdown. Reopening Merlin's DDNS page must reflect the applied
+switch, Custom provider, primary hostname and native refresh value wherever the
+matched firmware exposes them. Saving changed settings while Off must preserve
+Off. Read back the owned fields and verify the requested lifecycle effect before
+claiming it applied; an accepted service request is not completion or provider
+success. Guard interrupted/partial apply and outstanding owned workers so late
+work cannot undo Off or publish a stale success. Firmware completion/status must
+follow the supported callback contract below. These requirements retain scoped
+settings preservation, IP-Sync independence and later-owner rules below.
+
+When enabling DDNS, set the native client enabled, server Custom, the explicitly selected primary configured hostname and native forced-update interval in days (default **14**) using the supported firmware contract. The mapped fields are `ddns_enable_x=1`, `ddns_server_x=CUSTOM`, `ddns_hostname_x=<primary>` and `ddns_refresh_x=14` by default, with the scoped `service restart_ddns` apply route subject to matched-firmware persistence/side-effect verification. Multiple managed names still have one firmware primary field. In the pinned Merlin 3004.388.12_2 source, `ddns_refresh_x` is days and zero disables forced refresh; 14 is CFMgr's chosen default, not the firmware default. The positive-day setting's maximum must follow the verified limit of the matched native Merlin setting, without an independently chosen CFMgr cap. Validate that contract rather than treating frontend input width as a backend range guarantee. Enforce actual supported hostname bounds, including the matched frontend's 63-character limit where applicable.
 
 Preserve stored unrelated username/password/provider fields, DDNS options outside these reviewed fields, WAN settings, certificate/HTTPS choices, all other hooks and independently enabled CFMgr IP-Sync observation. Do not silently enable global custom-script support or alter `ddns_ipv6_update` without its separately verified requirement. Skip redundant writes/commit/restart when already correct; guard partial/interrupted application and verify before claiming enabled.
 
@@ -893,6 +968,13 @@ A network outage defers affected work while retaining On. Valid provider respons
 
 Use one cheap minute-driven dispatcher with private boot-local monotonic reason/attempt/due state. Ordinary failed outage checks back off **1, 2, 4, then 5 minutes**, with **300 seconds as the hard maximum scheduled outage-check interval** while eligible recovery remains pending. Coalesce tick/event/manual admission before spawning; do not accumulate delayed sleeping workers. A relevant event may request one earlier readiness check without erasing crash history or multiplying counters. Due checks run on eligible dispatcher ticks; host scheduling delays are reported rather than called successful timely execution. Longer valid provider cooldowns still suppress API calls even while common readiness is rechecked. No five-minute deadline forces a request into a known rate limit.
 
+After reaching the cap, continue **5, 5, 5, ... minute** outage rechecks until
+connectivity recovers or no eligible recovery remains. There is no overall
+outage-retry count or elapsed-time cutoff. This recovery cadence is separate from
+routine native address discovery and from a bounded provider batch's attempt
+limit; neither may lengthen or exhaust the five-minute network recovery loop.
+Each individual check remains bounded and returns to the dispatcher.
+
 Keep one shared network reason/due state plus necessary per-feature operation/crash/cooldown state; advance a failed due check once. Confirmed sustained recovery resets the applicable backoff, while successful NTP/ping alone does not reset connector crash history. Retain only newest pending work, bound worker/probe cost, and avoid per-tick JFFS writes. Log reason changes, increased retry delay and recovered state concisely; suppress identical repeated notices at the cap. Status/health show waiting reason and next due. There is no blocking boot wait loop, permanent polling daemon or repeated restart of a healthy connector during an outage.
 
 ### Thin owned integration
@@ -1013,7 +1095,7 @@ Permanent invalid config, incompatible artifact or missing essential capability 
 | S13.01 | Three private logs/native notices | Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit developer diagnostics under S13.14. |
 | S13.02 | First setup versus saved preference | Only completed fresh ready setup initializes own logs; pending/maintenance-only/opt-out remain inactive. |
 | S13.03 | Readiness and independence | Verified mounted Entware /opt/var/log paths and actual Scribe/base/schedule/include readiness, graceful no-file operation and service-Off rotation retention. |
-| S13.04 | Cloudflared tuning | Per-file size/total-count including live file, shown Enter defaults and supported time/compression/age options; no aggregate-byte quota. |
+| S13.04 | Cloudflared tuning | Per-file size/total-count including live file, shown Enter defaults and supported time/age options; uncompressed log history and no aggregate-byte quota. |
 | S13.05 | Fixed native policies | Separate versioned DDNS/IP-Sync defaults with no tuning UI or config override. |
 | S13.06 | Rotation correctness | Numbered history/actual cadence, daemon reopen or stated copytruncate limit, safe native append and snapshot coordination. |
 | S13.07 | Fast scoped repair | Cheap requested-feature checks, bounded owned fragment/include repair and full explicit validation without base/global changes. |
@@ -1184,24 +1266,31 @@ File readiness requires actual mounted writable Entware, installed/configured Sc
 
 ### Policies and controls
 
-Cloudflared tuning is available only through its configured logging submenu with usable Scribe. Initial setup asks no advanced rotation questions. These numeric values remain **proposed defaults to settle**, not previously approved fixed guarantees:
+Cloudflared tuning is available only through its configured logging submenu with usable Scribe. Initial setup asks no advanced rotation questions. **Gzip compression is for backup archives only.** All CFMgr-owned live logs and rotated history remain uncompressed; logging has no compression or delay-compression option or saved policy field. The defaults below remain **proposed defaults to settle**, not previously approved fixed guarantees:
 
 | Cloudflared setting | Proposed default | Options/rules |
 | --- | --- | --- |
 | Custom logging | On for completed first setup with ready Scribe; otherwise inactive | Separate from service activation/readiness; uninstall saves false. |
 | Rotation mode | Size | Size only, or daily/weekly/monthly plus size threshold. |
-| Size | `10M` | Validated positive bounded units/value. |
-| Total log files | `5` | Positive bounded count including the live file; 1 keeps no history, 3 means live plus two rotations. |
+| Size | `10M` | Validated positive value in supported units, with no fixed CFMgr product maximum; reject overflow or unsupported tool/filesystem values. |
+| Total log files | `5` | Positive integer including the live file, with no fixed CFMgr product maximum; 1 keeps no history, 3 means live plus two rotations. Supported numeric/operation limits still apply. |
 | Interval | Unset in size mode | Does not increase Scribe's actual checking cadence. |
-| Compression | On | Available gzip, explicit option. |
-| Delay compression | On | Leave newest rotation uncompressed until next cycle when enabled. |
-| Maximum age | Off | Optional positive age limit, independent of count. |
+| Maximum age | Off | Optional integer 1–30 days, independent of count. |
+
+Keep the fresh logging defaults conservative while allowing the user to select
+larger per-file sizes and retained-file counts on the verified mounted Entware
+drive through `/opt`. Do not impose an arbitrary CFMgr size/count ceiling or a
+separate aggregate-byte quota. This does not permit invalid/infinite numeric
+values, overflow, unsupported logrotate/filesystem values, unbounded CFMgr work
+or fallback logging onto JFFS/RAM when the drive is unavailable. Maximum age, when
+enabled, is limited to 30 days. These tuning rules apply to Cloudflared only;
+native feature policies remain fixed.
 
 DDNS and IP-Sync use separate **fixed** versioned policies: proposed `1M` per file, two files total (live plus one uncompressed numbered rotation), size-only, no time/age/compression tuning or editable user overrides. Save only their preference/policy version. Invalid Cloudflared policy changes preserve working config/rule.
 
 Use per-file size and total file count as the storage controls; no separate aggregate-byte budget. A count of **1** clears/reuses the live file at rotation without retaining history. A count of **3** with `3M` means one live file and at most two historical files, rotating around the per-file threshold and discarding the oldest history. Present the total count in prompts/config/status and translate it to logrotate's historical count internally; never silently add one more file.
 
-Show the effective current/default size and count in each prompt; Enter keeps the shown value (initial default for fresh configuration), while invalid input preserves the working policy. Use numbered `.1` through `.N-1` history for total count `N` and `.gz` where applicable, explicit `nodateext`/`start 1`, `missingok`/`notifempty`, size-only `size` or time-plus-size `maxsize` after verifying installed directive support. With count 1 omit inapplicable history compression/age behavior without deleting saved preferences. Scribe alone schedules rotation. Thresholds are checked at its cadence, **not immediate hard size caps**; display that cadence. No second cron, polling rotation daemon or launch truncation.
+Show the effective current/default size and count in each prompt; Enter keeps the shown value (initial default for fresh configuration), while invalid input preserves the working policy. Use uncompressed numbered `.1` through `.N-1` history for total count `N`, explicit `nocompress`/`nodelaycompress` to override inherited compression settings, `nodateext`/`start 1`, `missingok`/`notifempty`, size-only `size` or time-plus-size `maxsize` after verifying installed directive support. With count 1 omit inapplicable history age behavior without deleting the saved age preference. Scribe alone schedules rotation. Thresholds are checked at its cadence, **not immediate hard size caps**; display that cadence. No second cron, polling rotation daemon or launch truncation.
 
 Count 1 must safely reset the owned live file without orphaning an active writer or leaving extra history; do not unlink/recreate an open logfile and claim the writer followed it. Prove Cloudflared open-file behavior before choosing rename/reopen versus copytruncate; a syslog-ng HUP is not daemon reopen evidence. Document copytruncate loss window if selected. Separately validate short-lived serialized DDNS/IP-Sync append/rotation and log-backup coordination. Preserve existing eligible owned log/history through recoverable migration; never adopt unrelated history by filename alone.
 
@@ -1546,7 +1635,7 @@ These details need concrete supported decisions before their dependent product b
 | Provider operations | Permissions, pagination/completeness, exact managed fields, same-ID empty-list removal, actual mixed-family-list capability, user-selected shared/split migration and target-vs-feature fault schema; no extra feature inferred from uncertain API behavior. |
 | Cloudflared | Token-file floor/default-config isolation, A2 create/token endpoint permissions and failure handling, B route-discovery completeness/lossless mapping edits, login/certificate provenance/manual fallback, same-UUID fetch and runtime auth/connectivity classifier; no implicit binary auto-update default where not selected. |
 | Scheduling | Exact manager daily cron time/registration/removal; shared minute dispatcher, five-minute native discovery and per-scope due-state reconciliation with native DDNS retries. |
-| Logging | Actual Scribe/include/schedule state, daemon reopen/copytruncate, rotation concurrency; proposed Cloudflared 10M/five-total-files/compression and native 1M/two-total-files defaults, safe count-one reuse and launch budgets. |
+| Logging | Actual Scribe/include/schedule state, daemon reopen/copytruncate, rotation concurrency; uncompressed history despite inherited compression settings, proposed Cloudflared 10M/five-total-files and native 1M/two-total-files defaults, safe count-one reuse and launch budgets. |
 | Backup | Stock tar/gzip behavior/input bounds, regional date evidence, proposed default keep 5, archive chronology/set identity, consistent eligible log snapshot and required external YAML dependencies. |
 
 Settle a decision from official source/capability evidence and user scope before shipping dependent behavior. If a supported minimum cannot meet a required contract, present the concrete limitation and choice rather than silently weakening it, inventing a dependency or drifting into an unbounded redesign.

@@ -160,7 +160,7 @@ def test_complete_generation_preserves_passive_extensions_without_loading(
         manifest = support / "manifest.txt"
         manifest.write_bytes(
             manifest.read_bytes().replace(
-                b"CFMGR-MANIFEST 2 0.1.0 1 1\n", b"CFMGR-MANIFEST 1 0.1.0\n", 1
+                b"CFMGR-MANIFEST 2 0.1.0 1 2\n", b"CFMGR-MANIFEST 1 0.1.0\n", 1
             )
         )
     result = entry_run(shell, entry, ["--internal-launch"], b"e\n", terminal=True)

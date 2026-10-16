@@ -39,7 +39,13 @@ def commands() -> tuple[list[str], list[str]]:
 
 
 @pytest.fixture(scope="module")
-def config(commands: tuple[list[str], list[str]]) -> bytes:
+def config() -> bytes:
+    """Exact original passive schema1 fixture for legacy consumer regressions."""
+    return (ROOT / "tests/fixtures/config-schema1.json").read_bytes()
+
+
+@pytest.fixture(scope="module")
+def schema2_config(commands: tuple[list[str], list[str]]) -> bytes:
     jq = shutil.which("jq")
     assert jq, "Actual jq is required to construct retained settings"
     result = subprocess.run(
@@ -95,6 +101,8 @@ def invoke(
                 f"cfmgr_config_mode={mode}",
                 "-f",
                 str(ROOT / "modules/lib/json.awk"),
+                "-f",
+                str(ROOT / "modules/lib/config_schema.awk"),
                 "-f",
                 str(ROOT / "modules/lib/config_observation.awk"),
             ],
@@ -541,7 +549,7 @@ def test_bad_retained_config_produces_no_candidate(
     originals = {
         "duplicate": config.replace(b'"schema":1', b'"schema":1,"\\u0073chema":1'),
         "truncated": config[:-3],
-        "schema": config.replace(b'"schema":1', b'"schema":2'),
+        "schema": config.replace(b'"schema":1', b'"schema":3'),
         "control-type": config.replace(
             b'"auto_update":false', b'"auto_update":"false"'
         ),

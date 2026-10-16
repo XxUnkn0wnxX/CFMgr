@@ -262,7 +262,7 @@ def test_acquire_manifest_and_entry_probes_enforce_exact_version(
     assert accepted.stdout.splitlines()[0].split(b"\t")[3] == b"catalog.txt"
 
     bad_manifest = context / "bad-manifest.txt"
-    bad_manifest.write_bytes(manifest.read_bytes().replace(b" 1 1\n", b" 2 1\n", 1))
+    bad_manifest.write_bytes(manifest.read_bytes().replace(b" 1 2\n", b" 2 2\n", 1))
     rejected = _probe(
         shell, native_tools, context, "acquire-manifest", bad_manifest, "0.1.0"
     )
@@ -274,7 +274,7 @@ def test_acquire_manifest_and_entry_probes_enforce_exact_version(
     unsafe_path = manifest_bytes.replace(b"catalog.txt", b"../catalog.txt", 1)
     missing_helper = b"".join(line for line in lines if helper not in line)
     incompatible_schema = manifest_bytes.replace(
-        b"CFMGR-MANIFEST 2 0.1.0 1 1", b"CFMGR-MANIFEST 2 0.1.0 1 2", 1
+        b"CFMGR-MANIFEST 2 0.1.0 1 2", b"CFMGR-MANIFEST 2 0.1.0 1 3", 1
     )
     malformed = b"<html>not a package manifest</html>\n"
     for name, content in (

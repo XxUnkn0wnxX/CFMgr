@@ -108,7 +108,9 @@ acquire-awk)
 	# Every file is parsed before the trusted first BEGIN terminates fatally.
 	# Plain exit is unsafe: candidate END rules would still run. Config's tree
 	# consumer is parsed with its already hash-verified companion definitions.
-	case $2 in */modules/lib/config_observation.awk) exec "$tool" -f "$1" -f "${2%/*}/json.awk" -f "$2" /dev/null ;;
+	case $2 in */modules/lib/config_observation.awk | */modules/lib/config_schema.awk)
+		exec "$tool" -f "$1" -f "${2%/*}/json.awk" -f "${2%/*}/config_schema.awk" -f "${2%/*}/config_observation.awk" /dev/null
+		;;
 	*) exec "$tool" -f "$1" -f "$2" /dev/null ;;
 	esac
 	;;
@@ -143,7 +145,7 @@ acquire-manifest)
 	# shellcheck disable=SC2016
 	exec "$tool" '
 		BEGIN {FS="\t";version=ARGV[1];ARGV[1]=""}
-		NR==1 {if($0!="CFMGR-MANIFEST 2 " version " 1 1")bad=1;next}
+		NR==1 {if($0!="CFMGR-MANIFEST 2 " version " 1 2")bad=1;next}
 		{
 			if(NF!=4 || length($0)>512 || $1!~/^0(644|755)$/ || $2!~/^(0|[1-9][0-9]*)$/ || $2>1048576 ||
 			length($3)!=64 || $3~/[^0-9a-f]/ || length($4)>256 || $4!~/^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
@@ -155,7 +157,7 @@ acquire-manifest)
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/acquire.sh modules/lib/package.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
+			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/acquire.sh modules/lib/package.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/lib/config_schema.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
 			n=split(required,names," ");for(i=1;i<=n;i++)if(!seen[names[i]])bad=1
 			if(bad || count<2)exit 1
 		}' "$2" "$1"
@@ -177,7 +179,7 @@ store-backup-config)
 	case $5 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
 	export CFMGR_BACKUP_MOUNT="$6" CFMGR_BACKUP_UUID="$7" CFMGR_BACKUP_FILESYSTEM="$8" CFMGR_BACKUP_ROOT="$9"
-	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -f "$1" -f "$2" <"$4"
+	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -f "$1" -f "${2%/*}/config_schema.awk" -f "$2" <"$4"
 	;;
 store-backup-mounts | store-backup-mount)
 	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
@@ -208,7 +210,7 @@ store-settings)
 	case $5 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
 	export CFMGR_SETTINGS_MASK="$6" CFMGR_SETTINGS_CHECK="$7" CFMGR_SETTINGS_AUTO="$8"
-	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -f "$1" -f "$2" <"$4"
+	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -f "$1" -f "${2%/*}/config_schema.awk" -f "$2" <"$4"
 	;;
 store-count | store-meta | store-snapshot | store-digest)
 	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
@@ -470,7 +472,7 @@ launch-config-check | launch-config-scope | launch-config-observe | launch-confi
 		CFMGR_CONFIG_UUID=$5 CFMGR_CONFIG_FILESYSTEM=$6 CFMGR_CONFIG_ROOT=$7 CFMGR_CONFIG_RELATIVE=$8
 		export CFMGR_CONFIG_UUID CFMGR_CONFIG_FILESYSTEM CFMGR_CONFIG_ROOT CFMGR_CONFIG_RELATIVE
 	fi
-	exec "$tool" -v cfmgr_json_size="$1" -v cfmgr_json_mode=tree -v cfmgr_config_mode="$config_mode" -f "$2" -f "$3" <"$4"
+	exec "$tool" -v cfmgr_json_size="$1" -v cfmgr_json_mode=tree -v cfmgr_config_mode="$config_mode" -f "$2" -f "${3%/*}/config_schema.awk" -f "$3" <"$4"
 	;;
 launch-copy)
 	[ "$#" -eq 2 ] || exit 2
@@ -721,7 +723,19 @@ install-copy | install-rename | install-publish)
 	install-publish) exec "$tool" -n "$1" "$2" ;;
 	esac
 	;;
-install-sha | install-wc | install-ls | install-config-check | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df | install-remove)
+install-config-check)
+	[ "$#" -eq 3 ] || exit 2
+	case $1:$2 in /*:/*) ;; *) exit 2 ;; esac
+	case $3 in '' | *[!0-9]*) exit 2 ;; esac
+	[ "${#3}" -le 5 ] && [ "$3" -gt 0 ] && [ "$3" -le 65536 ] || exit 2
+	for parser in "$2/modules/lib/json.awk" "$2/modules/lib/config_schema.awk" "$2/modules/lib/config_observation.awk"; do
+		[ -f "$parser" ] && [ ! -L "$parser" ] || exit 2
+	done
+	[ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" -v cfmgr_json_size="$3" -v cfmgr_json_mode=tree -v cfmgr_config_mode=fresh \
+		-f "$2/modules/lib/json.awk" -f "$2/modules/lib/config_schema.awk" -f "$2/modules/lib/config_observation.awk" <"$1"
+	;;
+install-sha | install-wc | install-ls | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df | install-remove)
 	[ "$#" -eq 1 ] || exit 2
 	case "$1" in /*) ;; *) exit 2 ;; esac
 	case "$mode" in
@@ -733,17 +747,7 @@ install-sha | install-wc | install-ls | install-config-check | install-mkdir-pri
 		[ -f "$1" ] && [ ! -L "$1" ] || exit 1
 		exec "$tool" "$1"
 		;;
-	install-config-check)
-		# shellcheck disable=SC2016
-		exec "$tool" -e '.schema == 1 and .generation == 1 and
-			.manager.check_updates == true and .manager.auto_update == false and .manager.developer == false and
-			.ddns.configured == false and .ddns.enabled == false and
-			.ip_sync.configured == false and .ip_sync.enabled == false and
-			.cloudflared.configured == false and .cloudflared.enabled == false and
-			.cloudflared.installed == false and .cloudflared.maintenance_enabled == false and
-			.logging.ddns.configured == false and .logging.ip_sync.configured == false and
-			.logging.cloudflared.configured == false' "$1" >/dev/null
-		;;
+
 	install-mkdir-private) exec "$tool" -m 700 "$1" ;;
 	install-mkdir-public) exec "$tool" -m 755 "$1" ;;
 	install-chmod-private) exec "$tool" 600 "$1" ;;

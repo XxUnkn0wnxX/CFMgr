@@ -30,6 +30,140 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## S03.02 schema implementation readiness review
+
+The user approved implementation on 2026-10-16 after reviewing the corrected
+schema/compatibility and option inventory. Independent Astra planner review
+returned **PASS WITH NOTES**; parent resolved the representation details before
+releasing the runtime package. This is design/source evidence, not acceptance.
+
+- Fresh schema 2 has explicit schema-1 compatibility; unchanged receipt/bootstrap
+  protocols remain independent. A new bounded validator must reach fresh,
+  retained and scoped Save consumers, with tolerant status kept separate.
+- Selected related policy objects contain every operand needed for cross-field
+  checks. Null policies do not select defaults, and null siblings cannot waive
+  inequalities. Typed credential, ownership, migration and history layouts are
+  explicit; certificate format metadata does not claim authentication.
+- Pinned Merlin backend `CKN_STR3`/length validation gives canonical positive
+  forced-refresh days 1–999 for that native setting interface, default 14.
+  Parent had verified the backend trace; planner independently checked cached
+  frontend width and accepted the interface-bound derivation. Neither claims
+  a universal direct-NVRAM/watchdog ceiling; native use revalidates the profile.
+- Log size/count have no product quota. Parent inspected Entware's logrotate
+  recipe (3.22.0, release 2), then tagged upstream source: size parsing converts
+  to `off_t`, count is `int`, and configure enables 64-bit offsets on 32-bit
+  systems. For the supported signed-64-bit offset/signed-32-bit count contract,
+  positive scaled bytes fit 9223372036854775807; total files fit 2147483648
+  because the emitted historical count is total minus one. Validate decimal
+  lexemes exactly using per-unit limits, without AWK float rounding or work
+  proportional to selected counts. Installed-build/filesystem and bounded
+  rotation qualification remains with logging, including rejection of narrower
+  unsupported execution limits.
+  [Entware recipe](https://github.com/Entware/entware-packages/blob/master/utils/logrotate/Makefile),
+  [3.22.0 parser](https://github.com/logrotate/logrotate/blob/3.22.0/config.c#L1408),
+  [types](https://github.com/logrotate/logrotate/blob/3.22.0/logrotate.h#L61),
+  [large-file configuration](https://github.com/logrotate/logrotate/blob/3.22.0/configure.ac#L24).
+
+Parent mirrored the approved requirements in plan/checklist and froze concrete
+internal shapes in the ignored design record. Required proof remains populated
+schema-2 consumer behavior, legacy/unrelated-byte preservation, typed-reference
+and invalid-policy rejection, tolerant status, coherent package compatibility
+and the existing focused/CI gates. No runtime gate or checkbox follows from this
+review. No firmware, router or provider execution was performed.
+
+Implementation review on the prepared tree based on `d0da7ec`:
+
+- The shared definition-only schema validator now reaches fresh install,
+  retained launch, Store and scoped Saves. Status deliberately remains tolerant;
+  schema-1 fixtures retain their original shape and preservation behavior.
+- Parent review corrected composite-enum admission, history address predicate
+  drift, incomplete fresh-passivity checks and constructor/source grammar drift.
+  Cheap negative cases preserve those fixes. Native decimal limits are compared
+  without floating-point multiplication or count-proportional work.
+- Schema-2 backup Save now replaces only changed known destination scalars,
+  preserving nested extension bytes. New exact-byte tests cover that boundary;
+  schema-1 behavior and initial null-to-destination construction stay compatible.
+- Independent Sol source review returned **PASS WITH NOTES**, with no further
+  material correctness or security findings. It inspected references, policies,
+  numeric limits, fresh passivity, legacy admission and package/parser wiring.
+  Parent agrees with that source-review disposition. Final complete focused
+  groups and exact-candidate Linux/vendor BusyBox/core proof remain pending.
+
+Focused test-cost review identified host-harness overhead, not a failed product
+deadline: the populated retained replacement completed 188 supervised probes,
+published generation 2 and reached final cleanup before its aggregate 20-second
+test timeout expired on a heavily loaded host. No orphan remained; inspected
+final probe error files were empty. The new populated fixture alone now allows
+30 seconds overall; existing legacy fixtures retain 20 seconds, per-probe bounds
+and production deadlines are unchanged. The focused rerun passed five cases in
+33.34 seconds (replacement 17.83 seconds, healthy 13.27 seconds). Shared-target,
+Cloudflared On/installed and per-record DDNS option positives reuse the existing
+cheap parser cases without another expensive integration matrix. Final complete
+groups remain the acceptance gate. The final populated schema-2 module passed
+all 68 cases in 76.21 seconds. All complete affected local groups subsequently
+passed: 506 cases, 43 platform skips and four optional diagnostics excluded.
+Group times ranged from 2.84 to 210.50 seconds; installation's actual failure/
+recovery proof dominated the longest group. Changed-file ShellCheck and common
+statics passed. Parent final review is complete; exact-candidate Linux/vendor
+BusyBox Quick selections and final required core Checks remain pending.
+
+## S09.05–S09.08 native DDNS ownership source review
+
+Read-only source review, 2026-10-16, supporting the user's clarification that
+CFMgr ownership includes Merlin's native DDNS settings, handler and lifecycle.
+This supplies evidence for S09.05–S09.08 and the S03.02 representation boundary;
+it awards no implementation or acceptance credit.
+
+Pinned Merlin 3004.388.12_2 source revision:
+`433fc608f5fc1689f3d3c3ab5cd2a7d57102260f`. Parent traced the native UI; an independent
+read-only reviewer traced backend dispatch. Parent re-read the key backend
+sections directly from the pinned official raw source and agreed with these
+findings:
+
+- The native DDNS page maps its switch to `ddns_enable_x=1/0` and submits a
+  default `restart_ddns` action. Hostname and refresh settings map to
+  `ddns_hostname_x` and `ddns_refresh_x`; the selected provider is
+  `ddns_server_x`. Conditional UI paths add certificate-related actions.
+  [Native UI](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/www/Advanced_ASUSDDNS_Content.asp#L1497).
+- The service dispatcher maps `restart_` to stop plus start; the `ddns` branch
+  invokes `stop_ddns()` then `start_ddns()`. Start exits early when the saved
+  native enable value is zero. Enabled start still depends on WAN/readiness and
+  other checks; requesting start does not establish provider success.
+  [Dispatcher](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/rc/services.c#L16779),
+  [enable admission](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/rc/services.c#L4582).
+- `stop_ddns()` signals native DDNS clients, not custom `ddns-start` or CFMgr
+  worker descendants. Custom start calls `ddns-start` synchronously with a
+  120-second timeout. Native stop therefore cannot substitute for CFMgr's own
+  admission suppression and bounded owned-worker quiescence; a queued request
+  is not proof it interrupted an active handler.
+  [Custom start and stop](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/rc/services.c#L5055).
+- The service CLI calls `notify_rc()`, prints `Done` and returns zero; the DDNS
+  dispatcher does not propagate `start_ddns()`'s result. The published build
+  falls back to prebuilt `notify_rc.o`, so exact notification waiting semantics
+  remain unverified. CLI exit zero alone cannot certify completed apply/stop.
+  [CLI](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/rc/services.c#L20802),
+  [build fallback](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/shared/Makefile#L141).
+- The start/restart branch also calls `update_srv_cert_if_ddns_changed()`;
+  a changed nonempty hostname can regenerate/reload a certificate, even when
+  DDNS start returned early for Off. Stop has conditional tunnelbroker firewall
+  and OpenVPN-profile side effects. These are part of the existing required
+  matched-firmware side-effect review; no wider settings mutation is approved.
+  [Certificate helper](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/shared/misc.c#L654).
+
+The original private `ddns-start` reference reports outcomes through
+`/sbin/ddns_custom_updated 1/0`, consistent with the documented custom-DDNS
+callback interface. Current official Custom DDNS, User scripts, Addons API and
+Custom config files guidance was consulted. The older wiki's suggestion to report
+unknown outcomes as success is not adopted: the approved CFMgr contract requires
+truthful results and separate retry admission.
+
+Disposition: plan/checklist now explicitly require native backend/display parity,
+distinct intent/readback/lifecycle evidence, preserved Off during settings Save,
+and guarded outstanding work. These are pending implementation requirements,
+not repaired or tested behavior. Persistence, actual GUI rendering, notification
+completion and model-specific lifecycle effects remain qualification work under
+the existing development/beta split. No router command or runtime code executed.
+
 ## S04.02 scoped concurrent Save review
 
 2026-10-16, baseline `95ecbdd`: parent and independent Astra scope audit agree

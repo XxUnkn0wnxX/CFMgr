@@ -84,7 +84,7 @@ def candidate(
     if fault == "syntax":
         script = target / "modules/helpers/bootstrap.sh"
         script.write_bytes(script.read_bytes() + b"\ncase\n")
-    rows = [f"CFMGR-MANIFEST 2 {version} {2 if fault == 'abi' else 1} 1"]
+    rows = [f"CFMGR-MANIFEST 2 {version} {2 if fault == 'abi' else 1} 2"]
     files = sorted(
         [
             item

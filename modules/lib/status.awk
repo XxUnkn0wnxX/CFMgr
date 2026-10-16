@@ -13,7 +13,8 @@
 BEGIN {
     if (!cfmgr_json_tree_ready || cfmgr_json_tree_kind[1] != "object") exit 1
     for (i=2; i<=cfmgr_json_tree_count; i++) child[cfmgr_json_tree_parent[i],cfmgr_json_tree_location[i]]=i
-    if (number(field(1,"schema")) != "1") exit 1
+    config_schema=number(field(1,"schema"))
+    if (config_schema != "1" && config_schema != "2") exit 1
     generation=number(field(1,"generation"))
     if (generation !~ /^[1-9][0-9]*$/ || length(generation)>20) exit 1
     network=object(field(1,"network")); selected=field(network,"selected_wan")
@@ -28,7 +29,7 @@ BEGIN {
     now=ENVIRON["CFMGR_STATUS_NOW"]; clock=(ENVIRON["CFMGR_STATUS_CLOCK"]=="1")
     if (now !~ /^[1-9][0-9]*$/ || length(now)>10) clock=0
     boot=ENVIRON["CFMGR_STATUS_BOOT"]; live_wan=ENVIRON["CFMGR_STATUS_WAN"]
-    print "Configuration: local schema1; settings and observations are separate"
+    print "Configuration: local schema" config_schema "; settings and observations are separate"
     manager=object(field(1,"manager")); developer=boolean(field(manager,"developer"))
     repository=ENVIRON["CFMGR_STATUS_REPOSITORY"]; branch=ENVIRON["CFMGR_STATUS_BRANCH"]
     if(developer=="On") {

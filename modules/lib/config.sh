@@ -52,7 +52,9 @@ cfmgr_config_defaults_exec() {
 	case $cfmgr_config_repo_name in '' | */* | [!A-Za-z0-9]* | *[!A-Za-z0-9_.-]*) return 2 ;; esac
 
 	[ -n "$cfmgr_config_branch" ] && [ "${#cfmgr_config_branch}" -le 128 ] || return 2
-	case $cfmgr_config_branch in *[[:space:][:cntrl:]]*) return 2 ;; esac
+	case $cfmgr_config_branch in
+	*[!A-Za-z0-9_./-]* | . | .. | ./* | ../* | */./* | */../* | */. | */..) return 2 ;;
+	esac
 
 	[ "${#cfmgr_config_uuid}" -eq 36 ] || return 2
 	cfmgr_config_uuid_a=${cfmgr_config_uuid%%-*}
@@ -84,7 +86,7 @@ cfmgr_config_defaults_exec() {
 		--arg fsroot "$cfmgr_config_fsroot" \
 		--arg entware_relative "$cfmgr_config_entware_relative" \
 		'{
-			"schema": 1,
+			"schema": 2,
 			"generation": 1,
 			"manager": {
 				"check_updates": true,
@@ -108,22 +110,24 @@ cfmgr_config_defaults_exec() {
 			"ddns": {
 				"configured": false,
 				"enabled": false,
-				"credentials": null,
-				"zone_id": "",
+				"credential_ref": null,
+				"zone_id": null,
 				"records": [],
-				"primary_hostname": "",
+				"primary_hostname": null,
 				"ttl": null,
 				"proxied": null,
 				"forced_refresh_days": 14,
-				"address_family": "auto"
+				"address_family": "auto",
+				"timeouts": null
 			},
 			"ip_sync": {
 				"configured": false,
 				"enabled": false,
-				"credentials": null,
-				"account_id": "",
+				"credential_ref": null,
+				"account_id": null,
 				"targets": [],
-				"address_family": "auto"
+				"address_family": "auto",
+				"retry": null
 			},
 			"cloudflared": {
 				"configured": false,
@@ -131,20 +135,22 @@ cfmgr_config_defaults_exec() {
 				"installed": false,
 				"maintenance_enabled": false,
 				"method": null,
-				"token": null,
-				"account_tag": "",
-				"tunnel_id": "",
-				"tunnel_secret": null,
+				"expected_identity": {"account_id": null, "tunnel_id": null},
+				"paths": {"yaml": null, "json": null, "certificate": null},
 				"credential_refs": {
 					"runtime": null,
 					"management": null,
-					"certificate": null
+					"certificate": null,
+					"dns": null
 				},
-				"binary_auto_update": null
+				"binary_auto_update": null,
+				"readiness": null,
+				"watchdog": null
 			},
 			"network": {
 				"address_family": "auto",
-				"selected_wan": null
+				"selected_wan": null,
+				"discovery": null
 			},
 			"logging": {
 				"ddns": {
@@ -169,10 +175,11 @@ cfmgr_config_defaults_exec() {
 			"backup": {
 				"destination": null,
 				"retention": null,
+				"date_format": null,
 				"last_backup": null
 			},
 			"credentials": {},
-			"ownership": {},
+			"ownership": {"schema": 1, "components": [], "migration": null},
 			"history": {
 				"ddns": null,
 				"ip_sync": null,

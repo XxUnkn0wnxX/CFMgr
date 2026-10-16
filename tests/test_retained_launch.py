@@ -43,21 +43,14 @@ def retained_package(package: Path) -> Path:
 
 @pytest.fixture(scope="module")
 def retained_config(tools: dict[str, str], shell: list[str]) -> bytes:
-    result = subprocess.run(
-        [
-            *shell,
-            "-c",
-            '. "$1"; cfmgr_config_defaults_exec "$2" https://github.com/example/fixture fixture 12345678-1234-1234-1234-123456789abc ext4 / entware',
-            "retained-config",
-            str(ROOT / "modules/lib/config.sh"),
-            tools["jq"],
-        ],
-        capture_output=True,
-        check=False,
-        timeout=3,
+    # Explicit schema1 original: opaque legacy data is not relabelled schema2.
+    value = json.loads((ROOT / "tests/fixtures/config-schema1.json").read_bytes())
+    value["manager"]["source"].update(
+        repository="https://github.com/example/fixture", branch="fixture"
     )
-    assert result.returncode == 0, result.stderr
-    value = json.loads(result.stdout)
+    value["storage"]["entware"].update(
+        uuid="12345678-1234-1234-1234-123456789abc", root="/"
+    )
     value["generation"] = 19
     value["manager"]["check_updates"] = False
     value["ddns"]["configured"] = True
@@ -194,6 +187,8 @@ def launch_host(
     config: bytes,
     workspace: Path,
     scenario: str,
+    *,
+    timeout: float = 20,
 ) -> tuple[subprocess.CompletedProcess[bytes], Path]:
     jffs = workspace / "jffs"
     support = jffs / "addons/CFMgr.d"
@@ -265,7 +260,7 @@ def launch_host(
         ],
         capture_output=True,
         check=False,
-        timeout=20,
+        timeout=timeout,
     )
     return result, support
 

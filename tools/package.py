@@ -91,7 +91,7 @@ def catalog(root: Path) -> bytes:
 
 
 def manifest(root: Path) -> bytes:
-    lines = [f"CFMGR-MANIFEST 2 {VERSION} 1 1"]
+    lines = [f"CFMGR-MANIFEST 2 {VERSION} 1 2"]
     for item in inventory(root):
         content = item.read_bytes()
         lines.append(

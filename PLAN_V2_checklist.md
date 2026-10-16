@@ -163,7 +163,7 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [x] | [x] | S03.01 | **Passive fresh state:** All three unconfigured/Off; no tunnel/logging/backup setup; manager check On and auto-install Off. |
-| [ ] | [ ] | S03.02 | **Distinct state and settings:** Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
+| [ ] | [x] | S03.02 | **Distinct state and settings:** Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
 | [ ] | [ ] | S03.03 | **Main menu and navigation:** 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects. |
 | [ ] | [ ] | S03.04 | **Feature submenus:** Own setup, On/Off, explicit operation, status and scoped logging/repair; only relevant options. |
 | [ ] | [ ] | S03.05 | **Quick service commands:** Shared case-insensitive start/stop handlers, ipsync alias, configure-first validation and truthful results. |
@@ -172,6 +172,62 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | [ ] | [ ] | S03.08 | **Bounded history and privacy:** Small recorded observations, accurate Unknown/Never/stale labels, no basic-status network calls or secret/raw-data dumps. |
 | [ ] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
 | [ ] | [ ] | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
+
+S03.02 native-setting boundary: represent saved DDNS choices and their mapping to
+Merlin's switch/provider/hostname/refresh fields separately from observed NVRAM
+values and native lifecycle outcomes. Actual native application and dashboard
+parity remain required under S09.05–S09.08; config serialization earns no runtime
+integration credit.
+
+S03.02 acceptance: implement fresh schema 2 and explicit schema-1 compatibility
+through the real constructor, shared retained/Store admission, scoped manager/
+backup Save, storage observation and tolerant status. Prove populated native,
+token, advanced, shared/split IP-Sync and maintenance-only configurations;
+reference/type/identity rejection; legacy and unrelated-byte preservation;
+independent configured/enabled/installed/maintenance state; typed advisory
+ownership/history and separate external guards. Certificate associations include
+format/account/paths/digest/generation/provenance without claiming authentication.
+Unknown required schemas fail closed, ordinary extensions remain inert, and
+schema-2 obsolete secret aliases/log-compression controls are rejected. Package
+config compatibility changes coherently; independent wire protocols stay intact.
+
+All selected related policy objects contain their full operands; null policies
+remain unselected, and null siblings never waive inequalities. Required bounds
+mirror the specification:
+
+| Selected setting | Admitted values and relationships |
+| --- | --- |
+| Request / connection timeout | Request 1–30 seconds; connection 1–10 seconds and no greater than request. |
+| DDNS completion timeout | 5–90 seconds and at least request + 5 seconds; later execution must remain inside the matched firmware ceiling. |
+| Routine native discovery | 60–3600 seconds in whole minutes; unselected retains the five-minute policy. Independent of outage recovery. |
+| Native forced refresh | 1–999 canonical positive days for the pinned three-character native setting interface; default 14. Revalidate the matched firmware before application. |
+| IP-Sync retry policy | 1–4 attempts; batch timeout 1–300 seconds and no shorter than request. Expiry may stop before the attempt ceiling. |
+| Tunnel reachability | Response 1–2 seconds; command 1–3 seconds and no shorter than response; one packet stays fixed. |
+| Tunnel reconnect / stability | Reconnect grace 1–300 seconds; stability 60–3600 seconds. Neither bypasses shared backoff. |
+| DDNS TTL | Unselected, Auto or integer seconds 30–86400; effective proxied records require Auto. Provider/account capability remains a separate use-time gate. |
+| Tunnel log size / count | Positive canonical size in B/KiB/MiB/GiB; scaled bytes fit signed 64-bit. Positive total count includes live; total minus one fits signed 32-bit. These are representation/tool limits, not product quotas or disk guarantees. |
+| Tunnel log mode / age | Size/daily/weekly/monthly; optional age 1–30 days. No compression/delay-compression controls. Native policies are fixed version references. |
+| Backup retention / date | Unselected or 3/4/5 archives; unselected or DMY/MDY/YMD. No automatic choice of unresolved defaults. |
+
+Prove exact size/count comparisons without rounding or count-proportional work:
+scaled bytes at most 9223372036854775807; total files at most 2147483648. These
+source-derived representation limits do not establish installed-tool/filesystem
+or extreme-operation qualification. Stale/restored/future historical context does
+not invalidate structurally valid settings or become current authority. Empty
+defaults or placeholders alone do not complete S03.02; later provider, native
+application, lifecycle, history-writing and backup execution earn no credit here.
+
+S03.02 focused local proof on the prepared tree based on `d0da7ec`:
+**506 passed, 43 platform skips**, four optional diagnostics excluded, across
+the complete affected schema, status, Store/Save, retained launch, installation,
+acquisition, dependency and package/fixture groups. The populated schema-2
+module passed 68 cases in 76.21 seconds; other groups ranged from 2.84 to 210.50
+seconds. Planning/package, Ruff/format/compile, shell syntax, focused ShellCheck,
+shfmt and whitespace passed. Parent and independent source review passed;
+[audit dispositions](PLAN_V2_audit.md#s0302-schema-implementation-readiness-review)
+include preserved backup extensions and measured host-harness timing. Required
+exact-candidate Linux/vendor BusyBox Quick and final core CI remain pending;
+S03.02 is not accepted yet.
 
 S03.07 accepted at `d173d691254023a757361996c5b86ff8f8c609bd`: actual installed
 choice `0`, menu return before operational preparation, native resource/WAN/NTP/
@@ -372,6 +428,26 @@ Live Merlin/ARM and flash persistence remain separately authorized beta proof.
 | [ ] | [ ] | S09.08 | **Bounded completion:** DDNS-specific soft completion timer inside the proved firmware cap, one truthful invocation result and prompt early-unready return. |
 | [ ] | [ ] | S09.09 | **Failure-only fallback:** Failed/timed-out DDNS attempt becomes shared-watchdog pending work; reconcile native retries, honor recovery/auth/throttle gates and keep IP-Sync independent. |
 
+S09.06 native forced-refresh acceptance: keep the 14-day CFMgr default and derive
+the positive-day maximum from the verified matched Merlin setting, without an
+independently chosen CFMgr cap. Frontend input width alone does not prove a
+backend numeric limit.
+
+S09.05–S09.08 native ownership acceptance: while CFMgr owns DDNS, its Save/On/Off
+controls Merlin's native configuration, handler and lifecycle. Verify equivalent
+native DDNS backend effects to GUI Apply, including owned `ddns_enable_x=1/0`,
+Custom provider, selected primary hostname and refresh days. Verify the requested
+native service transition and the fields consumed by Merlin's page; config/NVRAM
+writes or service-request acknowledgement alone do not pass. Saving settings
+while Off preserves Off. Test partial/interrupted apply, outstanding owned work
+and stale callbacks, truthful completion and unchanged independent IP-Sync.
+Preserve unrelated settings and respect later external ownership. Native-page
+values must reflect applied state; real-router GUI/lifecycle qualification
+remains beta proof under the existing platform boundary.
+The [native DDNS source review](PLAN_V2_audit.md#s0905s0908-native-ddns-ownership-source-review)
+records why firmware fields, native service dispatch and CFMgr worker containment
+require separate proof. It supplies source evidence only; these IDs remain pending.
+
 ### 10. IP-Sync
 
 | Status | Focused local | ID | Subgoal and required result |
@@ -416,6 +492,13 @@ Live Merlin/ARM and flash persistence remain separately authorized beta proof.
 | [ ] | [ ] | S12.10 | **Safe failure recovery:** No boot wait, infinite install/create/crash loop, reboot/global restart or teardown respawn. |
 | [ ] | [ ] | S12.11 | **Shared watchdog and recovery:** All three features share NTP/reachability recovery with 1/2/4/5-minute capped due checks, isolated auth/throttle gates and transition logging. |
 
+Outage retry acceptance (S06.06/S12.11): after 1/2/4/5-minute backoff, continue
+5/5/5-minute rechecks until connectivity recovers or no eligible recovery remains,
+with no overall retry-count or elapsed-time cutoff. Routine native discovery and
+bounded provider-batch attempt limits cannot lengthen or exhaust this recovery
+cadence. Every individual check is bounded and returns to the dispatcher; current
+auth guards and provider cooldowns still gate provider operations.
+
 ### 13. Logging and rotation
 
 | Status | Focused local | ID | Subgoal and required result |
@@ -423,7 +506,7 @@ Live Merlin/ARM and flash persistence remain separately authorized beta proof.
 | [ ] | [ ] | S13.01 | **Three private logs/native notices:** Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit developer diagnostics under S13.14. |
 | [ ] | [ ] | S13.02 | **First setup versus saved preference:** Only completed fresh ready setup initializes own logs; pending/maintenance-only/opt-out remain inactive. |
 | [ ] | [ ] | S13.03 | **Readiness and independence:** Verified mounted Entware /opt/var/log paths and actual Scribe/base/schedule/include readiness, graceful no-file operation and service-Off rotation retention. |
-| [ ] | [ ] | S13.04 | **Cloudflared tuning:** Per-file size/total-count including live file, shown Enter defaults and supported time/compression/age options; no aggregate-byte quota. |
+| [ ] | [ ] | S13.04 | **Cloudflared tuning:** Per-file size/total-count including live file, shown Enter defaults and supported time/age options; uncompressed log history and no aggregate-byte quota. |
 | [ ] | [ ] | S13.05 | **Fixed native policies:** Separate versioned DDNS/IP-Sync defaults with no tuning UI or config override. |
 | [ ] | [ ] | S13.06 | **Rotation correctness:** Numbered history/actual cadence, daemon reopen or stated copytruncate limit, safe native append and snapshot coordination. |
 | [ ] | [ ] | S13.07 | **Fast scoped repair:** Cheap requested-feature checks, bounded owned fragment/include repair and full explicit validation without base/global changes. |
@@ -434,6 +517,19 @@ Live Merlin/ARM and flash persistence remain separately authorized beta proof.
 | [ ] | [ ] | S13.12 | **Explicit all-service re-detect:** Ready Scribe enables logging for every configured On service, overriding prior logging Off only for this explicit action; reuse policies or initialize defaults. |
 | [ ] | [ ] | S13.13 | **Prominent concise event format:** Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression; normal/developer credential references identify type/purpose and mask any displayed value. |
 | [ ] | [ ] | S13.14 | **Developer diagnostic capture:** Developer-mode-only main-process/all-module trace capture and dedicated Scribe-log copies in a global-config directory, independent of feature On/Off, with redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
+
+Cloudflared tuning acceptance (S13.04): use conservative fresh defaults and allow
+positive user-selected file sizes and total-file counts without a fixed CFMgr
+product maximum or aggregate-byte quota. Validate supported units, finite positive
+values, numeric/tool/filesystem limits and bounded operation; reject invalid or
+overflowing input without changing the working policy. Optional maximum age is
+Off or an integer 1–30 days. Keep logging on admitted mounted `/opt` storage, with
+no JFFS/RAM fallback. Native DDNS/IP-Sync policies remain fixed. The proposed safe
+defaults remain `10M` and five total files, including the live file. All owned
+live logs and rotated history remain uncompressed, with explicit owned-rule
+`nocompress`/`nodelaycompress` overriding inherited compression settings. No
+logging compression/delay-compression option or saved policy field is provided;
+gzip remains reserved for the backup archive contract in S14.01.
 
 Developer diagnostics acceptance (S13.14): fresh destination is `null`; only
 `manager.developer` enables capture, with feature On/Off ignored as a logging gate.
@@ -600,7 +696,7 @@ See specification section 17. These remain unresolved until their owning workflo
 | [ ] | **Provider operations:** Permissions, pagination/completeness, exact managed fields, same-ID empty-list removal, actual mixed-family-list capability, user-selected shared/split migration and target-vs-feature fault schema; no extra feature inferred from uncertain API behavior. |
 | [ ] | **Cloudflared:** Token-file floor/default-config isolation, A2 create/token endpoint permissions and failure handling, B route-discovery completeness/lossless mapping edits, login/certificate provenance/manual fallback, same-UUID fetch and runtime auth/connectivity classifier; no implicit binary auto-update default where not selected. |
 | [ ] | **Scheduling:** Exact manager daily cron time/registration/removal; shared minute dispatcher, five-minute native discovery and per-scope due-state reconciliation with native DDNS retries. |
-| [ ] | **Logging:** Actual Scribe/include/schedule state, daemon reopen/copytruncate, rotation concurrency; proposed Cloudflared 10M/five-total-files/compression and native 1M/two-total-files defaults, safe count-one reuse and launch budgets. |
+| [ ] | **Logging:** Actual Scribe/include/schedule state, daemon reopen/copytruncate, rotation concurrency; uncompressed history despite inherited compression settings, proposed Cloudflared 10M/five-total-files and native 1M/two-total-files defaults, safe count-one reuse and launch budgets. |
 | [ ] | **Backup:** Stock tar/gzip behavior/input bounds, regional date evidence, proposed default keep 5, archive chronology/set identity, consistent eligible log snapshot and required external YAML dependencies. |
 
 ## Acceptance cases
@@ -690,7 +786,7 @@ IDs identify behavior, **not a required test count**. One meaningful test may co
 | [ ] | V19 | never-configured/draft/maintenance/On/Off restore rebuilds only eligible current-code components, preserves operational Off and separately requested history rotation. |
 | [ ] | V20 | backup drive independent of Entware, removed/substituted destination, optional destination setup and internal recovery cannot cause stale writes, automatic archives or unrelated pruning. |
 | [ ] | V21 | fast passive check/automatic repair preserves logging opt-out; explicit all-service Re-detect overrides it only for configured On services with ready Scribe, repairs saved policy or initializes defaults, respects concurrent Off and handles unavailable base/partial repair without enabling services or forcing provider updates. |
-| [ ] | V22 | Cloudflared per-file size/total count (including live)/time/compression/age options produce supported effective numbered rules; invalid changes preserve policy and display actual Scribe cadence, not hard-cap claims. |
+| [ ] | V22 | Cloudflared per-file size/total count (including live)/time/age options produce supported effective numbered uncompressed rules, overriding inherited compression settings; no log-compression options or policy fields. Invalid changes preserve policy and display actual Scribe cadence, not hard-cap claims. |
 | [ ] | V23 | 3–5 retention verifies new before pruning, reports purge failures, preserves old backups on failure and handles regional format/timezone/DST/same-second collisions using manifest chronology. |
 | [ ] | V24 | independent feature logging opt-in/opt-out/service Off/ready-unready transitions preserve native notices/provider completion and independent Scribe rotation. |
 | [ ] | V27 | basic status is a bounded local-only dashboard with router/resources, distinct WAN/CGNAT/public-family observations and ages, per-feature activation/current issues and last verified IPv4/IPv6 outcomes; no provider probes, hidden Off faults, setup-reset of quarantined state or live health inferred from restored history; missing optional fields/logging do not break rendering. |

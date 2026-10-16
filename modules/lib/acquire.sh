@@ -169,7 +169,7 @@ cfmgr_acquire_manifest() {
 		;;
 	esac
 	if [ "${#cfmgr_acquire_version}" -gt 64 ] ||
-		[ "$cfmgr_acquire_tag:$cfmgr_acquire_schema:$cfmgr_acquire_abi:$cfmgr_acquire_config:$cfmgr_acquire_extra" != CFMGR-MANIFEST:2:1:1: ]; then
+		[ "$cfmgr_acquire_tag:$cfmgr_acquire_schema:$cfmgr_acquire_abi:$cfmgr_acquire_config:$cfmgr_acquire_extra" != CFMGR-MANIFEST:2:1:2: ]; then
 		printf '[CFMGR] acquire: error: incompatible manifest format, bootstrap ABI or configuration schema\n' >&2
 		return 1
 	fi

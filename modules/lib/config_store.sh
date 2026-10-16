@@ -48,7 +48,7 @@ cfmgr_store_prepare() {
 	done
 	# Trusted entry admits this library and prerequisites before source. Store
 	# independently protects every fixed file it will execute/read as code.
-	for cfmgr_store_code_path in "$cfmgr_store_source/modules/helpers/probe.sh" "$cfmgr_store_source/modules/lib/json.awk" "$cfmgr_store_source/modules/lib/config_observation.awk" "$cfmgr_store_source/modules/lib/mountinfo.awk"; do
+	for cfmgr_store_code_path in "$cfmgr_store_source/modules/helpers/probe.sh" "$cfmgr_store_source/modules/lib/json.awk" "$cfmgr_store_source/modules/lib/config_observation.awk" "$cfmgr_store_source/modules/lib/config_schema.awk" "$cfmgr_store_source/modules/lib/mountinfo.awk"; do
 		cfmgr_store_protected "$cfmgr_store_code_path" || return 1
 	done
 	for cfmgr_store_tool_path in "$cfmgr_store_sh" "$cfmgr_store_env" "$cfmgr_store_awk" "$cfmgr_store_readlink" "$cfmgr_store_wc" "$cfmgr_store_ls" "$cfmgr_store_sleep" "$cfmgr_store_dd" "$cfmgr_store_cp" "$cfmgr_store_mv" "$cfmgr_store_fsync" /bin/mkdir /bin/rm /bin/rmdir /bin/df /bin/usleep; do

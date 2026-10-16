@@ -73,7 +73,7 @@ def expected_config(
     repository: str, branch: str, uuid: str, filesystem: str, fsroot: str, relative: str
 ) -> dict[str, object]:
     return {
-        "schema": 1,
+        "schema": 2,
         "generation": 1,
         "manager": {
             "check_updates": True,
@@ -93,22 +93,24 @@ def expected_config(
         "ddns": {
             "configured": False,
             "enabled": False,
-            "credentials": None,
-            "zone_id": "",
+            "credential_ref": None,
+            "zone_id": None,
             "records": [],
-            "primary_hostname": "",
+            "primary_hostname": None,
             "ttl": None,
             "proxied": None,
             "forced_refresh_days": 14,
             "address_family": "auto",
+            "timeouts": None,
         },
         "ip_sync": {
             "configured": False,
             "enabled": False,
-            "credentials": None,
-            "account_id": "",
+            "credential_ref": None,
+            "account_id": None,
             "targets": [],
             "address_family": "auto",
+            "retry": None,
         },
         "cloudflared": {
             "configured": False,
@@ -116,18 +118,19 @@ def expected_config(
             "installed": False,
             "maintenance_enabled": False,
             "method": None,
-            "token": None,
-            "account_tag": "",
-            "tunnel_id": "",
-            "tunnel_secret": None,
+            "expected_identity": {"account_id": None, "tunnel_id": None},
+            "paths": {"yaml": None, "json": None, "certificate": None},
             "credential_refs": {
                 "runtime": None,
                 "management": None,
                 "certificate": None,
+                "dns": None,
             },
             "binary_auto_update": None,
+            "readiness": None,
+            "watchdog": None,
         },
-        "network": {"address_family": "auto", "selected_wan": None},
+        "network": {"address_family": "auto", "selected_wan": None, "discovery": None},
         "logging": {
             feature: {
                 "configured": False,
@@ -137,9 +140,14 @@ def expected_config(
             }
             for feature in ("ddns", "ip_sync", "cloudflared")
         },
-        "backup": {"destination": None, "retention": None, "last_backup": None},
+        "backup": {
+            "destination": None,
+            "retention": None,
+            "date_format": None,
+            "last_backup": None,
+        },
         "credentials": {},
-        "ownership": {},
+        "ownership": {"schema": 1, "components": [], "migration": None},
         "history": {"ddns": None, "ip_sync": None, "cloudflared": None},
     }
 
@@ -179,7 +187,7 @@ def test_defaults_are_complete_passive_json_with_typed_empty_values(
     assert json.loads(result.stdout) == expected_config(*DEFAULTS)
 
 
-def test_argument_values_remain_literal_data(
+def test_unsupported_branch_is_rejected_without_execution(
     shell: list[str], jq: str, tmp_path: Path
 ) -> None:
     branch = 'release$(>"sentinel")'
@@ -189,8 +197,8 @@ def test_argument_values_remain_literal_data(
         (DEFAULTS[0], branch, *DEFAULTS[2:]),
         cwd=tmp_path,
     )
-    assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)["manager"]["source"]["branch"] == branch
+    assert result.returncode != 0
+    assert result.stdout == b""
     assert not (tmp_path / "sentinel").exists()
 
 
@@ -199,6 +207,13 @@ def test_entware_can_occupy_the_verified_mount_root(shell: list[str], jq: str) -
     result = invoke(shell, jq, args)
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["storage"]["entware"]["relative"] == "."
+
+
+def test_supported_branch_components_are_preserved(shell: list[str], jq: str) -> None:
+    branch = "release/supported-v2.0"
+    result = invoke(shell, jq, (DEFAULTS[0], branch, *DEFAULTS[2:]))
+    assert (result.returncode, result.stderr) == (0, b"")
+    assert json.loads(result.stdout)["manager"]["source"]["branch"] == branch
 
 
 def test_supervised_constructor_replaces_its_child_process(

@@ -112,7 +112,7 @@ def expected_catalog() -> bytes:
 
 def expected_manifest(files: dict[str, tuple[bytes, int]]) -> bytes:
     packaged = {**files, "catalog.txt": (expected_catalog(), 0o644)}
-    lines = ["CFMGR-MANIFEST 2 0.1.0 1 1"]
+    lines = ["CFMGR-MANIFEST 2 0.1.0 1 2"]
     for relative in sorted(packaged):
         contents, mode = packaged[relative]
         lines.append(
