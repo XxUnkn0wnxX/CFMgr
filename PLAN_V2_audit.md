@@ -30,6 +30,59 @@ next-session and permissions/recovery tail are unchanged; all 36 historical CI
 run links remain in the handoff. This is preservation review, not runtime
 acceptance. Planning/link/privacy and whitespace checks passed.
 
+## S02.01 modular distribution closure review
+
+2026-10-16, baseline `a17a66d`: parent and independent Astra scope audit agreed
+that S02.01 is the next smallest architecture/package closure. Existing status,
+manager-settings and backup modules are real consumers. The approved requirement
+does not add standalone bootstrap distribution or completion of later services
+and hooks as prerequisites. S07.08 acquisition is reusable evidence; S04.09
+generation and S02.07 native access remain supporting overlaps without new credit.
+
+The installed interactive entry checked paths/ownership then sourced its menu
+modules before complete package consistency admission. The new isolated real-entry
+regression in `tests/test_entry_package.py` confirms this gap: a complete package
+with regenerated fixture metadata reaches the real menu, while appending a
+top-level sentinel to same-version `manager_settings.sh` without changing the
+manifest still executes that sentinel and displays the menu. The normal control
+passed in 0.59s; the corrupted-package rejection test failed at its intended
+sentinel oracle. The fixture remaps owned paths/tool locations, preserves actual
+entry logic and hashes adapted bytes before introducing the corruption. This is
+host execution evidence, not live-router proof. Parent independently reproduced
+the intact pass and intended failure in one 1.05s pytest run (1.55s process wall).
+
+Parent and independent Astra design review agree on a two-stage native gate:
+entry-owned bounded manifest parsing authenticates the entry and one fixed inert
+verifier, then that verifier admits the entire installed package before existing
+imports. The protected installed manifest is consistency authority; setup-state
+contains only schema/version/completion. Fixed native hashing with a known vector,
+capped reads and separate producer/hash status avoids Entware or a second general
+supervisor. Compatible manifest 1/2 remains supported when the running entry's
+required verifier is present. Package inventory excludes legitimate config/recovery
+data; existing operational guards remain with their consumers. This addresses
+accidental/incomplete mixed generations, not hostile root replacement or the
+future self-update concurrency contract.
+
+The implementation now places this gate before both installed import paths and
+removes their superseded structural-only import checks. The installer requires
+the newly mandatory verifier under either supported manifest header; acquisition
+requires it under current schema 2. Parent and independent read-only runtime
+review agree **PASS WITH NOTES**: no must-fix runtime issue was found; final
+consumer and exact-candidate vendor BusyBox/core proof remains pending. The
+review checked fixed loader ordering, strict bounded metadata/inventory, separate
+reader/hash status and restoration of descriptors/terminal input. Existing
+config/setup/recovery data remains outside package inventory admission.
+
+Real entry fixtures now carry complete catalog/hash data after test adapters are
+added. The unchanged original sentinel oracle passes, alongside verifier
+corruption, metadata framing/incompleteness, retained-path refusal, legacy/current
+headers and passive nested extension checks. Four first-run backup failures were
+test adapters edited after metadata generation; correcting those fixture refresh
+points restored all eight backup tests (46.06s), without weakening runtime
+admission. The parent status/retained gate passed 48 tests with three Linux-only
+skips in 49.44s, including aggregate inert imports and native menu return without
+operational preparation. No acceptance is awarded before remaining gates.
+
 ## S07.08 acquisition and pre-execution design review
 
 2026-10-16, baseline `167ef28`: parent and independent Astra design review agreed

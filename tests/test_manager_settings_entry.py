@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 import pytest
+from entry_package_fixture import finish_package
 from test_config_observation import commands, config
 from test_config_store import ADAPTER, run_store, store_fixture
 from test_install import legacy_fsync, shell, tools
@@ -70,11 +71,7 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
     adapter_path.chmod(0o600)
 
     original = (ROOT / "cfmgr.sh").read_text()
-    adapted = (
-        original.replace("/jffs", str(jffs))
-        .replace("/usr/bin/readlink", tools["readlink"])
-        .replace("$3!=0", f"$3!={os.geteuid()}")
-    )
+    adapted = original
     # Keep the real isolated re-exec under the selected test interpreter too.
     # The BusyBox tools fixture already supplies a sh-named applet symlink.
     reexec = 'CFMGR_INTERNAL_LAUNCH=1 /bin/sh "$cfmgr_default_entry"'
@@ -97,7 +94,7 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
     )
     entry = scripts / "cfmgr.sh"
     entry.write_text(adapted)
-    entry.chmod(0o700)
+    finish_package(entry, support, tools, shell, adapt=True)
     return entry, support, ram, (support, ram, flock, fsync)
 
 

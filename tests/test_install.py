@@ -300,7 +300,9 @@ def test_corrupt_executable_package_fails_before_generation_or_jffs_claim(
     assert not list(tmp_path.glob("ram-*/install-config.*"))
 
 
-@pytest.mark.parametrize("damage", ["version", "traversal", "incomplete", "symlink"])
+@pytest.mark.parametrize(
+    "damage", ["version", "traversal", "incomplete", "symlink", "missing-verifier"]
+)
 def test_invalid_package_boundary_never_claims_jffs(
     shell: list[str],
     tools: dict[str, str],
@@ -317,6 +319,13 @@ def test_invalid_package_boundary_never_claims_jffs(
         lines[0] = "CFMGR-MANIFEST 1 9.9.9\n"
     elif damage == "traversal":
         lines[1] = lines[1].rsplit("\t", 1)[0] + "\t../outside\n"
+    elif damage == "missing-verifier":
+        # Legacy header remains supported only with the mandatory verifier.
+        lines[0] = "CFMGR-MANIFEST 1 0.1.0\n"
+        (altered / "modules/lib/package.sh").unlink()
+        lines = [
+            line for line in lines if not line.endswith("\tmodules/lib/package.sh\n")
+        ]
     elif damage == "incomplete":
         (altered / "modules/lib/config.sh").unlink()
         lines = [

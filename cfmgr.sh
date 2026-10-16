@@ -14,7 +14,79 @@ unset LD_LIBRARY_PATH LD_PRELOAD LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE \
 	SSL_CERT_FILE SSL_CERT_DIR OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES \
 	http_proxy https_proxy all_proxy no_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
-export PATH
+LC_ALL=C LANGUAGE=
+export PATH LC_ALL LANGUAGE
+
+# Entry-owned native primitives. Package bytes are never shell input; only
+# bounded metadata and fixed digest receipts cross command substitutions.
+cfmgr_entry_metadata() {
+	[ ! -L "$1" ] && [ "$(/usr/bin/readlink -f "$1")" = "$1" ] || return 1
+	# shellcheck disable=SC2016
+	cfmgr_entry_size=$(/bin/ls -ldn "$1" | /usr/bin/awk -v kind="$2" '
+		NR!=1 || $3!=0 || substr($1,6,1)=="w" || substr($1,9,1)=="w" {bad=1}
+		kind=="directory" && (length($1)!=10 || $1!~/^d[rwxstST-]+$/) {bad=1}
+		kind!="directory" && ($2!=1 || (kind=="0644" && $1!="-rw-r--r--") || (kind=="0755" && $1!="-rwxr-xr-x") || (kind=="manifest" && $1!="-rw-r--r--") || $5!~/^[0-9]+$/) {bad=1}
+		END {if(NR!=1 || bad)exit 1; print $5}') || return 1
+}
+
+cfmgr_entry_hash() {
+	# One block beyond the declared extent also covers an appended payload.
+	cfmgr_entry_blocks=$(($2 / 4096 + 1))
+	cfmgr_entry_hash_frame=$(
+		{
+			{
+				/bin/dd bs=4096 count="$cfmgr_entry_blocks" <"$1" 2>/dev/null
+				cfmgr_entry_read_status=$?
+				printf 'CFMGR-READ 1 %s\n' "$cfmgr_entry_read_status" >&3
+			} | /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C OPENSSL_CONF=/dev/null /usr/sbin/openssl dgst -sha256 -r
+		} 3>&1
+	) || return 1
+	# The producer retains its pipe until after the status receipt; the digest
+	# follows EOF. Both statuses matter, including a producer failing after data.
+	# shellcheck disable=SC2016
+	cfmgr_entry_digest=$(printf '%s\n' "$cfmgr_entry_hash_frame" | /usr/bin/awk '
+		NR==1 {if($0!="CFMGR-READ 1 0")bad=1;next}
+		NR==2 {if(NF!=2 || length($1)!=64 || $1~/[^0-9a-f]/ || $2!="*stdin")bad=1;hash=$1;next}
+		{bad=1} END {if(NR!=2 || bad)exit 1;print hash}') || return 1
+}
+
+cfmgr_entry_file() {
+	cfmgr_entry_metadata "$1" "$2" && [ "$cfmgr_entry_size" = "$3" ] || return 1
+	cfmgr_entry_hash "$1" "$3" && [ "$cfmgr_entry_digest" = "$4" ]
+}
+
+cfmgr_entry_framing() {
+	# Independent byte and newline counts reject NUL-to-record ambiguity as well
+	# as missing final LF. Native awk runs in the byte locale, never a payload AWK.
+	cfmgr_entry_counts=$(/usr/bin/wc -lc <"$1") || return 1
+	# shellcheck disable=SC2016
+	/usr/bin/awk -v counts="$cfmgr_entry_counts" 'BEGIN {split(counts,c); if(c[2]>131072)exit 1}
+		{bytes+=length($0)+1} END {exit bytes!=c[2] || NR!=c[1]}' "$1"
+}
+
+cfmgr_entry_admit() {
+	for cfmgr_entry_dir in / /jffs /jffs/scripts /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib"; do
+		cfmgr_entry_metadata "$cfmgr_entry_dir" directory || return 1
+	done
+	cfmgr_entry_metadata "$cfmgr_source/manifest.txt" manifest && [ "$cfmgr_entry_size" -le 131072 ] || return 1
+	cfmgr_entry_framing "$cfmgr_source/manifest.txt" || return 1
+	cfmgr_entry_known=$(printf abc | /usr/bin/env -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C OPENSSL_CONF=/dev/null /usr/sbin/openssl dgst -sha256 -r) || return 1
+	[ "$cfmgr_entry_known" = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad *stdin' ] || return 1
+	# Only these two fixed records can select bootstrap verification input.
+	# shellcheck disable=SC2016
+	cfmgr_entry_records=$(/usr/bin/awk -v version="$CFMGR_VERSION" 'BEGIN {FS="\t"}
+		NR==1 {if($0!="CFMGR-MANIFEST 1 " version && $0!="CFMGR-MANIFEST 2 " version " 1 1")bad=1;next}
+		$4=="cfmgr.sh" || $4=="modules/lib/package.sh" {
+			if(NF!=4 || seen[$4]++ || $2!~/^(0|[1-9][0-9]*)$/ || $2>1048576 || length($3)!=64 || $3~/[^0-9a-f]/ || ($4=="cfmgr.sh" && $1!="0755") || ($4=="modules/lib/package.sh" && $1!="0644"))bad=1
+			print
+		} END {if(bad || !seen["cfmgr.sh"] || !seen["modules/lib/package.sh"])exit 1}' "$cfmgr_source/manifest.txt") || return 1
+	while IFS="$(printf '\t')" read -r cfmgr_entry_mode cfmgr_entry_bytes cfmgr_entry_sha cfmgr_entry_path; do
+		case $cfmgr_entry_path in cfmgr.sh) cfmgr_entry_target=/jffs/scripts/cfmgr.sh ;; modules/lib/package.sh) cfmgr_entry_target=$cfmgr_source/modules/lib/package.sh ;; *) return 1 ;; esac
+		cfmgr_entry_file "$cfmgr_entry_target" "$cfmgr_entry_mode" "$cfmgr_entry_bytes" "$cfmgr_entry_sha" || return 1
+	done <<EOF_RECORDS
+$cfmgr_entry_records
+EOF_RECORDS
+}
 
 case ${1-} in
 --version)
@@ -57,16 +129,16 @@ case ${1-} in
 	cfmgr_entry_action=${2:-normal}
 	case $cfmgr_entry_action in normal | reinstall) ;; *) exit 2 ;; esac
 	cfmgr_source=/jffs/addons/CFMgr.d
+	if ! cfmgr_entry_admit; then
+		printf '[CFMGR] launch: error: installed package verification failed\n' >&2
+		exit 1
+	fi
+	. "$cfmgr_source/modules/lib/package.sh" || exit 1
+	if ! cfmgr_package_verify; then
+		printf '[CFMGR] launch: error: installed package verification failed\n' >&2
+		exit 1
+	fi
 	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
-		# Status/navigation are admitted before any operational library/preflight.
-		for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
-			"$cfmgr_source/modules/helpers/launch.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/prerequisites.sh" \
-			"$cfmgr_source/modules/lib/storage.sh" "$cfmgr_source/modules/lib/config_store.sh" \
-			"$cfmgr_source/modules/backup.sh" "$cfmgr_source/modules/manager_settings.sh"; do
-			[ ! -L "$cfmgr_import" ] && [ "$(/usr/bin/readlink -f "$cfmgr_import")" = "$cfmgr_import" ] || exit 1
-			# shellcheck disable=SC2016
-			/bin/ls -ldn "$cfmgr_import" | /usr/bin/awk 'NR!=1 || $3!=0 || $1 !~ /^[-d]/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad ? 1 : 0 }' || exit 1
-		done
 		# shellcheck disable=SC1091
 		. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1
 		. "$cfmgr_source/modules/status.sh" || exit 1
@@ -77,16 +149,6 @@ case ${1-} in
 		. "$cfmgr_source/modules/helpers/launch.sh" || exit 1
 		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else exit 0; fi
 	fi
-	# Root-protected literal imports, never a config-selected source. Structural
-	# package admission precedes repair; full digests follow healthy SHA probes.
-	for cfmgr_import in /jffs /jffs/addons "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
-		"$cfmgr_source/modules/lib/storage.sh" "$cfmgr_source/modules/lib/prerequisites.sh" "$cfmgr_source/modules/lib/native.sh" "$cfmgr_source/modules/lib/config_store.sh" \
-		"$cfmgr_source/modules/lib/mount_keeper.sh" "$cfmgr_source/modules/lib/execution_view.sh" "$cfmgr_source/modules/lib/execution_tasks.sh" \
-		"$cfmgr_source/modules/lib/dependencies.sh" "$cfmgr_source/modules/helpers/bootstrap.sh" "$cfmgr_source/modules/helpers/launch.sh"; do
-		[ ! -L "$cfmgr_import" ] && [ "$(/usr/bin/readlink -f "$cfmgr_import")" = "$cfmgr_import" ] || exit 1
-		# shellcheck disable=SC2016
-		/bin/ls -ldn "$cfmgr_import" | /usr/bin/awk 'NR!=1 || $3!=0 || $1 !~ /^[-d]/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad ? 1 : 0 }' || exit 1
-	done
 	# shellcheck disable=SC1091
 	. "$cfmgr_source/modules/lib/storage.sh" || exit 1
 	. "$cfmgr_source/modules/lib/prerequisites.sh" || exit 1

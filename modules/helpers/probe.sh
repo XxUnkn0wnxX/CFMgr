@@ -155,7 +155,7 @@ acquire-manifest)
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/acquire.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
+			required="cfmgr.sh catalog.txt modules/backup.sh modules/manager_settings.sh modules/lib/acquire.sh modules/lib/package.sh modules/lib/config.sh modules/lib/config_store.sh modules/lib/storage.sh modules/lib/prerequisites.sh modules/lib/native.sh modules/lib/mount_keeper.sh modules/lib/execution_view.sh modules/lib/execution_tasks.sh modules/lib/dependencies.sh modules/lib/mountinfo.awk modules/helpers/mount_keeper.sh modules/helpers/dependencies.sh modules/helpers/bootstrap.sh modules/helpers/probe.sh modules/helpers/launch.sh modules/lib/json.awk modules/lib/config_observation.awk modules/status.sh modules/lib/status.awk modules/lib/status_native.awk"
 			n=split(required,names," ");for(i=1;i<=n;i++)if(!seen[names[i]])bad=1
 			if(bad || count<2)exit 1
 		}' "$2" "$1"

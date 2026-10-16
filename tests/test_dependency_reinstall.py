@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from entry_package_fixture import finish_package
 from test_config_observation import commands, config
 from test_dependency_consumer import LINUX_REPAIR_CONTROLLER
 from test_install import shell, tools
@@ -23,7 +24,7 @@ __all__ = ["commands", "config", "shell", "tools"]
 
 
 @pytest.fixture
-def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
+def installed_entry(tmp_path: Path, tools: dict[str, str], shell) -> tuple[Path, Path]:
     jffs = tmp_path / "jffs"
     support = jffs / "addons/CFMgr.d"
     scripts = jffs / "scripts"
@@ -33,19 +34,8 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
     (support / "modules/manager_settings.sh").write_text("# inert adapter\n")
     (support / "modules/backup.sh").write_text("# inert adapter\n")
     original = (ROOT / "cfmgr.sh").read_text()
-    adapted = (
-        original.replace("/jffs", str(jffs))
-        .replace("/usr/bin/readlink", tools["readlink"])
-        .replace("$3!=0", f"$3!={os.geteuid()}")
-    )
-    assert (
-        adapted.replace(f"$3!={os.geteuid()}", "$3!=0")
-        .replace(tools["readlink"], "/usr/bin/readlink")
-        .replace(str(jffs), "/jffs")
-        == original
-    )
     entry = scripts / "cfmgr.sh"
-    entry.write_text(adapted)
+    entry.write_text(original)
     marker = tmp_path / "native-preparation"
     for name in (
         "storage",
@@ -70,6 +60,7 @@ def installed_entry(tmp_path: Path, tools: dict[str, str]) -> tuple[Path, Path]:
         launch
         + '\ncfmgr_launch_work() { cfmgr_install_interrupted=0; printf "action=%s\\n" "$cfmgr_launch_requested_action"; }\n'
     )
+    finish_package(entry, support, tools, shell, adapt=True)
     return entry, marker
 
 

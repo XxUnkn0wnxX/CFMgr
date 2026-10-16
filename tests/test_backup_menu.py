@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from entry_package_fixture import finish_package
 from test_config_observation import commands, config
 from test_config_store import ADAPTER, store_fixture
 from test_install import legacy_fsync, shell, tools
@@ -35,7 +36,7 @@ __all__ = [
 
 
 @pytest.fixture
-def installed_backup_entry(_installed_settings_entry):
+def installed_backup_entry(_installed_settings_entry, tools, shell):
     entry, support, ram, _ = _installed_settings_entry
     for relative in ("modules/lib/storage.sh", "modules/backup.sh"):
         target = support / relative
@@ -108,17 +109,19 @@ cfmgr_backup_folder_admit() { cfmgr_backup_attached; }
     )
     adapter_path.write_text(assignments + adapter)
     adapter_path.chmod(0o600)
+    finish_package(entry, support, tools, shell)
     return entry, support, ram
 
 
 def test_backup_menu_saves_and_reopens_destination_through_real_store(
-    shell, installed_backup_entry
+    shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
     adapter_path.write_text(
         adapter_path.read_text().replace("scenario=normal", "scenario=single")
     )
+    finish_package(entry, support, tools, shell)
     before = (support / "config").read_bytes()
     master, slave = pty.openpty()
     child = subprocess.Popen(
@@ -179,7 +182,7 @@ def test_backup_menu_saves_and_reopens_destination_through_real_store(
 
 
 def test_backup_menu_disambiguates_duplicate_labels_and_invalid_choices_are_read_only(
-    shell, installed_backup_entry
+    shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
     before = (support / "config").read_bytes()
@@ -203,7 +206,7 @@ def test_backup_menu_default_no_does_not_prepare_or_save(shell, installed_backup
 
 
 def test_backup_menu_interrupt_during_selection_does_not_mutate(
-    shell, installed_backup_entry
+    shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
     before = (support / "config").read_bytes()
@@ -234,13 +237,14 @@ def test_backup_menu_interrupt_during_selection_does_not_mutate(
 
 
 def test_backup_menu_with_no_drives_keeps_destination_unset(
-    shell, installed_backup_entry
+    shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
     adapter_path.write_text(
         adapter_path.read_text().replace("scenario=normal", "scenario=no-drives")
     )
+    finish_package(entry, support, tools, shell)
     before = (support / "config").read_bytes()
     result = run_entry(shell, entry, b"4\n1\ne\ne\n")
     assert result.returncode == 0, result.stderr
@@ -251,13 +255,14 @@ def test_backup_menu_with_no_drives_keeps_destination_unset(
 
 
 def test_backup_menu_reports_save_failure_without_claiming_rollback(
-    shell, installed_backup_entry
+    shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
     adapter_path.write_text(
         adapter_path.read_text().replace("scenario=normal", "scenario=folder-failure")
     )
+    finish_package(entry, support, tools, shell)
     before = (support / "config").read_bytes()
     result = run_entry(shell, entry, b"4\n1\n1\ns\ny\ne\ne\n")
     assert result.returncode == 0, result.stderr
@@ -270,13 +275,14 @@ def test_backup_menu_reports_save_failure_without_claiming_rollback(
 
 
 def test_backup_menu_recovers_interrupted_store_save_without_drive(
-    shell, installed_backup_entry
+    shell, installed_backup_entry, tools
 ):
     entry, support, ram = installed_backup_entry
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
     adapter_path.write_text(
         adapter_path.read_text().replace("scenario=normal", "scenario=publish-stop")
     )
+    finish_package(entry, support, tools, shell)
     before = (support / "config").read_bytes()
     result = run_entry(shell, entry, b"4\n1\n1\ns\ny\nr\ny\ne\ne\n")
     assert result.returncode == 0, result.stderr

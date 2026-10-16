@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from entry_package_fixture import finish_package
 from test_config_observation import commands, config
 from test_dependency_reinstall import entry_run, installed_entry
 from test_install import shell, tools
@@ -504,6 +505,7 @@ def test_installed_choice_zero_returns_without_operational_preparation(
             + "\n"
             + functions
         )
+    finish_package(entry, support, tools, shell)
     original = data.read_bytes()
     result = entry_run(shell, entry, [], b"0\nao\ne\ne\n", terminal=True, timeout=10)
     assert result.returncode == 0, result.stderr

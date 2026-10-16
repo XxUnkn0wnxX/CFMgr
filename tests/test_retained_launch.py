@@ -218,14 +218,19 @@ def launch_host(
 
 
 def test_source_inert(shell: list[str], tmp_path: Path) -> None:
+    sources = (
+        sorted((ROOT / "modules/lib").glob("*.sh"))
+        + sorted((ROOT / "modules").glob("*.sh"))
+        + [ROOT / "modules/helpers/launch.sh", ROOT / "modules/helpers/bootstrap.sh"]
+    )
     result = subprocess.run(
         [
             *shell,
             "-c",
-            'cd "$2"; . "$1"',
+            'cd "$1" || exit 1; shift; before="$PWD:$-:$(umask)"; for source do . "$source" || exit 1; done; [ "$before" = "$PWD:$-:$(umask)" ]',
             "inert",
-            str(ROOT / "modules/helpers/launch.sh"),
             str(tmp_path),
+            *map(str, sources),
         ],
         capture_output=True,
         check=False,
