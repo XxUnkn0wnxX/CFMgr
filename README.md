@@ -4,7 +4,7 @@ Cloudflare Manager for Asuswrt-Merlin — a terminal menu and command-line
 manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 > [!WARNING]
-> **Development recovery; not ready for router use.** Do not install or run
+> **Active development; not ready for router use.** Do not install or run
 > this development version on a live router. The table below summarizes the
 > intended product; it is not a report of completed or accepted features.
 
