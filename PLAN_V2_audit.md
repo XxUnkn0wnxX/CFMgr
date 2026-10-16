@@ -104,6 +104,14 @@ and inherited-lock fixtures still await the exact-candidate gate. Parent agrees
 the package is ready for publication and required core CI, with no additional
 supporting-subgoal, archive/restore or live-filesystem credit.
 
+The first core run at `2e94e2b` exposed a stale handwritten retained-launch
+fixture: it used `backup:{}` while production defaults at the baseline already
+included `destination`, `retention` and `last_backup` as null. Parent reproduced
+the new typed parser's rejection of that fixture and acceptance with the actual
+passive defaults. Independent review agreed with correcting only the fixture;
+no parser requirement, runtime behavior or preservation assertion was weakened.
+Focused real retained-launch and replacement-candidate core proof remain pending.
+
 ## Diagnostics fixture optimization review
 
 2026-10-16, baseline `8e6b79f`: parent and dedicated read-only Astra reviewer

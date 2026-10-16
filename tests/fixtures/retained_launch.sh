@@ -25,7 +25,8 @@ printf 'CFMGR-SETUP 1 0.1.0 complete\n' >"$retained_support/setup-state"
  credential_refs:{runtime:null,management:null,certificate:null}},
  logging:{ddns:{configured:false,enabled:false,opt_out:false,policy:null},
  ip_sync:{configured:false,enabled:false,opt_out:false,policy:null},cloudflared:{configured:false,enabled:false,opt_out:false,policy:null}},
- history:{ddns:{kept:"history"},ip_sync:null,cloudflared:null},network:{address_family:"auto",selected_wan:null},backup:{},credentials:{},ownership:{}}
+ history:{ddns:{kept:"history"},ip_sync:null,cloudflared:null},network:{address_family:"auto",selected_wan:null},
+ backup:{destination:null,retention:null,last_backup:null},credentials:{},ownership:{}}
 ' >"$retained_support/config"
 chmod 600 "$retained_support/setup-state" "$retained_support/config"
 cp "$retained_support/config" "$fixture/retained.original"

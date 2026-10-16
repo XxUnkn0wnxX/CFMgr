@@ -14,6 +14,9 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a13107-3627-7803-aa3d-4fb1c1974dea
 Fifth ID verified 2026-10-14 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a1420b-3ef8-7c80-a5f1-aa989e2fae32
+Sixth ID verified 2026-10-16 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
@@ -25,6 +28,29 @@ explicitly requested a pause after implementation and its passing gate, with
 the final work pushed. This supersedes the historical stop notices below only
 for this package. Start revision: `506e97fded9ac29d865c38e67c8f5aaaef7ac40f`,
 clean `develop`, matching the local origin/develop tracking ref.
+
+Published candidate: `2e94e2b0957e928bdee101a8fa07ce250eab132b`, verified on
+origin/develop. Required [core Checks 38850890760](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38850890760)
+failed in the BusyBox retained-launch fixture after host success. The failure
+occurred before dependency work: its handwritten `backup:{}` omitted the
+`destination:null` that production defaults already emitted at `506e97f`.
+Parent reproduced parser refusal for that exact fixture and success with the
+actual passive backup defaults; independent review confirmed a fixture-only
+correction. Strict production validation and all retained-launch assertions are
+unchanged. The initial run had 495 BusyBox passes/one skip before stopping, so
+it is not complete core proof. Repair candidate, focused retained-launch CI and
+new exact-candidate core remain pending.
+
+[Quick Checks 38850933797](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38850933797)
+passed the two new real-mount cases and inherited backup-mkdir lock case:
+3 passed, no skips, 2.87s pytest / 3.07s process wall, 1.20s user + 0.73s system,
+32,740 KiB peak RSS. Whole job: 19s, 04:30:11–04:30:30 UTC. Parent verified the
+exact SHA and all applicable steps; only the unrequested host baseline skipped.
+The three calls took 0.98s, 0.96s and 0.45s respectively. This is interim
+platform evidence, not the core acceptance gate. Logs/metadata are private in
+`.tmp/s1402-ci/quick.log` and `quick.json`. The existing awaiter only monitors
+core when launched; parent owns interpretation and any repair.
+Do not start further implementation while the required candidate gate runs.
 
 Chosen route: the minimum coordinated foundation/consumer batch previously
 described to the user. Complete mounted-drive discovery/admission (the backup
