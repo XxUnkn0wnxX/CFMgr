@@ -21,7 +21,7 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S02.01 — BusyBox admission failure under focused diagnosis
+## Active S02.01 — missing CI BusyBox applet corrected; final CI pending
 
 The user approved the recommended S02.01 package after the checkpoint below.
 Baseline: clean `develop` at `a17a66d859d047bb47cb67575ac086e11d65a23f`.
@@ -88,14 +88,23 @@ under vendor BusyBox. **Quick failed the intact-package control immediately**
 then cancelled the superseded core run during its host stage; BusyBox was skipped.
 Neither run supplies acceptance. Awaiter is finished; no CI remains active.
 
-Parent is isolating this platform difference with failure-only shell tracing in
-the existing intact control, without a speculative runtime change. The complete
-entry module still passes locally: 14 passed, 12.95s pytest / 13.69s wall; Ruff and
-format passed. Trace receipt: `local-entry-trace.log`. This focused diagnostic
-change will be pushed for a one-node Quick run; cancel its redundant core run
-while the cause remains unresolved. No user decision is pending. After fixing the
-observed cause, rerun complete affected groups and exact core CI, then accept only
-S02.01, publish the documentation receipt and pause. Do not start another package.
+Failure-only tracing was pushed as `56091bd4e764f9a8290a276c8f9d40640cdb8c4e`.
+The complete entry module still passed locally: 14 passed, 12.95s pytest / 13.69s
+wall; Ruff/format passed (`local-entry-trace.log`). The
+[one-node trace 38863974045](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38863974045)
+confirmed `CFMGR-READ 1 127`: the vendor fixture omitted `CONFIG_DD`, so its `dd`
+symlink could not run. Runtime correctly rejected the failed read. Its redundant
+core run 38863966533 was cancelled; neither supplies acceptance. `quick-trace.log`
+preserves exact evidence. Parent and independent reviewer agree on this cause.
+
+Only `CONFIG_DD=y` was added to the existing BusyBox fixture. Its verified cache
+key includes that config, so CI will rebuild it. No runtime change or relaxed
+assertion is necessary. Complete `test_platforms.py` passed **40 tests in 1.54s**
+(2.46s process wall), including verified fixture/cache-key behavior; receipt
+`local-platform-fixture.log`. Planning/whitespace passed. No user decision is
+pending. Next: commit/push this correction, rerun complete focused
+entry/package proof and exact core CI, then accept only S02.01, publish the
+documentation receipt and pause. Do not start another package.
 
 ## Paused after accepted S07.08 — ready to select the next task
 

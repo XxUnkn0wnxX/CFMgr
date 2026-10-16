@@ -83,6 +83,16 @@ admission. The parent status/retained gate passed 48 tests with three Linux-only
 skips in 49.44s, including aggregate inert imports and native menu return without
 operational preparation. No acceptance is awarded before remaining gates.
 
+Initial vendor Quick at `62ceee4` failed the intact control. A one-node traced
+run at `56091bd` identified `CFMGR-READ 1 127` from the fixture's `dd` applet and
+the empty-stream digest. Parent and independent reviewer confirmed the minimal
+vendor build starts from `allnoconfig` and omitted `CONFIG_DD`, while the new test
+adapter correctly selects vendor applets. The runtime refused the failed reader
+as designed. Enable only `CONFIG_DD=y` in the existing representative fixture;
+its content already participates in the verified cache key. No runtime change
+or weakened assertion is needed. Superseded core runs were cancelled after
+capturing the failure; final complete focused/core proof remains required.
+
 ## S07.08 acquisition and pre-execution design review
 
 2026-10-16, baseline `167ef28`: parent and independent Astra design review agreed
