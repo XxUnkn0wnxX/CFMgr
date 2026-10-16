@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**10 of 157 product subgoals accepted — 6.4% overall subgoal completion.**
+**11 of 157 product subgoals accepted — 7.0% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -236,10 +236,31 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S07.05 | **Developer suppression:** Manual-only flag suppresses checks/auto/external callbacks; confirmed force retains normal verification. |
 | [ ] | [ ] | S07.06 | **Source selection and catalog:** One code-defined repository/branch default serves install and self-update; only developer mode permits config source overrides; catalog maps one immutable package. |
 | [ ] | [ ] | S07.07 | **Developer source retention:** Developer retains configured source; normal operations use the shared code defaults (temporarily develop, later main); successful replacement resets source fields and replaces its catalog. |
-| [ ] | [ ] | S07.08 | **Trusted complete package:** Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
+| [x] | [x] | S07.08 | **Trusted complete package:** Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
 | [ ] | [ ] | S07.09 | **State-preserving update:** No healthy feature reinstall/restart/provider call or config loss; guarded actual owned drift only. |
 | [ ] | [ ] | S07.10 | **Self-update failure recovery:** Distinct transfer/storage/switch/hook-reinjection/overlap/opt-out/rollback boundaries preserve last trusted complete package and report incomplete integration honestly. |
 | [ ] | [ ] | S07.11 | **Optional amtm:** User-chosen personal launcher; official updater conditional with separate opt-in, no private registry hacks. |
+
+S07.08 accepted at `ffea9ebd59236045579b9250d383aa1c7acf1e09`.
+`--install-remote` uses an explicitly trusted complete local
+bootstrap, resolves one full commit and validates the complete downloaded package
+before the real fresh installer runs. Available local focused gates passed;
+Linux-only cases were explicitly skipped locally, then proved by complete vendor
+BusyBox Quick groups at that SHA:
+[transport/syntax](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858125065)
+**3 passed, 2.22s**, and
+[acquired installer](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858127676)
+**4 passed, 144.26s**, both without skips. Parent and independent
+[design/runtime reviews](PLAN_V2_audit.md#s0708-acquisition-and-pre-execution-design-review)
+passed. Required [core Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858115527)
+passed at that exact SHA: host **597 passed, 28 platform skips**, vendor BusyBox
+**624 passed, one workstation-only skip**; four optional diagnostics were excluded
+from each selection. Every required job/step passed. The whole job took 15m32s;
+focused cost and complete local/CI receipts are in the
+[checkpoint handoff](PLAN_V2_handoff.md#paused-after-accepted-s0708--ready-to-select-the-next-task).
+Supporting S07.06/S02.01 remain partial, with no standalone bootstrap or self-update
+claim. This is representative development proof; live Merlin/ARM qualification
+remains beta work. No main goal or full local milestone gate is completed.
 
 S07.01 accepted at `576584885befb84f10bf8c10365a872a0b9fa406`: actual installed
 `ao → CFMgr updates` supports reviewed native Save, coupled intent, cancellation,

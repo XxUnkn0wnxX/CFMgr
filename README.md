@@ -10,7 +10,7 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 10 of 157 subgoals accepted (6.4%).**
+**0 of 16 main goals complete (0%); 11 of 157 subgoals accepted (7.0%).**
 The development code provides trusted-local fresh installation, private passive
 defaults, scoped checks for shared tools and tunnel DNS, normal dependency repair,
 confirmed selected dependency reinstall, Entware storage-loss handling and a
@@ -18,8 +18,10 @@ native read-only status dashboard available before operational preparation.
 CFMgr update preferences can be reviewed and saved through Advanced options,
 with coupled Check/Auto settings and saved/effective status. Backup storage can
 be explicitly selected and saved, with exact drive checks and safe root-level
-`CFBackup` creation or reuse. Archive creation, restore, remote installation,
-the updater and remaining feature workflows are unfinished. The [v2 plan](PLAN_V2.md)
+`CFBackup` creation or reuse. An explicitly trusted complete bootstrap can also
+acquire and verify one pinned package for fresh remote installation. Archive
+creation, restore, standalone bootstrap distribution, the updater and remaining
+feature workflows are unfinished. The [v2 plan](PLAN_V2.md)
 defines the requirements, the [checklist](PLAN_V2_checklist.md) records acceptance,
 and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 
@@ -33,7 +35,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | [Settings and recovery](PLAN_V2.md#4-save-cancellation-and-recovery) | Reviewed saves, resumable drafts, cancellation and safe interruption recovery. | Planned |
 | [Cloudflared setup](PLAN_V2.md#5-cloudflared-setup-and-credentials) | Token, guided and advanced credential/configuration paths with reviewed hostname routing. | Planned |
 | [Tunnel lifecycle](PLAN_V2.md#6-tunnel-lifecycle-and-binary-maintenance) | Guarded Start/Stop/Restart, readiness, watchdog recovery and verified binary maintenance. | Planned |
-| [CFMgr updates](PLAN_V2.md#7-cfmgr-updates-source-selection-and-developer-mode) | Verified updates/reinstall, configurable sources and preserved settings across replacement. | 1/11 accepted |
+| [CFMgr updates](PLAN_V2.md#7-cfmgr-updates-source-selection-and-developer-mode) | Verified updates/reinstall, configurable sources and preserved settings across replacement. | 2/11 accepted |
 | [Shared address discovery](PLAN_V2.md#8-shared-address-discovery-and-reconciliation) | Current IPv4/IPv6 evidence, selected-WAN verification and shared discovery/reconciliation. | Planned |
 | [DDNS](PLAN_V2.md#9-ddns) | A/AAAA reconciliation, remote drift repair and Merlin hostname/refresh integration. | Planned |
 | [IP-Sync](PLAN_V2.md#10-ip-sync) | IPv4/IPv6 list reconciliation while preserving list identity and handling inactive families. | Planned |

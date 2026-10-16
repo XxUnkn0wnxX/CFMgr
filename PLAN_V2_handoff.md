@@ -21,12 +21,14 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active S07.08 — trusted complete package foundation
+## Paused after accepted S07.08 — ready to select the next task
 
 The user approved starting the recommended S07.08 package after the accepted
 S14.02 checkpoint, and explicitly requested handoff-ready records at every
-major checkpoint. Current baseline: clean `develop` at
-`167ef2837eb6510c535bb50499a1c76399fbe081`. Use the existing checkout only.
+major checkpoint. S07.08 is now accepted and the requested pause boundary is
+reached. Implementation began from clean `develop` at
+`167ef2837eb6510c535bb50499a1c76399fbe081`. Use the existing checkout only;
+do not begin another package until the user authorizes it.
 
 Completion target: **S07.08**, with only necessary effective-source/pin work
 from S07.06 and package/installer support from S02.01. No supporting tick follows
@@ -34,14 +36,23 @@ from partial work. The real consumer is acquisition and pre-execution validation
 of one immutable complete snapshot, then the existing fresh installation path.
 Manual/automatic self-update transactions, feature work, router deployment and
 release remain outside this package. No product requirement or gate changes are
-currently proposed. Accepted totals remain 10/157 (6.4%), 0/16 main goals (0%).
+currently proposed. Accepted totals: **11/157 subgoals (7.0%)**, **0/16 main goals
+(0%)**. Goal 7 has **2/11 accepted (18.2%)**; only S07.08 gained credit here.
+The remaining product scope is 146 subgoals across all 16 incomplete main goals.
 
-Current checkpoint: runtime and consumer tests integrated on the dirty baseline
-above; available local gates and parent review passed, exact-candidate CI pending. Astra's independent
-design review passed with a pending BusyBox syntax-safety proof. Parent owns
+Current checkpoint: candidate `ffea9ebd59236045579b9250d383aa1c7acf1e09` is
+committed and verified on `origin/develop`; available local gates, parent review,
+both focused CI groups and exact-candidate core CI passed.
+Astra's design condition for BusyBox syntax safety is now proved. Parent owns
 trust/integration decisions and all five V2 records. Existing local-package
 admission remains the explicitly trusted bootstrap prerequisite; it is not
 evidence of remote package validation.
+
+This documentation receipt updates only README, checklist, audit and handoff;
+it records the tested code SHA above and does not claim a runtime rerun at the
+receipt revision. Resume by verifying clean `develop` against `origin/develop`.
+The specification and all subgoal contracts remain unchanged. No pending user
+question, unresolved implementation failure, worker or CI job remains.
 
 Frozen implementation contract (a refinement of existing S07.08 requirements):
 
@@ -58,7 +69,7 @@ Frozen implementation contract (a refinement of existing S07.08 requirements):
   schema 1 is unsupported; the explicitly trusted local route may retain it.
   Compare the unique literal embedded entry version as data; check the complete
   required inventory, hashes, sizes, paths, catalog and syntax before candidate
-  code executes. Safe AWK syntax checking still needs actual BusyBox proof; a
+  code executes. Safe AWK syntax checking passed actual vendor BusyBox proof; a
   normal `awk -f` or `BEGIN { exit }` is not an acceptable pre-execution check.
 - Hand the validated canonical stage pathname to the existing trusted installer
   in an isolated subshell. Its own source pin replaces child FD6/7; the parent
@@ -66,18 +77,57 @@ Frozen implementation contract (a refinement of existing S07.08 requirements):
   cleanup is bounded to known owned files/empty directories. Keep provenance in
   the action receipt, not the developer override field `manager.source.commit`.
 
-All workers released their files and finished; no local job remains active.
+All workers and the CI awaiter finished and released their files; no local or
+required remote job remains active.
 Parent owns the integrated tree and publication. The real consumer fixture uses
 production acquisition, verification, supervision and installer transaction with
 isolated root/tool admission adapters; its four cases need Linux `/proc`.
-Parent and independent runtime review passed with that platform proof pending.
-No router actions or CI jobs have started. No acceptance is claimed.
+Parent and independent runtime review passed; focused platform proof is complete.
+No router actions occurred. Acceptance is based on the exact completed gates below.
+
+Required [core Checks 38858115527](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858115527)
+passed at that exact SHA. Parent verified the sole required job and every step.
+The job ran **15m32s**, 05:53:07–06:08:39 UTC on 2026-10-16.
+
+| Required core phase | Result | Process wall | User / system CPU | Peak RSS |
+| --- | --- | --- | --- | --- |
+| Host plus common statics | 597 passed, 28 platform-specific skips, 4 optional diagnostics deselected | 156.11s | 34.08s / 38.92s | 49,660 KiB |
+| Vendor BusyBox ash | 624 passed, 1 workstation-only skip, 4 optional diagnostics deselected | 759.84s | 350.29s / 337.19s | 45,172 KiB |
+
+Commands: `.venv/bin/python tools/test.py --skip-shellcheck`, then
+`.venv/bin/python tools/test.py --require-busybox --reuse-static`, each measured
+by `/usr/bin/time -v`. The new acquisition/installer tests all ran on both Linux
+selections; expected existing host skips delegate platform proof to BusyBox.
+Metadata/logs: `.tmp/s0708-ci/core-first.*`.
+
+Core cost increased **4m18s** from the previous S14.02 job's 11m14s. The new
+complete focused acquisition/installer group stayed within the agreed practical
+range below. No timeout was raised or safety proof removed; optional Lint and
+Diagnostics were not rerun. Retain these measurements for the next scheduled
+test-cost review rather than treating the earlier baseline as current.
+
+The separate
+[transport/syntax Quick 38858125065](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858125065)
+passed: **3 tests, no skips**, actual vendor BusyBox, 2.22s pytest / 2.41s process
+wall, 0.82s user + 0.43s system and 39,036 KiB peak RSS. Whole job: 18s. Parent
+verified the SHA and all applicable steps; only the unrequested full-host
+diagnostic baseline skipped. Metadata/logs: `.tmp/s0708-ci/transport-first.*`.
+
+[Acquired-installer Quick 38858127676](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858127676)
+also passed at that SHA: **4 tests, no skips**, 144.26s pytest / 144.45s process
+wall, 57.88s user + 44.93s system and 40,520 KiB peak RSS. Test durations:
+full immutable acquisition/install/retained guard **86.71s**; pre-execution syntax
+rejection **37.69s**; hash rejection **16.42s**; ABI rejection **3.08s**.
+The group is above the two-minute ideal but within the agreed three-to-four-minute
+range; no test hung. Parent verified exact SHA and every applicable step.
+Metadata/logs: `.tmp/s0708-ci/install-first.*`.
 
 Completed focused evidence on the dirty baseline: manifest generator and unique
 literal entry-version validation, `tests/test_package.py`: **14 passed, 1.01s**.
 Changed Python lint/format/compile and whitespace checks passed. Parent reviewed
 the two-file diff. Initial acquisition module: **2 passed, 1 Linux-specific
-skip, 0.77s**; actual vendor AWK and TLS/supervisor execution remain pending CI.
+skip, 0.77s**; the focused CI receipts above now supply actual vendor AWK and
+TLS/supervisor execution.
 The TLS fixture covers fixed headers, redirects, incomplete/oversized bodies and
 a short whole-action deadline; it does not itself prove orchestration pinning.
 Runtime shell syntax/shfmt and preliminary review passed; package metadata was
@@ -108,17 +158,17 @@ stopped in ShellCheck at 209.55s, before pytest; it is **cancelled**, not a pass
 full lint/test receipt (`.tmp/s0708-ci/acquire-local.log`). Valid focused evidence
 was reused; no test or lint requirement was waived.
 
-Next safe actions:
+Next safe actions after the user's next instruction:
 
-1. Commit/push the reviewed runtime candidate, then record its exact SHA and core
-   Checks run. Dispatch separate Quick groups for `tests/test_acquire.py` and
-   `tests/test_acquire_install.py` at that SHA to measure the new Linux scope.
-2. Wait for the prescribed CI. Repair any failure through the smallest focused
-   group, preserving evidence; require all affected final groups and exact core
-   Checks green. Stop/split unexpectedly slow groups at the agreed threshold.
-3. Only after passing required gates, accept S07.08 and update checklist/README/
-   handoff with exact receipts, push the documentation receipt and pause ready to
-   select the next task. Supporting S07.06/S02.01 remain unchecked.
+1. Read current plan/checklist/handoff/audit and AGENTS, verify branch/remote and
+   any new dirty files, and reuse the exact receipts above for unchanged code.
+2. Inspect cross-goal hard prerequisites and shared consumers before recommending
+   the smallest independently completable next subgoal. S07.08 supplies trusted
+   package acquisition; S07.06 source-selection/update consumers and S02.01 full
+   installer distribution remain partial and unchecked. Do not infer completion
+   or automatically begin either task from this supporting work.
+3. Record the selected target, actual consumer, missing acceptance, dependencies,
+   owner and focused gate before implementation. No next task is currently active.
 
 Use small meaningful tests and whole affected groups; aim for two minutes per
 focused group, splitting slow three-to-four-minute groups through Quick Checks.
@@ -126,8 +176,8 @@ No full local suite is due. Required core CI remains automatic for code/Actions
 pushes; optional Lint/Diagnostics need no routine rerun. At each major checkpoint,
 refresh revision/dirty files, owners/jobs, completed/pending gates, blockers and
 next action so another session can resume without reconstructing the chat.
-The completed S14.02 record below retains its exact evidence; its prior pause
-is superseded only for the newly authorized S07.08 work.
+The completed S14.02 record below retains its exact historical evidence; the
+current pause and restart boundary is this accepted S07.08 checkpoint.
 
 ## Paused after accepted S14.02 — implementation and gates complete
 

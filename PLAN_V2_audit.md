@@ -57,7 +57,9 @@ bypasses END. A trusted first program can emit a parse receipt, flush it and
 evaluate `1/(NR-NR)` to prevent candidate BEGIN/END execution. Parent and an
 independent safety reviewer accepted this limited syntax-check design. Tiny host
 probes suppressed both candidate markers, and malformed later code produced no
-receipt. **Actual vendor BusyBox execution remains a required pending proof.**
+receipt. [Focused transport/syntax CI 38858125065](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858125065)
+at `ffea9ebd59236045579b9250d383aa1c7acf1e09` then proved those same oracles
+under actual vendor BusyBox: three tests passed in 2.22s, with no skips.
 Ordinary `awk -f candidate` and a prefix using `exit` are unsafe alternatives.
 
 Official [Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
@@ -72,8 +74,19 @@ nonzero interrupted result, keep FD0 pinned while reading records through FD4,
 bound streams by declared file sizes, reject ambiguous SHA/text framing, and
 permit only attached known-inventory RAM cleanup after owned children finish.
 The immutable acquisition deadline is separate from the existing installer
-budget. Required Linux/vendor BusyBox execution and exact-candidate CI are still
-pending; this review alone awards no acceptance.
+budget. [Focused consumer CI 38858127676](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858127676)
+at the same candidate passed all four cases in 144.26s: one pinned complete
+acquisition reaches the real installer and retained guard, while incompatible
+ABI, self-consistent syntax failure and wrong hash cannot execute candidate code
+or begin installation. Exact required
+[core Checks 38858115527](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38858115527)
+then passed at the same SHA: 597 host tests and 624 vendor BusyBox tests, with
+only expected platform skips and four excluded optional diagnostics per selection.
+Parent verified every required job/step and reviewed measured cost. The full job
+took 15m32s; the new focused installer group took 2m24s, within the practical
+three-to-four-minute group range. This closes the pending platform proof for the
+reviewed S07.08 consumer; it does not establish standalone distribution, updates,
+live-router qualification or a complete main-goal audit.
 
 ## S14.02 destination foundation design review
 
