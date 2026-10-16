@@ -91,7 +91,10 @@ esac
 EOF_DNS
 chmod 755 "$retained_dns_tool"
 cfmgr_bootstrap_dns_admit_native() { cfmgr_install_dns_tool=$retained_dns_tool; }
-cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'actual retained launch repair failed'
+cfmgr_test_cost retained-repair-begin
+if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
+cfmgr_test_cost retained-repair-end
+[ "$retained_cost_status" = 0 ] || fail 'actual retained launch repair failed'
 if [ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ]; then :; else
 	fail 'retained launch did not repair and fully re-probe'
 fi
@@ -102,17 +105,26 @@ if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state
 fi
 retained_operations=$(cat "$cfmgr_storage_opt/operations")
 retained_absent=1
-if cfmgr_launch_native /jffs/addons/CFMgr.d; then fail 'absent later attachment was accepted'; fi
+cfmgr_test_cost retained-absent-begin
+if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
+cfmgr_test_cost retained-absent-end
+[ "$retained_cost_status" != 0 ] || fail 'absent later attachment was accepted'
 [ -s "$view_ram/retained-system-messages" ] || fail 'absent retained launch did not submit native message'
 retained_absent=0
-cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'returned volume was not freshly admitted'
+cfmgr_test_cost retained-return-begin
+if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
+cfmgr_test_cost retained-return-end
+[ "$retained_cost_status" = 0 ] || fail 'returned volume was not freshly admitted'
 [ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'healthy return retried opkg unnecessarily'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'return changed unrelated settings'
 [ ! -e "$retained_support/.storage-observation" ] || fail 'unchanged return created observation guard'
 # Reaped DNS outage defers tunnel proof without blocking the healthy manager,
 # changing configured-Off settings, or reinstalling a healthy dependency.
 : >"$view_ram/retained-dns-outage"
-cfmgr_launch_native /jffs/addons/CFMgr.d || fail 'ordinary DNS outage blocked shared manager admission'
+cfmgr_test_cost retained-dns-outage-begin
+if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
+cfmgr_test_cost retained-dns-outage-end
+[ "$retained_cost_status" = 0 ] || fail 'ordinary DNS outage blocked shared manager admission'
 [ "$cfmgr_install_dns_result" = deferred ] || fail 'DNS outage was reported verified'
 [ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'DNS outage reinstalled a healthy tool'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'DNS outage changed configured-Off settings'
@@ -122,7 +134,10 @@ cfmgr_launch_confirm_reinstall() { return 0; }
 cfmgr_bootstrap_reinstall_dns() { cfmgr_install_dns_native=srv-a-verified; }
 : >"$cfmgr_storage_opt/force-fixture"
 installer_probe_count=0
-cfmgr_launch_native /jffs/addons/CFMgr.d reinstall || fail 'healthy explicit force consumer failed'
+cfmgr_test_cost retained-force-begin
+if cfmgr_launch_native /jffs/addons/CFMgr.d reinstall; then retained_cost_status=0; else retained_cost_status=$?; fi
+cfmgr_test_cost retained-force-end
+[ "$retained_cost_status" = 0 ] || fail 'healthy explicit force consumer failed'
 [ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ] || fail 'force did not run fresh full capability probes'
 [ "$(tail -n 2 "$cfmgr_storage_opt/operations")" = "$(printf 'update\nforce jq-full coreutils-timeout coreutils-sha256sum flock')" ] || fail 'force selected unrelated or incorrect direct packages'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'force changed settings/history/Off'

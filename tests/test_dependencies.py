@@ -7,6 +7,7 @@ ownership and cleanup execute for real; this is not live Entware qualification.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -212,6 +213,34 @@ def run_dependency_case(
         check=False,
         timeout=watchdog + 5,
     )
+    cost_phases = (
+        "installer-repair",
+        "installer-check-1",
+        "installer-check-2",
+        "installer-transaction",
+        "retained-repair",
+        "retained-absent",
+        "retained-return",
+        "retained-dns-outage",
+        "retained-force",
+    )
+    timestamps: dict[str, float] = {}
+    stderr_lines = []
+    for line in result.stderr.splitlines(keepends=True):
+        if line.startswith(b"CFMGR-TEST-COST"):
+            record = re.fullmatch(
+                rb"CFMGR-TEST-COST 1 ([a-z0-9-]+) ([0-9]+(?:\.[0-9]+)?)\n", line
+            )
+            assert record, f"malformed fixture cost record: {line!r}"
+            label = record.group(1).decode("ascii")
+            assert label in {
+                f"{phase}-{edge}" for phase in cost_phases for edge in ("begin", "end")
+            }, f"unknown fixture cost label: {label}"
+            assert label not in timestamps, f"duplicate fixture cost label: {label}"
+            timestamps[label] = float(record.group(2))
+        else:
+            stderr_lines.append(line)
+    result.stderr = b"".join(stderr_lines)
     if result.returncode:
         # Private fixture evidence contains finite phase labels only. Root-owned
         # setup uses sudo; validate the known object before a bounded host read.
@@ -273,6 +302,43 @@ done
         if outcome.returncode == 0:
             assert len(outcome.stdout) <= 2 * 2048 + 256
             result.stderr += b"bounded synthetic fixture outcome:\n" + outcome.stdout
+    else:
+        expected_phases = (
+            (
+                "retained-repair",
+                "retained-absent",
+                "retained-return",
+                "retained-dns-outage",
+                "retained-force",
+            )
+            if b"PASS: actual retained repair" in result.stdout
+            else (
+                "installer-repair",
+                "installer-check-1",
+                "installer-check-2",
+                "installer-transaction",
+            )
+            if b"PASS: actual installer repair" in result.stdout
+            else ()
+        )
+        durations = []
+        for phase in cost_phases:
+            begin, end = (
+                timestamps.get(f"{phase}-begin"),
+                timestamps.get(f"{phase}-end"),
+            )
+            if phase in expected_phases:
+                assert begin is not None and end is not None, (
+                    f"missing fixture cost pair: {phase}"
+                )
+            if begin is not None or end is not None:
+                assert begin is not None and end is not None and end >= begin, (
+                    f"invalid fixture cost pair: {phase}"
+                )
+                durations.append(f"{phase}={end - begin:.2f}s")
+        if durations:
+            sys.__stdout__.write("CFMGR fixture phases: " + ", ".join(durations) + "\n")
+            sys.__stdout__.flush()
     return result
 
 

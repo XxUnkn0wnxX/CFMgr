@@ -19,6 +19,11 @@ mkdir -m 755 "$fixture/jffs"
 # retain byte-identical bodies for finite path forwarding only.
 # shellcheck disable=SC1090
 . "$installer_package/modules/helpers/bootstrap.sh"
+cfmgr_test_cost() {
+	IFS=' ' read -r cfmgr_test_uptime _ </proc/uptime
+	printf 'CFMGR-TEST-COST 1 %s %s\n' "$1" "$cfmgr_test_uptime" >&2
+}
+cfmgr_test_cost_installer=1
 # Private prerequisite alias imports restore the production /bin/usleep default.
 # Reapply the explicitly selected vendor applet before any supervised operation.
 cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
@@ -26,8 +31,15 @@ cfmgr_dependencies_repair() {
 	[ "$#" = 12 ] && [ "$2" = /tmp/cfmgr ] && [ "$3" = "$installer_package" ] || return 91
 	case ${cfmgr_install_dependency_action:-normal}:$1 in normal:flock | 'reinstall:jq coreutils-timeout coreutils-sha256sum flock') ;; *) return 91 ;; esac
 	[ "$4:$5:$6" = /:/bin/sh:/usr/bin/env ] || return 91
-	cfmgr_test_real_repair "$1" "$view_ram" "$installer_package" "$view_native_root" "$view_ram/ash" "$view_ram/env" \
-		"$view_ram/awk" "$view_ram/readlink" "$view_ram/usleep" "$view_ram/wc" "$view_ram/mknod" "$view_ram/chroot"
+	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost installer-repair-begin; fi
+	if cfmgr_test_real_repair "$1" "$view_ram" "$installer_package" "$view_native_root" "$view_ram/ash" "$view_ram/env" \
+		"$view_ram/awk" "$view_ram/readlink" "$view_ram/usleep" "$view_ram/wc" "$view_ram/mknod" "$view_ram/chroot"; then
+		cfmgr_test_status=0
+	else
+		cfmgr_test_status=$?
+	fi
+	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost installer-repair-end; fi
+	return "$cfmgr_test_status"
 }
 cfmgr_dependencies_inside_tools() { dependency_inside_tools; }
 cfmgr_dependencies_native_tool() { dependency_native_tool "$@"; }
@@ -51,8 +63,15 @@ cfmgr_prerequisites_admit_tool() {
 cfmgr_prerequisites_check() {
 	[ "$#" = 15 ] && { [ "$1" = shared ] || [ "$1" = tunnel ]; } && [ "$2" = "$cfmgr_install_context" ] || return 92
 	installer_probe_count=$((installer_probe_count + 1))
-	cfmgr_test_real_shared_check "$1" "$2" "$view_ram/ash" "$installer_package/modules/helpers/probe.sh" \
-		"$view_ram/env" "$view_ram/awk" /bin/sleep "$view_ram/wc" - "$installer_jq" "$installer_timeout" "$installer_sha" "$cfmgr_storage_opt/bin/flock" - "${15}"
+	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost "installer-check-$installer_probe_count-begin"; fi
+	if cfmgr_test_real_shared_check "$1" "$2" "$view_ram/ash" "$installer_package/modules/helpers/probe.sh" \
+		"$view_ram/env" "$view_ram/awk" /bin/sleep "$view_ram/wc" - "$installer_jq" "$installer_timeout" "$installer_sha" "$cfmgr_storage_opt/bin/flock" - "${15}"; then
+		cfmgr_test_status=0
+	else
+		cfmgr_test_status=$?
+	fi
+	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost "installer-check-$installer_probe_count-end"; fi
+	return "$cfmgr_test_status"
 }
 cfmgr_bootstrap_transaction() {
 	[ "$1:$2" = "$installer_package:/jffs" ] && [ "$installer_probe_count" = 2 ] && [ -z "$cfmgr_prereq_missing" ] || return 93
@@ -68,10 +87,17 @@ cfmgr_bootstrap_transaction() {
 		cfmgr_storage_attached && [ "$cfmgr_install_source" -ef /proc/self/fd/9 ] && [ "$cfmgr_install_jffs" -ef /proc/self/fd/8 ] &&
 			[ "$cfmgr_install_context" -ef /proc/self/fd/5 ]
 	}
-	cfmgr_test_real_transaction "$installer_package" "$fixture/jffs" "$cfmgr_storage_opt" "$cfmgr_install_context" 0 \
+	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost installer-transaction-begin; fi
+	if cfmgr_test_real_transaction "$installer_package" "$fixture/jffs" "$cfmgr_storage_opt" "$cfmgr_install_context" 0 \
 		"$view_ram/ash" "$installer_env" "$installer_awk" "$installer_readlink" "$installer_sleep" "$installer_wc" "$installer_ls" "$installer_fsync" \
 		"$installer_mkdir" "$installer_cp" "$installer_chmod" "$installer_mv" "$installer_sha" "$installer_jq" \
-		"$cfmgr_storage_uuid_value" "$cfmgr_storage_filesystem" "$cfmgr_storage_fsroot" "$cfmgr_storage_relative" "$installer_df"
+		"$cfmgr_storage_uuid_value" "$cfmgr_storage_filesystem" "$cfmgr_storage_fsroot" "$cfmgr_storage_relative" "$installer_df"; then
+		cfmgr_test_status=0
+	else
+		cfmgr_test_status=$?
+	fi
+	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost installer-transaction-end; fi
+	return "$cfmgr_test_status"
 }
 installer_probe_count=0
 CFMGR_VERSION=0.1.0 CFMGR_REPOSITORY=https://github.com/example/fixture CFMGR_BRANCH=fixture
@@ -86,6 +112,7 @@ printf '#!/bin/sh\nprintf "1\\n"\n' >"$cfmgr_install_nvram"
 chmod 755 "$cfmgr_install_nvram"
 exec 0<"$cfmgr_install_context" 8<"$fixture/jffs" 9<"$installer_package"
 if [ -n "${dependency_retained_fixture:-}" ]; then
+	cfmgr_test_cost_installer=0
 	# Fixed Python-admitted fixture extension, no production environment override.
 	# shellcheck disable=SC1090
 	. "$dependency_retained_fixture"

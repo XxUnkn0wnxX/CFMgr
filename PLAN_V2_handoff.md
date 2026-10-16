@@ -21,7 +21,41 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Paused after accepted S02.01 — ready to select the next task
+## Active test-cost review — installer and retained repair
+
+The user approved investigating and optimizing the two slow existing tests before
+another product target. Baseline is clean `develop` at `33bc998`; tested runtime
+remains `1ed124b`. This is maintenance of S02.05/S02.06/S02.08 evidence, with
+S02.01/S07.08 consumer overlap, and earns no new product credit: **12/157 accepted
+(7.6%)**, **0/16 main goals (0%)**. Preserve required safety assertions and runtime
+budgets; significant redesign or reduced assurance needs a user decision.
+
+Measured baseline from core 38865532262: actual installer repair/publication
+153.07s and real retained repair/later return 110.52s under vendor BusyBox. The
+parent owns runtime judgement, global instructions, V2 records and integration.
+Read-only fixture investigation is complete: immutable setup is already shared,
+the installer retains full per-view-operation supervision, and the retained test
+already layers that boundary while proving five distinct launch outcomes.
+`test_cost_timing` finished and released `tests/test_dependencies.py` and
+`tests/fixtures/{dependency_installer,retained_launch}.sh`. Finite monotonic phase
+timings preserve operations, return codes and assertions; only strict known
+fixture timing records are separated from stderr. Parent corrected numeric label
+parsing and reviewed conditional-call semantics. Ruff/format/compile, shell
+syntax/shfmt, ShellCheck, package/planning and whitespace passed; the focused
+fixture syntax test passed in 2.24s. No speedup is claimed yet. Next run the
+two distinct vendor Quick nodes to measure prerequisites/repair/publication and
+the five retained launch outcomes. No router execution, new dependency or product
+scope change.
+
+Use existing timings first, then separate focused Quick selections for the two
+Linux-only consumers. Complete affected modules and relevant statics must pass
+at the final candidate before checkpoint/pause; no extra full local timing run.
+Keep raw measurements under ignored `.tmp/test-cost-20261016/`. The explicit user
+request also authorized a global AGENTS rule: review measured test cost and apply
+small verified optimizations before advancing to another target/checklist item.
+That narrow global rule is applied; repository requirements remain unchanged.
+
+## Accepted S02.01 checkpoint
 
 The user approved the smallest independent S02.01 closure, with push and pause
 after its required gate. Use this checkout and `develop`; do not start another
