@@ -47,6 +47,19 @@ two distinct vendor Quick nodes to measure prerequisites/repair/publication and
 the five retained launch outcomes. No router execution, new dependency or product
 scope change.
 
+Instrumentation candidate `3612adf6ad740e5ba9a8f377c7b77bbcaaeaa98d` is pushed.
+Quick installer `38869722557` and retained `38869726230` both passed at that SHA:
+189.36s / 133.53s pytest, respectively. User+system CPU was 188.01s / 132.52s;
+the work is CPU-heavy rather than an idle wait. Their phase records were valid
+but pytest's descriptor capture hid the success report. Parent fixed reporting
+with `capfd.disabled()` around only these two helper calls; child output remains
+captured and all original result assertions remain. The awaiter finished. Raw
+receipts: `installer-before.{json,log}` and `retained-before.{json,log}` in the
+private measurement directory. Automatically triggered core `38869708922` was
+cancelled during focused diagnosis and supplies no acceptance. Next publish the
+reporting correction and run each complete affected module separately with
+visible phase measurements; no runtime/coverage change has been made.
+
 Use existing timings first, then separate focused Quick selections for the two
 Linux-only consumers. Complete affected modules and relevant statics must pass
 at the final candidate before checkpoint/pause; no extra full local timing run.

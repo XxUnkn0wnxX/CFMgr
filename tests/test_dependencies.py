@@ -554,14 +554,18 @@ def test_actual_installer_repair_and_publication(
     dependency_process: Path,
     installer_adapter: Path,
     tmp_path: Path,
+    capfd: pytest.CaptureFixture[str],
 ) -> None:
-    result = run_dependency_case(
-        fixture_tools,
-        dependency_process,
-        tmp_path,
-        "dependency_installer",
-        installer_adapter,
-    )
+    # Child output remains captured by subprocess; only finite phase costs are
+    # printed directly so successful Quick runs retain the timing evidence.
+    with capfd.disabled():
+        result = run_dependency_case(
+            fixture_tools,
+            dependency_process,
+            tmp_path,
+            "dependency_installer",
+            installer_adapter,
+        )
     diagnostic = (
         f"exit={result.returncode} stdout={result.stdout!r} stderr={result.stderr!r}"
     )

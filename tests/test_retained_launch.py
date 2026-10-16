@@ -339,14 +339,16 @@ def test_real_retained_repair_and_later_return(
     dependency_process: Path,
     retained_adapter: Path,
     tmp_path: Path,
+    capfd: pytest.CaptureFixture[str],
 ) -> None:
-    result = run_dependency_case(
-        fixture_tools,
-        dependency_process,
-        tmp_path,
-        "dependency_installer",
-        retained_adapter,
-    )
+    with capfd.disabled():
+        result = run_dependency_case(
+            fixture_tools,
+            dependency_process,
+            tmp_path,
+            "dependency_installer",
+            retained_adapter,
+        )
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert (
         b"PASS: actual retained repair, immutable migration, missing-message and returned-volume no-op"
