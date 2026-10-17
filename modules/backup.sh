@@ -2982,6 +2982,12 @@ cfmgr_hr_run() {
 	[ "$cfmgr_hr_run_code" != 3 ] || return 3
 	[ "${cfmgr_probe_status:-}" != reaped ] || cfmgr_hr_register_pair || return 1
 	[ "$cfmgr_hr_run_code" = 0 ] || return "$cfmgr_hr_run_code"
+	case $cfmgr_hr_run_mode in
+	history-proc-list | history-writer-fd-list)
+		if [ "${cfmgr_probe_status:-}:$cfmgr_probe_exit:${cfmgr_probe_reason:-}" = reaped:4: ] &&
+			[ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ]; then return 4; fi
+		;;
+	esac
 	[ "$cfmgr_probe_exit" = 0 ] || return 1
 	if [ "$cfmgr_hr_run_mode" = history-logrotate-debug ]; then
 		# Keep the original raw stderr file; expose it as the callback's selected
@@ -3536,7 +3542,7 @@ cfmgr_hr_processes() {
 	cfmgr_hr_native /bin/busybox && cfmgr_hr_native /usr/bin/hexdump || return $?
 	cfmgr_hr_tool /opt/sbin/syslog-ng || return $?
 	cfmgr_hr_syslog_inode=$cfmgr_hr_inode
-	cfmgr_hr_run history-proc-list "$cfmgr_history_limit" "$cfmgr_store_ls" "$cfmgr_history_memory_kib" || return $?
+	cfmgr_hr_run history-proc-list "$cfmgr_history_limit" "$cfmgr_store_awk" "$cfmgr_history_memory_kib" || return $?
 	cfmgr_hr_run history-proc-pids "$cfmgr_history_limit" "$cfmgr_store_awk" "$cfmgr_hr_result" || return $?
 	cfmgr_hr_pids=$cfmgr_hr_result cfmgr_hr_process_text='' cfmgr_hr_scan_count=0
 	while IFS= read -r cfmgr_hr_pid <&1; do
@@ -3637,7 +3643,7 @@ EOF_HISTORY_WRITER_INODE
 cfmgr_hr_writer_observe() {
 	cfmgr_hr_writer_count=0 cfmgr_hr_writer_pid='' cfmgr_hr_writer_evidence=''
 	IFS= read -r cfmgr_hr_writer_boot </proc/sys/kernel/random/boot_id || return 1
-	cfmgr_hr_run history-proc-list "$cfmgr_history_limit" "$cfmgr_store_ls" "$cfmgr_history_memory_kib" || return $?
+	cfmgr_hr_run history-proc-list "$cfmgr_history_limit" "$cfmgr_store_awk" "$cfmgr_history_memory_kib" || return $?
 	cfmgr_hr_run history-proc-pids "$cfmgr_history_limit" "$cfmgr_store_awk" "$cfmgr_hr_result" || return $?
 	cfmgr_hr_writer_pids=$cfmgr_hr_result cfmgr_hr_writer_scanned=0
 	while IFS= read -r cfmgr_hr_writer_candidate <&1; do
@@ -3701,7 +3707,7 @@ cfmgr_hr_writer_observe() {
 	[ "$cfmgr_hr_line" = 'ARGV supported END' ] || return 4
 	cfmgr_history_runtime_consume "$cfmgr_hr_writer_argv" || return $?
 	cfmgr_hr_writer_matches=0 cfmgr_hr_writer_fd_evidence='' cfmgr_hr_writer_fd_count=0
-	cfmgr_hr_run history-writer-fd-list 4096 "$cfmgr_store_ls" "$cfmgr_hr_writer_pid" "$cfmgr_history_memory_kib" || return $?
+	cfmgr_hr_run history-writer-fd-list 4096 "$cfmgr_store_awk" "$cfmgr_hr_writer_pid" "$cfmgr_history_memory_kib" || return $?
 	cfmgr_hr_writer_fd_list=$cfmgr_hr_result
 	while IFS= read -r cfmgr_hr_writer_fd <&1; do
 		cfmgr_hr_writer_info=/proc/$cfmgr_hr_writer_pid/fdinfo/$cfmgr_hr_writer_fd

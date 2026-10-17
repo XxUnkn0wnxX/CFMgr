@@ -56,8 +56,12 @@ one platform skip**, 35.99s pytest / 36.15s wall, 18.36 user / 12.34 system.
 History diagnostic `39017527850` at `483e6d8` isolated `history-proc-list`:
 positively reaped exit 1 before any PID inspection. Exact retained vendor `ls`
 source stats every enumerated name even with `-1A`; a disappearing PID can fail
-the listing. A bounded numeric-name enumeration repair is in progress, retaining
-all later actual writer/executable/append-FD identity checks.
+the listing. The bounded numeric-name enumeration repair is implemented, retaining
+all later actual writer/executable/append-FD identity checks. The real worker and
+callback regression passed locally (one test, 0.54s; 1.28s wall / 0.58 user /
+0.35 system): dangling numeric names are enumerated without metadata, while empty,
+over-cap and overlong-name results return quiet unknown with no partial output.
+Native memory/proc/FD proof and the four actual writer cases remain pending.
 
 Create diagnostic `39017714823` disproved a fixed early block: at 180s it had
 advanced to probe 814 in real archive inventory verification. The tiny recorded
@@ -66,8 +70,16 @@ must not be read as idle work. The next native diagnostic allows the existing
 production 600s create deadline plus bounded setup/cleanup (660s outer), solely
 to measure one complete run and choose a supported permanent test bound.
 The host guard stays 180s; production deadlines and separate cancellation/reaping
-tests are unchanged. Parent owns this fixture/records; the consolidation worker
-owns the two runtime owners and history test for the numeric-enumeration repair.
+tests are unchanged. Native diagnostic `39018031248` at `d65f878` is running.
+Cost review identified three observation-only external printf calls per probe
+(about 2,442 starts by probe 814). The fixture now records each route once and
+samples begin/end progress every 64 probes, retaining every failure and phase
+marker; all final route/result/retention/history/cleanup assertions remain.
+Generated shell syntax and Ruff/format passed; savings need native measurement.
+The prior 14m44 core baseline predates these archive tests. Existing measurements
+already establish more than 22 minutes for baseline plus new positive journeys;
+review the remaining group costs before sizing core within the 40-minute ceiling.
+Parent owns all integrated files; no worker owns edits now.
 No acceptance is awarded. Automatic cores `39017523766` and `39017709804` were
 cancelled during focused diagnosis.
 

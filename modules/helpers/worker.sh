@@ -418,14 +418,9 @@ history-meta | history-proc-meta | history-inode | history-count | history-diges
 	history-blkid) exec "$tool" "$1" ;;
 	esac
 	;;
-history-directory | history-proc-list)
-	if [ "$mode" = history-directory ]; then
-		[ "$#" -eq 2 ] || exit 2
-		dir=$1 memory=$2
-	else
-		[ "$#" -eq 1 ] || exit 2
-		dir=/proc memory=$1
-	fi
+history-directory)
+	[ "$#" -eq 2 ] || exit 2
+	dir=$1 memory=$2
 	case $memory in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$memory" -ge 8192 ] && [ "$memory" -le 65536 ] || exit 2
 	# shellcheck disable=SC3045 # Matched native ash supports child-only virtual-memory cap.
@@ -433,14 +428,34 @@ history-directory | history-proc-list)
 	cd "$dir" || exit 1
 	exec "$tool" -1A .
 	;;
-history-writer-fd-list)
-	[ "$#" -eq 2 ] || exit 2
-	case $1:$2 in *[!0-9:]* | :* | *:) exit 2 ;; esac
-	[ "$2" -ge 8192 ] && [ "$2" -le 65536 ] || exit 2
-	# shellcheck disable=SC3045 # Child-only VM cap before directory enumeration.
-	ulimit -v "$2" || exit 2
-	cd "/proc/$1/fdinfo" || exit 1
-	exec "$tool" -1A .
+history-proc-list | history-writer-fd-list)
+	case $mode in
+	history-proc-list)
+		[ "$#" -eq 1 ] || exit 2
+		dir=/proc maximum=4096 memory=$1
+		;;
+	history-writer-fd-list)
+		[ "$#" -eq 2 ] || exit 2
+		case $1 in '' | *[!0-9]*) exit 2 ;; esac
+		case $((${#1} <= 10)) in 1) ;; *) exit 2 ;; esac
+		dir=/proc/$1/fdinfo maximum=256 memory=$2
+		;;
+	esac
+	case $memory in '' | *[!0-9]*) exit 2 ;; esac
+	[ "$memory" -ge 8192 ] && [ "$memory" -le 65536 ] || exit 2
+	# shellcheck disable=SC3045 # Child-only VM cap before terminal numeric glob.
+	ulimit -v "$memory" || exit 2
+	cd "$dir" || exit 1
+	# Names only: native ls stats every entry and unrelated exit churn can fail
+	# its whole result. Relevant identities are checked separately by the parent.
+	set +f
+	set -- [0-9]*
+	set -f
+	case $(($# <= maximum)) in 1) ;; *) exit 4 ;; esac
+	# BEGIN validates the entire argument list before any output and then exits;
+	# AWK never opens numeric names as files, including vanished/dangling entries.
+	# shellcheck disable=SC2016
+	exec "$tool" 'BEGIN {if(ARGC<2)exit 4;for(i=1;i<ARGC;i++)if(ARGV[i]!~/^[0-9]+$/||length(ARGV[i])>10)exit 4;for(i=1;i<ARGC;i++)print ARGV[i];exit}' "$@"
 	;;
 history-account)
 	[ "$#" -eq 0 ] || exit 2

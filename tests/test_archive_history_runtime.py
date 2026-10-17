@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import sys
 from pathlib import Path
 
@@ -45,6 +46,65 @@ cfmgr_history_context=$ram
 cfmgr_backup_history_attached() { cfmgr_store_attachment_ok; }
 cfmgr_history_runtime_seed || exit 81
 """
+
+
+def test_numeric_worker_enumeration_is_names_only_and_refuses_incomplete_results(
+    archive, shell
+):
+    support, ram, *_ = archive
+    processes = ram.parent / "process names"
+    descriptors = ram.parent / "descriptor names"
+    processes.mkdir()
+    (processes / "101").symlink_to("already-gone")
+    (processes / "202").mkdir()
+    (processes / "unrelated").write_text("never read")
+    (descriptors / "42").mkdir(parents=True)
+    over_cap = descriptors / "43"
+    over_cap.mkdir()
+    for number in range(257):
+        (over_cap / str(number)).symlink_to("already-gone")
+    worker = support / "modules/helpers/worker.sh"
+    body = (
+        worker.read_text()
+        .replace(
+            "dir=/proc maximum=4096", f"dir={shlex.quote(str(processes))} maximum=4096"
+        )
+        .replace(
+            "dir=/proc/$1/fdinfo maximum=256",
+            f"dir={shlex.quote(str(descriptors))}/$1 maximum=256",
+        )
+    )
+    if sys.platform == "darwin":
+        # Directory enumeration remains real; native child VM caps need Linux.
+        body = body.replace('ulimit -v "$memory" || exit 2', ":")
+    worker.write_text(body)
+    result = run(
+        archive,
+        shell,
+        HISTORY
+        + r"""
+cfmgr_hr_run history-proc-list 65536 "$cfmgr_store_awk" "$cfmgr_history_memory_kib" || exit 82
+cat "$cfmgr_hr_result"
+for pid in 42 43; do
+    if cfmgr_hr_run history-writer-fd-list 4096 "$cfmgr_store_awk" "$pid" "$cfmgr_history_memory_kib"; then exit 83; else [ "$?" = 4 ] || exit 84; fi
+    [ "$cfmgr_probe_status:$cfmgr_probe_exit" = reaped:4 ] && [ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || exit 85
+done
+rm "$1/101"
+rmdir "$1/202"
+if cfmgr_hr_run history-proc-list 65536 "$cfmgr_store_awk" "$cfmgr_history_memory_kib"; then exit 86; else [ "$?" = 4 ] || exit 87; fi
+[ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || exit 88
+# A later invalid/overlong numeric entry must not leak an earlier valid name.
+mkdir "$1/101" "$1/12345678901"
+if cfmgr_hr_run history-proc-list 65536 "$cfmgr_store_awk" "$cfmgr_history_memory_kib"; then exit 89; else [ "$?" = 4 ] || exit 90; fi
+[ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || exit 91
+""",
+        processes,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"101\n202\n",
+        b"",
+    ), result
 
 
 def test_real_callbacks_account_store_plan_append_and_retirement(archive, shell):

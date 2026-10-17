@@ -311,9 +311,10 @@ def create_run(creation, shell):
     assert supervisor.count(native_call) == 1
     supervisor = supervisor.replace(
         native_call,
-        r'''        printf 'begin %s %s %s %s %s\n' "$mode" "${cfmgr_probe_serial:--}" "${cfmgr_probe_now:--}" "${cfmgr_store_deadline:--}" "${cfmgr_archive_deadline:--}" >"$ram/create-probe"
+        r'''        cfmgr_test_create_sample=0
+        case $((${cfmgr_probe_serial:-0} % 64)) in 0) cfmgr_test_create_sample=1; printf 'begin %s %s %s %s %s\n' "$mode" "${cfmgr_probe_serial:--}" "${cfmgr_probe_now:--}" "${cfmgr_store_deadline:--}" "${cfmgr_archive_deadline:--}" >"$ram/create-probe" ;; esac
         if cfmgr_test_real_run "$mode" "$context" "$sh" "$helper" "$env" "$awk" "$sleep" "$wc" "$tool" "$@"; then cfmgr_test_create_code=0; else cfmgr_test_create_code=$?; fi
-        printf 'end %s %s %s %s %s\n' "$mode" "$cfmgr_test_create_code" "${cfmgr_probe_status:--}" "${cfmgr_probe_exit:--}" "${cfmgr_probe_reason:--}" >"$ram/create-probe"
+        case $cfmgr_test_create_sample:$cfmgr_test_create_code in 0:0) ;; *) printf 'end %s %s %s %s %s\n' "$mode" "$cfmgr_test_create_code" "${cfmgr_probe_status:--}" "${cfmgr_probe_exit:--}" "${cfmgr_probe_reason:--}" >"$ram/create-probe" ;; esac
         return "$cfmgr_test_create_code"''',
     )
     supervisor = supervisor.replace(
@@ -321,7 +322,7 @@ def create_run(creation, shell):
     )
     supervisor = supervisor.replace(
         "case $tool in",
-        'printf "%s\\n" "$mode" >>"$ram/routes"\n    case $mode in\n    store-count) tool=$TEST_RAW_WC ;;\n    store-snapshot) tool=$TEST_RAW_DD ;;\n    store-digest) tool=$TEST_RAW_OPENSSL ;;\n    esac\n    case $tool in',
+        'case " ${cfmgr_test_seen_modes:-} " in *" $mode "*) ;; *) printf "%s\\n" "$mode" >>"$ram/routes"; cfmgr_test_seen_modes="${cfmgr_test_seen_modes:-} $mode" ;; esac\n    case $mode in\n    store-count) tool=$TEST_RAW_WC ;;\n    store-snapshot) tool=$TEST_RAW_DD ;;\n    store-digest) tool=$TEST_RAW_OPENSSL ;;\n    esac\n    case $tool in',
         1,
     )
     supervisor = supervisor.replace(
