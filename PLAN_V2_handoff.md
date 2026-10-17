@@ -43,6 +43,13 @@ The narrow `AGENTS.md` publication rule now records this permission, including
 repair pushes and the final documentation receipt; local gates and checkpoint
 pauses remain mandatory. No product requirement or acceptance rule changed.
 
+The user clarified the pause boundary: finish the agreed block of tasks/subgoals
+and all required gates, then **end the turn at that major checkpoint**. Wait for
+explicit permission before reviewing, selecting or suggesting the next block.
+Interim commits, diagnostics and repairs inside the current block continue without
+repeat push approval. This supersedes older every-single-subgoal pause wording;
+the current block remains S14.01 and S14.04–S14.08 plus consolidation proof.
+
 Published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
 Automatic core run `39015067310` was cancelled before focused diagnosis.
 Initial payload/tool Quick `39015102266` failed in the native BusyBox build:
@@ -55,6 +62,16 @@ the compatibility bytes. Parent reviewed the worker's two-file repair; all 40
 platform-tool tests passed in 0.78s (1.59s wall, 0.91 user, 0.34 system), with
 Ruff/format/compile/whitespace checks. Native rebuild and payload rerun remain
 pending; no worker owns edits now.
+
+The native build passed in Quick `39015342768` at `dc71b2b`, and its verified
+cache was saved before tests. The first semantic integration failed before
+receipt creation because the archive fixture staged the executable worker as
+0644 instead of the shipped 0755. `shutil.copymode` now preserves the shipped
+mode; derived fixture rewrites retain it. Production admission is unchanged.
+The cheap mode/rewrite/real-worker regression plus inert/range checks passed:
+3 tests in 1.43s (wall 2.18, user 1.13, system 0.63), with Ruff/format/compile.
+Raw CI log and focused red/green receipts remain under `.tmp/archive-creation/`.
+Automatic core `39015342275` was cancelled while diagnosis was pending.
 
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should

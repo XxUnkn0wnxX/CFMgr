@@ -54,7 +54,9 @@ def archive(tmp_path, shell):
             '[ "$3" -ef /proc/self/fd/1 ] && [ /proc/self/fd/1 -ef /proc/self/fd/2 ]',
             '[ -f "$3" ]',
         )
-    (support / "modules/helpers/worker.sh").write_text(body)
+    worker = support / "modules/helpers/worker.sh"
+    worker.write_text(body)
+    shutil.copymode(ROOT / "modules/helpers/worker.sh", worker)
     tools = {}
     for name in (
         "env",
@@ -258,6 +260,28 @@ def run(archive, shell, script, *arguments, timeout=15):
 
 def passed(result):
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
+
+
+def test_staged_worker_preserves_executable_admission_after_fixture_rewrite(
+    archive, shell
+):
+    support, ram, _mount, _stage, _environment = archive
+    worker = support / "modules/helpers/worker.sh"
+    expected_mode = (ROOT / "modules/helpers/worker.sh").stat().st_mode & 0o777
+    assert worker.stat().st_mode & 0o777 == expected_mode
+    # Derived archive fixtures edit the existing worker; truncating that file
+    # must retain the executable mode required by the real Linux supervisor.
+    worker.write_text(worker.read_text())
+    assert os.access(worker, os.X_OK)
+    assert worker.stat().st_mode & 0o777 == expected_mode
+    (ram / "input").write_bytes(b"counted bytes\n")
+    passed(
+        run(
+            archive,
+            shell,
+            'cfmgr_archive_measure "$ram/input" && [ "$cfmgr_archive_bytes" = 14 ]',
+        )
+    )
 
 
 def test_source_inert_and_checked_integer_boundaries(shell, tmp_path):

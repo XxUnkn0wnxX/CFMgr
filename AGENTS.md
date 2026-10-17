@@ -212,7 +212,7 @@ narrow diagnostic pass cannot award a checkbox. To close an authorized checkpoin
 automatically push the locally checked/reviewed candidate to `develop` as needed
 for required CI, including repairs and the final documentation receipt; no separate
 push approval is needed. Interim local commits alone do not authorize unrelated
-pushes. Preserve all CI gates and the pause after each cleared checkpoint.
+pushes. Preserve all CI gates and the major-checkpoint pause below.
 This does not authorize another package, release or deployment. Checkpoint routes:
 
 | Situation | Required route |
@@ -267,8 +267,8 @@ Main-goal checkpoint:
 4. Pass full required CI at that exact commit; close CI-dependent boxes and award
    the main tick. Reuse applicable exact-candidate evidence; do not rerun needlessly.
 5. Update/push README completion, refresh handoff for a new session and pause.
-   Record exact evidence, both progress counts, remaining work and rough next
-   scope; do not begin another main goal in that session.
+   Record exact evidence, both progress counts and remaining work; wait for user
+   permission before reviewing or suggesting the next block.
 
 After any authorized runtime checkpoint push, wait for its exact prescribed CI
 before more implementation. On failure, repair, focused-test, commit/re-push and
@@ -276,11 +276,12 @@ wait again; verify remote state and record accepted SHAs. Documentation receipts
 may follow within the same checkpoint with proportionate checks, naming the tested
 code SHA and not implying the receipt SHA was runtime-tested. Never award an
 unearned tick or README completion. A genuine checkpoint blocker stays unchecked
-and is reported. **Automatically pause after every cleared checkpoint, including
-single-subgoal checkpoints, until the user explicitly changes this rule.** Finish
-the required gates and records, leave no required job/worker active, and wait for
-the next instruction. Interim commits/diagnostic runs are not cleared checkpoints;
-do not start another target merely because the current checkpoint passed.
+and is reported. **Pause and end the turn after each agreed major checkpoint:**
+finish the approved block of tasks/subgoals, its required gates and records, and
+leave no required job/worker active. Then wait for explicit user permission before
+reviewing, selecting or suggesting the next block. A block may contain several
+subgoals and need not complete a whole main goal. Interim commits, diagnostics
+and repairs within that block continue without a pause or repeat push approval.
 
 ## Main-goal audit
 

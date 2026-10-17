@@ -23,7 +23,7 @@ tooling and Actions changes on develop pushes and PRs targeting develop; documen
 do not trigger CI. Manual Lint and Diagnostics are optional. Full core CI runs
 last at the checkpoint after all applicable focused local/Quick groups pass;
 local platform skips still require CI proof. Automatically pause after each
-cleared checkpoint under the standing
+agreed major checkpoint (the approved task/subgoal block) under the standing
 [validation rules](AGENTS.md#validation-and-publication-gates).
 Publication rules: [AGENTS.md](AGENTS.md); the current user-approved CI decision
 is recorded in [the handoff](PLAN_V2_handoff.md).
