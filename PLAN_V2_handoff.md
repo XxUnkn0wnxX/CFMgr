@@ -130,6 +130,17 @@ No production accounting or lock behavior changed. Required native history and
 other complete affected Quick groups remain outstanding. Automatic core
 `39016480189` was cancelled while these diagnoses were pending.
 
+Complete payload Quick `39016694442` at `941f34d` passed **115 tests in 98.28s**
+(98.51s wall, 28.44 user / 55.04 system); the full semantic case took 94.33s.
+This complete focused group meets the practical cost target. History Quick
+`39016692405` passed 29 cases before an otherwise successful inactive-writer
+observation exposed noisy shell stderr when a scanned task disappeared. The
+stat read now redirects stderr before opening proc metadata, preserving return 1
+and all caller classification. The focused missing-task/glob-state regression
+passed in 0.43s (2.09s wall, 1.06 user / 0.41 system); shell syntax/default format
+and Ruff passed. Full native history remains pending. Automatic core
+`39016690550` was cancelled; no required core run has yet supplied acceptance.
+
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
 be one module, config one module, and networking/DDNS similarly grouped by real

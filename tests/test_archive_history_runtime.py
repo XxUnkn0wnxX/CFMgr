@@ -88,6 +88,8 @@ def test_history_seed_preserves_glob_setting_for_later_store_cleanup(archive, sh
 for wanted in enabled disabled; do
     case $wanted in enabled) set +f ;; disabled) set -f ;; esac
     cfmgr_history_runtime_seed || exit 82
+    # Missing task metadata is an ordinary observation failure, with no stderr.
+    if cfmgr_hr_stat 0; then exit 85; fi
     case $wanted:$- in enabled:*f* | disabled:*f*)
         [ "$wanted" = disabled ] || exit 83 ;;
     *) [ "$wanted" = enabled ] || exit 84 ;;

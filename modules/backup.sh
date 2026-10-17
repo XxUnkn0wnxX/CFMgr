@@ -3514,7 +3514,8 @@ EOF_HISTORY_RESOLVE_MOUNT
 cfmgr_hr_stat() {
 	# No external command in the scan loop: matched native ash lacks builtin
 	# test/printf. Parse only stat identity, then inspect bounded candidates.
-	IFS= read -r cfmgr_hr_stat_line <"/proc/$1/stat" || return 1
+	# A task may disappear after enumeration; callers already classify absence.
+	IFS= read -r cfmgr_hr_stat_line 2>/dev/null <"/proc/$1/stat" || return 1
 	cfmgr_hr_stat_pid=${cfmgr_hr_stat_line%% *}
 	cfmgr_hr_stat_comm=${cfmgr_hr_stat_line#*(}
 	cfmgr_hr_stat_comm=${cfmgr_hr_stat_comm%)*}
