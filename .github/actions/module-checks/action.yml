@@ -1,5 +1,5 @@
 name: Run complete test group checks
-description: Verify cached tools, optionally run common preflight, then run the complete host and BusyBox module batch.
+description: Verify cached tools, optionally run common preflight, then run the complete assigned platform batch.
 
 inputs:
   batch:
@@ -9,6 +9,10 @@ inputs:
     description: Reuse the same commit's successful common Checks preflight
     required: false
     default: 'false'
+  platform:
+    description: Fixed evidence platform (host, busybox or both)
+    required: false
+    default: 'both'
 
 runs:
   using: composite
@@ -18,10 +22,12 @@ runs:
       env:
         CFMGR_CORE_BATCH: ${{ inputs.batch }}
         CFMGR_REUSE_PREFLIGHT: ${{ inputs.reuse-preflight }}
+        CFMGR_TEST_PLATFORM: ${{ inputs.platform }}
       run: |
         set -euo pipefail
         case "$CFMGR_CORE_BATCH" in backup|manager|status|tooling) ;; *) echo 'Unknown test batch.' >&2; exit 2 ;; esac
         case "$CFMGR_REUSE_PREFLIGHT" in true|false) ;; *) echo 'reuse-preflight must be true or false.' >&2; exit 2 ;; esac
+        case "$CFMGR_TEST_PLATFORM" in host|busybox|both) ;; *) echo 'Unknown test platform.' >&2; exit 2 ;; esac
 
     - name: Restore and verify developer tools
       id: tools
@@ -31,17 +37,26 @@ runs:
         python-tools: 'true'
 
     - name: Prepare verified native vendor BusyBox
+      if: ${{ inputs.platform != 'host' }}
       id: busybox
       uses: ./.github/actions/setup-busybox
 
-    - name: Run common checks and host syntax
+    - name: Run common checks and selected shell syntax
       if: ${{ inputs.reuse-preflight != 'true' }}
       id: common
       shell: bash
-      run: /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --skip-shellcheck
+      env:
+        CFMGR_TEST_PLATFORM: ${{ inputs.platform }}
+      run: |
+        test_args=(--checks-only --skip-shellcheck)
+        if [[ "$CFMGR_TEST_PLATFORM" == busybox ]]; then
+          export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
+          test_args+=(--require-busybox)
+        fi
+        /usr/bin/time -v .venv/bin/python tools/test.py "${test_args[@]}"
 
     - name: Run mandatory BusyBox syntax
-      if: ${{ inputs.reuse-preflight != 'true' }}
+      if: ${{ inputs.reuse-preflight != 'true' && inputs.platform == 'both' }}
       id: native_syntax
       shell: bash
       run: |
@@ -49,6 +64,7 @@ runs:
         /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --require-busybox --reuse-static
 
     - name: Run complete assigned host batch
+      if: ${{ inputs.platform != 'busybox' }}
       shell: bash
       env:
         CFMGR_CORE_BATCH: ${{ inputs.batch }}
@@ -58,9 +74,11 @@ runs:
 
     - name: Run complete assigned BusyBox batch
       if: >-
-        ${{ !cancelled() && steps.tools.outcome == 'success' && steps.busybox.outcome == 'success' &&
+        ${{ !cancelled() && inputs.platform != 'host' &&
+            steps.tools.outcome == 'success' && steps.busybox.outcome == 'success' &&
             (inputs.reuse-preflight == 'true' ||
-             (steps.common.outcome == 'success' && steps.native_syntax.outcome == 'success')) }}
+             (steps.common.outcome == 'success' &&
+              (inputs.platform == 'busybox' || steps.native_syntax.outcome == 'success'))) }}
       shell: bash
       env:
         CFMGR_CORE_BATCH: ${{ inputs.batch }}

@@ -15,9 +15,14 @@ permissions:
 
 jobs:
   checks:
-    name: Manager Checks
+    name: Manager Checks (${{ matrix.platform }})
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        platform: [host, busybox]
     steps:
       - name: Check out source
         # actions/checkout v7.0.1
@@ -29,4 +34,5 @@ jobs:
         uses: ./.github/actions/module-checks
         with:
           batch: manager
+          platform: ${{ matrix.platform }}
           reuse-preflight: ${{ inputs.reuse-preflight || false }}

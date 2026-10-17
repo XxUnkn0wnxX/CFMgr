@@ -871,10 +871,18 @@ def test_main_module_sidebar_workflow_pins_its_batch_and_manual_preflight(
     assert "  workflow_call:\n" in workflow
     assert "        type: boolean\n        default: false\n" in workflow
     assert "    timeout-minutes: 10\n" in workflow
+    assert (
+        f"    name: {owner.title()} Checks (${{{{ matrix.platform }}}})\n" in workflow
+    )
+    assert "      fail-fast: false\n" in workflow
+    assert "      max-parallel: 2\n" in workflow
+    assert "        platform: [host, busybox]\n" in workflow
+    assert "continue-on-error:" not in workflow
     assert "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" in workflow
     assert "          persist-credentials: false\n" in workflow
     assert "        uses: ./.github/actions/module-checks\n" in workflow
     assert f"          batch: {owner}\n" in workflow
+    assert "          platform: ${{ matrix.platform }}\n" in workflow
     assert (
         "          reuse-preflight: ${{ inputs.reuse-preflight || false }}\n"
         in workflow
@@ -908,8 +916,75 @@ def test_tools_workflow_runs_complete_optional_batch_with_its_own_preflight() ->
     assert "        uses: ./.github/actions/module-checks\n" in workflow
     assert "          batch: tooling\n" in workflow
     assert "          reuse-preflight: false\n" in workflow
+    assert "          platform:" not in workflow
+    action = (runner.ROOT / ".github/actions/module-checks/action.yml").read_text()
+    assert "    default: 'both'\n" in action.split("  platform:\n", 1)[1]
     assert runner.core_batch_targets("tooling") == [
         "tests/test_dev_runners.py",
         "tests/test_platforms.py",
         "tests/test_router_probe.py",
     ]
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected"),
+    [("host", 0), ("busybox", 0), ("both", 0), ("all", 2), ("", 2), ("host;false", 2)],
+)
+def test_module_action_rejects_nonfixed_platforms_before_setup(
+    platform: str, expected: int
+) -> None:
+    action = (runner.ROOT / ".github/actions/module-checks/action.yml").read_text()
+    validation = textwrap.dedent(
+        action.split("      run: |\n", 1)[1].split("\n    - name:", 1)[0]
+    )
+    env = os.environ.copy()
+    env.update(
+        CFMGR_CORE_BATCH="backup",
+        CFMGR_REUSE_PREFLIGHT="false",
+        CFMGR_TEST_PLATFORM=platform,
+    )
+    completed = subprocess.run(
+        ["/bin/bash", "-c", validation], env=env, capture_output=True, check=False
+    )
+    assert completed.returncode == expected, completed.stderr
+
+
+def test_module_action_preserves_complete_platform_tests_and_preflight_guards() -> None:
+    action = (runner.ROOT / ".github/actions/module-checks/action.yml").read_text()
+    native_setup = action.split(
+        "    - name: Prepare verified native vendor BusyBox\n", 1
+    )[1].split("\n    - name:", 1)[0]
+    assert "if: ${{ inputs.platform != 'host' }}" in native_setup
+    common = action.split(
+        "    - name: Run common checks and selected shell syntax\n", 1
+    )[1].split("\n    - name:", 1)[0]
+    assert "if: ${{ inputs.reuse-preflight != 'true' }}" in common
+    assert "test_args=(--checks-only --skip-shellcheck)" in common
+    assert 'if [[ "$CFMGR_TEST_PLATFORM" == busybox ]]; then' in common
+    assert "test_args+=(--require-busybox)" in common
+    syntax = action.split("    - name: Run mandatory BusyBox syntax\n", 1)[1].split(
+        "\n    - name:", 1
+    )[0]
+    assert "inputs.reuse-preflight != 'true' && inputs.platform == 'both'" in syntax
+    host = action.split("    - name: Run complete assigned host batch\n", 1)[1].split(
+        "\n    - name:", 1
+    )[0]
+    assert "if: ${{ inputs.platform != 'busybox' }}" in host
+    assert 'tools/test.py --core-batch "$CFMGR_CORE_BATCH" --reuse-preflight' in host
+    native = action.split("    - name: Run complete assigned BusyBox batch\n", 1)[1]
+    assert "!cancelled() && inputs.platform != 'host'" in native
+    assert (
+        "steps.tools.outcome == 'success' && steps.busybox.outcome == 'success'"
+        in native
+    )
+    assert "inputs.reuse-preflight == 'true'" in native
+    assert "steps.common.outcome == 'success'" in native
+    assert (
+        "inputs.platform == 'busybox' || steps.native_syntax.outcome == 'success'"
+        in native
+    )
+    assert (
+        'tools/test.py --core-batch "$CFMGR_CORE_BATCH" --require-busybox --reuse-preflight'
+        in native
+    )
+    assert "continue-on-error:" not in action

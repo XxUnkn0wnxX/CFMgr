@@ -80,75 +80,72 @@ cancelled, as the user requested. Host passed in 8m47; native reached 87% before
 cancellation after 31m13. This shows slow execution, not a proved deadlock. Neither
 cancelled run provides a complete core pass.
 
-### Implemented next candidate and diagnosis
+### Verified optimization and current candidate
 
-The sidebar/orchestrator/optional-tools package is implemented and independently
-reviewed PASS. Three thin product workflows share one composite execution action;
-Checks runs common preflight then three isolated concurrent product jobs, each
-with serial host/native execution and a ten-minute total cap. The aggregate keeps
-its existing required-check name and refuses every non-success dependency. Default
-local runner behavior is preserved. The complete partition remains 47 test modules:
-44 product modules are required, and 3 developer-tool modules are optional. Current
-collection gives Backup 361 cases, Manager 566, Status 36 (**963 product cases**)
-and Tooling 166. No product test was dropped or made optional.
+The workflow/sidebar package was published at **`31ada7ff6220362070369aff77c493d0ec37abdd`**;
+all eight repository-owned workflow names are registered. Its automatic core
+**39026672475** was cancelled during diagnosis. Optional Tools **39026690046**
+passed 166 cases on host/native. Native profiling measured actual supervised work:
+367 probes (245 inode / 122 other), 1,698 attachments, 1,101 observations, 367
+50ms pauses and 1,468 RAM inode reads. The external-applet microbenchmark preserved
+FD/numeric/output checks and improved from 0.343s to 0.204s using vendor applets.
 
-Published workflow/profile candidate: **`31ada7ff6220362070369aff77c493d0ec37abdd`**.
-All eight repository-owned workflow names are registered in GitHub. Its premature
-automatic Checks run **39026672475** is terminal cancelled while diagnosis runs.
-Optional **Tools Checks 39026690046** passed all 166 tests on both host (0.84s)
-and native BusyBox (0.71s), including independent preflight. Native Dev Checks
-**39026686131** passed the positive verifier in **80.44s** (21.83 user / 46.34
-system): 367 probes, 245 inode probes, 1,698 attachments, 1,101 observations,
-367 pauses and 1,468 RAM inode reads. Its identical 300-command microbenchmark
-passed with both backends: current host applets **0.343s** (0.071 user / 0.273
-system), external vendor applets **0.204s** (0.093 / 0.114). Native installer
-**39026688120** passed in **176.49s** (87.09 user / 91.18 system): repair 126.53s,
-full prerequisite checks 1.17s and 1.79s, transaction 41.88s. All are terminal.
+The measured fixture correction is published at **`f321d55bef1e251366113af769d7e5d979b653f6`**.
+Only external `[`, `test` and `printf` aliases were staged beside the verified
+BusyBox; disabled builtins/no-fork remain unchanged. The privileged dependency
+fixture restores these three aliases inside its owned tree after sudo's PATH reset.
+Production sanitized worker paths and all assertions/deadlines remain unchanged.
 
-The next bounded fidelity correction stages only external `[`, `test` and
-`printf` aliases beside the verified native binary; builtins and no-fork remain
-disabled. The dependency fixture restores those three controller aliases inside
-its private namespace because sudo drops the incoming PATH prefix. Production
-sanitized worker paths remain unchanged. Both workers returned ownership; parent
-reviewed the diff. Platform staging tests: **52 passed in 0.67s**, plus fixture
-syntax, ShellCheck, shfmt, Ruff/format/compile, planning/package/whitespace passed.
-No runtime code changed. Repeat the identical two native cases before judging
-the whole-module cost impact; their full assertions and deadlines are retained.
+| Native case | Before (31ada7f) | After (f321d55) | CPU user + system |
+| --- | --- | --- | --- |
+| Full positive verifier | Dev 39026686131: 80.44s | Dev 39027173157: **45.98s** | 68.17s → 32.25s |
+| Actual installer repair/publication | Dev 39026688120: 176.49s | Dev 39027175339: **133.95s** | 178.27s → 135.01s |
 
-Local evidence before that commit: `tests/test_dev_runners.py` **99 passed
-in 1.79s**; Ruff/format/compile/YAML/embedded shell syntax/whitespace passed. Parent
-`tools/test.py --checks-only --skip-shellcheck` passed all common source gates and
-host syntax. Workflow worker `module_consolidation` returned ownership; reviewer
-`consolidation_review` passed the final optional-tools delta. No full local suite
-is due because no main goal is complete. Complete product workflow execution
-remains pending the measured correction.
+The verifier retains 367 probes/245 inode probes and 1,468 RAM reads; observations/
+pauses differ by one scheduling iteration. Installer phase times became repair
+95.60s, full checks 0.91/1.38s, transaction 31.88s. Tools **39027177390** passed all
+178 cases on host (1.47s) and native (1.25s). Premature core **39027143995** is
+terminal cancelled. These are meaningful work-cost improvements, not core acceptance.
 
-Fixture-only profiling is implemented in `tests/test_archive_io.py` and
-`tests/test_archive_verify.py`; worker `archive_tools_fixture` returned ownership.
-One existing positive verifier case opts into builtin counters in copied fixtures
-and one scalar-only receipt outside the archive context. Original function bodies,
-real tools, pause command, exit status, output and all assertions remain intact.
-The focused macOS positive passed in **39.90s** (40.67 wall / 17.94 user / 15.00
-system): **367 probes, 245 archive-inode probes, 122 other probes, 1,331 attachment
-checks, 1,468 RAM inode reads**. Observation/pause counts are zero because the
-macOS adapter does not execute Linux supervision; the native receipt is next.
+The next candidate is locally implemented and reviewed, not yet published:
 
-Planner `archive_design` approved measurement followed by a bounded unchanged-
-contract scalar-guard optimization, with strict literal equality and return/order
-preservation. Keep filesystem checks, numeric bounds, deadlines and actual child
-ownership/signalling/waiting unchanged initially. RAM receipt batching is only a
-separate measured follow-up, retaining fresh retirement identity checks. No
-production optimization has been made. A read-only follow-up is checking whether
-the fixture's unstaged external test/printf applets affect native fidelity/cost;
-do not enable disabled shell builtins. Retained firmware configs disable them.
+- Runtime: builtin `case` replaces scalar tests in four hot backup functions and
+  the first prerequisite/supervisor section of execution. Strict literal equality,
+  evaluation/return order, filesystem checks, numeric bounds, child ownership,
+  signals, waits and deadlines are preserved. Structural arity/length and arithmetic
+  capability checks in archive_uint use case; its actual numeric upper bound stays
+  unchanged. Manifest regenerated. Independent reviewer **PASS** for both files.
+- Local focused gate: `tools/test.py --focused tests/test_prerequisites.py
+  tests/test_archive_io.py --skip-shellcheck` passed common statics/host syntax and
+  **35 tests / 14 explicit Linux skips in 9.85s**. The positive verifier passed
+  **47.91s** on macOS, with the same counters; this does not demonstrate a host
+  speedup. Native comparison and all affected groups are pending.
+- Scheduling: each main-module workflow has complete host and native jobs on
+  separate VMs, max two per module, fail-fast off, ten minutes per job. Planner
+  **PASS WITH NOTES**: shared-host parallelism would collide in real cloudflared
+  process discovery. Up to six product VMs may run; measure each module's earliest
+  start to latest finish including setup, with queue delay separate. Platform
+  scheduling cannot replace actual cost reduction or a passing complete module.
+  Tools remains optional with its cheap serial host/native default. Workflow tests
+  **106 passed in 1.88s**; Ruff/compile/YAML/embedded shell checks passed.
+- User flagged AGENTS size. Parent consolidated repeated rules from **30,948 to
+  22,995 bytes**, preserving permissions/gates; independent comparison to retained
+  `.tmp/archive-creation/AGENTS.before-consolidation.md` returned **PASS**.
 
-Parent owns AGENTS and all five V2 records. Next: publish the reviewed workflow
-and profiling candidate; cancel its premature full core while diagnosis is pending;
-use Dev Checks for the single native verifier profile and the expensive actual
-installer case, with existing complete focused timings as baseline. Fix measured
-work, verify every affected diagnostic batch within budget, then run all complete
-module checks at the final candidate. Publish accepted evidence and receipts only
-after that combined gate; pause for the day with no required worker/job active.
+All workers returned ownership. Parent owns AGENTS and V2 records. No CI remains
+active. Complete collection excludes four optional diagnostics and proves exact
+ownership: Backup **361**, Manager **566**, Status **36** (963 required product
+cases); optional Tools now **185**. The private `pending-quick-groups.json` has
+17 temporary, owner-specific diagnostic selections covering all 927 Backup/Manager
+cases exactly once; Status remains a complete fast group, Tools stays optional.
+
+Next: publish this reviewed candidate, cancel premature core, repeat the positive
+verifier and installer plus complete prerequisites/I/O in Dev. Once those pass,
+run every temporary diagnostic batch (at most three concurrent), requiring each
+within two to three minutes; diagnose any exception. Then run full Checks at the
+same final SHA, verifying both platforms and every module's complete makespan
+within roughly ten minutes. Accept the six IDs/update README only after that gate.
+Publish records and stop for the day, without reviewing or suggesting another block.
 
 ### Prior validation state before the cost correction
 

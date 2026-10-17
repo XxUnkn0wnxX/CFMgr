@@ -141,9 +141,30 @@ profile of the existing positive verifier recorded 367 operations, including
 existing assertions but does not measure Linux supervision. The independent
 performance-plan audit approved bounded scalar-guard equivalence changes only
 after native measurement, preserving filesystem admission, numeric/deadline
-semantics and ownership/signalling/waiting. No production optimization has yet
-been applied. Potential RAM metadata batching requires a separate fresh-read and
-substitution-safety review. Required CI and measured whole-group cost remain open.
+semantics and ownership/signalling/waiting. Native profiling at `31ada7f` then
+confirmed 367 probes and 1,101 ownership observations, with 367 explicit pauses.
+An identical external-command benchmark identified unnecessary host executable
+startup cost: the fixture had not staged the firmware's external test/printf
+applets. Correcting that at `f321d55` reduced the positive verifier from 80.44s
+to 45.98s and CPU from 68.17s to 32.25s, retaining all 367 operations and assertions.
+The privileged installer fixture's equivalent PATH correction reduced its actual
+repair/publication case from 176.49s to 133.95s, with CPU 178.27s to 135.01s.
+Shell builtins/no-fork remain disabled and production worker PATHs are unchanged.
+
+The subsequent bounded runtime scalar conversion is locally focused-tested and
+independently reviewed PASS: quoted case patterns preserve literal comparisons,
+short-circuit/return ordering and integer admission; filesystem and numeric-bound
+predicates, deadlines, signals and waits remain intact. Native performance and
+complete-group acceptance remain unverified. No RAM metadata batching was added.
+
+An independent scheduling audit rejected sharing one host between the complete
+host/native suites: both real-writer fixtures discover global cloudflared process
+candidates and would observe each other's children. Isolated platform VMs avoid
+that concrete collision while preserving both complete module selections. The
+approved refinement allows two jobs per module (six product VMs), disables matrix
+fail-fast and requires all results. Module cost is the earliest job start through
+latest completion including setup, with queue delay separate; scheduling alone
+does not establish reduced CPU cost or satisfy the complete ten-minute module gate.
 
 ## S14.06–S14.08 history runtime admission review
 

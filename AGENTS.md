@@ -1,425 +1,329 @@
 # CFMgr project instructions
 
-Apply global instructions and matching skills where this file is silent.
-CFMgr-specific rules here take precedence over conflicting global or skill
-guidance, including blocker handling, acceptance, test cadence and permissions.
-Explicit user decisions override stale text. This file owns repository workflow;
-product behavior belongs in
-[PLAN_V2.md](PLAN_V2.md). Keep this file below 32,000 bytes. To prevent recurring
-ceiling pressure, consolidate proactively at 28,000 bytes; prefer 21–23 KB.
-Use `zr0-agents-governance` for instruction changes and
-`zr0-git-repository-workflow` for Git/privacy procedures. General planning,
-testing, CI, delegation and Markdown procedures belong in the skills named below.
+CFMgr rules override conflicting global/skill workflow guidance; explicit user
+instructions override stale text. Product behavior belongs in [PLAN_V2.md](PLAN_V2.md).
+Keep this file **below 32,000 bytes**; consolidate at **28,000**, targeting **21–23 KB**.
+Use `zr0-agents-governance` for instruction edits, `zr0-git-repository-workflow` for
+Git/privacy, and matching skills for general planning, testing, CI and documentation.
 
 ## Planning authority
 
-Read at session start/resume:
+Read these at session start/resume; the parent alone edits them:
 
 | Document | Sole purpose |
 | --- | --- |
-| [PLAN_V2.md](PLAN_V2.md) | Product requirements, stable goal/subgoal IDs, behavior, edge cases and open decisions. |
-| [PLAN_V2_checklist.md](PLAN_V2_checklist.md) | Matching requirements, acceptance, totals/boxes, focused results, outstanding gates and concise accepted evidence. No issue/risk notes, diary, ownership, queue, next actions or publication authority. |
-| [PLAN_V2_handoff.md](PLAN_V2_handoff.md) | Current task/permissions, resumable state, owners/jobs, pending proof, blockers and next steps; replace stale notes. |
-| [PLAN_V2_review_notes.md](PLAN_V2_review_notes.md) | Only relaxed acceptance points and significant risks for later review. Mirror goal headings and subgoal descriptions; replace checkboxes with concise review notes. |
-| [PLAN_V2_audit.md](PLAN_V2_audit.md) | Substantive audit findings, evidence, parent/reviewer agreement or user decisions, and verified repair dispositions linked to existing IDs. No requirements, acceptance totals, worker queue or session lineage. |
+| [PLAN_V2.md](PLAN_V2.md) | Product requirements, stable IDs, behavior, edges and open decisions. |
+| [PLAN_V2_checklist.md](PLAN_V2_checklist.md) | Mirrored requirements/acceptance tables, totals, boxes, focused results and outstanding gates. No risks, diary, ownership, queue, next actions or publication authority. |
+| [PLAN_V2_handoff.md](PLAN_V2_handoff.md) | Current task/permissions, restart state, owners/jobs, pending proof, blockers and next steps; replace stale notes. |
+| [PLAN_V2_review_notes.md](PLAN_V2_review_notes.md) | Only relaxed acceptance and significant deferred risks; mirror affected goal headings/subgoal descriptions, with notes instead of boxes. |
+| [PLAN_V2_audit.md](PLAN_V2_audit.md) | Substantive findings/evidence, reviewer agreement/user decisions and verified repair dispositions linked to IDs. No requirements, totals, queue or session lineage. |
 
-The parent alone edits these five files. Apply `zr0-multi-session-projects`
-for paired specification/checklist changes, evidence, handoff preservation and
-verified parent-session lineage. Preserve the existing root-level files and
-Sxx.yy IDs; new-project defaults do not relocate them. The user-requested audit
-companion is tracked at the repository root alongside the other V2 records.
-Keep audit reports there and link from handoff/checklist; current work and
-permissions stay in the handoff, deferred risks in review notes. Checklist mirrors
-the specification's main-goal/subgoal tables. Keep review notes current when an
-exception changes; omit unaffected goals, routine progress and session history.
-Link from checklist instead of copying the notes. Review notes neither change
-requirements nor waive unresolved serious failures.
+Use `zr0-multi-session-projects` for paired specification/checklist edits, evidence
+and continuity. Preserve root-level locations, tracking and Sxx.yy IDs, including
+the audit companion; new-project defaults do not relocate them. Checklist mirrors
+specification tables and links to audit/review notes instead of copying them.
+Update review notes when exceptions change; omit unaffected goals, progress and
+session history. Notes neither change requirements nor waive serious failures.
 
-Significant objective, behavior, scope, accepted-edge-case changes or extensive
-feature rework need prior user approval. Explain the change, reason, tradeoffs
-and affected IDs in a reviewable proposal, then ask one clear question. Explicit
-user requests, routine evidence/format/link updates, and refinements preserving
-approved behavior need no repeat approval. While a hard-blocker question is
-pending, do independent authorized work only. After 3–5 minutes without an answer,
-preserve unfinished work, record the question/safe resume point in handoff and
-pause safely. Ordinary implementation/test failures are not approval blockers;
-fix them autonomously. Silence or elapsed time is never approval; do not repeat
-answered gates.
+Significant objective, behavior, scope, accepted-edge changes or extensive rework
+need prior approval: explain the change, reason, tradeoffs and IDs, then ask once.
+Explicit user requests, routine evidence/format/link edits and refinements retaining
+approved behavior need no repeat approval. Ordinary implementation/test failures
+are autonomous repairs. While a hard-blocker question is pending, do only
+independent authorized work; after 3–5 unanswered minutes preserve WIP, record the
+question/safe restart in handoff and pause. Silence never grants approval.
 
-Preserve [.old/PLAN.md](.old/PLAN.md) as reference. Preserve the complete hidden
-session-ID HTML comment immediately below the handoff title; keep the verified
-parent-session record only there. Follow the continuity skill's 500–600 KB or
-hard-to-follow consolidation threshold, not routine trimming.
+Preserve [.old/PLAN.md](.old/PLAN.md). Keep the complete hidden session-ID HTML
+comment immediately below the handoff title; verified parent lineage belongs only
+there. Consolidate continuity records only at the skill's 500–600 KB or hard-to-follow
+threshold, not by routine trimming.
 
 ## Implementation and preservation
 
-Follow the active handoff boundary; writing a handoff does not start later work.
-Past cleanup, branch deletion, history resets or one-off publication grants do not
-recur; checkpoint push authority is defined below.
-Select work across the approved plan by dependency readiness and smallest fully
-completable scope, rather than main-goal number. Finish small independent subgoals
-and prerequisites before larger features, including ready independent subgoals in
-another main goal. Judge size by the full implementation, integration and required
-validation, not by a small helper or partial result. Use coordinated multi-goal
-batches for larger features only when no smaller ready, independently completable
-outcome remains; include only the necessary prerequisites and shared integration.
-Finish each active coherent package and its required focused checks before
-switching targets. Existing authorization, pause and acceptance gates still apply.
-Before a package, inspect code/tests/ownership and record
-its Sxx.yy, real consumer, missing acceptance and focused checks in handoff.
-Name dependencies and return paths; notify the user before switching to a
-prerequisite in another goal. Goal 1 requires all three features and source parity,
-not a menu skeleton. Dependency work earns only its proven credit.
+Follow the active handoff boundary; writing it starts no later work. Past cleanup,
+branch deletion, history resets and one-off publication grants do not recur.
+Select dependency-ready work by smallest fully completable outcome across goals,
+not goal number. Size includes integration/validation, not just a helper. Prefer
+small independent subgoals/prerequisites; coordinate larger batches only when no
+smaller ready outcome remains, including only necessary dependencies. Finish the
+active package and focused gates before switching; authorization/pause gates apply.
 
-Make consolidation a priority: use as few coherent modules/libraries as practical,
-with one owner per major responsibility such as backup, configuration or networking.
-Extend the existing owner before adding a file; a function, parser, menu or processing
-phase alone does not justify a separate script. Keep necessary process entry points
-thin and reuse their owner's implementation. Prefer simple designs covering normal
-operation and core failure risks;
-retain the edge cases explicitly required by the plan. Outside that scope, add only
-cheap useful safeguards or small interim mitigations automatically. Record critical
-limitations covered by those mitigations in review notes for later user review.
-If a critical gap cannot be covered by a small fix, ask the user and pause affected
-work under the hard-blocker rule. Prioritize planned goals and their required tests;
-avoid speculative frameworks. Actual required-behavior failures retain their gates.
-Preserve partial work as WIP, record missing integration/tests, and do not invent
-smaller product subgoals or lower acceptance. Focused-tested partial
-work may be committed honestly with boxes unchecked, but does not authorize a
-target switch. Review/checkpoint coherent packages before advancing. Preserve
-interruptions and known failures; never delete work to manufacture a clean pass.
+Before a package inspect code/tests/ownership; record IDs, real consumer, missing
+acceptance, focused checks, dependencies and return route in handoff. Notify before
+another goal's prerequisite. Goal 1 needs all three features and source parity;
+dependencies earn only proven credit.
+
+**Prioritize consolidation:** use few coherent owners (backup, configuration,
+networking). Extend an owner before adding files; a function, parser, menu or phase
+alone never justifies a script. Keep process entries thin. Prefer simple normal-
+operation/core-risk designs, preserving required edges. Elsewhere add only cheap
+safeguards/small mitigations; note significant residual limitations. Critical gaps
+beyond a small fix use the approval/blocker rule. Avoid speculative frameworks.
+
+Keep WIP and missing integration/tests truthful. Focused-tested WIP may be committed
+unchecked, but cannot redefine subgoals/acceptance or authorize target switches.
+Review coherent packages before advancing; retain interruptions/known failures.
+Never delete work to manufacture a pass.
 
 Before authorized destructive replacement, bulk code/test deletion or history
-rewrite, stop affected writers and preserve current commits plus affected staged,
-unstaged, untracked and necessary ignored files. Verify backup inventory/content,
-record private recovery location and restore method, and retain reference/firmware
-evidence. A bundle/ref preserves commits only. Without a verified complete
-snapshot, do not destroy. Reviewed removal of superseded files within authorized
-scope is allowed after preservation and consumer/regression checks. Abandoning
-features, deleting an unfinished subsystem, changing objectives or another
-history reset needs explicit authorization.
+rewrite, stop affected writers. Snapshot commits plus affected staged, unstaged,
+untracked and necessary ignored files; verify inventory/content and record private
+recovery path/method. Retain reference/firmware evidence. A Git bundle/ref saves only
+commits; no destruction without a verified complete snapshot. Superseded-file
+removal within scope requires preservation and consumer/regression checks.
+Abandoning features, deleting unfinished subsystems, changing objectives or another
+history reset needs explicit approval.
 
 ## Evidence, progress and acceptance
 
-Trace actual entry through shared code to observable results and failure paths.
-Acceptance requires approved behavior and representative safety cases, not every
-hypothetical permutation. Requirements, source inspection, host tests,
-BusyBox/kernel execution and live evidence are distinct; mocks, helpers, counts,
-static checks and commits cannot prove a missing production consumer.
+Trace actual entry through shared code to observable success/failure. Acceptance
+requires approved behavior and representative safety cases. Requirements, source
+review, host tests, BusyBox/kernel execution and live evidence are distinct;
+helpers, mocks, counts, statics and commits cannot prove a missing consumer.
 
-Record exact command, tested SHA/dirty state, pass/fail/skip and platform limits.
-For required CI, verify the exact head SHA and every job; skipped, queued,
-cancelled, old or failed runs do not pass. Later relevant edits invalidate
-evidence. Label planned, implemented-unverified, focused-local-passed,
-platform-pending and accepted accurately. Never invent source/tool behavior or
-commands; report loss, regressions, drift and missing outcomes promptly.
+Record command, tested SHA/dirty state, pass/fail/skip and platform limits. Required
+CI must match the exact published head and every required job; old, failed,
+cancelled, skipped, queued or incomplete runs do not pass. Relevant later edits
+invalidate proof. Distinguish planned, implemented-unverified, focused-local-passed,
+platform-pending and accepted. Never invent behavior/evidence; promptly report loss,
+regressions, drift or missing outcomes.
 
-Track progress separately:
+Report these separately:
 
-- **Main goals:** completed goals / 16; each is 6.25%. A main tick requires every
-  subgoal and its evidence.
-- **Overall subgoals:** accepted product IDs / approved IDs (currently 157), each
-  equally weighted across goals. Derive counts from specification/checklist rows;
-  count an ID once. Report locally focused-tested IDs awaiting required CI
-  separately; they are not accepted. Helpers, partial work, developer tools and
-  optional features earn no credit. Change the denominator only by approved scope.
-- **Active goal:** fully implemented subgoals with passing written focused tests /
-  its required subgoals. Report goal, count, percentage, changed Sxx.yy IDs/main
-  goals, remaining proof, and current completion target/supporting dependencies/
-  return route. Focused local proof counts here while CI is pending; skips,
-  helpers and partial work do not. Cap at 99% until subgoals, audit, full local
-  and exact full CI gates pass.
+- **Main goals:** accepted goals / 16 (6.25% each); a main tick requires every
+  subgoal and its gates.
+- **Overall subgoals:** accepted product IDs / approved IDs (currently 157), equally
+  weighted and counted once from specification/checklist rows. Change the denominator
+  only by approved scope. Report local-complete/CI-pending IDs separately; helpers,
+  partial work, developer tools and optional features earn no credit.
+- **Active goal:** fully implemented, written-focused-tested subgoals / required
+  subgoals. Include goal, count/percentage, changed IDs/goals, missing proof,
+  completion target, dependencies and return route. Local proof may count here
+  while CI is pending; skips/helpers/WIP do not. Cap at 99% until all subgoals,
+  audit, full local and exact full CI gates pass.
 
-Meaningful checkpoint/final reports include main-goal and overall-subgoal counts/
-percentages and remaining work. Keep checklist summary to these two totals; put
-IDs, focused evidence and gates in its tables. Keep package/workload estimates
-separate from acceptance. 100% means the approved CLI is integrated and beta
-ready, with coherent libraries, automated safety tests and practical guides.
-Representative Ubuntu/BusyBox is the development gate. Merlin/ARM, flash, hooks,
-TLS and live-provider qualification follow during real-router beta; support stays
-provisional until proved. Beta deployment and stable/release publication require
-separate authorization. Optional polish may follow implementation completion.
+Checkpoint/final reports include both accepted totals/percentages and remaining
+work. Checklist summary contains only those two totals; IDs/evidence/gates stay in
+its tables. Keep workload estimates separate. Product 100% means an integrated,
+beta-ready CLI with coherent libraries, automated safety tests and practical guides.
+Ubuntu/BusyBox is representative development proof; Merlin/ARM, flash, hooks, TLS
+and live providers remain provisional until real-router beta qualification.
+Beta deployment and stable/release publication need separate approval. Optional
+polish may follow implementation completion.
 
 ### Practical test policy
 
-Apply `zr0-test-efficiency` and `zr0-ci-optimization`; pass their applicable
-requirements to test workers. Use `zr0-interactive-testing` for end-user journeys
-and its scoped campaign permissions; it adds no product acceptance gate or router
-permission. CFMgr's blocker handling below remains authoritative.
-Plan-specified core edge cases are the mandatory minimum; cost cuts must preserve
-their proof. Prioritize boot-loop, router-hang,
-unbounded-work, unsafe-write and serious-corruption failures. Keep mandatory CI
-small and focused; rare synthetic process/thread stress is optional diagnostic
-work. Relax incidental output/timing assertions or defer rare low-risk cases with
-a brief review-note entry and no approval request. Pursue common failures; after two
-unsuccessful focused fixes or roughly 20 minutes on one CI issue, reassess its
-evidence and criticality. Raise a blocked common failure's concrete
-cause/impact. Ask about unresolved high-risk issues or significant behavior
-changes; after 3–5 unanswered minutes, pause as above. Do not spend hours proving
-rare possibilities. Test counts are not targets; review cost before each develop
-push and after about three batches using existing timings, not extra full runs.
-At product 100%, target a full suite no longer than roughly 40 minutes including
-setup. Keep the measured core baseline lean; raise the lower configured
-runner limit only when measured growth justifies it, never beyond 40 minutes.
-Remove redundant work and costly low-value variants before adding coverage; retain
-core plan proof. Record measured cost using the required acceptance run.
-Organize core tests by the actual main modules (currently Backup, Manager and
-Status), with their supporting libraries/tests beneath the consuming main module.
-Add a top-level group when a main module is added; developer-tool checks remain a
-separate optional, manual-only Tools Checks workflow. Start with one execution group per main module. Each group
-has an approximately ten-minute maximum, including setup, with shorter feedback
-preferred. Only after a main-module run exceeds that limit, split its tests into
-meaningful diagnostic batches to identify and reduce the slow part; do not split
-in advance or fragment runtime libraries. Optimize the identified slow work with
-focused tests, rerun all diagnostic batches aiming for two to three minutes each,
-then rerun the complete main-module group to verify its total stays within budget.
-Diagnostic chunks do not replace the permanent main-module core gate.
-Run all groups after this migration,
-measure named tests and group wall/CPU cost, and diagnose the longest over-budget
-group. Keep every required case assigned exactly once per platform and fail on
-missing or overlapping ownership. Shared changes must retain all affected consumer
-proof. The combined checkpoint gate requires every prescribed group at one SHA;
-splitting jobs or a fast group alone does not confer acceptance.
-For slow or opaque runs, use meaningful, disjoint Dev Checks groups and the
-skills' diagnosis procedure, with visible test names and wall/CPU timings.
-Isolated CI groups may run concurrently. Complete every affected group before
-subgoal acceptance. Required core Checks runs automatically for code, tests,
-tooling and Actions changes on develop pushes and PRs targeting develop;
-documentation-only changes do not trigger CI.
-For each Linux-dependent subgoal or substantial library package, identify its
-focused Dev Checks selection and review correctness and measured runtime in
-required core CI. Use focused Quick runs to isolate failures or slow batches.
-Split and optimize unexpectedly slow
-batches first: aim for two minutes or less, with a practical upper range of three
-to four minutes where feasible. Preserve core proof when trimming. A pass alone
-does not establish acceptable cost.
+Use `zr0-test-efficiency` and `zr0-ci-optimization`, also in worker briefs.
+End-user journeys use `zr0-interactive-testing` and its scoped permissions; it adds
+no product acceptance gate or router authority.
 
-Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
-format, Python compile, shell syntax, shfmt, planning/link/whitespace and behavior.
-ShellCheck runs through optional manual Lint Checks; the normal local runner includes it
-unless `--skip-shellcheck` is selected. Optional Diagnostics Checks runs only the existing
-diagnostic-marked cases and does not gate core acceptance. Python tools remain
-developer-only. Planning checks complement
-runtime proof; do not remove valid runtime code to satisfy obsolete empty-tree
-rules. Runners never commit, push or watch CI.
+Preserve plan-required behavior/edges, especially boot loops, router hangs,
+unbounded work, unsafe writes and serious corruption. Rare synthetic process/thread
+stress is optional Diagnostics work. Relax incidental output/timing assertions or
+defer rare low-risk cases with a review note, without approval. After two failed
+focused fixes or roughly 20 minutes on one CI issue, reassess evidence/criticality.
+Report blocked common failures' cause/impact; high-risk unresolved issues or
+significant behavior changes use the planning approval/blocker rule. Do not spend
+hours on rare possibilities or treat test counts as targets.
 
-Developer tools must support contributors/forks: derive checkout paths; never
-hardcode a developer's SSH alias, router address/login/key or mounted path.
-Router settings are data in ignored `tools/router.local.json`; provide its
-fake-value template and useful help. Require explicit execution intent and
-scoped cleanup. Keep private data out of tracked files, expectations and output.
-Ask before adding developer-tool entries, requirements or plan/checklist scope,
-showing proposed text first. Existing approved-tool status updates use normal
-focused gates and earn no product percentage.
+Review existing wall/CPU timings before each develop push and after about three
+batches; never add full runs solely for timing. Remove redundant work/low-value
+variants before adding coverage. At product 100%, target at most roughly 40 minutes
+including setup; raise lower runner limits only for measured growth, never above
+40 minutes. Passing tests alone do not establish acceptable cost.
+
+Core groups follow actual main modules, with libraries beneath their consuming
+module; add groups with new main modules. Developer tools remain optional Tools
+Checks. Run each **complete module first**, aiming below **ten minutes including
+setup**, preferably shorter. **Only after exceeding that limit**, split temporary,
+meaningful disjoint Dev batches to locate the slow part. Optimize with focused
+tests, rerun every diagnostic batch aiming for **two to three minutes**, ideally
+under two, then rerun the **complete module** within budget. Never pre-split tests
+or fragment runtime libraries to evade the limit; chunks cannot replace core.
+
+Run all groups after migration; diagnose the longest over-budget group. Keep
+visible test names and wall/CPU timings. Assign every required case exactly once
+per platform, rejecting omissions/overlap. Shared changes retain every affected
+consumer's proof. Map focused Dev selections for Linux-dependent subgoals and
+substantial libraries; complete affected groups and review cost at the candidate
+SHA before acceptance. A fast subset earns no checkbox.
+
+Reuse pinned venv/dependencies. Gates include Ruff lint/format, Python compile,
+shell syntax, shfmt, planning/link/whitespace and behavior. ShellCheck is manual
+optional Lint Checks in CI; local runners include it unless `--skip-shellcheck`.
+Diagnostics runs existing marked cases only and is optional. Keep optional failures
+visible; assess serious product failures wherever exposed. Python is developer-only;
+runners never commit/push/watch CI. Planning checks supplement runtime proof;
+never remove valid runtime code to satisfy obsolete empty-tree rules.
+
+Developer tools must support forks/contributors: derive checkout paths; never
+hardcode personal SSH aliases, router addresses/logins/keys or mounted paths.
+Connection data belongs in ignored `tools/router.local.json`, with fake-value
+template/help. Require explicit execution intent and owned cleanup; keep private
+data out of tracked files/tests/output. Show proposed text and ask before adding
+tool entries, requirements or plan/checklist scope. Approved-tool status updates
+use focused gates and earn no product credit.
 
 ## Validation and publication gates
 
-Use the existing checkout; do not create or adopt additional Git worktrees for
-CFMgr unless the user explicitly changes this decision. Preserve existing
-worktree registrations; this decision does not authorize cleanup.
+Use this checkout only; additional worktrees need explicit approval. Preserve
+existing registrations; no cleanup is implied. `develop` is the sole active/default
+branch until reviewed product 100%. Do not recreate local/origin `main`, change
+defaults, rewrite history or promote runtime incidentally. Main's return needs a
+separate readiness action. First release version is chosen at 100%/beta readiness,
+with no milestone bumps; settle beta upgrade order before packaging. Releases,
+stable promotion and deployment need separate authority.
 
-`develop` is the only active/default branch until reviewed product 100%. Do not
-recreate local/origin `main`, change default, rewrite history or promote runtime
-incidentally. Main's return is a separate readiness action. Set the first release
-version at 100% implementation/beta readiness; no milestone bumps. Settle beta
-upgrade order before packaging. Stable promotion, release and live deployment
-need separate authorization.
+Subgoals require full implementation, written focused tests, statics and parent
+review. CI-dependent acceptance also needs **complete core Checks at the exact
+published candidate SHA**, including shared foundations. Dev is interim/diagnostic
+proof; narrow passes cannot award ticks.
 
-Each subgoal needs complete implementation, written focused tests, relevant static
-checks and parent review. CI-dependent acceptance needs **required core Checks
-passing at the exact published candidate SHA**, including shared foundations
-across goals. Dev Checks supplies focused diagnosis and interim evidence. A
-narrow diagnostic pass cannot award a checkbox. To close an authorized checkpoint,
-automatically push the locally checked/reviewed candidate to `develop` as needed
-for required CI, including repairs and the final documentation receipt; no separate
-push approval is needed. Interim local commits alone do not authorize unrelated
-pushes. Preserve all CI gates and the major-checkpoint pause below.
-This does not authorize another package, release or deployment. Checkpoint routes:
+**Authorized checkpoints include develop pushes needed to finish CI**, including
+repairs and the documentation receipt; do not ask again. This grants no unrelated
+pushes, later package, release or deployment. Local commits alone add no authority.
 
-| Situation | Required route |
-| --- | --- |
-| Interim locally provable work within the active package | Focused local tests/statics → parent review → commit → continue the same package without push or pause. |
-| Needed proof unavailable locally | Available focused checks/review → commit and authorized push → complete affected Quick groups → final exact core Checks pass → accept/update records and pause at the package checkpoint. |
-| User-requested pause after substantial subgoal work | Finish subgoal → focused checks/review → commit/push through the authorized pause checkpoint → applicable Quick groups → final exact core Checks pass → checklist/README/handoff and pause. |
-| Complete main-goal marker | All subgoals → accumulated audit → full local suite → push → exact full CI → acceptance/README/handoff and pause. |
+- **Interim:** focused local tests/statics → review → commit → continue the same
+  package without push/pause when all needed proof is local.
+- **Platform proof or substantial early pause:** runnable local gates/review →
+  commit/push → affected Dev groups → exact complete core Checks → justified
+  acceptance/README/records → pause at the agreed block checkpoint.
+- **Main-goal 100%:** all subgoals → accumulated audit → full local suite → push →
+  exact complete core CI → accepted boxes/main tick/README/handoff → pause.
 
-**Full local suites run only when a main goal reaches 100%.** Subgoals,
-shared-foundation batches and early pauses use complete focused local gates;
-**full core CI runs last, at the checkpoint**, after implementation/review and
-all applicable focused groups pass. Use local checks for locally executable proof
-and focused Quick first for required Linux/BusyBox proof unavailable locally;
-local skips stay pending until CI proves them. Do not force artificial local
-passes or duplicate remote diagnosis for adequate local-only proof. During
-development/repairs use focused checks. Core still triggers automatically on code/
-test/tooling/Actions pushes and PRs: cancel premature owned core runs while Quick
-diagnosis is pending, then run the complete gate at the final candidate. Cancelled
-runs provide no acceptance. Preserve workflow triggers and publication permissions.
-Lint Checks and Diagnostics Checks are separate manual workflows, optional for acceptance.
-Their failures stay visible; a demonstrated serious product failure still needs
-assessment regardless of the workflow that exposed it. During
-repair, use the smallest relevant test selection; once failures are fixed, rerun
-all tests in every affected group at the final SHA. Record scope, results and group
-timings in handoff so later main-goal cost can be estimated. Required core plan
-edges and applicable static checks remain mandatory; do not narrow away failures.
+**Full local suites run only at main-goal 100%; full core CI runs last at the
+checkpoint.** Use adequate local proof and focused Dev for unavailable Linux/BusyBox
+proof; local skips stay pending. Do not fabricate local passes or duplicate remote
+diagnosis for adequate local proof. Cancel premature owned automatic core runs
+while Dev diagnosis is pending, preserving triggers; run the complete final gate
+after implementation/review/focused groups pass. Repair with the smallest selection,
+then rerun every affected complete group at the final SHA. Retain core edges/statics;
+record scope, results and timings in handoff.
 
-Dev Checks accepts one to eight validated pytest nodes or whole test modules
-(never mixed) through manual dispatch. Commit trailers no longer trigger Quick.
-Prefer whole modules for complete focused gates; split larger shared scopes into multiple
-runs at the same SHA and require every group to pass. Module groups exclude
-optional diagnostics; explicit nodes can target them. Parent maps all affected
-subgoals/consumers/foundations before selecting the gate. Small node selections
-remain diagnosis unless they demonstrably cover the complete required scope.
+Dev accepts **one to eight validated pytest nodes or whole modules, never mixed**,
+by manual dispatch. Prefer modules for complete gates; modules exclude optional
+diagnostics, explicit nodes may target them. Larger diagnostic scopes use multiple
+same-SHA runs, all required. First map affected IDs/consumers/foundations; small node
+sets remain diagnosis unless they cover the entire required scope. Invalid/ambiguous
+selections fail. Commit trailers and `CFMgr-Focused-Tests:` are unsupported. Dev
+runs have independent concurrency groups; their full-host baseline is diagnostic,
+not a routine gate. Checks supports manual dispatch; new same-ref/PR runs cancel
+superseded core runs. Skipped/cancelled/incomplete proof never passes.
 
-Manual Quick runs have separate concurrency groups. They diagnose focused core
-groups, large core failures and selected optional tests. Its full-host baseline
-is an explicit diagnostic facility, not a routine subgoal gate. Core Checks
-keeps manual dispatch as well as automatic code/test/tooling/Actions triggers;
-new same-ref/PR runs cancel superseded core runs. Invalid/ambiguous selections
-fail; cancelled/skipped required proof supplies no acceptance. The retired
-`CFMgr-Focused-Tests:` selector
-is not a supported gate.
+After a runtime checkpoint push, wait for prescribed exact CI before further
+implementation. Failures require repair, focused tests, commit/re-push and another
+wait; verify remote state and accepted SHAs. Reuse valid exact-candidate evidence.
+Documentation receipts use proportionate checks and name the tested code SHA,
+without claiming their receipt SHA was runtime-tested. Blockers remain unchecked
+and reported; no unearned README progress.
 
-Main-goal checkpoint:
-
-1. Implement all required subgoals; pass runnable focused local tests and list
-   platform-only proof pending CI.
-2. Audit accumulated codebase/scope/test cost/docs (below).
-3. Pass applicable full local suite, then push candidate.
-4. Pass full required CI at that exact commit; close CI-dependent boxes and award
-   the main tick. Reuse applicable exact-candidate evidence; do not rerun needlessly.
-5. Update/push README completion, refresh handoff for a new session and pause.
-   Record exact evidence, both progress counts and remaining work; wait for user
-   permission before reviewing or suggesting the next block.
-
-After any authorized runtime checkpoint push, wait for its exact prescribed CI
-before more implementation. On failure, repair, focused-test, commit/re-push and
-wait again; verify remote state and record accepted SHAs. Documentation receipts
-may follow within the same checkpoint with proportionate checks, naming the tested
-code SHA and not implying the receipt SHA was runtime-tested. Never award an
-unearned tick or README completion. A genuine checkpoint blocker stays unchecked
-and is reported. **Pause and end the turn after each agreed major checkpoint:**
-finish the approved block of tasks/subgoals, its required gates and records, and
-leave no required job/worker active. Then wait for explicit user permission before
-reviewing, selecting or suggesting the next block. A block may contain several
-subgoals and need not complete a whole main goal. Interim commits, diagnostics
-and repairs within that block continue without a pause or repeat push approval.
+**End the turn after each agreed major checkpoint**, with its tasks, gates and
+records finished and no required worker/job active. Report exact evidence, both
+progress totals and remaining work. Wait for user permission before reviewing,
+selecting or suggesting the next block. A block may span several subgoals without
+completing a main goal; interim commits/diagnostics/repairs need no pause or repeat
+push approval. After a main-goal checkpoint, do not start another main goal in that
+session.
 
 ## Main-goal audit
 
-Before each main-goal full local gate/push, audit accumulated active code, not
-just the latest diff:
+Before a main-goal full local gate/push, audit accumulated active code, not just
+the diff. Map entries, libraries/modules, workers/hooks, tests/fixtures, tools and
+CI to requirements/consumers; check ownership, reuse, duplicate setup/work, unused
+wrappers and abandoned paths. Preserve intentional differences and distinct safety/
+platform proof; similar names alone do not justify merging. Repair unjustified
+duplication/drift within scope; substantial rework needs approval.
 
-- Map entries, modules/libraries, workers/hooks, tests/fixtures, tools and CI to
-  requirements/consumers; check ownership, reuse, duplicate work/setup, unused
-  wrappers and abandoned paths.
-- Preserve intentional differences and distinct safety/platform proof. Similar
-  names alone do not prove duplication. Do not force unrelated work into one
-  abstraction. Repair unjustified duplication/drift within approved scope;
-  substantial rework needs prior approval.
-- Verify runtime, assertions, docs, acceptance and completion against the spec
-  and user decisions. Review retained docs and test cost. Record findings/fixes
-  in the audit record, significant deferrals in review notes, current actions in
-  handoff and accepted audit revision in checklist.
-
-Use already-required gates, not a second full run. No audit, no checkbox.
-Immediately report drift, its impact and correction; resolve and revalidate before
-advancing. Never rewrite scope to legitimize drift or mark a newly gated decision
-accepted without approval.
+Verify runtime/assertions/docs/acceptance and test cost against spec/user decisions.
+Record findings/fixes in audit, significant deferrals in review notes, actions in
+handoff and accepted audit revision in checklist. Use existing required gates,
+not another full run. **No audit, no checkbox.** Report drift/impact immediately,
+repair/revalidate before advancing; never rewrite requirements to legitimize drift
+or imply approval of a new gated decision.
 
 ## CI requirements
 
-Use the **Dev Checks** and **Checks** routes above, including planning
-consistency and tests for changed code, tools, workflows, commands and
-dependencies. Optional diagnostic stress remains excluded and is never claimed
-passed. Later release-branch scope needs review.
+Apply Dev/core gates, including planning consistency, to changed code, tools,
+workflows, commands and dependencies. Checks runs automatically on code/test/tool/
+Actions pushes to `develop` and PRs targeting `develop`, plus manually. Docs-only
+Markdown, docs/ assets and images never trigger CI; mixed code/docs do. Release-
+branch triggers need review.
 
-Checks orchestrates the independently runnable Backup Checks, Manager Checks and
-Status Checks workflows, expanding with main modules. Use a common planning/static
-preflight, bounded concurrent Ubuntu module jobs with full assigned host and cached
-native-host vendor BusyBox proof, and one required aggregate result. Dev Checks
-provides small focused selections and temporary split diagnosis; Dev Checks, Tools
-Checks, Lint Checks and Diagnostics Checks remain optional, manual-only workflows.
-Documentation-only changes, including docs/ assets, never trigger these workflows. Keep host/native execution serial inside each isolated
-group job; separate jobs prevent process fixtures from observing another group's
-logger. This is representative development
-proof, not a fake Merlin install. QEMU/kernel/ARM/firmware matrices are optional,
-never mandatory per push/subgoal/main goal. Preserve optional diagnostics,
-fixtures and caches without counting unfinished/cancelled work as passed. Real
-router/provider beta follows implementation; state evidence limits without
-weakening safety contracts or gates. Adapt CI as approved tests grow, keeping
-coverage and modest resource use; this permission changes no goals, acceptance,
-agent rules or publication gates.
+Checks calls independently runnable **Backup Checks, Manager Checks and Status
+Checks**, expanding with main modules. Common planning/statics and both syntax
+gates precede complete assigned host/native proof and a strict aggregate. Each
+module has isolated host/BusyBox jobs, both required, fail-fast off, maximum two
+concurrent (six product VMs today). Measure module elapsed time including setup;
+scheduling does not replace cost optimization. Isolation prevents real-process
+fixture collisions. Reuse verified cached native-host vendor BusyBox: representative
+Ubuntu proof, never router qualification or a fake Merlin install.
 
-Apply the CI skill's failure capture and redundant-run cancellation to shared CI
-repair, including explicitly run optional kernel diagnostics. Multiple kernel
-profiles are only for profile-specific investigation. Exact-SHA acceptance still
-requires the complete applicable gate above.
+**Dev Checks**, **Tools Checks**, **Lint Checks** and **Diagnostics Checks** stay
+optional/manual only. Dev supplies focused/temporary diagnosis; Tools covers
+nonproduct developer behavior. Optional stress remains outside core and is never
+claimed passed. Preserve fixtures/caches. QEMU/kernel/ARM/firmware matrices are
+optional, not routine gates. Use CI failure capture/redundant-run cancellation even
+for requested kernel diagnostics; multiple kernel profiles need a specific reason.
+Adapt CI with approved growth and modest resources, without changing goals,
+acceptance, agent rules or release/deployment authority.
 
 ## Delegation and integration
 
-Concurrent independent work is authorized. Apply `zr0-parallel-execution` for
-exclusive ownership, briefs, dependency ordering and parent integration; use the
-active profile's routing and planner policy. Normally use
-at most two implementation packages; a third needs settled interfaces and easy
-integration. Finish the active set before its combined checkpoint. Record owners
-and integration gates in the existing handoff. Workers cannot award ticks,
-expand scope, discard work, publish or advance themselves to another package.
+Concurrent independent work is authorized; use `zr0-parallel-execution`, active
+routing and planner policy. Give exclusive ownership and dependency/integration
+gates in the existing handoff. Normally allow at most two implementation packages;
+a third needs settled interfaces/easy integration. Finish the active set before its
+combined checkpoint. Workers cannot award ticks, expand scope, discard work,
+publish or advance to another package. Only the parent edits the five V2 records.
 
 ## Documentation
 
-Apply `zr0-github-documentation` to repository Markdown, including AGENTS and
-plans. Workers may edit guides, never the five planning/audit files.
+Use `zr0-github-documentation`. Workers may edit guides, never V2 records. README
+includes a concise warning, all 16 goals/subgoal scope/guide links, and distinguishes
+intended/available behavior. Progress shows accepted counts (`2/9 accepted`) or
+planned/completed only, updated after acceptance. Omit WIP/diagnostics/pending gates
+and implementation notes. CI cannot credit incomplete work; main ticks need audit,
+local/CI proof and parent review. WebUI is optional future work outside percentages.
 
-README is the implementation overview: concise warning, all 16 goals and their
-subgoals/scope/guide links; separate intended from available behavior. Progress
-cells show accepted subgoals/total (for example `2/9 accepted`) or planned/
-completed only. Update after acceptance; omit partial focus, diagnostics, pending
-gates and implementation notes. Full CI cannot increase counts for incomplete
-subgoals. Mark a main goal complete only after its audit/local/CI checkpoint and
-parent review. WebUI is optional future work outside scope and percentage.
-
-Keep `docs/development.md` short during implementation: required tools, setup
-and built-in checks only. Do not add progress, receipts, investigations, fixture
-internals, CI/publication procedures or session decisions. Update existing setup/
-commands only for usability. Detailed practical guides are due near final 100%
-readiness, before beta readiness. Keep `docs/compatibility.md` similarly compact:
-router/Merlin targets and verified-support limits, with detailed audit evidence elsewhere.
-No checkpoint/test/commit diary or stale filler
-in operating guides. Docs consistency proves neither behavior nor safety.
+During development keep `docs/development.md` to tools/setup/built-in checks and
+existing-command usability: no diary, progress, receipts, investigations, fixture
+internals, CI/publication procedures or session decisions. Keep compatibility docs
+to router/Merlin targets and proved support limits; audit details belong elsewhere.
+Practical guides are due near 100%, before beta readiness. Docs prove no runtime or
+safety behavior.
 
 ## Runtime and evidence boundaries
 
-Follow v2 contracts: BusyBox-compatible POSIX sh; CLI only; no router Python/
-venv. Features live in `modules/`, shared libraries/parsers in `modules/lib/`,
-workers/updaters/bootstrap in `modules/helpers/`, thin hooks/templates in
-`modules/hooks/`. Use explicit small imports/interfaces; no arbitrary loading
-or source-time execution. Reorganize with all callers, manifests, tests and docs.
+Runtime is BusyBox-compatible POSIX sh, CLI only, with no router Python/venv.
+Features live in `modules/`, shared libraries/parsers in `modules/lib/`, workers/
+updaters/bootstrap in `modules/helpers/`, thin hooks/templates in `modules/hooks/`.
+Keep imports explicit, with no arbitrary loading or source-time execution. Update
+all callers, manifests, tests and docs when reorganizing.
 
-Keep root `cfmgr.sh`/`catalog.txt`; install entry `/jffs/scripts/cfmgr.sh`,
-support under `/jffs/addons/CFMgr.d/`. Generate private extensionless config
-from code defaults only after retained setup checks; ship no public config/template.
-Preserve verified complete generations/settings. Section 7's trusted entry gives
-one repository/branch default for install/update; overrides require developer
-mode. Derive module URLs from that source and one commit pin; replace catalog
-with verified package. Use installed opkg for missing/unusable mapped tools,
-preserving healthy ones; upgrades remain user-managed. Selected force reinstall
-is separate from Cloudflared maintenance.
+Keep root `cfmgr.sh`/`catalog.txt`; install entry `/jffs/scripts/cfmgr.sh`, support
+under `/jffs/addons/CFMgr.d/`. Generate private extensionless config from defaults
+only after retained setup checks; ship no public config/template. Preserve complete
+verified generations/settings. Section 7's trusted entry supplies one repo/branch
+default; overrides require developer mode. Derive module URLs from that source and
+one commit pin; replace catalog with verified package. Installed opkg repairs mapped
+missing/unusable tools, preserving healthy ones; upgrades are user-managed. Selected
+force reinstall is separate from Cloudflared maintenance.
 
-Primary read-only reference: original `cloudflared/setup/` located via ignored
-`.tmp/reference-paths.md`; router captures are supplemental. Keep personal paths,
-live config/credentials and raw private evidence out of Git. Before affected
-Merlin storage/hooks/scheduling/install/removal design and milestone reviews,
-consult official [Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
+Primary read-only reference is original `cloudflared/setup/`, located via ignored
+`.tmp/reference-paths.md`; router captures are supplemental. Keep private paths,
+config/credentials and raw evidence out of Git. Before affected Merlin storage,
+hooks, scheduling, install/removal design or milestone review, consult official
+[Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
 [User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts),
 [Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
-and relevant feature guidance. Match exact firmware capabilities; current wiki
-examples do not prove older targets. Add-ons are supplemental. Record accepted
-design in plan and evidence limits in checklist/handoff.
+and feature guidance. Verify exact firmware capabilities; current examples do not
+prove older targets. Add-ons are supplemental. Put approved design in plan and
+evidence limits in checklist/handoff.
 
-Reuse `.tmp/firmware-audit/INDEX.md` only after verifying revision, hashes/cache
-and scope. Never commit or execute/flash firmware, extracted/raw audit or provenance.
-Keep source/image, host/BusyBox CI and live evidence distinct. Completion does not
-authorize deleting retained evidence.
+Verify revision, hashes/cache and scope before reusing `.tmp/firmware-audit/INDEX.md`.
+Never commit or execute/flash firmware, extracted/raw audit or provenance. Keep
+source/image, host/BusyBox and live evidence distinct; completion authorizes no
+evidence deletion.
 
 ## Router permissions
 
@@ -441,22 +345,16 @@ authorize deleting retained evidence.
 
 ## Pause and handoff
 
-An explicit earlier pause request overrides the current checkpoint boundary. Start no
-unrelated package; choose the last acceptable checkpoint based on progress:
+Earlier explicit pauses override the checkpoint boundary; start no unrelated work.
+For a barely started attempt, the user permits reverting only that owned subgoal
+to HEAD after diff/ownership inspection and verified preservation, never unrelated
+work/data. At substantial progress (about halfway or beyond), finish the subgoal,
+focused gates/review, repairs and authorized push/exact CI checkpoint; do not leave
+required CI failed/pending except a reported genuine blocker. Full local still
+requires main-goal completion. **Immediate stop overrides this:** stop at once and
+preserve truthful WIP.
 
-- **Barely started:** user permits discarding that small owned subgoal attempt to
-  HEAD. Inspect ownership/diff and preserve under the rules above; reset only
-  that attempt, never unrelated work or unverified data.
-- **Substantial progress (about halfway or near completion):** finish the subgoal,
-  pass focused tests/static checks and review, fix failures, commit/push through the authorized
-  pause checkpoint and wait for exact required CI. Do not pause with failed or
-  pending required core CI. Full local suites remain for a complete main-goal
-  marker; documentation-only receipts do not trigger CI.
-- **Immediate stop:** stop at once and preserve truthful partial state.
-
-Then update justified checklist/README and refresh handoff for new session or
-same-session resumption using the continuity skill's state/evidence inventory.
-Publish any documentation receipt with proportionate checks and tested code SHA.
-Leave no required worker/job active.
-Never tick partial work. If a real blocker prevents the agreed checkpoint,
-preserve it unchecked and report it; resume only as instructed.
+Update justified checklist/README and continuity handoff for same/new-session
+restart. Publish documentation receipts with proportionate checks/tested code SHA;
+docs-only changes trigger no CI. Leave no required worker/job active. Never tick
+partial work; preserve/report genuine blockers unchecked and wait for instructions.

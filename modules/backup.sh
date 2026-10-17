@@ -1353,25 +1353,29 @@ cfmgr_archive_format_verify() {
 cfmgr_archive_uint() {
 	# Canonical decimals only; leave room for rounding a byte cap to512 blocks.
 	# Refuse unsupported shell arithmetic instead of overflowing a copy length.
-	[ "$#" -eq 1 ] && [ "${#1}" -le 19 ] || return 1
+	case $# in 1) ;; *) return 1 ;; esac
+	case ${#1} in [0-9] | 1[0-9]) ;; *) return 1 ;; esac
 	case $1 in '' | *[!0-9]* | 0?*) return 1 ;; esac
-	[ "$((2147483647 + 1))" = 2147483648 ] && [ "$1" -le 9223372036854775296 ]
+	case $((2147483647 + 1)) in 2147483648) ;; *) return 1 ;; esac
+	[ "$1" -le 9223372036854775296 ]
 }
 
 cfmgr_archive_attachment_ok() {
 	cfmgr_store_attachment_ok && cfmgr_backup_attached || return 1
-	[ "${cfmgr_backup_folder_pinned:-0}" = 1 ] || return 1
-	if [ -n "${cfmgr_archive_stage:-}" ]; then
+	case ${cfmgr_backup_folder_pinned:-0} in 1) ;; *) return 1 ;; esac
+	case ${cfmgr_archive_stage:-} in '') ;; *)
 		case ${cfmgr_archive_stage_leaf:-} in '' | . | .. | *[!A-Za-z0-9_.-]*) return 1 ;; esac
-		[ "$cfmgr_archive_stage" = "$cfmgr_backup_mount/CFBackup/$cfmgr_archive_stage_leaf" ] || return 1
+		case $cfmgr_archive_stage in "$cfmgr_backup_mount/CFBackup/$cfmgr_archive_stage_leaf") ;; *) return 1 ;; esac
 		[ -d "$cfmgr_archive_stage" ] && [ ! -L "$cfmgr_archive_stage" ] || return 1
 		# shellcheck disable=SC3013
 		[ "$cfmgr_archive_stage" -ef "/proc/self/fd/7/$cfmgr_archive_stage_leaf" ] || return 1
-	fi
-	if [ -n "${cfmgr_archive_append_path:-}" ]; then
+		;;
+	esac
+	case ${cfmgr_archive_append_path:-} in '') ;; *)
 		[ -f "$cfmgr_archive_append_path" ] && [ ! -L "$cfmgr_archive_append_path" ] || return 1
-	fi
-	[ "${cfmgr_archive_source_pinned:-0}" != 1 ] || cfmgr_archive_source_attached
+		;;
+	esac
+	case ${cfmgr_archive_source_pinned:-0} in 1) cfmgr_archive_source_attached ;; *) return 0 ;; esac
 }
 
 cfmgr_archive_input() {
@@ -1428,11 +1432,13 @@ cfmgr_archive_run() {
 		"$cfmgr_store_sleep" "$cfmgr_store_wc" "$cfmgr_archive_run_tool" "$@"; then
 		cfmgr_archive_run_code=0
 	else cfmgr_archive_run_code=$?; fi
-	if [ "${cfmgr_archive_format_tracking:-0}" = 1 ] && [ "${cfmgr_probe_status:-}" = reaped ]; then
-		cfmgr_archive_format_track_receipts || return 1
-	fi
-	[ "$cfmgr_archive_run_code" = 0 ] || return "$cfmgr_archive_run_code"
-	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]
+	case ${cfmgr_archive_format_tracking:-0} in 1)
+		case ${cfmgr_probe_status:-} in reaped) cfmgr_archive_format_track_receipts || return 1 ;; esac
+		;;
+	esac
+	case $cfmgr_archive_run_code in 0) ;; *) return "$cfmgr_archive_run_code" ;; esac
+	case $cfmgr_probe_exit in 0) ;; *) return 1 ;; esac
+	[ ! -s "$cfmgr_probe_stderr" ]
 }
 
 cfmgr_archive_inode() {
@@ -1452,14 +1458,16 @@ cfmgr_archive_identity_check() {
 	cfmgr_archive_identity_out=${cfmgr_probe_stdout:-} cfmgr_archive_identity_err=${cfmgr_probe_stderr:-}
 	cfmgr_archive_identity_exit=${cfmgr_probe_exit:-}
 	cfmgr_archive_attachment_ok || return 1
-	if [ -n "${cfmgr_archive_stage:-}" ]; then
+	case ${cfmgr_archive_stage:-} in '') ;; *)
 		cfmgr_archive_inode "/proc/self/fd/7/$cfmgr_archive_stage_leaf" || return $?
-		[ "$cfmgr_archive_inode" = "${cfmgr_archive_stage_inode:-}" ] || return 1
-	fi
-	if [ -n "${cfmgr_archive_append_path:-}" ]; then
+		case $cfmgr_archive_inode in "${cfmgr_archive_stage_inode:-}") ;; *) return 1 ;; esac
+		;;
+	esac
+	case ${cfmgr_archive_append_path:-} in '') ;; *)
 		cfmgr_archive_inode "$cfmgr_archive_append_path" || return $?
-		[ "$cfmgr_archive_inode" = "$cfmgr_archive_append_inode" ] || return 1
-	fi
+		case $cfmgr_archive_inode in "$cfmgr_archive_append_inode") ;; *) return 1 ;; esac
+		;;
+	esac
 	cfmgr_probe_stdout=$cfmgr_archive_identity_out cfmgr_probe_stderr=$cfmgr_archive_identity_err
 	cfmgr_probe_exit=$cfmgr_archive_identity_exit
 }
