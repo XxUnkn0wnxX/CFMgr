@@ -50,7 +50,29 @@ Interim commits, diagnostics and repairs inside the current block continue witho
 repeat push approval. This supersedes older every-single-subgoal pause wording;
 the current block remains S14.01 and S14.04–S14.08 plus consolidation proof.
 
-Current published diagnostic candidate: `581bacda9705b801048b47427db4ef48660a0111`.
+Current published diagnostic candidate: `f66c692d179f706b651d3b2ceef2b4ae0712aa0d`.
+Configuration Quick `39018955173` passed **177 tests in 126.52s** (126.69s
+wall, 50.95 user / 67.11 system), including actual native borrowed-lock history
+Save (11.91s). Integrated creation `39018613818` now publishes and completes
+retention, but history Save fails: positive journey 213.50s, total 214.07s
+(214.29s wall, 57.38 user / 123.70 system). A bounded test-only scalar frame
+now preserves Save's result and descriptor/probe state before cleanup overwrites
+it. Runtime cause remains unproven; the checkpoint remains open.
+
+History `39018837732` passed 77 cases in 40.30s before its direct background JSON
+child exited early. The consolidated owners are now preserved; the remaining
+fixture issue is noninteractive ash replacing background stdin with `/dev/null`.
+Explicit `0<&0` retains the launching lock for the helper's FD9 transfer, matching
+the production supervisor's explicit inheritance. Narrow native proof is next.
+Verifier structure `39019087209` failed its first positive case at 59.63s;
+the verifier-fixture worker owns only `tests/test_archive_verify.py` to inspect
+that failure. Parent owns other edits. Automatic core `39018836326` was cancelled.
+No CI remains active at this repair point. The measured create plus transaction
+cost justifies separate complete groups; the private matrix now has 15 groups
+with unchanged coverage. Full core remains the final exact-candidate gate.
+
+Earlier focused evidence and repairs follow; superseded pending statements below
+are historical and do not override the current state above.
 The complete shared execution group is green: Quick `39017718100`, **164 passed,
 one platform skip**, 35.99s pytest / 36.15s wall, 18.36 user / 12.34 system.
 History diagnostic `39017527850` at `483e6d8` isolated `history-proc-list`:

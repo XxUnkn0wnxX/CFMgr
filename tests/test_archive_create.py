@@ -289,6 +289,17 @@ def create_failure_summary(creation):
     end = rf"end {mode} [0-9]{{1,3}} (?:invalid|reaped|unresolved|-) {number} (?:arguments|attachment|clock|deadline|lock-inheritance|native-supervisor|-)"
     if probe != "missing" and not re.fullmatch(rf"(?:{begin}|{end})", probe):
         probe = "invalid"
+    save = tail("create-save", 512)
+    save = save[-1] if save else "missing"
+    scalar = r"(?:[a-z][a-z0-9-]{0,31}|-)"
+    flag = r"[01-]"
+    save_frame = (
+        rf"save rc={number} status={scalar} result={scalar} pending={flag} "
+        rf"config_lock={flag} archive_lock={flag} guard={flag} fd3=[01] fd4=[01] "
+        rf"mode=(?:{mode}|-) exit={number} reason={scalar} now={number} deadline={number}"
+    )
+    if save != "missing" and not re.fullmatch(save_frame, save):
+        save = "invalid"
     flags = {
         "context": (ram / "context").is_dir(),
         "lock": (ram / "lock").is_file(),
@@ -297,7 +308,7 @@ def create_failure_summary(creation):
         "save": (support / ".config-save").is_dir(),
         "retired": (support / ".config-save.retired").is_dir(),
     }
-    return f"phase={phase}; probe={probe}; routes_tail={routes}; flags={flags}"
+    return f"phase={phase}; probe={probe}; save={save}; routes_tail={routes}; flags={flags}"
 
 
 def create_run(creation, shell):
@@ -340,6 +351,19 @@ cfmgr_archive_existing() {
     printf '%s %s\n' "$1" "$cfmgr_create_existing_status" >>"$ram/recognized"
     return "$result"
 }
+# Preserve the real Save result before action cleanup changes its diagnostics.
+cfmgr_store_archive_save() {
+    if cfmgr_test_store_archive_save "$@"; then cfmgr_test_save_code=0; else cfmgr_test_save_code=$?; fi
+    cfmgr_test_save_fd3=0 cfmgr_test_save_fd4=0
+    if (: <&3) 2>/dev/null; then cfmgr_test_save_fd3=1; fi
+    if (: <&4) 2>/dev/null; then cfmgr_test_save_fd4=1; fi
+    printf 'save rc=%s status=%s result=%s pending=%s config_lock=%s archive_lock=%s guard=%s fd3=%s fd4=%s mode=%s exit=%s reason=%s now=%s deadline=%s\n' \
+        "$cfmgr_test_save_code" "${cfmgr_probe_status:--}" "${cfmgr_store_result:--}" "${cfmgr_store_pending:--}" \
+        "${cfmgr_config_lock_fd0:--}" "${cfmgr_store_archive_lock_held:--}" "${cfmgr_store_guard_owned:--}" \
+        "$cfmgr_test_save_fd3" "$cfmgr_test_save_fd4" "${cfmgr_probe_mode:--}" "${cfmgr_probe_exit:--}" \
+        "${cfmgr_probe_reason:--}" "${cfmgr_probe_now:--}" "${cfmgr_store_deadline:--}" >"$ram/create-save"
+    return "$cfmgr_test_save_code"
+}
 cfmgr_archive_action create
 """
     )
@@ -349,6 +373,14 @@ cfmgr_archive_action create
     source.write_text(
         source.read_text().replace(
             "cfmgr_archive_existing() {", "cfmgr_test_existing() {", 1
+        )
+    )
+    source = support / "modules/lib/config.sh"
+    body = source.read_text()
+    assert body.count("cfmgr_store_archive_save() {") == 1
+    source.write_text(
+        body.replace(
+            "cfmgr_store_archive_save() {", "cfmgr_test_store_archive_save() {", 1
         )
     )
     # Linux fixture tools verify inherited lock identity even during the initial
@@ -398,7 +430,7 @@ def test_manual_create_real_store_capture_verify_publish_and_history(creation, s
     fields = result.stdout.decode().split()
     assert fields[:4] == ["CFMGR-ARCHIVE-ACTION", "1", "created", "1"]
     assert fields[4:8] == ["0", "YMD", "4", "1"]
-    assert fields[-3:] == ["complete", "saved", "END"]
+    assert fields[-3:] == ["complete", "saved", "END"], create_failure_summary(creation)
     name = bytes.fromhex(fields[8]).decode()
     assert (ram / "recognized").read_text() == f"{prior.name} verified\n"
     assert prior.exists()

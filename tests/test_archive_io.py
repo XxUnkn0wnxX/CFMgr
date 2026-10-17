@@ -578,7 +578,9 @@ def test_json_child_retains_lock9_across_stdin_redirect(archive, shell):
 cfmgr_archive_run archive-payload-json 4096 "$TEST_AWK" "$support/modules/lib" certificate-json "$ram/json" 12 a || exit $?
 # Now prove9 alone retains exclusion after the launching parent releases0.
 : >"$ram/prove-json-lock"
-(exec "$TEST_SH" "$support/modules/helpers/worker.sh" archive-payload-json "$TEST_AWK" "$ram" "$support/modules/lib" certificate-json "$ram/json" 12 a) >"$ram/json.out" 2>"$ram/json.err" &
+# Explicit stdin inheritance prevents noninteractive ash giving the background
+# child /dev/null before the helper can retain the writer lock on9.
+(exec "$TEST_SH" "$support/modules/helpers/worker.sh" archive-payload-json "$TEST_AWK" "$ram" "$support/modules/lib" certificate-json "$ram/json" 12 a) 0<&0 >"$ram/json.out" 2>"$ram/json.err" &
 json_pid=$!
 remaining=40
 while [ ! -e "$ram/json-started" ] && [ "$remaining" -gt 0 ]; do
