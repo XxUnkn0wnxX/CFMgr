@@ -182,6 +182,7 @@ def test_cron_data_boundary_retains_exact_bytes_and_both_receipts(
     script = (
         HISTORY
         + r"""
+initial_files=$cfmgr_hr_live_files
 cfmgr_hr_native() { :; }
 cfmgr_hr_cron_boundary() {
     boundary_count=$((${boundary_count:-0}+1))
@@ -210,7 +211,7 @@ if cfmgr_hr_cron; then
     [ "$TEST_CRON_CHANGE" = stable ] || exit 82
     [ -f "$cfmgr_probe_stdout" ] && [ -f "$cfmgr_probe_stderr" ] && [ ! -s "$cfmgr_probe_stderr" ] || exit 83
     [ -n "$cfmgr_hr_cron_fingerprint" ] || exit 84
-    [ "$cfmgr_hr_live_files" = 3 ] || exit 85
+    [ "$cfmgr_hr_live_files" = "$((initial_files+2))" ] || exit 85
 else
     code=$?
     [ "$TEST_CRON_CHANGE" != stable ] || exit 86
@@ -220,6 +221,12 @@ fi
     )
     archive[-1]["TEST_CRON_CHANGE"] = change
     passed(run(archive, shell, script))
+    if change == "stable":
+        retained = {path.name for path in archive[1].iterdir()}
+        receipts = {name for name in retained if name.startswith("history-cron.")}
+        assert len(receipts) == 2
+        expected = {"cron-data", "lock"} if sys.platform == "linux" else {"cron-data"}
+        assert retained - receipts == expected
 
 
 @pytest.mark.parametrize(

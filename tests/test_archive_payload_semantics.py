@@ -313,10 +313,11 @@ printf 'verified=%s callbacks=%s\\n' "$cfmgr_archive_verified" "$cfmgr_payload_s
     # Exercise the complete positive journey under production create's 600s
     # deadline. The stripped vendor ash forks for test/printf; its previous
     # arbitrary 60s fixture budget expired after 281 supervised operations.
-    # A bounded outer guard still catches hangs; dedicated I/O cases retain
+    # The complete native case measured 79.45s; a 120s outer guard catches hangs.
+    # Dedicated I/O cases retain
     # the short deadline, cancellation and ownership/reaping assertions.
     result = run(
-        archive, shell, script, timeout=90 if sys.platform == "darwin" else 180
+        archive, shell, script, timeout=90 if sys.platform == "darwin" else 120
     )
     assert result.returncode == 0, (
         result.stdout.decode(),

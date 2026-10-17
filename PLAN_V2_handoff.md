@@ -114,6 +114,22 @@ journey and integrity cases remain unchanged. All five passed locally in 54.34s
 cases, extra-member rejection fell from 30.50s to 17.68s and truncated rejection
 from 30.59s to 18.54s. Do not infer a whole-group percentage from those two cases.
 
+Quick `39016481033` at `e720514` passed both the real backup-folder mount case
+(1.63s) and complete five-member semantic verifier (79.45s): 2 passes, 81.33s
+pytest / 81.57s wall, 32.02 user / 32.06 system. The semantic test's temporary
+180s outer diagnostic guard is now 120s, supported by that successful native
+measurement; production's 600s internal deadline and separate short safety tests
+remain intact. This is complete selected behavior, not full-group acceptance.
+
+History Quick `39016495309` passed six cases then found a fixture-only accounting
+assertion that ignored Linux's real `ram/lock` file. The stable cron case now
+checks baseline plus the retained receipt pair and independently enumerates the
+exact remaining files, including that lock only on Linux. All four local cron
+variants passed in 4.42s (5.74s wall, 2.66 user / 1.97 system), with Ruff/format.
+No production accounting or lock behavior changed. Required native history and
+other complete affected Quick groups remain outstanding. Automatic core
+`39016480189` was cancelled while these diagnoses were pending.
+
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
 be one module, config one module, and networking/DDNS similarly grouped by real
