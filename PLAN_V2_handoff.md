@@ -157,10 +157,14 @@ required shell syntax/format/runtime gates remain unchanged. The separate
 [review note](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies)
 records this limitation; no runner/workflow defaults were changed.
 
-The existing `develop` checkout now contains local WIP commit
-`4998562f9d9e1dc6e8ca5ae2195e1891a1cb488f` (consolidated categories plus preserved
-archive foundations), based on published `591112d`. It awards no product credit.
-Subsequent integration and handoff edits remain local. No push, CI
+The complete local implementation candidate is
+`c5b6b5565ad5c9e5132b16090359430ede4cf853` on `develop`, after structural WIP
+`4998562f9d9e1dc6e8ca5ae2195e1891a1cb488f`, based on published `591112d`.
+The candidate includes the corrected complete manifest; do not publish the earlier
+structural WIP alone. All focused evidence above covers this candidate's runtime,
+with exact dirty-base commands and immutable runtime hashes in the private
+receipts. A documentation-only receipt follows to record this exact SHA; it changes
+no runtime/test bytes and earns no additional acceptance. No push, CI
 dispatch, router mutation, dependency installation or native product build has run.
 Existing focused storage tests compiled their small host errno fixtures in owned
 pytest temporary directories; this is not a BusyBox/kernel/router build.

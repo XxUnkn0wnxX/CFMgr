@@ -615,7 +615,8 @@ manual archive creation still requires its own acceptance gate; browse/restore
 and live firmware/filesystem qualification remain unfinished.
 
 Manual-create local evidence for S14.01 and S14.04–S14.08 is complete on the
-consolidated candidate, before required Linux/vendor BusyBox and exact core CI.
+consolidated candidate `c5b6b5565ad5c9e5132b16090359430ede4cf853`, before required
+Linux/vendor BusyBox and exact core CI.
 Final status remains unchecked; this adds no accepted product credit.
 
 | Scope | Focused local evidence | Outstanding acceptance gate |
