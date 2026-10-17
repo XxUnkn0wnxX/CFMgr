@@ -250,6 +250,31 @@ Focused local runner/common statics passed 42 cases with 15 explicit Linux skips
 in 6.66s. Fixture compatibility uses `unset -f` and builtin wait, preserving the
 vendor shell's disabled command builtin. Native proof remains required.
 
+At `5992a36`, native supervision passed 184 cases / one workstation-only skip in
+45.57s; history/I/O passed 105 in 46.46s. Verifier structure passed 16 in 59.79s
+(42.20s CPU). Its positive profile was only 30.65s versus 31.59s: 279 probes,
+256 pauses and 1,093 observations, compared with 279 pauses / 837 observations.
+Creation, payload and populated capture also passed. The immediate re-observation
+therefore provides too little budget margin and is superseded without claiming
+complete-module acceptance.
+
+The revised design uses one 10ms first pause, then the existing 50ms cadence;
+it removes the extra immediate observation. Only zero arguments or one literal
+`first` are accepted by the pause helper. The first flag resets for every run,
+consumes only after successful guards, and never shortens failure/termination
+waits. Unknown ownership and pause failure remain unresolved; final observation,
+exact wait, timeout-child verification and completion attachment are unchanged.
+Independent planner **PASS WITH NOTES** and exact-delta review **PASS**. The code
+promises one short interval, not an unconditional cross-run observation-count
+bound. Native/host test adapters must honor that fixed selector so actual vendor
+`usleep` measurement reflects the implementation. Safety and cost proof remain
+pending; no requirements or acceptance gates are relaxed.
+Focused local runner/common statics passed 45 cases with 15 explicit Linux skips
+in 7.13s. Ten controlled loop scenarios plus the pause capability check exercise
+the fixed selector, first/later cadence, prior failures, failed first pause,
+unknown evidence retention, and initially absent/zombie children. Native timing
+remains necessary; no test uses elapsed-time assertions to manufacture a speedup.
+
 ## S14.06–S14.08 history runtime admission review
 
 Independent Astra review returned **PASS WITH NOTES** for narrowly admitting

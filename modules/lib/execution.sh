@@ -92,7 +92,11 @@ cfmgr_prerequisites_supervisor() {
 # Firmware sleep accepts whole seconds. The admitted native usleep applet keeps
 # supervision responsive without requiring FEATURE_FLOAT_SLEEP or Entware.
 cfmgr_prerequisites_pause() {
-	/bin/usleep 50000
+	case "$#:${1:-}" in
+	0:) /bin/usleep 50000 ;;
+	1:first) /bin/usleep 10000 ;;
+	*) return 2 ;;
+	esac
 }
 
 _cfmgr_prerequisites_attachment() {
@@ -319,7 +323,7 @@ cfmgr_prerequisites_run() {
 		return 3
 	fi
 	cfmgr_probe_reason=
-	cfmgr_probe_first_observation=1
+	cfmgr_probe_first_pause=1
 	while :; do
 		_cfmgr_prerequisites_observe || return 3
 		[ "$cfmgr_probe_observation" -eq 1 ] && break
@@ -355,17 +359,15 @@ cfmgr_prerequisites_run() {
 			break
 			;;
 		esac
-		case $cfmgr_probe_first_observation in
+		case $cfmgr_probe_first_pause in
 		1)
-			# A short child can finish during the guards above. Observe once before
-			# sleeping; a live child keeps the ordinary pause and later cadence.
-			cfmgr_probe_first_observation=0
-			_cfmgr_prerequisites_observe || return 3
-			[ "$cfmgr_probe_observation" -eq 1 ] && break
-			case $cfmgr_identity_state in Z) break ;; esac
+			# Give short children one early completion check; continuing work keeps
+			# the ordinary pause cadence. Failure/termination pauses stay unchanged.
+			cfmgr_probe_first_pause=0
+			cfmgr_prerequisites_pause first
 			;;
-		esac
-		cfmgr_prerequisites_pause || {
+		*) cfmgr_prerequisites_pause ;;
+		esac || {
 			cfmgr_probe_status=unresolved
 			return 3
 		}

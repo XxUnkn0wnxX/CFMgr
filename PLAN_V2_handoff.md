@@ -38,35 +38,41 @@ remains **15/157 (9.6%), 0/16 main goals (0%)**; the six current IDs remain pend
 
 ### Current repair after complete-module budget failure
 
-Final core **39030592757** at **`004d852c1383f3e7328132d0f0d94ae6a3234104`**
+Complete core **39030592757** at **`004d852c1383f3e7328132d0f0d94ae6a3234104`**
 is terminal cancelled: native Backup reached 98% with continuing passes before its
-ten-minute step limit. No assertion failure was reported. Backup host passed
-374/1 platform skip in 329.31s; Manager native passed 565/1 workstation skip in
-441.93s and the complete Manager module took 7m47s including setup. Status passed
-both platforms within 52s. Aggregate correctly failed. Acceptance remains unchanged.
-Private complete logs/metadata are `.tmp/archive-creation/ci-39030592757.{log,json}`.
+ten-minute limit. GitHub explicitly annotated the job timeout. No assertion failed.
+Manager completed both platforms in 7m47s including setup; Status in 52s. Backup
+host passed 374/1 platform skip in 329.31s. Aggregate correctly failed; acceptance
+remains unchanged. Private logs: `.tmp/archive-creation/ci-39030592757.{log,json}`.
 
-The independently audited contingency is now the active bounded cost repair:
-perform one extra exact-child ownership observation after successful first-loop
-attachment/clock/deadline guards, before the first 50ms pause. Only positive
-absence/zombie completion can break to the unchanged final observation/wait;
-uncertain ownership stays return 3. A live child keeps the existing pause and all
-later cadence. No signal, failure, deadline or post-reap attachment changes.
-Parent owns `modules/lib/execution.sh`, manifest and records; `module_consolidation`
-owns controlled supervisor regression tests in `tests/test_prerequisites.py`.
-`consolidation_review` reviews the delta read-only. Required proof: focused local
-supervision/deadline checks, existing positive profile with wall/CPU and pause
-counts, complete affected native diagnostic groups, then complete exact core.
-Retain only a measured useful improvement. No new target or permission is needed.
+At published **`5992a366cc761147dfcd76106b80ffc5d1eae32f`**, one immediate extra
+ownership observation passed native supervision/history/verifier/create/payload/
+populated capture gates, but reduced positive verifier time only 31.59→30.65s.
+Pauses fell 279→256 while observations rose 837→1,093: insufficient cost margin.
+Its premature automatic core **39031663427** was cancelled. No acceptance awarded.
 
-The 11-line runtime delta has exact-source review **PASS**. Seven controlled
-production-loop cases cover absence, zombie, still-live cadence, unknown ownership,
-attachment, clock and deadline paths. The fixture uses native `unset -f` plus the
-real wait builtin; it does not require the unavailable command builtin. Focused
-local runner/common statics passed **42 cases / 15 explicit Linux skips in 6.66s**.
-Host positive verification passed 23.19s, but its supervisor adapter cannot prove
-this Linux-loop speedup. Native safety/profile and all complete affected diagnostic
-batches remain next, then full module core; do not accept on local evidence alone.
+The active bounded refinement replaces that extra observation with **one first
+10ms pause, followed by the existing 50ms cadence**. Only no arguments (50ms) or
+one literal `first` (10ms) are admitted. The primary-loop flag resets each run and
+is consumed after successful attachment/clock/deadline guards. Failure/termination
+pauses remain 50ms; initial absence/zombie, unknown ownership, exact final wait and
+post-wait attachment retain their contracts. Design and exact-source reviews
+returned **PASS WITH NOTES/PASS**. This is a fixed early check, not continuous
+faster polling; do not promise identical observation counts across real runs.
+
+Parent owns execution, manifest and records. `module_consolidation` owns the
+controlled regression tests and actual host/native pause adapters in
+`tests/test_prerequisites.py`; the shared archive profile must execute the new
+fixed first interval. Required next proof: local focused gates, native supervision/
+deadline cases plus existing positive cost profile, all affected complete diagnostic
+batches, then exact complete core within module budgets. Retain only a demonstrated
+useful improvement. No new package, router or release authority is involved.
+
+Local focused runner/common statics now passed **45 cases / 15 explicit Linux
+skips in 7.13s**. Ten controlled loop scenarios plus the actual pause capability
+case passed, including failed first pause and initially absent/zombie children.
+Both production and fixture interfaces reject arbitrary/extra arguments. Workers
+returned ownership; native profile/safety and full affected groups are pending.
 
 ### Latest user-approved CI contract
 

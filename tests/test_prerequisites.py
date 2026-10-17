@@ -60,12 +60,17 @@ def pause_definition(shell: list[str]) -> str:
     if REQUIRE_BUSYBOX:
         executable = shutil.which(shell[0])
         assert executable, "Required vendor BusyBox executable is missing"
-        command = f"{shlex.quote(executable)} usleep 50000"
+        normal = f"{shlex.quote(executable)} usleep 50000"
+        first = f"{shlex.quote(executable)} usleep 10000"
     else:
         executable = shutil.which("sleep")
         assert executable, "Actual host sleep adapter is missing"
-        command = f"{shlex.quote(executable)} 0.05"
-    return f"cfmgr_prerequisites_pause() {{ {command}; }}; "
+        normal = f"{shlex.quote(executable)} 0.05"
+        first = f"{shlex.quote(executable)} 0.01"
+    return (
+        'cfmgr_prerequisites_pause() { case "$#:${1:-}" in '
+        f"0:) {normal} ;; 1:first) {first} ;; *) return 2 ;; esac; }}; "
+    )
 
 
 def invoke(
@@ -110,7 +115,15 @@ def test_pause_uses_actual_vendor_microseconds_or_labelled_host_adapter(
     shell: list[str],
 ) -> None:
     result = invoke(
-        shell, '. "$1"; ' + pause_definition(shell) + "cfmgr_prerequisites_pause"
+        shell,
+        '. "$1"; '
+        'cfmgr_prerequisites_pause arbitrary; [ "$?" = 2 ] || exit 81; '
+        'cfmgr_prerequisites_pause first extra; [ "$?" = 2 ] || exit 82; '
+        + pause_definition(shell)
+        + "cfmgr_prerequisites_pause first && cfmgr_prerequisites_pause || exit 83; "
+        'cfmgr_prerequisites_pause arbitrary; [ "$?" = 2 ] || exit 84; '
+        'cfmgr_prerequisites_pause ""; [ "$?" = 2 ] || exit 85; '
+        'cfmgr_prerequisites_pause first extra; [ "$?" = 2 ] || exit 86',
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
     if REQUIRE_BUSYBOX:
@@ -289,9 +302,20 @@ def test_native_supervisor_is_explicitly_unavailable_without_proc(
 
 @pytest.mark.parametrize(
     "scenario",
-    ["absent", "zombie", "live", "unknown", "attachment", "clock", "deadline"],
+    [
+        "absent",
+        "zombie",
+        "live",
+        "unknown",
+        "pause-failure",
+        "attachment",
+        "clock",
+        "deadline",
+        "initial-absent",
+        "initial-zombie",
+    ],
 )
-def test_supervisor_one_shot_reobserve_keeps_guards_final_wait_and_evidence(
+def test_supervisor_first_short_pause_keeps_guards_final_wait_and_evidence(
     shell: list[str], tmp_path: Path, scenario: str
 ) -> None:
     """Controlled proc/clock adapters exercise the real loop, not Linux ownership."""
@@ -304,7 +328,7 @@ def test_supervisor_one_shot_reobserve_keeps_guards_final_wait_and_evidence(
 cf_test_context=$2 cf_test_scenario=$3 cf_test_tool=$4
 cf_test_trace=$cf_test_context/trace
 cf_test_observations=0 cf_test_attachments=0 cf_test_pauses=0
-cfmgr_config_lock_fd0=0 cfmgr_probe_first_observation=0
+cfmgr_config_lock_fd0=0 cfmgr_probe_first_pause=0
 cf_test_note() { printf '%s\n' "$1" >>"$cf_test_trace"; }
 cfmgr_prerequisites_supervisor() {
     cf_test_note supervisor
@@ -317,7 +341,9 @@ cfmgr_prerequisites_identity() {
 }
 cfmgr_prerequisites_owned() {
     cf_test_observations=$((cf_test_observations+1))
-    if [ "$cf_test_observations" = 1 ] ||
+    if [ "$cf_test_scenario" = initial-absent ]; then cf_test_state=absent
+    elif [ "$cf_test_scenario" = initial-zombie ]; then cf_test_state=zombie
+    elif [ "$cf_test_observations" = 1 ] ||
        { [ "$cf_test_scenario" = live ] && [ "$cf_test_observations" -le 3 ]; }; then
         cf_test_state=live
     else
@@ -342,7 +368,12 @@ cfmgr_prerequisites_now() {
 }
 _cfmgr_prerequisites_exec() { printf 'child-evidence\n'; printf 'child-error\n' >&2; return 7; }
 cfmgr_prerequisites_pause() {
-    cf_test_note pause
+    case "$#:${1:-}" in
+    0:) cf_test_note pause:normal ;;
+    1:first) cf_test_note pause:first ;;
+    *) cf_test_note pause:invalid; return 2 ;;
+    esac
+    [ "$cf_test_scenario" != pause-failure ] || return 1
     cf_test_pauses=$((cf_test_pauses+1))
     [ "$cf_test_pauses" -le 3 ]
 }
@@ -353,7 +384,7 @@ if cfmgr_prerequisites_run jq-good "$cf_test_context" "$cf_test_tool" "$cf_test_
 else cf_test_code=$?; fi
 printf 'code=%s status=%s reason=%s exit=%s first=%s pid=%s start=%s owner=%s boot=%s\n' \
     "$cf_test_code" "$cfmgr_probe_status" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" \
-    "$cfmgr_probe_first_observation" "$cfmgr_probe_pid" "$cfmgr_probe_start" "$cfmgr_probe_owner" "$cfmgr_probe_boot"
+    "$cfmgr_probe_first_pause" "$cfmgr_probe_pid" "$cfmgr_probe_start" "$cfmgr_probe_owner" "$cfmgr_probe_boot"
 # Explicit fixture cleanup after capturing production's result. This bypasses
 # the wait trace so unresolved cases must independently prove no product wait.
 unset -f wait
@@ -366,13 +397,13 @@ wait "$cfmgr_probe_pid" 2>/dev/null || :
     assert result.returncode == 0 and result.stderr == b"", result
     fields = dict(part.split("=", 1) for part in result.stdout.decode().split())
     failed_guard = scenario in {"attachment", "clock", "deadline"}
-    assert fields["code"] == (
-        "1" if failed_guard else "3" if scenario == "unknown" else "0"
-    )
-    assert fields["status"] == ("unresolved" if scenario == "unknown" else "reaped")
+    unresolved = scenario in {"unknown", "pause-failure"}
+    initial = scenario.startswith("initial-")
+    assert fields["code"] == ("1" if failed_guard else "3" if unresolved else "0")
+    assert fields["status"] == ("unresolved" if unresolved else "reaped")
     assert fields["reason"] == (scenario if failed_guard else "none")
-    assert fields["exit"] == ("unset" if scenario == "unknown" else "7")
-    assert fields["first"] == ("1" if failed_guard else "0")
+    assert fields["exit"] == ("unset" if unresolved else "7")
+    assert fields["first"] == ("1" if failed_guard or initial else "0")
     assert int(fields["pid"]) > 0
     assert (fields["start"], fields["owner"], fields["boot"]) == (
         "77",
@@ -389,26 +420,39 @@ wait "$cfmgr_probe_pid" 2>/dev/null || :
         "attachment:2",
         "clock",
     ]
-    if failed_guard:
+    if initial:
+        state = scenario.removeprefix("initial-")
+        expected = prefix[:3] + [f"observe:{state}"] * 2 + ["wait", "attachment:2"]
+    elif failed_guard:
         expected = prefix + ["observe:absent"] * 4 + ["wait", "attachment:3"]
     elif scenario == "live":
         expected = prefix + [
-            "observe:live",
-            "pause",
+            "pause:first",
             "observe:live",
             "attachment:3",
             "clock",
-            "pause",
+            "pause:normal",
+            "observe:live",
+            "attachment:4",
+            "clock",
+            "pause:normal",
             "observe:absent",
             "observe:absent",
             "wait",
-            "attachment:4",
+            "attachment:5",
         ]
     elif scenario == "unknown":
-        expected = prefix + ["observe:unknown"]
+        expected = prefix + ["pause:first", "observe:unknown"]
+    elif scenario == "pause-failure":
+        expected = prefix + ["pause:first"]
     else:
         state = "absent" if scenario == "absent" else "zombie"
-        expected = prefix + [f"observe:{state}"] * 2 + ["wait", "attachment:3"]
+        expected = (
+            prefix
+            + ["pause:first"]
+            + [f"observe:{state}"] * 2
+            + ["wait", "attachment:3"]
+        )
     assert (tmp_path / "trace").read_text().splitlines() == expected
 
 
