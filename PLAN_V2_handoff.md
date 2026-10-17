@@ -27,7 +27,15 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Awaiting publication approval — consolidated manual archive candidate passed local gates
+## Authorized checkpoint — publish consolidated archive candidate and complete CI
+
+The user explicitly authorized “yes push & continue till checkpoint is 100% done”
+and reiterated test optimization where needed. Publish the reviewed candidate,
+complete every affected focused native group with measured cost review, repair
+failures, then pass required core Checks at the final exact SHA. Update acceptance
+and README only after those gates, publish the documentation receipt and pause.
+This authorization covers the current package checkpoint, not another feature,
+router mutation, deployment or release.
 
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
@@ -91,8 +99,9 @@ retention operation begins. The combined YAML/history retry was **2 passed in
 `.tmp/archive-creation/yaml-budget-history-final.log`. Valid positive create paths
 are unchanged; a duplicate expensive full create is not needed for this fix.
 
-No new runtime files, full local suite, publication, remote CI or router mutation
-is authorized. All disjoint capture/verifier/I/O/Store and shared package/execution
+No new runtime files, full local suite or router mutation is authorized.
+Publication and remote CI for this checkpoint are now authorized.
+All disjoint capture/verifier/I/O/Store and shared package/execution
 groups passed locally with explicit platform skips. Final I/O: 12 passed / 5 skips;
 verifier: 22 passed across structure/integrity/callback groups; semantics: 3 passed;
 capture: 15 passed across 1/10/4 case selections; Store/config: 42 passed / 3 skips.
@@ -122,7 +131,7 @@ There are no active workers or required local jobs. Goal 14 is now 7/11 focused-
 15/157 accepted (9.6%) and 0/16 main goals. README accepted counts are unchanged.
 Thirteen validated complete native Quick selections are recorded in
 `.tmp/archive-creation/pending-quick-groups.json`; no dispatch has occurred.
-After approval, verify the exact published candidate, run the initial payload/tool
+Verify the exact published candidate, run the initial payload/tool
 group to validate the updated vendor fixture/cache, then remaining focused groups
 with measured cost review and at most two independent jobs at once. Cancel any
 premature owned automatic core while diagnosis is pending; complete full required
@@ -168,7 +177,8 @@ no runtime/test bytes and earns no additional acceptance. No push, CI
 dispatch, router mutation, dependency installation or native product build has run.
 Existing focused storage tests compiled their small host errno fixtures in owned
 pytest temporary directories; this is not a BusyBox/kernel/router build.
-Publication and remote CI dispatch are not authorized by the current instruction.
+The subsequent user instruction authorizes publication and remote CI through this
+package checkpoint; preserve the exact tested revision and all failure receipts.
 
 A complete pre-consolidation snapshot was verified at
 `.tmp/module-layout-recovery-20261017T053357Z/`: **257 entries, 5,961,808 file bytes**,
@@ -213,9 +223,9 @@ The recovery inventory was reverified after that comparison: all 257 entries and
 5,961,808 file bytes still match. Native argv/FD/keeper/mount/process proof remains
 pending its authorized CI gate. Product counts are unchanged.
 
-Next within the original S14.01/S14.04–S14.08 package: obtain publication/CI
-permission for the concrete locally reviewed candidate, then complete its native
-and exact core gates. No later feature or restore work starts. Production history callbacks,
+Next within the original S14.01/S14.04–S14.08 package: publish the concrete locally
+reviewed candidate, then complete its native and exact core gates.
+No later feature or restore work starts. Production history callbacks,
 relevant owned Cloud logger observation and the create consumer are implemented.
 The narrower observer replaces the global FD census, retaining writer/rotation
 exclusion and double-prefix/hash/identity checks. Current outstanding proof and
