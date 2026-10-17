@@ -3,7 +3,7 @@
 # layout is seeded from the real package; actual launch/repair/post-probes run.
 # Fixed firmware roots/native admission are caller adapters, never product env.
 # shellcheck disable=SC2034,SC2154,SC3013,SC1090,SC1091
-. "$installer_package/modules/lib/package.sh"
+# The installer loaded package.sh before defining its fixed fixture callbacks.
 . "$installer_package/modules/lib/config.sh"
 retained_support=$fixture/jffs/addons/CFMgr.d
 mkdir -p "$fixture/jffs/addons" "$fixture/jffs/scripts"

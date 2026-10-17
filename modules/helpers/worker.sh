@@ -974,6 +974,8 @@ store-backup-config)
 	case $5 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
 	export CFMGR_BACKUP_MOUNT="$6" CFMGR_BACKUP_UUID="$7" CFMGR_BACKUP_FILESYSTEM="$8" CFMGR_BACKUP_ROOT="$9"
+	# JSON replaces stdin; retain any inherited writer lock until this child exits.
+	exec 9<&0 || exit 1
 	cfmgr_worker_program "$@"
 	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" "$cfmgr_awk_program" <"$4"
 	;;
@@ -1007,6 +1009,8 @@ store-settings)
 	case $5 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
 	export CFMGR_SETTINGS_MASK="$6" CFMGR_SETTINGS_CHECK="$7" CFMGR_SETTINGS_AUTO="$8"
+	# Shared settings reads also run inside the archive's borrowed-lock Save.
+	exec 9<&0 || exit 1
 	cfmgr_worker_program "$@"
 	exec "$tool" -v cfmgr_config_mode="$3" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" "$cfmgr_awk_program" <"$4"
 	;;

@@ -354,8 +354,11 @@ def test_linux_archive_history_borrow_uses_actual_supervisor_and_one_lock(
     sys.platform != "linux",
     reason="Real unknown-child lock retention across JSON stdin requires Linux proc",
 )
+@pytest.mark.parametrize(
+    "mode", ["store-archive-config", "store-settings", "store-backup-config"]
+)
 def test_linux_unknown_archive_parser_keeps_lock_on_fd9_after_parent_close(
-    shell, tools, store_fixture, tmp_path
+    shell, tools, store_fixture, tmp_path, mode
 ):
     source, ram, flock, _ = store_fixture
     lock = ram / "config.lock"
@@ -393,6 +396,11 @@ if {shlex.quote(flock)} -n 7; then exit 94; fi
 wait "$owned" || exit 95
 {shlex.quote(flock)} -n 7 || exit 96
 """
+    parser_mode, fields = {
+        "store-archive-config": ("archive-read", [""] * 9),
+        "store-settings": ("settings-read", ["both", "0", "0"]),
+        "store-backup-config": ("backup-read", [""] * 4),
+    }[mode]
     result = subprocess.run(
         [
             *shell,
@@ -401,7 +409,7 @@ wait "$owned" || exit 95
             "archive-parser-lock",
             str(lock),
             flock,
-            "store-archive-config",
+            mode,
             str(context),
             tools["sh"],
             str(source / "modules/helpers/worker.sh"),
@@ -412,18 +420,10 @@ wait "$owned" || exit 95
             str(standin),
             str(source / "modules/lib/config.sh"),
             str(source / "modules/lib/config.sh"),
-            "archive-read",
+            parser_mode,
             str(source / "config"),
             str((source / "config").stat().st_size),
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
+            *fields,
         ],
         check=False,
         capture_output=True,

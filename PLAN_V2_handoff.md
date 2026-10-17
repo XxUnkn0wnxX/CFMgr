@@ -84,6 +84,31 @@ outer guard supported by the comparable semantic measurement. Other verifier
 cases retain their limits, and failures now expose scalar probe status/reason.
 Ruff/format/compile/whitespace passed. All edit ownership has returned to parent.
 
+Native JSON bridge Quick `39019643808` passed (one case, 0.34s pytest / 0.51s
+wall). Create `39019346473` at `5e2f982` supplied the missing causal evidence:
+history Save's `store-settings` child exited 92, the fixture's missing-FD9-lock
+assertion, with free FD3/4, coherent borrowed-lock flags and 17s deadline remaining.
+Unlike `store-archive-config`, shared settings/backup JSON readers redirected
+stdin without retaining its lock. Both now retain child9 before redirecting;
+independent source review confirmed parent support9 and pre-lock reads are safe.
+The existing native unknown-child contention test now covers all three modes;
+no supervisor/interface change or assertion relaxation. Complete host archive
+Store proof and narrow native contention/retained-launch proof precede another
+full create run.
+
+Package Quick `39019466913` passed 76 cases before actual retained launch failed
+(177.64s pytest / 177.87s wall, 77.19 user / 76.33 system). The retained fixture
+reimported consolidated package.sh after its caller installed firmware adapters,
+overwriting those callbacks. Removing that redundant import preserves the actual
+controller and intended fixture callbacks; its sole caller already loads package
+first. Shell syntax/shfmt/ShellCheck passed. No product admission was weakened.
+Host `tests/test_archive_store.py` passed 13 cases with five explicit Linux skips
+in 24.53s (25.13s wall, 13.08 user / 8.23 system); raw receipt is
+`.tmp/archive-creation/store-lock-local.log`. Package metadata, planning,
+Ruff/format/compile and whitespace checks passed on the dirty `f97c49e` base.
+Parent owns all edits. Verifier structure `39019720378` and populated capture
+`39019722392` remain running at `f97c49e`; premature core `39019470588` cancelled.
+
 Earlier focused evidence and repairs follow; superseded pending statements below
 are historical and do not override the current state above.
 The complete shared execution group is green: Quick `39017718100`, **164 passed,
