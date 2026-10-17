@@ -35,6 +35,7 @@ jobs:
         # actions/checkout v7.0.1
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Validate complete core partition
@@ -62,48 +63,188 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
           /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --require-busybox --reuse-static
 
-  backup:
-    name: Backup Checks
+  dispatch:
+    name: Start independent module workflows
     needs: preflight
-    uses: ./.github/workflows/backup-checks.yml
-    with:
-      reuse-preflight: true
+    if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/develop' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      actions: write
+      contents: read
+    outputs:
+      runs: ${{ steps.dispatch.outputs.runs }}
+    steps:
+      # No checkout: this write-enabled job executes only trusted inline code.
+      - name: Dispatch exact independent runs
+        id: dispatch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import signal
+          import urllib.request
+          from pathlib import Path
 
-  manager:
-    name: Manager Checks
-    needs: preflight
-    uses: ./.github/workflows/manager-checks.yml
-    with:
-      reuse-preflight: true
-
-  status:
-    name: Status Checks
-    needs: preflight
-    uses: ./.github/workflows/status-checks.yml
-    with:
-      reuse-preflight: true
+          owners = ("backup", "manager", "status")
+          repo, sha = os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_SHA"]
+          parent, attempt = os.environ["GITHUB_RUN_ID"], int(os.environ["GITHUB_RUN_ATTEMPT"])
+          if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) or not re.fullmatch(r"[0-9a-f]{40}", sha) or not re.fullmatch(r"[1-9][0-9]*", parent):
+              raise SystemExit("Invalid dispatch identity")
+          if os.environ["GITHUB_EVENT_NAME"] not in {"push", "workflow_dispatch"} or os.environ["GITHUB_REF"] != "refs/heads/develop":
+              raise SystemExit("Only trusted develop Checks may dispatch")
+          base = f"https://api.github.com/repos/{repo}"
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args):
+                  raise RuntimeError("Unexpected API redirect")
+          def api(method, path, data=None):
+              request = urllib.request.Request(base + path, method=method,
+                  data=None if data is None else json.dumps(data).encode(),
+                  headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2026-03-10"})
+              with urllib.request.build_opener(NoRedirect).open(request, timeout=20) as response:
+                  expected = 200 if method == "GET" or path.endswith("/dispatches") else 202
+                  if response.status != expected:
+                      raise RuntimeError("Unexpected API response status")
+                  body = response.read(4 * 1024 * 1024 + 1)
+              if len(body) > 4 * 1024 * 1024:
+                  raise RuntimeError("API response exceeds bound")
+              return json.loads(body) if body else None
+          def valid_id(value):
+              return type(value) is int and value > 0
+          known = {}
+          def interrupted(*args):
+              raise InterruptedError("Parent dispatch cancelled")
+          signal.signal(signal.SIGTERM, interrupted)
+          signal.signal(signal.SIGINT, interrupted)
+          try:
+              current = api("GET", "/git/ref/heads/develop")["object"]["sha"]
+              plans = []
+              for owner in owners:
+                  workflow = api("GET", f"/actions/workflows/{owner}-checks.yml")
+                  if not valid_id(workflow.get("id")) or workflow.get("path") != f".github/workflows/{owner}-checks.yml" or workflow.get("state") != "active":
+                      raise RuntimeError("Wrong fixed workflow identity")
+                  matches = []
+                  if attempt > 1:
+                      for page in range(1, 4):
+                          runs = api("GET", f"/actions/workflows/{owner}-checks.yml/runs?event=workflow_dispatch&head_sha={sha}&per_page=100&page={page}")["workflow_runs"]
+                          if not isinstance(runs, list) or len(runs) > 100:
+                              raise RuntimeError("Invalid prior runs page")
+                          for run in runs:
+                              if run.get("display_title") == f"{owner.title()} Checks parent={parent} sha={sha}":
+                                  if run.get("repository", {}).get("full_name") != repo or run.get("workflow_id") != workflow["id"] or (run.get("path") != workflow["path"] and not (isinstance(run.get("path"), str) and run["path"].startswith(workflow["path"] + "@") and len(run["path"]) > len(workflow["path"]) + 1)) or run.get("event") != "workflow_dispatch" or run.get("head_sha") != sha or not valid_id(run.get("id")) or not valid_id(run.get("run_attempt")):
+                                      raise RuntimeError("Prior child identity mismatch")
+                                  matches.append(run)
+                          if len(runs) < 100:
+                              break
+                  if len(matches) > 1 or (not matches and current != sha):
+                      raise RuntimeError("Ambiguous/missing exact child for old candidate")
+                  if matches and matches[0].get("status") != "completed":
+                      raise RuntimeError("Prior child has not completed")
+                  plans.append((owner, matches[0] if matches else None))
+              for owner, previous in plans:
+                  if previous:
+                      run_id = previous["id"]
+                      known[owner] = {"id": run_id, "attempt": previous["run_attempt"] + 1}
+                      api("POST", f"/actions/runs/{run_id}/rerun")
+                  else:
+                      result = api("POST", f"/actions/workflows/{owner}-checks.yml/dispatches", {"ref": "develop", "inputs": {"candidate_sha": sha, "parent_run_id": parent}})
+                      if not isinstance(result, dict) or not valid_id(result.get("workflow_run_id")):
+                          raise RuntimeError("Dispatch did not return an exact run ID")
+                      run_id = result["workflow_run_id"]
+                      known[owner] = {"id": run_id, "attempt": 1}
+                      if result.get("run_url") != f"{base}/actions/runs/{run_id}" or result.get("html_url") != f"https://github.com/{repo}/actions/runs/{run_id}":
+                          raise RuntimeError("Dispatch run URLs mismatch")
+              with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+                  output.write("runs=" + json.dumps(known, separators=(",", ":")) + "\n")
+              with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+                  for owner, run in known.items():
+                      summary.write(f"- [{owner.title()} Checks](https://github.com/{repo}/actions/runs/{run['id']})\n")
+          except BaseException:
+              for run in known.values():
+                  try:
+                      api("POST", f"/actions/runs/{run['id']}/cancel")
+                  except Exception:
+                      pass  # Best effort; every child also has a ten-minute job bound.
+              raise
+          PY
 
   checks:
     # Keep the required check display name stable for branch protection.
     name: Ubuntu 24.04 host and BusyBox checks
-    needs: [preflight, backup, manager, status]
-    if: ${{ always() }}
+    needs: [preflight, dispatch]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 1
+    timeout-minutes: 17
+    permissions:
+      actions: read
+      contents: read
     steps:
-      - name: Require every core stage
+      - name: Require common prerequisites
         env:
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
-          BACKUP_RESULT: ${{ needs.backup.result }}
-          MANAGER_RESULT: ${{ needs.manager.result }}
-          STATUS_RESULT: ${{ needs.status.result }}
+          DISPATCH_RESULT: ${{ needs.dispatch.result }}
         run: |
           python3 - <<'PY'
           import os
 
-          results = {name: os.environ.get(name, "missing") for name in ("PREFLIGHT_RESULT", "BACKUP_RESULT", "MANAGER_RESULT", "STATUS_RESULT")}
-          for name, result in results.items():
-              print(f"{name}: {result}")
-          if any(result != "success" for result in results.values()):
-              raise SystemExit("Every required preflight and core batch must succeed")
+          expected = "skipped" if os.environ["GITHUB_EVENT_NAME"] == "pull_request" else "success"
+          if os.environ.get("PREFLIGHT_RESULT") != "success" or os.environ.get("DISPATCH_RESULT") != expected:
+              raise SystemExit("Every required common/dispatch stage must succeed")
+          PY
+
+      - name: Check out collector at exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Collect exact independent module evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CFMGR_MODULE_RUNS: ${{ needs.dispatch.outputs.runs }}
+          CFMGR_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 .github/collect_module_checks.py
+
+  cancel-children:
+    name: Cancel known children after parent cancellation
+    needs: [dispatch, checks]
+    if: ${{ always() && cancelled() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/develop' && needs.dispatch.outputs.runs != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    permissions:
+      actions: write
+    steps:
+      # No checkout or candidate code in this cancellation-only write context.
+      - name: Cancel exact known child IDs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CFMGR_MODULE_RUNS: ${{ needs.dispatch.outputs.runs }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import urllib.request
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, *args):
+                  raise RuntimeError("Unexpected API redirect")
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          runs = json.loads(os.environ["CFMGR_MODULE_RUNS"])
+          if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) or set(runs) != {"backup", "manager", "status"}:
+              raise SystemExit("Invalid cancellation mapping")
+          for run in runs.values():
+              run_id = run.get("id")
+              if type(run_id) is not int or run_id <= 0:
+                  raise SystemExit("Invalid cancellation run ID")
+              request = urllib.request.Request(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/cancel", method="POST", headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2026-03-10"})
+              try:
+                  with urllib.request.build_opener(NoRedirect).open(request, timeout=10) as response:
+                      response.read(1024)
+              except Exception:
+                  print(f"Best-effort cancellation did not complete for run {run_id}")
           PY

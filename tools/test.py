@@ -371,7 +371,7 @@ def _shellcheck_checks(shell_files: list[Path]) -> int:
 
 
 def _static_checks(*, skip_shellcheck: bool = False) -> int:
-    python_files = _files(("modules", "tests", "tools"), (".py",))
+    python_files = _files(("modules", "tests", "tools", ".github"), (".py",))
     shell_files = _shell_files()
 
     ruff = _require_tool("ruff")

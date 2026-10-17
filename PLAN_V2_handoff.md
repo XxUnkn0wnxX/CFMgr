@@ -27,316 +27,160 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — module checks and measured performance repair
+## Current checkpoint — independent module workflow runs pending
 
-**This is the final checkpoint for today.** Finish the authorized archive-creation
-block **S14.01 and S14.04–S14.08**, library consolidation and the code/test/CI cost
-correction; pass all required gates, publish records and **stop**. Do not review,
-select or suggest another block. Checkpoint, repair and documentation pushes are
-authorized. No router, release or deployment authority is implied. Acceptance
-remains **15/157 (9.6%), 0/16 main goals (0%)**; the six current IDs remain pending.
+**This is the final checkpoint for today.** Finish **S14.01 and S14.04–S14.08**
+manual archive creation, responsibility-based consolidation and the approved test/CI
+cost correction. Complete the final gate and documentation receipt, then **end the
+turn**. Do not review, select or suggest another block without user permission.
+Checkpoint, repair and documentation pushes are authorized. No router, release or
+deployment authority is implied.
 
-### Current repair after complete-module budget failure
+Published candidate: **`b0a39dcada9427d6109080b95906847328599e4a`**. Final full
+[Checks 39032859298](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39032859298)
+passed all eight jobs after all eighteen native diagnostic selections passed.
+Complete modules including setup: Backup **6m27s**, Manager **8m29s**, Status
+under one minute. Runtime and cost proof passed, but the user identified that
+reusable calls leave individual workflow histories empty. Acceptance remains
+pending the authorized correction to actual independent workflow runs.
 
-Complete core **39030592757** at **`004d852c1383f3e7328132d0f0d94ae6a3234104`**
-is terminal cancelled: native Backup reached 98% with continuing passes before its
-ten-minute limit. GitHub explicitly annotated the job timeout. No assertion failed.
-Manager completed both platforms in 7m47s including setup; Status in 52s. Backup
-host passed 374/1 platform skip in 329.31s. Aggregate correctly failed; acceptance
-remains unchanged. Private logs: `.tmp/archive-creation/ci-39030592757.{log,json}`.
-
-At published **`5992a366cc761147dfcd76106b80ffc5d1eae32f`**, one immediate extra
-ownership observation passed native supervision/history/verifier/create/payload/
-populated capture gates, but reduced positive verifier time only 31.59→30.65s.
-Pauses fell 279→256 while observations rose 837→1,093: insufficient cost margin.
-Its premature automatic core **39031663427** was cancelled. No acceptance awarded.
-
-The active bounded refinement replaces that extra observation with **one first
-10ms pause, followed by the existing 50ms cadence**. Only no arguments (50ms) or
-one literal `first` (10ms) are admitted. The primary-loop flag resets each run and
-is consumed after successful attachment/clock/deadline guards. Failure/termination
-pauses remain 50ms; initial absence/zombie, unknown ownership, exact final wait and
-post-wait attachment retain their contracts. Design and exact-source reviews
-returned **PASS WITH NOTES/PASS**. This is a fixed early check, not continuous
-faster polling; do not promise identical observation counts across real runs.
-
-Parent owns execution, manifest and records. `module_consolidation` owns the
-controlled regression tests and actual host/native pause adapters in
-`tests/test_prerequisites.py`; the shared archive profile must execute the new
-fixed first interval. Required next proof: local focused gates, native supervision/
-deadline cases plus existing positive cost profile, all affected complete diagnostic
-batches, then exact complete core within module budgets. Retain only a demonstrated
-useful improvement. No new package, router or release authority is involved.
-
-Local focused runner/common statics now passed **45 cases / 15 explicit Linux
-skips in 7.13s**. Ten controlled loop scenarios plus the actual pause capability
-case passed, including failed first pause and initially absent/zombie children.
-Both production and fixture interfaces reject arbitrary/extra arguments. Workers
-returned ownership; native profile/safety and full affected groups are pending.
-
-### Latest user-approved CI contract
-
-- Permanent groups follow actual main modules: **Backup Checks**, **Manager
-  Checks**, **Status Checks**. Supporting libraries/tests sit beneath their main
-  consumer; add a group when a main module is added. Keep few runtime owners.
-- **Checks** runs on code/test/tool/workflow pushes to `develop` and PRs targeting
-  `develop`, calls all main-module workflows at the same commit, and requires all
-  results. Main-module workflows can also be dispatched independently. Common
-  statics, both shell syntax gates and partition validation precede product tests.
-- Documentation-only changes never trigger CI: Markdown, `docs/**` and `.images/**`
-  are excluded on both automatic triggers. Mixed code/document changes still run.
-- **Dev Checks** (formerly Quick Checks, same `quick-checks.yml` filename) provides
-  small focused tests and temporary submodule selections for diagnosis. **Tools
-  Checks**, **Lint Checks** and **Diagnostics Checks** are separate optional,
-  manual-only workflows. Developer-tool behavior tests are outside automatic core;
-  required source validation remains. GitHub's generated Dependency Graph entry
-  is `dynamic/dependabot/update-graph`, not a repository workflow to rename.
-- Start with the whole main module. If it exceeds approximately **ten minutes**,
-  split only for diagnosis, locate and optimize the expensive work with focused
-  tests, then rerun every smaller batch aiming for **two to three minutes** each.
-  Finally rerun the **complete main-module group** within its ten-minute budget.
-  Shorter is preferred. Fast diagnostic chunks cannot replace that final gate.
-
-### Verified first whole-module measurement
-
-Published **`31926ae2233a683aa0b0bf08ac242837eaa4a594`**, [Checks
-39025245147](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39025245147), is terminal
-**cancelled**. Backup and Manager hit their ten-minute job limits. Status and
-Tooling passed; the required aggregate correctly failed. No assertion failure was
-reported in the unfinished groups. Named logs/metadata are retained under
-`.tmp/archive-creation/ci-39025245147.{log,json}`.
-
-| Group | Host | Native BusyBox | Outcome |
-| --- | --- | --- | --- |
-| Backup | 360 passed / 1 skipped, 364.44s; 44.19 user / 58.92 system | Cancelled after about 3m51; capture still progressing | Over budget; diagnose |
-| Manager | 537 passed / 29 skipped / 4 diagnostics deselected, 114.17s | Cancelled after about 8m03; reached 63% by case count | Over budget; diagnose |
-| Status | 36 passed, 15.05s | 36 passed, 23.82s | Passed, about one minute including setup |
-| Tooling | 147 passed, 1.33s | 147 passed, 1.10s | Passed; subsequently made optional by user |
-
-The earlier forty-minute serial run **39022377733** at `7a02dc2` is also terminal
-cancelled, as the user requested. Host passed in 8m47; native reached 87% before
-cancellation after 31m13. This shows slow execution, not a proved deadlock. Neither
-cancelled run provides a complete core pass.
-
-### Verified optimization and current candidate
-
-The workflow/sidebar package was published at **`31ada7ff6220362070369aff77c493d0ec37abdd`**;
-all eight repository-owned workflow names are registered. Its automatic core
-**39026672475** was cancelled during diagnosis. Optional Tools **39026690046**
-passed 166 cases on host/native. Native profiling measured actual supervised work:
-367 probes (245 inode / 122 other), 1,698 attachments, 1,101 observations, 367
-50ms pauses and 1,468 RAM inode reads. The external-applet microbenchmark preserved
-FD/numeric/output checks and improved from 0.343s to 0.204s using vendor applets.
-
-The measured fixture correction is published at **`f321d55bef1e251366113af769d7e5d979b653f6`**.
-Only external `[`, `test` and `printf` aliases were staged beside the verified
-BusyBox; disabled builtins/no-fork remain unchanged. The privileged dependency
-fixture restores these three aliases inside its owned tree after sudo's PATH reset.
-Production sanitized worker paths and all assertions/deadlines remain unchanged.
-
-| Native case | Before (31ada7f) | After (f321d55) | CPU user + system |
-| --- | --- | --- | --- |
-| Full positive verifier | Dev 39026686131: 80.44s | Dev 39027173157: **45.98s** | 68.17s → 32.25s |
-| Actual installer repair/publication | Dev 39026688120: 176.49s | Dev 39027175339: **133.95s** | 178.27s → 135.01s |
-
-The verifier retains 367 probes/245 inode probes and 1,468 RAM reads; observations/
-pauses differ by one scheduling iteration. Installer phase times became repair
-95.60s, full checks 0.91/1.38s, transaction 31.88s. Tools **39027177390** passed all
-178 cases on host (1.47s) and native (1.25s). Premature core **39027143995** is
-terminal cancelled. These are meaningful work-cost improvements, not core acceptance.
-
-Current candidate: **`171f899903eae85210c2fa693746d4d791d0df2a`**, published and
-focused-native passed. Its premature core **39028150001** is terminal cancelled.
-
-- Runtime: builtin `case` replaces scalar tests in four hot backup functions and
-  the first prerequisite/supervisor section of execution. Strict literal equality,
-  evaluation/return order, filesystem checks, numeric bounds, child ownership,
-  signals, waits and deadlines are preserved. Structural arity/length and arithmetic
-  capability checks in archive_uint use case; its actual numeric upper bound stays
-  unchanged. Manifest regenerated. Independent reviewer **PASS** for both files.
-- Local focused gate: `tools/test.py --focused tests/test_prerequisites.py
-  tests/test_archive_io.py --skip-shellcheck` passed common statics/host syntax and
-  **35 tests / 14 explicit Linux skips in 9.85s**. The positive verifier passed
-  **47.91s** on macOS, with the same counters; this does not demonstrate a host
-  speedup. Native Dev **39028169040** passed complete prerequisites/I/O: **48 passed,
-  one workstation-only skip, 14.73s**. Positive verifier **39028164447** passed in
-  **42.10s** (14.59 user / 14.04 system), retaining the same 367 probes, 245 inode
-  probes, 1,468 RAM reads and 367 pauses. Actual installer **39028166604** passed
-  in **127.91s** (75.96 user / 52.89 system). Both small runtime refinements retain
-  a measured CPU/wall reduction compared with the preceding alias-only candidate.
-- Scheduling: each main-module workflow has complete host and native jobs on
-  separate VMs, max two per module, fail-fast off, ten minutes per job. Planner
-  **PASS WITH NOTES**: shared-host parallelism would collide in real cloudflared
-  process discovery. Up to six product VMs may run; measure each module's earliest
-  start to latest finish including setup, with queue delay separate. Platform
-  scheduling cannot replace actual cost reduction or a passing complete module.
-  Tools remains optional with its cheap serial host/native default. Workflow tests
-  **106 passed in 1.88s**; Ruff/compile/YAML/embedded shell checks passed. Optional
-  Tools **39028225945** passed all **185** cases on host (1.52s) and native (1.25s),
-  including independent preflight through the updated composite action.
-- User flagged AGENTS size. Parent consolidated repeated rules from **30,948 to
-  22,995 bytes**, preserving permissions/gates; independent comparison to retained
-  `.tmp/archive-creation/AGENTS.before-consolidation.md` returned **PASS**.
-
-All implementation/review workers returned ownership. Parent owns AGENTS and V2
-records; `checkpoint_ci_wait` monitors runs only. Complete collection excludes
-four optional diagnostics and proves exact
-ownership: Backup **361**, Manager **566**, Status **36** (963 required product
-cases); optional Tools now **185**. The private `pending-quick-groups.json` has
-17 temporary, owner-specific diagnostic selections covering all 927 Backup/Manager
-cases exactly once; Status remains a complete fast group, Tools stays optional.
-
-All eleven Backup diagnostic selections passed at this candidate, individually
-within 98 seconds, but their summed pytest cost is approximately eleven minutes.
-That is not yet the complete-module budget. A bounded fixture refinement reduces
-hash rejection to two mandatory members and unsafe-path rejection to three. The
-config callback must run before catalog hash failure; unsafe paths must reach the
-actual reaped inventory-parser rejection. Completion stays absent, and the full
-five-member positive binary/empty traversal is unchanged. Worker returned ownership;
-the two changed host cases passed in 104.47s (106.92 wall, 38.42 user, 31.25 system),
-with Ruff/format/compile checks. This macOS timing is not a native-speed claim.
-All 17 diagnostic selections passed at `171f899`, covering 926 passes and one
-workstation-only skip across the 927 assigned Backup/Manager cases. Four optional
-dependency diagnostics were deselected. Summed pytest costs are **665.80s Backup**
-and **490.14s Manager**; every individual batch was under 161s. Exact receipts:
-
-| Diagnostic batch | Run | Result | Pytest | CPU user/system |
-| --- | --- | --- | --- | --- |
-| backup-history | 39028874570 | 104 passed | 42.77s | 22.16/10.25s |
-| backup-create | 39028388915 | 6 passed | 97.95s | 31.36/21.75s |
-| backup-transaction-menu | 39028876338 | 26 passed | 30.49s | 10.29/7.88s |
-| backup-payload | 39028878219 | 115 passed | 52.30s | 19.01/16.83s |
-| backup-config-entry | 39028953455 | 73 passed | 62.11s | 30.78/25.43s |
-| backup-capture-populated | 39028391024 | 1 passed | 74.45s | 26.85/24.97s |
-| backup-capture-snapshot | 39028520908 | 10 passed | 44.83s | 15.64/10.69s |
-| backup-capture-certificate-history | 39028704441 | 4 passed | 57.82s | 20.88/19.47s |
-| backup-verifier-structure | 39028658220 | 16 passed | 70.74s | 25.54/16.77s |
-| backup-verifier-integrity | 39028659924 | 2 passed | 62.39s | 21.41/19.88s |
-| backup-verifier-callbacks | 39028569009 | 4 passed | 69.95s | 24.09/22.66s |
-| manager-package-entry | 39028976973 | 61 passed | 89.69s | 38.38/24.13s |
-| manager-execution | 39028979811 | 177 passed, 1 skipped | 47.62s | 24.47/17.77s |
-| manager-reinstall-native | 39029072327 | 104 passed | 37.04s | 13.70/9.99s |
-| manager-config | 39029133010 | 132 passed | 61.87s | 33.80/24.45s |
-| manager-dependencies | 39028393190 | 21 passed, 4 deselected | 160.62s | 95.08/65.49s |
-| manager-install-retained | 39029152407 | 70 passed | 93.30s | 54.30/36.06s |
-
-The fixture refinement is published at **`017986442904c9cfe3b5496669b445f62428a1a6`**.
-Common statics/host syntax passed. Premature core **39029323040** is terminal
-cancelled. Complete verifier scopes **39029335482** (structure, ~79s),
-**39029337608** (integrity, ~41s), **39029340869** (callbacks, ~70s) passed. The
-integrity reduction is real, but projected total cost remains above ten minutes.
-
-A bounded stage-metadata fusion is now implemented-unverified. Parent owns
-`modules/backup.sh`, `modules/lib/execution.sh`, `modules/helpers/worker.sh` and
-manifest; `module_consolidation` owns focused tests in archive verifier/I/O;
-`consolidation_review` independently reviews the runtime. Planner **PASS WITH
-NOTES** approved a fixed supervised `ls -id STAGE TARGET STAGE` for safe flat stage
-paths, without an append guard. Parent-side target type checks were removed after
-independent review: dispatch is syntactic; the worker keeps the original nonsymlink
-file/directory predicate after stage admission. Corrective review **PASS**. Matched native source performs each fresh
-stat in operand order before sorting display. Parse exact names/multiplicity,
-require both stage inodes, and retain regular/nonlink/-ef checks, finite operands,
-existing deadline/reap/attachment/FD handling and all other-path fallbacks.
-One extra read-only target metadata observation can occur before rejecting a
-mismatched first stage; it cannot authorize ownership/content/write and remains
-bounded. No payload, mutation or publication boundary moves. Native cost and
-complete affected-group proof are still required before the complete core gate.
-
-Implementation and both corrective reviews passed. New focused local safety proof:
-**15 passed / two Linux-only deadline variants skipped, 2.86s**; real flat file/dir
-and symlink cases, unordered/exact receipt parsing, actual stage substitution,
-RAM/published/append fallback and existing target/append replacement. Both original
-blocked-write and combined-inode deadline cases remain for native execution.
-The existing full positive verifier passed on macOS in **30.14s** (30.53 wall,
-12.81 user, 10.33 system), down from 47.91s on the prior runtime. Its profile now
-has **279 probes / 157 inode probes / 1,116 RAM inode reads**, compared with
-367 / 245 / 1,468. The 122 other operations and complete payload assertions remain.
-Common statics/host syntax passed; native performance still requires measurement.
-
-Run full Checks after the affected diagnostic scopes pass, verifying both platforms
-and each module's complete makespan within roughly ten minutes. Accept the six IDs
-and update README only after that gate. Publish records and stop for the day,
-without reviewing or suggesting another block.
-
-### Prior validation state before the cost correction
-
-Published runtime/test candidate: **`7a02dc25132f2f333e4fee3039d3752572b5baa4`**.
-The authorized block is **S14.01 and S14.04–S14.08**, including consolidation and
-shared-consumer regression proof. Implementation, focused local/native gates and
-parent/independent runtime review are complete. The old serial core was cancelled; acceptance now awaits every required job/step
-in the new module-group gate and its measured cost correction.
-
-Earlier core `39021683944` at `06ea7aa` failed the host deadline/lock case before
-native core. Its quiet log cannot identify the exact failed stage. Source review
-confirmed that floor(uptime)+1 could expire during preliminary inode work or before
-tar launch, while the test assumed the blocking child had started. The fixture
-now retains its bounded launch allowance and arms the short real-clock deadline
-once its child-start marker exists. It requires that marker, exact tar mode,
-expected reaped reason, absent PID and one-time arming, with scalar diagnostics.
-Production code is unchanged; independent review passed. Local archive I/O had
-14 passes / 6 Linux skips in 5.24s; final syntax/Ruff/format/compile passed.
-Complete native history/I/O Quick `39022235983` at `7a02dc2` then passed all 104
-cases in 76.90s (77.09s wall, 34.08 user / 35.04 system). Its host counterpart passed in the cancelled serial run; the combined final
-state remains pending the new module-group gate.
-
+Parent owns design/security, integration and records. Implementation ownership
+has returned; independent source/security and test-delta reviews passed. The four
+core workflows and one CI-only collector now implement trusted push/manual dispatch from a
+no-checkout job, native PR triggers preserving fork/cache isolation, and a read-only
+strict collector. Each child must prove the exact candidate and complete host/native
+jobs. Separate run IDs, visible histories, bounded polling and reruns must be
+verified live before closure. Optional workflows and documentation exclusions stay intact.
+Focused runner tests passed **135 cases in 2.42s**. Parent complete local Tools
+group (`tools/test.py --core-batch tooling --skip-shellcheck`) passed **214 cases
+in 4.80s**, common statics and host syntax. Ruff/format/compile, four YAML parses
+and embedded shell/Python syntax passed. No runtime files changed from `b0a39dc`.
+Next gate: publish this CI-only candidate and verify automatic Checks dispatch,
+three independent visible module runs, exact results and the strict aggregate.
 Acceptance remains **15/157 (9.6%), 0/16 main goals (0%)**. Goal 14 is locally
-focused-complete at 7/11; only its earlier S14.02 is accepted. Completing this
-checkpoint would accept six more IDs, giving 21/157 (13.4%), with no main-goal tick.
+focused-complete at 7/11 but only S14.02 is accepted. Closing the six current IDs
+would give **21/157 (13.4%)**, Goal 14 **7/11 (63.6%)**, and no main-goal tick.
 No full local suite is due because this block does not complete a main goal.
 
-### Complete focused native evidence
+### Implemented and reviewed
 
-The private selection matrix has 17 disjoint groups; the combined integrity/
-callback receipt below covers both later split selections. All required affected
-groups passed. Exact earlier candidates remain valid across unrelated edits;
-the new final module-group core must prove the combined final state. Optional diagnostics
-remain excluded. Wall times below are pytest duration; raw receipts preserve
-external wall/user/system timings under `.tmp/archive-creation/ci-<run>.{json,log}`.
+Manual native data-only archive creation, naming, coherent required/optional
+capture, full verification, guarded publication and verified-new-first retention
+are integrated through the actual backup consumer. Earlier focused feature proofs
+and corrections remain in the historical record and
+[controller audit](PLAN_V2_audit.md#s1401-s1404s1408-create-controller-review).
+Restore/browse and real-router beta qualification remain unfinished.
 
-| Complete scope | Candidate | Quick run | Passed | Seconds |
-| --- | --- | --- | ---: | ---: |
-| Creation | df4c7ef | 39020078160 | 6 | 215.12 |
-| History/runtime/writer/I/O | 7a02dc2 | 39022235983 | 104 | 76.90 |
-| Transaction/menu | 581bacd | 39018465997 | 26 | 63.83 |
-| Payload/semantic/YAML/tools/format/control | 941f34d | 39016694442 | 115 | 98.28 |
-| Config/Store/shared JSON locks | e9b2020 | 39020790687 | 179 | 128.53 |
-| Populated capture | 0273a53 | 39020285074 | 1 | 103.42 |
-| Snapshot/absence capture | e9b2020 | 39020788406 | 10 | 105.95 |
-| Certificate/history capture | cf8ecc9 | 39020600075 | 4 | 97.12 |
-| Verifier structure | 06ea7aa | 39021457896 | 16 | 150.80 |
-| Verifier integrity/callbacks | 0273a53 | 39020402075 | 6 | 252.84 |
-| Shared execution/storage | 9d6fb84 | 39017718100 | 164 + 1 workstation skip | 35.99 |
-| Entry/status/settings/backup consumers | df4c7ef | 39019970651 | 86 | 73.09 |
-| Package/acquisition trust | 06ea7aa | 39021262183 | 37 | 93.81 |
-| Install/retained launch/reporting | 06ea7aa | 39021050412 | 70 | 110.20 |
-| Dependencies | 06ea7aa | 39021264685 | 21 | 212.22 |
-| Reinstall/native/platforms | 06ea7aa | 39021052635 | 144 | 51.04 |
+Consolidation replaces 48 runtime/parser files with nine coherent owners:
+`backup.sh`, `manager.sh`, `status.sh`, shared `config.sh`, `storage.sh`,
+`execution.sh`, `network.sh`, `package.sh`, and one `helpers/worker.sh`.
+The verified package contains 14 files. Existing callers, parsers, manifest and
+regression coverage moved together; no function-per-file design was retained.
+Private category guide: `.tmp/module-layout.md`. Verified complete recovery:
+`.tmp/module-layout-recovery-20261017T053357Z/`; preserve its inventory and restore
+instructions. AGENTS.md was consolidated from **30,948 to 22,995 bytes**, with
+independent comparison **PASS** and checkpoint/permission rules preserved.
 
-Independent selection audit returned PASS: all 17 archive modules, all 15 capture
-cases and all 22 verifier cases are covered. Final core retains common statics,
-full host and mandatory native BusyBox suites. The former serial limit was
-40 minutes; the replacement module groups have ten-minute limits. Splitting the slow
-focused groups preserved every required case. Creation and capture outer guards
-were reduced from temporary diagnostic values using measured successful runs;
-negative cases now distinguish genuine data rejection from supervisor failure.
+Permanent CI groups follow actual main modules, currently **Backup Checks**,
+**Manager Checks**, **Status Checks**; supporting libraries sit beneath their
+main consumer. **Checks** automatically orchestrates them on code/test/tool/Actions
+pushes to `develop` and PRs targeting `develop`. It keeps a manual entry, common
+statics/both syntax gates and a strict aggregate. Reusable calls passed runtime
+proof but are being replaced with real independent runs as explicitly requested.
+Each module has isolated host/native jobs, ten-minute limits and fail-fast off;
+measure the complete module from earliest platform-job start to latest finish,
+including setup, with queue delay separate. The isolation avoids global process
+fixture collisions, not required coverage. **Dev Checks** is manual focused and
+temporary diagnostic selection. **Tools Checks**, **Lint Checks** and **Diagnostics
+Checks** are optional manual workflows. Markdown, `docs/**` and `.images/**`
+changes alone do not trigger repository CI. GitHub's generated Dependency Graph
+entry is not a repository workflow. Groups expand with actual main modules.
 
-### Ownership and closing boundary
+### Measured cost correction and focused proof
 
-The runner/workflow writer and independent reviewer are active as recorded above.
-The old serial wait-only agent completed after observing cancellation.
-After the newly approved module-group CI and cost correction are complete,
-record every required job/step, exact SHA and measured cost; update
-checklist/README/audit/handoff, publish the documentation receipt and **end the
-turn**. The user authorized checkpoint/repair/receipt pushes. Wait for explicit
-permission before reviewing, selecting or suggesting another block. No router,
-release or deployment authority is implied.
+The user-requested forty-minute serial run **39022377733** and earlier grouped
+runs are terminal cancelled and provide no acceptance. Full core **39030592757**
+at `004d852` reached 98% of native Backup before GitHub's explicit ten-minute
+job timeout; no assertion failed. Manager completed both platforms in 7m47s and
+Status in 52s. Backup host passed 374/1 platform skip in 329.31s. The aggregate
+correctly failed. Full logs/metadata are `.tmp/archive-creation/ci-<run>.{log,json}`.
 
-The deadline fixture and user's explicit consolidation rule in AGENTS.md are
-published in `7a02dc2`; the new module-group tooling and corresponding records
-remain uncommitted pending focused validation and review. Runtime bytes
-remain at `df4c7ef`. The rule prioritizes few coherent owners
-(backup, config, networking and other major responsibilities), extending an
-existing owner before another file. Preserve private recovery/evidence files.
+Corrections preserve required behavior and safety cases: verified external
+BusyBox applets in fixtures; scalar shell guards without altered filesystem/
+numeric bounds; smaller focused rejection fixtures; and fresh supervised
+`ls -id STAGE TARGET STAGE` observations with exact complete receipt parsing.
+The fusion retains nonsymlink file/directory admission, both stage identities,
+fixed operands, deadlines, reap/attachment checks and all fallback paths. It
+reduced the positive profile from 367 to 279 supervised operations and 1,468 to
+1,116 RAM inode reads. Independent design/runtime corrective reviews passed.
+
+An immediate extra ownership observation at `5992a36` passed safety but gave too
+little verifier saving (31.59→30.65s, 837→1,093 observations). It was replaced by
+one fixed **10ms first pause**, followed by the existing **50ms cadence**.
+Only no arguments or the literal `first` are accepted. Prior failures and all
+termination waits remain at 50ms; unknown ownership/failed pause stays unresolved,
+and final exact wait/attachment handling is unchanged. Design and exact-delta
+reviews returned **PASS WITH NOTES/PASS**. Native/host adapters exercise the same
+finite selector, with no command builtin enabled or arbitrary duration accepted.
+
+At `b0a39dc`, local `tools/test.py --focused tests/test_prerequisites.py
+ tests/test_archive_io.py --skip-shellcheck` passed common statics/host syntax and
+**45 cases / 15 explicit Linux skips in 7.13s**. Native supervision and I/O below
+closed the applicable platform proof. Positive verification passed in **20.90s**,
+down from 31.59s at `004d852`, retaining 279 operations / 157 inode probes /
+1,116 RAM inode reads. It used 287 pauses and 845 ownership observations. Verifier
+structure CPU stayed approximately unchanged (42.26→41.96s); this last refinement
+removes avoidable waiting rather than claiming a CPU reduction.
+
+Fresh collection: **375 Backup + 576 Manager + 36 Status = 987 required product
+cases**, plus **185 optional Tools**; four optional diagnostics excluded.
+Eighteen native diagnostic selections cover all 951 unique Backup/Manager cases;
+only two deadline variants intentionally overlap metadata safety and complete
+history/I/O. All passed at the exact current candidate. Every whole diagnostic
+job, including setup, was at most **152s**. Summed pytest cost is **393.62s Backup**
+(including those two repeats) and **431.46s Manager**. These are focused receipts;
+the complete main-module run subsequently passed the ten-minute budget.
+
+| Diagnostic batch | Run | Result | Pytest | CPU user/system | Job incl. setup |
+| --- | --- | --- | --- | --- | --- |
+| backup-history | 39032103033 | 105 passed | 45.75s | 29.58/15.33s | 60s |
+| backup-create | 39032233937 | 6 passed | 55.04s | 29.38/23.28s | 75s |
+| backup-transaction-menu | 39032717117 | 26 passed | 19.93s | 10.76/9.55s | 35s |
+| backup-payload | 39032236340 | 115 passed | 28.06s | 15.39/13.27s | 46s |
+| backup-config-entry | 39032536569 | 73 passed | 48.35s | 26.43/18.81s | 69s |
+| backup-capture-populated | 39032238720 | 1 passed | 39.64s | 21.79/17.56s | 63s |
+| backup-capture-snapshot | 39032628293 | 10 passed | 22.93s | 13.42/8.68s | 42s |
+| backup-capture-certificate-history | 39032594970 | 4 passed | 34.92s | 18.88/17.08s | 52s |
+| backup-verifier-structure | 39032105122 | 16 passed | 41.18s | 21.83/20.13s | 56s |
+| backup-verifier-integrity | 39032719125 | 2 passed | 20.33s | 10.69/6.83s | 47s |
+| backup-verifier-callbacks | 39032664107 | 4 passed | 34.25s | 18.31/16.71s | 54s |
+| manager-package-entry | 39032361260 | 61 passed | 55.68s | 32.72/17.97s | 82s |
+| manager-execution | 39032100705 | 187 passed, 1 skipped | 37.24s | 19.50/12.63s | 57s |
+| manager-reinstall-native | 39032538437 | 104 passed | 32.91s | 15.94/12.90s | 49s |
+| manager-config | 39032489939 | 132 passed | 57.36s | 33.38/23.37s | 78s |
+| manager-dependencies | 39032325986 | 21 passed, 4 deselected | 134.62s | 76.90/52.90s | 152s |
+| manager-install-retained | 39032359344 | 70 passed | 113.65s | 66.19/47.13s | 129s |
+| backup-metadata-safety | 39032781035 | 15 passed | 3.24s | 1.20/0.53s | 27s |
+
+Optional Tools **39028225945** passed 185 cases on host/native at `171f899`;
+its workflow/tooling code has not changed since. Optional Lint/Diagnostics are not
+claimed passed. Representative Ubuntu/vendor BusyBox development evidence does
+not qualify Merlin/ARM, live providers or router deployment.
+
+### Closing boundary
+
+Full core **39032859298** at `b0a39dc` passed. Finish the independent-run CI
+correction, focused tooling validation and review, then publish and verify the new
+exact candidate: Checks must start three independent visible module runs and
+strictly require complete host/native success within the module budget. Reuse the
+unchanged runtime diagnostic proof. Only after this passes, accept S14.01 and
+S14.04–S14.08; update checklist/README,
+final audit and this handoff, run proportionate documentation checks, commit/push
+the documentation receipt and verify it triggers no repository CI. Name the tested
+code SHA without implying the receipt SHA was runtime-tested. Leave no required
+job or worker active and **pause for the day**. No subsequent block is selected.
+If a real required gate fails, preserve it unchecked and repair within this same
+authorized checkpoint; no cancelled, skipped or old run supplies acceptance.
 
 ## Historical implementation and diagnostic record — current archive checkpoint
 

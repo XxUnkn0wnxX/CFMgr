@@ -1,17 +1,33 @@
 name: Status Checks
+run-name: "${{ github.event_name == 'pull_request' && format('Status Checks pr={0} sha={1}', github.event.pull_request.number, github.sha) || format('Status Checks parent={0} sha={1}', inputs.parent_run_id || 'standalone', github.sha) }}"
 
 on:
   workflow_dispatch:
-  workflow_call:
     inputs:
-      reuse-preflight:
-        description: Reuse this same commit's successful common Checks preflight
+      candidate_sha:
+        description: Exact candidate SHA (empty selects this dispatch commit)
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: ''
+      parent_run_id:
+        description: Checks parent run ID (empty for standalone)
+        required: false
+        type: string
+        default: ''
+  pull_request:
+    branches: [develop]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.markdown'
+      - 'docs/**'
+      - '.images/**'
 
 permissions:
   contents: read
+
+concurrency:
+  group: "status-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || (inputs.parent_run_id && format('orchestrated-{0}', github.ref)) || format('manual-{0}', github.ref) }}"
+  cancel-in-progress: true
 
 jobs:
   checks:
@@ -24,15 +40,45 @@ jobs:
       matrix:
         platform: [host, busybox]
     steps:
+      - name: Validate exact candidate
+        env:
+          CFMGR_CANDIDATE: ${{ inputs.candidate_sha }}
+          CFMGR_PARENT: ${{ inputs.parent_run_id }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+
+          sha = os.environ["GITHUB_SHA"]
+          candidate = os.environ.get("CFMGR_CANDIDATE") or sha
+          parent = os.environ.get("CFMGR_PARENT", "")
+          if not re.fullmatch(r"[0-9a-f]{40}", sha) or candidate != sha:
+              raise SystemExit("Dispatch candidate does not match event commit")
+          if parent and not re.fullmatch(r"[1-9][0-9]*", parent):
+              raise SystemExit("Invalid Checks parent run ID")
+          PY
+
       - name: Check out source
         # actions/checkout v7.0.1
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
+
+      - name: Verify checked out candidate
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+
+          actual = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if actual != os.environ["GITHUB_SHA"]:
+              raise SystemExit("Checkout differs from exact candidate")
+          PY
 
       - name: Run complete status checks
         uses: ./.github/actions/module-checks
         with:
           batch: status
           platform: ${{ matrix.platform }}
-          reuse-preflight: ${{ inputs.reuse-preflight || false }}
+          reuse-preflight: false

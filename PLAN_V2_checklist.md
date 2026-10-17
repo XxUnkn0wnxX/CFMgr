@@ -29,7 +29,7 @@ local suite and exact full core CI at the complete main-goal checkpoint. Full
 local suites remain reserved for that boundary; core CI runs for code, tests,
 tooling and Actions changes on develop pushes and PRs targeting develop; documentation-only changes
 do not trigger CI. Tools Checks, Lint Checks and Diagnostics Checks are optional and manual-only. Full core CI runs
-last at the checkpoint after all applicable focused local/Quick groups pass;
+last at the checkpoint after all applicable focused local/Dev groups pass;
 local platform skips still require CI proof. Automatically pause after each
 agreed major checkpoint (the approved task/subgoal block) under the standing
 [validation rules](AGENTS.md#validation-and-publication-gates).

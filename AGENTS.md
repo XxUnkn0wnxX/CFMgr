@@ -249,10 +249,13 @@ Actions pushes to `develop` and PRs targeting `develop`, plus manually. Docs-onl
 Markdown, docs/ assets and images never trigger CI; mixed code/docs do. Release-
 branch triggers need review.
 
-Checks calls independently runnable **Backup Checks, Manager Checks and Status
-Checks**, expanding with main modules. Common planning/statics and both syntax
-gates precede complete assigned host/native proof and a strict aggregate. Each
-module has isolated host/BusyBox jobs, both required, fail-fast off, maximum two
+Checks starts separate **Backup Checks, Manager Checks and Status Checks** runs,
+visible in each workflow history. Trusted pushes/manual runs dispatch them; PRs
+use matching native triggers to preserve fork isolation. Checks strictly verifies
+the exact candidate and every required module result. Each independent run owns
+common planning/statics and its host/native syntax and behavior gates. Groups
+expand with main modules. Each module has isolated host/BusyBox jobs, both
+required, fail-fast off, maximum two
 concurrent (six product VMs today). Measure module elapsed time including setup;
 scheduling does not replace cost optimization. Isolation prevents real-process
 fixture collisions. Reuse verified cached native-host vendor BusyBox: representative

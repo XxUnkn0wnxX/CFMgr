@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import copy
+import importlib.util
+import io
 import json
 import os
 import re
@@ -809,26 +812,24 @@ def test_checks_only_proves_syntax_without_pytest(
         ]
 
 
-@pytest.mark.parametrize(
-    "stage", ["PREFLIGHT_RESULT", "BACKUP_RESULT", "MANAGER_RESULT", "STATUS_RESULT"]
-)
+@pytest.mark.parametrize("stage", ["PREFLIGHT_RESULT", "DISPATCH_RESULT"])
+@pytest.mark.parametrize("event", ["push", "pull_request"])
 @pytest.mark.parametrize(
     "result", ["success", "failure", "skipped", "cancelled", "missing"]
 )
 def test_required_core_aggregate_refuses_any_non_successful_stage(
-    stage: str, result: str
+    stage: str, result: str, event: str
 ) -> None:
     workflow = (runner.ROOT / ".github/workflows/checks.yml").read_text()
     aggregate = workflow.split("  checks:\n", 1)[1]
     script = textwrap.dedent(
-        aggregate.split("python3 - <<'PY'\n", 1)[1].rsplit("          PY", 1)[0]
+        aggregate.split("python3 - <<'PY'\n", 1)[1].split("          PY", 1)[0]
     )
     env = os.environ.copy()
     env.update(
         PREFLIGHT_RESULT="success",
-        BACKUP_RESULT="success",
-        MANAGER_RESULT="success",
-        STATUS_RESULT="success",
+        DISPATCH_RESULT="skipped" if event == "pull_request" else "success",
+        GITHUB_EVENT_NAME=event,
     )
     if result == "missing":
         env.pop(stage)
@@ -837,26 +838,39 @@ def test_required_core_aggregate_refuses_any_non_successful_stage(
     completed = subprocess.run(
         [sys.executable, "-c", script], env=env, capture_output=True, check=False
     )
-    assert completed.returncode == (0 if result == "success" else 1), completed.stderr
+    expected = (
+        "skipped"
+        if stage == "DISPATCH_RESULT" and event == "pull_request"
+        else "success"
+    )
+    assert completed.returncode == (0 if result == expected else 1), completed.stderr
 
 
 def test_core_calls_every_main_module_workflow_and_requires_its_result() -> None:
     workflow = (runner.ROOT / ".github/workflows/checks.yml").read_text()
     jobs = dict(
         re.findall(
-            r"(?ms)^  ([a-z]+):\n(.*?)(?=^  [a-z]+:\n|\Z)",
+            r"(?ms)^  ([a-z-]+):\n(.*?)(?=^  [a-z-]+:\n|\Z)",
             workflow.split("jobs:\n", 1)[1],
         )
     )
-    owners = runner.CORE_OWNERS - {"tooling"}
-    assert set(jobs) == owners | {"preflight", "checks"}
-    for owner in owners:
-        assert "    needs: preflight\n" in jobs[owner]
-        assert f"    uses: ./.github/workflows/{owner}-checks.yml\n" in jobs[owner]
-        assert "      reuse-preflight: true\n" in jobs[owner]
-        assert f"${{{{ needs.{owner}.result }}}}" in jobs["checks"]
-    assert "needs: [preflight, backup, manager, status]" in jobs["checks"]
-    assert "if: ${{ always() }}" in jobs["checks"]
+    assert set(jobs) == {"preflight", "dispatch", "checks", "cancel-children"}
+    assert 'owners = ("backup", "manager", "status")' in jobs["dispatch"]
+    assert "needs: [preflight, dispatch]" in jobs["checks"]
+    assert "if: ${{ !cancelled() }}" in jobs["checks"]
+    assert (
+        "actions: read" in jobs["checks"]
+        and "collect_module_checks.py" in jobs["checks"]
+    )
+    for name in ("dispatch", "cancel-children"):
+        assert "actions: write" in jobs[name]
+        assert "actions/checkout" not in jobs[name]
+        assert (
+            "github.event_name == 'push' || github.event_name == 'workflow_dispatch'"
+            in jobs[name]
+        )
+        assert "github.ref == 'refs/heads/develop'" in jobs[name]
+    assert "workflow_run:" not in workflow and "pull_request_target:" not in workflow
     assert "--core-batch tooling" not in workflow
     assert "tools-checks.yml" not in workflow
 
@@ -868,8 +882,10 @@ def test_main_module_sidebar_workflow_pins_its_batch_and_manual_preflight(
     workflow = (runner.ROOT / f".github/workflows/{owner}-checks.yml").read_text()
     assert workflow.startswith(f"name: {owner.title()} Checks\n")
     assert "  workflow_dispatch:\n" in workflow
-    assert "  workflow_call:\n" in workflow
-    assert "        type: boolean\n        default: false\n" in workflow
+    assert "  workflow_call:\n" not in workflow
+    assert "  pull_request:\n    branches: [develop]\n" in workflow
+    assert "      candidate_sha:\n" in workflow
+    assert "          ref: ${{ github.sha }}\n" in workflow
     assert "    timeout-minutes: 10\n" in workflow
     assert (
         f"    name: {owner.title()} Checks (${{{{ matrix.platform }}}})\n" in workflow
@@ -883,12 +899,19 @@ def test_main_module_sidebar_workflow_pins_its_batch_and_manual_preflight(
     assert "        uses: ./.github/actions/module-checks\n" in workflow
     assert f"          batch: {owner}\n" in workflow
     assert "          platform: ${{ matrix.platform }}\n" in workflow
+    assert "          reuse-preflight: false\n" in workflow
     assert (
-        "          reuse-preflight: ${{ inputs.reuse-preflight || false }}\n"
-        in workflow
+        "concurrency:" in workflow
+        and "pr-{0}" in workflow
+        and "orchestrated-{0}" in workflow
+        and "manual-{0}" in workflow
     )
-    assert "concurrency:" not in workflow
-    assert "  push:" not in workflow and "  pull_request:" not in workflow
+    assert "  push:" not in workflow
+    assert (
+        "Validate exact candidate" in workflow
+        and "Verify checked out candidate" in workflow
+    )
+    assert "'docs/**'" in workflow and "'**/*.md'" in workflow
 
 
 @pytest.mark.parametrize(
@@ -988,3 +1011,406 @@ def test_module_action_preserves_complete_platform_tests_and_preflight_guards() 
         in native
     )
     assert "continue-on-error:" not in action
+
+
+@pytest.fixture
+def module_collection():
+    spec = importlib.util.spec_from_file_location(
+        "collect_module_checks", runner.ROOT / ".github/collect_module_checks.py"
+    )
+    collector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(collector)
+    repository, sha, parent = "example/CFMgr", "a" * 40, "123"
+    runs, jobs = {}, {}
+    mapping = {}
+    for index, owner in enumerate(collector.OWNERS, 1):
+        run_id = 100 + index
+        mapping[owner] = {"id": run_id, "attempt": 1}
+        runs[run_id] = {
+            "id": run_id,
+            "repository": {"full_name": repository},
+            "workflow_id": index,
+            "path": f".github/workflows/{owner}-checks.yml",
+            "event": "workflow_dispatch",
+            "display_title": collector.title(owner, sha, parent=parent),
+            "head_sha": sha,
+            "run_attempt": 1,
+            "status": "completed",
+            "conclusion": "success",
+        }
+        jobs[run_id] = {
+            "total_count": 2,
+            "jobs": [
+                {
+                    "name": f"{owner.title()} Checks ({platform})",
+                    "run_id": run_id,
+                    "status": "completed",
+                    "conclusion": "success",
+                    "steps": [
+                        {
+                            "name": name,
+                            "number": number,
+                            "status": "completed",
+                            "conclusion": "success",
+                        }
+                        for number, name in enumerate(
+                            (
+                                "Validate exact candidate",
+                                "Check out source",
+                                "Verify checked out candidate",
+                                f"Run complete {owner} checks",
+                            ),
+                            1,
+                        )
+                    ],
+                }
+                for platform in ("host", "busybox")
+            ],
+        }
+
+    class FakeAPI:
+        def __init__(self):
+            self.calls = []
+            self.elapsed = 0
+            self.hook = lambda path: None
+
+        def get(self, path):
+            self.calls.append(path)
+            self.hook(path)
+            workflow = re.fullmatch(
+                r"/actions/workflows/(backup|manager|status)-checks.yml", path
+            )
+            if workflow:
+                owner = workflow[1]
+                return {
+                    "id": collector.OWNERS.index(owner) + 1,
+                    "path": f".github/workflows/{owner}-checks.yml",
+                }
+            if "/workflows/" in path:
+                owner = path.split("/workflows/", 1)[1].split("-checks.yml", 1)[0]
+                return {
+                    "workflow_runs": [
+                        copy.deepcopy(run)
+                        for run in runs.values()
+                        if run["workflow_id"] == collector.OWNERS.index(owner) + 1
+                    ]
+                }
+            run_id = int(path.split("/runs/", 1)[1].split("/", 1)[0])
+            return copy.deepcopy(jobs[run_id] if "/jobs?" in path else runs[run_id])
+
+        def collect(self, *, pr=False):
+            return collector.collect(
+                self,
+                repository,
+                sha,
+                "pull_request" if pr else "push",
+                parent,
+                "7" if pr else None,
+                {} if pr else mapping,
+                clock=lambda: self.elapsed,
+                sleep=self.advance,
+            )
+
+        def advance(self, seconds):
+            assert 0 < seconds <= 15
+            self.elapsed += seconds
+
+    return collector, FakeAPI(), runs, jobs, mapping
+
+
+@pytest.mark.parametrize("pr", [False, True])
+def test_module_collector_accepts_exact_success_and_pr_merge_title_without_head_equivalence(
+    module_collection, pr
+):
+    collector, api, runs, _jobs, mapping = module_collection
+    for owner, selected in mapping.items():
+        run = runs[selected["id"]]
+        run["path"] += "@refs/heads/develop"
+        if pr:
+            run.update(
+                event="pull_request",
+                head_sha="b" * 40,
+                display_title=collector.title(owner, "a" * 40, pr="7"),
+            )
+    assert api.collect(pr=pr) == {
+        owner: selected["id"] for owner, selected in mapping.items()
+    }
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "sha",
+        "path",
+        "repo",
+        "workflow-id",
+        "title",
+        "event",
+        "run-id",
+        "attempt",
+        "job-id",
+        "missing-job",
+        "duplicate-job",
+        "missing-step",
+        "skipped-step",
+        "failed-job",
+        "cancelled-run",
+        "changed-attempt",
+    ],
+)
+def test_module_collector_rejects_mismatched_or_nonpassing_evidence(
+    module_collection, defect
+):
+    collector, api, runs, jobs, _mapping = module_collection
+    run = runs[101]
+    if defect in {"sha", "path", "workflow-id", "title", "event", "run-id", "attempt"}:
+        key, value = {
+            "sha": ("head_sha", "b" * 40),
+            "path": ("path", ".github/workflows/foreign.yml@main"),
+            "workflow-id": ("workflow_id", 99),
+            "title": ("display_title", "unrelated"),
+            "event": ("event", "push"),
+            "run-id": ("id", 999),
+            "attempt": ("run_attempt", 2),
+        }[defect]
+        run[key] = value
+    elif defect == "repo":
+        run["repository"]["full_name"] = "other/CFMgr"
+    elif defect == "job-id":
+        jobs[101]["jobs"][0]["run_id"] = 999
+    elif defect == "missing-job":
+        jobs[101]["jobs"].pop()
+    elif defect == "duplicate-job":
+        jobs[101]["jobs"][1] = copy.deepcopy(jobs[101]["jobs"][0])
+    elif defect == "missing-step":
+        jobs[101]["jobs"][0]["steps"].pop()
+    elif defect == "skipped-step":
+        jobs[101]["jobs"][0]["steps"][-1]["conclusion"] = "skipped"
+    elif defect == "failed-job":
+        jobs[101]["jobs"][0]["conclusion"] = "failure"
+    elif defect == "cancelled-run":
+        run["conclusion"] = "cancelled"
+    else:
+        api.hook = lambda path: run.update(run_attempt=2) if "/jobs?" in path else None
+    with pytest.raises(collector.CollectionError):
+        api.collect()
+
+
+def test_module_collector_waits_for_requested_rerun_attempt_and_has_finite_polling(
+    module_collection,
+):
+    collector, api, _runs, _jobs, mapping = module_collection
+    mapping["backup"]["attempt"] = 2
+    with pytest.raises(collector.CollectionError, match="15 minutes"):
+        api.collect()
+    assert api.elapsed == 900
+    assert not any("/runs/101/attempts/" in call for call in api.calls)
+
+
+def test_module_collector_drops_prior_success_when_new_pr_run_is_pending(
+    module_collection,
+):
+    collector, api, runs, _jobs, mapping = module_collection
+    for owner, selected in mapping.items():
+        runs[selected["id"]].update(
+            event="pull_request", display_title=collector.title(owner, "a" * 40, pr="7")
+        )
+    runs[102]["status"] = "queued"
+
+    def advance(seconds):
+        api.elapsed += seconds
+        runs[201] = dict(runs[101], id=201, status="queued")
+        runs[102]["status"] = "completed"
+
+    api.advance = advance
+    with pytest.raises(collector.CollectionError, match="15 minutes"):
+        api.collect(pr=True)
+
+
+def dispatch_script():
+    workflow = (runner.ROOT / ".github/workflows/checks.yml").read_text()
+    return textwrap.dedent(
+        workflow.split("      - name: Dispatch exact independent runs\n", 1)[1]
+        .split("python3 - <<'PY'\n", 1)[1]
+        .split("          PY", 1)[0]
+    )
+
+
+def run_inline_dispatch():
+    exec(dispatch_script(), {})  # noqa: S102 - Execute the fixed workflow script with its API mocked.
+
+
+@pytest.fixture
+def dispatch_api(monkeypatch, tmp_path):
+    import signal
+    import urllib.request
+
+    repo, sha = "example/CFMgr", "a" * 40
+    for key, value in {
+        "GITHUB_REPOSITORY": repo,
+        "GITHUB_SHA": sha,
+        "GITHUB_RUN_ID": "123",
+        "GITHUB_RUN_ATTEMPT": "1",
+        "GITHUB_EVENT_NAME": "push",
+        "GITHUB_REF": "refs/heads/develop",
+        "GH_TOKEN": "synthetic",
+        "GITHUB_OUTPUT": str(tmp_path / "output"),
+        "GITHUB_STEP_SUMMARY": str(tmp_path / "summary"),
+    }.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(signal, "signal", lambda *args: None)
+    calls = []
+    state = {"current": sha, "prior": False, "fail": None}
+
+    class Response(io.BytesIO):
+        status = 200
+
+    class Opener:
+        def open(self, request, timeout):
+            assert timeout == 20
+            path = request.full_url.split(f"/repos/{repo}", 1)[1]
+            calls.append(
+                (
+                    request.method,
+                    path,
+                    json.loads(request.data) if request.data else None,
+                )
+            )
+            if path == "/git/ref/heads/develop":
+                data = {"object": {"sha": state["current"]}}
+            else:
+                owner = next(
+                    (
+                        owner
+                        for owner in ("backup", "manager", "status")
+                        if f"/{owner}-checks.yml" in path
+                    ),
+                    "backup",
+                )
+                index = ("backup", "manager", "status").index(owner) + 1
+                if path.endswith("/dispatches"):
+                    if state["fail"] == owner:
+                        raise OSError("synthetic dispatch failure")
+                    data = {
+                        "workflow_run_id": 100 + index,
+                        "run_url": f"https://api.github.com/repos/{repo}/actions/runs/{100 + index}",
+                        "html_url": f"https://github.com/{repo}/actions/runs/{100 + index}",
+                    }
+                    if state.get("invalid") == "id":
+                        data["workflow_run_id"] = True
+                    elif state.get("invalid") == "url":
+                        data["run_url"] = "https://example.invalid/run"
+                    elif state.get("invalid") == "status":
+                        response = Response(json.dumps(data).encode())
+                        response.status = 204
+                        return response
+                elif "/runs?" in path:
+                    data = {
+                        "workflow_runs": [
+                            {
+                                "id": 100 + index,
+                                "run_attempt": 1,
+                                "status": "completed",
+                                "repository": {"full_name": repo},
+                                "path": f".github/workflows/{owner}-checks.yml@develop",
+                                "workflow_id": index,
+                                "event": "workflow_dispatch",
+                                "head_sha": sha,
+                                "display_title": f"{owner.title()} Checks parent=123 sha={sha}",
+                            }
+                        ]
+                        if state["prior"]
+                        else []
+                    }
+                elif request.method == "POST":
+                    response = Response(b"")
+                    response.status = 202
+                    return response
+                else:
+                    data = {
+                        "id": index,
+                        "path": f".github/workflows/{owner}-checks.yml",
+                        "state": "active",
+                    }
+            return Response(json.dumps(data).encode())
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *args: Opener())
+    return calls, state, tmp_path
+
+
+def test_inline_dispatch_uses_returned_ids_and_cleans_partial_failure(dispatch_api):
+    calls, state, directory = dispatch_api
+    run_inline_dispatch()
+    mapping = json.loads((directory / "output").read_text().split("=", 1)[1])
+    assert mapping == {
+        owner: {"id": 101 + index, "attempt": 1}
+        for index, owner in enumerate(("backup", "manager", "status"))
+    }
+    assert not any("/runs?" in path for _, path, _ in calls)
+    assert all(
+        body["inputs"]["candidate_sha"] == "a" * 40
+        for _, path, body in calls
+        if path.endswith("/dispatches")
+    )
+    calls.clear()
+    state["fail"] = "status"
+    with pytest.raises(OSError):
+        run_inline_dispatch()
+    assert [
+        path
+        for method, path, _ in calls
+        if method == "POST" and path.endswith("/cancel")
+    ] == ["/actions/runs/101/cancel", "/actions/runs/102/cancel"]
+
+
+def test_inline_dispatch_reruns_exact_prior_ids_for_advanced_ref(
+    dispatch_api, monkeypatch
+):
+    calls, state, directory = dispatch_api
+    state.update(current="b" * 40, prior=True)
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
+    run_inline_dispatch()
+    assert [path for method, path, _ in calls if method == "POST"] == [
+        f"/actions/runs/{run_id}/rerun" for run_id in (101, 102, 103)
+    ]
+    mapping = json.loads((directory / "output").read_text().split("=", 1)[1])
+    assert all(run["attempt"] == 2 for run in mapping.values())
+    calls.clear()
+    state["prior"] = False
+    with pytest.raises(RuntimeError, match="missing exact child"):
+        run_inline_dispatch()
+    assert not any(method == "POST" for method, _, _ in calls)
+
+
+def test_inline_dispatch_rejects_fork_pr_before_any_api_call(dispatch_api, monkeypatch):
+    calls, _state, _directory = dispatch_api
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("GITHUB_REF", "refs/pull/7/merge")
+    with pytest.raises(SystemExit, match="trusted develop"):
+        run_inline_dispatch()
+    assert calls == []
+
+
+@pytest.mark.parametrize("invalid", ["id", "url", "status"])
+def test_inline_dispatch_requires_documented_exact_run_receipt(dispatch_api, invalid):
+    calls, state, _directory = dispatch_api
+    state["invalid"] = invalid
+    with pytest.raises(RuntimeError):
+        run_inline_dispatch()
+    if invalid != "url":
+        assert not any(path.endswith("/cancel") for _, path, _ in calls)
+
+
+@pytest.mark.parametrize("candidate", ["", "a" * 40, "b" * 40])
+def test_module_candidate_input_matches_event_before_checkout(candidate):
+    workflow = (runner.ROOT / ".github/workflows/backup-checks.yml").read_text()
+    script = textwrap.dedent(
+        workflow.split("python3 - <<'PY'\n", 1)[1].split("          PY", 1)[0]
+    )
+    env = dict(
+        os.environ, GITHUB_SHA="a" * 40, CFMGR_CANDIDATE=candidate, CFMGR_PARENT="123"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", script], env=env, capture_output=True, check=False
+    )
+    assert completed.returncode == (1 if candidate == "b" * 40 else 0), completed.stderr

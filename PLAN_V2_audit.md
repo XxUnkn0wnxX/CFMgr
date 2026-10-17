@@ -274,6 +274,48 @@ in 7.13s. Ten controlled loop scenarios plus the pause capability check exercise
 the fixed selector, first/later cadence, prior failures, failed first pause,
 unknown evidence retention, and initially absent/zombie children. Native timing
 remains necessary; no test uses elapsed-time assertions to manufacture a speedup.
+At published `b0a39dc`, native manager execution passed 187 cases / one explicit
+workstation-only skip in 37.24s, history/I/O passed 105 in 45.75s, and verifier
+structure passed 16 in 41.18s (41.96s CPU). The positive profile improved from
+31.59s at `004d852` to **20.90s**, preserving 279 probes / 157 inode probes /
+1,116 RAM inode reads. It used 287 pauses and 845 observations: eight continuing
+iterations beyond the first wait, with no continuous faster polling. Structure
+CPU stayed approximately unchanged (42.26→41.96s), so this refinement's benefit
+is reduced avoidable waiting. Native deadline/cancellation/FD/ownership and the
+controlled first-pause cases passed. Complete affected batches and the whole
+module cost gate remain required before accepting product IDs.
+
+
+All eighteen complete diagnostic selections subsequently passed at `b0a39dc`;
+the slowest whole diagnostic job was 152s. Final
+[core 39032859298](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39032859298)
+passed all eight jobs. Complete module wall times including setup were Backup
+**6m27s**, Manager **8m29s**, Status **36s**. Host: 957 passes / 30 platform skips;
+native: 986 passes / one workstation-only skip; four optional diagnostics excluded
+per platform. The required module cost gate passed without reducing scope or
+raising the ten-minute execution limit.
+
+### Independent module workflow histories
+
+The user identified that reusable workflow calls leave the individual workflow
+history pages empty. The prior implementation ran distinct module jobs, but missed
+the explicit requirement for separate workflow runs. Runtime proof above remains
+valid; checkpoint closure is held for this CI correction. Parent and independent
+Astra design agree on trusted push/manual dispatch from an isolated no-checkout
+job, native PR events preserving fork/cache isolation, and a read-only strict
+aggregate of exact-candidate, complete host/native results. Each module keeps its
+own statics/syntax and ten-minute bound. Dispatch IDs, PR merge-SHA correlation,
+current run attempts, missing/skipped/failing jobs and bounded polling require
+focused validation. No `workflow_run` execution of untrusted PR code, write token
+in PR execution, or executable-cache trust change is accepted. New exact-candidate
+CI must demonstrate separate visible runs before acceptance.
+Implementation and independent final review passed. The parent corrected a stale
+per-poll success cache and cancellation behavior; optional API workflow-path ref
+suffixes are supported without loosening workflow/candidate identity. Privileged
+jobs never check out or execute candidate files; all candidate/PR execution stays
+read-only. Focused orchestration tests passed 135 cases in 2.42s; complete local
+Tools passed 214 in 4.80s with required common statics/host syntax. No runtime
+files changed. Actual GitHub dispatch/collection remains the final integration gate.
 
 ## S14.06–S14.08 history runtime admission review
 

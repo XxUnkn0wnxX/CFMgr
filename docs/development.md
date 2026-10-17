@@ -52,7 +52,8 @@ Use `--output PATH` to build a package in an absent or empty directory.
 [Backup Checks](../.github/workflows/backup-checks.yml),
 [Manager Checks](../.github/workflows/manager-checks.yml) and
 [Status Checks](../.github/workflows/status-checks.yml) on Ubuntu host and vendor
-BusyBox ash for develop pushes and PRs, with common statics once.
+BusyBox ash for develop pushes and PRs. Each module has its own workflow run,
+including required static checks.
 Documentation-only changes do not trigger CI.
 [Tools Checks](../.github/workflows/tools-checks.yml) manually tests developer tools;
 [Lint Checks](../.github/workflows/lint.yml) runs ShellCheck manually;
