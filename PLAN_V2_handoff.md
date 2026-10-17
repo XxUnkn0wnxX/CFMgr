@@ -27,7 +27,84 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Authorized checkpoint — publish consolidated archive candidate and complete CI
+## Current checkpoint — host deadline fixture repair
+
+Published runtime/test candidate: **`06ea7aa4b7f556f0e590ae161dc9b6cc5bf0ff8f`**.
+The authorized block is **S14.01 and S14.04–S14.08**, including consolidation and
+shared-consumer regression proof. Implementation, focused local/native gates and
+parent/independent runtime review are complete. Final [core Checks
+39021683944](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39021683944) failed in the host deadline/lock case; native core did not start. Its log does not
+identify the exact failed stage. Source review confirms the old floor(uptime)+1
+fixture budget could expire during preliminary inode work or before tar launch,
+while the test assumed the blocking child had started. The fixture now retains
+its bounded launch allowance and arms the short real-clock deadline once its
+child-start marker exists. It requires that marker, exact tar mode, expected
+reaped reason, absent PID and one-time arming, with scalar failure diagnostics.
+Production code is unchanged; independent review passed. Local archive I/O had
+14 passes / 6 Linux skips in5.24s; final syntax/Ruff/format/compile passed. Native
+complete history/I/O and final exact core reruns remain required.
+
+Acceptance remains **15/157 (9.6%), 0/16 main goals (0%)**. Goal 14 is locally
+focused-complete at 7/11; only its earlier S14.02 is accepted. Completing this
+checkpoint would accept six more IDs, giving 21/157 (13.4%), with no main-goal tick.
+No full local suite is due because this block does not complete a main goal.
+
+### Complete focused native evidence
+
+The private selection matrix has 17 disjoint groups; the combined integrity/
+callback receipt below covers both later split selections. All required affected
+groups passed. Exact earlier candidates remain valid across unrelated edits;
+final core at `06ea7aa` must prove the combined final state. Optional diagnostics
+remain excluded. Wall times below are pytest duration; raw receipts preserve
+external wall/user/system timings under `.tmp/archive-creation/ci-<run>.{json,log}`.
+
+| Complete scope | Candidate | Quick run | Passed | Seconds |
+| --- | --- | --- | ---: | ---: |
+| Creation | df4c7ef | 39020078160 | 6 | 215.12 |
+| History/runtime/writer/I/O | df4c7ef | 39020155540 | 104 | 63.79 |
+| Transaction/menu | 581bacd | 39018465997 | 26 | 63.83 |
+| Payload/semantic/YAML/tools/format/control | 941f34d | 39016694442 | 115 | 98.28 |
+| Config/Store/shared JSON locks | e9b2020 | 39020790687 | 179 | 128.53 |
+| Populated capture | 0273a53 | 39020285074 | 1 | 103.42 |
+| Snapshot/absence capture | e9b2020 | 39020788406 | 10 | 105.95 |
+| Certificate/history capture | cf8ecc9 | 39020600075 | 4 | 97.12 |
+| Verifier structure | 06ea7aa | 39021457896 | 16 | 150.80 |
+| Verifier integrity/callbacks | 0273a53 | 39020402075 | 6 | 252.84 |
+| Shared execution/storage | 9d6fb84 | 39017718100 | 164 + 1 workstation skip | 35.99 |
+| Entry/status/settings/backup consumers | df4c7ef | 39019970651 | 86 | 73.09 |
+| Package/acquisition trust | 06ea7aa | 39021262183 | 37 | 93.81 |
+| Install/retained launch/reporting | 06ea7aa | 39021050412 | 70 | 110.20 |
+| Dependencies | 06ea7aa | 39021264685 | 21 | 212.22 |
+| Reinstall/native/platforms | 06ea7aa | 39021052635 | 144 | 51.04 |
+
+Independent selection audit returned PASS: all 17 archive modules, all 15 capture
+cases and all 22 verifier cases are covered. Final core retains common statics,
+full host and mandatory native BusyBox suites. The final configured limit is
+40 minutes; actual complete serial runtime remains unproved. Splitting the slow
+focused groups preserved every required case. Creation and capture outer guards
+were reduced from temporary diagnostic values using measured successful runs;
+negative cases now distinguish genuine data rejection from supervisor failure.
+
+### Ownership and closing boundary
+
+No writer or CI job remains active at this repair point. Commit/push the reviewed
+fixture correction, cancel premature automatic core, complete the affected native
+history/I/O Quick group, then run final core again. After success, record every required job/step, exact SHA and measured cost; update
+checklist/README/audit/handoff, publish the documentation receipt and **end the
+turn**. The user authorized checkpoint/repair/receipt pushes. Wait for explicit
+permission before reviewing, selecting or suggesting another block. No router,
+release or deployment authority is implied.
+
+Current changes are the deadline fixture and the user's explicit consolidation
+rule in AGENTS.md plus this handoff refresh. Runtime bytes remain at `df4c7ef`. The rule prioritizes few coherent owners
+(backup, config, networking and other major responsibilities), extending an
+existing owner before another file. Preserve private recovery/evidence files.
+
+## Historical implementation and diagnostic record — current archive checkpoint
+
+The following sequence retains earlier decisions, failed attempts and their
+repairs. Current state and pending work are solely in the section above; statements
+of pending proof or ownership below describe their historical point.
 
 The user explicitly authorized “yes push & continue till checkpoint is 100% done”
 and reiterated test optimization where needed. Publish the reviewed candidate,

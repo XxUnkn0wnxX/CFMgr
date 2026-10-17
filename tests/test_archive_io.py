@@ -517,16 +517,37 @@ exec 0<>"$ram/lock"
 cfmgr_config_lock_fd0=1
 cfmgr_store_fd_is() { [ "$1" -ef /proc/self/fd/0 ]; }
 cfmgr_store_lock=$ram/lock
-cfmgr_prerequisites_now || exit 80
-cfmgr_archive_deadline=$((cfmgr_probe_now+1))
+# Keep SETUP's bounded launch allowance. Arm the short real-clock deadline once
+# the blocking child has proved its inherited FDs; preliminary inode work cannot
+# consume that budget or masquerade as a successfully reaped blocking child.
+deadline_armed=0
+cfmgr_store_attachment_ok() {
+    [ -d "$ram" ] && [ ! -e "$ram/cancel" ] || return 1
+    if [ -f "$ram/child-started" ]; then
+        [ "$TEST_STOP" != cancel ] || return 1
+        if [ "$deadline_armed" = 0 ] && [ "$cfmgr_probe_mode" = archive-tar-list ]; then
+            cfmgr_prerequisites_now || return 1
+            cfmgr_probe_deadline=$((cfmgr_probe_now+1))
+            deadline_armed=1
+        fi
+    fi
+}
 expected=deadline
 if [ "$TEST_STOP" = cancel ]; then
-    cfmgr_archive_deadline=$((cfmgr_probe_now+5))
-    cfmgr_store_attachment_ok() { [ ! -e "$ram/child-started" ]; }
     expected=attachment
 fi
 cfmgr_archive_io tar-list 4096 "$ram/input" "$stage/list" && exit 83
-[ "$cfmgr_probe_status:$cfmgr_probe_reason" = "reaped:$expected" ] && [ ! -d "/proc/$cfmgr_probe_pid" ]
+if [ -f "$ram/child-started" ] && [ "$cfmgr_probe_mode" = archive-tar-list ] &&
+   [ "$cfmgr_probe_status:$cfmgr_probe_reason" = "reaped:$expected" ] &&
+   [ ! -d "/proc/$cfmgr_probe_pid" ] &&
+   { [ "$TEST_STOP" = cancel ] || [ "$deadline_armed" = 1 ]; }; then
+    exit 0
+fi
+printf 'mode=%s status=%s reason=%s exit=%s pid=%s\n' \
+    "${cfmgr_probe_mode:-unset}" "${cfmgr_probe_status:-unset}" \
+    "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" \
+    "${cfmgr_probe_pid:-unset}" >&2
+exit 84
 """,
         )
     )

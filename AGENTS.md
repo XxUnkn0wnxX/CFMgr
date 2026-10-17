@@ -71,8 +71,12 @@ Name dependencies and return paths; notify the user before switching to a
 prerequisite in another goal. Goal 1 requires all three features and source parity,
 not a menu skeleton. Dependency work earns only its proven credit.
 
-Keep shared support grouped by responsibility, not disconnected helpers or one
-monolith. Prefer simple designs covering normal operation and core failure risks;
+Make consolidation a priority: use as few coherent modules/libraries as practical,
+with one owner per major responsibility such as backup, configuration or networking.
+Extend the existing owner before adding a file; a function, parser, menu or processing
+phase alone does not justify a separate script. Keep necessary process entry points
+thin and reuse their owner's implementation. Prefer simple designs covering normal
+operation and core failure risks;
 retain the edge cases explicitly required by the plan. Outside that scope, add only
 cheap useful safeguards or small interim mitigations automatically. Record critical
 limitations covered by those mitigations in review notes for later user review.
