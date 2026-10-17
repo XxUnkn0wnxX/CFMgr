@@ -71,6 +71,19 @@ No CI remains active at this repair point. The measured create plus transaction
 cost justifies separate complete groups; the private matrix now has 15 groups
 with unchanged coverage. Full core remains the final exact-candidate gate.
 
+The first JSON stdin correction did not resolve native Quick `39019343705`
+(2.31s). Reassessment found the exact pinned-ash rule already documented in the
+production supervisor: background FD0 is reset before command redirects, making
+`0<&0` ineffective. The fixture now uses that same invocation-scoped FD9 bridge
+across the fork, restores parent9 immediately and leaves the helper to retain its
+own lock9 across JSON input. An early exit now reports the child's numeric code.
+No production lock change is needed. Verifier positive deadline diagnosis remains
+an inference until native rerun: its 60s fixture limit failed at 59.63s; only that
+full positive case now uses the production 600s internal deadline and a 120s
+outer guard supported by the comparable semantic measurement. Other verifier
+cases retain their limits, and failures now expose scalar probe status/reason.
+Ruff/format/compile/whitespace passed. All edit ownership has returned to parent.
+
 Earlier focused evidence and repairs follow; superseded pending statements below
 are historical and do not override the current state above.
 The complete shared execution group is green: Quick `39017718100`, **164 passed,

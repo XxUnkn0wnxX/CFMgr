@@ -578,15 +578,23 @@ def test_json_child_retains_lock9_across_stdin_redirect(archive, shell):
 cfmgr_archive_run archive-payload-json 4096 "$TEST_AWK" "$support/modules/lib" certificate-json "$ram/json" 12 a || exit $?
 # Now prove9 alone retains exclusion after the launching parent releases0.
 : >"$ram/prove-json-lock"
-# Explicit stdin inheritance prevents noninteractive ash giving the background
-# child /dev/null before the helper can retain the writer lock on9.
-(exec "$TEST_SH" "$support/modules/helpers/worker.sh" archive-payload-json "$TEST_AWK" "$ram" "$support/modules/lib" certificate-json "$ram/json" 12 a) 0<&0 >"$ram/json.out" 2>"$ram/json.err" &
-json_pid=$!
+# Pinned ash resets background0 before redirects: 0<&0 cannot preserve it.
+# Use the production supervisor's invocation-scoped9 bridge across that fork.
+start_json() {
+    (exec "$TEST_SH" "$support/modules/helpers/worker.sh" archive-payload-json "$TEST_AWK" "$ram" "$support/modules/lib" certificate-json "$ram/json" 12 a) 0<&9 9<&- >"$ram/json.out" 2>"$ram/json.err" &
+    json_pid=$!
+}
+start_json 9<&0
 remaining=40
 while [ ! -e "$ram/json-started" ] && [ "$remaining" -gt 0 ]; do
     remaining=$((remaining-1)); cfmgr_prerequisites_pause
 done
-if [ ! -e "$ram/json-started" ]; then kill "$json_pid"; wait "$json_pid"; exit 81; fi
+if [ ! -e "$ram/json-started" ]; then
+    kill "$json_pid" 2>/dev/null
+    wait "$json_pid"; json_code=$?
+    printf 'JSON child exited before marker: %s\n' "$json_code" >&2
+    exit 81
+fi
 exec 0<&-
 : >"$ram/json-owner-closed"
 wait "$json_pid" || exit $?

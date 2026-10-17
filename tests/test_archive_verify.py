@@ -174,8 +174,11 @@ cfmgr_archive_verify_complete() {
 """
 
 
-def verify(archive, shell, *, expected=SET_ID, callbacks=True):
-    script = "cfmgr_archive_inventory_limit=65536\ncfmgr_archive_deadline=$((cfmgr_probe_now+60))\n"
+def verify(archive, shell, *, expected=SET_ID, callbacks=True, deadline=60, timeout=65):
+    script = (
+        "cfmgr_archive_inventory_limit=65536\n"
+        f"cfmgr_archive_deadline=$((cfmgr_probe_now+{deadline}))\n"
+    )
     if callbacks:
         script += CALLBACKS
     else:
@@ -187,14 +190,14 @@ def verify(archive, shell, *, expected=SET_ID, callbacks=True):
     script += (
         'cfmgr_archive_format_verify "$stage/candidate" '
         + shlex.quote(expected)
-        + '; code=$?; if [ "${TEST_CLEANUP:-0}" = 1 ]; then cfmgr_archive_format_cleanup || exit 91; fi; printf "code=%s verified=%s\\n" "$code" "$cfmgr_archive_verified"; exit "$code"'
+        + '; code=$?; if [ "${TEST_CLEANUP:-0}" = 1 ]; then cfmgr_archive_format_cleanup || exit 91; fi; printf "code=%s verified=%s\\n" "$code" "$cfmgr_archive_verified"; if [ "$code" -ne 0 ]; then printf "diagnostic verification=%s probe=%s status=%s reason=%s child_exit=%s format=%s\\n" "${cfmgr_archive_verification_status:-unset}" "${cfmgr_probe_mode:-unset}" "${cfmgr_probe_status:-unset}" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" "${cfmgr_format_code:-unset}"; fi; exit "$code"'
     )
-    return run(archive, shell, script, timeout=65)
+    return run(archive, shell, script, timeout=timeout)
 
 
 def test_real_tool_end_to_end_binary_empty_boundary_and_callbacks(archive, shell):
     raw, _ = make_archive(archive)
-    result = verify(archive, shell)
+    result = verify(archive, shell, deadline=600, timeout=120)
     assert (result.returncode, result.stdout, result.stderr) == (
         0,
         b"code=0 verified=1\n",
