@@ -74,6 +74,25 @@ owned-cleanup assertions remain. No runtime limit changes. All five local writer
 variants passed in 18.26s (18.88s wall, 7.34 user / 5.90 system); native confirmation
 and the complete snapshot group are pending. Independent final runtime repair
 review returned PASS; findings and evidence limits are in the audit record.
+
+The repaired complete snapshot group `39020788406` at `e9b2020` passed all ten
+cases in 105.95s (106.19s wall, 28.70 user / 62.40 system), including actual
+prefix append/mutation/shrink. Complete config `39020790687` passed 179 in
+128.53s (128.84s wall, 51.03 user / 67.13 system), covering the final shared-reader
+repair. Certificate/history `39020600075` at `cf8ecc9` passed four in 97.12s
+(97.29s wall, 31.69 user / 47.60 system). Its successful native hash-recovery
+case measured 34.42s against a 35s guard, and writer revalidation 23.79s against
+25s. Native outer guards now provide 50s/40s respectively; host and production
+limits remain unchanged. Existing stricter successful receipts are retained;
+the final core verifies these guard-only adjustments.
+
+Verifier integrity/callback group `39020402075` at `0273a53` passed all six in
+252.84s (253.05s wall, 70.05 user / 142.33 system). For future focused diagnosis
+it is split into two integrity cases and four callback cases; 17 private groups
+retain identical coverage. This complete pass remains valid. Remaining complete
+Quick groups: package-trust, install-retained, dependency-native,
+dependency-reinstall, and archive-verifier-structure after its guard/assertion
+updates. Then run final exact core Checks. No acceptance has been awarded.
 Configuration Quick `39018955173` passed **177 tests in 126.52s** (126.69s
 wall, 50.95 user / 67.11 system), including actual native borrowed-lock history
 Save (11.91s). Integrated creation `39018613818` now publishes and completes

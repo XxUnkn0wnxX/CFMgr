@@ -407,7 +407,15 @@ code=$?
         if damage == "hash"
         else 'cfmgr_test_capture_rejected "$code" && [ "$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit" = archive-payload-match:reaped:1 ]'
     )
-    passed(capture_run(archive, shell, script, timeout=35))
+    # Native hash-recovery proof measured 34.42s; preserve bounded headroom.
+    passed(
+        capture_run(
+            archive,
+            shell,
+            script,
+            timeout=50 if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1" else 35,
+        )
+    )
     inventory = (archive[3] / "inventory").read_text()
     assert " damaged END" in inventory
     assert ("FILE p00000001 data.cloudflared.certificate " in inventory) == (
@@ -450,7 +458,15 @@ cfmgr_capture_start || exit $?
         script += "cfmgr_archive_cloud_capture_mode() { return 4; }\ncfmgr_archive_capture_history && cfmgr_capture_finish"
     else:
         script += 'cfmgr_archive_cloud_capture_revalidate() { : >"$ram/revalidated"; return 1; }\ncfmgr_archive_capture_history; code=$?\ncfmgr_test_capture_rejected "$code" && [ -f "$ram/revalidated" ]'
-    passed(capture_run(archive, shell, script, timeout=25))
+    # Native writer revalidation measured 23.79s against the old 25s guard.
+    passed(
+        capture_run(
+            archive,
+            shell,
+            script,
+            timeout=40 if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1" else 25,
+        )
+    )
     inventory = (archive[3] / "inventory").read_text()
     if writer == "unknown":
         assert "NOTE history.cloudflared unavailable - writer-unknown END" in inventory
