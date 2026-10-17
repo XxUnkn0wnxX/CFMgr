@@ -389,10 +389,9 @@ cfmgr_archive_action create
         "cfmgr_archive_action create",
         'printf "lock-open\\n" >"$ram/create-phase"\n: >"$ram/lock"\nchmod 600 "$ram/lock"\nexec 0<>"$ram/lock"\nprintf "action-start\\n" >"$ram/create-phase"\ncfmgr_archive_action create',
     )
-    # Native diagnostics reached probe 814 while still advancing through the
-    # real verifier. Allow production's 600s create budget plus bounded setup/
-    # cleanup for one measured complete run; retain the shorter host guard.
-    timeout = 660 if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1" else 180
+    # Complete native creation measured 214s including retained-archive
+    # verification, history Save and cleanup; keep bounded runner headroom.
+    timeout = 300 if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1" else 180
     try:
         return subprocess.run(
             [

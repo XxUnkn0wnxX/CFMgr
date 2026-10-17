@@ -50,7 +50,21 @@ Interim commits, diagnostics and repairs inside the current block continue witho
 repeat push approval. This supersedes older every-single-subgoal pause wording;
 the current block remains S14.01 and S14.04–S14.08 plus consolidation proof.
 
-Current published diagnostic candidate: `f66c692d179f706b651d3b2ceef2b4ae0712aa0d`.
+Current published diagnostic candidate: `0273a53f7997a59b726c25fb62ce01d05ee254fe`.
+The complete creation journey is now focused-native-passed: Quick `39020078160`
+at runtime-identical `df4c7ef` passed all six controller cases in 215.12s
+(215.29s wall, 59.36 user / 119.40 system). Positive creation took 214.15s with
+prior recognition, full new verification, publication, retention, history Save
+and owned cleanup all asserted. Complete history/I/O `39020155540` passed 104
+cases in 63.79s (63.93s wall, 29.58 user / 25.48 system).
+Populated capture `39020285074` at `0273a53` passed in 103.27s (103.42s total,
+103.56s wall, 45.20 user / 34.42 system), confirming its old 100s fixture bound
+was too short. Temporary native outer guards are now reduced to 300s for create
+and 150s for capture, supported by these completed measurements; runtime budgets
+and host guards are unchanged. All static gates plus 34 developer-runner tests
+passed in 2.05s wall (`final-static-runner.log`). No acceptance is awarded until
+remaining focused groups and final exact core pass. Earlier diagnostic sequence
+below is superseded where the completed proof above applies.
 Configuration Quick `39018955173` passed **177 tests in 126.52s** (126.69s
 wall, 50.95 user / 67.11 system), including actual native borrowed-lock history
 Save (11.91s). Integrated creation `39018613818` now publishes and completes

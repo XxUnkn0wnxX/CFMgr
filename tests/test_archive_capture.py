@@ -230,11 +230,11 @@ code=$?
 if [ "$code" != 0 ]; then cfmgr_test_capture_rejected "$code" || exit 90; fi
 exit "$code"
 """,
-        # Measure the native positive against the production 600s deadline,
-        # with a temporary 300s outer bound. Host and negative guards stay.
+        # Native populated capture measured 103s. Use the production 600s
+        # internal deadline with bounded outer headroom; host/negative guards stay.
         deadline=600 if full else 100,
         timeout=(
-            300
+            150
             if full and os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1"
             else (180 if sys.platform == "darwin" else 110)
         ),
