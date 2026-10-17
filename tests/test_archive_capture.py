@@ -306,7 +306,9 @@ def test_capture_required_absence_and_foreign_data_fail_closed(
 def test_snapshot_real_writer_changes_and_partial_ownership(archive, shell, change):
     ram, stage = archive[1], archive[3]
     source = ram.parent / "jffs/input"
-    original = b"a" * 1024
+    # This stand-in writer runs inside the copy child's rounded file quota.
+    # Leave room for its append; a real independent writer has its own quota.
+    original = b"a" * 1000
     source.write_bytes(original)
     marker = ram / "dd-seen"
     tool = ram / "changing-dd"
@@ -338,7 +340,7 @@ code=$?
 """
     (ram / "dd-seen-lock").touch()
     if change == "prefix-append":
-        script += '[ "$code:$cfmgr_capture_bytes" = 0:1024 ] || exit 80\n'
+        script += f'[ "$code:$cfmgr_capture_bytes" = 0:{len(original)} ] || exit 80\n'
     else:
         script += 'cfmgr_test_capture_rejected "$code" || exit 81\ncase " $cfmgr_format_owned " in *" snapshot:"*) ;; *) exit 82 ;; esac\ncfmgr_archive_format_cleanup || exit $?\n'
     passed(capture_run(archive, shell, script, timeout=20))

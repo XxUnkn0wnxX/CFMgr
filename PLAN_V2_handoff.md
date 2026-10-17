@@ -65,6 +65,15 @@ and host guards are unchanged. All static gates plus 34 developer-runner tests
 passed in 2.05s wall (`final-static-runner.log`). No acceptance is awarded until
 remaining focused groups and final exact core pass. Earlier diagnostic sequence
 below is superseded where the completed proof above applies.
+Snapshot Quick `39020437553` passed five cases before prefix-append failed.
+The simulated writer runs inside the copy child's rounded file quota: appending
+to its original 1024-byte input exceeds native ash's 1024-byte limit, unlike the
+host's larger quota units. The fixture now uses 1000 bytes so its eight-byte
+append can occur, while exact initial-prefix, mutation, shrink, inode/lock and
+owned-cleanup assertions remain. No runtime limit changes. All five local writer
+variants passed in 18.26s (18.88s wall, 7.34 user / 5.90 system); native confirmation
+and the complete snapshot group are pending. Independent final runtime repair
+review returned PASS; findings and evidence limits are in the audit record.
 Configuration Quick `39018955173` passed **177 tests in 126.52s** (126.69s
 wall, 50.95 user / 67.11 system), including actual native borrowed-lock history
 Save (11.91s). Integrated creation `39018613818` now publishes and completes

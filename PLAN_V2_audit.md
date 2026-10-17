@@ -55,6 +55,47 @@ checkout's manifest freshness. The existing deterministic generator now lists al
 The earlier structural WIP commit is not a publishable package by itself. This
 repair is included in the complete local candidate before publication approval.
 
+## S02.01, S14.01, S14.04–S14.08 native integration corrections
+
+Representative native execution exposed concrete integration defects that the
+macOS descriptor adapters could not prove. Parent and independent source reviewer
+agree with the following bounded repairs; final required core acceptance remains
+separate from these focused results.
+
+- RAM and archive directory operations passed bare proc descriptor symlinks to
+  helpers that correctly reject symlink final components. Using the retained
+  directory's `/.` component preserves the opened directory and all original
+  pathname/mount/inode checks. Actual native I/O, publication/retention and the
+  complete creation journey now pass.
+- Pinned vendor `ls -1A` stats every enumerated PID name, allowing ordinary task
+  exit to fail process enumeration. Bounded numeric shell expansion with complete
+  operand validation avoids those unnecessary metadata races. Empty, invalid or
+  over-cap enumerations remain unknown; actual executable, argv, append-FD and
+  before/after identity proof is unchanged. Complete native history/I/O passes;
+  the residual cooperative readdir limitation remains in review notes.
+- Shared settings/backup JSON readers dropped their child lock reference when
+  replacing stdin. Retaining it on child FD9 matches the archive reader and
+  leaves parent support FD9 intact. All three actual native readers now prove
+  exclusion after parent close and release only after child reap. The integrated
+  creation history Save passes with this correction.
+- Consolidation invalidated several private fixture assumptions: parser getter
+  stubs must preserve their full category owners, and category imports must
+  precede callback overrides. Corrected native history, shared execution and
+  actual retained launch checks confirm those paths. The native ash background
+  stdin bridge follows the production supervisor's existing FD9 contract.
+- Functional fixture deadlines were shorter than measured native success.
+  Production deadlines and explicit cancellation/reaping safety tests remain
+  unchanged; expected-rejection tests now distinguish supervisor failures from
+  data rejection. Measured outer guards and remaining cost limits are recorded
+  in review notes/handoff, without treating a timeout as valid rejection proof.
+
+Independent final source review of `c5b6b55..cf8ecc9` returned **PASS** with no
+concrete unintended regression. Native-only BusyBox libc compatibility remains
+isolated from the target build and included in cache hashing; all 14 manifest
+hashes match. Focused native creation proves prior recognition, new verification,
+publication, retention, history Save and cleanup. This supplies no live-router
+qualification and does not itself close the final core CI gate.
+
 ## S14.06–S14.08 history runtime admission review
 
 Independent Astra review returned **PASS WITH NOTES** for narrowly admitting
