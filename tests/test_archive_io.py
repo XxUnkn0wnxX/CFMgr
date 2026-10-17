@@ -5,11 +5,14 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
+import resource
 import shlex
 import shutil
 import subprocess
 import sys
 import tarfile
+import time
 from pathlib import Path
 
 import pytest
@@ -235,15 +238,87 @@ cfmgr_prerequisites_run() {
 """
 
 
-def run(archive, shell, script, *arguments, timeout=15):
+def run(archive, shell, script, *arguments, timeout=15, profile=False):
     support, ram, mount, stage, environment = archive
+    profile_path = support.parent / "archive-profile.txt"
+    profile_prefix = ""
+    profile_environment = environment
+    pause = pause_definition(shell)
+    if profile:
+        for relative, function, counter in (
+            (
+                "modules/lib/execution.sh",
+                "_cfmgr_prerequisites_observe",
+                "observations",
+            ),
+            (
+                "modules/lib/../backup.sh",
+                "cfmgr_archive_format_ram_inode",
+                "ram_inodes",
+            ),
+            (
+                "modules/lib/../backup.sh",
+                "cfmgr_archive_attachment_ok",
+                "attachments",
+            ),
+        ):
+            fixture_file = support / relative
+            body = fixture_file.read_text()
+            marker = f"{function}() {{\n"
+            assert body.count(marker) == 1, (
+                f"Expected one fixture definition: {function}"
+            )
+            body = body.replace(
+                marker,
+                marker
+                + f"\tcfmgr_test_profile_{counter}=$((cfmgr_test_profile_{counter}+1))\n",
+                1,
+            )
+            fixture_file.write_text(body)
+        marker = "cfmgr_prerequisites_pause() { "
+        assert pause.count(marker) == 1, "Expected one pause fixture definition"
+        pause = pause.replace(
+            marker,
+            marker + "cfmgr_test_profile_pauses=$((cfmgr_test_profile_pauses+1)); ",
+            1,
+        )
+        probe_marker = "cfmgr_prerequisites_run() {\n"
+        assert SETUP.count(probe_marker) == 1, "Expected one probe wrapper definition"
+        instrumented_setup = SETUP.replace(
+            probe_marker,
+            probe_marker
+            + "    cfmgr_test_profile_probes=$((cfmgr_test_profile_probes+1))\n"
+            + "    case $1 in archive-inode) cfmgr_test_profile_archive_inode_probes=$((cfmgr_test_profile_archive_inode_probes+1)) ;; *) cfmgr_test_profile_other_probes=$((cfmgr_test_profile_other_probes+1)) ;; esac\n",
+            1,
+        )
+        profile_prefix = (
+            "cfmgr_test_profile_observations=0 cfmgr_test_profile_pauses=0 "
+            "cfmgr_test_profile_ram_inodes=0 cfmgr_test_profile_attachments=0 "
+            "cfmgr_test_profile_probes=0 cfmgr_test_profile_archive_inode_probes=0 "
+            "cfmgr_test_profile_other_probes=0; "
+            "trap 'cfmgr_test_profile_exit=$?; trap - EXIT; "
+            'printf "probe_serial=%s probes=%s archive_inode_probes=%s other_probes=%s attachments=%s observations=%s pauses=%s ram_inodes=%s\\n" '
+            '"${cfmgr_probe_serial:-0}" "${cfmgr_test_profile_probes:-0}" '
+            '"${cfmgr_test_profile_archive_inode_probes:-0}" "${cfmgr_test_profile_other_probes:-0}" '
+            '"${cfmgr_test_profile_attachments:-0}" "${cfmgr_test_profile_observations:-0}" '
+            '"${cfmgr_test_profile_pauses:-0}" "${cfmgr_test_profile_ram_inodes:-0}" '
+            '>"$CFMGR_TEST_PROFILE_PATH" 2>/dev/null; '
+            'exit "$cfmgr_test_profile_exit"\' EXIT; '
+        )
+        profile_environment = {
+            **environment,
+            "CFMGR_TEST_PROFILE_PATH": str(profile_path),
+        }
     if sys.platform == "darwin":
         script = script.replace("/proc/self/fd/7", str(mount / "CFBackup"))
-    return subprocess.run(
+    command_script = SETUP + pause + script
+    if profile:
+        command_script = profile_prefix + instrumented_setup + pause + script
+    result = subprocess.run(
         [
             *shell,
             "-c",
-            SETUP + pause_definition(shell) + script,
+            command_script,
             "archive-io",
             str(support),
             str(ram),
@@ -251,11 +326,100 @@ def run(archive, shell, script, *arguments, timeout=15):
             str(stage),
             *map(str, arguments),
         ],
-        env=environment,
+        env=profile_environment,
         capture_output=True,
         check=False,
         timeout=timeout,
     )
+    if profile:
+        profile_lines = profile_path.read_text().splitlines()
+        assert len(profile_lines) == 1
+        assert re.fullmatch(
+            r"probe_serial=\d+ probes=\d+ archive_inode_probes=\d+ "
+            r"other_probes=\d+ attachments=\d+ observations=\d+ pauses=\d+ ram_inodes=\d+",
+            profile_lines[0],
+        )
+        print(f"ARCHIVE_PROFILE {profile_lines[0]}", flush=True)
+        benchmark_external_applets(archive, shell, profile=True)
+    return result
+
+
+def _external_applets_benchmark_script():
+    return r"""
+set -u
+file=$1
+exec 8<"$file" || exit 80
+i=0
+while :; do
+    case $i in 100) break ;; esac
+    "$CFMGR_BENCH_ENV" '[' "$i" -eq "$i" ']' || exit 81
+    "$CFMGR_BENCH_ENV" test 9223372036854775807 -gt 9223372036854775806 || exit 82
+    "$CFMGR_BENCH_ENV" test "$file" -ef /proc/self/fd/8 || exit 83
+    i=$((i+1))
+done
+# Both backends must refuse an over-limit archive integer; overflow may itself
+# be an error in the firmware applet rather than a valid arbitrary-width value.
+if "$CFMGR_BENCH_ENV" test 9223372036854775808 -le 9223372036854775296 2>/dev/null; then
+    exit 84
+fi
+"$CFMGR_BENCH_ENV" printf 'profile-ok\n'
+"""
+
+
+def benchmark_external_applets(archive, shell, *, profile):
+    if not profile or not REQUIRE_BUSYBOX:
+        return
+
+    support, _ram, _mount, _stage, environment = archive
+    busybox = Path(shutil.which(shell[0])).resolve()
+    expected = (ROOT / ".tmp/native-busybox/bin/busybox").resolve()
+    assert busybox == expected, "Benchmark must use the selected pinned BusyBox"
+
+    private_bin = support.parent / "benchmark-applets"
+    private_bin.mkdir()
+    for name in ("[", "test", "printf"):
+        (private_bin / name).symlink_to(busybox)
+    owned_file = support.parent / "benchmark-owned-file"
+    owned_file.write_bytes(b"owned benchmark fixture\n")
+
+    base_path = os.environ["PATH"]
+    env_executable = environment["TEST_ENV"]
+    script = _external_applets_benchmark_script()
+    outcomes = []
+    for backend, path in (
+        ("current", base_path),
+        ("busybox", f"{private_bin}{os.pathsep}{base_path}"),
+    ):
+        child_environment = {
+            **os.environ,
+            "CFMGR_BENCH_ENV": env_executable,
+            "PATH": path,
+        }
+        before = resource.getrusage(resource.RUSAGE_CHILDREN)
+        started = time.perf_counter()
+        result = subprocess.run(
+            [*shell, "-c", script, "archive-applet-benchmark", str(owned_file)],
+            env=child_environment,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+        wall = time.perf_counter() - started
+        after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            b"profile-ok\n",
+            b"",
+        ), result
+        user = max(0.0, after.ru_utime - before.ru_utime)
+        system = max(0.0, after.ru_stime - before.ru_stime)
+        outcomes.append((result.returncode, result.stdout, result.stderr))
+        print(
+            f"ARCHIVE_BENCH backend={backend} iterations=100 "
+            f"wall={wall:.3f} user={user:.3f} sys={system:.3f}",
+            flush=True,
+        )
+    assert outcomes[0] == outcomes[1]
 
 
 def passed(result):

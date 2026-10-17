@@ -27,57 +27,104 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — module core CI and test-cost correction
+## Current checkpoint — module checks and measured performance repair
 
-**Latest user direction overrides the earlier closing route below.** The user
-rejected the 30-minute full run as unacceptable this early in development, then
-explicitly approved: “each module = its own core group moving forward” so slow
-tests can be diagnosed per module. Keep the same product block, six pending IDs,
-coverage and safety assertions. Runtime reduction and module-group CI are now
-required before this checkpoint can close; a pass from the old serial run alone
-must not award acceptance.
+**This is the final checkpoint for today.** Finish the authorized archive-creation
+block **S14.01 and S14.04–S14.08**, library consolidation and the code/test/CI cost
+correction; pass all required gates, publish records and **stop**. Do not review,
+select or suggest another block. Checkpoint, repair and documentation pushes are
+authorized. No router, release or deployment authority is implied. Acceptance
+remains **15/157 (9.6%), 0/16 main goals (0%)**; the six current IDs remain pending.
 
-The old serial core [39022377733](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39022377733)
-is **cancelled**, verified terminal at `7a02dc2`. Host passed in 8m47; native ran
-31m13 before cancellation. Its last progress was 87%, so the retained log shows
-slow ongoing execution rather than proving a deadlock. It supplies no complete
-core pass. The user explicitly requested stopping it. No old CI job remains active.
+### Latest user-approved CI contract
 
-**Latest grouping decision:** start with one group per actual main module:
-Backup, Manager and Status, plus separate developer-tool support checks. Supporting
-libraries/tests sit beneath their main consumer; groups expand with new main
-modules. Only split a main-module group after its run exceeds approximately ten
-minutes, as diagnosis to locate and reduce the slow part. Shorter is preferred.
-The earlier proposed fifteen-row pre-split design is superseded by this direction.
+- Permanent groups follow actual main modules: **Backup Checks**, **Manager
+  Checks**, **Status Checks**. Supporting libraries/tests sit beneath their main
+  consumer; add a group when a main module is added. Keep few runtime owners.
+- **Checks** runs on code/test/tool/workflow pushes to `develop` and PRs targeting
+  `develop`, calls all main-module workflows at the same commit, and requires all
+  results. Main-module workflows can also be dispatched independently. Common
+  statics, both shell syntax gates and partition validation precede product tests.
+- Documentation-only changes never trigger CI: Markdown, `docs/**` and `.images/**`
+  are excluded on both automatic triggers. Mixed code/document changes still run.
+- **Dev Checks** (formerly Quick Checks, same `quick-checks.yml` filename) provides
+  small focused tests and temporary submodule selections for diagnosis. **Tools
+  Checks**, **Lint Checks** and **Diagnostics Checks** are separate optional,
+  manual-only workflows. Developer-tool behavior tests are outside automatic core;
+  required source validation remains. GitHub's generated Dependency Graph entry
+  is `dynamic/dependabot/update-graph`, not a repository workflow to rename.
+- Start with the whole main module. If it exceeds approximately **ten minutes**,
+  split only for diagnosis, locate and optimize the expensive work with focused
+  tests, then rerun every smaller batch aiming for **two to three minutes** each.
+  Finally rerun the **complete main-module group** within its ten-minute budget.
+  Shorter is preferred. Fast diagnostic chunks cannot replace that final gate.
 
-Worker `module_consolidation` owns only `tools/test.py`,
-`tests/test_dev_runners.py` and `.github/workflows/checks.yml`. It is implementing
-four initial rows: Backup 19 test modules, Manager 24, Status 1 and Tooling 3.
-Manager includes CFMgr setup/configuration and shared infrastructure contracts;
-this is primary test ownership, not exclusive ownership of shared runtime code.
-All groups run on existing core triggers, preserving all shared consumers. Common
-preflight proves statics and both shell syntax modes; each isolated row executes
-host then native serially, maximum three rows concurrently, with a ten-minute job
-limit including setup. The existing required-check name remains a fail-closed
-aggregate at the same SHA. Named tests and complete duration output expose stalls.
-A newly added main runtime module or unassigned/overlapping test must fail mapping
-validation. Default local-runner and Quick diagnosis routes remain available.
+### Verified first whole-module measurement
 
-Parent owns AGENTS and five V2 record updates. Reviewer `consolidation_review`
-checks the revised mapping and unchanged fail-closed gate; the earlier machinery
-review passed. Worker edits are complete and ownership returned: runner tests
-passed 80 cases in 1.22s; Ruff/format/compile/YAML and whitespace checks passed.
-Parent `tools/test.py --checks-only --skip-shellcheck` passed final common checks
-and host syntax. Collection-only comparison of ordinary core and all assigned
-module paths found the same 1,110 unique required cases, with no missing/duplicate
-case. These receipts apply to the dirty grouped-CI candidate, not a full local
-behavior run. Native test review identified possible compact-fixture savings in
-verifier hash/path cases, but no optimization has been applied before the first
-module run. Run every group, rank actual costs, diagnose any over-limit module,
-reduce redundant work while preserving required proof, then complete the exact
-final gate. No product acceptance, next-block work, router or release action is
-authorized by this correction. Do not enable disabled native shell builtins to
-speed tests: retained firmware base configs explicitly disable TEST/PRINTF.
+Published **`31926ae2233a683aa0b0bf08ac242837eaa4a594`**, [Checks
+39025245147](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39025245147), is terminal
+**cancelled**. Backup and Manager hit their ten-minute job limits. Status and
+Tooling passed; the required aggregate correctly failed. No assertion failure was
+reported in the unfinished groups. Named logs/metadata are retained under
+`.tmp/archive-creation/ci-39025245147.{log,json}`.
+
+| Group | Host | Native BusyBox | Outcome |
+| --- | --- | --- | --- |
+| Backup | 360 passed / 1 skipped, 364.44s; 44.19 user / 58.92 system | Cancelled after about 3m51; capture still progressing | Over budget; diagnose |
+| Manager | 537 passed / 29 skipped / 4 diagnostics deselected, 114.17s | Cancelled after about 8m03; reached 63% by case count | Over budget; diagnose |
+| Status | 36 passed, 15.05s | 36 passed, 23.82s | Passed, about one minute including setup |
+| Tooling | 147 passed, 1.33s | 147 passed, 1.10s | Passed; subsequently made optional by user |
+
+The earlier forty-minute serial run **39022377733** at `7a02dc2` is also terminal
+cancelled, as the user requested. Host passed in 8m47; native reached 87% before
+cancellation after 31m13. This shows slow execution, not a proved deadlock. Neither
+cancelled run provides a complete core pass. No CI job is currently active.
+
+### Implemented next candidate and diagnosis
+
+The sidebar/orchestrator/optional-tools package is implemented and independently
+reviewed PASS. Three thin product workflows share one composite execution action;
+Checks runs common preflight then three isolated concurrent product jobs, each
+with serial host/native execution and a ten-minute total cap. The aggregate keeps
+its existing required-check name and refuses every non-success dependency. Default
+local runner behavior is preserved. The complete partition remains 47 test modules:
+44 product modules are required, and 3 developer-tool modules are optional. Current
+collection gives Backup 361 cases, Manager 566, Status 36 (**963 product cases**)
+and Tooling 166. No product test was dropped or made optional.
+
+Local evidence on the dirty next candidate: `tests/test_dev_runners.py` **99 passed
+in 1.79s**; Ruff/format/compile/YAML/embedded shell syntax/whitespace passed. Parent
+`tools/test.py --checks-only --skip-shellcheck` passed all common source gates and
+host syntax. Workflow worker `module_consolidation` returned ownership; reviewer
+`consolidation_review` passed the final optional-tools delta. No full local suite
+is due because no main goal is complete. Named workflow execution is still pending.
+
+Fixture-only profiling is implemented in `tests/test_archive_io.py` and
+`tests/test_archive_verify.py`; worker `archive_tools_fixture` returned ownership.
+One existing positive verifier case opts into builtin counters in copied fixtures
+and one scalar-only receipt outside the archive context. Original function bodies,
+real tools, pause command, exit status, output and all assertions remain intact.
+The focused macOS positive passed in **39.90s** (40.67 wall / 17.94 user / 15.00
+system): **367 probes, 245 archive-inode probes, 122 other probes, 1,331 attachment
+checks, 1,468 RAM inode reads**. Observation/pause counts are zero because the
+macOS adapter does not execute Linux supervision; the native receipt is next.
+
+Planner `archive_design` approved measurement followed by a bounded unchanged-
+contract scalar-guard optimization, with strict literal equality and return/order
+preservation. Keep filesystem checks, numeric bounds, deadlines and actual child
+ownership/signalling/waiting unchanged initially. RAM receipt batching is only a
+separate measured follow-up, retaining fresh retirement identity checks. No
+production optimization has been made. A read-only follow-up is checking whether
+the fixture's unstaged external test/printf applets affect native fidelity/cost;
+do not enable disabled shell builtins. Retained firmware configs disable them.
+
+Parent owns AGENTS and all five V2 records. Next: publish the reviewed workflow
+and profiling candidate; cancel its premature full core while diagnosis is pending;
+use Dev Checks for the single native verifier profile and the expensive actual
+installer case, with existing complete focused timings as baseline. Fix measured
+work, verify every affected diagnostic batch within budget, then run all complete
+module checks at the final candidate. Publish accepted evidence and receipts only
+after that combined gate; pause for the day with no required worker/job active.
 
 ### Prior validation state before the cost correction
 

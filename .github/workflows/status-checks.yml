@@ -1,0 +1,32 @@
+name: Status Checks
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      reuse-preflight:
+        description: Reuse this same commit's successful common Checks preflight
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Status Checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        # actions/checkout v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Run complete status checks
+        uses: ./.github/actions/module-checks
+        with:
+          batch: status
+          reuse-preflight: ${{ inputs.reuse-preflight || false }}

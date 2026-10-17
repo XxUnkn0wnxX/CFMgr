@@ -176,7 +176,14 @@ cfmgr_archive_verify_complete() {
 
 
 def verify(
-    archive, shell, *, expected=SET_ID, callbacks=True, deadline=600, timeout=120
+    archive,
+    shell,
+    *,
+    expected=SET_ID,
+    callbacks=True,
+    deadline=600,
+    timeout=120,
+    profile=False,
 ):
     script = (
         "cfmgr_archive_inventory_limit=65536\n"
@@ -207,7 +214,7 @@ def verify(
         '"$diag_verification" "$diag_probe" "$diag_status" "$diag_reason" "$diag_child_exit" "$diag_format"; '
         'fi; exit "$code"'
     )
-    result = run(archive, shell, script, timeout=timeout)
+    result = run(archive, shell, script, timeout=timeout, profile=profile)
     if result.returncode:
         diagnostic_lines = result.stdout.decode(errors="replace").splitlines()
         assert len(diagnostic_lines) == 2
@@ -230,9 +237,12 @@ def verify(
     return result
 
 
-def test_real_tool_end_to_end_binary_empty_boundary_and_callbacks(archive, shell):
+def test_real_tool_end_to_end_binary_empty_boundary_and_callbacks(
+    archive, shell, capfd
+):
     raw, _ = make_archive(archive)
-    result = verify(archive, shell)
+    with capfd.disabled():
+        result = verify(archive, shell, profile=True)
     assert (result.returncode, result.stdout, result.stderr) == (
         0,
         b"code=0 verified=1\n",

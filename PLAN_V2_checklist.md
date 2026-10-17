@@ -15,18 +15,20 @@ earn product ticks.
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
-candidate revision. Quick Checks supplies focused diagnosis and interim evidence.
+candidate revision. Dev Checks supplies focused diagnosis and interim evidence.
 Core execution starts with one group per actual main module, with supporting
 library tests underneath, complete assigned host/native coverage and a required
 aggregate at the same SHA. Groups expand with main modules. Every required group
 must pass within approximately ten minutes, preferably sooner; split a main-module
 group only after it exceeds that limit, to diagnose and reduce the slow part.
+After focused repairs, rerun the diagnostic batches within approximately two to
+three minutes each, then rerun the complete main-module group within its budget.
 This changes test organization and cost control, not product requirements.
 **Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
 local suite and exact full core CI at the complete main-goal checkpoint. Full
 local suites remain reserved for that boundary; core CI runs for code, tests,
 tooling and Actions changes on develop pushes and PRs targeting develop; documentation-only changes
-do not trigger CI. Manual Lint and Diagnostics are optional. Full core CI runs
+do not trigger CI. Tools Checks, Lint Checks and Diagnostics Checks are optional and manual-only. Full core CI runs
 last at the checkpoint after all applicable focused local/Quick groups pass;
 local platform skips still require CI proof. Automatically pause after each
 agreed major checkpoint (the approved task/subgoal block) under the standing
@@ -154,11 +156,11 @@ recorded in the [consolidation audit](PLAN_V2_audit.md#s0201-s1401-s1404s1408-mo
 
 Focused commands use `.venv/bin/python tools/test.py --focused` followed by the
 listed modules under `tests/`. No partial row earns a focused-complete or accepted
-subgoal tick. Manual Quick Checks supports focused diagnosis and fixes for core
+subgoal tick. Manual Dev Checks supports focused diagnosis and fixes for core
 groups or selected optional tests. Required core Checks must pass at the exact
 published candidate before CI-dependent acceptance or a requested pause. Local
 packages retain focused tests/commits; full local suites remain reserved for a
-main goal reaching 100%. Lint and Diagnostics run manually and are optional.
+main goal reaching 100%. Lint Checks and Diagnostics Checks run manually and are optional.
 
 Test-cost maintenance at `9f62a4a5d9a532f661f835205a420f0fffa8fdc4`: complete
 local dependency/retained modules **27 passed, 9 Linux skips**; all affected core

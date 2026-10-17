@@ -48,12 +48,16 @@ Use `--output PATH` to build a package in an absent or empty directory.
 
 ## CI and optional platform diagnostics
 
-[Checks](../.github/workflows/checks.yml) runs the core suite on Ubuntu host and
-vendor BusyBox ash for develop pushes and PRs, with common statics once.
+[Checks](../.github/workflows/checks.yml) runs
+[Backup Checks](../.github/workflows/backup-checks.yml),
+[Manager Checks](../.github/workflows/manager-checks.yml) and
+[Status Checks](../.github/workflows/status-checks.yml) on Ubuntu host and vendor
+BusyBox ash for develop pushes and PRs, with common statics once.
 Documentation-only changes do not trigger CI.
-[Lint](../.github/workflows/lint.yml) runs ShellCheck manually;
-[Diagnostics](../.github/workflows/diagnostics.yml) runs optional stress cases manually.
-[Quick Checks](../.github/workflows/quick-checks.yml) manually selects focused
+[Tools Checks](../.github/workflows/tools-checks.yml) manually tests developer tools;
+[Lint Checks](../.github/workflows/lint.yml) runs ShellCheck manually;
+[Diagnostics Checks](../.github/workflows/diagnostics.yml) runs optional stress cases manually.
+[Dev Checks](../.github/workflows/quick-checks.yml) manually selects focused
 modules or individual tests for diagnosis. Router qualification remains beta work.
 
 An optional Linux x86_64 guest diagnostic can build and run a pinned kernel

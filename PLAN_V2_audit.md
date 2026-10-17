@@ -121,6 +121,30 @@ requires every job to succeed at the same SHA. Local runner tests passed 80 case
 in 1.22s, and common source checks passed. Grouped CI execution, measured cost and
 any resulting slow-test correction remain unverified; this does not award ticks.
 
+The first grouped run at `31926ae` confirmed the cost failure: Backup host took
+364.44s, Manager host 114.17s, and both native phases were cancelled when their
+whole jobs reached ten minutes. Status passed both shells in approximately one
+minute including setup. The aggregate correctly refused the incomplete result.
+The user then required separate named sidebar workflows called by Checks,
+manual-only Dev/Lint/Diagnostics workflows, and optional manual Tools Checks for
+developer-tool behavior. The revised partition retains all 44 product test modules
+(963 selected cases) in required core; only `dev_runners`, `platforms` and
+`router_probe` move to optional Tools Checks. Source statics and both shell syntax
+gates remain required. Independent workflow review passed; runner tests passed
+99 cases in 1.79s. No product requirement or safety case was made optional.
+
+The user's cost acceptance is the complete main module within approximately ten
+minutes. Smaller diagnostic batches, targeted for two to three minutes after
+repair, cannot substitute for rerunning that complete group. A copied-fixture
+profile of the existing positive verifier recorded 367 operations, including
+245 archive inode probes and 1,468 RAM inode reads. The macOS profile passed all
+existing assertions but does not measure Linux supervision. The independent
+performance-plan audit approved bounded scalar-guard equivalence changes only
+after native measurement, preserving filesystem admission, numeric/deadline
+semantics and ownership/signalling/waiting. No production optimization has yet
+been applied. Potential RAM metadata batching requires a separate fresh-read and
+substitution-safety review. Required CI and measured whole-group cost remain open.
+
 ## S14.06–S14.08 history runtime admission review
 
 Independent Astra review returned **PASS WITH NOTES** for narrowly admitting

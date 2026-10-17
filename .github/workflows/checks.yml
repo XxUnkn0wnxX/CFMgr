@@ -6,12 +6,14 @@ on:
     paths-ignore:
       - '**/*.md'
       - '**/*.markdown'
+      - 'docs/**'
       - '.images/**'
   pull_request:
     branches: [develop]
     paths-ignore:
       - '**/*.md'
       - '**/*.markdown'
+      - 'docs/**'
       - '.images/**'
   workflow_dispatch:
 
@@ -27,8 +29,6 @@ jobs:
     name: Common source and shell preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    outputs:
-      matrix: ${{ steps.partition.outputs.matrix }}
 
     steps:
       - name: Check out source
@@ -39,9 +39,7 @@ jobs:
 
       - name: Validate complete core partition
         id: partition
-        run: |
-          matrix="$(python3 tools/test.py --core-matrix)"
-          printf 'matrix=%s\n' "$matrix" >>"$GITHUB_OUTPUT"
+        run: python3 tools/test.py --core-matrix
 
       - name: Restore and verify developer tools
         uses: ./.github/actions/setup-tools
@@ -53,62 +51,42 @@ jobs:
         uses: ./.github/actions/setup-busybox
 
       - name: Run common checks and host syntax
+        id: common
         run: |
           echo "CORE common checks for $GITHUB_SHA"
           /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --skip-shellcheck
 
       - name: Run mandatory BusyBox syntax
+        id: native_syntax
         run: |
           export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
           /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --require-busybox --reuse-static
 
-  core:
-    name: Core ${{ matrix.owner }} / ${{ matrix.batch }}
+  backup:
+    name: Backup Checks
     needs: preflight
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix: ${{ fromJSON(needs.preflight.outputs.matrix) }}
+    uses: ./.github/workflows/backup-checks.yml
+    with:
+      reuse-preflight: true
 
-    steps:
-      - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
+  manager:
+    name: Manager Checks
+    needs: preflight
+    uses: ./.github/workflows/manager-checks.yml
+    with:
+      reuse-preflight: true
 
-      - name: Restore and verify developer tools
-        id: tools
-        uses: ./.github/actions/setup-tools
-        with:
-          apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo time util-linux
-          python-tools: 'true'
-
-      - name: Prepare verified native vendor BusyBox
-        id: busybox
-        uses: ./.github/actions/setup-busybox
-
-      - name: Run complete assigned host batch
-        env:
-          CFMGR_CORE_BATCH: ${{ matrix.batch }}
-        run: |
-          echo "CORE host batch $CFMGR_CORE_BATCH for $GITHUB_SHA"
-          /usr/bin/time -v .venv/bin/python tools/test.py --core-batch "$CFMGR_CORE_BATCH" --reuse-preflight
-
-      - name: Run complete assigned BusyBox batch
-        if: ${{ !cancelled() && steps.tools.outcome == 'success' && steps.busybox.outcome == 'success' }}
-        env:
-          CFMGR_CORE_BATCH: ${{ matrix.batch }}
-        run: |
-          export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
-          echo "CORE BusyBox batch $CFMGR_CORE_BATCH for $GITHUB_SHA"
-          /usr/bin/time -v .venv/bin/python tools/test.py --core-batch "$CFMGR_CORE_BATCH" --require-busybox --reuse-preflight
+  status:
+    name: Status Checks
+    needs: preflight
+    uses: ./.github/workflows/status-checks.yml
+    with:
+      reuse-preflight: true
 
   checks:
     # Keep the required check display name stable for branch protection.
     name: Ubuntu 24.04 host and BusyBox checks
-    needs: [preflight, core]
+    needs: [preflight, backup, manager, status]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -116,12 +94,14 @@ jobs:
       - name: Require every core stage
         env:
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
-          CORE_RESULT: ${{ needs.core.result }}
+          BACKUP_RESULT: ${{ needs.backup.result }}
+          MANAGER_RESULT: ${{ needs.manager.result }}
+          STATUS_RESULT: ${{ needs.status.result }}
         run: |
           python3 - <<'PY'
           import os
 
-          results = {name: os.environ.get(name, "missing") for name in ("PREFLIGHT_RESULT", "CORE_RESULT")}
+          results = {name: os.environ.get(name, "missing") for name in ("PREFLIGHT_RESULT", "BACKUP_RESULT", "MANAGER_RESULT", "STATUS_RESULT")}
           for name, result in results.items():
               print(f"{name}: {result}")
           if any(result != "success" for result in results.values()):

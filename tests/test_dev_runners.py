@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import textwrap
@@ -612,11 +613,13 @@ def make_core_test_tree(root: Path) -> None:
 
 def test_core_partition_covers_every_module_once_and_every_owner() -> None:
     matrix = runner.core_matrix()
-    assert {row["owner"] for row in matrix["include"]} == runner.CORE_OWNERS
+    assert {row["owner"] for row in matrix["include"]} == runner.CORE_OWNERS - {
+        "tooling"
+    }
     assigned = [
         path
-        for row in matrix["include"]
-        for path in runner.core_batch_targets(row["batch"])
+        for batch in runner.CORE_BATCHES
+        for path in runner.core_batch_targets(batch)
     ]
     assert len(assigned) == len(set(assigned))
     assert set(assigned) == {
@@ -633,7 +636,7 @@ def test_core_partition_covers_every_module_once_and_every_owner() -> None:
         ("unknown-module", "missing or nonregular"),
         ("overlap", "overlapping"),
         ("unknown-owner", "invalid core owner"),
-        ("missing-owner", "every required owner"),
+        ("missing-owner", "every test owner"),
         ("empty-batch", "empty core batch"),
         ("symlink-module", "missing or nonregular"),
         ("new-main-module", "exactly match product test owners"),
@@ -806,7 +809,9 @@ def test_checks_only_proves_syntax_without_pytest(
         ]
 
 
-@pytest.mark.parametrize("stage", ["PREFLIGHT_RESULT", "CORE_RESULT"])
+@pytest.mark.parametrize(
+    "stage", ["PREFLIGHT_RESULT", "BACKUP_RESULT", "MANAGER_RESULT", "STATUS_RESULT"]
+)
 @pytest.mark.parametrize(
     "result", ["success", "failure", "skipped", "cancelled", "missing"]
 )
@@ -819,7 +824,12 @@ def test_required_core_aggregate_refuses_any_non_successful_stage(
         aggregate.split("python3 - <<'PY'\n", 1)[1].rsplit("          PY", 1)[0]
     )
     env = os.environ.copy()
-    env.update(PREFLIGHT_RESULT="success", CORE_RESULT="success")
+    env.update(
+        PREFLIGHT_RESULT="success",
+        BACKUP_RESULT="success",
+        MANAGER_RESULT="success",
+        STATUS_RESULT="success",
+    )
     if result == "missing":
         env.pop(stage)
     else:
@@ -828,3 +838,78 @@ def test_required_core_aggregate_refuses_any_non_successful_stage(
         [sys.executable, "-c", script], env=env, capture_output=True, check=False
     )
     assert completed.returncode == (0 if result == "success" else 1), completed.stderr
+
+
+def test_core_calls_every_main_module_workflow_and_requires_its_result() -> None:
+    workflow = (runner.ROOT / ".github/workflows/checks.yml").read_text()
+    jobs = dict(
+        re.findall(
+            r"(?ms)^  ([a-z]+):\n(.*?)(?=^  [a-z]+:\n|\Z)",
+            workflow.split("jobs:\n", 1)[1],
+        )
+    )
+    owners = runner.CORE_OWNERS - {"tooling"}
+    assert set(jobs) == owners | {"preflight", "checks"}
+    for owner in owners:
+        assert "    needs: preflight\n" in jobs[owner]
+        assert f"    uses: ./.github/workflows/{owner}-checks.yml\n" in jobs[owner]
+        assert "      reuse-preflight: true\n" in jobs[owner]
+        assert f"${{{{ needs.{owner}.result }}}}" in jobs["checks"]
+    assert "needs: [preflight, backup, manager, status]" in jobs["checks"]
+    assert "if: ${{ always() }}" in jobs["checks"]
+    assert "--core-batch tooling" not in workflow
+    assert "tools-checks.yml" not in workflow
+
+
+@pytest.mark.parametrize("owner", sorted(runner.CORE_OWNERS - {"tooling"}))
+def test_main_module_sidebar_workflow_pins_its_batch_and_manual_preflight(
+    owner: str,
+) -> None:
+    workflow = (runner.ROOT / f".github/workflows/{owner}-checks.yml").read_text()
+    assert workflow.startswith(f"name: {owner.title()} Checks\n")
+    assert "  workflow_dispatch:\n" in workflow
+    assert "  workflow_call:\n" in workflow
+    assert "        type: boolean\n        default: false\n" in workflow
+    assert "    timeout-minutes: 10\n" in workflow
+    assert "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" in workflow
+    assert "          persist-credentials: false\n" in workflow
+    assert "        uses: ./.github/actions/module-checks\n" in workflow
+    assert f"          batch: {owner}\n" in workflow
+    assert (
+        "          reuse-preflight: ${{ inputs.reuse-preflight || false }}\n"
+        in workflow
+    )
+    assert "concurrency:" not in workflow
+    assert "  push:" not in workflow and "  pull_request:" not in workflow
+
+
+@pytest.mark.parametrize(
+    ("filename", "display"),
+    [
+        ("quick-checks.yml", "Dev Checks"),
+        ("lint.yml", "Lint Checks"),
+        ("diagnostics.yml", "Diagnostics Checks"),
+        ("tools-checks.yml", "Tools Checks"),
+    ],
+)
+def test_optional_sidebar_workflows_keep_manual_dispatch_only(
+    filename: str, display: str
+) -> None:
+    workflow = (runner.ROOT / ".github/workflows" / filename).read_text()
+    assert workflow.startswith(f"name: {display}\n")
+    assert "  workflow_dispatch:\n" in workflow
+    assert "  push:" not in workflow and "  pull_request:" not in workflow
+
+
+def test_tools_workflow_runs_complete_optional_batch_with_its_own_preflight() -> None:
+    workflow = (runner.ROOT / ".github/workflows/tools-checks.yml").read_text()
+    assert "  workflow_call:" not in workflow
+    assert "    timeout-minutes: 10\n" in workflow
+    assert "        uses: ./.github/actions/module-checks\n" in workflow
+    assert "          batch: tooling\n" in workflow
+    assert "          reuse-preflight: false\n" in workflow
+    assert runner.core_batch_targets("tooling") == [
+        "tests/test_dev_runners.py",
+        "tests/test_platforms.py",
+        "tests/test_router_probe.py",
+    ]

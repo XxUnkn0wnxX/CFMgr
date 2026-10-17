@@ -25,7 +25,7 @@ QUICK_MODULE = re.compile(r"tests/test_[A-Za-z0-9_]+\.py", re.ASCII)
 CORE_OWNERS = frozenset({"backup", "manager", "status", "tooling"})
 # Product groups follow modules/*.sh. Manager owns bootstrap/config/shared
 # infrastructure's primary consumers; every group runs to protect cross-consumers.
-# Tooling contains contributor checks only, not a product module. Keep each main
+# Tooling contains optional manual contributor checks, not a product module. Keep each main
 # module together until measured >10-minute work requires a diagnostic split.
 CORE_BATCHES: dict[str, tuple[str, tuple[str, ...]]] = {
     "backup": (
@@ -91,7 +91,7 @@ def core_matrix(
     root: Path | None = None,
     batches: dict[str, tuple[str, tuple[str, ...]]] | None = None,
 ) -> dict[str, list[dict[str, str]]]:
-    """Fail closed unless the batches partition every collected test module."""
+    """Validate all test ownership; emit only required product batch rows."""
     root = ROOT if root is None else root
     batches = CORE_BATCHES if batches is None else batches
     tests = root / "tests"
@@ -126,9 +126,10 @@ def core_matrix(
                 raise ValueError(f"missing or nonregular core test module: {path}")
             assigned.add(path)
         owners.add(owner)
-        rows.append({"owner": owner, "batch": key})
+        if owner != "tooling":
+            rows.append({"owner": owner, "batch": key})
     if owners != CORE_OWNERS:
-        raise ValueError("core partition must include every required owner")
+        raise ValueError("test partition must include every test owner")
     discovered = {
         path.relative_to(root).as_posix() for path in tests.rglob("test_*.py")
     }
@@ -421,7 +422,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--core-matrix",
         action="store_true",
-        help="print the validated complete core owner/batch matrix as JSON only",
+        help="print the validated required product owner/batch matrix as JSON only",
     )
     parser.add_argument(
         "--core-batch",

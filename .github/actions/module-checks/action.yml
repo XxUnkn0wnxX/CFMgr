@@ -1,0 +1,70 @@
+name: Run complete test group checks
+description: Verify cached tools, optionally run common preflight, then run the complete host and BusyBox module batch.
+
+inputs:
+  batch:
+    description: Fixed test batch (backup, manager, status or tooling)
+    required: true
+  reuse-preflight:
+    description: Reuse the same commit's successful common Checks preflight
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Validate test group inputs
+      shell: bash
+      env:
+        CFMGR_CORE_BATCH: ${{ inputs.batch }}
+        CFMGR_REUSE_PREFLIGHT: ${{ inputs.reuse-preflight }}
+      run: |
+        set -euo pipefail
+        case "$CFMGR_CORE_BATCH" in backup|manager|status|tooling) ;; *) echo 'Unknown test batch.' >&2; exit 2 ;; esac
+        case "$CFMGR_REUSE_PREFLIGHT" in true|false) ;; *) echo 'reuse-preflight must be true or false.' >&2; exit 2 ;; esac
+
+    - name: Restore and verify developer tools
+      id: tools
+      uses: ./.github/actions/setup-tools
+      with:
+        apt-packages: coreutils curl e2fsprogs gcc jq libc6-dev make mount openssl sudo time util-linux
+        python-tools: 'true'
+
+    - name: Prepare verified native vendor BusyBox
+      id: busybox
+      uses: ./.github/actions/setup-busybox
+
+    - name: Run common checks and host syntax
+      if: ${{ inputs.reuse-preflight != 'true' }}
+      id: common
+      shell: bash
+      run: /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --skip-shellcheck
+
+    - name: Run mandatory BusyBox syntax
+      if: ${{ inputs.reuse-preflight != 'true' }}
+      id: native_syntax
+      shell: bash
+      run: |
+        export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
+        /usr/bin/time -v .venv/bin/python tools/test.py --checks-only --require-busybox --reuse-static
+
+    - name: Run complete assigned host batch
+      shell: bash
+      env:
+        CFMGR_CORE_BATCH: ${{ inputs.batch }}
+      run: |
+        echo "CORE host batch $CFMGR_CORE_BATCH for $GITHUB_SHA"
+        /usr/bin/time -v .venv/bin/python tools/test.py --core-batch "$CFMGR_CORE_BATCH" --reuse-preflight
+
+    - name: Run complete assigned BusyBox batch
+      if: >-
+        ${{ !cancelled() && steps.tools.outcome == 'success' && steps.busybox.outcome == 'success' &&
+            (inputs.reuse-preflight == 'true' ||
+             (steps.common.outcome == 'success' && steps.native_syntax.outcome == 'success')) }}
+      shell: bash
+      env:
+        CFMGR_CORE_BATCH: ${{ inputs.batch }}
+      run: |
+        export PATH="$GITHUB_WORKSPACE/.tmp/native-busybox/bin:$PATH"
+        echo "CORE BusyBox batch $CFMGR_CORE_BATCH for $GITHUB_SHA"
+        /usr/bin/time -v .venv/bin/python tools/test.py --core-batch "$CFMGR_CORE_BATCH" --require-busybox --reuse-preflight

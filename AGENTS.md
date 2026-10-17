@@ -166,24 +166,28 @@ core plan proof. Record measured cost using the required acceptance run.
 Organize core tests by the actual main modules (currently Backup, Manager and
 Status), with their supporting libraries/tests beneath the consuming main module.
 Add a top-level group when a main module is added; developer-tool checks remain a
-separate support group. Start with one execution group per main module. Each group
+separate optional, manual-only Tools Checks workflow. Start with one execution group per main module. Each group
 has an approximately ten-minute maximum, including setup, with shorter feedback
 preferred. Only after a main-module run exceeds that limit, split its tests into
 meaningful diagnostic batches to identify and reduce the slow part; do not split
-in advance or fragment runtime libraries. Run all groups after this migration,
+in advance or fragment runtime libraries. Optimize the identified slow work with
+focused tests, rerun all diagnostic batches aiming for two to three minutes each,
+then rerun the complete main-module group to verify its total stays within budget.
+Diagnostic chunks do not replace the permanent main-module core gate.
+Run all groups after this migration,
 measure named tests and group wall/CPU cost, and diagnose the longest over-budget
 group. Keep every required case assigned exactly once per platform and fail on
 missing or overlapping ownership. Shared changes must retain all affected consumer
 proof. The combined checkpoint gate requires every prescribed group at one SHA;
 splitting jobs or a fast group alone does not confer acceptance.
-For slow or opaque runs, use meaningful, disjoint Quick Checks groups and the
+For slow or opaque runs, use meaningful, disjoint Dev Checks groups and the
 skills' diagnosis procedure, with visible test names and wall/CPU timings.
 Isolated CI groups may run concurrently. Complete every affected group before
 subgoal acceptance. Required core Checks runs automatically for code, tests,
 tooling and Actions changes on develop pushes and PRs targeting develop;
 documentation-only changes do not trigger CI.
 For each Linux-dependent subgoal or substantial library package, identify its
-focused Quick Checks selection and review correctness and measured runtime in
+focused Dev Checks selection and review correctness and measured runtime in
 required core CI. Use focused Quick runs to isolate failures or slow batches.
 Split and optimize unexpectedly slow
 batches first: aim for two minutes or less, with a practical upper range of three
@@ -192,8 +196,8 @@ does not establish acceptable cost.
 
 Reuse the pinned developer venv/dependencies. Runner gates include Ruff lint/
 format, Python compile, shell syntax, shfmt, planning/link/whitespace and behavior.
-ShellCheck runs through optional manual Lint; the normal local runner includes it
-unless `--skip-shellcheck` is selected. Optional Diagnostics runs only the existing
+ShellCheck runs through optional manual Lint Checks; the normal local runner includes it
+unless `--skip-shellcheck` is selected. Optional Diagnostics Checks runs only the existing
 diagnostic-marked cases and does not gate core acceptance. Python tools remain
 developer-only. Planning checks complement
 runtime proof; do not remove valid runtime code to satisfy obsolete empty-tree
@@ -224,7 +228,7 @@ need separate authorization.
 Each subgoal needs complete implementation, written focused tests, relevant static
 checks and parent review. CI-dependent acceptance needs **required core Checks
 passing at the exact published candidate SHA**, including shared foundations
-across goals. Quick Checks supplies focused diagnosis and interim evidence. A
+across goals. Dev Checks supplies focused diagnosis and interim evidence. A
 narrow diagnostic pass cannot award a checkbox. To close an authorized checkpoint,
 automatically push the locally checked/reviewed candidate to `develop` as needed
 for required CI, including repairs and the final documentation receipt; no separate
@@ -250,7 +254,7 @@ development/repairs use focused checks. Core still triggers automatically on cod
 test/tooling/Actions pushes and PRs: cancel premature owned core runs while Quick
 diagnosis is pending, then run the complete gate at the final candidate. Cancelled
 runs provide no acceptance. Preserve workflow triggers and publication permissions.
-Lint and Diagnostics are separate manual workflows, optional for acceptance.
+Lint Checks and Diagnostics Checks are separate manual workflows, optional for acceptance.
 Their failures stay visible; a demonstrated serious product failure still needs
 assessment regardless of the workflow that exposed it. During
 repair, use the smallest relevant test selection; once failures are fixed, rerun
@@ -258,7 +262,7 @@ all tests in every affected group at the final SHA. Record scope, results and gr
 timings in handoff so later main-goal cost can be estimated. Required core plan
 edges and applicable static checks remain mandatory; do not narrow away failures.
 
-Quick Checks accepts one to eight validated pytest nodes or whole test modules
+Dev Checks accepts one to eight validated pytest nodes or whole test modules
 (never mixed) through manual dispatch. Commit trailers no longer trigger Quick.
 Prefer whole modules for complete focused gates; split larger shared scopes into multiple
 runs at the same SHA and require every group to pass. Module groups exclude
@@ -324,14 +328,18 @@ accepted without approval.
 
 ## CI requirements
 
-Use the **Quick Checks** and **Checks** routes above, including planning
+Use the **Dev Checks** and **Checks** routes above, including planning
 consistency and tests for changed code, tools, workflows, commands and
 dependencies. Optional diagnostic stress remains excluded and is never claimed
 passed. Later release-branch scope needs review.
 
-Use a common planning/static preflight, bounded concurrent module-group Ubuntu
-jobs with full assigned host and cached native-host vendor BusyBox proof, and one
-required aggregate result. Keep host/native execution serial inside each isolated
+Checks orchestrates the independently runnable Backup Checks, Manager Checks and
+Status Checks workflows, expanding with main modules. Use a common planning/static
+preflight, bounded concurrent Ubuntu module jobs with full assigned host and cached
+native-host vendor BusyBox proof, and one required aggregate result. Dev Checks
+provides small focused selections and temporary split diagnosis; Dev Checks, Tools
+Checks, Lint Checks and Diagnostics Checks remain optional, manual-only workflows.
+Documentation-only changes, including docs/ assets, never trigger these workflows. Keep host/native execution serial inside each isolated
 group job; separate jobs prevent process fixtures from observing another group's
 logger. This is representative development
 proof, not a fake Merlin install. QEMU/kernel/ARM/firmware matrices are optional,

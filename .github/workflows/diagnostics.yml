@@ -1,4 +1,4 @@
-name: Diagnostics
+name: Diagnostics Checks
 
 on:
   workflow_dispatch:

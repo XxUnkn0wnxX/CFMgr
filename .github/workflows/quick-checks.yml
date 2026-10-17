@@ -1,5 +1,5 @@
-name: Quick Checks
-run-name: "Quick Checks: ${{ inputs.label || 'selected CI evidence' }}"
+name: Dev Checks
+run-name: "Dev Checks: ${{ inputs.label || 'selected CI evidence' }}"
 
 on:
   workflow_dispatch:
