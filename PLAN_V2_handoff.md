@@ -27,40 +27,38 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — independent module workflow runs pending
+## Current checkpoint — closed; paused for the day
 
-**This is the final checkpoint for today.** Finish **S14.01 and S14.04–S14.08**
-manual archive creation, responsibility-based consolidation and the approved test/CI
-cost correction. Complete the final gate and documentation receipt, then **end the
-turn**. Do not review, select or suggest another block without user permission.
-Checkpoint, repair and documentation pushes are authorized. No router, release or
-deployment authority is implied.
+**The agreed final checkpoint is complete. End the turn and wait.** S14.01 and
+S14.04–S14.08 manual archive creation, responsibility-based consolidation and the
+approved test/CI correction are accepted. Do not review, select, suggest or start
+another block without the user's explicit permission. No router, release or
+live-deployment authority is implied.
 
-Published candidate: **`b0a39dcada9427d6109080b95906847328599e4a`**. Final full
-[Checks 39032859298](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39032859298)
-passed all eight jobs after all eighteen native diagnostic selections passed.
-Complete modules including setup: Backup **6m27s**, Manager **8m29s**, Status
-under one minute. Runtime and cost proof passed, but the user identified that
-reusable calls leave individual workflow histories empty. Acceptance remains
-pending the authorized correction to actual independent workflow runs.
+Tested and published code: **`4942b3416fbc68aeeace15284dccf6077f3cf138`**.
+Automatic [Checks 39034472135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034472135) started three **independent** module runs and
+strictly collected their exact-candidate results. Parent verified all required
+jobs/steps, both platforms, complete selections and measured cost:
 
-Parent owns design/security, integration and records. Implementation ownership
-has returned; independent source/security and test-delta reviews passed. The four
-core workflows and one CI-only collector now implement trusted push/manual dispatch from a
-no-checkout job, native PR triggers preserving fork/cache isolation, and a read-only
-strict collector. Each child must prove the exact candidate and complete host/native
-jobs. Separate run IDs, visible histories, bounded polling and reruns must be
-verified live before closure. Optional workflows and documentation exclusions stay intact.
-Focused runner tests passed **135 cases in 2.42s**. Parent complete local Tools
-group (`tools/test.py --core-batch tooling --skip-shellcheck`) passed **214 cases
-in 4.80s**, common statics and host syntax. Ruff/format/compile, four YAML parses
-and embedded shell/Python syntax passed. No runtime files changed from `b0a39dc`.
-Next gate: publish this CI-only candidate and verify automatic Checks dispatch,
-three independent visible module runs, exact results and the strict aggregate.
-Acceptance remains **15/157 (9.6%), 0/16 main goals (0%)**. Goal 14 is locally
-focused-complete at 7/11 but only S14.02 is accepted. Closing the six current IDs
-would give **21/157 (13.4%)**, Goal 14 **7/11 (63.6%)**, and no main-goal tick.
-No full local suite is due because this block does not complete a main goal.
+| Workflow | Result | Complete module wall incl. setup |
+| --- | --- | --- |
+| [Backup Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034514621) | Passed both platforms | 7m31s |
+| [Manager Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034515614) | Passed both platforms | 8m21s |
+| [Status Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034516700) | Passed both platforms | 38s |
+| [Tools Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034479114) | Optional; 214 passed on each platform | 19s |
+
+Parent preflight, trusted dispatch and required collector passed. Cancellation-only
+cleanup was correctly skipped on success; it is not a required test gate. All jobs
+are terminal and implementation/review ownership has returned. No worker is active.
+Full metadata/logs: `.tmp/archive-creation/ci-<run>.{json,log}`. Parent core time
+was 9m15s including its preflight and collection; queue delay is separate.
+
+Acceptance: **21/157 (13.4%), 0/16 main goals (0%)**. Goal 14 has **7/11 accepted
+(63.6%)**. Six newly accepted IDs: **S14.01, S14.04, S14.05, S14.06, S14.07,
+S14.08**. S14.03 and S14.09–S14.11 remain unfinished. No full local suite was due
+because this checkpoint does not finish a main goal. The documentation receipt
+names this tested code SHA; its later documentation-only SHA is not a new runtime
+test claim. Checkpoint and receipt pushes were authorized; later packages are not.
 
 ### Implemented and reviewed
 
@@ -78,23 +76,33 @@ The verified package contains 14 files. Existing callers, parsers, manifest and
 regression coverage moved together; no function-per-file design was retained.
 Private category guide: `.tmp/module-layout.md`. Verified complete recovery:
 `.tmp/module-layout-recovery-20261017T053357Z/`; preserve its inventory and restore
-instructions. AGENTS.md was consolidated from **30,948 to 22,995 bytes**, with
-independent comparison **PASS** and checkpoint/permission rules preserved.
+instructions. AGENTS.md was consolidated from **30,948 bytes** and is now **23,190 bytes**
+including the narrow independent-run rule. Independent comparison passed;
+checkpoint, permission and consolidation rules are preserved.
 
-Permanent CI groups follow actual main modules, currently **Backup Checks**,
-**Manager Checks**, **Status Checks**; supporting libraries sit beneath their
-main consumer. **Checks** automatically orchestrates them on code/test/tool/Actions
-pushes to `develop` and PRs targeting `develop`. It keeps a manual entry, common
-statics/both syntax gates and a strict aggregate. Reusable calls passed runtime
-proof but are being replaced with real independent runs as explicitly requested.
-Each module has isolated host/native jobs, ten-minute limits and fail-fast off;
-measure the complete module from earliest platform-job start to latest finish,
-including setup, with queue delay separate. The isolation avoids global process
-fixture collisions, not required coverage. **Dev Checks** is manual focused and
-temporary diagnostic selection. **Tools Checks**, **Lint Checks** and **Diagnostics
-Checks** are optional manual workflows. Markdown, `docs/**` and `.images/**`
-changes alone do not trigger repository CI. GitHub's generated Dependency Graph
-entry is not a repository workflow. Groups expand with actual main modules.
+Permanent CI groups follow actual main modules: **Backup Checks**, **Manager
+Checks**, **Status Checks**, with supporting libraries beneath their main consumer.
+**Checks** automatically starts independent module runs on relevant `develop`
+pushes; PRs targeting `develop` start matching native PR workflows to preserve
+fork/token/cache isolation. Checks verifies every exact-candidate result. Each
+module owns common statics/syntax plus isolated complete host/native jobs, ten-minute
+limits and fail-fast off. The parent retains common preflight and a stable required
+aggregate. Main groups expand with actual core modules.
+
+**Dev Checks** is manual focused/temporary diagnosis. **Tools Checks**, **Lint
+Checks** and **Diagnostics Checks** are optional/manual. Markdown, `docs/**` and
+`.images/**` changes alone do not trigger repository CI. GitHub's generated
+Dependency Graph entry is not a repository workflow. Privileged dispatch/cancel
+jobs execute only inline trusted code without checkout; the collector and all
+candidate/PR execution are read-only. Live trusted dispatch/collection passed;
+PR correlation/reruns/cancellation have focused source/mock proof, without a live
+PR campaign. No additional product gate or qualification is claimed.
+
+Focused orchestration tests passed **135 cases in 2.42s**. Parent complete local
+Tools (`tools/test.py --core-batch tooling --skip-shellcheck`) passed **214 cases
+in 4.80s**, common statics and host syntax. Ruff/format/compile, YAML and embedded
+shell/Python syntax passed; independent source/security and test-delta review
+passed. Runtime files are unchanged between `b0a39dc` and `4942b34`.
 
 ### Measured cost correction and focused proof
 
@@ -133,10 +141,11 @@ structure CPU stayed approximately unchanged (42.26→41.96s); this last refinem
 removes avoidable waiting rather than claiming a CPU reduction.
 
 Fresh collection: **375 Backup + 576 Manager + 36 Status = 987 required product
-cases**, plus **185 optional Tools**; four optional diagnostics excluded.
+cases** at `b0a39dc`; four optional diagnostics excluded. The final CI tooling
+selection contains 214 optional cases after the orchestration tests.
 Eighteen native diagnostic selections cover all 951 unique Backup/Manager cases;
 only two deadline variants intentionally overlap metadata safety and complete
-history/I/O. All passed at the exact current candidate. Every whole diagnostic
+history/I/O. All passed at `b0a39dc`; the final CI-only change preserves that runtime. Every whole diagnostic
 job, including setup, was at most **152s**. Summed pytest cost is **393.62s Backup**
 (including those two repeats) and **431.46s Manager**. These are focused receipts;
 the complete main-module run subsequently passed the ten-minute budget.
@@ -162,25 +171,20 @@ the complete main-module run subsequently passed the ten-minute budget.
 | manager-install-retained | 39032359344 | 70 passed | 113.65s | 66.19/47.13s | 129s |
 | backup-metadata-safety | 39032781035 | 15 passed | 3.24s | 1.20/0.53s | 27s |
 
-Optional Tools **39028225945** passed 185 cases on host/native at `171f899`;
-its workflow/tooling code has not changed since. Optional Lint/Diagnostics are not
-claimed passed. Representative Ubuntu/vendor BusyBox development evidence does
-not qualify Merlin/ARM, live providers or router deployment.
+The final optional [Tools Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034479114) passed 214 cases on each platform at `4942b34`.
+Optional Lint/Diagnostics are not claimed passed. Representative Ubuntu/vendor
+BusyBox development evidence does not qualify Merlin/ARM, live providers or router
+deployment. The retained review notes remain applicable.
 
-### Closing boundary
+### Stop boundary
 
-Full core **39032859298** at `b0a39dc` passed. Finish the independent-run CI
-correction, focused tooling validation and review, then publish and verify the new
-exact candidate: Checks must start three independent visible module runs and
-strictly require complete host/native success within the module budget. Reuse the
-unchanged runtime diagnostic proof. Only after this passes, accept S14.01 and
-S14.04–S14.08; update checklist/README,
-final audit and this handoff, run proportionate documentation checks, commit/push
-the documentation receipt and verify it triggers no repository CI. Name the tested
-code SHA without implying the receipt SHA was runtime-tested. Leave no required
-job or worker active and **pause for the day**. No subsequent block is selected.
-If a real required gate fails, preserve it unchecked and repair within this same
-authorized checkpoint; no cancelled, skipped or old run supplies acceptance.
+All required runtime, integration, CI and cost gates are closed. This documentation-
+only receipt updates checklist/README acceptance, audit and handoff; proportionate
+planning/link/privacy and whitespace checks passed. Publication verification belongs
+to this closing receipt, not another implementation block. **Stop for the day**
+after confirming the remote receipt and absence of repository CI for its SHA. No
+subsequent block is selected or authorized. Preserve the recovery snapshot and
+private test receipts; checkpoint closure authorizes no cleanup or deletion.
 
 ## Historical implementation and diagnostic record — current archive checkpoint
 

@@ -8,6 +8,31 @@ The checklist remains authoritative for acceptance; the handoff owns current wor
 permissions, jobs, next actions and session lineage. Deferred risks remain in the
 review notes. This record creates no requirements, product credit or permissions.
 
+## S14.01, S14.04–S14.08 accepted checkpoint disposition
+
+Parent and independent source/security reviews agree that the manual creation,
+consolidation, native integration and measured-cost findings below are resolved
+for this package. Acceptance is at **`4942b3416fbc68aeeace15284dccf6077f3cf138`**, after
+[Checks 39034472135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034472135) dispatched and verified separate [Backup Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034514621), [Manager Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034515614)
+and [Status Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034516700) runs. Both required platforms passed per module; total module wall
+including setup was **7m31s / 8m21s / 38s**. Host total: **957 passed / 30 explicit
+platform skips**; native total: **986 passed / one workstation-only skip**. Four
+optional diagnostic cases were excluded per platform. No required proof was
+narrowed or timing limit raised. Earlier pending native/core statements below
+record intermediate stages; these final receipts close those gates for the six
+named IDs, without claiming unfinished browse/restore behavior.
+
+The separate workflow-history requirement is now demonstrated on GitHub, rather
+than inferred from reusable calls. Required parent preflight, dispatch and strict
+collector passed; cancellation-only cleanup was correctly skipped. Optional
+[Tools Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034479114) passed 214 cases on each platform in a 19s job. Local complete Tools
+passed 214 in 4.80s, and source/YAML/shell/Python/static gates passed. PR correlation,
+reruns and cancellation have source/mock validation; no live PR campaign was run.
+Runtime is byte-identical to `b0a39dc`, whose complete core and eighteen diagnostic
+selections also passed. Representative development evidence remains distinct from
+Merlin/ARM and live beta qualification. Six product IDs gain acceptance; tooling
+and structural cleanup gain none. The agreed checkpoint is closed.
+
 ## S02.01, S14.01, S14.04–S14.08 module fragmentation correction
 
 On 2026-10-17 the user rejected the archive implementation's many separate shell
@@ -315,7 +340,10 @@ suffixes are supported without loosening workflow/candidate identity. Privileged
 jobs never check out or execute candidate files; all candidate/PR execution stays
 read-only. Focused orchestration tests passed 135 cases in 2.42s; complete local
 Tools passed 214 in 4.80s with required common statics/host syntax. No runtime
-files changed. Actual GitHub dispatch/collection remains the final integration gate.
+files changed. Actual GitHub dispatch at `4942b34` returned three separate run IDs under their
+individual workflow histories. Optional Tools passed 214 cases on each platform
+(host 1.60s, native 1.38s; whole job 19s). Complete core child results and strict parent collection subsequently passed;
+the accepted checkpoint disposition above records the final receipts.
 
 ## S14.06–S14.08 history runtime admission review
 

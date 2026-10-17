@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**15 of 157 product subgoals accepted — 9.6% overall subgoal completion.**
+**21 of 157 product subgoals accepted — 13.4% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -593,14 +593,14 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
+| [x] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
 | [x] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
 | [ ] | [ ] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
-| [ ] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
-| [ ] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
-| [ ] | [x] | S14.06 | **Coherent data allowlist:** Config/catalog/typed authority/drafts/full YAML/JSON/both cert copies/.bak/preferences/eligible history; no live controls/executables. |
-| [ ] | [x] | S14.07 | **Required versus optional payload:** Required authority/YAML cannot be omitted; external dependencies inventoried, optional cert/binary absence handled honestly. |
-| [ ] | [x] | S14.08 | **Backup transaction:** Consistent bounded source/rotation locks, private same-filesystem archive, hashes/mount recheck/atomic commit. |
+| [x] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
+| [x] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
+| [x] | [x] | S14.06 | **Coherent data allowlist:** Config/catalog/typed authority/drafts/full YAML/JSON/both cert copies/.bak/preferences/eligible history; no live controls/executables. |
+| [x] | [x] | S14.07 | **Required versus optional payload:** Required authority/YAML cannot be omitted; external dependencies inventoried, optional cert/binary absence handled honestly. |
+| [x] | [x] | S14.08 | **Backup transaction:** Consistent bounded source/rotation locks, private same-filesystem archive, hashes/mount recheck/atomic commit. |
 | [ ] | [ ] | S14.09 | **Safe current-code restore:** Exact input/schema/hash/path/type/size validation, supported migration and current components, no archive code/downgrade. |
 | [ ] | [ ] | S14.10 | **State-aware reconstruction:** Never-configured/draft/maintenance/On/Off rules, independent logging preference and explicitly deferred optional history. |
 | [ ] | [ ] | S14.11 | **Guarded restore/recovery:** Fresh local ownership/generation, current auth/source admission, local rollback distinct from new auth-Off and no stale replay. |
@@ -622,25 +622,39 @@ Supporting portions of S02.02, S03.03 and Goal 4 receive no additional ticks;
 manual archive creation still requires its own acceptance gate; browse/restore
 and live firmware/filesystem qualification remain unfinished.
 
-Manual-create local evidence for S14.01 and S14.04–S14.08 is complete on the
-consolidated candidate `c5b6b5565ad5c9e5132b16090359430ede4cf853`, before required
-Linux/vendor BusyBox and exact core CI.
-Final status remains unchecked; this adds no accepted product credit.
+S14.01 and S14.04–S14.08 accepted at **`4942b3416fbc68aeeace15284dccf6077f3cf138`** after
+complete implementation, written focused local gates, parent and independent
+reviews, the [controller/consolidation audit](PLAN_V2_audit.md#s1401-s1404s1408-create-controller-review),
+and exact-candidate [Checks 39034472135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034472135). Goal 14 now has **7/11 accepted**;
+S14.03 and S14.09–S14.11 remain unfinished. No main-goal tick is awarded.
 
-| Scope | Focused local evidence | Outstanding acceptance gate |
-| --- | --- | --- |
-| S14.01/S14.04 real consumer and naming | Actual Store/capture/tar/gzip/full verification/publication/retention/history-Save journey passed in 87.61s, including independent valid prior recognition and mode 0777 container admission. Complete menu/controller group: 19 passes; format/control and earlier consolidation gates retained. | Required native tooling/descriptor proof and final exact-candidate core Checks. |
-| S14.05 retention and transaction outcomes | Complete 11-case transaction scope, definitive foreign-set rejection, actual rename/hash/unlink, uncertain publication, incomplete scan and YAML budget exhaustion; no pruning before confirmed publication or after incomplete inspection. | Native filesystem/supervisor execution and final core Checks. |
-| S14.06/S14.07/S14.08 payload and consistency | Complete 15-case rich capture scope; full five-member config/YAML/JSON/PEM semantic journey; complete 22-case verifier, 22-case history adapter, 16-case writer and 35 host history-runtime cases. I/O: 12 passes / 5 Linux skips; Store/config: 42 passes / 3 skips; history runtime: 10 Linux skips remain explicit. Host timing allowances and evidence limits are in [review notes](PLAN_V2_review_notes.md#14-backup-and-restore). | Actual native process/FD/lock/mount behavior and final core Checks; host adapters do not establish router qualification. |
+The actual menu/controller creates native unencrypted data-only archives with
+required/optional capture rules, local date naming, full integrity/semantic
+verification, guarded atomic publication and verified-new-first retention.
+Written local proof includes the complete creation journey, menu/controller,
+transaction, rich capture, verifier, history, writer, I/O and Store/config scopes.
+The final runtime cost repair passed 45 local cases / 15 explicit Linux skips;
+eighteen native diagnostic groups subsequently covered all 951 Backup/Manager
+cases, with every diagnostic job at most 152s. The final whole-module CI below
+closes required native process/FD/lock/mount and supervisor proof. Diagnostic
+selections supplement, never replace, these complete groups.
 
-Parent review and independent source audits are recorded in the
-[controller audit](PLAN_V2_audit.md#s1401-s1404s1408-create-controller-review).
-All 102 nodes in the parent's final archive regression scope have disjoint terminal
-receipts: 94 passes / 8 platform skips. Controller/history receipts are additional,
-with overlaps stated rather than added as unique tests. Required default format,
-syntax, Ruff/compile and package/planning checks accompany the local candidate;
-optional ShellCheck uses explicitly limited analysis. The handoff records exact
-candidate/evidence and publication state. Restore/browse subgoals remain unfinished.
+| Complete required module | Host result | Vendor BusyBox result | Module wall incl. setup |
+| --- | --- | --- | --- |
+| [Backup Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034514621) | 374 passed / 1 platform skip; 120.20s | 375 passed; 428.14s | 7m31s |
+| [Manager Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034515614) | 547 passed / 29 platform skips; 80.33s | 575 passed / 1 workstation-only skip; 480.76s | 8m21s |
+| [Status Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034516700) | 36 passed | 36 passed | 38s |
+
+All six platform jobs, common planning/statics/both syntax, dispatch and strict
+parent collection passed at the same full SHA. Four optional diagnostics were
+excluded per platform. Each module has a separate workflow run/history; the
+aggregate verifies exact identities and current attempts. Optional [Tools Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034479114)
+also passed 214 cases on each platform (1.60s host / 1.38s native; 19s whole job).
+Developer tooling, consolidation and CI changes add no product credit.
+The final CI-only change leaves runtime files identical to `b0a39dc`, whose
+complete core and all eighteen diagnostic groups also passed. Representative
+Ubuntu/vendor BusyBox evidence does not qualify Merlin/ARM or live deployment;
+[retained evidence limits](PLAN_V2_review_notes.md#14-backup-and-restore) remain.
 
 ### 15. Uninstall, retained installation and reset
 
