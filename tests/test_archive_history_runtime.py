@@ -437,21 +437,68 @@ def test_production_writer_observes_actual_relevant_process_and_fd(
         + f"OWNER history.cloudflared {b'/opt/var/log/cloudflared.log'.hex()} 1 -\nEND 3\n"
     )
     library = archive[0] / "modules/backup.sh"
-    library.write_text(
+    body = (
         library.read_text()
         .replace("cfmgr_hr_run() {", "cfmgr_test_hr_run() {", 1)
         .replace("cfmgr_hr_meta_raw() {", "cfmgr_test_hr_meta_raw() {", 1)
+        .replace("cfmgr_hr_stat() {", "cfmgr_test_hr_stat() {", 1)
     )
+    # Failure-only scalar diagnostics in this private fixture copy. No raw
+    # proc data, argv, paths or receipt contents may enter the failure output.
+    start = body.index("cfmgr_hr_writer_observe() {")
+    end = body.index("\ncfmgr_archive_cloud_capture_mode()", start)
+    observe = body[start:end]
+    stages = (
+        ("IFS= read -r cfmgr_hr_writer_boot", "boot"),
+        ("cfmgr_hr_run history-proc-list", "proc-list"),
+        ("cfmgr_hr_run history-proc-pids", "proc-pids"),
+        ("while IFS= read -r cfmgr_hr_writer_candidate", "proc-stat-loop"),
+        ('cfmgr_history_runtime_consume "$cfmgr_hr_writer_pids"', "retire-pids"),
+        ('[ "$cfmgr_hr_writer_count" != 0 ]', "classify-count"),
+    )
+    for marker, stage in stages:
+        assert observe.count(marker) == 1
+        observe = observe.replace(
+            marker, f"cfmgr_test_writer_stage={stage}\n\t{marker}", 1
+        )
+    body = body[:start] + observe + body[end:]
+    start = body.index("cfmgr_archive_cloud_capture_mode() {")
+    end = body.index("\ncfmgr_archive_cloud_capture_revalidate()", start)
+    mode = body[start:end]
+    marker = "cfmgr_history_runtime_seed || return 1"
+    assert mode.count(marker) == 1
+    mode = mode.replace(marker, "cfmgr_test_writer_stage=context-seed\n\t" + marker, 1)
+    body = body[:start] + mode + body[end:]
+    library.write_text(body)
     archive[-1].update(TEST_SOURCE=str(source), TEST_WRITER_KIND=kind)
     setup = (
         HISTORY
         + r"""
 cfmgr_history_deadline=$((cfmgr_probe_now+60)) cfmgr_archive_deadline=$((cfmgr_probe_now+60))
 cfmgr_hr_run() {
+    cfmgr_test_writer_probe=$1
     if [ "$3" = /usr/sbin/openssl ]; then
         selected_mode=$1 selected_cap=$2; shift 3
-        cfmgr_test_hr_run "$selected_mode" "$selected_cap" "$TEST_OPENSSL" "$@"
-    else cfmgr_test_hr_run "$@"; fi
+        if cfmgr_test_hr_run "$selected_mode" "$selected_cap" "$TEST_OPENSSL" "$@"; then cfmgr_test_writer_probe_rc=0; else cfmgr_test_writer_probe_rc=$?; fi
+    else
+        if cfmgr_test_hr_run "$@"; then cfmgr_test_writer_probe_rc=0; else cfmgr_test_writer_probe_rc=$?; fi
+    fi
+    return "$cfmgr_test_writer_probe_rc"
+}
+cfmgr_hr_stat() {
+    cfmgr_test_writer_stat_calls=$((${cfmgr_test_writer_stat_calls:-0}+1))
+    if cfmgr_test_hr_stat "$@"; then return 0; else cfmgr_test_writer_stat_rc=$?; fi
+    cfmgr_test_writer_stat_failures=$((${cfmgr_test_writer_stat_failures:-0}+1))
+    cfmgr_test_writer_stat_pid=$1 cfmgr_test_writer_stat_bytes=${#cfmgr_hr_stat_line}
+    return "$cfmgr_test_writer_stat_rc"
+}
+cfmgr_test_writer_diagnostic() {
+    printf 'writer-fixture stage=%s rc=%s probe=%s probe_rc=%s status=%s exit=%s reason=%s serial=%s scanned=%s candidates=%s stat_calls=%s stat_failures=%s stat_pid=%s stat_bytes=%s now=%s deadline=%s live_bytes=%s live_files=%s\n' \
+        "${cfmgr_test_writer_stage:-mode-preconditions}" "$1" "${cfmgr_test_writer_probe:-none}" "${cfmgr_test_writer_probe_rc:-none}" \
+        "${cfmgr_probe_status:-none}" "${cfmgr_probe_exit:-none}" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_serial:-0}" \
+        "${cfmgr_hr_writer_scanned:-0}" "${cfmgr_hr_writer_count:-0}" "${cfmgr_test_writer_stat_calls:-0}" "${cfmgr_test_writer_stat_failures:-0}" \
+        "${cfmgr_test_writer_stat_pid:-none}" "${cfmgr_test_writer_stat_bytes:-0}" "${cfmgr_probe_now:-none}" "${cfmgr_history_deadline:-none}" \
+        "${cfmgr_hr_live_bytes:-none}" "${cfmgr_hr_live_files:-none}" >&2
 }
 # Fixture files belong to the CI account. Map that owner to the router root
 # contract only at the metadata boundary; actual proc/inode/hash/FDs stay real.
@@ -482,8 +529,10 @@ exec 4<>"$ram/rotation"
                 shell,
                 setup
                 + r"""
-cfmgr_archive_cloud_capture_mode "$TEST_SOURCE/var/log/cloudflared.log" || exit 82
-[ "$cfmgr_archive_capture_mode" = whole ] || exit 83
+if cfmgr_archive_cloud_capture_mode "$TEST_SOURCE/var/log/cloudflared.log"; then :; else
+    code=$?; cfmgr_test_writer_diagnostic "$code"; exit 82
+fi
+[ "$cfmgr_archive_capture_mode" = whole ] || { cfmgr_test_writer_diagnostic 0; exit 83; }
 """,
                 timeout=70,
             )

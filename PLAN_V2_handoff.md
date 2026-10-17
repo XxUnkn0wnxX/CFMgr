@@ -141,6 +141,25 @@ passed in 0.43s (2.09s wall, 1.06 user / 0.41 system); shell syntax/default form
 and Ruff passed. Full native history remains pending. Automatic core
 `39016690550` was cancelled; no required core run has yet supplied acceptance.
 
+At `9a2b170`, history Quick `39016885668` passed 29 cases before the first
+inactive-writer observation returned 82 without diagnostics (7.92s total).
+Create Quick `39016887500` timed out at its existing 180s guard on the first
+positive journey; measured parent/collected-child CPU was only 0.60 user / 0.08
+system seconds, so an increased timeout is not justified. Failure-only scalar
+stage/probe diagnostics are being added to the two private test fixtures before
+narrow native reruns; no production behavior is inferred from those failures.
+
+The shorter shared execution Quick `39017038095` passed 156 cases (one platform
+skip), including backup-folder/replacement/source, before `view_compat` failed:
+the consolidated execution import in `view_prepare` overwrote the fixture's
+native callbacks, leaving an unavailable dependency callback during cleanup.
+Importing inert execution defaults before the fixture callbacks preserves their
+intended ownership; a read-only review confirmed dependent fixtures still install
+their own callbacks afterward. Group cost was 24.46s pytest / 24.69s wall,
+9.18 user / 9.33 system. Native verification remains pending. Automatic core
+`39016884265` was cancelled. Parent owns records and publication; the create
+diagnostic worker owns only `tests/test_archive_create.py` until integration.
+
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
 be one module, config one module, and networking/DDNS similarly grouped by real

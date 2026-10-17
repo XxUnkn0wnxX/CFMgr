@@ -77,11 +77,14 @@ fi
 if [ "$(id -u)" != 0 ]; then
 	fail 'fixture requires its explicit privileged test invocation'
 fi
-if [ ! -f "$root/modules/lib/storage.sh" ] || [ ! -f "$root/modules/backup.sh" ]; then
-	fail 'repository storage or backup category is missing'
+if [ ! -f "$root/modules/lib/storage.sh" ] || [ ! -f "$root/modules/lib/execution.sh" ] || [ ! -f "$root/modules/backup.sh" ]; then
+	fail 'repository storage, execution or backup category is missing'
 fi
 # shellcheck disable=SC1091 # Inert category needed by every later cleanup path.
 . "$root/modules/lib/storage.sh" || fail 'storage category could not load'
+# Import category defaults before the fixed fixture callbacks below override them.
+# shellcheck disable=SC1091
+. "$root/modules/lib/execution.sh" || fail 'execution category could not load'
 if [ ! -x "$readlink" ] || [ ! -x "$awk" ]; then
 	fail 'selected native tools are unavailable'
 fi
@@ -437,8 +440,6 @@ view_prepare() {
 	for view_keeper_applet in ash awk env mknod usleep '[' printf; do
 		ln -s "$view_busybox" "$view_ram/$view_keeper_applet"
 	done
-	# shellcheck disable=SC1091 # Trusted repository source; no import execution.
-	. "$root/modules/lib/execution.sh"
 	view_loaded=1
 	mkdir -m 700 "$view_ram/context"
 }
@@ -462,8 +463,6 @@ backup_folder | backup_replacement | archive_source)
 	sed "s|in /tmp/mnt/?\*)|in $fixture/?*)|" "$root/modules/backup.sh" >"$fixture/backup-storage.sh"
 	# shellcheck disable=SC1091 # Private copy differs only in the fixture root.
 	. "$fixture/backup-storage.sh"
-	# shellcheck disable=SC1091
-	. "$root/modules/lib/execution.sh"
 	# shellcheck disable=SC1091
 	. "$root/modules/lib/config.sh"
 	for backup_applet in sh awk sleep wc; do ln -s "$view_busybox" "$fixture/$backup_applet"; done
