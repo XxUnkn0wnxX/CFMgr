@@ -54,7 +54,8 @@ hard-to-follow consolidation threshold, not routine trimming.
 ## Implementation and preservation
 
 Follow the active handoff boundary; writing a handoff does not start later work.
-Past cleanup, branch deletion, history resets or publication grants do not recur.
+Past cleanup, branch deletion, history resets or one-off publication grants do not
+recur; checkpoint push authority is defined below.
 Select work across the approved plan by dependency readiness and smallest fully
 completable scope, rather than main-goal number. Finish small independent subgoals
 and prerequisites before larger features, including ready independent subgoals in
@@ -207,8 +208,12 @@ Each subgoal needs complete implementation, written focused tests, relevant stat
 checks and parent review. CI-dependent acceptance needs **required core Checks
 passing at the exact published candidate SHA**, including shared foundations
 across goals. Quick Checks supplies focused diagnosis and interim evidence. A
-narrow diagnostic pass cannot award a checkbox. Local commits do
-not authorize pushes. Checkpoint routes:
+narrow diagnostic pass cannot award a checkbox. To close an authorized checkpoint,
+automatically push the locally checked/reviewed candidate to `develop` as needed
+for required CI, including repairs and the final documentation receipt; no separate
+push approval is needed. Interim local commits alone do not authorize unrelated
+pushes. Preserve all CI gates and the pause after each cleared checkpoint.
+This does not authorize another package, release or deployment. Checkpoint routes:
 
 | Situation | Required route |
 | --- | --- |

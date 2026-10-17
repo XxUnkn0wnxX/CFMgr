@@ -964,12 +964,21 @@ def test_generic_header_staging_preserves_vendor_source_and_invalidates_only_bus
     platforms.stage_busybox_support(source)
     header = source / ".cfmgr-generic-headers/rtconfig.h"
     assert header.read_bytes() == (fixtures / "busybox-support/rtconfig.h").read_bytes()
+    assert not (source / ".cfmgr-generic-headers/native-date-compat.h").exists()
     assert not re.search(
         rb"^\s*#\s*define\s+RTCONFIG_", header.read_bytes(), re.MULTILINE
     )
     assert vendor.read_bytes() == original
     with pytest.raises(FileExistsError):
         platforms.stage_busybox_support(source)
+    native_source = tmp_path / "native vendor source"
+    native_source.mkdir()
+    platforms.stage_busybox_support(native_source, target="native")
+    native_compat = (
+        native_source / ".cfmgr-generic-headers/native-date-compat.h"
+    ).read_text()
+    assert "clock_settime(CLOCK_REALTIME, &value)" in native_compat
+    assert "#define stime(when) cfmgr_native_stime(when)" in native_compat
     item = manifest["busyboxes"][0]
     keys = {
         target: platforms.build_key("busybox", item, target=target)

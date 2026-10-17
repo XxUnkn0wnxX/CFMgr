@@ -572,12 +572,25 @@ def build_key(
     return digest.hexdigest()
 
 
-def stage_busybox_support(source: Path) -> None:
+def stage_busybox_support(source: Path, *, target: str = "arm") -> None:
     # Use an explicit local include directory, without patching vendor sources or
     # borrowing firmware-generated board settings from a router source tree.
+    _require(target in {"arm", "native"}, "unknown BusyBox target")
     support = source / ".cfmgr-generic-headers"
     support.mkdir()
     shutil.copyfile(FIXTURES / "busybox-support/rtconfig.h", support / "rtconfig.h")
+    if target == "native":
+        (support / "native-date-compat.h").write_text(
+            """/* Native-host compatibility for vendor BusyBox 1.25.1 date.c. */
+#include <time.h>
+static inline int cfmgr_native_stime(const time_t *when)
+{
+	struct timespec value = { *when, 0 };
+	return clock_settime(CLOCK_REALTIME, &value);
+}
+#define stime(when) cfmgr_native_stime(when)
+"""
+        )
 
 
 def build_busybox(item: dict[str, str], cache: Path, *, target: str = "arm") -> Path:
@@ -629,7 +642,7 @@ def build_busybox(item: dict[str, str], cache: Path, *, target: str = "arm") -> 
     ).strip()
     _require(actual == item["commit"], "vendor checkout commit mismatch")
     source = checkout / item["path"]
-    stage_busybox_support(source)
+    stage_busybox_support(source, target=target)
     make = [
         "make",
         "ARCH=" + ("arm" if target == "arm" else "x86_64"),
@@ -638,7 +651,13 @@ def build_busybox(item: dict[str, str], cache: Path, *, target: str = "arm") -> 
         "HND_ROUTER=n",
         "HND_ROUTER_BE_4916=n",
         "HOSTCFLAGS=-O2 -fcommon",
-        "EXTRA_CFLAGS=-include sys/sysmacros.h -I.cfmgr-generic-headers",
+        "EXTRA_CFLAGS=-include sys/sysmacros.h"
+        + (
+            " -include .cfmgr-generic-headers/native-date-compat.h"
+            if target == "native"
+            else ""
+        )
+        + " -I.cfmgr-generic-headers",
     ]
     run([*make, "allnoconfig"], cwd=source)
     values = configuration(FIXTURES / "busybox.config")

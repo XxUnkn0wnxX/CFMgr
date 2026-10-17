@@ -37,6 +37,25 @@ and README only after those gates, publish the documentation receipt and pause.
 This authorization covers the current package checkpoint, not another feature,
 router mutation, deployment or release.
 
+The user subsequently requested a standing rule: checkpoint candidates may be
+pushed automatically as needed to finish required CI and close the checkpoint.
+The narrow `AGENTS.md` publication rule now records this permission, including
+repair pushes and the final documentation receipt; local gates and checkpoint
+pauses remain mandatory. No product requirement or acceptance rule changed.
+
+Published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
+Automatic core run `39015067310` was cancelled before focused diagnosis.
+Initial payload/tool Quick `39015102266` failed in the native BusyBox build:
+the newly enabled date applet references `stime`, unavailable in the runner's
+libc link. No selected test ran. Raw log is preserved at
+`.tmp/archive-creation/ci-39015102266.log`. The native-only generated compatibility
+header maps `stime` to `clock_settime` with zero nanoseconds; the vendor date
+read/format path and ARM build remain unchanged. Existing recipe hashing covers
+the compatibility bytes. Parent reviewed the worker's two-file repair; all 40
+platform-tool tests passed in 0.78s (1.59s wall, 0.91 user, 0.34 system), with
+Ruff/format/compile/whitespace checks. Native rebuild and payload rerun remain
+pending; no worker owns edits now.
+
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
 be one module, config one module, and networking/DDNS similarly grouped by real
