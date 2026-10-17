@@ -16,6 +16,12 @@ earn product ticks.
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
 candidate revision. Quick Checks supplies focused diagnosis and interim evidence.
+Core execution starts with one group per actual main module, with supporting
+library tests underneath, complete assigned host/native coverage and a required
+aggregate at the same SHA. Groups expand with main modules. Every required group
+must pass within approximately ten minutes, preferably sooner; split a main-module
+group only after it exceeds that limit, to diagnose and reduce the slow part.
+This changes test organization and cost control, not product requirements.
 **Main-goal gate:** every required subgoal, accumulated codebase/scope audit, full
 local suite and exact full core CI at the complete main-goal checkpoint. Full
 local suites remain reserved for that boundary; core CI runs for code, tests,

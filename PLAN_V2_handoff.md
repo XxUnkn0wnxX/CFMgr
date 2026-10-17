@@ -27,22 +27,78 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — host deadline fixture repair
+## Current checkpoint — module core CI and test-cost correction
 
-Published runtime/test candidate: **`06ea7aa4b7f556f0e590ae161dc9b6cc5bf0ff8f`**.
+**Latest user direction overrides the earlier closing route below.** The user
+rejected the 30-minute full run as unacceptable this early in development, then
+explicitly approved: “each module = its own core group moving forward” so slow
+tests can be diagnosed per module. Keep the same product block, six pending IDs,
+coverage and safety assertions. Runtime reduction and module-group CI are now
+required before this checkpoint can close; a pass from the old serial run alone
+must not award acceptance.
+
+The old serial core [39022377733](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39022377733)
+is **cancelled**, verified terminal at `7a02dc2`. Host passed in 8m47; native ran
+31m13 before cancellation. Its last progress was 87%, so the retained log shows
+slow ongoing execution rather than proving a deadlock. It supplies no complete
+core pass. The user explicitly requested stopping it. No old CI job remains active.
+
+**Latest grouping decision:** start with one group per actual main module:
+Backup, Manager and Status, plus separate developer-tool support checks. Supporting
+libraries/tests sit beneath their main consumer; groups expand with new main
+modules. Only split a main-module group after its run exceeds approximately ten
+minutes, as diagnosis to locate and reduce the slow part. Shorter is preferred.
+The earlier proposed fifteen-row pre-split design is superseded by this direction.
+
+Worker `module_consolidation` owns only `tools/test.py`,
+`tests/test_dev_runners.py` and `.github/workflows/checks.yml`. It is implementing
+four initial rows: Backup 19 test modules, Manager 24, Status 1 and Tooling 3.
+Manager includes CFMgr setup/configuration and shared infrastructure contracts;
+this is primary test ownership, not exclusive ownership of shared runtime code.
+All groups run on existing core triggers, preserving all shared consumers. Common
+preflight proves statics and both shell syntax modes; each isolated row executes
+host then native serially, maximum three rows concurrently, with a ten-minute job
+limit including setup. The existing required-check name remains a fail-closed
+aggregate at the same SHA. Named tests and complete duration output expose stalls.
+A newly added main runtime module or unassigned/overlapping test must fail mapping
+validation. Default local-runner and Quick diagnosis routes remain available.
+
+Parent owns AGENTS and five V2 record updates. Reviewer `consolidation_review`
+checks the revised mapping and unchanged fail-closed gate; the earlier machinery
+review passed. Worker edits are complete and ownership returned: runner tests
+passed 80 cases in 1.22s; Ruff/format/compile/YAML and whitespace checks passed.
+Parent `tools/test.py --checks-only --skip-shellcheck` passed final common checks
+and host syntax. Collection-only comparison of ordinary core and all assigned
+module paths found the same 1,110 unique required cases, with no missing/duplicate
+case. These receipts apply to the dirty grouped-CI candidate, not a full local
+behavior run. Native test review identified possible compact-fixture savings in
+verifier hash/path cases, but no optimization has been applied before the first
+module run. Run every group, rank actual costs, diagnose any over-limit module,
+reduce redundant work while preserving required proof, then complete the exact
+final gate. No product acceptance, next-block work, router or release action is
+authorized by this correction. Do not enable disabled native shell builtins to
+speed tests: retained firmware base configs explicitly disable TEST/PRINTF.
+
+### Prior validation state before the cost correction
+
+Published runtime/test candidate: **`7a02dc25132f2f333e4fee3039d3752572b5baa4`**.
 The authorized block is **S14.01 and S14.04–S14.08**, including consolidation and
 shared-consumer regression proof. Implementation, focused local/native gates and
-parent/independent runtime review are complete. Final [core Checks
-39021683944](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39021683944) failed in the host deadline/lock case; native core did not start. Its log does not
-identify the exact failed stage. Source review confirms the old floor(uptime)+1
-fixture budget could expire during preliminary inode work or before tar launch,
-while the test assumed the blocking child had started. The fixture now retains
-its bounded launch allowance and arms the short real-clock deadline once its
-child-start marker exists. It requires that marker, exact tar mode, expected
-reaped reason, absent PID and one-time arming, with scalar failure diagnostics.
+parent/independent runtime review are complete. The old serial core was cancelled; acceptance now awaits every required job/step
+in the new module-group gate and its measured cost correction.
+
+Earlier core `39021683944` at `06ea7aa` failed the host deadline/lock case before
+native core. Its quiet log cannot identify the exact failed stage. Source review
+confirmed that floor(uptime)+1 could expire during preliminary inode work or before
+tar launch, while the test assumed the blocking child had started. The fixture
+now retains its bounded launch allowance and arms the short real-clock deadline
+once its child-start marker exists. It requires that marker, exact tar mode,
+expected reaped reason, absent PID and one-time arming, with scalar diagnostics.
 Production code is unchanged; independent review passed. Local archive I/O had
-14 passes / 6 Linux skips in5.24s; final syntax/Ruff/format/compile passed. Native
-complete history/I/O and final exact core reruns remain required.
+14 passes / 6 Linux skips in 5.24s; final syntax/Ruff/format/compile passed.
+Complete native history/I/O Quick `39022235983` at `7a02dc2` then passed all 104
+cases in 76.90s (77.09s wall, 34.08 user / 35.04 system). Its host counterpart passed in the cancelled serial run; the combined final
+state remains pending the new module-group gate.
 
 Acceptance remains **15/157 (9.6%), 0/16 main goals (0%)**. Goal 14 is locally
 focused-complete at 7/11; only its earlier S14.02 is accepted. Completing this
@@ -54,14 +110,14 @@ No full local suite is due because this block does not complete a main goal.
 The private selection matrix has 17 disjoint groups; the combined integrity/
 callback receipt below covers both later split selections. All required affected
 groups passed. Exact earlier candidates remain valid across unrelated edits;
-final core at `06ea7aa` must prove the combined final state. Optional diagnostics
+the new final module-group core must prove the combined final state. Optional diagnostics
 remain excluded. Wall times below are pytest duration; raw receipts preserve
 external wall/user/system timings under `.tmp/archive-creation/ci-<run>.{json,log}`.
 
 | Complete scope | Candidate | Quick run | Passed | Seconds |
 | --- | --- | --- | ---: | ---: |
 | Creation | df4c7ef | 39020078160 | 6 | 215.12 |
-| History/runtime/writer/I/O | df4c7ef | 39020155540 | 104 | 63.79 |
+| History/runtime/writer/I/O | 7a02dc2 | 39022235983 | 104 | 76.90 |
 | Transaction/menu | 581bacd | 39018465997 | 26 | 63.83 |
 | Payload/semantic/YAML/tools/format/control | 941f34d | 39016694442 | 115 | 98.28 |
 | Config/Store/shared JSON locks | e9b2020 | 39020790687 | 179 | 128.53 |
@@ -79,24 +135,27 @@ external wall/user/system timings under `.tmp/archive-creation/ci-<run>.{json,lo
 
 Independent selection audit returned PASS: all 17 archive modules, all 15 capture
 cases and all 22 verifier cases are covered. Final core retains common statics,
-full host and mandatory native BusyBox suites. The final configured limit is
-40 minutes; actual complete serial runtime remains unproved. Splitting the slow
+full host and mandatory native BusyBox suites. The former serial limit was
+40 minutes; the replacement module groups have ten-minute limits. Splitting the slow
 focused groups preserved every required case. Creation and capture outer guards
 were reduced from temporary diagnostic values using measured successful runs;
 negative cases now distinguish genuine data rejection from supervisor failure.
 
 ### Ownership and closing boundary
 
-No writer or CI job remains active at this repair point. Commit/push the reviewed
-fixture correction, cancel premature automatic core, complete the affected native
-history/I/O Quick group, then run final core again. After success, record every required job/step, exact SHA and measured cost; update
+The runner/workflow writer and independent reviewer are active as recorded above.
+The old serial wait-only agent completed after observing cancellation.
+After the newly approved module-group CI and cost correction are complete,
+record every required job/step, exact SHA and measured cost; update
 checklist/README/audit/handoff, publish the documentation receipt and **end the
 turn**. The user authorized checkpoint/repair/receipt pushes. Wait for explicit
 permission before reviewing, selecting or suggesting another block. No router,
 release or deployment authority is implied.
 
-Current changes are the deadline fixture and the user's explicit consolidation
-rule in AGENTS.md plus this handoff refresh. Runtime bytes remain at `df4c7ef`. The rule prioritizes few coherent owners
+The deadline fixture and user's explicit consolidation rule in AGENTS.md are
+published in `7a02dc2`; the new module-group tooling and corresponding records
+remain uncommitted pending focused validation and review. Runtime bytes
+remain at `df4c7ef`. The rule prioritizes few coherent owners
 (backup, config, networking and other major responsibilities), extending an
 existing owner before another file. Preserve private recovery/evidence files.
 

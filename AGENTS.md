@@ -163,6 +163,19 @@ setup. Keep the measured core baseline lean; raise the lower configured
 runner limit only when measured growth justifies it, never beyond 40 minutes.
 Remove redundant work and costly low-value variants before adding coverage; retain
 core plan proof. Record measured cost using the required acceptance run.
+Organize core tests by the actual main modules (currently Backup, Manager and
+Status), with their supporting libraries/tests beneath the consuming main module.
+Add a top-level group when a main module is added; developer-tool checks remain a
+separate support group. Start with one execution group per main module. Each group
+has an approximately ten-minute maximum, including setup, with shorter feedback
+preferred. Only after a main-module run exceeds that limit, split its tests into
+meaningful diagnostic batches to identify and reduce the slow part; do not split
+in advance or fragment runtime libraries. Run all groups after this migration,
+measure named tests and group wall/CPU cost, and diagnose the longest over-budget
+group. Keep every required case assigned exactly once per platform and fail on
+missing or overlapping ownership. Shared changes must retain all affected consumer
+proof. The combined checkpoint gate requires every prescribed group at one SHA;
+splitting jobs or a fast group alone does not confer acceptance.
 For slow or opaque runs, use meaningful, disjoint Quick Checks groups and the
 skills' diagnosis procedure, with visible test names and wall/CPU timings.
 Isolated CI groups may run concurrently. Complete every affected group before
@@ -316,8 +329,11 @@ consistency and tests for changed code, tools, workflows, commands and
 dependencies. Optional diagnostic stress remains excluded and is never claimed
 passed. Later release-branch scope needs review.
 
-Use one Ubuntu runner for full host integration and cached native-host vendor
-BusyBox checks, planning and static gates. This is representative development
+Use a common planning/static preflight, bounded concurrent module-group Ubuntu
+jobs with full assigned host and cached native-host vendor BusyBox proof, and one
+required aggregate result. Keep host/native execution serial inside each isolated
+group job; separate jobs prevent process fixtures from observing another group's
+logger. This is representative development
 proof, not a fake Merlin install. QEMU/kernel/ARM/firmware matrices are optional,
 never mandatory per push/subgoal/main goal. Preserve optional diagnostics,
 fixtures and caches without counting unfinished/cancelled work as passed. Real

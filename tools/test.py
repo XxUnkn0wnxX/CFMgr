@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shlex
@@ -21,6 +22,128 @@ QUICK_NODE = re.compile(
     re.ASCII,
 )
 QUICK_MODULE = re.compile(r"tests/test_[A-Za-z0-9_]+\.py", re.ASCII)
+CORE_OWNERS = frozenset({"backup", "manager", "status", "tooling"})
+# Product groups follow modules/*.sh. Manager owns bootstrap/config/shared
+# infrastructure's primary consumers; every group runs to protect cross-consumers.
+# Tooling contains contributor checks only, not a product module. Keep each main
+# module together until measured >10-minute work requires a diagnostic split.
+CORE_BATCHES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "backup": (
+        "backup",
+        (
+            "archive_capture",
+            "archive_verify",
+            "archive_tools",
+            "archive_transaction",
+            "archive_history",
+            "archive_payload",
+            "archive_payload_semantics",
+            "archive_create",
+            "archive_menu",
+            "archive_yaml",
+            "archive_history_runtime",
+            "archive_control",
+            "archive_format",
+            "archive_io",
+            "archive_writer",
+            "backup_storage",
+            "backup_menu",
+            "archive_config",
+            "archive_store",
+        ),
+    ),
+    "manager": (
+        "manager",
+        (
+            "config",
+            "config_schema2",
+            "config_store",
+            "config_observation",
+            "manager_settings",
+            "manager_settings_entry",
+            "execution_tasks",
+            "dependency_selection",
+            "native",
+            "package",
+            "acquire",
+            "acquire_install",
+            "install",
+            "install_reporting",
+            "retained_launch",
+            "entry_package",
+            "dependencies",
+            "dependency_consumer",
+            "dependency_reinstall",
+            "storage",
+            "storage_mounts",
+            "mountinfo",
+            "prerequisites",
+            "mount_keeper",
+        ),
+    ),
+    "status": ("status", ("status",)),
+    "tooling": ("tooling", ("dev_runners", "platforms", "router_probe")),
+}
+
+
+def core_matrix(
+    *,
+    root: Path | None = None,
+    batches: dict[str, tuple[str, tuple[str, ...]]] | None = None,
+) -> dict[str, list[dict[str, str]]]:
+    """Fail closed unless the batches partition every collected test module."""
+    root = ROOT if root is None else root
+    batches = CORE_BATCHES if batches is None else batches
+    tests = root / "tests"
+    if tests.is_symlink() or not tests.is_dir():
+        raise ValueError("core tests directory must be a regular directory")
+    modules = root / "modules"
+    if modules.is_symlink() or not modules.is_dir():
+        raise ValueError("core modules directory must be a regular directory")
+    main_modules = set()
+    for path in modules.glob("*.sh"):
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"nonregular core runtime module: {path.name}")
+        main_modules.add(path.stem)
+    if main_modules != CORE_OWNERS - {"tooling"}:
+        raise ValueError("core runtime modules must exactly match product test owners")
+    assigned: set[str] = set()
+    owners: set[str] = set()
+    rows = []
+    for key, (owner, names) in batches.items():
+        if not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", key) or owner not in CORE_OWNERS:
+            raise ValueError(f"invalid core owner/batch: {owner}/{key}")
+        if not names:
+            raise ValueError(f"empty core batch: {key}")
+        for name in names:
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+                raise ValueError(f"invalid core test module name: {name}")
+            path = f"tests/test_{name}.py"
+            if path in assigned:
+                raise ValueError(f"overlapping core test module: {path}")
+            candidate = root / path
+            if candidate.is_symlink() or not candidate.is_file():
+                raise ValueError(f"missing or nonregular core test module: {path}")
+            assigned.add(path)
+        owners.add(owner)
+        rows.append({"owner": owner, "batch": key})
+    if owners != CORE_OWNERS:
+        raise ValueError("core partition must include every required owner")
+    discovered = {
+        path.relative_to(root).as_posix() for path in tests.rglob("test_*.py")
+    }
+    if discovered != assigned:
+        raise ValueError(
+            "unassigned core test modules: " + ", ".join(sorted(discovered - assigned))
+        )
+    return {"include": rows}
+
+
+def core_batch_targets(key: str) -> list[str]:
+    core_matrix()
+    if key not in CORE_BATCHES:
+        raise ValueError(f"unknown core batch: {key}")
+    return [f"tests/test_{name}.py" for name in CORE_BATCHES[key][1]]
 
 
 def validate_focused_paths(paths: str, *, root: Path | None = None) -> list[str]:
@@ -296,6 +419,26 @@ def _parse_args() -> argparse.Namespace:
         description="Run serial CFMgr tests and lightweight source checks."
     )
     parser.add_argument(
+        "--core-matrix",
+        action="store_true",
+        help="print the validated complete core owner/batch matrix as JSON only",
+    )
+    parser.add_argument(
+        "--core-batch",
+        metavar="KEY",
+        help="run every module assigned to one fixed core batch, excluding diagnostics",
+    )
+    parser.add_argument(
+        "--checks-only",
+        action="store_true",
+        help="run source checks and selected-shell syntax without pytest",
+    )
+    parser.add_argument(
+        "--reuse-preflight",
+        action="store_true",
+        help="reuse successful common host/native preflight checks; requires --core-batch",
+    )
+    parser.add_argument(
         "--focused",
         nargs="*",
         metavar="PATH",
@@ -338,6 +481,31 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.core_matrix:
+        if (
+            args.core_batch is not None
+            or args.checks_only
+            or args.reuse_preflight
+            or args.focused is not None
+            or args.keyword
+            or args.require_busybox
+            or args.reuse_static
+            or args.shellcheck_only
+            or args.skip_shellcheck
+            or args.include_diagnostics
+        ):
+            print(
+                "ERROR: --core-matrix cannot be combined with other modes.",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            print(json.dumps(core_matrix(), separators=(",", ":")))
+        except ValueError as error:
+            print(f"ERROR: invalid core partition: {error}", file=sys.stderr)
+            return 2
+        return 0
+
     if args.shellcheck_only:
         if (
             args.focused is not None
@@ -345,6 +513,9 @@ def main() -> int:
             or args.require_busybox
             or args.reuse_static
             or args.include_diagnostics
+            or args.core_batch is not None
+            or args.checks_only
+            or args.reuse_preflight
         ):
             print(
                 "ERROR: --shellcheck-only cannot be combined with test selection or other modes.",
@@ -361,6 +532,34 @@ def main() -> int:
         print("ERROR: --reuse-static requires --require-busybox.", file=sys.stderr)
         return 2
 
+    if args.core_batch is not None and (
+        args.focused is not None
+        or args.keyword
+        or args.include_diagnostics
+        or args.checks_only
+    ):
+        print(
+            "ERROR: --core-batch cannot be combined with partial selection, diagnostics or --checks-only.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.checks_only and (
+        args.focused is not None or args.keyword or args.include_diagnostics
+    ):
+        print(
+            "ERROR: --checks-only cannot be combined with test selection.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.reuse_preflight and (
+        args.core_batch is None or args.reuse_static or args.skip_shellcheck
+    ):
+        print(
+            "ERROR: --reuse-preflight requires --core-batch and cannot combine with other static reuse/skip options.",
+            file=sys.stderr,
+        )
+        return 2
+
     if os.environ.get("PYTEST_ADDOPTS", "").strip():
         print(
             "ERROR: PYTEST_ADDOPTS must be empty; pass filters with this runner's "
@@ -370,6 +569,12 @@ def main() -> int:
         return 2
 
     focused_paths: list[str] | None = None
+    if args.core_batch is not None:
+        try:
+            focused_paths = core_batch_targets(args.core_batch)
+        except ValueError as error:
+            print(f"ERROR: invalid core selection: {error}", file=sys.stderr)
+            return 2
     if args.focused is not None:
         try:
             focused_paths = validate_local_targets(args.focused) if args.focused else []
@@ -388,7 +593,7 @@ def main() -> int:
         return 2
 
     full_suite = not focused_paths or (focused_paths == ["tests"] and not args.keyword)
-    if args.require_busybox and full_suite:
+    if args.require_busybox and full_suite and not args.checks_only:
         storage_tests = ROOT / "tests" / "test_storage.py"
         if storage_tests.is_symlink() or not storage_tests.is_file():
             print(
@@ -407,11 +612,18 @@ def main() -> int:
             return 2
         print("Required shell evidence: BusyBox ash.")
     else:
-        env.setdefault("CFMGR_REQUIRE_BUSYBOX", "0")
+        if args.core_batch is not None:
+            env["CFMGR_REQUIRE_BUSYBOX"] = "0"
+        else:
+            env.setdefault("CFMGR_REQUIRE_BUSYBOX", "0")
         print(f"Host shell evidence: {env['CFMGR_TEST_SHELL']}.")
         print("Platform limit: BusyBox/Linux proof requires --require-busybox.")
 
-    if args.reuse_static:
+    if args.reuse_preflight:
+        print(
+            "Reusing required common host/native preflight checks for this complete core batch."
+        )
+    elif args.reuse_static:
         print(
             "Reusing successful planning, package, Ruff, compile and shfmt checks "
             "from the earlier host stage; ShellCheck is a separate optional manual check."
@@ -427,13 +639,17 @@ def main() -> int:
             if code:
                 return code
 
-    code = _shell_syntax_checks(selected_shell)
-    if code:
-        return code
-    if not args.reuse_static:
+    if not args.reuse_preflight:
+        code = _shell_syntax_checks(selected_shell)
+        if code:
+            return code
+    if not args.reuse_static and not args.reuse_preflight:
         code = _static_checks(skip_shellcheck=args.skip_shellcheck)
         if code:
             return code
+
+    if args.checks_only:
+        return 0
 
     try:
         __import__("pytest")
@@ -453,12 +669,12 @@ def main() -> int:
         sys.executable,
         "-m",
         "pytest",
-        "-q",
+        "-vv" if args.core_batch is not None else "-q",
         "-ra",
         "--strict-config",
         "--strict-markers",
         "--maxfail=1",
-        "--durations=10",
+        "--durations=0" if args.core_batch is not None else "--durations=10",
     ]
     if args.include_diagnostics:
         print("Pytest selection: required suite plus optional diagnostic cases.")

@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -594,3 +598,233 @@ def test_static_checks_keep_shellcheck_by_default_and_skip_only_when_requested(
         *map(str, python_files),
     ] in commands
     assert ["/tools/shfmt", "-d", *map(str, shell_files)] in commands
+
+
+def make_core_test_tree(root: Path) -> None:
+    (root / "tests").mkdir()
+    (root / "modules").mkdir()
+    for owner in runner.CORE_OWNERS - {"tooling"}:
+        (root / "modules" / f"{owner}.sh").write_text("", encoding="utf-8")
+    for _owner, names in runner.CORE_BATCHES.values():
+        for name in names:
+            (root / "tests" / f"test_{name}.py").write_text("", encoding="utf-8")
+
+
+def test_core_partition_covers_every_module_once_and_every_owner() -> None:
+    matrix = runner.core_matrix()
+    assert {row["owner"] for row in matrix["include"]} == runner.CORE_OWNERS
+    assigned = [
+        path
+        for row in matrix["include"]
+        for path in runner.core_batch_targets(row["batch"])
+    ]
+    assert len(assigned) == len(set(assigned))
+    assert set(assigned) == {
+        path.relative_to(runner.ROOT).as_posix()
+        for path in (runner.ROOT / "tests").rglob("test_*.py")
+    }
+
+
+@pytest.mark.parametrize(
+    ("defect", "expected"),
+    [
+        ("new-module", "unassigned"),
+        ("missing-module", "missing or nonregular"),
+        ("unknown-module", "missing or nonregular"),
+        ("overlap", "overlapping"),
+        ("unknown-owner", "invalid core owner"),
+        ("missing-owner", "every required owner"),
+        ("empty-batch", "empty core batch"),
+        ("symlink-module", "missing or nonregular"),
+        ("new-main-module", "exactly match product test owners"),
+        ("missing-main-module", "exactly match product test owners"),
+        ("symlink-main-module", "nonregular core runtime module"),
+    ],
+)
+def test_core_partition_refuses_drift(
+    tmp_path: Path, defect: str, expected: str
+) -> None:
+    make_core_test_tree(tmp_path)
+    batches = dict(runner.CORE_BATCHES)
+    if defect == "new-module":
+        (tmp_path / "tests/test_new.py").write_text("", encoding="utf-8")
+    elif defect == "missing-module":
+        (tmp_path / "tests/test_archive_capture.py").unlink()
+    elif defect == "unknown-module":
+        batches["backup"] = ("backup", ("not_a_real_test",))
+    elif defect == "overlap":
+        batches["backup-extra"] = ("backup", ("archive_capture",))
+    elif defect == "unknown-owner":
+        batches["backup"] = ("unknown", ("archive_capture",))
+    elif defect == "missing-owner":
+        del batches["status"]
+    elif defect == "empty-batch":
+        batches["backup"] = ("backup", ())
+    elif defect == "symlink-module":
+        path = tmp_path / "tests/test_archive_capture.py"
+        path.unlink()
+        path.symlink_to(tmp_path / "tests/test_archive_verify.py")
+    elif defect == "new-main-module":
+        (tmp_path / "modules/ddns.sh").write_text("", encoding="utf-8")
+    elif defect == "missing-main-module":
+        (tmp_path / "modules/status.sh").unlink()
+    elif defect == "symlink-main-module":
+        path = tmp_path / "modules/status.sh"
+        path.unlink()
+        path.symlink_to(tmp_path / "modules/backup.sh")
+    with pytest.raises(ValueError, match=expected):
+        runner.core_matrix(root=tmp_path, batches=batches)
+
+
+def test_core_matrix_prints_only_valid_json_without_running_checks(
+    monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    commands, shells = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--core-matrix"])
+    assert runner.main() == 0
+    assert json.loads(capsys.readouterr().out) == runner.core_matrix()
+    assert commands == shells == []
+
+
+def test_core_matrix_drift_fails_without_emitting_a_partial_matrix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    make_core_test_tree(tmp_path)
+    (tmp_path / "tests/test_new.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    commands, shells = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--core-matrix"])
+    assert runner.main() == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "unassigned core test modules: tests/test_new.py" in output.err
+    assert commands == shells == []
+
+
+def test_core_batch_without_reuse_keeps_common_checks_and_syntax(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands, shells = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", "--core-batch", "status"])
+    assert runner.main() == 0
+    assert shells == [["/bin/test-shell"]]
+    assert [command for command, _ in commands[:3]] == [
+        [sys.executable, "tools/check.py"],
+        ["git", "diff", "--check"],
+        [sys.executable, "tools/package.py", "--check"],
+    ]
+    assert commands[-1][0][-1] == str(runner.ROOT / "tests/test_status.py")
+
+
+@pytest.mark.parametrize("busybox", [False, True])
+def test_core_batch_reuses_preflight_and_runs_complete_visible_selection(
+    monkeypatch: pytest.MonkeyPatch, busybox: bool
+) -> None:
+    commands, shells = _capture_runner(monkeypatch)
+    monkeypatch.setenv("CFMGR_REQUIRE_BUSYBOX", "1")
+    monkeypatch.setattr(
+        runner,
+        "_static_checks",
+        lambda **kwargs: pytest.fail("unexpected repeated common checks"),
+    )
+    argv = ["tools/test.py", "--core-batch", "backup", "--reuse-preflight"]
+    if busybox:
+        argv.append("--require-busybox")
+    monkeypatch.setattr(sys, "argv", argv)
+    assert runner.main() == 0
+    assert shells == []
+    assert len(commands) == (2 if busybox else 1)
+    if busybox:
+        assert commands[0][0] == ["busybox", "ash", "-c", ":"]
+    command, env = commands[-1]
+    assert "-vv" in command and "-q" not in command
+    assert "--durations=0" in command
+    targets = [str(runner.ROOT / path) for path in runner.core_batch_targets("backup")]
+    assert command[-len(targets) :] == targets
+    assert command[command.index("-m", 3) : command.index("-m", 3) + 2] == [
+        "-m",
+        "not diagnostic",
+    ]
+    assert env is not None
+    assert env["CFMGR_REQUIRE_BUSYBOX"] == ("1" if busybox else "0")
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--core-batch", "missing"],
+        ["--core-batch", "status", "-k", "partial"],
+        ["--core-batch", "status", "--focused", "tests/test_status.py"],
+        ["--core-batch", "status", "--include-diagnostics"],
+        ["--core-batch", "status", "--checks-only"],
+        ["--reuse-preflight"],
+        ["--require-busybox", "--reuse-preflight"],
+        ["--core-batch", "status", "--reuse-preflight", "--skip-shellcheck"],
+        [
+            "--core-batch",
+            "status",
+            "--reuse-preflight",
+            "--reuse-static",
+            "--require-busybox",
+        ],
+        ["--checks-only", "--focused"],
+        ["--checks-only", "-k", "partial"],
+        ["--checks-only", "--include-diagnostics"],
+        ["--core-matrix", "--core-batch", "status"],
+        ["--core-matrix", "--checks-only"],
+        ["--core-matrix", "--skip-shellcheck"],
+        ["--shellcheck-only", "--checks-only"],
+        ["--shellcheck-only", "--core-batch", "status"],
+    ],
+)
+def test_core_runner_rejects_conflicting_or_partial_modes_before_execution(
+    monkeypatch: pytest.MonkeyPatch, argv: list[str]
+) -> None:
+    commands, shells = _capture_runner(monkeypatch)
+    monkeypatch.setattr(sys, "argv", ["tools/test.py", *argv])
+    assert runner.main() == 2
+    assert commands == shells == []
+
+
+@pytest.mark.parametrize("busybox", [False, True])
+def test_checks_only_proves_syntax_without_pytest(
+    monkeypatch: pytest.MonkeyPatch, busybox: bool
+) -> None:
+    commands, shells = _capture_runner(monkeypatch)
+    argv = ["tools/test.py", "--checks-only", "--skip-shellcheck"]
+    if busybox:
+        argv = ["tools/test.py", "--checks-only", "--require-busybox", "--reuse-static"]
+    monkeypatch.setattr(sys, "argv", argv)
+    assert runner.main() == 0
+    assert shells == [["busybox", "ash"] if busybox else ["/bin/test-shell"]]
+    assert not any("pytest" in command for command, _ in commands)
+    if busybox:
+        assert [command for command, _ in commands] == [["busybox", "ash", "-c", ":"]]
+    else:
+        assert [sys.executable, "tools/check.py"] in [
+            command for command, _ in commands
+        ]
+
+
+@pytest.mark.parametrize("stage", ["PREFLIGHT_RESULT", "CORE_RESULT"])
+@pytest.mark.parametrize(
+    "result", ["success", "failure", "skipped", "cancelled", "missing"]
+)
+def test_required_core_aggregate_refuses_any_non_successful_stage(
+    stage: str, result: str
+) -> None:
+    workflow = (runner.ROOT / ".github/workflows/checks.yml").read_text()
+    aggregate = workflow.split("  checks:\n", 1)[1]
+    script = textwrap.dedent(
+        aggregate.split("python3 - <<'PY'\n", 1)[1].rsplit("          PY", 1)[0]
+    )
+    env = os.environ.copy()
+    env.update(PREFLIGHT_RESULT="success", CORE_RESULT="success")
+    if result == "missing":
+        env.pop(stage)
+    else:
+        env[stage] = result
+    completed = subprocess.run(
+        [sys.executable, "-c", script], env=env, capture_output=True, check=False
+    )
+    assert completed.returncode == (0 if result == "success" else 1), completed.stderr

@@ -96,6 +96,31 @@ hashes match. Focused native creation proves prior recognition, new verification
 publication, retention, history Save and cleanup. This supplies no live-router
 qualification and does not itself close the final core CI gate.
 
+Full host execution also exposed a timing assumption in the archive deadline test:
+its one-second integer-uptime budget began before preliminary inode work, while
+its final assertion assumed the blocking tar child had started. Source review
+established both legal prelaunch expiry and possible preliminary-probe expiry;
+the original quiet failure does not identify which occurred. The fixture now arms
+the short real-clock deadline once the child proves its inherited descriptors.
+It requires the child marker, exact tar mode, expected reap reason, absent PID and
+one-time arming. This strengthens the intended deadline/cancellation proof without
+changing production limits. Independent review passed, and the complete native
+history/I/O group passed 104 cases at `7a02dc2`; final core remains separate.
+
+The subsequent serial core exceeded the user's acceptable development cost and
+was cancelled after about forty minutes. Its host phase passed in 8m47; native
+continued making progress but did not finish. The user approved main-module CI
+groups and clarified that supporting libraries belong beneath those modules,
+with diagnostic subdivision only after a module exceeds ten minutes. The revised
+runner partitions all 47 test modules into Backup (19), Manager (24), Status (1)
+and contributor Tooling (3). Collection comparison preserves exactly the same
+1,110 required cases; optional diagnostics remain excluded. It rejects unmapped
+tests, overlaps and missing groups for newly added main modules. Common statics
+and both shell syntax modes precede isolated host/native group jobs; the aggregate
+requires every job to succeed at the same SHA. Local runner tests passed 80 cases
+in 1.22s, and common source checks passed. Grouped CI execution, measured cost and
+any resulting slow-test correction remain unverified; this does not award ticks.
+
 ## S14.06–S14.08 history runtime admission review
 
 Independent Astra review returned **PASS WITH NOTES** for narrowly admitting
