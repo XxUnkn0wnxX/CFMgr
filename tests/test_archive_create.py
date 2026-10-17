@@ -11,6 +11,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -189,22 +190,26 @@ def creation(base_archive, legacy_fsync, schema2_config):
 CREATE_SETUP = r"""
 support=$1 ram=$2 mount=$3 cfmgr_test_jffs=$4
 cfmgr_test_ram=$ram/context cfmgr_test_backup=$mount/CFBackup
+printf 'imports\n' >"$ram/create-phase"
 . "$support/modules/lib/config.sh"
 . "$support/modules/lib/storage.sh"
 . "$support/modules/lib/execution.sh"
 . "$support/modules/backup.sh"
+printf 'imports-complete\n' >"$ram/create-phase"
 CFMGR_VERSION=0.1.0
 cfmgr_test_started=$SECONDS
 if [ "$TEST_LINUX" = 0 ]; then
     cfmgr_prerequisites_now() { cfmgr_probe_now=$((100+SECONDS-cfmgr_test_started)); }
 fi
 cfmgr_store_prepare() {
+    printf 'store-prepare\n' >"$ram/create-phase"
     cfmgr_store_source=$support cfmgr_store_ram=$ram cfmgr_store_jffs=$cfmgr_test_jffs
     cfmgr_store_live=$support/config cfmgr_store_lock=$ram/lock
     cfmgr_store_context=$cfmgr_test_ram
     umask 077
     mkdir -m 700 "$cfmgr_store_context" || return 1
     exec 5<"$cfmgr_store_context" 8<"$cfmgr_store_jffs" 9<"$support"
+    printf 'store-pins\n' >"$ram/create-phase"
     cfmgr_store_context_fd=5 cfmgr_store_borrowed=0 cfmgr_store_flock_entware=0
     # Native tool wrappers check the preopened descriptor during initial reads.
     # Real Store acquisition below still reopens, locks and proves contention.
@@ -213,8 +218,10 @@ cfmgr_store_prepare() {
     cfmgr_store_readlink=$TEST_READLINK cfmgr_store_wc=$TEST_WC cfmgr_store_ls=$TEST_LS
     cfmgr_store_sleep=$TEST_SLEEP cfmgr_store_flock=$TEST_FLOCK cfmgr_store_openssl=$TEST_OPENSSL
     cfmgr_store_dd=$TEST_DD cfmgr_store_cp=$TEST_CP cfmgr_store_mv=$TEST_MV cfmgr_store_fsync=$TEST_FSYNC
+    printf 'store-clock\n' >"$ram/create-phase"
     cfmgr_prerequisites_now || return 1
     cfmgr_store_deadline=$((cfmgr_probe_now+20)) cfmgr_probe_pid='' cfmgr_probe_serial=0
+    printf 'store-prepared\n' >"$ram/create-phase"
 }
 cfmgr_store_attachment_ok() { [ -d "$cfmgr_store_context" ] && [ ! -L "$cfmgr_store_context" ]; }
 cfmgr_store_fd_is() { [ -f "$1" ] && [ ! -L "$1" ]; }
@@ -243,12 +250,71 @@ fi
 """
 
 
+def create_failure_summary(creation):
+    """Read only bounded fixed diagnostics; never read archive/config payloads."""
+    support, ram, mount, _jffs, _prior, _environment = creation
+
+    def tail(name, limit):
+        try:
+            with (ram / name).open("rb") as stream:
+                size = stream.seek(0, os.SEEK_END)
+                stream.seek(max(0, size - limit))
+                return stream.read(limit).decode("ascii", errors="replace").splitlines()
+        except OSError:
+            return []
+
+    mode = r"(?:store|archive|history)-[a-z0-9-]{1,48}"
+    routes = [
+        line if re.fullmatch(mode, line) else "[invalid-mode]"
+        for line in tail("routes", 4096)[-24:]
+    ]
+    phase = tail("create-phase", 128)
+    phase = phase[-1] if phase else "missing"
+    if phase not in {
+        "missing",
+        "imports",
+        "imports-complete",
+        "lock-open",
+        "action-start",
+        "store-prepare",
+        "store-pins",
+        "store-clock",
+        "store-prepared",
+    }:
+        phase = "invalid"
+    probe = tail("create-probe", 256)
+    probe = probe[-1] if probe else "missing"
+    number = r"(?:[0-9]{1,20}|-)"
+    begin = rf"begin {mode} {number} {number} {number} {number}"
+    end = rf"end {mode} [0-9]{{1,3}} (?:invalid|reaped|unresolved|-) {number} (?:arguments|attachment|clock|deadline|lock-inheritance|native-supervisor|-)"
+    if probe != "missing" and not re.fullmatch(rf"(?:{begin}|{end})", probe):
+        probe = "invalid"
+    flags = {
+        "context": (ram / "context").is_dir(),
+        "lock": (ram / "lock").is_file(),
+        "backup": (mount / "CFBackup").is_dir(),
+        "preparing": (support / ".config-save.preparing").is_dir(),
+        "save": (support / ".config-save").is_dir(),
+        "retired": (support / ".config-save.retired").is_dir(),
+    }
+    return f"phase={phase}; probe={probe}; routes_tail={routes}; flags={flags}"
+
+
 def create_run(creation, shell):
     support, ram, mount, jffs, _prior, environment = creation
     supervisor = SETUP[SETUP.index("cfmgr_prerequisites_run() {") :]
     supervisor = supervisor.replace(
         "cfmgr_archive_attachment_ok || return 1",
         "cfmgr_store_attachment_ok || return 1",
+    )
+    native_call = '        cfmgr_test_real_run "$mode" "$context" "$sh" "$helper" "$env" "$awk" "$sleep" "$wc" "$tool" "$@"\n        return $?'
+    assert supervisor.count(native_call) == 1
+    supervisor = supervisor.replace(
+        native_call,
+        r'''        printf 'begin %s %s %s %s %s\n' "$mode" "${cfmgr_probe_serial:--}" "${cfmgr_probe_now:--}" "${cfmgr_store_deadline:--}" "${cfmgr_archive_deadline:--}" >"$ram/create-probe"
+        if cfmgr_test_real_run "$mode" "$context" "$sh" "$helper" "$env" "$awk" "$sleep" "$wc" "$tool" "$@"; then cfmgr_test_create_code=0; else cfmgr_test_create_code=$?; fi
+        printf 'end %s %s %s %s %s\n' "$mode" "$cfmgr_test_create_code" "${cfmgr_probe_status:--}" "${cfmgr_probe_exit:--}" "${cfmgr_probe_reason:--}" >"$ram/create-probe"
+        return "$cfmgr_test_create_code"''',
     )
     supervisor = supervisor.replace(
         "cfmgr_archive_attachment_ok\n}", "cfmgr_store_attachment_ok\n}"
@@ -288,24 +354,30 @@ cfmgr_archive_action create
     # read-only Store phase; the controller later acquires this same open file.
     script = script.replace(
         "cfmgr_archive_action create",
-        ': >"$ram/lock"\nchmod 600 "$ram/lock"\nexec 0<>"$ram/lock"\ncfmgr_archive_action create',
+        'printf "lock-open\\n" >"$ram/create-phase"\n: >"$ram/lock"\nchmod 600 "$ram/lock"\nexec 0<>"$ram/lock"\nprintf "action-start\\n" >"$ram/create-phase"\ncfmgr_archive_action create',
     )
-    return subprocess.run(
-        [
-            *shell,
-            "-c",
-            script,
-            "archive-create",
-            str(support),
-            str(ram),
-            str(mount),
-            str(jffs),
-        ],
-        env=environment,
-        capture_output=True,
-        check=False,
-        timeout=180,
-    )
+    try:
+        return subprocess.run(
+            [
+                *shell,
+                "-c",
+                script,
+                "archive-create",
+                str(support),
+                str(ram),
+                str(mount),
+                str(jffs),
+            ],
+            env=environment,
+            capture_output=True,
+            check=False,
+            timeout=180,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail(
+            f"Manual create exceeded180s; {create_failure_summary(creation)}",
+            pytrace=False,
+        )
 
 
 def test_manual_create_real_store_capture_verify_publish_and_history(creation, shell):
@@ -315,8 +387,7 @@ def test_manual_create_real_store_capture_verify_publish_and_history(creation, s
     assert result.returncode == 0, (
         result.stdout,
         result.stderr,
-        (ram / "routes").read_text(),
-        (ram / "boundaries").read_text() if (ram / "boundaries").exists() else "",
+        create_failure_summary(creation),
     )
     assert result.stderr == b"", result.stderr
     fields = result.stdout.decode().split()
