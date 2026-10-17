@@ -89,6 +89,31 @@ is distinct from production create's 600s bound; first verify the actual repair,
 then base any harness-cost correction on measured successful work, preserving
 the separate deadline/cancellation/ownership tests.
 
+Narrow Quick `39016023015` at `d4755c3` passed real RAM copy/write, replacement
+refusal and the native tar/gzip/date capability test. The five-member semantic
+case then proved an actual harness deadline expiry: operation 281, now/deadline
+117, 59.62s. It now uses production create's 600s internal deadline with a bounded
+180s outer native diagnostic guard; full successful cost still needs measurement.
+The separate short deadline/cancellation/reaping cases remain mandatory.
+
+Shared execution Quick `39016039203` passed 172 cases before the backup-folder
+mount fixture failed (1 platform skip, 4 optional diagnostics excluded). The
+fixture still adapted `/tmp/mnt` in storage.sh after that guard moved to backup.sh.
+Its private-path adapter now follows the actual backup owner and avoids undoing
+that import in the archive-source branch; production safety policy is unchanged.
+Group cost: 227.28s pytest / 227.46s wall, 115.54 user / 107.55 system; the actual
+installer repair/publication case accounts for 164.21s. Isolate complete
+`test_dependencies.py` from the other seven modules for subsequent focused gates,
+preserving every case. The single failing mount node is the immediate diagnostic.
+
+Test-cost correction: the five raw-header rejection variants now use the existing
+two mandatory-member fixture, preserving every mutation, rejection and no-native-
+tar/no-callback assertion. The full five-member binary/empty/boundary positive
+journey and integrity cases remain unchanged. All five passed locally in 54.34s
+(55.65s wall, 25.17 user / 19.55 system). Compared with prior measured individual
+cases, extra-member rejection fell from 30.50s to 17.68s and truncated rejection
+from 30.59s to 18.54s. Do not infer a whole-group percentage from those two cases.
+
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
 be one module, config one module, and networking/DDNS similarly grouped by real

@@ -69,8 +69,8 @@ def make_archive(
         "etc/cloudflared/config.yml",
     ]
     if compact:
-        # Callback admission needs the two mandatory members. Binary/empty/body
-        # traversal is independently covered by the complete positive journey.
+        # Raw-header rejection and callback admission need only the two mandatory
+        # members. Binary/empty/body traversal remains in the full positive case.
         data, roles, paths = data[:2], roles[:2], paths[:2]
     if mutation == "unsafe-path":
         paths[2] = "etc/cloudflared/../foreign.json"
@@ -228,7 +228,7 @@ def test_real_tool_end_to_end_binary_empty_boundary_and_callbacks(archive, shell
     ],
 )
 def test_raw_rejection_precedes_every_native_tar_call(archive, shell, mutation):
-    make_archive(archive, mutation=mutation)
+    make_archive(archive, mutation=mutation, compact=True)
     result = verify(archive, shell)
     assert result.returncode != 0 and b"verified=0" in result.stdout, result
     assert not (archive[1] / "native-tar").exists()

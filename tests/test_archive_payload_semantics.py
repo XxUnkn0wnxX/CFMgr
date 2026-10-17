@@ -298,7 +298,7 @@ def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
     subprocess.run(awk_arguments(command), check=True, capture_output=True, timeout=5)
     script = """
 cfmgr_archive_inventory_limit=65536
-cfmgr_archive_deadline=$((cfmgr_probe_now+60))
+cfmgr_archive_deadline=$((cfmgr_probe_now+600))
     if ! cfmgr_archive_format_verify "$stage/candidate" 01234567-89ab-cdef-0123-456789abcdef; then
         printf 'failed mode=%s exit=%s status=%s reason=%s probe=%s now=%s deadline=%s\\n' \
             "$cfmgr_probe_mode" "$cfmgr_probe_exit" "$cfmgr_probe_status" \
@@ -310,10 +310,14 @@ cfmgr_archive_deadline=$((cfmgr_probe_now+60))
     fi
 printf 'verified=%s callbacks=%s\\n' "$cfmgr_archive_verified" "$cfmgr_payload_schema"
 """
-    # The macOS adapter runs hundreds of real utility children without the
-    # native supervisor. Leave the supervised fixture's 60s deadline unchanged;
-    # allow measured host process-launch overhead in this outer test guard.
-    result = run(archive, shell, script, timeout=90 if sys.platform == "darwin" else 65)
+    # Exercise the complete positive journey under production create's 600s
+    # deadline. The stripped vendor ash forks for test/printf; its previous
+    # arbitrary 60s fixture budget expired after 281 supervised operations.
+    # A bounded outer guard still catches hangs; dedicated I/O cases retain
+    # the short deadline, cancellation and ownership/reaping assertions.
+    result = run(
+        archive, shell, script, timeout=90 if sys.platform == "darwin" else 180
+    )
     assert result.returncode == 0, (
         result.stdout.decode(),
         result.stderr.decode()[-1800:],

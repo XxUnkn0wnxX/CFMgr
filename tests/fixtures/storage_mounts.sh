@@ -459,7 +459,7 @@ backup_folder | backup_replacement | archive_source)
 	# Only the fixed /tmp/mnt prefix is adapted into the owned fixture tree.
 	# Production parsing, exact mount snapshots, FD identity, helper, native
 	# supervisor and all real mounts remain unchanged. No host /tmp/mnt writes.
-	sed "s|in /tmp/mnt/?\*)|in $fixture/?*)|" "$root/modules/lib/storage.sh" >"$fixture/backup-storage.sh"
+	sed "s|in /tmp/mnt/?\*)|in $fixture/?*)|" "$root/modules/backup.sh" >"$fixture/backup-storage.sh"
 	# shellcheck disable=SC1091 # Private copy differs only in the fixture root.
 	. "$fixture/backup-storage.sh"
 	# shellcheck disable=SC1091
@@ -496,8 +496,8 @@ backup_folder | backup_replacement | archive_source)
 		# The sole path adapter maps fixed /opt to this namespace's private alias.
 		# Real ext4/bind mountinfo, blkid, FD3/5/6/7, and supervisor stay intact.
 		# The source bind is read-only/noexec while the destination stays writable.
-		# shellcheck disable=SC1091
-		. "$root/modules/backup.sh"
+		# Keep the adapted backup category loaded above; reimporting the original
+		# would restore /tmp/mnt and reject this namespace's private destination.
 		cfmgr_store_ls=/bin/ls
 		cfmgr_store_native_tool() { [ -f "$1" ] && [ -x "$1" ]; }
 		# shellcheck disable=SC2016 # Literal parameters belong to the fixed alias adapter.
