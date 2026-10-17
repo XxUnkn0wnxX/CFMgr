@@ -111,6 +111,14 @@ before failure was 32.99s pytest / 33.22s wall, 9.64 user / 19.07 system. The fu
 history group and complete creation journey are next; automatic core
 `39018462892` was cancelled. No worker or CI job remains active at this repair.
 
+History Quick `39018612044` at `eaa3c4b` passed all history runtime/writer cases
+and 77 total cases (39.93s) before the inherited-JSON-lock fixture failed because
+its parser stub overwrote the entire consolidated backup owner. That fixture now
+appends only the two fixed getter overrides, retaining production I/O and lock
+callbacks. Read-only review found no analogous destructive owner stubs in the
+remaining archive fixtures. Full creation/transaction Quick `39018613818` remains
+running at `eaa3c4b`; automatic core `39018609177` was cancelled. Parent owns edits.
+
 Initial published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
 Automatic core run `39015067310` was cancelled before focused diagnosis.
 Initial payload/tool Quick `39015102266` failed in the native BusyBox build:

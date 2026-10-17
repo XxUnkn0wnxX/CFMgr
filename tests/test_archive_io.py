@@ -556,11 +556,17 @@ def test_json_child_retains_lock9_across_stdin_redirect(archive, shell):
     support = archive[0] / "modules/lib"
     # The production JSON helper redirects stdin and invokes this real AWK
     # script; the direct-exec adapter independently proves lock contention.
-    (support / "config.sh").write_text(
-        "cfmgr_config_awk_json() { cfmgr_awk_program='END { if (NR != 1) exit 1 }'; }\n"
+    # Override only these parser getters; the consolidated categories also own
+    # the production I/O and lock callbacks exercised by this test.
+    config = support / "config.sh"
+    config.write_text(
+        config.read_text()
+        + "\ncfmgr_config_awk_json() { cfmgr_awk_program='END { if (NR != 1) exit 1 }'; }\n"
     )
-    (support / "../backup.sh").write_text(
-        "cfmgr_backup_awk_backup_payload() { cfmgr_awk_program=''; }\n"
+    backup = support / "../backup.sh"
+    backup.write_text(
+        backup.read_text()
+        + "\ncfmgr_backup_awk_backup_payload() { cfmgr_awk_program=''; }\n"
     )
     (archive[1] / "json").write_text('{"ok":true}\n')
     passed(
