@@ -109,6 +109,44 @@ Ruff/format/compile and whitespace checks passed on the dirty `f97c49e` base.
 Parent owns all edits. Verifier structure `39019720378` and populated capture
 `39019722392` remain running at `f97c49e`; premature core `39019470588` cancelled.
 
+Native repair Quick `39019917647` at `df4c7ef` passed all three JSON reader
+unknown-child contention cases plus actual retained launch/recovery: **4 passed,
+92.71s pytest / 92.89s wall**, 45.79 user / 43.98 system. The retained journey
+took 88.29s. Complete entry-consumer Quick `39019970651` passed **86 tests,
+73.09s pytest / 73.31s wall**, 29.45 user / 36.03 system. Full create
+`39020078160` and history `39020155540` now run at that runtime candidate.
+
+Verifier structure `39019720378` passed all **16 tests in 134.69s** (134.86s
+wall, 43.62 user / 64.13 system); its full positive took 69.63s, confirming the
+former 60s harness bound was insufficient. Populated capture `39019722392`
+failed quietly at 99.86s against its 100s fixture deadline (100.09s total,
+100.31s wall, 28.07 user / 57.36 system). Its failure cause was not recorded;
+the next positive diagnostic uses production 600s internally and a temporary 300s
+native outer guard, with bounded failure-only scalars; host guards are unchanged.
+Normal verifier cases now use production 600s/outer 120s, and expected rejections explicitly reject supervisory
+failure instead of passing on any nonzero result. Capture negative cases retain
+their bounds with the same protection. No product deadline or separate deadline/
+cancellation safety test changed. Local snapshot/absence group passed 10 cases
+in 36.19s (36.79s wall, 16.78 user / 12.60 system); certificate/history local
+proof remains running. Verifier's missing-callback preflight passed locally.
+
+Measured baseline plus new native journeys already exceeds the former 20-minute
+core limit, before remaining new host/capture/history coverage. Core now allows
+the existing policy ceiling of 40 minutes; actual fit still requires the final
+complete acceptance run. There are no new workflows, jobs, caches or exclusions.
+The private matrix splits package trust/acquisition from install/retained/reporting
+after 177.64s partial package cost plus 88.29s actual retained proof: 16 complete
+groups, unchanged coverage. Parent owns all files; no worker is active.
+
+The remaining local capture certificate/history group passed all four cases in
+42.07s (42.57s wall, 17.96 user / 14.45 system). Both complete affected negative
+groups therefore pass with the new supervisory-failure guards. Verifier's raw
+link rejection passed in 1.22s (1.80s wall, 0.84 user / 0.48 system), complementing
+the missing-callback preflight. Local logs are `capture-guard-local.log`,
+`capture-cert-guard-local.log` and `verifier-guard-local.log` in
+`.tmp/archive-creation/`. Ruff/format/compile/planning/whitespace passed on dirty
+`df4c7ef`. Native full capture/verifier groups and final core remain required.
+
 Earlier focused evidence and repairs follow; superseded pending statements below
 are historical and do not override the current state above.
 The complete shared execution group is green: Quick `39017718100`, **164 passed,

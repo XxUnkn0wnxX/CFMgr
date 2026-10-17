@@ -83,10 +83,32 @@ cfmgr_archive_source_attached() {
 cfmgr_archive_space_reserve() { cfmgr_archive_uint "$1"; }
 cfmgr_archive_cloud_capture_mode() { cfmgr_archive_capture_mode=whole; }
 cfmgr_archive_cloud_capture_revalidate() { return 0; }
+cfmgr_test_capture_rejected() {
+    # Expected data rejection must not pass on a deadline, detached source,
+    # invalid supervision or unresolved child ownership.
+    case $1 in 1 | 4) ;; *) return 1 ;; esac
+    [ -z "${cfmgr_probe_reason:-}" ] || return 1
+    case ${cfmgr_probe_status:-} in '' | reaped) ;; *) return 1 ;; esac
+}
+cfmgr_test_capture_diagnostic() {
+    cfmgr_test_exit=$1
+    set --
+    # Fixed scalar fields only: never print payloads, paths or raw receipts.
+    for cfmgr_test_scalar in "code:$cfmgr_test_exit" "verified:${cfmgr_archive_verified:-unset}" \
+        "mode:${cfmgr_probe_mode:-unset}" "status:${cfmgr_probe_status:-unset}" \
+        "reason:${cfmgr_probe_reason:-none}" "exit:${cfmgr_probe_exit:-unset}" \
+        "probes:${cfmgr_probe_serial:-0}" "files:${cfmgr_capture_files:-0}"; do
+        case $cfmgr_test_scalar in *[!A-Za-z0-9_.:-]*) cfmgr_test_scalar=invalid ;; esac
+        [ "${#cfmgr_test_scalar}" -le 96 ] || cfmgr_test_scalar=invalid
+        set -- "$@" "$cfmgr_test_scalar"
+    done
+    printf 'capture %s\n' "$*" >&2
+}
+trap 'cfmgr_test_exit=$?; [ "$cfmgr_test_exit" = 0 ] || cfmgr_test_capture_diagnostic "$cfmgr_test_exit"' 0
 """
 
 
-def capture_run(archive, shell, script, *, timeout=110):
+def capture_run(archive, shell, script, *, timeout=110, deadline=100):
     ram = archive[1]
     if sys.platform == "darwin":
         script = script.replace("/proc/self/fd/8", "${cfmgr_test_jffs}").replace(
@@ -95,7 +117,9 @@ def capture_run(archive, shell, script, *, timeout=110):
     return run(
         archive,
         shell,
-        CAPTURE_SETUP + script,
+        CAPTURE_SETUP
+        + f"\ncfmgr_archive_deadline=$((cfmgr_probe_now+{deadline}))\n"
+        + script,
         ram.parent / "source",
         ram.parent / "jffs",
         timeout=timeout,
@@ -194,7 +218,7 @@ def populate(
     }
 
 
-def start_capture(archive, shell):
+def start_capture(archive, shell, *, full=False):
     return capture_run(
         archive,
         shell,
@@ -202,10 +226,18 @@ def start_capture(archive, shell):
 cfmgr_history_ready=1 cfmgr_history_output=$ram/history cfmgr_history_lock_held=1
 exec 4<"$ram/history"
 cfmgr_archive_capture_data "$ram/plan" "$ram/config-snapshot"
+code=$?
+if [ "$code" != 0 ]; then cfmgr_test_capture_rejected "$code" || exit 90; fi
+exit "$code"
 """,
-        # Preserve the full owned-data fixture on slower macOS process launches.
-        # Native supervision and its existing 100s fixture deadline are unchanged.
-        timeout=180 if sys.platform == "darwin" else 110,
+        # Measure the native positive against the production 600s deadline,
+        # with a temporary 300s outer bound. Host and negative guards stay.
+        deadline=600 if full else 100,
+        timeout=(
+            300
+            if full and os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1"
+            else (180 if sys.platform == "darwin" else 110)
+        ),
     )
 
 
@@ -213,7 +245,7 @@ def test_populated_capture_preserves_full_bytes_and_off_history(
     archive, shell, commands, schema2_config
 ):
     expected = populate(archive, commands, schema2_config)
-    result = start_capture(archive, shell)
+    result = start_capture(archive, shell, full=True)
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
     stage = archive[3]
     lines = (stage / "inventory").read_text().splitlines()
@@ -262,7 +294,7 @@ def test_capture_required_absence_and_foreign_data_fail_closed(
         if path.is_file()
     }
     result = start_capture(archive, shell)
-    assert result.returncode != 0
+    assert result.returncode in (1, 4), result
     assert {path: path.read_bytes() for path in before} == before
     assert (archive[1].parent / "jffs/addons/CFMgr.d/setup-drafts").exists()
 
@@ -308,13 +340,19 @@ code=$?
     if change == "prefix-append":
         script += '[ "$code:$cfmgr_capture_bytes" = 0:1024 ] || exit 80\n'
     else:
-        script += '[ "$code" != 0 ] || exit 81\ncase " $cfmgr_format_owned " in *" snapshot:"*) ;; *) exit 82 ;; esac\ncfmgr_archive_format_cleanup || exit $?\n'
+        script += 'cfmgr_test_capture_rejected "$code" || exit 81\ncase " $cfmgr_format_owned " in *" snapshot:"*) ;; *) exit 82 ;; esac\ncfmgr_archive_format_cleanup || exit $?\n'
     passed(capture_run(archive, shell, script, timeout=20))
     if change == "prefix-append":
         assert (stage / "snapshot").read_bytes() == original
         assert source.read_bytes() == original + b"appended"
     else:
         assert not (stage / "snapshot").exists()
+        assert marker.exists()
+        assert source.read_bytes() == (
+            b"tiny"
+            if change in {"whole-short", "prefix-shrink"}
+            else b"b" + original[1:]
+        )
 
 
 @pytest.mark.parametrize("damage", ["hash", "semantic"])
@@ -362,7 +400,11 @@ cfmgr_capture_finish || exit $?
 cfmgr_archive_run archive-payload-match 4096 "$TEST_AWK" "$support/modules/backup.sh" "$ram/certificate-plan" "/proc/self/fd/7/stage/inventory"
 code=$?
 """
-    script += '[ "$code" = 0 ]' if damage == "hash" else '[ "$code" != 0 ]'
+    script += (
+        '[ "$code" = 0 ]'
+        if damage == "hash"
+        else 'cfmgr_test_capture_rejected "$code" && [ "$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit" = archive-payload-match:reaped:1 ]'
+    )
     passed(capture_run(archive, shell, script, timeout=35))
     inventory = (archive[3] / "inventory").read_text()
     assert " damaged END" in inventory
@@ -405,7 +447,7 @@ cfmgr_capture_start || exit $?
     if writer == "unknown":
         script += "cfmgr_archive_cloud_capture_mode() { return 4; }\ncfmgr_archive_capture_history && cfmgr_capture_finish"
     else:
-        script += "cfmgr_archive_cloud_capture_revalidate() { return 1; }\ncfmgr_archive_capture_history && exit 81; exit 0"
+        script += 'cfmgr_archive_cloud_capture_revalidate() { : >"$ram/revalidated"; return 1; }\ncfmgr_archive_capture_history; code=$?\ncfmgr_test_capture_rejected "$code" && [ -f "$ram/revalidated" ]'
     passed(capture_run(archive, shell, script, timeout=25))
     inventory = (archive[3] / "inventory").read_text()
     if writer == "unknown":
@@ -424,7 +466,9 @@ def test_absent_below_symlink_is_not_optional_absence(archive, shell):
     hexpath = b"etc/cloudflared/missing.pem".hex()
     passed(
         capture_run(
-            archive, shell, f'cfmgr_capture_source entware {hexpath}; [ "$?" = 1 ]'
+            archive,
+            shell,
+            f'cfmgr_capture_source entware {hexpath}; code=$?; [ "$code" = 1 ] && cfmgr_test_capture_rejected "$code"',
         )
     )
 
@@ -437,7 +481,9 @@ cfmgr_capture_decode {text.encode().hex()} || exit $?
 [ "$cfmgr_capture_relative" = {shlex.quote(text)} ] || exit 80
 cfmgr_capture_decode 0a && exit 81
 cfmgr_history_lock_held=0
-cfmgr_capture_snapshot "/proc/self/fd/8/input" "$stage/snapshot" prefix && exit 82
+cfmgr_capture_snapshot "/proc/self/fd/8/input" "$stage/snapshot" prefix
+code=$?
+cfmgr_test_capture_rejected "$code" || exit 82
 [ ! -e "$stage/snapshot" ]
 """
     passed(capture_run(archive, shell, script))

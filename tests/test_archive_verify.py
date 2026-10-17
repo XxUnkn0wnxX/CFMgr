@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -174,7 +175,9 @@ cfmgr_archive_verify_complete() {
 """
 
 
-def verify(archive, shell, *, expected=SET_ID, callbacks=True, deadline=60, timeout=65):
+def verify(
+    archive, shell, *, expected=SET_ID, callbacks=True, deadline=600, timeout=120
+):
     script = (
         "cfmgr_archive_inventory_limit=65536\n"
         f"cfmgr_archive_deadline=$((cfmgr_probe_now+{deadline}))\n"
@@ -190,14 +193,46 @@ def verify(archive, shell, *, expected=SET_ID, callbacks=True, deadline=60, time
     script += (
         'cfmgr_archive_format_verify "$stage/candidate" '
         + shlex.quote(expected)
-        + '; code=$?; if [ "${TEST_CLEANUP:-0}" = 1 ]; then cfmgr_archive_format_cleanup || exit 91; fi; printf "code=%s verified=%s\\n" "$code" "$cfmgr_archive_verified"; if [ "$code" -ne 0 ]; then printf "diagnostic verification=%s probe=%s status=%s reason=%s child_exit=%s format=%s\\n" "${cfmgr_archive_verification_status:-unset}" "${cfmgr_probe_mode:-unset}" "${cfmgr_probe_status:-unset}" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" "${cfmgr_format_code:-unset}"; fi; exit "$code"'
+        + "; code=$?; "
+        "diag_verification=${cfmgr_archive_verification_status:-unset}; "
+        "diag_probe=${cfmgr_probe_mode:-unset}; "
+        "diag_status=${cfmgr_probe_status:-unset}; "
+        "diag_reason=${cfmgr_probe_reason:-none}; "
+        "diag_child_exit=${cfmgr_probe_exit:-unset}; "
+        "diag_format=${cfmgr_format_code:-unset}; "
+        'if [ "${TEST_CLEANUP:-0}" = 1 ]; then cfmgr_archive_format_cleanup || exit 91; fi; '
+        'printf "code=%s verified=%s\\n" "$code" "$cfmgr_archive_verified"; '
+        'if [ "$code" -ne 0 ]; then '
+        'printf "diagnostic verification=%s probe=%s status=%s reason=%s child_exit=%s format=%s\\n" '
+        '"$diag_verification" "$diag_probe" "$diag_status" "$diag_reason" "$diag_child_exit" "$diag_format"; '
+        'fi; exit "$code"'
     )
-    return run(archive, shell, script, timeout=timeout)
+    result = run(archive, shell, script, timeout=timeout)
+    if result.returncode:
+        diagnostic_lines = result.stdout.decode(errors="replace").splitlines()
+        assert len(diagnostic_lines) == 2
+        assert diagnostic_lines[0].startswith("code=")
+        match = re.fullmatch(
+            r"diagnostic verification=(\S+) probe=(\S+) status=(\S+) "
+            r"reason=(\S+) child_exit=(\S+) format=(\S+)",
+            diagnostic_lines[1],
+        )
+        assert match, result
+        verification, probe, status, reason, child_exit, format_code = match.groups()
+        assert verification in {"incomplete", "excluded"}
+        assert reason in {"none", "unset"}, result
+        assert status in {"unset", "invalid", "reaped"}, result
+        if callbacks:
+            assert format_code == "1", result
+        else:
+            assert probe == "unset" and status in {"unset", "invalid"}, result
+            assert child_exit == "unset" and format_code == "unset", result
+    return result
 
 
 def test_real_tool_end_to_end_binary_empty_boundary_and_callbacks(archive, shell):
     raw, _ = make_archive(archive)
-    result = verify(archive, shell, deadline=600, timeout=120)
+    result = verify(archive, shell)
     assert (result.returncode, result.stdout, result.stderr) == (
         0,
         b"code=0 verified=1\n",
