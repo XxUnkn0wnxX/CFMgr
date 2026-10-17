@@ -142,6 +142,7 @@ def expected_config(
         },
         "backup": {
             "destination": None,
+            "set_id": None,
             "retention": None,
             "date_format": None,
             "last_backup": None,

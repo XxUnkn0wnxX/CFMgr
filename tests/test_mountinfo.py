@@ -9,9 +9,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from runtime_awk import awk_arguments
 
 ROOT = Path(__file__).resolve().parents[1]
-PARSER = ROOT / "modules/lib/mountinfo.awk"
+PARSER = "cfmgr-parser:mountinfo"
 REQUIRE_BUSYBOX = os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1"
 
 
@@ -26,7 +27,9 @@ def awk_programs() -> list[tuple[str, list[str]]]:
     if REQUIRE_BUSYBOX:
         busybox = shutil.which("busybox")
         assert busybox, "Required pinned BusyBox is missing"
-        version = subprocess.run([busybox], capture_output=True, check=False, timeout=5)
+        version = subprocess.run(
+            awk_arguments([busybox]), capture_output=True, check=False, timeout=5
+        )
         assert re.search(rb"BusyBox v1\.25\.1\b", version.stdout + version.stderr), (
             "Mountinfo BusyBox proof requires the pinned 1.25.1 fixture"
         )
@@ -77,14 +80,16 @@ def run_parser(
     environment = os.environ.copy()
     environment["LC_ALL"] = "C"
     return subprocess.run(
-        [
-            *awk,
-            "-f",
-            str(PARSER),
-            *(["inventory-v1"] if inventory else ["subtree-v1"] if subtree else []),
-            target,
-            "-",
-        ],
+        awk_arguments(
+            [
+                *awk,
+                "-f",
+                str(PARSER),
+                *(["inventory-v1"] if inventory else ["subtree-v1"] if subtree else []),
+                target,
+                "-",
+            ]
+        ),
         input=records.encode("utf-8"),
         capture_output=True,
         check=False,

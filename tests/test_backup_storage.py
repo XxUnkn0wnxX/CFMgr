@@ -54,7 +54,7 @@ def test_backup_uuid_policy_is_independent_of_entware_guid(
             "-c",
             '. "$1"; cfmgr_store_awk=$2; cfmgr_backup_device_path=/dev/fixture; cfmgr_backup_filesystem=$3; cfmgr_backup_uuid_parse "$4" || exit $?; printf "%s\\n%s\\n" "$cfmgr_backup_uuid" "$cfmgr_backup_label"',
             "backup-identity",
-            ROOT / "modules/lib/storage.sh",
+            ROOT / "modules/backup.sh",
             tools["awk"],
             filesystem,
             output,

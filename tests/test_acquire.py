@@ -236,7 +236,7 @@ def _probe(
     return subprocess.run(
         [
             *shell,
-            str(Path(__file__).resolve().parents[1] / "modules/helpers/probe.sh"),
+            str(Path(__file__).resolve().parents[1] / "modules/helpers/worker.sh"),
             mode,
             tool,
             str(context),
@@ -270,7 +270,7 @@ def test_acquire_manifest_and_entry_probes_enforce_exact_version(
 
     manifest_bytes = manifest.read_bytes()
     lines = manifest_bytes.splitlines(keepends=True)
-    helper = b"modules/lib/acquire.sh"
+    helper = b"modules/lib/package.sh"
     unsafe_path = manifest_bytes.replace(b"catalog.txt", b"../catalog.txt", 1)
     missing_helper = b"".join(line for line in lines if helper not in line)
     incompatible_schema = manifest_bytes.replace(
@@ -317,37 +317,188 @@ def test_acquire_manifest_and_entry_probes_enforce_exact_version(
 
 
 def test_acquire_awk_probe_parses_candidate_without_running_it(
-    shell: list[str], native_tools: dict[str, str], tmp_path: Path
+    shell: list[str], native_tools: dict[str, str], tmp_path: Path, package: Path
 ) -> None:
     context = tmp_path / "probe-context"
     context.mkdir(mode=0o700)
     marker = tmp_path / "candidate-ran"
     prefix = context / "acquire.syntax.awk"
-    candidate = context / "candidate.awk"
     prefix.write_text(
         'BEGIN { print "CFMGR-AWK-PARSED 1"; fflush(); print 1/(NR-NR) }\n'
     )
-    candidate.write_text(
+    root = Path(__file__).resolve().parents[1]
+    trusted = root / "modules/lib/package.sh"
+    owner = package / "modules/lib/storage.sh"
+    original = owner.read_text()
+    opening = "\tcfmgr_awk_program='\n"
+    start = original.index(opening) + len(opening)
+    end = original.index("'\n\t# CFMGR-AWK-END mountinfo", start)
+
+    def candidate(program):
+        # Valid shell side effect deliberately sits outside the parser literal.
+        # Its syntactic validity must never cause candidate source execution.
+        owner.write_text(
+            original[:start]
+            + program
+            + original[end:]
+            + f'\nprintf "%s" hostile > "{marker}"\n'
+        )
+        extracted = _probe(
+            shell,
+            native_tools,
+            context,
+            "acquire-extract",
+            package,
+            trusted,
+            "mountinfo",
+        )
+        assert extracted.returncode == 0 and extracted.stderr == b""
+        assert not marker.exists()
+        return extracted.stdout.decode()
+
+    literal = candidate(
         f'BEGIN {{ print "begin" > "{marker}" }}\nEND {{ print "end" > "{marker}" }}\n'
     )
-    valid = _probe(shell, native_tools, context, "acquire-awk", prefix, candidate)
+    valid = _probe(shell, native_tools, context, "acquire-awk", prefix, literal)
     assert valid.returncode != 0
     assert valid.stdout.splitlines() == [b"CFMGR-AWK-PARSED 1"]
     assert b"division by zero" in valid.stderr.lower()
     assert not marker.exists()
 
-    candidate.write_text(
+    literal = candidate(
         f'BEGIN {{ print "begin" > "{marker}" }}\nthis is invalid !!!\n'
     )
-    malformed = _probe(shell, native_tools, context, "acquire-awk", prefix, candidate)
+    malformed = _probe(shell, native_tools, context, "acquire-awk", prefix, literal)
     assert malformed.returncode != 0
     assert b"CFMGR-AWK-PARSED 1" not in malformed.stdout
     assert not marker.exists()
+
+    for changed in (
+        original.replace("# CFMGR-AWK-END mountinfo", "# CFMGR-AWK-END wrong"),
+        original.replace(opening, opening + "'; exit 0; #\n", 1),
+        original + original,
+    ):
+        owner.write_text(changed)
+        rejected = _probe(
+            shell,
+            native_tools,
+            context,
+            "acquire-extract",
+            package,
+            trusted,
+            "mountinfo",
+        )
+        assert rejected.returncode != 0 and rejected.stdout == b""
+        assert not marker.exists()
+
+    # A valid literal in the wrong category cannot satisfy the fixed runtime
+    # import/getter mapping, even though it remains safe data to extract.
+    owner.write_text(
+        original[: original.index("cfmgr_storage_awk_mountinfo() {")]
+        + original[original.index("cfmgr_storage_mountinfo() {") :]
+    )
+    backup = package / "modules/backup.sh"
+    backup.write_text(
+        backup.read_text()
+        + "\n"
+        + original[
+            original.index("cfmgr_storage_awk_mountinfo() {") : original.index(
+                "cfmgr_storage_mountinfo() {"
+            )
+        ]
+    )
+    moved = _probe(
+        shell, native_tools, context, "acquire-extract", package, trusted, "mountinfo"
+    )
+    assert moved.returncode != 0 and moved.stdout == b"" and not marker.exists()
 
     bad_shell = context / "candidate.sh"
     bad_shell.write_text("if then\n")
     shell_result = _probe(shell, native_tools, context, "acquire-shell", bad_shell)
     assert shell_result.returncode != 0
+
+
+def test_passive_awk_extensions_are_parsed_without_begin_or_end_execution(
+    shell, native_tools, tmp_path
+):
+    context = tmp_path / "extension-context"
+    context.mkdir(mode=0o700)
+    prefix = context / "acquire.syntax.awk"
+    prefix.write_text(
+        'BEGIN { print "CFMGR-AWK-PARSED 1"; fflush(); print 1/(NR-NR) }\n'
+    )
+    marker = tmp_path / "extension-ran"
+    candidate = context / "extension.awk"
+    candidate.write_text(
+        f'BEGIN {{ print "begin" > "{marker}" }}\nEND {{ print "end" > "{marker}" }}\n'
+    )
+    checked = _probe(
+        shell, native_tools, context, "acquire-awk-file", prefix, candidate
+    )
+    assert checked.returncode != 0
+    assert checked.stdout.splitlines() == [b"CFMGR-AWK-PARSED 1"]
+    assert b"division by zero" in checked.stderr.lower() and not marker.exists()
+    candidate.write_text("this is invalid !!!\n")
+    malformed = _probe(
+        shell, native_tools, context, "acquire-awk-file", prefix, candidate
+    )
+    assert malformed.returncode != 0 and b"CFMGR-AWK-PARSED 1" not in malformed.stdout
+    assert not marker.exists()
+
+
+def test_embedded_parser_getters_match_data_extraction_and_native_argv(
+    shell, native_tools, tmp_path, package
+):
+    from runtime_awk import OWNERS, awk_program
+
+    context = tmp_path / "literal-context"
+    context.mkdir(mode=0o700)
+    root = Path(__file__).resolve().parents[1]
+    trusted = root / "modules/lib/package.sh"
+    for fragment, owner in OWNERS.items():
+        category = Path(owner).stem
+        getter = f"cfmgr_{category}_awk_{fragment}"
+        result = subprocess.run(
+            [
+                *shell,
+                "-c",
+                '. "$1"; "$2"; printf "%s" "$cfmgr_awk_program"',
+                "getter",
+                str(root / owner),
+                getter,
+            ],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert (result.returncode, result.stderr) == (0, b""), fragment
+        assert result.stdout == awk_program(fragment).encode(), fragment
+
+    largest = _probe(
+        shell,
+        native_tools,
+        context,
+        "acquire-extract",
+        package,
+        trusted,
+        "backup_payload",
+    )
+    expected = awk_program(
+        "json", "config_schema", "config_observation", "backup_payload"
+    ).encode()
+    assert (largest.returncode, largest.stderr, largest.stdout) == (0, b"", expected)
+    assert 65536 < len(expected) <= 98304
+    # Native vendor AWK runs this same argv in required Linux CI. On the host
+    # this establishes only host exec support and actual fixed parser behavior.
+    parsed = subprocess.run(
+        [native_tools["awk"], largest.stdout.decode()],
+        input=b"{}",
+        capture_output=True,
+        check=False,
+        timeout=3,
+        env={**os.environ, "LC_ALL": "C", "CFMGR_PAYLOAD_MODE": "plan"},
+    )
+    assert parsed.returncode != 0 and parsed.stderr == b""
 
 
 def _native_fetch(
@@ -369,10 +520,11 @@ def _native_fetch(
     source = r"""
 root=$1 context=$2 ca=$3 curl=$4 capath=$5
 shift 5
-. "$root/modules/helpers/bootstrap.sh"
-. "$root/modules/lib/prerequisites.sh"
-. "$root/modules/lib/native.sh"
-. "$root/modules/lib/acquire.sh"
+. "$root/modules/lib/package.sh"
+. "$root/modules/lib/execution.sh"
+. "$root/modules/lib/storage.sh"
+. "$root/modules/lib/network.sh"
+. "$root/modules/lib/package.sh"
 cfmgr_install_source=$root cfmgr_install_context=$context
 cfmgr_install_sh=$1 cfmgr_install_env=$2 cfmgr_install_awk=$3
 cfmgr_install_sleep=$4 cfmgr_install_wc=$5 cfmgr_install_ls=$6

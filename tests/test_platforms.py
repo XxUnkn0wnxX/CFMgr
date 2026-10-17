@@ -977,6 +977,12 @@ def test_generic_header_staging_preserves_vendor_source_and_invalidates_only_bus
     }
     kernel = manifest["kernels"][0]
     kernel_key = platforms.build_key("kernel", kernel, manifest["toolchains"]["4.9.4"])
+    config = fixtures / "busybox.config"
+    original_config = config.read_bytes()
+    config.write_bytes(original_config + b"CONFIG_TAR=y\n")
+    for target, key in keys.items():
+        assert platforms.build_key("busybox", item, target=target) != key
+    config.write_bytes(original_config)
     with (fixtures / "busybox-support/rtconfig.h").open("ab") as output:
         output.write(b"/* changed generic build support */\n")
     for target, key in keys.items():

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-LIBRARY = ROOT / "modules/lib/dependencies.sh"
+LIBRARY = ROOT / "modules/lib/execution.sh"
 PACKAGES = (
     "jq",
     "jq-full",

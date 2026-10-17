@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-LIBRARY = ROOT / "modules/lib/execution_tasks.sh"
+LIBRARY = ROOT / "modules/lib/execution.sh"
 
 
 @pytest.fixture(scope="module")

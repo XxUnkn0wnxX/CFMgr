@@ -80,19 +80,19 @@ def installer_adapter(
     for name, relative, original, alias in (
         (
             "repair",
-            "modules/lib/dependencies.sh",
+            "modules/lib/execution.sh",
             "cfmgr_dependencies_repair",
             "cfmgr_test_real_repair",
         ),
         (
             "probe",
-            "modules/lib/prerequisites.sh",
+            "modules/lib/execution.sh",
             "cfmgr_prerequisites_check",
             "cfmgr_test_real_shared_check",
         ),
         (
             "bootstrap",
-            "modules/helpers/bootstrap.sh",
+            "modules/lib/package.sh",
             "cfmgr_bootstrap_transaction",
             "cfmgr_test_real_transaction",
         ),
@@ -147,7 +147,7 @@ def test_dependency_fixture_syntax(
     for script in (
         ROOT / "tests/fixtures/dependencies.sh",
         ROOT / "tests/fixtures/dependency_installer.sh",
-        ROOT / "modules/helpers/dependencies.sh",
+        ROOT / "modules/helpers/worker.sh",
         installer_adapter,
         retirement_script,
     ):
@@ -345,15 +345,16 @@ root=$1 workspace=$2 scenario=$3
 claim=$workspace/dependencies preflight=$workspace/preflight
 mkdir -m 700 "$workspace" || exit 81
 mkdir -m 700 "$claim" "$preflight" || exit 81
-cp "$root/modules/lib/mountinfo.awk" "$preflight/repair-mountinfo.awk" || exit 82
-cp "$root/modules/helpers/probe.sh" "$preflight/repair-probe.sh" || exit 83
-. "$root/modules/helpers/bootstrap.sh"
+cp "$root/modules/lib/storage.sh" "$preflight/repair-storage.sh" || exit 82
+cp "$root/modules/helpers/worker.sh" "$preflight/repair-worker.sh" || exit 83
+. "$root/modules/lib/package.sh"
+. "$root/modules/lib/storage.sh"
 cfmgr_dependencies_context=$claim
 cfmgr_install_context=$preflight cfmgr_install_context_fd=9
 cfmgr_dependencies_claimed=1 cfmgr_dependencies_snapshot_ready=1 cfmgr_dependencies_cleaning=1
 cfmgr_dependencies_state=retained cfmgr_dependencies_phase=cleanup cfmgr_dependencies_native_unresolved=0
 cfmgr_install_interrupted=0 cfmgr_install_awk=/usr/bin/awk cfmgr_install_ls=/bin/ls
-cfmgr_install_tmp_snapshot=$(/usr/bin/awk -f "$preflight/repair-mountinfo.awk" "$preflight" /proc/self/mountinfo) || exit 84
+cfmgr_install_tmp_snapshot=$(/usr/bin/awk "$(cfmgr_storage_awk_mountinfo; printf '%s' "$cfmgr_awk_program")" "$preflight" /proc/self/mountinfo) || exit 84
 exec 5<"$claim" 9<"$preflight" || exit 85
 case $scenario in
     preexisting)
@@ -651,7 +652,7 @@ def test_action_refusal_survives_successful_child_cleanup(
             "-c",
             TASK_ADMISSION,
             "task-admission",
-            str(ROOT / "modules/lib/execution_tasks.sh"),
+            str(ROOT / "modules/lib/execution.sh"),
             str(tmp_path),
             awk,
             case,
@@ -675,17 +676,17 @@ def test_admission_unknown_probe_blocks_later_repair_probe(
     opkg = tmp_path / "opkg"
     opkg.write_text("#!/bin/sh\nexit 0\n")
     opkg.chmod(0o700)
-    source = (ROOT / "modules/helpers/bootstrap.sh").read_text()
+    source = (ROOT / "modules/lib/package.sh").read_text()
     original = "[ -x /opt/bin/opkg ] || return 1"
     forwarded = f"[ -x {shlex.quote(str(opkg))} ] || return 1"
     assert source.count(original) == 1
     adapted = source.replace(original, forwarded, 1)
     assert adapted.replace(forwarded, original, 1) == source
-    adapter = tmp_path / "bootstrap.sh"
+    adapter = tmp_path / "package.sh"
     adapter.write_text(adapted)
     script = r"""
-. "$1/modules/lib/dependencies.sh"
-. "$2/bootstrap.sh"
+. "$1/modules/lib/execution.sh"
+. "$2/package.sh"
 _cfmgr_tasks_now() { cfmgr_tasks_now=10; }
 cfmgr_bootstrap_attached() { return 0; }
 cfmgr_test_phase=$3

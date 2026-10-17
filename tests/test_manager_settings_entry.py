@@ -33,12 +33,11 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
     scripts.mkdir()
 
     for relative in (
-        "modules/lib/prerequisites.sh",
-        "modules/lib/mountinfo.awk",
+        "modules/lib/execution.sh",
         "modules/lib/storage.sh",
         "modules/backup.sh",
-        "modules/helpers/launch.sh",
-        "modules/manager_settings.sh",
+        "modules/lib/package.sh",
+        "modules/manager.sh",
         "modules/status.sh",
     ):
         target = support / relative
@@ -64,7 +63,7 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
             ("scenario", "normal"),
         )
     )
-    adapter_functions = ADAPTER.split('. "$source/modules/lib/config_store.sh"\n', 1)[1]
+    adapter_functions = ADAPTER.split('. "$source/modules/lib/config.sh"\n', 1)[1]
     adapter_functions = adapter_functions.rsplit('\ncfmgr_config_store "$@"', 1)[0]
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
     adapter_path.write_text("\n".join(assignments) + "\n" + adapter_functions + "\n")
@@ -84,7 +83,7 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
         + ' "$cfmgr_default_entry"',
         1,
     )
-    source_line = '. "$cfmgr_source/modules/lib/config_store.sh" || exit 1'
+    source_line = '. "$cfmgr_source/modules/manager.sh" || exit 1'
     assert source_line in adapted
     adapted = adapted.replace(
         source_line,

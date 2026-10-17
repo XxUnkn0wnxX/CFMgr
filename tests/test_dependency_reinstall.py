@@ -31,34 +31,27 @@ def installed_entry(tmp_path: Path, tools: dict[str, str], shell) -> tuple[Path,
     scripts.mkdir(parents=True)
     (support / "modules/lib").mkdir(parents=True)
     (support / "modules/helpers").mkdir()
-    (support / "modules/manager_settings.sh").write_text("# inert adapter\n")
+    (support / "modules/manager.sh").write_text("# inert adapter\n")
     (support / "modules/backup.sh").write_text("# inert adapter\n")
     original = (ROOT / "cfmgr.sh").read_text()
     entry = scripts / "cfmgr.sh"
     entry.write_text(original)
     marker = tmp_path / "native-preparation"
-    for name in (
-        "storage",
-        "prerequisites",
-        "native",
-        "config_store",
-        "mount_keeper",
-        "execution_view",
-        "execution_tasks",
-        "dependencies",
-    ):
+    for name in ("storage", "execution", "network", "config"):
         (support / f"modules/lib/{name}.sh").write_text("# inert adapter\n")
-    (support / "modules/helpers/bootstrap.sh").write_text(
-        "cfmgr_bootstrap_native_prepare() { printf 'prepare\\n' >"
+    # The retained entry verifies and launches through the same package owner.
+    # Apply the host JFFS adapter once, then override only the intended native
+    # preparation/cleanup/work callbacks after its real category definitions.
+    (support / "modules/manager.sh").write_text(
+        (ROOT / "modules/manager.sh").read_text()
+    )
+    (support / "modules/status.sh").write_text((ROOT / "modules/status.sh").read_text())
+    (support / "modules/lib/package.sh").write_text(
+        (ROOT / "modules/lib/package.sh").read_text()
+        + "\ncfmgr_bootstrap_native_prepare() { printf 'prepare\\n' >"
         + shlex.quote(str(marker))
         + "; }\ncfmgr_bootstrap_cleanup() { return 0; }\n"
-    )
-    launch = (ROOT / "modules/helpers/launch.sh").read_text()
-    launch = launch.replace("/jffs", str(jffs))
-    (support / "modules/status.sh").write_text((ROOT / "modules/status.sh").read_text())
-    (support / "modules/helpers/launch.sh").write_text(
-        launch
-        + '\ncfmgr_launch_work() { cfmgr_install_interrupted=0; printf "action=%s\\n" "$cfmgr_launch_requested_action"; }\n'
+        + 'cfmgr_launch_work() { cfmgr_install_interrupted=0; printf "action=%s\\n" "$cfmgr_launch_requested_action"; }\n'
     )
     finish_package(entry, support, tools, shell, adapt=True)
     return entry, marker
@@ -160,7 +153,7 @@ def test_cli_relative_installed_entry_and_source_copy_boundary(
 
 
 FORCE_CONSUMER = r"""
-. "$1/modules/helpers/bootstrap.sh"
+. "$1/modules/lib/package.sh"
 base=$2 scenario=$3
 cfmgr_install_source=$base/source cfmgr_install_context=$base/ram
 cfmgr_install_private_context=$cfmgr_install_context
@@ -356,7 +349,7 @@ def test_actual_controller_observes_loss_only_after_resolved_owned_work(
     # unavailable on macOS. Actual repair and storage-event bodies stay intact.
     boot = tmp_path / "kernel-boot-id"
     boot.write_text("12345678-1234-1234-1234-123456789abc\n")
-    source = (ROOT / "modules/lib/dependencies.sh").read_text()
+    source = (ROOT / "modules/lib/execution.sh").read_text()
     adapted = source.replace("/proc/sys/kernel/random/boot_id", str(boot))
     assert adapted.replace(str(boot), "/proc/sys/kernel/random/boot_id") == source
     controller = tmp_path / "controller.sh"
@@ -423,7 +416,7 @@ cfmgr_execution_view_release() {
     assert LINUX_REPAIR_CONTROLLER.count(anchor) == 1
     script = LINUX_REPAIR_CONTROLLER.replace(anchor, addition + anchor)
     script = script.replace(
-        '. "$CFMGR_TEST_ROOT/modules/lib/dependencies.sh"',
+        '. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"',
         '. "$CFMGR_TEST_CONTROLLER"',
     )
     script = script.replace(
@@ -477,8 +470,8 @@ cfmgr_execution_view_release() {
 
 
 DNS_CONSUMER = r"""
-. "$1/modules/lib/prerequisites.sh"
-. "$1/modules/helpers/bootstrap.sh"
+. "$1/modules/lib/execution.sh"
+. "$1/modules/lib/package.sh"
 cfmgr_install_source=$1 cfmgr_install_context=$2 cfmgr_install_sh=$3
 cfmgr_install_env=$4 cfmgr_install_awk=$5 cfmgr_install_sleep=$6 cfmgr_install_wc=$7
 dns_native=$8 dns_dig=$9
@@ -617,7 +610,7 @@ def test_actual_dns_syntax_and_response_policy_adapters(
 
 
 SCOPE_CONSUMER = r"""
-. "$1/modules/helpers/launch.sh"
+. "$1/modules/lib/package.sh"
 cfmgr_install_source=$1 cfmgr_install_context=$2 cfmgr_install_sh=$3
 cfmgr_install_env=$4 cfmgr_install_awk=$5 cfmgr_install_sleep=$6 cfmgr_install_wc=$7
 cfmgr_install_ls=$8
@@ -689,20 +682,20 @@ def test_actual_native_scope_recheck_preserves_settings_and_refuses_stale_state(
 @pytest.fixture(scope="module")
 def normal_inventory(tmp_path_factory) -> Path:
     """Share only source text; each consumer owns fresh probe and config files."""
-    source = (ROOT / "modules/lib/prerequisites.sh").read_text()
+    source = (ROOT / "modules/lib/execution.sh").read_text()
     definition = "cfmgr_prerequisites_check() {"
     renamed = "normal_actual_inventory() {"
     assert source.count(definition) == 1
     adapted = source.replace(definition, renamed, 1)
     assert adapted.replace(renamed, definition, 1) == source
-    target = tmp_path_factory.mktemp("normal-inventory") / "prerequisites.sh"
+    target = tmp_path_factory.mktemp("normal-inventory") / "execution.sh"
     target.write_text(adapted)
     return target
 
 
 NORMAL_CONSUMER = r"""
-. "$1/modules/helpers/bootstrap.sh"
-. "$1/modules/helpers/launch.sh"
+. "$1/modules/lib/package.sh"
+. "$1/modules/lib/package.sh"
 base=$2 scenario=$3
 . "$4"
 shift 4
@@ -796,7 +789,7 @@ cfmgr_prerequisites_run() {
 }
 cfmgr_prerequisites_check() {
     mark "inventory:$1:${15}"
-    if normal_actual_inventory "$1" "$2" "$cfmgr_install_sh" "$cfmgr_install_source/modules/helpers/probe.sh" \
+    if normal_actual_inventory "$1" "$2" "$cfmgr_install_sh" "$cfmgr_install_source/modules/helpers/worker.sh" \
         "$cfmgr_install_env" "$cfmgr_install_awk" "$cfmgr_install_sleep" "$cfmgr_install_wc" \
         "$normal_flock" "$normal_jq" "$normal_timeout" "$normal_sha" - "$normal_dig" "${15}"; then code=0; else code=$?; fi
     mark "missing:$cfmgr_prereq_missing"

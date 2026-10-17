@@ -1,4 +1,7 @@
 #!/bin/sh
+# Category owner: storage. Sourcing defines functions only.
+
+# ---- storage ----
 # Native flush prerequisite, not a transaction or storage-admission layer.
 # The caller must admit the executable and storage, own/exclude mutation of the
 # target, and open that regular file or directory read-only on inherited fd 3.
@@ -13,12 +16,12 @@
 cfmgr_storage_flush_fd() (
 	[ "$#" -eq 1 ] || return 2
 	case $1 in
-	/*) ;;
-	*) return 2 ;;
+		/*) ;;
+		*) return 2 ;;
 	esac
 	[ -f "$1" ] && [ -x "$1" ] || return 2
 	# Validate inheritance without opening a pathname or changing the descriptor.
-	(: <&3) 2>/dev/null || return 2
+	(: <&3) 2> /dev/null || return 2
 	# The fixed operand bounds native errno diagnostics. Appending the marker
 	# inside substitution preserves even newline-only output, which command
 	# substitution would otherwise trim. It is appended only after exit zero.
@@ -40,13 +43,13 @@ cfmgr_storage_flush_fd() (
 _cfmgr_storage_path() {
 	[ "$#" -eq 1 ] && [ "${#1}" -le 4096 ] || return 1
 	case $1 in
-	/*) ;;
-	*) return 1 ;;
+		/*) ;;
+		*) return 1 ;;
 	esac
 	case $1 in
-	*[!\ -~]* | *//* | */./* | */../* | */. | */..) return 1 ;;
-	/) ;;
-	*/) return 1 ;;
+		*[!\ -~]* | *//* | */./* | */../* | */. | */..) return 1 ;;
+		/) ;;
+		*/) return 1 ;;
 	esac
 }
 
@@ -58,12 +61,12 @@ _cfmgr_storage_canonical() {
 	# Preserve newlines until validation; plain command substitution could turn an
 	# unsafe newline-bearing pathname into a different, apparently safe pathname.
 	case $_cfmgr_storage_resolved in
-	*'
+		*'
 
 .') _cfmgr_storage_resolved=${_cfmgr_storage_resolved%'
 
 .'} ;;
-	*) return 1 ;;
+		*) return 1 ;;
 	esac
 	_cfmgr_storage_path "$_cfmgr_storage_resolved" || return 1
 	printf '%s\n' "$_cfmgr_storage_resolved"
@@ -109,13 +112,13 @@ cfmgr_storage_pin() {
 	cfmgr_storage_opt=$(_cfmgr_storage_canonical "$cfmgr_storage_alias") || return 1
 	[ -d "$cfmgr_storage_opt" ] && [ ! -L "$cfmgr_storage_opt" ] || return 1
 	cfmgr_storage_snapshot=$(
-		"$cfmgr_storage_awk" -f "$cfmgr_storage_parser" \
+		cfmgr_storage_mountinfo "$cfmgr_storage_awk" \
 			"$cfmgr_storage_opt" "$cfmgr_storage_proc/mountinfo"
 	) || return 1
 	IFS='	' read -r cfmgr_storage_mount_id cfmgr_storage_parent_id \
 		cfmgr_storage_device cfmgr_storage_fsroot cfmgr_storage_mount \
 		cfmgr_storage_filesystem cfmgr_storage_source cfmgr_storage_options \
-		cfmgr_storage_superoptions <<EOF
+		cfmgr_storage_superoptions << EOF
 $cfmgr_storage_snapshot
 EOF
 	# These initial capability profiles admit Linux ext filesystems. A bind mount
@@ -126,8 +129,8 @@ EOF
 	case ,$cfmgr_storage_options, in *,noexec,* | *,ro,*) return 1 ;; esac
 	case ,$cfmgr_storage_superoptions, in *,rw,*) ;; *) return 1 ;; esac
 	[ "$(_cfmgr_storage_canonical "$cfmgr_storage_mount")" = "$cfmgr_storage_mount" ] || return 1
-	exec 6<"$cfmgr_storage_mount" || return 1
-	if ! exec 7<"$cfmgr_storage_opt"; then
+	exec 6< "$cfmgr_storage_mount" || return 1
+	if ! exec 7< "$cfmgr_storage_opt"; then
 		exec 6<&-
 		return 1
 	fi
@@ -155,7 +158,7 @@ cfmgr_storage_attached() {
 	[ "$(_cfmgr_storage_mount_id 6)" = "$cfmgr_storage_mount_id" ] &&
 		[ "$(_cfmgr_storage_mount_id 7)" = "$cfmgr_storage_mount_id" ] || return 1
 	_cfmgr_storage_current=$(
-		"$cfmgr_storage_awk" -f "$cfmgr_storage_parser" \
+		cfmgr_storage_mountinfo "$cfmgr_storage_awk" \
 			"$cfmgr_storage_opt" "$cfmgr_storage_proc/mountinfo"
 	) || return 1
 	[ "$_cfmgr_storage_current" = "$cfmgr_storage_snapshot" ]
@@ -207,129 +210,343 @@ cfmgr_storage_uuid() {
 	[ -n "$cfmgr_storage_uuid_value" ]
 }
 
-# Backup destinations have their own policy/state. These helpers never select
-# Entware, execute a saved pathname, or mutate an unpinned destination.
-# FD6 pins the chosen mount and FD7, when present, pins its literal CFBackup.
-# shellcheck disable=SC2034,SC2154,SC3013
-cfmgr_backup_mount_record() {
-	IFS='	' read -r cfmgr_backup_id cfmgr_backup_parent cfmgr_backup_device cfmgr_backup_root \
-		cfmgr_backup_mount cfmgr_backup_filesystem cfmgr_backup_device_path cfmgr_backup_options \
-		cfmgr_backup_super cfmgr_backup_propagation cfmgr_backup_extra <<EOF_BACKUP_MOUNT
-$1
-EOF_BACKUP_MOUNT
-	[ -z "$cfmgr_backup_extra" ] || return 1
-	[ "$cfmgr_backup_root" = / ] || return 1
-	case $cfmgr_backup_mount in /tmp/mnt/?*) ;; *) return 1 ;; esac
-	_cfmgr_storage_path "$cfmgr_backup_mount" && _cfmgr_storage_path "$cfmgr_backup_root" || return 1
-	[ "${#cfmgr_backup_mount}" -le 1024 ] && [ "${#cfmgr_backup_root}" -le 1024 ] || return 1
-	[ -d "$cfmgr_backup_mount" ] && [ ! -L "$cfmgr_backup_mount" ] && [ -b "$cfmgr_backup_device_path" ] || return 1
-	case ,$cfmgr_backup_options, in *,rw,*) ;; *) return 1 ;; esac
-	case ,$cfmgr_backup_super, in *,rw,*) ;; *) return 1 ;; esac
-	case ,$cfmgr_backup_options, in *,ro,*) return 1 ;; esac
-	[ "$("$cfmgr_store_readlink" -f "$cfmgr_backup_mount")" = "$cfmgr_backup_mount" ] || return 1
-	cfmgr_backup_snapshot=$(printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
-		"$cfmgr_backup_id" "$cfmgr_backup_parent" "$cfmgr_backup_device" "$cfmgr_backup_root" \
-		"$cfmgr_backup_mount" "$cfmgr_backup_filesystem" "$cfmgr_backup_device_path" "$cfmgr_backup_options" "$cfmgr_backup_super")
+cfmgr_storage_awk_mountinfo() {
+	# CFMGR-AWK-BEGIN mountinfo
+	cfmgr_awk_program='
+# Read-only parser for /proc/self/mountinfo.
+# Invocation: cfmgr_storage_mountinfo "$native_awk" "$canonical_target" /proc/self/mountinfo
+# Subtree: cfmgr_storage_mountinfo "$native_awk" subtree-v1 "$canonical_target" INPUT
+# inventory-v1 uses the same operands/output but retains stacked mountpoints.
+# Subtree output adds propagation as field 10 and preserves input order. All
+# records must validate before either interface emits output.
+# The target is a literal ARGV operand so backslashes are not reinterpreted by awk.
+# Input is bounded to 4096 records of at most 8192 bytes each. Escapes are decoded
+# only in root, mountpoint, and source; tabs, newlines, controls, and unknown
+# escapes fail closed. The caller must compare this observation with held FDs and
+# persistent storage identity; this parser does not admit or identify storage.
+
+BEGIN {
+	MAX_RECORDS = 4096
+	MAX_LINE = 8192
+	if (ARGV[1] == "subtree-v1" || ARGV[1] == "inventory-v1") {
+		stack_inventory = (ARGV[1] == "inventory-v1")
+		subtree = 1
+		target = ARGV[2]
+		ARGV[1] = ARGV[2] = ""
+	} else {
+		target = ARGV[1]
+		ARGV[1] = ""
+	}
+	if (!canonical_path(target)) {
+		fail("invalid target")
+	}
 }
 
-cfmgr_backup_uuid_parse() {
-	# Parse one bounded blkid record, preserving filesystem-specific UUID syntax.
-	# LABEL is optional display data; it can never become a pathname or command.
-	# shellcheck disable=SC2016
-	cfmgr_backup_identity=$("$cfmgr_store_awk" '
-		BEGIN {source=ARGV[1]; fs=ARGV[2]; ARGV[1]=ARGV[2]=""}
-		NR!=1 || length($0)>4096 || $0~/[[:cntrl:]]/ {bad=1; next}
-		{
-			prefix=source ": "; if(substr($0,1,length(prefix))!=prefix){bad=1;next}
-			rest=substr($0,length(prefix)+1)
-			while(rest!="") {
-				if(!match(rest,/^[A-Z_]+="/)){bad=1;break}
-				key=substr(rest,1,RLENGTH-2);rest=substr(rest,RLENGTH+1);stop=index(rest,"\"")
-				if(!stop || seen[key]++){bad=1;break};value[key]=substr(rest,1,stop-1);rest=substr(rest,stop+1)
-				if(rest==" ")rest="";else if(rest!=""){if(substr(rest,1,1)!=" "){bad=1;break};rest=substr(rest,2)}
+function fail(reason) {
+	if (!failed) {
+		print "mountinfo: " reason > "/dev/stderr"
+		close("/dev/stderr")
+	}
+	failed = 1
+	exit 1
+}
+
+function decimal(value, allow_zero) {
+	if (length(value) > 10 || value !~ /^(0|[1-9][0-9]*)$/) {
+		return 0
+	}
+	if (!allow_zero && value == "0") {
+		return 0
+	}
+	return 1
+}
+
+function canonical_path(value, parts, count, i) {
+	if (value == "" || substr(value, 1, 1) != "/" || value ~ /\/\// ||
+	    value ~ /[[:cntrl:]]/ || (length(value) > 1 && substr(value, length(value), 1) == "/")) {
+		return 0
+	}
+	if (value == "/") {
+		return 1
+	}
+	count = split(substr(value, 2), parts, "/")
+	for (i = 1; i <= count; i++) {
+		if (parts[i] == "" || parts[i] == "." || parts[i] == "..") {
+			return 0
+		}
+	}
+	return 1
+}
+
+function decode(value, result, i, character, escaped) {
+	result = ""
+	decode_ok = 1
+	for (i = 1; i <= length(value); i++) {
+		character = substr(value, i, 1)
+		if (character != "\\") {
+			result = result character
+			continue
+		}
+		escaped = substr(value, i + 1, 3)
+		if (escaped == "040") {
+			result = result " "
+		} else if (escaped == "134") {
+			result = result "\\"
+		} else {
+			decode_ok = 0
+			return ""
+		}
+		i += 3
+	}
+	return result
+}
+
+function path_contains(path, point) {
+	if (point == "/") {
+		return 1
+	}
+	return path == point || substr(path, 1, length(point) + 1) == point "/"
+}
+
+{
+	if (failed) {
+		exit 1
+	}
+	record_count++
+	if (record_count > MAX_RECORDS || length($0) > MAX_LINE) {
+		fail("input limit exceeded")
+	}
+	if ($0 == "" || $0 ~ /[[:cntrl:]]/ || substr($0, 1, 1) == " " ||
+	    substr($0, length($0), 1) == " ") {
+		fail("invalid record")
+	}
+
+	field_count = split($0, fields, / /)
+	for (field_index = 1; field_index <= field_count; field_index++) {
+		if (fields[field_index] == "") {
+			fail("invalid record")
+		}
+	}
+	separator = field_count - 3
+	if (separator < 7 || fields[separator] != "-") {
+		fail("invalid record")
+	}
+	for (field_index = 7; field_index < separator; field_index++) {
+		if (fields[field_index] == "-") {
+			fail("invalid separator")
+		}
+	}
+	if (!decimal(fields[1], 0) || !decimal(fields[2], 0) ||
+	    fields[3] !~ /^(0|[1-9][0-9]*):(0|[1-9][0-9]*)$/) {
+		fail("invalid numeric field")
+	}
+	if (seen_mount_id[fields[1]]++) {
+		fail("duplicate mount id")
+	}
+	device_count = split(fields[3], device, ":")
+	if (device_count != 2 || !decimal(device[1], 1) || !decimal(device[2], 1)) {
+		fail("invalid numeric field")
+	}
+
+	root = decode(fields[4])
+	if (!decode_ok || !canonical_path(root)) {
+		fail("invalid path field")
+	}
+	mountpoint = decode(fields[5])
+	if (!decode_ok || !canonical_path(mountpoint)) {
+		fail("invalid path field")
+	}
+	if (fields[6] !~ /^[!-~]+$/ || fields[field_count] !~ /^[!-~]+$/ ||
+	    fields[separator + 1] !~ /^[A-Za-z0-9][A-Za-z0-9_+.-]*$/) {
+		fail("invalid text field")
+	}
+	source = decode(fields[separator + 2])
+	if (!decode_ok || source == "" || source ~ /[[:cntrl:]]/) {
+		fail("invalid source field")
+	}
+
+	seen_shared = 0
+	seen_master = 0
+	seen_propagate_from = 0
+	seen_unbindable = 0
+	for (field_index = 7; field_index < separator; field_index++) {
+		optional = fields[field_index]
+		if (optional == "unbindable") {
+			if (seen_unbindable++) {
+				fail("invalid optional field")
+			}
+			continue
+		}
+		if (optional !~ /^(shared|master|propagate_from):[0-9]+$/) {
+			fail("invalid optional field")
+		}
+		colon = index(optional, ":")
+		tag = substr(optional, 1, colon - 1)
+		group_id = substr(optional, colon + 1)
+		if (!decimal(group_id, 0)) {
+			fail("invalid optional field")
+		}
+		if (tag == "shared") {
+			shared_group = group_id
+			if (seen_shared++) {
+				fail("invalid optional field")
+			}
+		} else if (tag == "master") {
+			master_group = group_id
+			if (seen_master++) {
+				fail("invalid optional field")
+			}
+		} else if (tag == "propagate_from") {
+			propagate_group = group_id
+			if (seen_propagate_from++) {
+				fail("invalid optional field")
 			}
 		}
-		END {
-			type=value["TYPE"]; compatible=(!seen["TYPE"] || type==fs)
-			if(fs=="vfat" || fs=="tfat") compatible=(type=="vfat")
-			if(fs=="ntfs" || fs=="ntfs3" || fs=="tntfs" || fs=="fuseblk") compatible=(type=="ntfs")
-			if(fs=="ufsd") compatible=(type=="ntfs" || type=="hfs" || type=="hfsplus")
-			if(bad || NR!=1 || !seen["UUID"] || !compatible ||
-			length(value["UUID"])>128 || value["UUID"]!~/^[A-Za-z0-9][A-Za-z0-9._:-]*$/ ||
-			length(value["LABEL"])>256 || value["LABEL"]~/[^ -~]/)exit 1
-			if(type=="vfat" && (length(value["UUID"])!=9 || value["UUID"]!~/^[0-9A-Fa-f]+-[0-9A-Fa-f]+$/ || substr(value["UUID"],5,1)!="-"))exit 1
-			if(type=="ntfs" && (length(value["UUID"])!=16 || value["UUID"]!~/^[0-9A-Fa-f]+$/))exit 1
-			uuid=value["UUID"];if(uuid~/^[0-9A-Fa-f-]+$/)uuid=tolower(uuid)
-			print uuid;print (value["LABEL"]==""?"-":value["LABEL"])
-		}' "$cfmgr_backup_device_path" "$cfmgr_backup_filesystem" "$1") || return 1
-	{
-		IFS= read -r cfmgr_backup_uuid && IFS= read -r cfmgr_backup_label
-	} <<EOF_BACKUP_IDENTITY
-$cfmgr_backup_identity
-EOF_BACKUP_IDENTITY
+	}
+	if (seen_propagate_from && !seen_master) {
+		fail("invalid optional field")
+	}
+	if (subtree && seen_unbindable && (seen_shared || seen_master || seen_propagate_from)) {
+		fail("invalid optional field")
+	}
+
+	record = fields[1] "\t" fields[2] "\t" fields[3] "\t" root "\t" \
+		mountpoint "\t" fields[separator + 1] "\t" source "\t" fields[6] "\t" \
+		fields[field_count]
+	if (subtree) {
+		if (!path_contains(mountpoint, target)) {
+			next
+		}
+		if (seen_subtree_point[mountpoint]++ && !stack_inventory) {
+			fail("ambiguous mount")
+		}
+		propagation = ""
+		if (seen_shared) {
+			propagation = "shared:" shared_group
+		}
+		if (seen_master) {
+			propagation = propagation (propagation == "" ? "" : ",") "master:" master_group
+		}
+		if (seen_propagate_from) {
+			propagation = propagation (propagation == "" ? "" : ",") "propagate_from:" propagate_group
+		}
+		if (seen_unbindable) {
+			propagation = propagation (propagation == "" ? "" : ",") "unbindable"
+		}
+		if (propagation == "") {
+			propagation = "private"
+		}
+		subtree_records[++subtree_count] = record "\t" propagation
+		next
+	}
+
+	if (!path_contains(target, mountpoint)) {
+		next
+	}
+	if (length(mountpoint) > best_length) {
+		best_length = length(mountpoint)
+		best_count = 1
+		best_record = record
+	} else if (length(mountpoint) == best_length) {
+		best_count++
+	}
 }
 
-cfmgr_backup_observe_mount() {
-	cfmgr_store_run store-backup-mount "$cfmgr_store_awk" "$cfmgr_store_source/modules/lib/mountinfo.awk" "$1" || return $?
-	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	cfmgr_backup_mount_record "$cfmgr_store_line"
+END {
+	if (failed) {
+		exit 1
+	}
+	if (subtree) {
+		for (record_index = 1; record_index <= subtree_count; record_index++) {
+			print subtree_records[record_index]
+		}
+		exit 0
+	}
+	if (record_count == 0 || best_count == 0) {
+		fail("target not found")
+	}
+	if (best_count != 1) {
+		fail("ambiguous mount")
+	}
+	print best_record
+}
+'
+	# CFMGR-AWK-END mountinfo
 }
 
-cfmgr_backup_observe_uuid() {
-	cfmgr_store_run store-backup-blkid /sbin/blkid "$cfmgr_backup_device_path" || return $?
-	cfmgr_backup_uuid_parse "$cfmgr_probe_stdout"
+# Fixed mount parser invocation using this already-admitted category.
+cfmgr_storage_mountinfo() {
+	cfmgr_storage_parser_tool=$1
+	shift
+	cfmgr_storage_awk_mountinfo
+	"$cfmgr_storage_parser_tool" "$cfmgr_awk_program" "$@"
 }
 
-# Fixed read-only gate: no blkid, store_run, config parsing, or recursive gate.
-# shellcheck disable=SC3013
-cfmgr_backup_attached() {
-	[ "${cfmgr_backup_pinned:-0}" = 1 ] && [ ! -L "$cfmgr_backup_mount" ] &&
-		[ "$cfmgr_backup_mount" -ef /proc/self/fd/6 ] || return 1
-	[ "$("$cfmgr_store_readlink" -f "$cfmgr_backup_mount")" = "$cfmgr_backup_mount" ] || return 1
-	[ "$("$cfmgr_store_awk" -f "$cfmgr_store_source/modules/lib/mountinfo.awk" "$cfmgr_backup_mount" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
-	cfmgr_backup_fd_mount 6 || return 1
-	if [ "${cfmgr_backup_folder_pinned:-0}" = 1 ]; then
-		[ ! -L "$cfmgr_backup_mount/CFBackup" ] && [ "$cfmgr_backup_mount/CFBackup" -ef /proc/self/fd/7 ] || return 1
-		[ "$("$cfmgr_store_awk" -f "$cfmgr_store_source/modules/lib/mountinfo.awk" "$cfmgr_backup_mount/CFBackup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
-		cfmgr_backup_fd_mount 7 || return 1
+# ---- Native filesystem admission probes ----
+cfmgr_native_mode() {
+	cfmgr_native_step mutation-metadata install-ls "$1" || return $?
+	[ "$cfmgr_native_exit" -eq 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
+	IFS=' ' read -r cfmgr_native_mode cfmgr_native_links cfmgr_native_uid cfmgr_native_gid cfmgr_native_rest < "$cfmgr_native_output" || return 1
+	[ "$cfmgr_native_mode" = "$2" ]
+}
+
+cfmgr_native_mutations() {
+	# Finite names, exclusively claimed before use; no native/JFFS host writes.
+	(
+		umask 077
+		set -C
+		printf 'original\n' > "$cfmgr_native_context/native.source" &&
+			printf 'retained\n' > "$cfmgr_native_context/native.destination"
+	) || return 1
+	cfmgr_native_step mutation-mkdir install-mkdir-private "$cfmgr_native_context/native.directory" || return $?
+	cfmgr_native_zero || return 1
+	cfmgr_native_dir_owned=1
+	cfmgr_native_mode "$cfmgr_native_context/native.directory" drwx------ || return $?
+	cfmgr_native_step mutation-rmdir native-rmdir "$cfmgr_native_context/native.directory" || return $?
+	cfmgr_native_zero || return 1
+	cfmgr_native_dir_owned=0
+	cfmgr_native_step mutation-mkdir install-mkdir-public "$cfmgr_native_context/native.directory" || return $?
+	cfmgr_native_zero || return 1
+	cfmgr_native_dir_owned=1
+	cfmgr_native_mode "$cfmgr_native_context/native.directory" drwxr-xr-x || return $?
+	cfmgr_native_step mutation-copy install-copy "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.copy" || return $?
+	cfmgr_native_zero || return 1
+	cfmgr_native_step mutation-rename install-rename "$cfmgr_native_context/native.copy" "$cfmgr_native_context/native.destination" || return $?
+	cfmgr_native_zero || return 1
+	IFS= read -r cfmgr_native_text < "$cfmgr_native_context/native.destination" || return 1
+	[ "$cfmgr_native_text" = original ] && [ ! -e "$cfmgr_native_context/native.copy" ] || return 1
+	cfmgr_native_step mutation-publish install-publish "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.destination" || return $?
+	cfmgr_native_zero || return 1
+	[ -f "$cfmgr_native_context/native.source" ] && [ ! -L "$cfmgr_native_context/native.source" ] || return 1
+	printf 'retained\n' > "$cfmgr_native_context/native.destination" || return 1
+	cfmgr_native_step mutation-publish install-publish "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.destination" || return $?
+	cfmgr_native_zero || return 1
+	IFS= read -r cfmgr_native_text < "$cfmgr_native_context/native.destination" || return 1
+	[ "$cfmgr_native_text" = retained ] && [ -f "$cfmgr_native_context/native.source" ] || return 1
+	cfmgr_native_step mutation-publish install-publish "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.published" || return $?
+	cfmgr_native_zero || return 1
+	IFS= read -r cfmgr_native_text < "$cfmgr_native_context/native.published" || return 1
+	[ "$cfmgr_native_text" = original ] && [ ! -e "$cfmgr_native_context/native.source" ] || return 1
+	for cfmgr_native_permission in private readonly executable; do
+		cfmgr_native_step mutation-chmod "install-chmod-$cfmgr_native_permission" "$cfmgr_native_context/native.destination" || return $?
+		cfmgr_native_zero || return 1
+		case $cfmgr_native_permission in private) cfmgr_native_expected=-rw------- ;; readonly) cfmgr_native_expected=-rw-r--r-- ;; executable) cfmgr_native_expected=-rwxr-xr-x ;; esac
+		cfmgr_native_mode "$cfmgr_native_context/native.destination" "$cfmgr_native_expected" || return $?
+	done
+	# FD3 is free before prerequisite flock/view work. Borrow it for the same
+	# fsync probe used by the installer, including native errno/diagnostics.
+	cfmgr_native_step mutation-flush install-flush 3< "$cfmgr_native_context/native.destination" || return $?
+	cfmgr_native_zero || return 1
+	cfmgr_native_step mutation-flush install-flush 3< "$cfmgr_native_context/native.directory" || return $?
+	cfmgr_native_zero || return 1
+}
+
+cfmgr_native_cleanup() {
+	# Only the exclusively claimed empty scratch directory needs removal. Flat
+	# regular evidence remains for the controller's existing bounded cleanup.
+	if [ -e "$cfmgr_native_context/native.directory" ] || [ -L "$cfmgr_native_context/native.directory" ]; then
+		[ "$cfmgr_native_dir_owned" = 1 ] && [ -d "$cfmgr_native_context/native.directory" ] && [ ! -L "$cfmgr_native_context/native.directory" ] || return 3
+		cfmgr_native_step cleanup native-rmdir "$cfmgr_native_context/native.directory" || return $?
+		cfmgr_native_zero || return 3
 	fi
-}
-
-cfmgr_backup_fd_mount() {
-	# shellcheck disable=SC2016
-	"$cfmgr_store_awk" 'BEGIN {id=ARGV[1]; ARGV[1]=""} $1=="mnt_id:" {n++;if(NF!=2 || $2!=id)bad=1} END {exit (n!=1 || bad)}' \
-		"$cfmgr_backup_id" "/proc/self/fdinfo/$1"
-}
-
-cfmgr_backup_pin_selected() {
-	cfmgr_backup_observe_mount "$cfmgr_backup_want_mount" || return $?
-	[ "$cfmgr_backup_mount:$cfmgr_backup_filesystem:$cfmgr_backup_root" = "$cfmgr_backup_want_mount:$cfmgr_backup_want_filesystem:$cfmgr_backup_want_root" ] &&
-		[ "$cfmgr_backup_snapshot" = "$cfmgr_backup_want_snapshot" ] || return 1
-	{ exec 6<&3; } 3<"$cfmgr_backup_mount" || return 1
-	cfmgr_backup_pinned=1 cfmgr_store_backup_gate=1
-	cfmgr_backup_attached || return 1
-	cfmgr_backup_observe_uuid || return $?
-	[ "$cfmgr_backup_uuid" = "$cfmgr_backup_want_uuid" ] && cfmgr_backup_attached
-}
-
-cfmgr_backup_prepare_folder() {
-	cfmgr_backup_attached || return 1
-	if [ ! -e "$cfmgr_backup_mount/CFBackup" ] && [ ! -L "$cfmgr_backup_mount/CFBackup" ]; then
-		cfmgr_store_run store-backup-mkdir /bin/mkdir || return $?
-	fi
-	cfmgr_backup_folder_admit || return $?
-	# Permission emulation failures on FAT/NTFS do not invalidate a real drive.
-	if cfmgr_store_run store-backup-chmod /bin/chmod; then :; else
-		cfmgr_backup_chmod_code=$?
-		[ "$cfmgr_backup_chmod_code" -ne 3 ] || return 3
-	fi
-	cfmgr_backup_attached
-}
-
-cfmgr_backup_folder_admit() {
-	cfmgr_backup_attached && [ -d "$cfmgr_backup_mount/CFBackup" ] && [ ! -L "$cfmgr_backup_mount/CFBackup" ] || return 1
-	[ "$("$cfmgr_store_awk" -f "$cfmgr_store_source/modules/lib/mountinfo.awk" "$cfmgr_backup_mount/CFBackup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
-	{ exec 7<&3; } 3<"$cfmgr_backup_mount/CFBackup" || return 1
-	cfmgr_backup_folder_pinned=1
-	cfmgr_backup_attached
 }

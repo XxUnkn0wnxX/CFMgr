@@ -13,8 +13,8 @@ from test_storage_mounts import selected_shell as storage_selected_shell
 
 selected_shell = storage_selected_shell
 
-LIBRARY = ROOT / "modules/lib/mount_keeper.sh"
-HELPER = ROOT / "modules/helpers/mount_keeper.sh"
+LIBRARY = ROOT / "modules/lib/execution.sh"
+HELPER = ROOT / "modules/helpers/worker.sh"
 
 
 @pytest.fixture(scope="module")
@@ -40,12 +40,12 @@ def keeper_setup() -> str:
 set -f
 umask 022
 context=$1 tools=$2 root=$3
-. "$root/modules/lib/prerequisites.sh"
-. "$root/modules/lib/mount_keeper.sh"
+. "$root/modules/lib/execution.sh"
+. "$root/modules/lib/execution.sh"
 cfmgr_mount_keeper_native() { (umask 077; "$2" "$3" p); }
 start() {
-    cfmgr_mount_keeper_start "$context" "$tools/ash" "$root/modules/helpers/mount_keeper.sh" \
-        "$root/modules/lib/prerequisites.sh" "$tools/env" "$tools/mknod" "$tools/awk" "$tools/usleep"
+    cfmgr_mount_keeper_start "$context" "$tools/ash" "$root/modules/helpers/worker.sh" \
+        "$root/modules/lib/execution.sh" "$tools/env" "$tools/mknod" "$tools/awk" "$tools/usleep"
 }
 cleanup() {
     # Test owns this one helper and never starts any package/task writer. Forced
@@ -240,10 +240,10 @@ def test_nofile_headroom_rejects_before_files_or_child(
     selected_shell: list[str], keeper_tools: Path, tmp_path: Path
 ) -> None:
     script = r"""
-. "$3/modules/lib/mount_keeper.sh"
+. "$3/modules/lib/execution.sh"
 ulimit -n 32
-cfmgr_mount_keeper_start "$1" "$2/ash" "$3/modules/helpers/mount_keeper.sh" \
-    "$3/modules/lib/prerequisites.sh" "$2/env" "$2/mknod" "$2/awk" "$2/usleep"
+cfmgr_mount_keeper_start "$1" "$2/ash" "$3/modules/helpers/worker.sh" \
+    "$3/modules/lib/execution.sh" "$2/env" "$2/mknod" "$2/awk" "$2/usleep"
 [ "$?" = 2 ]
 """
     result = subprocess.run(
@@ -357,8 +357,8 @@ exec 4<"$context"
 id=$("$tools/awk" '/^mnt_id:/ { print $2 }' /proc/self/fdinfo/4)
 printf 'hold 1 %s\n' "$id" >"$context/finite-control"
 "$tools/env" -i PATH="$tools:/bin:/usr/bin:/sbin:/usr/sbin" LC_ALL=C \
-    "$tools/ash" "$root/modules/helpers/mount_keeper.sh" "$context" "$cfmgr_keeper_owner" \
-    "$owner_start" "$cfmgr_keeper_boot" 8 "$tools/awk" "$root/modules/lib/prerequisites.sh" "$tools/usleep" \
+    "$tools/ash" "$root/modules/helpers/worker.sh" mount-keeper "$context" "$cfmgr_keeper_owner" \
+    "$owner_start" "$cfmgr_keeper_boot" 8 "$tools/awk" "$root/modules/lib/execution.sh" "$tools/usleep" \
     3<"$context/finite-control" 4<&- 5<&- 6<&- 7<&- 8<&- 9<&- </dev/null >"$context/stdout" 2>"$context/stderr" &
 cfmgr_keeper_pid=$!
 cfmgr_prerequisites_identity "$cfmgr_keeper_pid" || exit 11

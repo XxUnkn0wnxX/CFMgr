@@ -220,7 +220,7 @@ def test_fixed_report_probe_rejects_unapproved_operands_and_has_error_priority(
         "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + shlex.quote(str(capture)) + "\n"
     )
     logger.chmod(0o700)
-    probe = ROOT / "modules/helpers/probe.sh"
+    probe = ROOT / "modules/helpers/worker.sh"
     for mode, operand in [
         ("install-report", "other"),
         ("install-report-ls", "/opt/bin/logger"),
@@ -423,10 +423,10 @@ printf '%s %s %s %s\n' "$rc" "$cfmgr_probe_status" "$cfmgr_probe_exit" "$cfmgr_p
             "-c",
             script,
             "report-supervisor",
-            ROOT / "modules/lib/prerequisites.sh",
+            ROOT / "modules/lib/execution.sh",
             tmp_path,
             tools["sh"],
-            ROOT / "modules/helpers/probe.sh",
+            ROOT / "modules/helpers/worker.sh",
             tools["env"],
             tools["awk"],
             tools["sleep"],

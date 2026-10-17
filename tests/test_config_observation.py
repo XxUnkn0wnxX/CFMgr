@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from runtime_awk import awk_arguments
 
 ROOT = Path(__file__).resolve().parents[1]
 UUID = "01234567-89ab-cdef-0123-456789abcdef"
@@ -49,20 +50,22 @@ def schema2_config(commands: tuple[list[str], list[str]]) -> bytes:
     jq = shutil.which("jq")
     assert jq, "Actual jq is required to construct retained settings"
     result = subprocess.run(
-        [
-            *commands[0],
-            "-c",
-            '. "$1"; shift; cfmgr_config_defaults "$@"',
-            "config-observation-test",
-            str(ROOT / "modules/lib/config.sh"),
-            str(Path(jq).resolve()),
-            "https://github.com/example/CFMgr",
-            "develop",
-            UUID,
-            "ext4",
-            "/mnt/usb",
-            "entware",
-        ],
+        awk_arguments(
+            [
+                *commands[0],
+                "-c",
+                '. "$1"; shift; cfmgr_config_defaults "$@"',
+                "config-observation-test",
+                str(ROOT / "modules/lib/config.sh"),
+                str(Path(jq).resolve()),
+                "https://github.com/example/CFMgr",
+                "develop",
+                UUID,
+                "ext4",
+                "/mnt/usb",
+                "entware",
+            ]
+        ),
         capture_output=True,
         check=False,
         timeout=5,
@@ -91,21 +94,23 @@ def invoke(
     environment.update({"LC_ALL": "C", **(observation or {})})
     with snapshot.open("rb") as source:
         return subprocess.run(
-            [
-                *commands[1],
-                "-v",
-                f"cfmgr_json_size={len(data) if size is None else size}",
-                "-v",
-                "cfmgr_json_mode=tree",
-                "-v",
-                f"cfmgr_config_mode={mode}",
-                "-f",
-                str(ROOT / "modules/lib/json.awk"),
-                "-f",
-                str(ROOT / "modules/lib/config_schema.awk"),
-                "-f",
-                str(ROOT / "modules/lib/config_observation.awk"),
-            ],
+            awk_arguments(
+                [
+                    *commands[1],
+                    "-v",
+                    f"cfmgr_json_size={len(data) if size is None else size}",
+                    "-v",
+                    "cfmgr_json_mode=tree",
+                    "-v",
+                    f"cfmgr_config_mode={mode}",
+                    "-f",
+                    "cfmgr-parser:json",
+                    "-f",
+                    "cfmgr-parser:config_schema",
+                    "-f",
+                    "cfmgr-parser:config_observation",
+                ]
+            ),
             stdin=source,
             env=environment,
             capture_output=True,

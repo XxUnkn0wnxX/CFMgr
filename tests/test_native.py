@@ -25,7 +25,7 @@ shell = prerequisite_shell
 base_tools = install_tools
 legacy_fsync = install_fsync
 package = install_package
-NATIVE = ROOT / "modules/lib/native.sh"
+NATIVE = ROOT / "modules/lib/network.sh"
 
 
 def host_mv_adapter(actual: str, directory: Path) -> str:
@@ -286,9 +286,10 @@ cfmgr_install_mv=$1 cfmgr_test_timeout=$2 cfmgr_install_fsync=$3
 shift 3
 cfmgr_install_source=$root cfmgr_install_jffs=$cfmgr_install_context cfmgr_install_opt=$cfmgr_install_context
 cfmgr_test_fault=clean cfmgr_test_detached=0 cfmgr_probe_serial=0
-. "$root/modules/helpers/bootstrap.sh"
-. "$root/modules/lib/prerequisites.sh"
-. "$root/modules/lib/native.sh"
+. "$root/modules/lib/package.sh"
+. "$root/modules/lib/execution.sh"
+. "$root/modules/lib/storage.sh"
+. "$root/modules/lib/network.sh"
 cfmgr_bootstrap_attached() { return 0; }
 cfmgr_prerequisites_attachment_ok() { return 0; }
 """
@@ -695,7 +696,7 @@ cfmgr_native_action() {
     fi
     if [ "$cfmgr_test_failure" = cleanup-unresolved ] && [ "$cfmgr_native_reason" = cleanup ]; then return 3; fi
     if [ "$1" = native-rmdir ]; then
-        cfmgr_prerequisites_run "$1" "$cfmgr_install_context" "$cfmgr_install_sh" "$root/modules/helpers/probe.sh" \
+        cfmgr_prerequisites_run "$1" "$cfmgr_install_context" "$cfmgr_install_sh" "$root/modules/helpers/worker.sh" \
             "$cfmgr_install_env" "$cfmgr_install_awk" "$cfmgr_install_sleep" "$cfmgr_install_wc" /bin/rmdir "$2" || return $?
     else cfmgr_bootstrap_action "$@" || return $?; fi
     cfmgr_native_output=$cfmgr_probe_stdout cfmgr_native_error=$cfmgr_probe_stderr cfmgr_native_exit=$cfmgr_probe_exit
@@ -740,9 +741,10 @@ cfmgr_test_install() {
     shift 8
     test_curl=$1 test_openssl=$2 test_ca=$3 test_alias=$4
     . "$test_alias"
-    . "$test_package/modules/helpers/bootstrap.sh"
-    . "$test_package/modules/lib/prerequisites.sh"
-    . "$test_package/modules/lib/native.sh"
+    . "$test_package/modules/lib/package.sh"
+    . "$test_package/modules/lib/execution.sh"
+    . "$test_package/modules/lib/storage.sh"
+    . "$test_package/modules/lib/network.sh"
     cfmgr_bootstrap_attached() { [ "$cfmgr_test_detached" = 0 ] && [ -d "$test_jffs" ] && [ -d "$test_opt" ]; }
     cfmgr_bootstrap_retained() { return 0; }
     cfmgr_bootstrap_native_admission() {
@@ -765,7 +767,7 @@ cfmgr_test_install() {
         [ "$cfmgr_native_ready" = 1 ] && [ "$1" = "$test_package" ] && [ "$2" = /jffs ] || return 91
         # Restore actual metadata/attachment function definitions before running
         # the unchanged transaction body with existing host fixture operands.
-        . "$test_package/modules/helpers/bootstrap.sh"
+        . "$test_package/modules/lib/package.sh"
         cfmgr_bootstrap_attached() { [ "$cfmgr_test_detached" = 0 ] && [ -d "$test_jffs" ] && [ -d "$test_opt" ]; }
         cfmgr_test_real_transaction "$test_package" "$test_jffs" "$test_opt" "$test_context" "$test_owner" \
             "$test_sh" "$test_env" "$test_awk" "$test_readlink" "$test_sleep" "$test_wc" "$test_ls" "$test_fsync" \
@@ -799,7 +801,7 @@ def test_native_work_real_admission_continues_to_real_transaction(
     package: Path,
     tmp_path: Path,
 ) -> None:
-    source = (package / "modules/helpers/bootstrap.sh").read_bytes()
+    source = (package / "modules/lib/package.sh").read_bytes()
     definition = b"cfmgr_bootstrap_transaction() {"
     assert source.count(definition) == 1
     renamed = source.replace(definition, b"cfmgr_test_real_transaction() {", 1)
@@ -848,6 +850,8 @@ def test_status_count_uncertainty_retires_https_admission(
     error.write_bytes(b"")
     script = r"""
 . "$1"
+. "${1%/*}/storage.sh"
+. "${1%/*}/execution.sh"
 cfmgr_native_context=$2 cfmgr_native_ca=$3 cfmgr_native_ready=1
 cfmgr_native_action() {
     if [ "$1" = install-wc ]; then return 3; fi

@@ -31,21 +31,18 @@ def store_fixture(tmp_path, tools, legacy_fsync, config):
     (source / "modules/helpers").mkdir()
     source.chmod(0o700)
     for relative in (
-        "modules/lib/config_store.sh",
-        "modules/lib/json.awk",
-        "modules/lib/mountinfo.awk",
-        "modules/lib/config_observation.awk",
-        "modules/lib/config_schema.awk",
-        "modules/helpers/probe.sh",
+        "modules/lib/config.sh",
+        "modules/lib/storage.sh",
+        "modules/helpers/worker.sh",
     ):
         original = ROOT / relative
         body = original.read_text()
-        if relative.endswith("config_store.sh"):
+        if relative.endswith("config.sh"):
             body = body.replace(
                 ":0 | file:-rw-------:0",
                 f":{os.getuid()} | file:-rw-------:{os.getuid()}",
             )
-        if relative.endswith("probe.sh"):
+        if relative.endswith("worker.sh"):
             body = body.replace("$4!=0", f"$4!={os.getuid()}")
             if sys.platform == "darwin":
                 body = body.replace("/proc/self/fd/8", "/dev/fd/8").replace(
@@ -80,7 +77,7 @@ def store_fixture(tmp_path, tools, legacy_fsync, config):
 ADAPTER = r"""
 source=$1 ram=$2 flock=$3 fsync=$4 scenario=$5
 shift 5
-. "$source/modules/lib/config_store.sh"
+. "$source/modules/lib/config.sh"
 CFMGR_VERSION=0.1.0
 cfmgr_prerequisites_now() { cfmgr_probe_now=100; }
 cfmgr_store_prepare() {
@@ -537,7 +534,7 @@ def test_external_lock_busy_prevents_save_and_observation(shell, tools, store_fi
     import fcntl
 
     source, ram, flock, _ = store_fixture
-    library = source / "modules/lib/config_store.sh"
+    library = source / "modules/lib/config.sh"
     library.write_text(
         library.read_text()
         .replace("/tmp/cfmgr", shlex.quote(str(ram)))
@@ -559,7 +556,7 @@ def test_external_lock_busy_prevents_save_and_observation(shell, tools, store_fi
         script = ADAPTER.replace(
             'cfmgr_config_store "$@"',
             f"""
-. {shlex.quote(str(ROOT / "modules/helpers/launch.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/package.sh"))}
 cfmgr_store_prepare || exit 96
 cfmgr_install_source=$source cfmgr_install_jffs=$source cfmgr_install_context=$ram/context cfmgr_install_context_fd=5
 cfmgr_install_sh=$TEST_SH cfmgr_install_env=$TEST_ENV cfmgr_install_awk=$TEST_AWK cfmgr_install_sleep=$TEST_SLEEP
@@ -602,7 +599,7 @@ def test_fixed_digest_and_intent_frames_reject_ambiguous_receipts(
         result = subprocess.run(
             [
                 *shell,
-                str(ROOT / "modules/helpers/probe.sh"),
+                str(ROOT / "modules/helpers/worker.sh"),
                 mode,
                 tools["awk"],
                 str(tmp_path),
@@ -626,7 +623,7 @@ def test_linux_actual_supervisor_save_and_cleanup(shell, tools, store_fixture):
     # Private fixture alias keeps the exact cleanup body. Capture only bounded
     # synthetic probe output before cleanup deletes it, then emit on failure;
     # successful lock-test contention stays silent and supervision is unchanged.
-    library = source / "modules/lib/config_store.sh"
+    library = source / "modules/lib/config.sh"
     body = library.read_text()
     assert body.count("cfmgr_store_cleanup() {") == 1
     library.write_text(
@@ -642,7 +639,7 @@ def test_linux_actual_supervisor_save_and_cleanup(shell, tools, store_fixture):
     script = script.replace("cfmgr_prerequisites_now() { cfmgr_probe_now=100; }", "")
     script = script.replace('cfmgr_store_fd_is() { [ -f "$1" ] && [ ! -L "$1" ]; }', "")
     script += (
-        f". {shlex.quote(str(ROOT / 'modules/lib/prerequisites.sh'))}\n"
+        f". {shlex.quote(str(ROOT / 'modules/lib/execution.sh'))}\n"
         + pause_definition(shell)
     )
     script += r"""
@@ -717,7 +714,7 @@ def test_linux_owned_mutator_keeps_lock_after_controller_closes(
     )
     mutator.chmod(0o700)
     script = f'''
-. {shlex.quote(str(ROOT / "modules/lib/prerequisites.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/execution.sh"))}
 {pause_definition(shell)}
 cfmgr_store_attachment_ok() {{ [ "$1" = never ] || [ "$cfmgr_store_lock" -ef /proc/self/fd/0 ]; }}
 cfmgr_store_fd_is() {{ [ "$1" -ef "/proc/self/fd/$2" ]; }}
@@ -751,7 +748,7 @@ printf 'retained then released\n'
             mode,
             str(context),
             tools["sh"],
-            str(source / "modules/helpers/probe.sh"),
+            str(source / "modules/helpers/worker.sh"),
             tools["env"],
             tools["awk"],
             tools["sleep"],
@@ -782,7 +779,7 @@ def test_linux_actual_borrowed_observation_lock_and_crossguard(
     shell, tools, store_fixture
 ):
     source, ram, flock, _ = store_fixture
-    library = source / "modules/lib/config_store.sh"
+    library = source / "modules/lib/config.sh"
     library.write_text(
         library.read_text()
         .replace("/tmp/cfmgr", str(ram))
@@ -792,8 +789,9 @@ def test_linux_actual_borrowed_observation_lock_and_crossguard(
     script = ADAPTER[: ADAPTER.index("cfmgr_store_attachment_ok() {")]
     script = script.replace("cfmgr_prerequisites_now() { cfmgr_probe_now=100; }", "")
     script += f"""
-. {shlex.quote(str(ROOT / "modules/lib/prerequisites.sh"))}
-. {shlex.quote(str(ROOT / "modules/helpers/launch.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/storage.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/execution.sh"))}
+. {shlex.quote(str(ROOT / "modules/lib/package.sh"))}
 {pause_definition(shell)}
 cfmgr_store_native_tool() {{ [ "$1" = "$flock" ] && [ -x "$flock" ]; }}
 cfmgr_launch_attachment_ok() {{ [ "$source" -ef /proc/self/fd/9 ] && [ "$ram/context" -ef /proc/self/fd/5 ] && [ "$source" -ef /proc/self/fd/8 ]; }}
@@ -803,8 +801,8 @@ cfmgr_store_prepare || exit 90
 cfmgr_install_source=$source cfmgr_install_jffs=$source cfmgr_install_context=$ram/context cfmgr_install_context_fd=5
 cfmgr_install_sh=$TEST_SH cfmgr_install_env=$TEST_ENV cfmgr_install_awk=$TEST_AWK cfmgr_install_sleep=$TEST_SLEEP
 cfmgr_install_wc=$TEST_WC cfmgr_install_ls=$TEST_LS cfmgr_install_readlink=$TEST_READLINK
-cfmgr_install_jffs_snapshot=$("$TEST_AWK" -f "$source/modules/lib/mountinfo.awk" "$source" /proc/self/mountinfo) || exit 91
-cfmgr_install_tmp_snapshot=$("$TEST_AWK" -f "$source/modules/lib/mountinfo.awk" /tmp /proc/self/mountinfo) || exit 92
+cfmgr_install_jffs_snapshot=$("$TEST_AWK" "$(cfmgr_storage_awk_mountinfo; printf '%s' "$cfmgr_awk_program")" "$source" /proc/self/mountinfo) || exit 91
+cfmgr_install_tmp_snapshot=$("$TEST_AWK" "$(cfmgr_storage_awk_mountinfo; printf '%s' "$cfmgr_awk_program")" /tmp /proc/self/mountinfo) || exit 92
 for cfmgr_prereq_flock_provider in native entware; do
     cfmgr_launch_publish_observation || exit 93
     [ "$cfmgr_config_lock_fd0" = 0 ] || exit 94

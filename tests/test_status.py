@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 from entry_package_fixture import finish_package
+from runtime_awk import awk_arguments
 from test_config_observation import commands, config
 from test_dependency_reinstall import entry_run, installed_entry
 from test_install import shell, tools
@@ -30,17 +31,19 @@ __all__ = ["commands", "config", "installed_entry", "shell", "tools"]
 def project(commands, tmp_path, data, *, clock="1", boot=BOOT, wan="0"):
     payload = json.dumps(data).encode() if isinstance(data, dict) else data
     return subprocess.run(
-        [
-            *commands[1],
-            "-v",
-            f"cfmgr_json_size={len(payload)}",
-            "-v",
-            "cfmgr_json_mode=tree",
-            "-f",
-            str(ROOT / "modules/lib/json.awk"),
-            "-f",
-            str(ROOT / "modules/lib/status.awk"),
-        ],
+        awk_arguments(
+            [
+                *commands[1],
+                "-v",
+                f"cfmgr_json_size={len(payload)}",
+                "-v",
+                "cfmgr_json_mode=tree",
+                "-f",
+                "cfmgr-parser:json",
+                "-f",
+                "cfmgr-parser:status",
+            ]
+        ),
         input=payload,
         capture_output=True,
         check=False,
@@ -246,14 +249,16 @@ def test_native_wan_ipv4_classification(commands, tmp_path, ip, classification):
     raw = tmp_path / "native.out"
     raw.write_text(ip + "\n")
     result = subprocess.run(
-        [
-            *commands[1],
-            "-f",
-            str(ROOT / "modules/lib/status_native.awk"),
-            "nvram",
-            str(raw),
-            "wan0_ipaddr",
-        ],
+        awk_arguments(
+            [
+                *commands[1],
+                "-f",
+                "cfmgr-parser:status_native",
+                "nvram",
+                str(raw),
+                "wan0_ipaddr",
+            ]
+        ),
         env={**os.environ, "LC_ALL": "C"},
         capture_output=True,
         check=False,
@@ -288,25 +293,23 @@ def status_fixture(tmp_path, tools, shell):
     (source / "modules/helpers").mkdir()
     for relative in (
         "modules/status.sh",
-        "modules/lib/json.awk",
-        "modules/lib/status.awk",
-        "modules/lib/status_native.awk",
-        "modules/lib/mountinfo.awk",
-        "modules/helpers/probe.sh",
+        "modules/lib/config.sh",
+        "modules/lib/storage.sh",
+        "modules/helpers/worker.sh",
     ):
         original = (ROOT / relative).read_text()
         adapted = original
         if relative == "modules/status.sh":
             adapted = adapted.replace("$3!=0", f"$3!={os.getuid()}")
-        if relative == "modules/lib/status_native.awk":
+        if relative == "modules/status.sh":
             adapted = adapted.replace('a[4]!="0"', f'a[4]!="{os.getuid()}"')
-        if relative == "modules/helpers/probe.sh" and sys.platform == "darwin":
+        if relative == "modules/helpers/worker.sh" and sys.platform == "darwin":
             adapted = adapted.replace("/proc/self/fd/8", "/dev/fd/8").replace(
                 '"$1" -ef /dev/fd/8', "-f /dev/fd/8"
             )
         (source / relative).write_text(adapted)
         (source / relative).chmod((ROOT / relative).stat().st_mode & 0o777)
-    assert os.access(source / "modules/helpers/probe.sh", os.X_OK)
+    assert os.access(source / "modules/helpers/worker.sh", os.X_OK)
     proc = tmp_path / "proc"
     (proc / "sys/kernel/random").mkdir(parents=True)
     (proc / "self").mkdir()
@@ -330,11 +333,11 @@ def status_fixture(tmp_path, tools, shell):
         (fake / name).chmod(0o700)
     # Caller-only host path/ownership forwarding, actual status/probe/parser bodies.
     probe = (
-        (source / "modules/helpers/probe.sh")
+        (source / "modules/helpers/worker.sh")
         .read_text()
         .replace("/proc/self/mountinfo", str(proc / "self/mountinfo"))
     )
-    (source / "modules/helpers/probe.sh").write_text(probe)
+    (source / "modules/helpers/worker.sh").write_text(probe)
     return source, proc, fake
 
 
@@ -419,17 +422,19 @@ def test_real_status_consumer_native_resources_and_failure_survival(
         (source / ".config-save.retired").symlink_to(source / "missing-target")
     before = (source / "setup-state").read_bytes()
     result = subprocess.run(
-        [
-            *shell,
-            "-c",
-            STATUS_CONSUMER,
-            "status-consumer",
-            str(source),
-            str(tmp_path),
-            scenario,
-            tools["sh"],
-            tools["awk"],
-        ],
+        awk_arguments(
+            [
+                *shell,
+                "-c",
+                STATUS_CONSUMER,
+                "status-consumer",
+                str(source),
+                str(tmp_path),
+                scenario,
+                tools["sh"],
+                tools["awk"],
+            ]
+        ),
         capture_output=True,
         check=False,
         timeout=5,
@@ -477,11 +482,9 @@ def test_installed_choice_zero_returns_without_operational_preparation(
     source, _, _ = status_fixture
     for relative in (
         "modules/status.sh",
-        "modules/lib/json.awk",
-        "modules/lib/status.awk",
-        "modules/lib/status_native.awk",
-        "modules/lib/mountinfo.awk",
-        "modules/helpers/probe.sh",
+        "modules/lib/config.sh",
+        "modules/lib/storage.sh",
+        "modules/helpers/worker.sh",
     ):
         shutil.copyfile(source / relative, support / relative)
     data = support / "config"
@@ -553,7 +556,7 @@ def test_linux_status_real_supervisor_and_aggregate_budget(
     alias = source / "status-supervised.sh"
     alias.write_text(adapted)
     driver = r"""
-. "$1/modules/lib/prerequisites.sh"
+. "$1/modules/lib/execution.sh"
 . "$2/status-supervised.sh"
 cfmgr_source=$2 base=$3
 CFMGR_VERSION=0.1.0 CFMGR_REPOSITORY=https://github.com/example/CFMgr CFMGR_BRANCH=develop
@@ -583,15 +586,17 @@ cfmgr_status_native
         "cfmgr_status_native\n", pause_definition(shell) + "\ncfmgr_status_native\n", 1
     )
     result = subprocess.run(
-        [
-            *shell,
-            "-c",
-            driver,
-            "status-real-supervision",
-            str(ROOT),
-            str(source),
-            str(tmp_path),
-        ],
+        awk_arguments(
+            [
+                *shell,
+                "-c",
+                driver,
+                "status-real-supervision",
+                str(ROOT),
+                str(source),
+                str(tmp_path),
+            ]
+        ),
         capture_output=True,
         check=False,
         timeout=18,

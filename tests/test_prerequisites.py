@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-LIBRARY = ROOT / "modules/lib/prerequisites.sh"
-PROBE = ROOT / "modules/helpers/probe.sh"
+LIBRARY = ROOT / "modules/lib/execution.sh"
+PROBE = ROOT / "modules/helpers/worker.sh"
 REQUIRE_BUSYBOX = os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1"
 DIGEST = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 

@@ -51,7 +51,7 @@ def installed_backup_entry(_installed_settings_entry, tools, shell):
     ]
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
     assignments = adapter_path.read_text().split("CFMGR_VERSION=0.1.0", 1)[0]
-    adapter = ADAPTER.split('. "$source/modules/lib/config_store.sh"\n', 1)[1]
+    adapter = ADAPTER.split('. "$source/modules/lib/config.sh"\n', 1)[1]
     adapter = adapter.rsplit('\ncfmgr_config_store "$@"', 1)[0]
     adapter = adapter.replace(
         "case $mode in\n",
@@ -227,6 +227,8 @@ def test_backup_menu_disambiguates_duplicate_labels_and_invalid_choices_are_read
     assert b"1) Duplicate Drive | /tmp/mnt/Drive one" in result.stdout
     assert b"2) Duplicate Drive | /tmp/mnt/nested/Drive two" in result.stdout
     assert b"Invalid drive selection." in result.stdout
+    assert b"2 Create archive" in result.stdout
+    assert b"3 Archive preferences" in result.stdout
     assert (support / "config").read_bytes() == before
     assert not list(ram.glob("Drive */CFBackup"))
 

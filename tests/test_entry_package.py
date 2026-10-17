@@ -66,8 +66,8 @@ def test_complete_installed_package_reaches_real_menu_and_exits(
     shell: list[str], installed_package: tuple[Path, Path, Path, Path]
 ) -> None:
     entry, support, manifest, _tmp_path = installed_package
-    assert (support / "modules/manager_settings.sh").read_bytes() == (
-        ROOT / "modules/manager_settings.sh"
+    assert (support / "modules/manager.sh").read_bytes() == (
+        ROOT / "modules/manager.sh"
     ).read_bytes()
     assert manifest.read_bytes() == (support / "manifest.txt").read_bytes()
 
@@ -85,8 +85,8 @@ def test_complete_installed_package_reaches_real_menu_and_exits(
 @pytest.mark.parametrize(
     "module_name, action",
     [
-        ("manager_settings.sh", []),
-        ("manager_settings.sh", ["reinstall"]),
+        ("manager.sh", []),
+        ("manager.sh", ["reinstall"]),
         ("lib/package.sh", []),
         ("lib/package.sh", ["reinstall"]),
     ],

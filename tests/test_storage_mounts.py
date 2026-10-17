@@ -178,6 +178,13 @@ def test_backup_destination_real_mount_safety(fixture_tools, tmp_path, case):
     assert_fixture_passed(result, case)
 
 
+def test_archive_source_pin_preserves_destination_and_denies_alias_loss(
+    fixture_tools, tmp_path
+):
+    result = run_fixture(fixture_tools, "archive_source", tmp_path)
+    assert_fixture_passed(result, "archive_source")
+
+
 def test_fixture_rejects_wrong_argument_count_before_setup(
     selected_shell: list[str],
 ) -> None:
@@ -239,7 +246,7 @@ def test_execution_view_source_is_inert(
             ),
             "fixture",
             str(ROOT / "modules/lib/storage.sh"),
-            str(ROOT / "modules/lib/execution_view.sh"),
+            str(ROOT / "modules/lib/execution.sh"),
         ],
         cwd=tmp_path,
         check=False,
@@ -291,7 +298,7 @@ def run_ledger(
             'cfmgr_view_awk=$1; shift; . "$1"; shift; cfmgr_execution_view_awk "$@"',
             "ledger",
             awk,
-            str(ROOT / "modules/lib/execution_view.sh"),
+            str(ROOT / "modules/lib/execution.sh"),
             mode,
             *(str(argument) for argument in arguments),
         ],
@@ -425,12 +432,12 @@ def test_execution_view_rejects_reserved_descriptor_before_mutation(
             ),
             "fixture",
             str(ROOT / "modules/lib/storage.sh"),
-            str(ROOT / "modules/lib/execution_view.sh"),
+            str(ROOT / "modules/lib/execution.sh"),
             str(tmp_path),
             str(context),
             "/usr/bin/awk",
             "/bin/readlink",
-            str(ROOT / "modules/lib/mountinfo.awk"),
+            str(ROOT / "modules/lib/storage.sh"),
         ],
         check=False,
         capture_output=True,
@@ -463,7 +470,7 @@ def test_unresolved_native_operation_preserves_intent_and_blocks_release(
                 '[ "$code" = 3 ] && [ "$cfmgr_view_state" = retained ]'
             ),
             "fixture",
-            str(ROOT / "modules/lib/execution_view.sh"),
+            str(ROOT / "modules/lib/execution.sh"),
             str(tmp_path),
         ],
         check=False,

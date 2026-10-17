@@ -73,8 +73,8 @@ def candidate(
         payload = f"printf 'candidate executed\\n' >> '{marker}'\n".encode()
         for relative in (
             "cfmgr.sh",
-            "modules/helpers/bootstrap.sh",
-            "modules/helpers/probe.sh",
+            "modules/lib/package.sh",
+            "modules/helpers/worker.sh",
         ):
             item = target / relative
             data = item.read_bytes()
@@ -82,7 +82,7 @@ def candidate(
                 data[: data.index(b"\n") + 1] + payload + data[data.index(b"\n") + 1 :]
             )
     if fault == "syntax":
-        script = target / "modules/helpers/bootstrap.sh"
+        script = target / "modules/lib/package.sh"
         script.write_bytes(script.read_bytes() + b"\ncase\n")
     rows = [f"CFMGR-MANIFEST 2 {version} {2 if fault == 'abi' else 1} 2"]
     files = sorted(
@@ -112,10 +112,9 @@ CONSUMER = r"""
 root=$1 fixture=$2 fixture_curl=$3 fixture_ca=$4 fixture_fsync=$5 fixture_owner=$6
 shift 6
 . "$root/modules/lib/storage.sh"
-. "$root/modules/lib/prerequisites.sh"
-. "$root/modules/lib/native.sh"
-. "$root/modules/helpers/bootstrap.sh"
-. "$root/modules/lib/acquire.sh"
+. "$root/modules/lib/execution.sh"
+. "$root/modules/lib/network.sh"
+. "$root/modules/lib/package.sh"
 # CFMGR_TEST_PAUSE
 CFMGR_VERSION=0.1.0 CFMGR_REPOSITORY=https://github.com/fixture-owner/fixture-repo CFMGR_BRANCH=moving/branch
 cfmgr_bootstrap_native_prepare() {
@@ -129,8 +128,8 @@ cfmgr_bootstrap_native_prepare() {
     cfmgr_install_sha=$TEST_SHA256SUM cfmgr_install_jq=$TEST_JQ cfmgr_install_fsync=$fixture_fsync
     mkdir -m 700 "$cfmgr_install_context" || return 1
     exec 0<"$cfmgr_install_context" 8<"$cfmgr_install_jffs" 9<"$root"
-    cfmgr_install_tmp_snapshot=$("$TEST_AWK" -f "$root/modules/lib/mountinfo.awk" "$cfmgr_install_context" /proc/self/mountinfo) || return 1
-    cfmgr_install_jffs_snapshot=$("$TEST_AWK" -f "$root/modules/lib/mountinfo.awk" "$cfmgr_install_jffs" /proc/self/mountinfo) || return 1
+    cfmgr_install_tmp_snapshot=$("$TEST_AWK" "$(cfmgr_storage_awk_mountinfo; printf '%s' "$cfmgr_awk_program")" "$cfmgr_install_context" /proc/self/mountinfo) || return 1
+    cfmgr_install_jffs_snapshot=$("$TEST_AWK" "$(cfmgr_storage_awk_mountinfo; printf '%s' "$cfmgr_awk_program")" "$cfmgr_install_jffs" /proc/self/mountinfo) || return 1
     cfmgr_install_interrupted=0 cfmgr_probe_pid='' cfmgr_probe_serial=0 cfmgr_probe_status=invalid
     umask 077
     cfmgr_bootstrap_signals

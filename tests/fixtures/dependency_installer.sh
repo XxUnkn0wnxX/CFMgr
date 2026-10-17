@@ -18,9 +18,9 @@ mkdir -m 755 "$fixture/jffs"
 # Restore actual public controller and transaction function name; private aliases
 # retain byte-identical bodies for finite path forwarding only.
 # shellcheck disable=SC1090
-. "$installer_package/modules/helpers/bootstrap.sh"
+. "$installer_package/modules/lib/package.sh"
 cfmgr_test_cost() {
-	IFS=' ' read -r cfmgr_test_uptime _ </proc/uptime
+	IFS=' ' read -r cfmgr_test_uptime _ < /proc/uptime
 	printf 'CFMGR-TEST-COST 1 %s %s\n' "$1" "$cfmgr_test_uptime" >&2
 }
 cfmgr_test_cost_installer=1
@@ -64,7 +64,7 @@ cfmgr_prerequisites_check() {
 	[ "$#" = 15 ] && { [ "$1" = shared ] || [ "$1" = tunnel ]; } && [ "$2" = "$cfmgr_install_context" ] || return 92
 	installer_probe_count=$((installer_probe_count + 1))
 	if [ "$cfmgr_test_cost_installer" = 1 ]; then cfmgr_test_cost "installer-check-$installer_probe_count-begin"; fi
-	if cfmgr_test_real_shared_check "$1" "$2" "$view_ram/ash" "$installer_package/modules/helpers/probe.sh" \
+	if cfmgr_test_real_shared_check "$1" "$2" "$view_ram/ash" "$installer_package/modules/helpers/worker.sh" \
 		"$view_ram/env" "$view_ram/awk" /bin/sleep "$view_ram/wc" - "$installer_jq" "$installer_timeout" "$installer_sha" "$cfmgr_storage_opt/bin/flock" - "${15}"; then
 		cfmgr_test_status=0
 	else
@@ -79,7 +79,7 @@ cfmgr_bootstrap_transaction() {
 	# Metadata, fixed probe supervision, publication and filesystem checks below
 	# execute unchanged against explicitly owned fixture roots and actual tools.
 	# shellcheck disable=SC1090
-	. "$installer_package/modules/helpers/bootstrap.sh"
+	. "$installer_package/modules/lib/package.sh"
 	# shellcheck disable=SC2329 # Fixed supervisor calls this imported callback.
 	cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 	# shellcheck disable=SC2329 # The imported actual transaction invokes this callback.
@@ -108,9 +108,9 @@ cfmgr_install_jffs=$fixture/jffs cfmgr_install_opt=$cfmgr_storage_opt cfmgr_inst
 cfmgr_install_sha=$installer_sha cfmgr_install_jq=$installer_jq cfmgr_install_df=$installer_df
 cfmgr_install_mv=$installer_mv cfmgr_install_fsync=$installer_fsync
 cfmgr_install_nvram=$view_ram/nvram
-printf '#!/bin/sh\nprintf "1\\n"\n' >"$cfmgr_install_nvram"
+printf '#!/bin/sh\nprintf "1\\n"\n' > "$cfmgr_install_nvram"
 chmod 755 "$cfmgr_install_nvram"
-exec 0<"$cfmgr_install_context" 8<"$fixture/jffs" 9<"$installer_package"
+exec 0< "$cfmgr_install_context" 8< "$fixture/jffs" 9< "$installer_package"
 if [ -n "${dependency_retained_fixture:-}" ]; then
 	cfmgr_test_cost_installer=0
 	# Fixed Python-admitted fixture extension, no production environment override.

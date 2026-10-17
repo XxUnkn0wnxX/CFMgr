@@ -20,17 +20,307 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a143d6-a984-7c11-923a-4c30a037c5f5
 Seventh ID verified 2026-10-16 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a14803-6b23-7b22-b261-581bee5dfce5
+Eighth ID verified 2026-10-17 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active — consolidation verified locally; complete manual archive integration
+
+The user started the recorded manual archive-creation package on 2026-10-17,
+then explicitly rejected its excessive helper-file fragmentation: backup should
+be one module, config one module, and networking/DDNS similarly grouped by real
+responsibility. The user authorized a grouping plan/guide and emphasized that
+consolidation must remain a focus: modular code does not mean one function per
+script. The structural correction and its focused host gate are now complete.
+
+The parent-created private guide is `.tmp/module-layout.md`. It maps current and
+future owners, migration checks and recovery. Existing V2 S02.01 already requires
+this grouping; the implementation drifted from that requirement. Product scope,
+acceptance rules and counts remain unchanged. Route B, S14.01 and S14.04–S14.08,
+remains the original package; resume its unfinished integration in consolidated
+owners after the structural correction.
+
+### Current ownership and integration boundary
+
+Parent owns the five V2 records, module-layout guide, architectural/trust decisions,
+integration and final review. All old archive implementation workers were
+interrupted before preservation. `module_consolidation` completed the nine-owner
+migration and returned runtime ownership; its tests are terminal. Parent and
+independent reviewers checked preservation, candidate-code admission and worker/
+cleanup boundaries. Do not restart old fragmented file assignments. Further
+manual-archive work must extend these owners and the frozen parser/worker
+interfaces; no replacement per-helper libraries or forwarding files.
+
+The runtime tree now contains nine implementation files: backup/manager/status,
+five shared categories (config/storage/execution/network/package), and one fixed
+worker. Forty-three superseded shell/parser files have been removed after
+preservation and consumer mapping. Parent found all 423 prior named shell
+functions in the new owners, without duplicates, and verified all 17 parser
+bodies against the snapshot apart from comments and the agreed equivalent
+apostrophe encoding. These are preservation checks, not runtime acceptance.
+
+Independent `consolidation_review` completed a read-only trust/worker review:
+no blocking candidate-code execution or worker-lifetime regression found in its
+traced scope. It requested exact physical-owner enforcement for extracted parser
+blocks. Parent additionally requested preservation of syntax checking for any
+standalone passive-extension AWK files and removal of duplicate imports/protection
+checks introduced by path merging. These corrections are implemented. A second
+read-only review found missing explicit storage imports in Linux-only fixtures
+and their early-failure cleanup path; the implementation owner also caught a
+mechanical substitution in the production storage category-file admission check.
+The regressions are repaired: actual regular-file/nonsymlink checks run before
+storage observation, and inert storage imports precede Linux fixture cleanup
+traps. Focused admission tests and read-only import review passed. This does not
+award a pass for unrun platform gates or unfinished archive behavior.
+
+Optional full extended ShellCheck analysis was stopped after roughly three
+minutes at about 8 GB RSS. Do not repeat that host load or count its empty log as
+a pass. Explicitly limited whole-module lint uses `--extended-analysis=false`;
+required shell syntax/format/runtime gates remain unchanged. The separate
+[review note](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies)
+records this limitation; no runner/workflow defaults were changed.
+
+The existing `develop` checkout remains based on `591112d`; inherited handoff
+work and substantial uncommitted runtime/test edits are preserved. No push, CI
+dispatch, router action, dependency installation or native product build has run.
+Existing focused storage tests compiled their small host errno fixtures in owned
+pytest temporary directories; this is not a BusyBox/kernel/router build.
+Publication and remote CI dispatch are not authorized by the current instruction.
+
+A complete pre-consolidation snapshot was verified at
+`.tmp/module-layout-recovery-20261017T053357Z/`: **257 entries, 5,961,808 file bytes**,
+with file hashes/modes and symlink targets verified. It includes the Git index,
+staged/unstaged patches and verified all-refs bundle, plus needed ignored
+`.tmp/archive-creation/` and reference-path evidence. Its `RESTORE.md` describes
+selective restoration through `files/` and `inventory.json`. Preserve the original
+firmware/source evidence; it is not a removal target. No old archive test process
+remained at the preservation checkpoint.
+
+### Consolidation gate on the dirty `591112d` baseline
+
+All affected host groups completed with explicit Linux/native skips; no full local
+suite or remote gate was run. Exact module commands, disjoint node receipts,
+superseded failures and timings are in `.tmp/consolidation-validation.md` and its
+named logs/JSON selections. Counts below overlap; do not add them as unique tests.
+
+| Focused coverage | Result and measured pytest wall time |
+| --- | --- |
+| Mount/config/schema/archive-format/control parsers | 171 passed, 42.67s. |
+| Defaults and Store | 8 passed, 1.96s; Store 18 passed / 4 Linux skips in the recorded settings group. |
+| Status, destination, manager settings and entry menus | Complete disjoint 86 nodes: 84 passed / 2 Linux skips. |
+| Package, acquisition and entry trust | 32 passed / 1 skip, 11.52s; final acquisition/storage/tool group also passed. |
+| Install, remote acquisition/install, retained launch and reporting | 63 passed / 11 Linux skips, 136.89s. |
+| Execution, dependency consumers, keeper and storage | 132 passed / 57 platform skips, 12.03s; final native module 23 passed / 1 skip, 36.44s. |
+| Complete dependency-reinstall consumer | 78 passed / 2 Linux skips, 99.95s. |
+| Developer/platform/router-probe/acquisition/storage regressions | 131 passed / 11 platform skips, 5.49s, including missing/symlinked storage-category refusal before observation. |
+| Archive config/history parser and adapter | Complete 47 passed; production history callbacks remain WIP. |
+| Payload/YAML/native-tool fixtures | 55 passed / 1 native skip, 3.06s. |
+| Archive I/O and verifier | Complete disjoint receipts; remaining 13 verifier nodes passed in 68.17s. |
+| Payload semantics | All 3 passed; full positive case passed isolated in 41.32s at its unchanged 65s tolerance. |
+| Archive Store/menu | 27 passed / 3 Linux skips, 30.03s. |
+| Complete capture | All 15 passed: populated 1/88.00s, absence/snapshot 8/54.29s, certificate/history 6/83.96s. |
+
+Shell syntax, shfmt, Ruff lint/format, Python compilation, planning/link/privacy
+and whitespace checks passed. Limited whole-runtime ShellCheck passed in 32.15s;
+the final storage predicate received its affected-file recheck. A loaded semantic
+run timed out; its isolated unchanged retry supplies the pass. The pre-layout
+comparison failed before reaching semantic work and supplies no equivalence or
+timing baseline. Avoid overlapping heavy lint with these host archive groups.
+The recovery inventory was reverified after that comparison: all 257 entries and
+5,961,808 file bytes still match. Native argv/FD/keeper/mount/process proof remains
+pending its authorized CI gate. Product counts are unchanged.
+
+Next within the original S14.01/S14.04–S14.08 package: finish production history
+callbacks and positive Cloud logger admission, then the actual create controller,
+publication/retention and entry consumer. The approved narrower implementation
+observes relevant owned append-loggers instead of a whole-system FD census;
+unknown before history admission remains unavailable, and changes after admission
+fail capture. Keep both writer/rotation exclusion and double-prefix/hash/identity
+checks. Cron admission still needs a precise native-file boundary: retained source
+does not prove `/var` is a symlink, sets `/tmp` to nonsticky 0777, and does not fix
+the crontab file mode. Do not relax generic path protection based on that source
+alone. Details and concrete remaining defects are in
+`.tmp/archive-creation/integration-remaining.md`.
+
+Completed focused results below describe pre-consolidation dirty code, not the
+new layout or an integrated manual-create action. Reuse unchanged behavior
+knowledge, but rerun affected consumers after relocation:
+
+- Store archive preferences/history: **49 passed / 7 Linux skips**, 95.41s wall /
+  82.04s CPU. Config lock identity and JSON FD9 native proof remains pending.
+- Archive I/O: **12 passed / 5 Linux skips**, 3.08s wall; I/O plus prerequisites
+  **32 passed / 13 skips**, 5.29s wall. Disk inode checks now use supervised
+  boundaries. OpenSSL flattened certificate decoding uses `-A`.
+- Verifier groups: normal/raw/cleanup **7 passed**, 60.70s; metadata/hash
+  **11 passed**, 40.83s; callbacks **4 passed**, 65.97s. Raw-header parser:
+  **38 passed**, 0.99s. Native execution remains pending.
+- Payload semantic group: **16 passed**, 28.50s wall; YAML subset **42 passed**,
+  1.76s. Required YAML uses override optional certificate association. A later
+  Cloud writer authority row is not yet revalidated.
+- History adapter: **18 passed**, 57.23s wall before later runtime/accounting
+  edits. Production history callbacks and cumulative accounting are unfinished;
+  that earlier receipt does not cover them.
+- Archive menu journeys **14 passed**, 0.46s; destination journeys **8 passed**,
+  54.61s. Runtime create controller remains unverified.
+- Filename/retention control **18 passed**, 0.57s. Native fixture changes:
+  **40 passed / 1 vendor-only skip**, 0.99s; no local native build.
+
+Unfinished work preserved in the snapshot and checkout includes populated
+capture integration, production history callbacks, Cloud live-writer admission,
+transaction/controller, publication/retention failures and actual entry imports.
+Do not discard these paths, call them complete, or award product credit. Source
+and agreed safety findings remain in `.tmp/archive-creation/` and
+[the audit companion](PLAN_V2_audit.md#s1401-s1404s1408-archive-foundation-review).
+The read-only interrupted-worker checkpoint, including concrete remaining
+history-runtime defects and missing writer hooks, is recorded in
+`.tmp/archive-creation/integration-remaining.md`. Old history/capture results
+predate their final partial edits; the interrupted capture group supplied no
+terminal result and is not a pass.
+
+Workers cannot edit V2 records, publish, operate the router or expand scope.
+Prepare the complete locally reviewed candidate before requesting publication
+permission. Stop after the original package's cleared checkpoint. No full local
+suite is due at this subgoal/shared-library package.
+
+### Verified restart state
+
+- Use the existing `develop` checkout. HEAD and remote `develop` were verified at
+  **`591112d7062a0e50b54020eca3581ad9de836008`**, the S03.02 documentation receipt.
+  The prior scope-selection session left only a handoff edit. Current package
+  implementation is uncommitted on that baseline; preserve all owned changes.
+- Accepted runtime/test candidate is
+  **`2dec8a623dba36a4e4718e69b6881918120e2a13`**. The exact-SHA
+  [core run 38900418249](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38900418249)
+  was rechecked as completed/success during scope selection. Its full receipts
+  and test-cost review remain in the S03.02 section below; do not rerun them merely
+  to resume. That evidence describes the accepted baseline, not the current
+  uncommitted archive implementation.
+- Progress remains **15/157 accepted (9.6%)**, **0/16 main goals complete (0%)**;
+  142 subgoals remain unaccepted. Goal 14 is **1/11 accepted (9.1%)**, S14.02 only.
+- Read-only `next_input_scope` and Astra `next_scope_design` selection reviews
+  completed in the prior session. Current source/design owners are listed above;
+  focused host tests have run as recorded above; no required CI job has started.
+- Preserve the complete verified parent-session ledger above. The current parent
+  is its eighth recorded session; do not append a child ID or duplicate
+  entry. Preserve ignored `.tmp/s0302/` evidence, `.tmp/reference-paths.md` and
+  retained firmware/source evidence. Revalidate cached provenance before reuse.
+
+### Selected next route and complete outcome
+
+**Route B: one coherent manual archive-creation package**, reusing accepted
+S14.02. From existing menu `4`, create a private, verified CFMgr-only data archive
+on the explicitly selected mounted drive, with correct naming and safe retention.
+The contract is [Goal 14](PLAN_V2.md#14-backup-and-restore); the following six
+existing IDs remain unchecked until their complete behavior and gates pass.
+
+| ID | Required contribution to this package |
+| --- | --- |
+| S14.01 | Native unencrypted data-only `.tar.gz`, credential/privacy notice and best-effort private modes; manual operation only. |
+| S14.04 | Router-local date naming, explicit format choice where needed, same-day suffix/collision protection and manifest chronology. |
+| S14.05 | Retain 3–5 recognized completed same-set archives; prune only after verified new publication, reporting purge failure separately. |
+| S14.06 | Coherent complete allowlist of owned config/catalog, typed authority, drafts, full YAML/JSON, certificate copies, owned `.bak`, preferences and eligible history. |
+| S14.07 | Required-data omissions fail honestly; optional certificate/binary absence and external YAML dependencies are accounted for correctly. |
+| S14.08 | Consistent bounded snapshot/rotation coordination, private staging on the backup filesystem, payload/hash verification, mount recheck and atomic publication. |
+
+Parent and independent Astra selection review agree this is the smallest complete
+next outcome substantiated against current consumers. This is scope selection,
+not approval of an unverified archive implementation design. A tar helper or
+config-only backup cannot close the package. It may use multiple commits,
+focused-test stages and sessions; intermediate work stays WIP. Six accepted IDs
+would yield **21/157 (13.4%)** overall and **7/11 (63.6%)** in Goal 14, with
+**0/16 main goals**; these are conditional totals, not present credit.
+
+Route A did not produce a demonstrated smaller complete remaining subgoal:
+S04.06 needs a real masked credential/name-input consumer; S03.08 needs production
+feature history writers; S03.10 includes the absent full-health page; S13.13 needs
+eligible feature-file delivery as well as current syslog reporting. S06.07's
+complete maintenance consumer pulls readiness, ownership/version policy, updater
+eligibility and configured-On replacement/recovery. Do not substitute unused
+helpers or restrict those contracts to manufacture an independent checkbox.
+
+### Dependencies, boundaries and first actions
+
+Available foundations are S03.02 typed configuration, S04.02/S04.03 scoped durable
+Save, S14.02 mounted-drive selection, and S02.08 storage identity/guarding with the
+existing bounded execution machinery. The real integration point is
+`modules/backup.sh` through the installed menu, supported by
+`modules/lib/config_store.sh`, `modules/lib/storage.sh` and existing native probes.
+Shared parsing/ownership/bounds work overlaps S04.01/S04.08/S04.09 and logging
+snapshot coordination; those entire subgoals are not automatically prerequisites
+or extra acceptance credit. Trace actual writers and lock ownership before reuse.
+
+1. Recheck checkout/diff, active agents and current AGENTS/plan/checklist/audit.
+   Resolve the still-unverified native tar/gzip interfaces and practical limits
+   from retained, hash-verified firmware/source evidence. Follow the required
+   official Merlin guidance for affected storage design. Determine supported
+   YAML external-reference handling and coherent eligible Scribe log/rotation
+   snapshot coordination. No provider call is needed merely to archive data.
+2. Freeze the archive/manifest layout, payload ownership/required-data rules,
+   chronology/set identity, lock order, bounds and source-change/cleanup behavior.
+   Preserve approved field meanings and explicitly choose unselected settings;
+   proposed defaults do not become silently approved defaults. Obtain an
+   independent design audit for these data-integrity decisions before dependent
+   implementation. Material scope/behavior changes still need user approval.
+3. Implement the complete engine and actual menu action, then integrate date/
+   retention selection and truthful outcomes. Record exclusive owners and a
+   concrete affected-test map here before delegating. Shared interfaces settle
+   before dependent work; no overlapping writers. Complete the package before
+   switching targets, then clear its gates and automatically pause.
+
+Outside this checkpoint: S14.03 archive browsing/inspect/restore/deletion UI,
+S14.09–S14.11 restore/reconstruction/activation, feature setup, connector lifecycle
+and provider mutations. Verification needed to publish the new archive is in
+scope; it awards no restore credit. Never archive code, binaries, live guards,
+locks/queues, whole syslog, foreign data or the backup tree itself. Gzip remains
+**backup-only**; owned live logs/rotations remain uncompressed. A missing required
+payload cannot be silently omitted. Cancellation or prepublication failure must
+preserve old archives; automatic retention only follows verified publication.
+
+### Validation, cost and stopping boundary
+
+Use focused local checks during implementation and repairs. Before acceptance,
+complete every affected group and applicable static/package/planning checks;
+reuse adequate local-only proof and use focused Quick groups for required Linux/
+vendor BusyBox proof unavailable locally. Name the actual modules/selections and
+record command, tested tree/SHA, results, platform skips and wall/CPU cost here.
+Aim for roughly two-minute focused groups, splitting/optimizing unexpectedly slow
+ones within the practical three-to-four-minute range while preserving core proof.
+
+Prove the real menu-to-archive path for native-only and realistically populated
+data, required YAML/authority, optional missing certificate/binary, owned `.bak`
+and eligible history. Focus failure proof on required-data omission, unsafe or
+substituted paths, source mutation, corrupt archive/hash, cancellation, mount loss,
+full/I/O-failed storage, naming collision and pruning failure. Use actual archive
+tools and verifier behavior; avoid multiplying every input across expensive
+full integrations. Start from existing `test_backup_menu.py`,
+`test_backup_storage.py`, Store/schema and package/native tests, adding the
+necessary archive behavior tests; the final affected selection awaits design.
+
+Review measured test cost and apply small evidence-backed optimizations before
+the checkpoint. **Full core CI runs last at the exact final candidate**, after
+implementation/review and all applicable focused groups pass. Cancel premature
+owned automatic core runs while diagnosis is pending; preserve triggers and all
+required gates. **No full local suite is due** for this package because Goal 14
+will remain incomplete. Publication follows AGENTS and actual user authorization;
+historical push receipts grant no new publication permission. Update only justified
+checklist/README evidence, finish the handoff and **pause after the cleared
+checkpoint with no required job/worker active**.
+
+Estimated active work discussed with the user: **6–10 hours**, with **10–14 hours**
+possible if YAML references, rotation coordination or native archive tooling need
+substantial work; plan for two sessions. This is an initial planning estimate,
+not measured progress or a completion promise. Reassess after the source/design
+checks. Multiple sessions do not imply intermediate acceptance of partial work.
+
 ## S03.02 — accepted configuration foundation; paused
 
-The user reconfirmed that **this is the last checkpoint for this work session**.
-The exact-candidate core gate passed and this documentation receipt records
-acceptance. **Paused: start no next target without a new instruction.** This
-confirms the standing automatic checkpoint pause; later approved product goals
-remain open.
+This completed checkpoint was the user's last implementation checkpoint for the
+session. Its exact-candidate core gate and documentation receipt passed, then work
+paused. The later scope-selection/new-session handoff above supersedes only the
+next-target notes; this accepted evidence and the automatic pause rule remain.
 
 The user approved starting the recommended **S03.02** foundation package with
 “ok start” after the accepted S04.02 checkpoint. Route A selects this one complete
@@ -220,8 +510,8 @@ focused-local → affected Quick → final core → pause gate.
 Safe resume: the complete runtime/test candidate is published and accepted; all
 focused local, Quick and final core gates passed. This receipt records the
 completed checkpoint; the design record remains ignored local recovery data.
-The user requested a pause here. No next target has been selected or started;
-resume only on a new user instruction. Preserve the exact tested code SHA and
+The user requested a pause here. Subsequent selection recorded the next-session
+archive package above; it has not started. Preserve the exact tested code SHA and
 the separate documentation receipt when checking repository state.
 
 Real consumers are fresh installation, retained-launch admission and storage

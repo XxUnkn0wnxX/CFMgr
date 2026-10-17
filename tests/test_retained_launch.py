@@ -61,9 +61,9 @@ def retained_config(tools: dict[str, str], shell: list[str]) -> bytes:
 
 
 HOST_LAUNCH = r"""
-. "$1/modules/lib/prerequisites.sh"
-. "$1/modules/helpers/bootstrap.sh"
-. "$1/modules/helpers/launch.sh"
+. "$1/modules/lib/execution.sh"
+. "$1/modules/lib/package.sh"
+. "$1/modules/lib/package.sh"
 # Native lock/supervisor proof is in test_config_store; old host transaction
 # fixtures adapt firmware lock admission along with their mount admission.
 shift
@@ -269,7 +269,7 @@ def test_source_inert(shell: list[str], tmp_path: Path) -> None:
     sources = (
         sorted((ROOT / "modules/lib").glob("*.sh"))
         + sorted((ROOT / "modules").glob("*.sh"))
-        + [ROOT / "modules/helpers/launch.sh", ROOT / "modules/helpers/bootstrap.sh"]
+        + [ROOT / "modules/lib/package.sh", ROOT / "modules/lib/package.sh"]
     )
     result = subprocess.run(
         [

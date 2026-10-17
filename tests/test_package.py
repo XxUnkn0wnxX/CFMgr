@@ -79,7 +79,7 @@ def source_tree(root: Path) -> dict[str, tuple[bytes, int]]:
     files = {
         "cfmgr.sh": (b"#!/bin/sh\nCFMGR_VERSION=0.1.0\n", 0o755),
         "catalog.txt": (b"stale placeholder\n", 0o644),
-        "modules/helpers/bootstrap.sh": (b"#!/bin/sh\n", 0o755),
+        "modules/helpers/worker.sh": (b"#!/bin/sh\n", 0o755),
         "modules/lib/config.sh": (b"config='passive'\n", 0o644),
         "modules/data/schema.json": (b"{}\n", 0o644),
     }
@@ -105,7 +105,7 @@ def expected_catalog() -> bytes:
     return (
         b"CFMGR-CATALOG 1 0.1.0\n"
         b"modules/data/schema.json\tdata\n"
-        b"modules/helpers/bootstrap.sh\thelper\n"
+        b"modules/helpers/worker.sh\thelper\n"
         b"modules/lib/config.sh\tlibrary\n"
     )
 

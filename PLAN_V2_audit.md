@@ -8,6 +8,79 @@ The checklist remains authoritative for acceptance; the handoff owns current wor
 permissions, jobs, next actions and session lineage. Deferred risks remain in the
 review notes. This record creates no requirements, product credit or permissions.
 
+## S02.01, S14.01, S14.04–S14.08 module fragmentation correction
+
+On 2026-10-17 the user rejected the archive implementation's many separate shell
+and AWK helper files and required category-level consolidation: backup in one
+module, config in one module, with networking/DDNS and other responsibilities
+similarly grouped. The parent agrees this was implementation drift: the existing
+S02.01 package-layout contract already says not to create one library per helper.
+The correction preserves functions, parsers, behavior and safety contracts while
+moving them into a small set of owning categories. It does not remove required
+features, lower acceptance gates or award progress.
+
+All affected writers were stopped and a complete verified recovery snapshot was
+made before replacement. Current location/restore details, ownership and migration
+state belong in the handoff; the requested private category guide is
+`.tmp/module-layout.md`. The local structural correction is complete: 48 runtime/
+parser files became nine owners, with all 423 prior named functions and 17 AWK
+programs preserved. Parsers are fixed literal data inside their owners; candidate
+validation extracts them as data without sourcing candidate code. Independent
+review required exact physical-owner enforcement and preservation of passive
+extension syntax admission; both are implemented and focused-tested.
+
+Final review also caught and repaired a mechanically altered storage-file
+admission predicate and missing storage imports in Linux fixture/early-cleanup
+paths. File/symlink refusal is tested before observation; source review confirms
+cleanup imports precede traps. Fixed worker/descriptor and copied cleanup-code
+contracts were retained. Complete affected host groups and static gates passed,
+with explicit platform skips and limited ShellCheck analysis recorded in the
+handoff and `.tmp/consolidation-validation.md`. This is local refactor proof, not
+native CI acceptance or completion of the unfinished manual archive consumer.
+
+## S14.01, S14.04–S14.08 archive foundation review
+
+Independent Astra source review of the uncommitted archive foundation returned
+**REVISE**. Parent accepted the corrections below without changing product scope
+or acceptance. These findings concern the actual native execution and payload
+contracts; partial foundation proof does not establish the manual-create consumer.
+
+- The native tar reader can allocate GNU long-name input before listing. Parent
+  and reviewer agreed that retained raw headers must pass the bounded fixed-format
+  parser before native tar sees them. The parser checks raw type, short flat name,
+  checksum, exact offsets and two zero blocks. Parent review also corrected a
+  final-prefix-byte omission and tests whose small size bounds masked rejection.
+  Focused raw-parser proof passed 38 tests in 0.99s wall; native execution is pending.
+- YAML dependency deduplication originally treated every reference to the selected
+  certificate path as optional management data. Required CA uses now upgrade the
+  pending capture row regardless of `origincert` ordering. Tests cover both live
+  and recovery paths and reject a missing required member. The complete semantic
+  group passed 16 tests in 28.50s wall, including actual host archive verification
+  with coherent config/YAML/runtime-JSON/PEM authority.
+- Disk inode lookups inside the archive attachment callback escaped the command
+  supervisor deadline. Parent and reviewer agreed to fixed supervised identity
+  checks at operation admission/completion and guarded cleanup, retaining existing
+  mount/source checks and child directory anchoring. Unknown identity grants no
+  cleanup or publication authority. Correction and focused proof are in progress;
+  this does not promise recovery from an uninterruptible kernel filesystem call.
+- Flattened PEM token bodies require OpenSSL base64 decoding with `-A`; the old
+  helper could refuse valid bodies longer than 1024 characters. The production
+  correction and actual-helper regression are in progress. Original certificate
+  digests and decoded account association remain mandatory.
+- The initial full-verifier fixture contradicted its own certificate digest and
+  required ownership rows. The corrected compact fixture has coherent authority,
+  scope-relative optional-certificate notes and an explicit JSON-child FD9 lock
+  contract. Separate full owned-draft, backup-YAML, input and history capture proof
+  remains due; fixing the compact fixture does not waive those consumers.
+
+Source review found the archived-config authority, typed JSON/certificate joins,
+required inventory checks and ordinary before/copy/after snapshot design coherent.
+The history adapter's host group passed 18 tests in 57.23s wall; actual production
+supervisor/process/cron integration is still required. Native `find` lacks the
+needed depth controls; the supported one-level `ls` fallback requires a child
+memory limit because it allocates entries before emitting output. Host parser
+proof, source/image inspection and future native CI remain distinct evidence.
+
 ## Migration provenance
 
 At the user's request on 2026-10-16, historical audit and source-review passages

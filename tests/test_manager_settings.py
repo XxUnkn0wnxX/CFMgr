@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULE = ROOT / "modules/manager_settings.sh"
+MODULE = ROOT / "modules/manager.sh"
 
 
 @pytest.fixture(scope="module")

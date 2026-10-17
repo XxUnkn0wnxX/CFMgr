@@ -17,7 +17,7 @@ from test_storage import legacy_fsync as storage_fsync
 from test_storage import shell as storage_shell
 
 ROOT = Path(__file__).resolve().parents[1]
-BOOTSTRAP = ROOT / "modules/helpers/bootstrap.sh"
+BOOTSTRAP = ROOT / "modules/lib/package.sh"
 # Share the immutable native fsync fixture and selected shell contract.
 shell = storage_shell
 legacy_fsync = storage_fsync
@@ -487,8 +487,8 @@ def test_linux_controller_signal_reaps_active_copy_and_stops_publication(
     (context / "records").write_text("one record\n")
     marker = tmp_path / "unexpected publication"
     script = r"""
-. "$1/modules/lib/prerequisites.sh"
-. "$1/modules/helpers/bootstrap.sh"
+. "$1/modules/lib/execution.sh"
+. "$1/modules/lib/package.sh"
 cfmgr_install_source=$1 cfmgr_install_context=$2 cfmgr_install_sh=$3
 cfmgr_install_env=$4 cfmgr_install_awk=$5 cfmgr_install_sleep=$6 cfmgr_install_wc=$7
 cfmgr_install_cp=$8
@@ -510,8 +510,8 @@ while IFS= read -r record; do
 done <"$cfmgr_install_context/records"
 """
     script = script.replace(
-        '. "$1/modules/helpers/bootstrap.sh"\n',
-        '. "$1/modules/helpers/bootstrap.sh"\n' + pause_definition(shell) + "\n",
+        '. "$1/modules/lib/package.sh"\n',
+        '. "$1/modules/lib/package.sh"\n' + pause_definition(shell) + "\n",
         1,
     )
     arguments = [

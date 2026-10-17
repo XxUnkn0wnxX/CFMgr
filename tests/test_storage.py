@@ -605,3 +605,51 @@ def test_linux_probe_cleanup_and_identity(
         assert result.stderr == b""
     if scenario in ("clean", "new-parent"):
         assert b"staged rename/readback passed" in result.stdout
+
+
+def test_pin_rejects_unadmitted_category_before_observing_storage(shell, tmp_path):
+    category = tmp_path / "category.sh"
+    category.write_text("# inert fixture category\n")
+    link = tmp_path / "linked.sh"
+    link.symlink_to(category)
+    trace = tmp_path / "observed"
+    tool = shutil.which("awk")
+    readlink = shutil.which("readlink")
+    assert tool and readlink
+    script = r"""
+. "$1"
+cfmgr_test_trace=$6
+_cfmgr_storage_canonical() { : >"$cfmgr_test_trace"; return 1; }
+if cfmgr_storage_pin /opt "$2" "$3" "$4" /proc/self; then code=0; else code=$?; fi
+printf "%s\n" "$code"
+"""
+    # The category guard must stop missing/symlink source before even native
+    # attachment observation; a regular source is the positive control.
+    for source, expected, observed in (
+        (tmp_path / "missing.sh", 2, False),
+        (link, 2, False),
+        (category, 1, True),
+    ):
+        result = subprocess.run(
+            [
+                *shell,
+                "-c",
+                script,
+                "category-admission",
+                str(ROOT / "modules/lib/storage.sh"),
+                readlink,
+                tool,
+                str(source),
+                "reserved",
+                str(trace),
+            ],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            f"{expected}\n".encode(),
+            b"",
+        )
+        assert trace.exists() == observed

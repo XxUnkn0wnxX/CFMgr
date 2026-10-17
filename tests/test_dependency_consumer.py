@@ -15,7 +15,7 @@ import pytest
 from test_storage import shell as storage_shell
 
 ROOT = Path(__file__).resolve().parents[1]
-BOOTSTRAP = ROOT / "modules/helpers/bootstrap.sh"
+BOOTSTRAP = ROOT / "modules/lib/package.sh"
 shell = storage_shell
 
 
@@ -311,7 +311,7 @@ exit 0
 
 
 DEPENDENCY_BATCH_CLEANUP = r"""
-. "$CFMGR_TEST_ROOT/modules/helpers/bootstrap.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/package.sh"
 cfmgr_dependencies_context=$1 cfmgr_install_context=$2 cfmgr_test_log=$3
 cfmgr_dependencies_phase=cleanup cfmgr_view_state=released cfmgr_keeper_state=released cfmgr_tasks_state=quiescent
 cfmgr_dependencies_state=retained cfmgr_install_private_context=$cfmgr_dependencies_context
@@ -383,10 +383,10 @@ exit 0
 
 
 LINUX_REPAIR_CONTROLLER = r"""
-. "$CFMGR_TEST_ROOT/modules/lib/execution_tasks.sh"
-. "$CFMGR_TEST_ROOT/modules/lib/prerequisites.sh"
-. "$CFMGR_TEST_ROOT/modules/lib/dependencies.sh"
-. "$CFMGR_TEST_ROOT/modules/helpers/bootstrap.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/package.sh"
 cfmgr_test_parent=$1 cfmgr_test_source=$2 cfmgr_test_marker=$3 cfmgr_test_role=$4
 cfmgr_install_source=$cfmgr_test_source
 cfmgr_install_context=$cfmgr_test_parent/ram-$cfmgr_test_role
@@ -487,10 +487,10 @@ exit 0
 
 
 LINUX_WAIT_STALE = r"""
-. "$CFMGR_TEST_ROOT/modules/lib/execution_tasks.sh"
-. "$CFMGR_TEST_ROOT/modules/lib/prerequisites.sh"
-. "$CFMGR_TEST_ROOT/modules/lib/dependencies.sh"
-. "$CFMGR_TEST_ROOT/modules/helpers/bootstrap.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/package.sh"
 cfmgr_dependencies_context=$1 cfmgr_dependencies_usleep=/bin/sleep
 cfmgr_dependencies_wc=/usr/bin/wc
 case $CFMGR_TEST_UID in '' | *[!0-9]*) exit 81 ;; esac
@@ -513,7 +513,7 @@ exit 0
 
 
 PORTABLE_WAIT_DISAPPEARANCE = r"""
-. "$CFMGR_TEST_ROOT/modules/lib/dependencies.sh"
+. "$CFMGR_TEST_ROOT/modules/lib/execution.sh"
 cfmgr_dependencies_context=$1 cfmgr_dependencies_usleep=cfmgr_test_usleep cfmgr_dependencies_wc=$2
 cfmgr_test_mode=$3
 cfmgr_test_now=100
@@ -643,7 +643,7 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
             **os.environ,
             "LC_ALL": "C",
             "CFMGR_TEST_ROOT": str(ROOT),
-            "CFMGR_TEST_PROBE": str(ROOT / "modules/helpers/probe.sh"),
+            "CFMGR_TEST_PROBE": str(ROOT / "modules/helpers/worker.sh"),
             "CFMGR_TEST_PROBE_RUNNER": str(probe_runner),
         },
         check=False,
@@ -685,7 +685,7 @@ def test_dependency_cleanup_batches_only_prechecked_owned_tree(
 def test_repair_remove_enforces_operand_and_pathname_byte_bounds(
     shell: list[str], tmp_path: Path
 ) -> None:
-    probe = ROOT / "modules/helpers/probe.sh"
+    probe = ROOT / "modules/helpers/worker.sh"
 
     def fixed_byte_paths(directory: Path, aggregate: int) -> list[Path]:
         directory.mkdir(mode=0o700)
