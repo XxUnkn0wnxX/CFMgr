@@ -23,7 +23,6 @@ def run_archive_menu(
 ) -> subprocess.CompletedProcess:
     log = tmp_path / "archive-actions.log"
     script = f". {shlex.quote(str(ROOT / 'modules/backup.sh'))}\n"
-    script += f". {shlex.quote(str(ROOT / 'modules/backup.sh'))}\n"
     script += r"""
 cfmgr_backup_action() {
     printf '%s\n' 'CFMGR-BACKUP 1 list 1 0 none 0 END'
@@ -80,6 +79,15 @@ cfmgr_archive_action() {
             fi
             return 1
             ;;
+        bad-unresolved:read)
+            printf '%s\n' 'CFMGR-ARCHIVE-ACTION 1 read 8 0 MDY 4 1 - none none END'
+            return 0
+            ;;
+        bad-unresolved:create)
+            # A valid-looking private name must not leak from a rejected frame.
+            printf '%s\n' 'CFMGR-ARCHIVE-ACTION 1 unresolved 9 1 MDY 4 1 43466261636b75702d313939392e7461722e677a unresolved private END'
+            return 3
+            ;;
         malformed:read)
             printf '%s\n' 'CFMGR-ARCHIVE-ACTION 1 read 1 0 MDY 4 1 - none none END'
             return 0
@@ -119,6 +127,8 @@ cfmgr_backup_menu
         },
     )
     result.action_log = log.read_text().splitlines() if log.exists() else []
+    if scenario not in {"malformed", "generic-name", "bad-unresolved"}:
+        assert b"invalid archive backend result" not in result.stderr
     return result
 
 
@@ -256,3 +266,14 @@ def test_archive_frame_rejects_generic_tar_basename(shell, tmp_path):
     assert result.returncode == 0, result.stderr
     assert b"invalid archive backend result" in result.stderr
     assert b"foo.tar.gz" not in result.stdout
+
+
+def test_bad_unresolved_frame_clears_private_name_and_stops_menu(shell, tmp_path):
+    result = run_archive_menu(shell, tmp_path, "bad-unresolved", b"2\ny\n2\ny\ne\n")
+    assert result.returncode == 0, result.stderr
+    assert b"invalid archive backend result" in result.stderr
+    assert result.stdout.count(b"Backup / Restore: manual archive") == 1
+    assert b"CFbackup-1999" not in result.stdout + result.stderr
+    assert b"Published archive name" not in result.stdout
+    assert b"Archive created" not in result.stdout
+    assert result.action_log == ["read", "create"]

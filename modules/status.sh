@@ -47,7 +47,7 @@ cfmgr_status_prepare() {
 	# Root-owned RAM and fixed native tools only; Entware is never executed.
 	[ -d /tmp ] && [ ! -L /tmp ] && [ "$(/usr/bin/readlink -f /tmp)" = /tmp ] || return 1
 	cfmgr_status_mount=$(cfmgr_storage_mountinfo /usr/bin/awk /tmp /proc/self/mountinfo) || return 1
-	IFS='	' read -r cfmgr_status_id cfmgr_status_parent cfmgr_status_device cfmgr_status_root cfmgr_status_point cfmgr_status_type cfmgr_status_rest << EOF_MOUNT
+	IFS='	' read -r cfmgr_status_id cfmgr_status_parent cfmgr_status_device cfmgr_status_root cfmgr_status_point cfmgr_status_type cfmgr_status_rest <<EOF_MOUNT
 $cfmgr_status_mount
 EOF_MOUNT
 	case $cfmgr_status_type in tmpfs | ramfs | rootfs) ;; *) return 1 ;; esac
@@ -55,7 +55,7 @@ EOF_MOUNT
 	cfmgr_status_context=/tmp/cfmgr-status.$$.$cfmgr_identity_start
 	umask 077
 	/bin/mkdir -m 700 "$cfmgr_status_context" || return 1
-	exec 9< "$cfmgr_status_context" || return 1
+	exec 9<"$cfmgr_status_context" || return 1
 	cfmgr_status_interrupted=0 cfmgr_probe_pid='' cfmgr_status_budget_exhausted=0
 	cfmgr_prerequisites_now || return 1
 	cfmgr_status_deadline=$((cfmgr_probe_now + 10))
@@ -66,7 +66,7 @@ cfmgr_status_native() (
 	for cfmgr_status_path in "$cfmgr_source/modules/helpers/worker.sh" "$cfmgr_source/modules/lib/config.sh" \
 		"$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/storage.sh"; do
 		if [ ! -f "$cfmgr_status_path" ] || [ -L "$cfmgr_status_path" ] ||
-			! /usr/bin/awk 'NR!=1 || $3!=0 || $1!~/^-/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad }' << EOF_STATUS_METADATA; then
+			! /usr/bin/awk 'NR!=1 || $3!=0 || $1!~/^-/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad }' <<EOF_STATUS_METADATA; then
 $(/bin/ls -ldn "$cfmgr_status_path")
 EOF_STATUS_METADATA
 			printf '[CFMGR] status: warning: required native reporting module unavailable\n'
@@ -96,7 +96,7 @@ cfmgr_status_work() {
 	# Each independent failure retains the remaining native/local report.
 	cfmgr_status_now=0 cfmgr_status_boot=unknown cfmgr_status_wan=auto cfmgr_status_clock=0
 	if cfmgr_status_run status-date /bin/date; then
-		IFS= read -r cfmgr_status_now < "$cfmgr_probe_stdout"
+		IFS= read -r cfmgr_status_now <"$cfmgr_probe_stdout"
 		case $cfmgr_status_now in '' | *[!0-9]* | 0*) cfmgr_status_now=0 ;; esac
 	elif [ "$?" = 3 ]; then return 3; fi
 	if cfmgr_status_run status-native /usr/bin/awk "$cfmgr_source/modules/status.sh" /proc; then
@@ -104,10 +104,10 @@ cfmgr_status_work() {
 		# Typed receipts contain only allowlisted native resource fields.
 		while IFS='	' read -r cfmgr_status_key cfmgr_status_value; do
 			case $cfmgr_status_key in
-				boot) cfmgr_status_boot=$cfmgr_status_value ;;
-				uptime | load | memory) printf '%s: %s\n' "$cfmgr_status_key" "$cfmgr_status_value" ;;
+			boot) cfmgr_status_boot=$cfmgr_status_value ;;
+			uptime | load | memory) printf '%s: %s\n' "$cfmgr_status_key" "$cfmgr_status_value" ;;
 			esac
-		done < "$cfmgr_status_native_output"
+		done <"$cfmgr_status_native_output"
 	else
 		[ "$?" != 3 ] || return 3
 		printf 'Resources: Unavailable\n'
@@ -117,7 +117,7 @@ cfmgr_status_work() {
 		cfmgr_status_config=$cfmgr_status_snapshot_file
 		cfmgr_status_config_bytes=$cfmgr_status_snapshot_bytes
 		if cfmgr_status_project select; then
-			IFS= read -r cfmgr_status_wan < "$cfmgr_probe_stdout"
+			IFS= read -r cfmgr_status_wan <"$cfmgr_probe_stdout"
 		else
 			[ "$?" != 3 ] || return 3
 			cfmgr_status_config=unavailable
@@ -139,9 +139,9 @@ cfmgr_status_work() {
 	case $cfmgr_status_wan in 0 | 1)
 		cfmgr_status_nvram "wan${cfmgr_status_wan}_proto" || return $?
 		case $cfmgr_status_value in
-			dhcp | static) cfmgr_status_nvram "wan${cfmgr_status_wan}_ifname" || return $? ;;
-			pppoe | pptp | l2tp) cfmgr_status_nvram "wan${cfmgr_status_wan}_pppoe_ifname" || return $? ;;
-			*) printf 'WAN interface: Unknown (unsupported protocol)\n' ;;
+		dhcp | static) cfmgr_status_nvram "wan${cfmgr_status_wan}_ifname" || return $? ;;
+		pppoe | pptp | l2tp) cfmgr_status_nvram "wan${cfmgr_status_wan}_pppoe_ifname" || return $? ;;
+		*) printf 'WAN interface: Unknown (unsupported protocol)\n' ;;
 		esac
 		cfmgr_status_nvram "wan${cfmgr_status_wan}_ipaddr" || return $?
 		;;
@@ -150,11 +150,11 @@ cfmgr_status_work() {
 	for cfmgr_status_target in /jffs /opt; do
 		if cfmgr_status_mount "$cfmgr_status_target"; then
 			printf '%s mount: ' "$cfmgr_status_target"
-			IFS= read -r cfmgr_status_value < "$cfmgr_probe_stdout"
+			IFS= read -r cfmgr_status_value <"$cfmgr_probe_stdout"
 			printf '%s\n' "$cfmgr_status_value"
 			if cfmgr_status_space "$cfmgr_status_target"; then
 				printf '%s space: ' "$cfmgr_status_target"
-				IFS= read -r cfmgr_status_value < "$cfmgr_probe_stdout"
+				IFS= read -r cfmgr_status_value <"$cfmgr_probe_stdout"
 				printf '%s\n' "$cfmgr_status_value"
 			else
 				[ "$?" != 3 ] || return 3
@@ -187,7 +187,7 @@ cfmgr_status_work() {
 	[ "$cfmgr_status_save_pending" = 0 ] || printf 'Issue: pending configuration Save/recovery guard; use explicit recovery\n'
 	if [ "$cfmgr_status_config" != unavailable ] && cfmgr_status_project render; then
 		# The parser emits only a safe typed projection, never input bytes/errors.
-		while IFS= read -r cfmgr_status_line; do printf '%s\n' "$cfmgr_status_line"; done < "$cfmgr_probe_stdout"
+		while IFS= read -r cfmgr_status_line; do printf '%s\n' "$cfmgr_status_line"; done <"$cfmgr_probe_stdout"
 	else
 		[ "$?" != 3 ] || return 3
 		printf 'Configuration: Unavailable or invalid; recover retained settings\nDDNS/IP-Sync/Cloudflared: Unknown\nProvider history: Unavailable\n'
@@ -205,7 +205,7 @@ cfmgr_status_project() {
 cfmgr_status_nvram() {
 	cfmgr_status_value=unknown
 	if cfmgr_status_run status-nvram /bin/nvram "$1" && cfmgr_status_fields nvram "$cfmgr_probe_stdout" "$1"; then
-		IFS= read -r cfmgr_status_value < "$cfmgr_probe_stdout"
+		IFS= read -r cfmgr_status_value <"$cfmgr_probe_stdout"
 		case $1 in wan0_primary | wan1_primary) return 0 ;; ntp_ready) [ "$cfmgr_status_value" != Ready ] || cfmgr_status_clock=1 ;; esac
 		printf '%s: %s\n' "$1" "$cfmgr_status_value"
 	else
@@ -224,22 +224,22 @@ cfmgr_status_fields() {
 cfmgr_status_snapshot() {
 	cfmgr_status_run status-metadata /bin/ls "$1" || return $?
 	cfmgr_status_fields metadata "$cfmgr_probe_stdout" - || return $?
-	IFS=' ' read -r cfmgr_status_snapshot_inode cfmgr_status_snapshot_bytes < "$cfmgr_probe_stdout" || return 1
+	IFS=' ' read -r cfmgr_status_snapshot_inode cfmgr_status_snapshot_bytes <"$cfmgr_probe_stdout" || return 1
 	cfmgr_status_snapshot_metadata="$cfmgr_status_snapshot_inode $cfmgr_status_snapshot_bytes"
 	cfmgr_status_run status-snapshot /bin/dd "$1" || return $?
 	cfmgr_status_snapshot_file=$cfmgr_probe_stdout
 	cfmgr_status_run status-count /usr/bin/wc "$cfmgr_status_snapshot_file" || return $?
-	IFS=' ' read -r cfmgr_status_snapshot_actual cfmgr_status_snapshot_extra < "$cfmgr_probe_stdout" || return 1
+	IFS=' ' read -r cfmgr_status_snapshot_actual cfmgr_status_snapshot_extra <"$cfmgr_probe_stdout" || return 1
 	[ -z "$cfmgr_status_snapshot_extra" ] && [ "$cfmgr_status_snapshot_actual" = "$cfmgr_status_snapshot_bytes" ] || return 1
 	cfmgr_status_run status-metadata /bin/ls "$1" || return $?
 	cfmgr_status_fields metadata "$cfmgr_probe_stdout" - || return $?
-	IFS= read -r cfmgr_status_snapshot_after < "$cfmgr_probe_stdout" || return 1
+	IFS= read -r cfmgr_status_snapshot_after <"$cfmgr_probe_stdout" || return 1
 	[ "$cfmgr_status_snapshot_after" = "$cfmgr_status_snapshot_metadata" ]
 }
 
 cfmgr_status_mount() {
 	cfmgr_status_run status-realpath /usr/bin/readlink "$1" || return $?
-	IFS= read -r cfmgr_status_mount_target < "$cfmgr_probe_stdout" || return 1
+	IFS= read -r cfmgr_status_mount_target <"$cfmgr_probe_stdout" || return 1
 	case $cfmgr_status_mount_target in /*) ;; *) return 1 ;; esac
 	case $cfmgr_status_mount_target in *[!\ -~]* | *\\* | */../* | */./* | *//*) return 1 ;; esac
 	cfmgr_status_run status-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_status_mount_target" || return $?

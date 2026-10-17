@@ -27,7 +27,7 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active — consolidation verified locally; complete manual archive integration
+## Awaiting publication approval — consolidated manual archive candidate passed local gates
 
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
@@ -40,8 +40,8 @@ The parent-created private guide is `.tmp/module-layout.md`. It maps current and
 future owners, migration checks and recovery. Existing V2 S02.01 already requires
 this grouping; the implementation drifted from that requirement. Product scope,
 acceptance rules and counts remain unchanged. Route B, S14.01 and S14.04–S14.08,
-remains the original package; resume its unfinished integration in consolidated
-owners after the structural correction.
+remains the original package. Its implementation and focused host gate are now
+complete in the consolidated owners; native/CI acceptance remains pending.
 
 ### Current ownership and integration boundary
 
@@ -53,6 +53,80 @@ independent reviewers checked preservation, candidate-code admission and worker/
 cleanup boundaries. Do not restart old fragmented file assignments. Further
 manual-archive work must extend these owners and the frozen parser/worker
 interfaces; no replacement per-helper libraries or forwarding files.
+
+`archive_history_integration` and `module_consolidation` returned all runtime/test
+ownership. No delegated writer or test job remains active. Production history,
+Cloud logger admission and the five reviewed controller repairs are implemented.
+All subsequent work stays in the nine existing owners. Parent completed the final
+focused regression/static gate and review, and owns
+the local candidate commit and publication decision.
+
+Complete controller evidence on dirty `4998562`: actual create **1 passed in
+87.61s** (wall 88.91 / user 38.00 / system 30.47); menu/controller boundaries
+**19 passed in 1.37s**; transaction **10 passed**; foreign-set classification
+**1 passed in 0.29s**; writer **16 passed**; history runtime **35 passed / 10 Linux
+skips in 5.20s**. Disjoint receipts and platform adapters are explicit in
+`.tmp/archive-creation/controller-validation.md`; mixed commands with failed
+preparation cases are not called passing commands.
+
+The real create uses production Store/history/capture/archive/verification/
+publication/retention/history-Save paths with host admission adapters. A real
+valid prior archive is fully verified, including container mode 0777; the new
+archive is verified before publication, history increments config generation,
+and stage/RAM cleanup succeeds with pending 0. It exposed and repaired the
+history seed/stat glob-state leak that prevented later Store cleanup.
+Five history row-write wrappers now preserve unresolved 3. Native padded-inode
+parsing and fixture listing/mount oracles are repaired; Linux execution remains
+pending. The complete history adapter group passed 21 cases but its remaining
+case hit the original 30s timeout. An isolated unchanged-timeout retry passed in
+25.27s. Preserve both receipts; the failed combined command is not a pass.
+
+Final Astra source review agreed with the five controller repairs and found one
+additional budget-classification hole. Parent conservatively removed YAML parser
+rejections from definitive exclusion because exit 1 also represents current
+metadata-budget exhaustion. The real parser regression passed in 0.25s, requires
+the exact metadata-limit receipt and incomplete classification, and proves no
+retention operation begins. The combined YAML/history retry was **2 passed in
+25.87s**, wall 26.58 / user 16.96 / system 7.22. Receipt:
+`.tmp/archive-creation/yaml-budget-history-final.log`. Valid positive create paths
+are unchanged; a duplicate expensive full create is not needed for this fix.
+
+No new runtime files, full local suite, publication, remote CI or router mutation
+is authorized. All disjoint capture/verifier/I/O/Store and shared package/execution
+groups passed locally with explicit platform skips. Final I/O: 12 passed / 5 skips;
+verifier: 22 passed across structure/integrity/callback groups; semantics: 3 passed;
+capture: 15 passed across 1/10/4 case selections; Store/config: 42 passed / 3 skips.
+Shared execution: 133 passed / 53 skips / 4 optional diagnostics excluded in 19.64s;
+package/acquisition/entry: 32 passed / 1 skip in 15.50s. All 102 collected nodes in
+the parent's final archive scope match 94 passing / 8 skipped disjoint receipts.
+Complete earlier unchanged
+consolidation groups remain valid; counts across receipts are not blindly added.
+
+Common gates passed: 16 shell syntax/default-format files, 54 Python lint/format/
+compile files, 157 aligned planning IDs, package metadata and whitespace. The
+stale pre-consolidation manifest still named removed files; it now enumerates the
+14 actual package files with current hashes, generated by the existing tool. Optional limited
+ShellCheck passed in 45.02s; full extended analysis remains unproved. Runtime and
+test details, exact commands, failures/retries and wall/CPU costs are in
+`.tmp/archive-creation/integration-validation.md` and `controller-validation.md`.
+The callback-only negative fixture was compacted from redundant 5 members to the
+mandatory 2, reducing its group from 150.59s/timeout to 74.10s wall with actual
+callback reached checks. Full binary and five-member semantic proof remain.
+Two macOS-only outer test guards allow host overhead; measured reruns and unchanged
+native/supervised deadlines are explicit in review notes. No behavior gate was
+removed. Linux-only fixture descriptor corrections were independently reviewed
+but still require actual native execution.
+
+There are no active workers or required local jobs. Goal 14 is now 7/11 focused-local
+(63.6%), including previously accepted S14.02; only 1/11 is accepted. Overall remains
+15/157 accepted (9.6%) and 0/16 main goals. README accepted counts are unchanged.
+Thirteen validated complete native Quick selections are recorded in
+`.tmp/archive-creation/pending-quick-groups.json`; no dispatch has occurred.
+After approval, verify the exact published candidate, run the initial payload/tool
+group to validate the updated vendor fixture/cache, then remaining focused groups
+with measured cost review and at most two independent jobs at once. Cancel any
+premature owned automatic core while diagnosis is pending; complete full required
+core Checks last at the final exact SHA, record acceptance and pause.
 
 The runtime tree now contains nine implementation files: backup/manager/status,
 five shared categories (config/storage/execution/network/package), and one fixed
@@ -83,9 +157,11 @@ required shell syntax/format/runtime gates remain unchanged. The separate
 [review note](PLAN_V2_review_notes.md#2-installation-storage-and-dependencies)
 records this limitation; no runner/workflow defaults were changed.
 
-The existing `develop` checkout remains based on `591112d`; inherited handoff
-work and substantial uncommitted runtime/test edits are preserved. No push, CI
-dispatch, router action, dependency installation or native product build has run.
+The existing `develop` checkout now contains local WIP commit
+`4998562f9d9e1dc6e8ca5ae2195e1891a1cb488f` (consolidated categories plus preserved
+archive foundations), based on published `591112d`. It awards no product credit.
+Subsequent integration and handoff edits remain local. No push, CI
+dispatch, router mutation, dependency installation or native product build has run.
 Existing focused storage tests compiled their small host errno fixtures in owned
 pytest temporary directories; this is not a BusyBox/kernel/router build.
 Publication and remote CI dispatch are not authorized by the current instruction.
@@ -133,17 +209,34 @@ The recovery inventory was reverified after that comparison: all 257 entries and
 5,961,808 file bytes still match. Native argv/FD/keeper/mount/process proof remains
 pending its authorized CI gate. Product counts are unchanged.
 
-Next within the original S14.01/S14.04–S14.08 package: finish production history
-callbacks and positive Cloud logger admission, then the actual create controller,
-publication/retention and entry consumer. The approved narrower implementation
-observes relevant owned append-loggers instead of a whole-system FD census;
-unknown before history admission remains unavailable, and changes after admission
-fail capture. Keep both writer/rotation exclusion and double-prefix/hash/identity
-checks. Cron admission still needs a precise native-file boundary: retained source
-does not prove `/var` is a symlink, sets `/tmp` to nonsticky 0777, and does not fix
-the crontab file mode. Do not relax generic path protection based on that source
-alone. Details and concrete remaining defects are in
-`.tmp/archive-creation/integration-remaining.md`.
+Next within the original S14.01/S14.04–S14.08 package: obtain publication/CI
+permission for the concrete locally reviewed candidate, then complete its native
+and exact core gates. No later feature or restore work starts. Production history callbacks,
+relevant owned Cloud logger observation and the create consumer are implemented.
+The narrower observer replaces the global FD census, retaining writer/rotation
+exclusion and double-prefix/hash/identity checks. Current outstanding proof and
+platform limits are in `.tmp/archive-creation/integration-remaining.md`.
+
+The parent then performed brief read-only router metadata inspection, with no
+writes, repository-code execution or service/provider action. This one runtime
+observation found `/var` as a canonical root-owned sticky 1777 tmpfs directory,
+cron ancestors as root-owned 0755, and the current crontab as root-owned 0666.
+Native NVRAM is `/bin/nvram`; archive WIP incorrectly used `/usr/sbin/nvram`.
+These observations are supplemental, not firmware qualification. The cron file
+must be treated as bounded observed scheduler data, never executable authority;
+the independent Astra review returned PASS WITH NOTES and the parent accepted
+its narrow cron-data and fixed Scribe-lock checks. Their source-backed identity,
+snapshot and revalidation requirements are recorded in the audit and private
+integration inventory. The production boundary is implemented and host-tested. Generic
+path protection remains unchanged for nonsticky `/tmp`.
+
+Follow-up static review found the consolidation receipt used `shfmt -ci -sr`,
+whereas the repository runner requires default `shfmt -d`. That earlier result
+does not satisfy the default formatting gate. Parent normalized the other 11
+owners/fixtures and verified they are byte-for-byte default formatter output from
+HEAD; their scoped default-format check passed. The three history owners also use the default format.
+The complete final default gate passed;
+runner policy is unchanged. Keep this correction separate from runtime evidence.
 
 Completed focused results below describe pre-consolidation dirty code, not the
 new layout or an integrated manual-create action. Reuse unchanged behavior
@@ -168,17 +261,18 @@ knowledge, but rerun affected consumers after relocation:
 - Filename/retention control **18 passed**, 0.57s. Native fixture changes:
   **40 passed / 1 vendor-only skip**, 0.99s; no local native build.
 
-Unfinished work preserved in the snapshot and checkout includes populated
-capture integration, production history callbacks, Cloud live-writer admission,
-transaction/controller, publication/retention failures and actual entry imports.
-Do not discard these paths, call them complete, or award product credit. Source
-and agreed safety findings remain in `.tmp/archive-creation/` and
+The snapshot preserves the original unfinished capture/history/controller work.
+The current checkout supersedes that interrupted state: all 15 capture cases
+passed after consolidation, and history/writer/controller implementation now has
+complete host consumer and boundary proof. Parent final regressions/statics passed; required native/CI gates remain pending.
+Do not discard these paths or award product credit. Source and agreed safety
+findings remain in `.tmp/archive-creation/` and
 [the audit companion](PLAN_V2_audit.md#s1401-s1404s1408-archive-foundation-review).
-The read-only interrupted-worker checkpoint, including concrete remaining
-history-runtime defects and missing writer hooks, is recorded in
-`.tmp/archive-creation/integration-remaining.md`. Old history/capture results
-predate their final partial edits; the interrupted capture group supplied no
-terminal result and is not a pass.
+The current remaining work is recorded in
+`.tmp/archive-creation/integration-remaining.md`. Earlier interrupted capture
+results supplied no terminal pass; the complete consolidation gate above now
+supplies the final capture result. Keep older receipts distinct from later
+integration proof.
 
 Workers cannot edit V2 records, publish, operate the router or expand scope.
 Prepare the complete locally reviewed candidate before requesting publication
@@ -187,10 +281,11 @@ suite is due at this subgoal/shared-library package.
 
 ### Verified restart state
 
-- Use the existing `develop` checkout. HEAD and remote `develop` were verified at
-  **`591112d7062a0e50b54020eca3581ad9de836008`**, the S03.02 documentation receipt.
-  The prior scope-selection session left only a handoff edit. Current package
-  implementation is uncommitted on that baseline; preserve all owned changes.
+- Use the existing `develop` checkout. HEAD is local WIP
+  **`4998562f9d9e1dc6e8ca5ae2195e1891a1cb488f`**. Remote `develop` was last verified
+  at **`591112d7062a0e50b54020eca3581ad9de836008`**, the S03.02 documentation
+  receipt; no current push is authorized. Preserve subsequent integration edits
+  on this local WIP commit and the complete pre-consolidation snapshot.
 - Accepted runtime/test candidate is
   **`2dec8a623dba36a4e4718e69b6881918120e2a13`**. The exact-SHA
   [core run 38900418249](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38900418249)

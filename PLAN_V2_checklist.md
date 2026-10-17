@@ -129,6 +129,14 @@ accepted. Trusted-local fresh installation and its generated private defaults
 are distinct from the accepted S07.08 remote acquisition proof and unfinished
 update-source consumers.
 
+S02.01 consolidation requirement: backup capture, format, parsers, history,
+transaction and menu functions share one backup module; shared configuration
+functions/parsers share one config library. DDNS, networking and other major
+responsibilities follow the same owner-first rule. A function or implementation
+stage does not justify another file. The user-requested correction preserves
+existing scope, interfaces and safety gates; its current refactor proof is
+recorded in the [consolidation audit](PLAN_V2_audit.md#s0201-s1401-s1404s1408-module-fragmentation-correction).
+
 | Scope | Focused local/static evidence | Required CI gate | Subgoal acceptance |
 | --- | --- | --- | --- |
 | S02.01 verified modular distribution | Final complete entry/reinstall, settings/backup and status/retained groups: **151 passed, 5 Linux skips**, each group under 90s. Package/install: **33 passed, 1 Linux skip**; acquisition: **2 passed, 5 Linux skips**; platform fixture: **40 passed**. Relevant statics, parent review and independent design/runtime review passed; [closure audit](PLAN_V2_audit.md#s0201-modular-distribution-closure-review). | Exact `1ed124bb5ad19c13b507af61e56f796b1c995118`: [core Checks 38865532262](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38865532262), host **612 passed, 28 skips**, 153.75s wall; vendor BusyBox **639 passed, 1 workstation-only skip**, 654.72s wall; four optional diagnostics excluded per phase. Every required job/step passed. [Complete entry/package Quick](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38865544386): **28 passed, no skips**, 3.12s pytest / 3.29s wall. | Accepted: protected manifest data verifies the entry and fixed inert verifier, then complete package admission precedes both installed import paths. Explicit feature/library interfaces, nested passive extensions, both supported manifest headers, installed mapping and native consumer behavior pass. Config/setup/recovery data remains outside payload inventory. Representative Ubuntu/vendor BusyBox; live Merlin/ARM qualification remains beta-only. |
@@ -577,14 +585,14 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
+| [ ] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
 | [x] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
 | [ ] | [ ] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
-| [ ] | [ ] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
-| [ ] | [ ] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
-| [ ] | [ ] | S14.06 | **Coherent data allowlist:** Config/catalog/typed authority/drafts/full YAML/JSON/both cert copies/.bak/preferences/eligible history; no live controls/executables. |
-| [ ] | [ ] | S14.07 | **Required versus optional payload:** Required authority/YAML cannot be omitted; external dependencies inventoried, optional cert/binary absence handled honestly. |
-| [ ] | [ ] | S14.08 | **Backup transaction:** Consistent bounded source/rotation locks, private same-filesystem archive, hashes/mount recheck/atomic commit. |
+| [ ] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
+| [ ] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
+| [ ] | [x] | S14.06 | **Coherent data allowlist:** Config/catalog/typed authority/drafts/full YAML/JSON/both cert copies/.bak/preferences/eligible history; no live controls/executables. |
+| [ ] | [x] | S14.07 | **Required versus optional payload:** Required authority/YAML cannot be omitted; external dependencies inventoried, optional cert/binary absence handled honestly. |
+| [ ] | [x] | S14.08 | **Backup transaction:** Consistent bounded source/rotation locks, private same-filesystem archive, hashes/mount recheck/atomic commit. |
 | [ ] | [ ] | S14.09 | **Safe current-code restore:** Exact input/schema/hash/path/type/size validation, supported migration and current components, no archive code/downgrade. |
 | [ ] | [ ] | S14.10 | **State-aware reconstruction:** Never-configured/draft/maintenance/On/Off rules, independent logging preference and explicitly deferred optional history. |
 | [ ] | [ ] | S14.11 | **Guarded restore/recovery:** Fresh local ownership/generation, current auth/source admission, local rollback distinct from new auth-Off and no stale replay. |
@@ -603,7 +611,27 @@ CFBackup creation/reuse and menu-4 selection/Save/reopen are integrated.
 The [audit record](PLAN_V2_audit.md#s1402-destination-foundation-design-review)
 records design, implementation, test-fixture corrections and final review.
 Supporting portions of S02.02, S03.03 and Goal 4 receive no additional ticks;
-archive/restore and live firmware/filesystem qualification remain unfinished.
+manual archive creation still requires its own acceptance gate; browse/restore
+and live firmware/filesystem qualification remain unfinished.
+
+Manual-create local evidence for S14.01 and S14.04–S14.08 is complete on the
+consolidated candidate, before required Linux/vendor BusyBox and exact core CI.
+Final status remains unchecked; this adds no accepted product credit.
+
+| Scope | Focused local evidence | Outstanding acceptance gate |
+| --- | --- | --- |
+| S14.01/S14.04 real consumer and naming | Actual Store/capture/tar/gzip/full verification/publication/retention/history-Save journey passed in 87.61s, including independent valid prior recognition and mode 0777 container admission. Complete menu/controller group: 19 passes; format/control and earlier consolidation gates retained. | Required native tooling/descriptor proof and final exact-candidate core Checks. |
+| S14.05 retention and transaction outcomes | Complete 11-case transaction scope, definitive foreign-set rejection, actual rename/hash/unlink, uncertain publication, incomplete scan and YAML budget exhaustion; no pruning before confirmed publication or after incomplete inspection. | Native filesystem/supervisor execution and final core Checks. |
+| S14.06/S14.07/S14.08 payload and consistency | Complete 15-case rich capture scope; full five-member config/YAML/JSON/PEM semantic journey; complete 22-case verifier, 22-case history adapter, 16-case writer and 35 host history-runtime cases. I/O: 12 passes / 5 Linux skips; Store/config: 42 passes / 3 skips; history runtime: 10 Linux skips remain explicit. Host timing allowances and evidence limits are in [review notes](PLAN_V2_review_notes.md#14-backup-and-restore). | Actual native process/FD/lock/mount behavior and final core Checks; host adapters do not establish router qualification. |
+
+Parent review and independent source audits are recorded in the
+[controller audit](PLAN_V2_audit.md#s1401-s1404s1408-create-controller-review).
+All 102 nodes in the parent's final archive regression scope have disjoint terminal
+receipts: 94 passes / 8 platform skips. Controller/history receipts are additional,
+with overlaps stated rather than added as unique tests. Required default format,
+syntax, Ruff/compile and package/planning checks accompany the local candidate;
+optional ShellCheck uses explicitly limited analysis. The handoff records exact
+candidate/evidence and publication state. Restore/browse subgoals remain unfinished.
 
 ### 15. Uninstall, retained installation and reset
 

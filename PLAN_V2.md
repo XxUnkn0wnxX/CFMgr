@@ -99,6 +99,12 @@ Remove every router Python call path, including DDNS record parsing, Access disp
 
 Repository `cfmgr.sh` and `catalog.txt` stay at the root. Feature modules live directly in `modules/`; shared libraries/parsers in `modules/lib/`; workers, updaters and bootstrap in `modules/helpers/`; thin hook/cron entries and templates in `modules/hooks/`. Use small explicit interfaces and imports. Loading a library must not start work, wait, contact the network or mutate state. No arbitrary directory auto-loading.
 
+Consolidation is an explicit design priority. Backup owns its capture, format,
+parsers, history, transaction and menu functions in one backup module; configuration
+owns its shared functions and parsers in one config library. Apply the same rule
+to DDNS, shared networking and other major responsibilities: extend the existing
+owner before adding a file. A function or implementation stage is not a module.
+
 Group genuinely reused code into a small practical set of coherent responsibilities,
 such as networking/provider transport, hook integration, worker/update management
 and logging where shared. Do not create one library for each internal helper or

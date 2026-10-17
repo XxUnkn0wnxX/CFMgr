@@ -203,6 +203,9 @@ cfmgr_history_ready=1 cfmgr_history_output=$ram/history cfmgr_history_lock_held=
 exec 4<"$ram/history"
 cfmgr_archive_capture_data "$ram/plan" "$ram/config-snapshot"
 """,
+        # Preserve the full owned-data fixture on slower macOS process launches.
+        # Native supervision and its existing 100s fixture deadline are unchanged.
+        timeout=180 if sys.platform == "darwin" else 110,
     )
 
 

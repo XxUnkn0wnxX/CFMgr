@@ -38,6 +38,159 @@ with explicit platform skips and limited ShellCheck analysis recorded in the
 handoff and `.tmp/consolidation-validation.md`. This is local refactor proof, not
 native CI acceptance or completion of the unfinished manual archive consumer.
 
+Follow-up integration review found that the consolidation receipt's explicit
+`shfmt -ci -sr` command differs from the repository runner's default `shfmt -d`
+format. Its reported pass is valid only for that command, not the required
+default formatting gate. The established default format is restored without
+changing the runner or acceptance rules; the final common static gate verifies
+it separately from runtime results. The user's consolidation priority and concrete
+backup/config owner rule are now explicit in the specification and mirrored
+checklist, preserving their existing S02.01 contract and totals.
+
+The final repository package check also found that the tracked manifest still
+contained the pre-consolidation paths and hashes. Fixture-built packages had
+regenerated their own metadata, so those passing consumers did not establish the
+checkout's manifest freshness. The existing deterministic generator now lists all
+14 actual package files with current hashes; the repository package check passes.
+The earlier structural WIP commit is not a publishable package by itself. This
+repair is included in the complete local candidate before publication approval.
+
+## S14.06–S14.08 history runtime admission review
+
+Independent Astra review returned **PASS WITH NOTES** for narrowly admitting
+native scheduler data and the fixed Scribe rotation lock. Parent accepted these
+refinements within the existing cooperative transaction contract. Production
+callbacks are now implemented in the consolidated owners with focused host
+evidence and a complete host create consumer; actual Linux process/descriptor
+proof remains pending. This is not history acceptance.
+
+- The matched crond loader checks the opened account crontab's root owner and
+  does not reject native writable mode bits. Supplemental read-only observation
+  found canonical root-owned sticky 1777 `/var`, protected cron descendants and
+  a root-owned 0666 crontab. A cron-specific data check can admit that layout
+  without relaxing executable/configuration path protection. The actual native
+  NVRAM path is `/bin/nvram`.
+- Inode and size alone do not detect equal-size edits. The supervised reader must
+  use its own opened descriptor, compare two bounded complete snapshot hashes,
+  and retain account, canonical path, mount/device, inode, size and digest in the
+  history fingerprints rechecked under rotation exclusion. A changed admitted
+  schedule fails capture. Cron remains private observation data, never payload or
+  executable authority. An unsupported effective `SHELL=` makes readiness
+  unavailable rather than executing or guessing the override.
+- Scribe opens `/tmp/scribeLogRotate.flock` with truncating output redirection
+  before attempting flock, sets no explicit creation mode and unlocks without
+  unlinking it. Its narrow lock check therefore uses root-owned regular
+  single-link type, mount/device/inode and pathname-to-held-FD identity, rather
+  than immutable contents/mtime or unwritable mode bits. It must not create,
+  truncate, chmod or remove Scribe's lock. This detects ordinary replacement and
+  mount changes while coordinating with Scribe; nonsticky `/tmp` does not provide
+  protection against arbitrary hostile namespace substitutions.
+
+The source contracts are the
+[pinned crond loader](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/miscutils/crond.c)
+and [pinned Scribe implementation](https://github.com/AMTM-OSR/scribe/blob/53dee6e97c2d6aa4f656c68c18fa1f2c499042f7/scribe.sh).
+Source inspection, supplemental metadata, host tests and pending native execution
+remain distinct evidence classes.
+
+Implementation review repaired stale cron receipt restoration, process-argv
+unresolved-result propagation, executable identity after argv capture, failed
+phase restoration and cumulative private-context accounting. Parent review then
+caught a remaining base-observation downgrade: a changed admitted cron snapshot
+must remain fatal instead of being relabelled optional unavailability. The actual
+caller now propagates fatal 2 and unresolved 3, with a focused regression test.
+The complete history/runtime/writer host gate passed 64 with 9 Linux skips;
+later runtime/writer corrections passed 49 with those same skips. Parent's final
+realistic lock/release adapter check passed after context reseeding. Exact command
+and timing receipts are in the handoff/private validation record.
+
+Final read-only integration review identified five feature-row write wrappers
+that converted unresolved 3 into fatal 2. They now preserve 3, with focused proof
+through the feature caller. A Linux-fixture review found unconditional inode
+padding in a plain-filename listing adapter and production inode comparisons
+that assumed no leading spaces. The adapter now pads only inode output; production
+uses IFS field parsing. A formerly vacuous rotation-mount test now changes the
+observed mount after a real baseline; the native JSON fixture acquires actual
+flock0 before proving FD9 inheritance. Existing I/O contention evidence remains
+separate. The final runtime group passed 35 with 10 explicit Linux skips; neither
+source review nor host adapters award native proof.
+
+A final Linux-only create-fixture review found two adapter defects before native
+execution: the preopened descriptor was not declared during initial Store reads,
+and history `plan` was mistaken for a JSON stdin mode requiring FD9. Fixture
+preparation now retains its declared FD0, while real Store acquisition still
+reopens, locks and tests fresh-open contention. Distinct history-mode labels keep
+history `plan` on FD0 and history `policy` on FD9. The history-runtime adapter uses
+the same distinction. These are test corrections; production lock reset/dispatch
+is unchanged. Native execution is still pending.
+
+The real-create harness then exposed a shared-shell state leak that isolated
+callbacks had missed: history context seeding and proc-stat parsing left globbing
+disabled, so later Store cleanup could not expand its owned receipt list. Both
+functions now preserve the caller's flag, tested with globbing enabled and disabled.
+The complete create consumer then passed, including actual Store cleanup, in
+87.61s. Its production callbacks use an unconfigured baseline; rich payload and
+native writer/lock behavior have separate focused groups and evidence limits.
+
+## S14.01, S14.04–S14.08 create controller review
+
+The focused independent Astra controller audit returned **REVISE**. Parent
+accepted five corrections within the original manual-create package. All five
+are implemented, with focused boundary tests and a real create consumer:
+
+- Retained compressed archives need a narrow regular-container metadata profile.
+  Strict source-payload checks otherwise reject normal FAT/NTFS mode 0777 or
+  emulated ownership, breaking recognition and retention. Stable identity, exact
+  bytes/hashes and complete same-set semantic verification remain mandatory.
+- Record the publication attempt before native rename. A successful move followed
+  by mount loss can precede the confirmed-published flag; an unconfirmable outcome
+  must be unresolved, with no pruning, history write or nonpublication claim.
+- A resource/I/O/unclassified tool failure while inspecting an old candidate
+  cannot silently produce a complete retention ledger. Distinguish definitive
+  exclusion from incomplete inspection; incomplete scans skip pruning and report
+  retention failure separately from successful creation.
+- Failure frames can retain a known positive config generation. The UI currently
+  rejects those frames but then consumes partially parsed fields, making existing
+  output-only tests insufficient. Admit legitimate frames and invalidate all
+  decision-bearing data on malformed frames before stopping the affected action.
+- Reaped owned-stage cleanup failure after confirmed publication needs the existing
+  pending indication and a concise cleanup warning; preserve the archive and
+  substituted or otherwise unverified temporary data.
+
+The final independent audit confirmed all five corrections and caught one remaining
+resource-classification hole: a quiet YAML parser exit 1 can mean the current
+metadata budget is exhausted, not that a retained archive is invalid. Parent
+removed YAML from the definitive-exclusion allowlist. A real parser invocation
+on valid YAML under an insufficient budget produces its exact `metadata-limit`
+receipt, remains incomplete and cannot start pruning. This focused regression
+passed in 0.25s. Conservatively incomplete YAML rejection may skip retention;
+it never grants deletion authority. No new error framework or behavior waiver
+was introduced. Parent agrees the identified source findings are resolved;
+native and complete required CI remain distinct outstanding gates.
+
+The scoped trace found coherent Entware/destination phase ordering, config-lock
+borrowing, source/rotation descriptor release before verification and Store Save,
+separate verifier/caller ownership ledgers and distinct operation deadlines. No
+descriptor framework redesign is needed. The passing host create consumer fully
+recognizes an independent valid prior container with mode 0777, captures config/
+catalog/notes, runs tar/gzip and full semantic verification, publishes, retains,
+saves history with a generation increment and removes owned stage/RAM data.
+It requires pending 0 and complete/saved outcomes. Host admission, directory-FD,
+memory/UUID/timezone and GNU tar adapters are explicit; they do not establish
+native filesystem or router qualification. Current commands and pending proof
+belong in the handoff.
+
+Parent cost review found the semantic-callback negative cases repeated all five
+binary/empty/history/YAML payload members already covered by the complete positive
+verifier. The complete-callback case timed out at the unchanged 65s wrapper limit;
+the group took 150.59s wall. Its boundary fixture now contains only mandatory
+config/catalog members, with explicit payload/complete reached markers so an
+earlier rejection cannot pass vacuously. All four cases then passed in 73.48s
+(wall 74.10/user 33.54/system 26.48); the separate full binary/empty journey passed
+in 63.88s. No production deadline, test timeout or required assertion was relaxed.
+The original failed log was accidentally reused by the private runner; its exact
+terminal failure/timing receipt is retained separately and is not described as
+raw stdout. The runner now preserves superseded logs before reuse.
+
 ## S14.01, S14.04–S14.08 archive foundation review
 
 Independent Astra source review of the uncommitted archive foundation returned

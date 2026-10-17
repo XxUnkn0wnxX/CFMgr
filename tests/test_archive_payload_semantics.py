@@ -308,7 +308,10 @@ cfmgr_archive_deadline=$((cfmgr_probe_now+60))
     fi
 printf 'verified=%s callbacks=%s\\n' "$cfmgr_archive_verified" "$cfmgr_payload_schema"
 """
-    result = run(archive, shell, script, timeout=65)
+    # The macOS adapter runs hundreds of real utility children without the
+    # native supervisor. Leave the supervised fixture's 60s deadline unchanged;
+    # allow measured host process-launch overhead in this outer test guard.
+    result = run(archive, shell, script, timeout=90 if sys.platform == "darwin" else 65)
     assert result.returncode == 0, (
         result.stdout.decode(),
         result.stderr.decode()[-1800:],

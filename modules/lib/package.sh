@@ -59,7 +59,7 @@ $(printf '%s\n' "$cfmgr_package_records" | /usr/bin/awk 'BEGIN{FS="\t"}{print $4
 	while IFS="$(printf '\t')" read -r cfmgr_package_mode cfmgr_package_bytes cfmgr_package_sha cfmgr_package_path; do
 		case $cfmgr_package_path in cfmgr.sh) cfmgr_package_target="/jffs/scripts/cfmgr.sh" ;; *) cfmgr_package_target=$cfmgr_source/$cfmgr_package_path ;; esac
 		cfmgr_entry_file "$cfmgr_package_target" "$cfmgr_package_mode" "$cfmgr_package_bytes" "$cfmgr_package_sha" || return 1
-	done << EOF_RECORDS
+	done <<EOF_RECORDS
 $cfmgr_package_records
 EOF_RECORDS
 	cfmgr_entry_framing "$cfmgr_source/catalog.txt" || return 1
@@ -97,17 +97,17 @@ cfmgr_acquire_run() {
 	cfmgr_acquire_mode=$1
 	shift
 	case $cfmgr_acquire_mode in
-		api | raw | curl-version | curl-offline) cfmgr_acquire_tool=$cfmgr_native_curl ;;
-		ca-decode | digest) cfmgr_acquire_tool=$cfmgr_native_openssl ;;
-		curl-features | ca-pem | manifest | catalog | entry | extract | awk | awk-file | text) cfmgr_acquire_tool=$cfmgr_install_awk ;;
-		wc | lines) cfmgr_acquire_tool=$cfmgr_install_wc ;;
-		ls) cfmgr_acquire_tool=$cfmgr_install_ls ;;
-		shell) cfmgr_acquire_tool=$cfmgr_install_sh ;;
-		chmod) cfmgr_acquire_tool=$cfmgr_install_chmod ;;
-		mkdir) cfmgr_acquire_tool=$cfmgr_install_mkdir ;;
-		remove) cfmgr_acquire_tool=/bin/rm ;;
-		rmdir) cfmgr_acquire_tool=/bin/rmdir ;;
-		*) return 2 ;;
+	api | raw | curl-version | curl-offline) cfmgr_acquire_tool=$cfmgr_native_curl ;;
+	ca-decode | digest) cfmgr_acquire_tool=$cfmgr_native_openssl ;;
+	curl-features | ca-pem | manifest | catalog | entry | extract | awk | awk-file | text) cfmgr_acquire_tool=$cfmgr_install_awk ;;
+	wc | lines) cfmgr_acquire_tool=$cfmgr_install_wc ;;
+	ls) cfmgr_acquire_tool=$cfmgr_install_ls ;;
+	shell) cfmgr_acquire_tool=$cfmgr_install_sh ;;
+	chmod) cfmgr_acquire_tool=$cfmgr_install_chmod ;;
+	mkdir) cfmgr_acquire_tool=$cfmgr_install_mkdir ;;
+	remove) cfmgr_acquire_tool=/bin/rm ;;
+	rmdir) cfmgr_acquire_tool=/bin/rmdir ;;
+	*) return 2 ;;
 	esac
 	cfmgr_prerequisites_run "acquire-$cfmgr_acquire_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
 		"$cfmgr_install_source/modules/helpers/worker.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
@@ -122,31 +122,31 @@ cfmgr_acquire_zero() {
 
 cfmgr_acquire_native_action() {
 	case $1 in
-		install-wc)
-			shift
-			cfmgr_acquire_run wc "$@"
-			;;
-		native-curl-version)
-			shift
-			cfmgr_acquire_run curl-version "$@"
-			;;
-		native-curl-offline)
-			shift
-			cfmgr_acquire_run curl-offline "$@"
-			;;
-		native-curl-features)
-			shift
-			cfmgr_acquire_run curl-features "$@"
-			;;
-		native-ca-pem)
-			shift
-			cfmgr_acquire_run ca-pem "$@"
-			;;
-		native-ca-decode)
-			shift
-			cfmgr_acquire_run ca-decode "$@"
-			;;
-		*) return 2 ;;
+	install-wc)
+		shift
+		cfmgr_acquire_run wc "$@"
+		;;
+	native-curl-version)
+		shift
+		cfmgr_acquire_run curl-version "$@"
+		;;
+	native-curl-offline)
+		shift
+		cfmgr_acquire_run curl-offline "$@"
+		;;
+	native-curl-features)
+		shift
+		cfmgr_acquire_run curl-features "$@"
+		;;
+	native-ca-pem)
+		shift
+		cfmgr_acquire_run ca-pem "$@"
+		;;
+	native-ca-decode)
+		shift
+		cfmgr_acquire_run ca-decode "$@"
+		;;
+	*) return 2 ;;
 	esac
 }
 
@@ -154,7 +154,7 @@ cfmgr_acquire_size() {
 	[ -f "$1" ] && [ ! -L "$1" ] || return 1
 	cfmgr_acquire_run wc "$1" || return $?
 	[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-	IFS=' ' read -r cfmgr_acquire_size cfmgr_acquire_extra < "$cfmgr_native_output" || return 1
+	IFS=' ' read -r cfmgr_acquire_size cfmgr_acquire_extra <"$cfmgr_native_output" || return 1
 	case $cfmgr_acquire_size in '' | *[!0-9]*) return 1 ;; esac
 	[ -z "$cfmgr_acquire_extra" ] && [ "${#cfmgr_acquire_size}" -le 8 ]
 }
@@ -168,7 +168,7 @@ cfmgr_acquire_digest() {
 cfmgr_acquire_text() {
 	cfmgr_acquire_run lines "$1" || return $?
 	[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-	IFS=' ' read -r cfmgr_acquire_lines cfmgr_acquire_extra < "$cfmgr_native_output" || return 1
+	IFS=' ' read -r cfmgr_acquire_lines cfmgr_acquire_extra <"$cfmgr_native_output" || return 1
 	case $cfmgr_acquire_lines in '' | *[!0-9]*) return 1 ;; esac
 	[ -z "$cfmgr_acquire_extra" ] && [ "${#cfmgr_acquire_lines}" -le 8 ] || return 1
 	cfmgr_acquire_zero text "$1" "$2" "$cfmgr_acquire_lines" "$3"
@@ -182,7 +182,7 @@ cfmgr_acquire_protected() {
 	while :; do
 		cfmgr_acquire_run ls "$cfmgr_acquire_protected_path" || return $?
 		[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-		IFS=' ' read -r cfmgr_acquire_permissions cfmgr_acquire_links cfmgr_acquire_uid cfmgr_acquire_rest < "$cfmgr_native_output" || return 1
+		IFS=' ' read -r cfmgr_acquire_permissions cfmgr_acquire_links cfmgr_acquire_uid cfmgr_acquire_rest <"$cfmgr_native_output" || return 1
 		[ "$cfmgr_acquire_uid" = 0 ] || return 1
 		case $cfmgr_acquire_permissions in -????????? | d?????????) ;; *) return 1 ;; esac
 		case $cfmgr_acquire_permissions in ?????w???? | ????????w?) return 1 ;; esac
@@ -201,7 +201,7 @@ cfmgr_acquire_admit() {
 	(
 		umask 077
 		set -C
-		printf abc > "$cfmgr_install_context/acquire.vector"
+		printf abc >"$cfmgr_install_context/acquire.vector"
 	) || return 1
 	cfmgr_acquire_digest "$cfmgr_install_context/acquire.vector" || return $?
 	[ "$cfmgr_acquire_digest" = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad ]
@@ -235,7 +235,7 @@ cfmgr_acquire_manifest() {
 	cfmgr_acquire_size "$1" || return $?
 	[ "$cfmgr_acquire_size" -gt 0 ] && [ "$cfmgr_acquire_size" -le 131072 ] || return 1
 	cfmgr_acquire_text "$1" "$cfmgr_acquire_size" 1 || return $?
-	IFS=' ' read -r cfmgr_acquire_tag cfmgr_acquire_schema cfmgr_acquire_version cfmgr_acquire_abi cfmgr_acquire_config cfmgr_acquire_extra < "$1" || return 1
+	IFS=' ' read -r cfmgr_acquire_tag cfmgr_acquire_schema cfmgr_acquire_version cfmgr_acquire_abi cfmgr_acquire_config cfmgr_acquire_extra <"$1" || return 1
 	case $cfmgr_acquire_version in '' | [!0-9]* | *[!A-Za-z0-9._+-]*)
 		printf '[CFMGR] acquire: error: incompatible package version declaration\n' >&2
 		return 1
@@ -255,7 +255,7 @@ cfmgr_acquire_directory() {
 	[ "$1" != . ] || return 0
 	if [ -d "$cfmgr_acquire_stage/$1" ] && [ ! -L "$cfmgr_acquire_stage/$1" ]; then return 0; fi
 	case $1 in */*) cfmgr_acquire_directory "${1%/*}" || return $? ;; esac
-	printf '%s\n' "$1" >> "$cfmgr_install_context/acquire.directories" || return 1
+	printf '%s\n' "$1" >>"$cfmgr_install_context/acquire.directories" || return 1
 	cfmgr_acquire_zero mkdir "/proc/self/fd/6/$1"
 }
 
@@ -277,10 +277,10 @@ cfmgr_acquire_verify() {
 		cfmgr_acquire_zero chmod "$cfmgr_acquire_file_mode" "/proc/self/fd/6/$cfmgr_acquire_file" || return $?
 		cfmgr_acquire_run ls "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $?
 		[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-		IFS=' ' read -r cfmgr_acquire_permissions cfmgr_acquire_links cfmgr_acquire_uid cfmgr_acquire_rest < "$cfmgr_native_output" || return 1
+		IFS=' ' read -r cfmgr_acquire_permissions cfmgr_acquire_links cfmgr_acquire_uid cfmgr_acquire_rest <"$cfmgr_native_output" || return 1
 		[ "$cfmgr_acquire_uid" = "$cfmgr_install_owner" ] || return 1
 		case $cfmgr_acquire_file_mode:$cfmgr_acquire_permissions:$cfmgr_acquire_links in 0644:-rw-r--r--:1 | 0755:-rwxr-xr-x:1) ;; *) return 1 ;; esac
-	done 4< "$cfmgr_acquire_records"
+	done 4<"$cfmgr_acquire_records"
 	cfmgr_acquire_size "$cfmgr_acquire_stage/catalog.txt" || return $?
 	cfmgr_acquire_text "$cfmgr_acquire_stage/catalog.txt" "$cfmgr_acquire_size" 1 || return $?
 	cfmgr_acquire_zero entry "$cfmgr_acquire_stage/cfmgr.sh" "$cfmgr_acquire_version" &&
@@ -290,7 +290,7 @@ cfmgr_acquire_verify() {
 	(
 		umask 077
 		set -C
-		printf '%s\n' 'BEGIN { print "CFMGR-AWK-PARSED 1"; fflush(); print 1/(NR-NR) }' > "$cfmgr_install_context/acquire.syntax.awk"
+		printf '%s\n' 'BEGIN { print "CFMGR-AWK-PARSED 1"; fflush(); print 1/(NR-NR) }' >"$cfmgr_install_context/acquire.syntax.awk"
 	) || return 1
 	while IFS='	' read -r cfmgr_acquire_file_mode cfmgr_acquire_file_size cfmgr_acquire_file_digest cfmgr_acquire_file <&4; do
 		case $cfmgr_acquire_file:$cfmgr_acquire_file_mode in *.sh:* | *.awk:* | *:0755)
@@ -298,14 +298,14 @@ cfmgr_acquire_verify() {
 			;;
 		esac
 		case $cfmgr_acquire_file in
-			*.sh) cfmgr_acquire_zero shell "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $? ;;
-			*.awk)
-				cfmgr_acquire_run awk-file "$cfmgr_install_context/acquire.syntax.awk" "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $?
-				cfmgr_acquire_awk_receipt || return 1
-				;;
-			*) [ "$cfmgr_acquire_file_mode" != 0755 ] || cfmgr_acquire_zero shell "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $? ;;
+		*.sh) cfmgr_acquire_zero shell "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $? ;;
+		*.awk)
+			cfmgr_acquire_run awk-file "$cfmgr_install_context/acquire.syntax.awk" "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $?
+			cfmgr_acquire_awk_receipt || return 1
+			;;
+		*) [ "$cfmgr_acquire_file_mode" != 0755 ] || cfmgr_acquire_zero shell "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $? ;;
 		esac
-	done 4< "$cfmgr_acquire_records"
+	done 4<"$cfmgr_acquire_records"
 	for cfmgr_acquire_parser in config status status_native mountinfo backup_payload backup_history backup_inventory backup_archive_control backup_cloud_writer backup_manifest backup_payload_index backup_payload_match backup_pem backup_tar backup_yaml; do
 		cfmgr_acquire_run extract "$cfmgr_acquire_stage" "$cfmgr_install_source/modules/lib/package.sh" "$cfmgr_acquire_parser" || return $?
 		[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
@@ -314,7 +314,7 @@ cfmgr_acquire_verify() {
 			cfmgr_acquire_program="$cfmgr_acquire_program$cfmgr_acquire_program_line
 "
 			case $((${#cfmgr_acquire_program} <= 98304)) in 1) ;; *) return 1 ;; esac
-		done < "$cfmgr_native_output"
+		done <"$cfmgr_native_output"
 		[ -n "$cfmgr_acquire_program" ] || return 1
 		cfmgr_acquire_run awk "$cfmgr_install_context/acquire.syntax.awk" "$cfmgr_acquire_program" || return $?
 		cfmgr_acquire_awk_receipt || return 1
@@ -350,26 +350,26 @@ cfmgr_acquire_work() {
 	cfmgr_acquire_sha=$("$cfmgr_install_awk" 'NR!=1 || length($0)!=40 || $0~/[^0-9a-fA-F]/ {bad=1} END{if(bad || NR!=1)exit 1;print tolower($0)}' "$cfmgr_install_context/acquire.sha") || return 1
 	cfmgr_acquire_stage=$cfmgr_install_context/package
 	cfmgr_acquire_zero mkdir "$cfmgr_acquire_stage" || return $?
-	{ exec 6<&3; } 3< "$cfmgr_acquire_stage" || return 1
+	{ exec 6<&3; } 3<"$cfmgr_acquire_stage" || return 1
 	cfmgr_acquire_stage_owned=1
 	cfmgr_acquire_attached || return 1
-	: > "$cfmgr_install_context/acquire.files"
-	: > "$cfmgr_install_context/acquire.directories"
-	printf 'manifest.txt\n' >> "$cfmgr_install_context/acquire.files"
+	: >"$cfmgr_install_context/acquire.files"
+	: >"$cfmgr_install_context/acquire.directories"
+	printf 'manifest.txt\n' >>"$cfmgr_install_context/acquire.files"
 	cfmgr_acquire_fetch raw "https://raw.githubusercontent.com/$cfmgr_acquire_repository/$cfmgr_acquire_sha/manifest.txt" /proc/self/fd/6/manifest.txt 131072 || return $?
 	cfmgr_acquire_manifest "$cfmgr_acquire_stage/manifest.txt" || return $?
 	while IFS='	' read -r cfmgr_acquire_file_mode cfmgr_acquire_file_size cfmgr_acquire_file_digest cfmgr_acquire_file <&4; do
 		case $cfmgr_acquire_file in */*) cfmgr_acquire_directory "${cfmgr_acquire_file%/*}" || return $? ;; esac
-		printf '%s\n' "$cfmgr_acquire_file" >> "$cfmgr_install_context/acquire.files" || return 1
+		printf '%s\n' "$cfmgr_acquire_file" >>"$cfmgr_install_context/acquire.files" || return 1
 		cfmgr_acquire_fetch_limit=$cfmgr_acquire_file_size
 		[ "$cfmgr_acquire_fetch_limit" != 0 ] || cfmgr_acquire_fetch_limit=1
 		cfmgr_acquire_fetch raw "https://raw.githubusercontent.com/$cfmgr_acquire_repository/$cfmgr_acquire_sha/$cfmgr_acquire_file" "/proc/self/fd/6/$cfmgr_acquire_file" "$cfmgr_acquire_fetch_limit" || return $?
-	done 4< "$cfmgr_acquire_records"
+	done 4<"$cfmgr_acquire_records"
 	cfmgr_acquire_zero chmod 0644 /proc/self/fd/6/manifest.txt || return $?
 	cfmgr_acquire_verify || return $?
 	# Recheck retained data and native attachment after all network/validation.
 	cfmgr_bootstrap_retained && cfmgr_acquire_attached || return 1
-	printf 'CFMGR-ACQUIRE 1 %s %s %s %s %s END\n' "$CFMGR_REPOSITORY" "$cfmgr_acquire_ref" "$cfmgr_acquire_sha" "$cfmgr_acquire_version" "$cfmgr_acquire_manifest_digest" > "$cfmgr_install_context/acquire.provenance" || return 1
+	printf 'CFMGR-ACQUIRE 1 %s %s %s %s %s END\n' "$CFMGR_REPOSITORY" "$cfmgr_acquire_ref" "$cfmgr_acquire_sha" "$cfmgr_acquire_version" "$cfmgr_acquire_manifest_digest" >"$cfmgr_install_context/acquire.provenance" || return 1
 	(
 		cfmgr_acquire_active=0
 		unset cfmgr_acquire_deadline
@@ -390,16 +390,16 @@ cfmgr_acquire_cleanup() {
 					cfmgr_acquire_cleanup_path "$cfmgr_acquire_cleanup_file" && [ -f "$cfmgr_acquire_stage/$cfmgr_acquire_cleanup_file" ] || return 1
 					/bin/rm -f "/proc/self/fd/6/$cfmgr_acquire_cleanup_file" || return 1
 				fi
-			done 4< "$cfmgr_install_context/acquire.files"
+			done 4<"$cfmgr_install_context/acquire.files"
 		fi
 		if [ -f "$cfmgr_install_context/acquire.directories" ]; then
-			"$cfmgr_install_awk" '{line[NR]=$0} END{for(i=NR;i>0;i--)print line[i]}' "$cfmgr_install_context/acquire.directories" > "$cfmgr_install_context/acquire.reverse" || return 1
+			"$cfmgr_install_awk" '{line[NR]=$0} END{for(i=NR;i>0;i--)print line[i]}' "$cfmgr_install_context/acquire.directories" >"$cfmgr_install_context/acquire.reverse" || return 1
 			while IFS= read -r cfmgr_acquire_cleanup_directory <&4; do
 				if [ -e "$cfmgr_acquire_stage/$cfmgr_acquire_cleanup_directory" ] || [ -L "$cfmgr_acquire_stage/$cfmgr_acquire_cleanup_directory" ]; then
 					cfmgr_acquire_cleanup_path "$cfmgr_acquire_cleanup_directory" && [ -d "$cfmgr_acquire_stage/$cfmgr_acquire_cleanup_directory" ] || return 1
 					/bin/rmdir "/proc/self/fd/6/$cfmgr_acquire_cleanup_directory" || return 1
 				fi
-			done 4< "$cfmgr_install_context/acquire.reverse"
+			done 4<"$cfmgr_install_context/acquire.reverse"
 		fi
 		# The pin is retained until only its empty owned directory remains.
 		cfmgr_acquire_attached && /bin/rmdir "$cfmgr_acquire_stage" || return 1
@@ -460,20 +460,20 @@ cfmgr_bootstrap_action() {
 	cfmgr_install_action=$1
 	cfmgr_bootstrap_attached || return 1
 	case $1 in
-		install-sha) cfmgr_install_tool=$cfmgr_install_sha ;;
-		install-wc) cfmgr_install_tool=$cfmgr_install_wc ;;
-		install-ls) cfmgr_install_tool=$cfmgr_install_ls ;;
-		install-copy) cfmgr_install_tool=$cfmgr_install_cp ;;
-		install-remove) cfmgr_install_tool=/bin/rm ;;
-		install-rename | install-publish) cfmgr_install_tool=$cfmgr_install_mv ;;
-		install-mkdir-*) cfmgr_install_tool=$cfmgr_install_mkdir ;;
-		install-chmod-*) cfmgr_install_tool=$cfmgr_install_chmod ;;
-		install-flush) cfmgr_install_tool=$cfmgr_install_fsync ;;
-		install-config) cfmgr_install_tool=$cfmgr_install_jq ;;
-		install-config-check) cfmgr_install_tool=$cfmgr_install_awk ;;
-		install-df) cfmgr_install_tool=$cfmgr_install_df ;;
-		install-nvram) cfmgr_install_tool=$cfmgr_install_nvram ;;
-		*) return 2 ;;
+	install-sha) cfmgr_install_tool=$cfmgr_install_sha ;;
+	install-wc) cfmgr_install_tool=$cfmgr_install_wc ;;
+	install-ls) cfmgr_install_tool=$cfmgr_install_ls ;;
+	install-copy) cfmgr_install_tool=$cfmgr_install_cp ;;
+	install-remove) cfmgr_install_tool=/bin/rm ;;
+	install-rename | install-publish) cfmgr_install_tool=$cfmgr_install_mv ;;
+	install-mkdir-*) cfmgr_install_tool=$cfmgr_install_mkdir ;;
+	install-chmod-*) cfmgr_install_tool=$cfmgr_install_chmod ;;
+	install-flush) cfmgr_install_tool=$cfmgr_install_fsync ;;
+	install-config) cfmgr_install_tool=$cfmgr_install_jq ;;
+	install-config-check) cfmgr_install_tool=$cfmgr_install_awk ;;
+	install-df) cfmgr_install_tool=$cfmgr_install_df ;;
+	install-nvram) cfmgr_install_tool=$cfmgr_install_nvram ;;
+	*) return 2 ;;
 	esac
 	shift
 	cfmgr_prerequisites_run "$cfmgr_install_action" "$cfmgr_install_context" "$cfmgr_install_sh" \
@@ -489,7 +489,7 @@ cfmgr_bootstrap_action() {
 
 cfmgr_bootstrap_size() {
 	cfmgr_bootstrap_action install-wc "$1" || return $?
-	IFS=' 	' read -r cfmgr_install_size cfmgr_install_extra < "$cfmgr_install_output" || return 1
+	IFS=' 	' read -r cfmgr_install_size cfmgr_install_extra <"$cfmgr_install_output" || return 1
 	[ -z "$cfmgr_install_extra" ] || return 1
 	case $cfmgr_install_size in '' | *[!0-9]*) return 1 ;; esac
 	[ "${#cfmgr_install_size}" -le 9 ]
@@ -500,7 +500,7 @@ cfmgr_bootstrap_digest() {
 	cfmgr_install_digest_output=$cfmgr_install_output
 	cfmgr_bootstrap_size "$cfmgr_install_digest_output" || return $?
 	[ "$cfmgr_install_size" -eq 68 ] || return 1
-	IFS=' ' read -r cfmgr_install_digest cfmgr_install_dash cfmgr_install_extra < "$cfmgr_install_digest_output" || return 1
+	IFS=' ' read -r cfmgr_install_digest cfmgr_install_dash cfmgr_install_extra <"$cfmgr_install_digest_output" || return 1
 	[ "$cfmgr_install_dash" = - ] && [ -z "$cfmgr_install_extra" ] && [ "${#cfmgr_install_digest}" -eq 64 ] || return 1
 	case $cfmgr_install_digest in *[!0-9a-f]*) return 1 ;; esac
 }
@@ -509,16 +509,16 @@ cfmgr_bootstrap_digest() {
 # shellcheck disable=SC2034
 cfmgr_bootstrap_metadata() {
 	cfmgr_bootstrap_action install-ls "$1" || return $?
-	IFS=' ' read -r cfmgr_install_mode cfmgr_install_links cfmgr_install_uid cfmgr_install_gid cfmgr_install_rest < "$cfmgr_install_output" || return 1
+	IFS=' ' read -r cfmgr_install_mode cfmgr_install_links cfmgr_install_uid cfmgr_install_gid cfmgr_install_rest <"$cfmgr_install_output" || return 1
 	[ "$cfmgr_install_uid" = "$2" ] || return 1
 	case $cfmgr_install_mode in *'@') cfmgr_install_mode=${cfmgr_install_mode%@} ;; esac
 	case $3:$cfmgr_install_mode in
-		0644:-rw-r--r-- | 0755:-rwxr-xr-x | 0600:-rw------- | private:drwx------ | public:drwxr-xr-x) return 0 ;;
-		protected:d????????? | protected:-?????????)
-			case $cfmgr_install_mode in ?????w???? | ????????w?) return 1 ;; esac
-			return 0
-			;;
-		*) return 1 ;;
+	0644:-rw-r--r-- | 0755:-rwxr-xr-x | 0600:-rw------- | private:drwx------ | public:drwxr-xr-x) return 0 ;;
+	protected:d????????? | protected:-?????????)
+		case $cfmgr_install_mode in ?????w???? | ????????w?) return 1 ;; esac
+		return 0
+		;;
+	*) return 1 ;;
 	esac
 }
 
@@ -559,7 +559,7 @@ cfmgr_bootstrap_inventory() {
 	{
 		printf '%s\n' cfmgr.sh catalog.txt modules/
 		cfmgr_bootstrap_walk "$1" "$1/modules" 0
-	} > "$cfmgr_install_context/inventory"
+	} >"$cfmgr_install_context/inventory"
 }
 
 cfmgr_bootstrap_manifest() {
@@ -582,12 +582,12 @@ cfmgr_bootstrap_manifest() {
 			cfmgr_bootstrap_metadata "$cfmgr_install_source/${cfmgr_install_inventory_item%/}" "$cfmgr_install_owner" protected || return $?
 			;;
 		esac
-	done < "$cfmgr_install_context/inventory"
+	done <"$cfmgr_install_context/inventory"
 	cfmgr_bootstrap_digest "$cfmgr_install_source/manifest.txt" || return $?
 	cfmgr_install_manifest_digest=$cfmgr_install_digest
 	while IFS='	' read -r cfmgr_install_expected_mode cfmgr_install_expected_size cfmgr_install_expected_digest cfmgr_install_relative; do
 		cfmgr_bootstrap_file "$cfmgr_install_source/$cfmgr_install_relative" || return $?
-	done < "$cfmgr_install_context/records"
+	done <"$cfmgr_install_context/records"
 }
 
 cfmgr_bootstrap_manifest_records() {
@@ -615,7 +615,7 @@ cfmgr_bootstrap_manifest_records() {
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
 			if (bad || count<2) exit 1
 		}
-	' "$CFMGR_VERSION" "$cfmgr_install_source/manifest.txt" > "$cfmgr_install_context/records" || return 1
+	' "$CFMGR_VERSION" "$cfmgr_install_source/manifest.txt" >"$cfmgr_install_context/records" || return 1
 	# Catalog is passive schema/versioned data matching the complete module set.
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" 'BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
@@ -643,14 +643,14 @@ cfmgr_bootstrap_record() {
 	cfmgr_bootstrap_size "$1" || return $?
 	cfmgr_install_record_expected="CFMGR-SETUP 1 $CFMGR_VERSION $2"
 	[ "$cfmgr_install_size" -eq "$((${#cfmgr_install_record_expected} + 1))" ] || return 1
-	IFS= read -r cfmgr_install_record_actual < "$1" || return 1
+	IFS= read -r cfmgr_install_record_actual <"$1" || return 1
 	[ "$cfmgr_install_record_actual" = "$cfmgr_install_record_expected" ]
 }
 
 cfmgr_bootstrap_flush() {
 	cfmgr_bootstrap_attached || return 1
 	[ ! -L "$1" ] && { [ -f "$1" ] || [ -d "$1" ]; } || return 1
-	exec 3< "$1" || return 1
+	exec 3<"$1" || return 1
 	if cfmgr_bootstrap_action install-flush; then
 		exec 3<&-
 		return 0
@@ -753,7 +753,7 @@ cfmgr_bootstrap_transaction() {
 	cfmgr_bootstrap_flush "$cfmgr_install_support" && cfmgr_bootstrap_flush "$cfmgr_install_jffs/addons" || return $?
 	(
 		umask 077
-		printf 'CFMGR-SETUP 1 %s installing\n' "$CFMGR_VERSION" > "$cfmgr_install_context/setup.installing"
+		printf 'CFMGR-SETUP 1 %s installing\n' "$CFMGR_VERSION" >"$cfmgr_install_context/setup.installing"
 	) || return 1
 	cfmgr_bootstrap_copy "$cfmgr_install_context/setup.installing" "$cfmgr_install_support/setup-state" 0600 || return $?
 	cfmgr_bootstrap_record "$cfmgr_install_support/setup-state" installing || return $?
@@ -768,7 +768,7 @@ cfmgr_bootstrap_transaction() {
 		cfmgr_bootstrap_directories "$cfmgr_install_destination" || return $?
 		cfmgr_bootstrap_copy "$cfmgr_install_source/$cfmgr_install_relative" "$cfmgr_install_destination" "$cfmgr_install_expected_mode" || return $?
 		cfmgr_bootstrap_file "$cfmgr_install_destination" || return $?
-	done < "$cfmgr_install_context/records"
+	done <"$cfmgr_install_context/records"
 	cfmgr_bootstrap_copy "$cfmgr_install_source/manifest.txt" "$cfmgr_install_support/manifest.txt" 0644 || return $?
 	cfmgr_bootstrap_digest "$cfmgr_install_support/manifest.txt" || return $?
 	[ "$cfmgr_install_digest" = "$cfmgr_install_manifest_digest" ] || return 1
@@ -778,7 +778,7 @@ cfmgr_bootstrap_transaction() {
 	[ "$cfmgr_install_digest" = "$cfmgr_install_config_digest" ] || return 1
 	cfmgr_bootstrap_action install-config-check "$cfmgr_install_support/config" "$cfmgr_install_source" "$cfmgr_install_config_bytes" || return $?
 	cfmgr_install_walk_count=0
-	cfmgr_bootstrap_walk "$cfmgr_install_support" "$cfmgr_install_support" 0 > "$cfmgr_install_context/staged.inventory" || return 1
+	cfmgr_bootstrap_walk "$cfmgr_install_support" "$cfmgr_install_support" 0 >"$cfmgr_install_context/staged.inventory" || return 1
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" 'BEGIN { FS="\t"; expected["config"]=1; expected["setup-state"]=1; expected["manifest.txt"]=1 }
 		NR==FNR {
@@ -802,7 +802,7 @@ cfmgr_bootstrap_transaction() {
 	# readback. Retained launch must reject even a complete-looking partial commit.
 	(
 		umask 077
-		printf 'CFMGR-SETUP 1 %s complete\n' "$CFMGR_VERSION" > "$cfmgr_install_context/setup.complete"
+		printf 'CFMGR-SETUP 1 %s complete\n' "$CFMGR_VERSION" >"$cfmgr_install_context/setup.complete"
 	) || return 1
 	cfmgr_bootstrap_copy "$cfmgr_install_context/setup.complete" "$cfmgr_install_support/.setup.complete" 0600 || return $?
 	cfmgr_bootstrap_record "$cfmgr_install_support/.setup.complete" complete || return $?
@@ -941,17 +941,17 @@ cfmgr_bootstrap_native_prepare() {
 	[ -d /jffs ] && [ ! -L /jffs ] && [ -d "$cfmgr_install_source" ] && [ ! -L "$cfmgr_install_source" ] || return 1
 	cfmgr_install_source_fd=9
 	cfmgr_install_jffs_snapshot=$(cfmgr_storage_mountinfo /usr/bin/awk /jffs /proc/self/mountinfo) || return 1
-	IFS='	' read -r cfmgr_install_jffs_id cfmgr_install_jffs_parent cfmgr_install_jffs_device cfmgr_install_jffs_root cfmgr_install_jffs_mount cfmgr_install_jffs_type cfmgr_install_jffs_device_path cfmgr_install_jffs_options cfmgr_install_jffs_superoptions << EOF
+	IFS='	' read -r cfmgr_install_jffs_id cfmgr_install_jffs_parent cfmgr_install_jffs_device cfmgr_install_jffs_root cfmgr_install_jffs_mount cfmgr_install_jffs_type cfmgr_install_jffs_device_path cfmgr_install_jffs_options cfmgr_install_jffs_superoptions <<EOF
 $cfmgr_install_jffs_snapshot
 EOF
 	[ "$cfmgr_install_jffs_mount" = /jffs ] && [ "$cfmgr_install_jffs_type" = jffs2 ] || return 1
 	case ,$cfmgr_install_jffs_options, in *,rw,*) ;; *) return 1 ;; esac
 	case ,$cfmgr_install_jffs_options, in *,noexec,* | *,ro,*) return 1 ;; esac
-	exec 8< /jffs 9< "$cfmgr_install_source" || return 1
+	exec 8</jffs 9<"$cfmgr_install_source" || return 1
 	# Prove RAM backing before creating any preflight object.
 	[ -d /tmp ] && [ ! -L /tmp ] && [ "$(/usr/bin/readlink -f /tmp)" = /tmp ] || return 1
 	cfmgr_install_tmp_snapshot=$(cfmgr_storage_mountinfo /usr/bin/awk /tmp /proc/self/mountinfo) || return 1
-	IFS='	' read -r cfmgr_install_tmp_id cfmgr_install_tmp_parent cfmgr_install_tmp_device cfmgr_install_tmp_root cfmgr_install_tmp_mount cfmgr_install_tmp_type cfmgr_install_tmp_source cfmgr_install_tmp_options cfmgr_install_tmp_superoptions << EOF
+	IFS='	' read -r cfmgr_install_tmp_id cfmgr_install_tmp_parent cfmgr_install_tmp_device cfmgr_install_tmp_root cfmgr_install_tmp_mount cfmgr_install_tmp_type cfmgr_install_tmp_source cfmgr_install_tmp_options cfmgr_install_tmp_superoptions <<EOF
 $cfmgr_install_tmp_snapshot
 EOF
 	case $cfmgr_install_tmp_type in tmpfs | ramfs | rootfs) ;; *) return 1 ;; esac
@@ -961,7 +961,7 @@ EOF
 	[ -d /tmp/cfmgr ] && [ ! -L /tmp/cfmgr ] || return 1
 	# This fixed native listing is bounded by the literal pathname.
 	cfmgr_install_ram=$(/bin/ls -ldn /tmp/cfmgr) || return 1
-	IFS=' ' read -r cfmgr_install_ram_mode cfmgr_install_ram_links cfmgr_install_ram_uid cfmgr_install_ram_rest << EOF
+	IFS=' ' read -r cfmgr_install_ram_mode cfmgr_install_ram_links cfmgr_install_ram_uid cfmgr_install_ram_rest <<EOF
 $cfmgr_install_ram
 EOF
 	[ "$cfmgr_install_ram_mode" = drwx------ ] && [ "$cfmgr_install_ram_uid" = 0 ] || return 1
@@ -973,7 +973,7 @@ EOF
 	cfmgr_install_private_context=/tmp/cfmgr/$2.$$.$cfmgr_identity_start
 	cfmgr_install_context=$cfmgr_install_private_context
 	/bin/mkdir -m 700 "$cfmgr_install_context" || return 1
-	exec 0< "$cfmgr_install_context" || return 1
+	exec 0<"$cfmgr_install_context" || return 1
 	cfmgr_install_context_fd=0
 	cfmgr_bootstrap_signals
 	cfmgr_probe_serial=0
@@ -1017,9 +1017,9 @@ cfmgr_bootstrap_native() {
 cfmgr_bootstrap_report_action() {
 	cfmgr_bootstrap_native_attached || return 1
 	case $1 in
-		install-report) cfmgr_install_report_tool=/usr/bin/logger ;;
-		install-report-ls) cfmgr_install_report_tool=$cfmgr_install_ls ;;
-		*) return 2 ;;
+	install-report) cfmgr_install_report_tool=/usr/bin/logger ;;
+	install-report-ls) cfmgr_install_report_tool=$cfmgr_install_ls ;;
+	*) return 2 ;;
 	esac
 	cfmgr_prerequisites_run "$1" "$cfmgr_install_context" "$cfmgr_install_sh" \
 		"$cfmgr_install_source/modules/helpers/worker.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
@@ -1039,11 +1039,11 @@ cfmgr_bootstrap_logger_admit() {
 		cfmgr_install_logger_parent=$cfmgr_install_logger_root
 		while :; do
 			cfmgr_bootstrap_report_action install-report-ls "$cfmgr_install_logger_parent" || return $?
-			IFS=' ' read -r cfmgr_install_mode cfmgr_install_links cfmgr_install_uid cfmgr_install_gid cfmgr_install_rest < "$cfmgr_probe_stdout" || return 1
+			IFS=' ' read -r cfmgr_install_mode cfmgr_install_links cfmgr_install_uid cfmgr_install_gid cfmgr_install_rest <"$cfmgr_probe_stdout" || return 1
 			[ "$cfmgr_install_uid" = 0 ] || return 1
 			case $cfmgr_install_mode in
-				d????????? | -?????????) case $cfmgr_install_mode in ?????w???? | ????????w?) return 1 ;; esac ;;
-				*) return 1 ;;
+			d????????? | -?????????) case $cfmgr_install_mode in ?????w???? | ????????w?) return 1 ;; esac ;;
+			*) return 1 ;;
 			esac
 			[ "$("$cfmgr_install_readlink" -f "$cfmgr_install_logger_parent")" = "$cfmgr_install_logger_parent" ] || return 1
 			[ "$cfmgr_install_logger_parent" != / ] || break
@@ -1095,22 +1095,22 @@ cfmgr_native_action() {
 		return $?
 	fi
 	case $1 in
-		install-*) cfmgr_bootstrap_action "$@" || return $? ;;
-		native-*)
-			cfmgr_install_native_mode=$1
-			case $1 in
-				native-curl-version | native-curl-offline | native-curl-https) cfmgr_install_native_tool=$cfmgr_native_curl ;;
-				native-ca-decode) cfmgr_install_native_tool=$cfmgr_native_openssl ;;
-				native-curl-features | native-ca-pem) cfmgr_install_native_tool=$cfmgr_install_awk ;;
-				native-rmdir) cfmgr_install_native_tool=/bin/rmdir ;;
-				*) return 2 ;;
-			esac
-			shift
-			cfmgr_prerequisites_run "$cfmgr_install_native_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
-				"$cfmgr_install_source/modules/helpers/worker.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
-				"$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_install_native_tool" "$@" || return $?
-			;;
+	install-*) cfmgr_bootstrap_action "$@" || return $? ;;
+	native-*)
+		cfmgr_install_native_mode=$1
+		case $1 in
+		native-curl-version | native-curl-offline | native-curl-https) cfmgr_install_native_tool=$cfmgr_native_curl ;;
+		native-ca-decode) cfmgr_install_native_tool=$cfmgr_native_openssl ;;
+		native-curl-features | native-ca-pem) cfmgr_install_native_tool=$cfmgr_install_awk ;;
+		native-rmdir) cfmgr_install_native_tool=/bin/rmdir ;;
 		*) return 2 ;;
+		esac
+		shift
+		cfmgr_prerequisites_run "$cfmgr_install_native_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
+			"$cfmgr_install_source/modules/helpers/worker.sh" "$cfmgr_install_env" "$cfmgr_install_awk" \
+			"$cfmgr_install_sleep" "$cfmgr_install_wc" "$cfmgr_install_native_tool" "$@" || return $?
+		;;
+	*) return 2 ;;
 	esac
 	cfmgr_native_output=$cfmgr_probe_stdout cfmgr_native_error=$cfmgr_probe_stderr cfmgr_native_exit=$cfmgr_probe_exit
 }
@@ -1144,7 +1144,7 @@ cfmgr_bootstrap_shared_requirements() {
 	if [ "$cfmgr_install_consumer" = retained ]; then cfmgr_launch_reinstall_scope || return $?; fi
 	cfmgr_bootstrap_native_admission || return $?
 	cfmgr_bootstrap_action install-nvram || return $?
-	IFS= read -r cfmgr_install_scripts_enabled < "$cfmgr_install_output" || return 1
+	IFS= read -r cfmgr_install_scripts_enabled <"$cfmgr_install_output" || return 1
 	[ "$cfmgr_install_scripts_enabled" = 1 ] || return 1
 	cfmgr_prerequisites_run blkid "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/worker.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc /sbin/blkid "$cfmgr_storage_source" || return $?
 	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
@@ -1160,9 +1160,9 @@ cfmgr_bootstrap_shared_requirements() {
 	if [ "$cfmgr_install_dependency_action" = normal ]; then cfmgr_bootstrap_normal_dns pre || return $?; fi
 	if cfmgr_prerequisites_check "$cfmgr_install_inventory_scope" "$cfmgr_install_context" /bin/sh "$cfmgr_install_source/modules/helpers/worker.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_install_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum "$cfmgr_install_entware_flock" /opt/bin/dig "$cfmgr_install_inventory_native_dns"; then cfmgr_install_inventory_code=0; else cfmgr_install_inventory_code=$?; fi
 	case $cfmgr_install_inventory_code in
-		0) [ ! -e /tmp/cfmgr/dependencies ] && [ ! -L /tmp/cfmgr/dependencies ] || cfmgr_install_inventory_code=1 ;;
-		1) [ "$cfmgr_prereq_result" = capabilities-checked ] || return 2 ;;
-		*) return "$cfmgr_install_inventory_code" ;;
+	0) [ ! -e /tmp/cfmgr/dependencies ] && [ ! -L /tmp/cfmgr/dependencies ] || cfmgr_install_inventory_code=1 ;;
+	1) [ "$cfmgr_prereq_result" = capabilities-checked ] || return 2 ;;
+	*) return "$cfmgr_install_inventory_code" ;;
 	esac
 	if [ "$cfmgr_install_dependency_action" = normal ] && [ "$cfmgr_prereq_dns_provider" = entware ]; then cfmgr_bootstrap_normal_dns_query || return $?; fi
 	if [ "$cfmgr_install_dependency_action" = reinstall ]; then
@@ -1216,7 +1216,7 @@ cfmgr_bootstrap_shared_requirements() {
 		# Fresh post-probe context; no original probe file is rewritten or reused.
 		cfmgr_install_original_context=$cfmgr_install_context
 		cfmgr_bootstrap_action install-mkdir-private "$cfmgr_install_original_context.post" || return $?
-		exec 3<&0 0< "$cfmgr_install_original_context.post"
+		exec 3<&0 0<"$cfmgr_install_original_context.post"
 		cfmgr_install_context=$cfmgr_install_original_context.post
 		cfmgr_install_context_fd=0
 		cfmgr_install_post_native_flock=$cfmgr_install_native_flock
@@ -1308,7 +1308,7 @@ cfmgr_bootstrap_dns_answers() {
 	cfmgr_install_dns_provider=$1 cfmgr_install_dns_query_tool=$2 cfmgr_install_dns_syntax=$3
 	cfmgr_bootstrap_dns_run native-dns-parse-srv "$cfmgr_install_awk" "$1" "$4" || return $?
 	[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
-	IFS=' ' read -r cfmgr_install_dns_first cfmgr_install_dns_second cfmgr_install_dns_extra < "$cfmgr_probe_stdout" || return 1
+	IFS=' ' read -r cfmgr_install_dns_first cfmgr_install_dns_second cfmgr_install_dns_extra <"$cfmgr_probe_stdout" || return 1
 	[ -n "$cfmgr_install_dns_first" ] && [ -z "$cfmgr_install_dns_extra" ] || return 1
 	for cfmgr_install_dns_target in "$cfmgr_install_dns_first" "$cfmgr_install_dns_second"; do
 		[ -n "$cfmgr_install_dns_target" ] || continue
@@ -1340,27 +1340,27 @@ cfmgr_bootstrap_reinstall_dns() {
 			cfmgr_install_dns_srv=$cfmgr_probe_stdout cfmgr_install_dns_error=$cfmgr_probe_stderr cfmgr_install_dns_exit=$cfmgr_probe_exit
 			cfmgr_bootstrap_dns_run native-dns-classify "$cfmgr_install_awk" "$cfmgr_install_dns_srv" "$cfmgr_install_dns_error" "$cfmgr_install_dns_exit" || return $?
 			[ "$cfmgr_probe_exit" -eq 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
-			IFS= read -r cfmgr_install_dns_class < "$cfmgr_probe_stdout" || return 1
+			IFS= read -r cfmgr_install_dns_class <"$cfmgr_probe_stdout" || return 1
 			case $cfmgr_install_dns_class in
-				unsupported)
-					cfmgr_install_dns_native=unsupported
-					break
-					;;
-				usage) cfmgr_install_dns_usages=$((cfmgr_install_dns_usages + 1)) ;;
-				syntax) ;;
-				answer)
-					if cfmgr_bootstrap_dns_answers native "$cfmgr_install_dns_tool" "$cfmgr_install_dns_variant" "$cfmgr_install_dns_srv"; then
-						cfmgr_install_dns_native=srv-a-verified
-						return 0
-					else cfmgr_install_dns_code=$?; fi
-					[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
-					cfmgr_bootstrap_dns_deferred
-					return 1
-					;;
-				*)
-					cfmgr_bootstrap_dns_deferred
-					return 1
-					;;
+			unsupported)
+				cfmgr_install_dns_native=unsupported
+				break
+				;;
+			usage) cfmgr_install_dns_usages=$((cfmgr_install_dns_usages + 1)) ;;
+			syntax) ;;
+			answer)
+				if cfmgr_bootstrap_dns_answers native "$cfmgr_install_dns_tool" "$cfmgr_install_dns_variant" "$cfmgr_install_dns_srv"; then
+					cfmgr_install_dns_native=srv-a-verified
+					return 0
+				else cfmgr_install_dns_code=$?; fi
+				[ "$cfmgr_install_dns_code" -eq 1 ] || return "$cfmgr_install_dns_code"
+				cfmgr_bootstrap_dns_deferred
+				return 1
+				;;
+			*)
+				cfmgr_bootstrap_dns_deferred
+				return 1
+				;;
 			esac
 		done
 		if [ "$cfmgr_install_dns_usages" -eq 3 ]; then cfmgr_install_dns_native=unsupported; fi
@@ -1398,8 +1398,8 @@ cfmgr_bootstrap_normal_dns() {
 	[ "$cfmgr_install_dependency_scope" = tunnel ] || return 0
 	if cfmgr_bootstrap_reinstall_dns "$1"; then
 		case $cfmgr_install_dns_native in
-			srv-a-verified) cfmgr_install_dns_result=verified cfmgr_install_inventory_scope=tunnel cfmgr_install_inventory_native_dns=srv-a-verified ;;
-			unsupported) cfmgr_install_inventory_scope=tunnel ;;
+		srv-a-verified) cfmgr_install_dns_result=verified cfmgr_install_inventory_scope=tunnel cfmgr_install_inventory_native_dns=srv-a-verified ;;
+		unsupported) cfmgr_install_inventory_scope=tunnel ;;
 		esac
 	else
 		cfmgr_install_dns_code=$?
@@ -1464,7 +1464,7 @@ cfmgr_dependencies_attachment_ok() {
 		[ "${cfmgr_dependencies_retiring:-0}:${cfmgr_probe_mode:-none}" = 1:repair-retire ] && [ -n "${cfmgr_probe_pid:-}" ] || return 1
 		[ -d /proc/self/fd/5 ] || return 1
 		cfmgr_dependencies_retired_metadata=$("$cfmgr_install_ls" -Ldn /proc/self/fd/5) || return 1
-		IFS=' ' read -r cfmgr_dependencies_retired_mode cfmgr_dependencies_retired_links cfmgr_dependencies_retired_uid cfmgr_dependencies_retired_rest << EOF_RETIRED
+		IFS=' ' read -r cfmgr_dependencies_retired_mode cfmgr_dependencies_retired_links cfmgr_dependencies_retired_uid cfmgr_dependencies_retired_rest <<EOF_RETIRED
 $cfmgr_dependencies_retired_metadata
 EOF_RETIRED
 		[ "$cfmgr_dependencies_retired_mode:$cfmgr_dependencies_retired_links:$cfmgr_dependencies_retired_uid" = drwx------:0:0 ] || return 1
@@ -1474,7 +1474,7 @@ EOF_RETIRED
 		return $?
 	fi
 	if [ "${cfmgr_dependencies_cleaning:-0}" = 1 ]; then
-		cfmgr_storage_mountinfo "$cfmgr_install_awk" inventory-v1 "$cfmgr_dependencies_context" /proc/self/mountinfo > "$cfmgr_install_context/repair-cleanup.mounts" || return 1
+		cfmgr_storage_mountinfo "$cfmgr_install_awk" inventory-v1 "$cfmgr_dependencies_context" /proc/self/mountinfo >"$cfmgr_install_context/repair-cleanup.mounts" || return 1
 		[ ! -s "$cfmgr_install_context/repair-cleanup.mounts" ] || return 1
 	fi
 	[ "$(cfmgr_storage_mountinfo "$cfmgr_install_awk" "$cfmgr_dependencies_context" /proc/self/mountinfo)" = "$cfmgr_install_tmp_snapshot" ]
@@ -1485,14 +1485,14 @@ EOF_RETIRED
 cfmgr_dependencies_claim_admit() {
 	[ -d "$1" ] && [ ! -L "$1" ] || return 2
 	cfmgr_dependencies_claim_metadata=$("$cfmgr_install_ls" -ldn "$1") || return 2
-	IFS=' ' read -r cfmgr_dependencies_claim_mode cfmgr_dependencies_claim_links cfmgr_dependencies_claim_uid cfmgr_dependencies_claim_rest << EOF_CLAIM
+	IFS=' ' read -r cfmgr_dependencies_claim_mode cfmgr_dependencies_claim_links cfmgr_dependencies_claim_uid cfmgr_dependencies_claim_rest <<EOF_CLAIM
 $cfmgr_dependencies_claim_metadata
 EOF_CLAIM
 	[ "$cfmgr_dependencies_claim_mode:$cfmgr_dependencies_claim_uid" = drwx------:0 ] || return 2
 	if [ -e "$1/owner" ] || [ -L "$1/owner" ]; then
 		[ -f "$1/owner" ] && [ ! -L "$1/owner" ] || return 2
 		cfmgr_dependencies_claim_metadata=$("$cfmgr_install_ls" -ldn "$1/owner") || return 2
-		IFS=' ' read -r cfmgr_dependencies_claim_mode cfmgr_dependencies_claim_links cfmgr_dependencies_claim_uid cfmgr_dependencies_claim_rest << EOF_OWNER_MODE
+		IFS=' ' read -r cfmgr_dependencies_claim_mode cfmgr_dependencies_claim_links cfmgr_dependencies_claim_uid cfmgr_dependencies_claim_rest <<EOF_OWNER_MODE
 $cfmgr_dependencies_claim_metadata
 EOF_OWNER_MODE
 		[ "$cfmgr_dependencies_claim_mode:$cfmgr_dependencies_claim_uid" = -rw-------:0 ] || return 2
@@ -1518,14 +1518,14 @@ cfmgr_dependencies_admit() {
 	if [ -f /usr/bin/logger ] && [ -x /usr/bin/logger ]; then
 		cfmgr_dependencies_logger_resolved=$("$cfmgr_install_readlink" -f /usr/bin/logger) || return 0
 		case $cfmgr_dependencies_logger_resolved in
-			/usr/bin/logger | /bin/busybox)
-				if cfmgr_bootstrap_native_protected "$cfmgr_dependencies_logger_resolved" executable; then
-					cfmgr_dependencies_logger_admitted=1
-				else
-					cfmgr_dependencies_logger_code=$?
-					[ "$cfmgr_dependencies_logger_code" -ne 3 ] || return 3
-				fi
-				;;
+		/usr/bin/logger | /bin/busybox)
+			if cfmgr_bootstrap_native_protected "$cfmgr_dependencies_logger_resolved" executable; then
+				cfmgr_dependencies_logger_admitted=1
+			else
+				cfmgr_dependencies_logger_code=$?
+				[ "$cfmgr_dependencies_logger_code" -ne 3 ] || return 3
+			fi
+			;;
 		esac
 	fi
 }
@@ -1534,22 +1534,22 @@ cfmgr_dependencies_admit() {
 # every mode below maps to one previously admitted native applet/grammar.
 cfmgr_dependencies_native_tool() {
 	case $1 in
-		inventory | awk | identity-parse) cfmgr_dependencies_native_tool=$cfmgr_install_awk ;;
-		identity | list) cfmgr_dependencies_native_tool=$cfmgr_install_ls ;;
-		readlink) cfmgr_dependencies_native_tool=$cfmgr_install_readlink ;;
-		mkdir) cfmgr_dependencies_native_tool=$cfmgr_install_mkdir ;;
-		copy) cfmgr_dependencies_native_tool=$cfmgr_install_cp ;;
-		chmod) cfmgr_dependencies_native_tool=$cfmgr_install_chmod ;;
-		link) cfmgr_dependencies_native_tool=/bin/ln ;;
-		root | guard-root | bind4 | bind7 | private | unbindable | seal) cfmgr_dependencies_native_tool=/bin/mount ;;
-		unmount) cfmgr_dependencies_native_tool=/bin/umount ;;
-		file) cfmgr_dependencies_native_tool=$cfmgr_install_sh ;;
-		fifo) cfmgr_dependencies_native_tool=/bin/mknod ;;
-		report) cfmgr_dependencies_native_tool=/usr/bin/logger ;;
-		signal) cfmgr_dependencies_native_tool=/bin/kill ;;
-		remove) cfmgr_dependencies_native_tool=/bin/rm ;;
-		rmdir | retire) cfmgr_dependencies_native_tool=/bin/rmdir ;;
-		*) return 2 ;;
+	inventory | awk | identity-parse) cfmgr_dependencies_native_tool=$cfmgr_install_awk ;;
+	identity | list) cfmgr_dependencies_native_tool=$cfmgr_install_ls ;;
+	readlink) cfmgr_dependencies_native_tool=$cfmgr_install_readlink ;;
+	mkdir) cfmgr_dependencies_native_tool=$cfmgr_install_mkdir ;;
+	copy) cfmgr_dependencies_native_tool=$cfmgr_install_cp ;;
+	chmod) cfmgr_dependencies_native_tool=$cfmgr_install_chmod ;;
+	link) cfmgr_dependencies_native_tool=/bin/ln ;;
+	root | guard-root | bind4 | bind7 | private | unbindable | seal) cfmgr_dependencies_native_tool=/bin/mount ;;
+	unmount) cfmgr_dependencies_native_tool=/bin/umount ;;
+	file) cfmgr_dependencies_native_tool=$cfmgr_install_sh ;;
+	fifo) cfmgr_dependencies_native_tool=/bin/mknod ;;
+	report) cfmgr_dependencies_native_tool=/usr/bin/logger ;;
+	signal) cfmgr_dependencies_native_tool=/bin/kill ;;
+	remove) cfmgr_dependencies_native_tool=/bin/rm ;;
+	rmdir | retire) cfmgr_dependencies_native_tool=/bin/rmdir ;;
+	*) return 2 ;;
 	esac
 }
 
@@ -1573,12 +1573,12 @@ cfmgr_dependencies_native() {
 		if [ "${cfmgr_dependencies_cleaning:-0}" != 1 ] && [ "${cfmgr_dependencies_claimed:-0}" = 1 ]; then cfmgr_dependencies_operation_context=$cfmgr_dependencies_context; fi
 	fi
 	case $cfmgr_dependencies_native_mode in
-		inventory) set -- "$cfmgr_install_context/repair-storage.sh" "$@" ;;
-		awk) set -- "$cfmgr_dependencies_context/execution.sh" "$cfmgr_view_context" "$cfmgr_view_native_root" "$@" ;;
-		identity)
-			cfmgr_dependencies_identity_target=$2
-			set -- "$1"
-			;;
+	inventory) set -- "$cfmgr_install_context/repair-storage.sh" "$@" ;;
+	awk) set -- "$cfmgr_dependencies_context/execution.sh" "$cfmgr_view_context" "$cfmgr_view_native_root" "$@" ;;
+	identity)
+		cfmgr_dependencies_identity_target=$2
+		set -- "$1"
+		;;
 	esac
 	# Snapshot-copy bootstrap can still use the admitted source parser before its
 	# private replacement exists; all later cleanup requires the RAM replacement.
@@ -1688,10 +1688,10 @@ _cfmgr_dependencies_tree_check() {
 # stored it. Console evidence remains available even when logger cannot complete.
 cfmgr_dependencies_report() {
 	case $1 in
-		storage-lost) printf '[CFMGR] dependencies: error: Entware attachment lost; cleanup pending\n' >&2 ;;
-		cleanup-pending) printf '[CFMGR] dependencies: error: dependency cleanup pending\n' >&2 ;;
-		cleanup-complete) printf '[CFMGR] dependencies: error: Entware operation stopped; owned mounts released\n' >&2 ;;
-		*) return 2 ;;
+	storage-lost) printf '[CFMGR] dependencies: error: Entware attachment lost; cleanup pending\n' >&2 ;;
+	cleanup-pending) printf '[CFMGR] dependencies: error: dependency cleanup pending\n' >&2 ;;
+	cleanup-complete) printf '[CFMGR] dependencies: error: Entware operation stopped; owned mounts released\n' >&2 ;;
+	*) return 2 ;;
 	esac
 	# Loss console evidence is immediate. Native submission follows cancellation,
 	# so an unresolved logger can never prevent the owned opkg stop attempt.
@@ -1742,7 +1742,7 @@ cfmgr_launch_guard_attachment() {
 			# Only the terminal exact rmdir may remove the pinned guard inode.
 			[ "${cfmgr_launch_retiring:-0}" = 1 ] && [ "${cfmgr_probe_mode:-}" = launch-rmdir ] && [ -n "${cfmgr_probe_pid:-}" ] || return 1
 			cfmgr_launch_deleted=$("$cfmgr_install_ls" -Ldn /proc/self/fd/4) || return 1
-			IFS=' ' read -r cfmgr_launch_mode cfmgr_launch_links cfmgr_launch_uid cfmgr_launch_rest << EOF_DELETED
+			IFS=' ' read -r cfmgr_launch_mode cfmgr_launch_links cfmgr_launch_uid cfmgr_launch_rest <<EOF_DELETED
 $cfmgr_launch_deleted
 EOF_DELETED
 			[ "$cfmgr_launch_mode:$cfmgr_launch_links:$cfmgr_launch_uid" = drwx------:0:0 ] || return 1
@@ -1755,16 +1755,16 @@ EOF_DELETED
 cfmgr_launch_action() {
 	cfmgr_launch_mode=$1
 	case $1 in
-		launch-copy) cfmgr_launch_tool=$cfmgr_install_cp ;;
-		launch-readonly) cfmgr_launch_tool=$cfmgr_install_chmod ;;
-		launch-ls) cfmgr_launch_tool=$cfmgr_install_ls ;;
-		launch-wc) cfmgr_launch_tool=$cfmgr_install_wc ;;
-		launch-sha) cfmgr_launch_tool=$cfmgr_install_sha ;;
-		launch-config-*) cfmgr_launch_tool=$cfmgr_install_awk ;;
-		launch-report) cfmgr_launch_tool=$cfmgr_launch_logger ;;
-		launch-remove) cfmgr_launch_tool=/bin/rm ;;
-		launch-rmdir) cfmgr_launch_tool=/bin/rmdir ;;
-		*) return 2 ;;
+	launch-copy) cfmgr_launch_tool=$cfmgr_install_cp ;;
+	launch-readonly) cfmgr_launch_tool=$cfmgr_install_chmod ;;
+	launch-ls) cfmgr_launch_tool=$cfmgr_install_ls ;;
+	launch-wc) cfmgr_launch_tool=$cfmgr_install_wc ;;
+	launch-sha) cfmgr_launch_tool=$cfmgr_install_sha ;;
+	launch-config-*) cfmgr_launch_tool=$cfmgr_install_awk ;;
+	launch-report) cfmgr_launch_tool=$cfmgr_launch_logger ;;
+	launch-remove) cfmgr_launch_tool=/bin/rm ;;
+	launch-rmdir) cfmgr_launch_tool=/bin/rmdir ;;
+	*) return 2 ;;
 	esac
 	shift
 	cfmgr_prerequisites_run "$cfmgr_launch_mode" "$cfmgr_install_context" "$cfmgr_install_sh" \
@@ -1777,7 +1777,7 @@ cfmgr_launch_action() {
 
 cfmgr_launch_size() {
 	cfmgr_launch_action launch-wc "$1" || return $?
-	IFS=' ' read -r cfmgr_launch_bytes cfmgr_launch_extra < "$cfmgr_install_output" || return 1
+	IFS=' ' read -r cfmgr_launch_bytes cfmgr_launch_extra <"$cfmgr_install_output" || return 1
 	[ -z "$cfmgr_launch_extra" ] || return 1
 	case $cfmgr_launch_bytes in '' | *[!0-9]*) return 1 ;; esac
 	[ "${#cfmgr_launch_bytes}" -le 6 ] && [ "$cfmgr_launch_bytes" -le "$2" ]
@@ -1786,15 +1786,15 @@ cfmgr_launch_size() {
 cfmgr_launch_metadata() {
 	[ ! -L "$1" ] || return 1
 	cfmgr_launch_action launch-ls "$1" || return $?
-	IFS=' ' read -r cfmgr_launch_permissions cfmgr_launch_links cfmgr_launch_uid cfmgr_launch_gid cfmgr_launch_rest < "$cfmgr_install_output" || return 1
+	IFS=' ' read -r cfmgr_launch_permissions cfmgr_launch_links cfmgr_launch_uid cfmgr_launch_gid cfmgr_launch_rest <"$cfmgr_install_output" || return 1
 	[ "$cfmgr_launch_uid" = 0 ] || return 1
 	case $2:$cfmgr_launch_permissions in
-		private:drwx------ | config:-rw------- | readonly:-rw-r--r--) return 0 ;;
-		protected:d????????? | protected:-?????????)
-			case $cfmgr_launch_permissions in ?????w???? | ????????w?) return 1 ;; esac
-			return 0
-			;;
-		*) return 1 ;;
+	private:drwx------ | config:-rw------- | readonly:-rw-r--r--) return 0 ;;
+	protected:d????????? | protected:-?????????)
+		case $cfmgr_launch_permissions in ?????w???? | ????????w?) return 1 ;; esac
+		return 0
+		;;
+	*) return 1 ;;
 	esac
 }
 
@@ -1823,9 +1823,9 @@ cfmgr_launch_scope() {
 		IFS= read -r cfmgr_launch_scope_line || return 1
 		if IFS= read -r cfmgr_launch_scope_tail; then return 1; fi
 		[ -z "$cfmgr_launch_scope_tail" ] || return 1
-	} < "$cfmgr_launch_scope_receipt" || return 1
+	} <"$cfmgr_launch_scope_receipt" || return 1
 	[ "$cfmgr_launch_bytes" -eq "$((${#cfmgr_launch_scope_line} + 1))" ] || return 1
-	IFS=' ' read -r cfmgr_launch_scope_tag cfmgr_launch_scope_schema cfmgr_launch_scope_generation cfmgr_launch_scope_value cfmgr_launch_scope_end cfmgr_launch_scope_extra << EOF_SCOPE
+	IFS=' ' read -r cfmgr_launch_scope_tag cfmgr_launch_scope_schema cfmgr_launch_scope_generation cfmgr_launch_scope_value cfmgr_launch_scope_end cfmgr_launch_scope_extra <<EOF_SCOPE
 $cfmgr_launch_scope_line
 EOF_SCOPE
 	[ "$cfmgr_launch_scope_tag:$cfmgr_launch_scope_schema:$cfmgr_launch_scope_end:$cfmgr_launch_scope_extra" = CFMGR-SCOPE:1:END: ] || return 1
@@ -1859,9 +1859,9 @@ cfmgr_launch_receipt() {
 		IFS= read -r cfmgr_launch_line || return 1
 		if IFS= read -r cfmgr_launch_tail; then return 1; fi
 		[ -z "$cfmgr_launch_tail" ] || return 1
-	} < "$cfmgr_launch_receipt_file" || return 1
+	} <"$cfmgr_launch_receipt_file" || return 1
 	[ "$cfmgr_launch_receipt_bytes" -eq "$((${#cfmgr_launch_line} + 1))" ] || return 1
-	IFS=' ' read -r cfmgr_launch_tag cfmgr_launch_schema cfmgr_launch_oldgen cfmgr_launch_newgen cfmgr_launch_changed cfmgr_launch_in cfmgr_launch_out cfmgr_launch_end cfmgr_launch_extra << EOF_RECEIPT
+	IFS=' ' read -r cfmgr_launch_tag cfmgr_launch_schema cfmgr_launch_oldgen cfmgr_launch_newgen cfmgr_launch_changed cfmgr_launch_in cfmgr_launch_out cfmgr_launch_end cfmgr_launch_extra <<EOF_RECEIPT
 $cfmgr_launch_line
 EOF_RECEIPT
 	[ "$cfmgr_launch_tag:$cfmgr_launch_schema:$cfmgr_launch_end:$cfmgr_launch_extra" = CFMGR-CONFIG:1:END: ] || return 1
@@ -1902,13 +1902,13 @@ cfmgr_launch_package_structure() {
 	cfmgr_launch_size "$cfmgr_install_source/setup-state" 128 || return $?
 	cfmgr_launch_setup="CFMGR-SETUP 1 $CFMGR_VERSION complete"
 	[ "$cfmgr_launch_bytes" -eq "$((${#cfmgr_launch_setup} + 1))" ] || return 1
-	IFS= read -r cfmgr_launch_actual < "$cfmgr_install_source/setup-state" || return 1
+	IFS= read -r cfmgr_launch_actual <"$cfmgr_install_source/setup-state" || return 1
 	[ "$cfmgr_launch_actual" = "$cfmgr_launch_setup" ] || return 1
 	cfmgr_install_walk_count=0
 	{
 		printf '%s\n' cfmgr.sh catalog.txt modules/
 		cfmgr_bootstrap_walk "$cfmgr_install_source" "$cfmgr_install_source/modules" 0
-	} > "$cfmgr_install_context/launch.inventory" || return 1
+	} >"$cfmgr_install_context/launch.inventory" || return 1
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" 'BEGIN { FS="\t" }
 	 NR==FNR { expected[$4]=1; path=$4; while(sub(/\/[^\/]+$/,"",path)) expected[path "/"]=1; next }
@@ -1916,7 +1916,7 @@ cfmgr_launch_package_structure() {
 	 END { for(p in expected) if(!seen[p]) bad=1; exit bad ? 1 : 0 }
 	' "$cfmgr_install_context/records" "$cfmgr_install_context/launch.inventory" || return 1
 	# Keep FD0 as the context. Only finite metadata probes run while FD4 reads.
-	exec 4< "$cfmgr_install_context/launch.inventory" || return 1
+	exec 4<"$cfmgr_install_context/launch.inventory" || return 1
 	cfmgr_launch_structure_code=0
 	while IFS= read -r cfmgr_launch_directory <&4; do
 		case $cfmgr_launch_directory in */)
@@ -1929,7 +1929,7 @@ cfmgr_launch_package_structure() {
 	done
 	exec 4<&-
 	[ "$cfmgr_launch_structure_code" -eq 0 ] || return "$cfmgr_launch_structure_code"
-	exec 4< "$cfmgr_install_context/records" || return 1
+	exec 4<"$cfmgr_install_context/records" || return 1
 	cfmgr_launch_structure_code=0
 	while IFS='	' read -r cfmgr_install_expected_mode cfmgr_install_expected_size cfmgr_install_expected_digest cfmgr_install_relative <&4; do
 		case $cfmgr_install_relative in cfmgr.sh) cfmgr_launch_payload=$cfmgr_install_jffs/scripts/cfmgr.sh ;; *) cfmgr_launch_payload=$cfmgr_install_source/$cfmgr_install_relative ;; esac
@@ -1999,7 +1999,7 @@ cfmgr_launch_package_digests() {
 		cfmgr_bootstrap_digest "$cfmgr_install_source/$cfmgr_launch_passive" || return $?
 		[ "$cfmgr_install_digest" = "$cfmgr_launch_saved_digest" ] || return 1
 	done
-	exec 4< "$cfmgr_install_context/records" || return 1
+	exec 4<"$cfmgr_install_context/records" || return 1
 	cfmgr_launch_digest_code=0
 	while IFS='	' read -r cfmgr_install_expected_mode cfmgr_install_expected_size cfmgr_install_expected_digest cfmgr_install_relative <&4; do
 		case $cfmgr_install_relative in cfmgr.sh) cfmgr_launch_payload=$cfmgr_install_jffs/scripts/cfmgr.sh ;; *) cfmgr_launch_payload=$cfmgr_install_source/$cfmgr_install_relative ;; esac
@@ -2058,7 +2058,7 @@ cfmgr_launch_publish_observation_locked() {
 	cfmgr_bootstrap_space "$cfmgr_install_jffs" "$cfmgr_launch_space_needed" || return $?
 	cfmgr_bootstrap_action install-mkdir-private "$cfmgr_launch_guard" || return $?
 	cfmgr_launch_recovery=1 cfmgr_launch_guard_owned=1
-	exec 4< "$cfmgr_launch_guard" || return 3
+	exec 4<"$cfmgr_launch_guard" || return 3
 	cfmgr_bootstrap_flush "$cfmgr_launch_guard" && cfmgr_bootstrap_flush "$cfmgr_install_source" || return $?
 	cfmgr_bootstrap_copy "$cfmgr_launch_snapshot" "$cfmgr_launch_guard/old" 0600 || return $?
 	cfmgr_bootstrap_copy "$cfmgr_launch_candidate" "$cfmgr_launch_guard/candidate" 0600 || return $?
@@ -2069,7 +2069,7 @@ cfmgr_launch_publish_observation_locked() {
 	(
 		umask 077
 		set -C
-		printf 'CFMGR-OBSERVATION 1 %s %s %s %s END\n' "$cfmgr_launch_generation" "$cfmgr_launch_target_generation" "$cfmgr_launch_snapshot_digest" "$cfmgr_launch_target_bytes" > "$cfmgr_install_context/observation.intent"
+		printf 'CFMGR-OBSERVATION 1 %s %s %s %s END\n' "$cfmgr_launch_generation" "$cfmgr_launch_target_generation" "$cfmgr_launch_snapshot_digest" "$cfmgr_launch_target_bytes" >"$cfmgr_install_context/observation.intent"
 	) || return 1
 	cfmgr_bootstrap_copy "$cfmgr_install_context/observation.intent" "$cfmgr_launch_guard/intent" 0600 || return $?
 	cfmgr_launch_live_unchanged && cfmgr_launch_attachment_ok || return $?
@@ -2163,15 +2163,15 @@ cfmgr_launch_native() {
 	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && [ "$1" = /jffs/addons/CFMgr.d ] || return 2
 	cfmgr_launch_requested_action=${2:-normal}
 	case $cfmgr_launch_requested_action in
-		normal) ;;
-		reinstall)
-			if cfmgr_launch_confirm_reinstall; then :; else
-				cfmgr_launch_confirm_code=$?
-				printf '[CFMGR] dependencies: notice: reinstall cancelled\n' >&2
-				return "$cfmgr_launch_confirm_code"
-			fi
-			;;
-		*) return 2 ;;
+	normal) ;;
+	reinstall)
+		if cfmgr_launch_confirm_reinstall; then :; else
+			cfmgr_launch_confirm_code=$?
+			printf '[CFMGR] dependencies: notice: reinstall cancelled\n' >&2
+			return "$cfmgr_launch_confirm_code"
+		fi
+		;;
+	*) return 2 ;;
 	esac
 	cfmgr_launch_storage_required=0 cfmgr_launch_guard_owned=0 cfmgr_launch_retiring=0 cfmgr_launch_migrating=0 cfmgr_launch_recovery=0
 	cfmgr_bootstrap_native_prepare "$1" launch || return $?
@@ -2210,13 +2210,13 @@ cfmgr_package_awk_extract_exec() {
 	[ "$#" -eq 3 ] || exit 2
 	cfmgr_candidate_tool=$1 cfmgr_candidate_root=$2
 	case $3 in
-		config) cfmgr_candidate_parts="json config_schema config_observation" ;;
-		status) cfmgr_candidate_parts="json status" ;;
-		backup_payload) cfmgr_candidate_parts="json config_schema config_observation backup_payload" ;;
-		backup_history) cfmgr_candidate_parts="json backup_history" ;;
-		backup_inventory) cfmgr_candidate_parts="backup_manifest backup_inventory" ;;
-		mountinfo | status_native | backup_archive_control | backup_cloud_writer | backup_manifest | backup_payload_index | backup_payload_match | backup_pem | backup_tar | backup_yaml) cfmgr_candidate_parts=$3 ;;
-		*) exit 2 ;;
+	config) cfmgr_candidate_parts="json config_schema config_observation" ;;
+	status) cfmgr_candidate_parts="json status" ;;
+	backup_payload) cfmgr_candidate_parts="json config_schema config_observation backup_payload" ;;
+	backup_history) cfmgr_candidate_parts="json backup_history" ;;
+	backup_inventory) cfmgr_candidate_parts="backup_manifest backup_inventory" ;;
+	mountinfo | status_native | backup_archive_control | backup_cloud_writer | backup_manifest | backup_payload_index | backup_payload_match | backup_pem | backup_tar | backup_yaml) cfmgr_candidate_parts=$3 ;;
+	*) exit 2 ;;
 	esac
 	# Four fixed owner files are already byte/mode admitted. No candidate shell
 	# executes, even when a malicious file supplies syntactically valid commands.

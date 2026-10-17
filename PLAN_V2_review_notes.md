@@ -24,3 +24,9 @@ Use the existing goal/subgoal IDs; these notes do not award acceptance or change
 | Review note | ID | Subgoal and required result |
 | --- | --- | --- |
 | **Existing firmware limit:** the approved contract checks all exposed write, rename, flush and verification results, but qualified JFFS2 firmware can hide internal flash-flush errors. Cached readback cannot certify restart persistence. The [durable-commit audit](PLAN_V2_audit.md#s0403-durable-staged-commit-review) records the rechecked source evidence and staging protections; actual flash/Merlin qualification remains deferred to beta. No raw-flash workaround or additional waiver is introduced. | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
+
+## 14. Backup and restore
+
+| Review point | ID | Subgoal and required result |
+| --- | --- | --- |
+| **Host harness timing:** the full five-member config/YAML/JSON/PEM semantic integration reached probe 417 but hit its 65s outer guard on the loaded macOS host. Its macOS-only harness allowance is 90s and the complete group then passed in 71.78s; the native guard and supervised fixture deadline of 60s remain unchanged. The rich capture fixture similarly hit its 110s macOS outer guard; its host allowance is 180s and the isolated retry passed in 83.31s, while native 110s and the supervised fixture deadline of 100s remain unchanged. All members, callbacks and safety assertions remain. Record measured cost and require actual Linux/vendor BusyBox execution; host timing is not router performance qualification. | S14.08 | **Backup transaction:** Consistent bounded source/rotation locks, private same-filesystem archive, hashes/mount recheck/atomic commit. |

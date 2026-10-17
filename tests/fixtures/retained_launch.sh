@@ -11,7 +11,7 @@ mkdir -m 700 "$retained_support"
 cp -R "$installer_package/modules" "$retained_support/modules"
 cp "$installer_package/catalog.txt" "$installer_package/manifest.txt" "$retained_support/"
 cp "$installer_package/cfmgr.sh" "$fixture/jffs/scripts/cfmgr.sh"
-printf 'CFMGR-SETUP 1 0.1.0 complete\n' > "$retained_support/setup-state"
+printf 'CFMGR-SETUP 1 0.1.0 complete\n' >"$retained_support/setup-state"
 # Synthetic retained settings preserve unrelated history/credentials; no feature creation.
 # shellcheck disable=SC2016 # Literal jq program, fixed data via --arg.
 "$installer_jq" -n -c --arg uuid "$cfmgr_storage_uuid_value" --arg filesystem "$cfmgr_storage_filesystem" \
@@ -27,7 +27,7 @@ printf 'CFMGR-SETUP 1 0.1.0 complete\n' > "$retained_support/setup-state"
  ip_sync:{configured:false,enabled:false,opt_out:false,policy:null},cloudflared:{configured:false,enabled:false,opt_out:false,policy:null}},
  history:{ddns:{kept:"history"},ip_sync:null,cloudflared:null},network:{address_family:"auto",selected_wan:null},
  backup:{destination:null,retention:null,last_backup:null},credentials:{},ownership:{}}
-' > "$retained_support/config"
+' >"$retained_support/config"
 chmod 600 "$retained_support/setup-state" "$retained_support/config"
 cp "$retained_support/config" "$fixture/retained.original"
 installer_package=$retained_support
@@ -38,7 +38,7 @@ cfmgr_bootstrap_native_prepare() {
 	cfmgr_install_jffs=$fixture/jffs cfmgr_install_owner=0
 	cfmgr_install_context=$view_ram/retained.$retained_attempt cfmgr_install_private_context=$view_ram/retained.$retained_attempt
 	mkdir -m 700 "$cfmgr_install_context" || return 1
-	exec 0< "$cfmgr_install_context" 8< "$fixture/jffs" 9< "$retained_support"
+	exec 0<"$cfmgr_install_context" 8<"$fixture/jffs" 9<"$retained_support"
 	cfmgr_bootstrap_signals
 	cfmgr_probe_pid='' cfmgr_probe_status=invalid
 }
@@ -64,7 +64,7 @@ cfmgr_launch_storage_unavailable() {
 }
 retained_fixture_logger=$view_ram/retained-logger
 # shellcheck disable=SC2016 # Positional argument belongs to the generated logger fixture.
-printf '#!/bin/sh\nprintf "%%s\\n" "$3" >>"%s"\n' "$view_ram/retained-system-messages" > "$retained_fixture_logger"
+printf '#!/bin/sh\nprintf "%%s\\n" "$3" >>"%s"\n' "$view_ram/retained-system-messages" >"$retained_fixture_logger"
 chmod 755 "$retained_fixture_logger"
 # Source wrapper is definition-only renamed and byte-verified by Python; actual
 # pin implementation still validates the held ext4 device and mount identities.
@@ -76,7 +76,7 @@ cfmgr_prerequisites_pause() { "$view_ram/usleep" 10000; }
 # Firmware admission is adapted, but normal DNS uses the real bounded
 # supervisor, dispatcher and SRV/A parsers with controlled executable answers.
 retained_dns_tool=$view_ram/retained-nslookup
-cat > "$retained_dns_tool" << EOF_DNS
+cat >"$retained_dns_tool" <<EOF_DNS
 #!/bin/sh
 printf '%s\\n' "\$*" >>"$view_ram/retained-dns-queries"
 if [ -e "$view_ram/retained-dns-outage" ]; then
@@ -113,7 +113,7 @@ cfmgr_test_cost retained-absent-end
 retained_absent=0
 # A returned volume remains usable when DNS is down; this launch proves the
 # no-op dependency path and defers only the tunnel DNS check.
-: > "$view_ram/retained-dns-outage"
+: >"$view_ram/retained-dns-outage"
 cfmgr_test_cost retained-return-dns-begin
 if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
 cfmgr_test_cost retained-return-dns-end
@@ -126,7 +126,7 @@ cmp "$fixture/retained.original" "$retained_support/config" || fail 'returned vo
 # DNS query responses are controlled adapters, not public-network evidence.
 cfmgr_launch_confirm_reinstall() { return 0; }
 cfmgr_bootstrap_reinstall_dns() { cfmgr_install_dns_native=srv-a-verified; }
-: > "$cfmgr_storage_opt/force-fixture"
+: >"$cfmgr_storage_opt/force-fixture"
 installer_probe_count=0
 cfmgr_test_cost retained-force-begin
 if cfmgr_launch_native /jffs/addons/CFMgr.d reinstall; then retained_cost_status=0; else retained_cost_status=$?; fi

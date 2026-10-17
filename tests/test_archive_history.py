@@ -451,6 +451,10 @@ try:
         write("".join(f"{b:02x}\n" for b in data))
     elif mode=="hash":
         write(hashlib.sha256(path(args[0]).read_bytes()).hexdigest()+" "+args[0]+"\n")
+    elif mode=="rotation":
+        info=path("/tmp/scribeLogRotate.flock").lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1: sys.exit(1)
+        write(f"ROTATION {info.st_ino} 1 0:1 END\n")
     elif mode=="meta":
         info=path(args[0]).lstat()
         write(f"{info.st_ino:7d} {stat.filemode(info.st_mode)} {info.st_nlink} 0 0 {info.st_size} {args[0]}\n")
@@ -546,7 +550,7 @@ def history(tmp_path, awk_programs):
     return root, ram, plan, driver, library, awk_programs[-1]
 
 
-def run_adapter(history, shell, after=""):
+def run_adapter(history, shell, after="", *, before=""):
     root, ram, plan, driver, library, awk = history
     script = (
         r"""
@@ -557,6 +561,7 @@ def run_adapter(history, shell, after=""):
         exec 0<"$2/config.lock"
         cfmgr_backup_history_attached() { [ -d "$cfmgr_history_context" ]; }
         # Explicit host fixture callbacks: no production RAM/native claim.
+        cfmgr_history_runtime_seed() { :; }
         cfmgr_history_runtime_reserve() { :; }
         cfmgr_history_runtime_created() { :; }
         cfmgr_history_runtime_consume() { :; }
@@ -575,7 +580,10 @@ def run_adapter(history, shell, after=""):
             [ "$cfmgr_probe_exit" = 0 ]
         }
         cfmgr_backup_history_observe "$3" || exit $?
-    """
+    """.replace(
+            'cfmgr_backup_history_observe "$3" || exit $?',
+            before + '\ncfmgr_backup_history_observe "$3" || exit $?',
+        )
         + after
     )
     return subprocess.run(
@@ -620,6 +628,28 @@ def test_off_history_adapter_observes_and_revalidates_under_existing_lock(
         for p in root.rglob("*")
         if p.is_file() and not p.is_symlink()
     }
+
+
+def test_feature_write_unresolved_cannot_become_optional_unavailability(history, shell):
+    result = run_adapter(
+        history,
+        shell,
+        ': >"$cfmgr_history_context/continued"',
+        before=r"""
+cfmgr_history_runtime_write() {
+    case $2 in
+    'OWN '*) cfmgr_probe_status=unresolved cfmgr_probe_pid=unresolved; return 3 ;;
+    esac
+    printf '%s\n' "$2" >>"$1"
+}
+""",
+    )
+    assert result.returncode == 3, result.stderr
+    assert not (history[1] / "continued").exists()
+    assert not any(
+        b"STATE ddns unavailable" in p.read_bytes()
+        for p in history[1].glob("history-*")
+    )
 
 
 def test_missing_scribe_is_unavailable_without_unmanaged_output(history, shell):
@@ -673,3 +703,24 @@ def test_foreign_stanza_cannot_cover_owned_history_through_ancestor_alias(
     assert result.returncode == 0
     assert b"STATE ddns unavailable unsupported-or-stale-history END\n" in result.stdout
     assert b"FILE " not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "prefix,ready", [("", True), ("SHELL=/bin/sh\n", True), ("SHELL=/bin/zsh\n", False)]
+)
+def test_effective_cron_shell_is_admitted_without_execution(
+    awk_programs, prefix, ready
+):
+    for awk in awk_programs:
+        result = parse(
+            awk,
+            "base",
+            bundle(
+                cron=prefix
+                + "5 */3 * * * /jffs/scripts/scribe LogRotate #scribeLogRotate#\n"
+            ),
+        )
+        assert result.returncode == (0 if ready else 1)
+        assert result.stderr == b""
+        if not ready:
+            assert result.stdout == b"CFMGR-HISTORY-ERROR 1 cron-shell END\n"

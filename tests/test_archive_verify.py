@@ -43,7 +43,9 @@ def archive(archive_io):
     return archive_io
 
 
-def make_archive(archive, *, mutation="", manifest_change=None, write_raw=True):
+def make_archive(
+    archive, *, mutation="", manifest_change=None, write_raw=True, compact=False
+):
     stage = archive[3]
     data = [
         b"config authority\n",
@@ -66,6 +68,10 @@ def make_archive(archive, *, mutation="", manifest_change=None, write_raw=True):
         "var/log/cloudflared.log",
         "etc/cloudflared/config.yml",
     ]
+    if compact:
+        # Callback admission needs the two mandatory members. Binary/empty/body
+        # traversal is independently covered by the complete positive journey.
+        data, roles, paths = data[:2], roles[:2], paths[:2]
     if mutation == "unsafe-path":
         paths[2] = "etc/cloudflared/../foreign.json"
     if mutation == "control-path":
@@ -239,7 +245,7 @@ def test_inventory_and_hash_fail_closed(archive, shell, mutation):
 
 @pytest.mark.parametrize("failure", ["missing", "payload", "complete", "wrong-set"])
 def test_semantic_callbacks_and_expected_set_are_required(archive, shell, failure):
-    make_archive(archive)
+    make_archive(archive, compact=True)
     if failure in ("payload", "complete"):
         archive[4]["TEST_REJECT"] = failure
     if failure == "payload":
@@ -254,8 +260,11 @@ def test_semantic_callbacks_and_expected_set_are_required(archive, shell, failur
     if failure == "missing":
         assert not (archive[1] / "native-tar").exists()
     if failure == "payload":
+        assert (archive[1] / "payload-callbacks").exists()
         assert not list(archive[3].glob(".verify.*"))
         assert (archive[3] / "candidate").exists()
+    if failure == "complete":
+        assert (archive[1] / "complete-callback").read_text() == "complete\n"
 
 
 def metadata_parse(

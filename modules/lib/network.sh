@@ -15,7 +15,7 @@ cfmgr_native_capath() (
 	[ -d "$cfmgr_native_context" ] && [ ! -L "$cfmgr_native_context" ] || exit 1
 	for cfmgr_native_entry in "$cfmgr_native_context"/*; do
 		case ${cfmgr_native_entry##*/} in
-			[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].[0-9]* | [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].r[0-9]*) exit 1 ;;
+		[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].[0-9]* | [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F].r[0-9]*) exit 1 ;;
 		esac
 	done
 )
@@ -23,7 +23,7 @@ cfmgr_native_capath() (
 # shellcheck disable=SC2154 # Fixed native probe callback exports output/error/exit.
 cfmgr_native_http_status() {
 	cfmgr_native_status_file=$cfmgr_native_output
-	IFS= read -r cfmgr_native_status < "$cfmgr_native_status_file" || return 1
+	IFS= read -r cfmgr_native_status <"$cfmgr_native_status_file" || return 1
 	[ "${#cfmgr_native_status}" -eq 3 ] || return 1
 	case $cfmgr_native_status in *[!0-9]*) return 1 ;; esac
 	cfmgr_native_step "$cfmgr_native_reason" install-wc "$cfmgr_native_status_file" || return $?
@@ -39,7 +39,7 @@ cfmgr_native_offline() {
 	[ -f "$cfmgr_native_ca" ] && [ ! -L "$cfmgr_native_ca" ] || return 1
 	cfmgr_native_step ca-size install-wc "$cfmgr_native_ca" || return $?
 	[ "$cfmgr_native_exit" -eq 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-	IFS=' ' read -r cfmgr_native_size cfmgr_native_extra < "$cfmgr_native_output" || return 1
+	IFS=' ' read -r cfmgr_native_size cfmgr_native_extra <"$cfmgr_native_output" || return 1
 	case $cfmgr_native_size in '' | *[!0-9]*) return 1 ;; esac
 	[ -z "$cfmgr_native_extra" ] && [ "${#cfmgr_native_size}" -le 7 ] && [ "$cfmgr_native_size" -gt 0 ] && [ "$cfmgr_native_size" -le 1048576 ] || return 1
 	cfmgr_native_step ca-pem native-ca-pem "$cfmgr_native_ca" || return $?

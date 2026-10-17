@@ -14,7 +14,7 @@ cfmgr_prerequisites_identity() {
 	cfmgr_identity_read=0
 	case "$1" in '' | *[!0-9]*) return 1 ;; esac
 	# A task can disappear before open; callers classify absence themselves.
-	IFS= read -r cfmgr_identity_line 2> /dev/null < "/proc/$1/stat" || return 1
+	IFS= read -r cfmgr_identity_line 2>/dev/null <"/proc/$1/stat" || return 1
 	cfmgr_identity_read=1
 	[ "${cfmgr_identity_line%% *}" = "$1" ] || return 1
 	cfmgr_identity_tail=${cfmgr_identity_line##*) }
@@ -41,7 +41,7 @@ cfmgr_prerequisites_owned() {
 	fi
 	[ "$cfmgr_identity_start" = "$cfmgr_probe_start" ] &&
 		[ "$cfmgr_identity_parent" = "$cfmgr_probe_owner" ] &&
-		IFS= read -r cfmgr_probe_current_boot < /proc/sys/kernel/random/boot_id &&
+		IFS= read -r cfmgr_probe_current_boot </proc/sys/kernel/random/boot_id &&
 		[ "$cfmgr_probe_current_boot" = "$cfmgr_probe_boot" ] || return 3
 }
 
@@ -50,18 +50,18 @@ cfmgr_prerequisites_owned() {
 _cfmgr_prerequisites_observe() {
 	if cfmgr_prerequisites_owned; then cfmgr_probe_observation=0; else cfmgr_probe_observation=$?; fi
 	case "$cfmgr_probe_observation" in
-		0 | 1) return 0 ;;
-		*)
-			cfmgr_probe_status=unresolved
-			return 3
-			;;
+	0 | 1) return 0 ;;
+	*)
+		cfmgr_probe_status=unresolved
+		return 3
+		;;
 	esac
 }
 
 cfmgr_prerequisites_child() {
 	[ "$cfmgr_probe_mode" = timeout-expiry ] || return 0
 	[ -f "$cfmgr_probe_context/timeout.child" ] || return 1
-	IFS=' ' read -r cfmgr_probe_child_pid cfmgr_probe_child_parent cfmgr_probe_child_start cfmgr_probe_child_boot cfmgr_probe_child_extra < "$cfmgr_probe_context/timeout.child" || return 1
+	IFS=' ' read -r cfmgr_probe_child_pid cfmgr_probe_child_parent cfmgr_probe_child_start cfmgr_probe_child_boot cfmgr_probe_child_extra <"$cfmgr_probe_context/timeout.child" || return 1
 	[ -z "$cfmgr_probe_child_extra" ] &&
 		[ "$cfmgr_probe_child_parent" = "$cfmgr_probe_pid" ] &&
 		[ "$cfmgr_probe_child_boot" = "$cfmgr_probe_boot" ] || return 1
@@ -76,15 +76,15 @@ cfmgr_prerequisites_child() {
 
 # shellcheck disable=SC2034
 cfmgr_prerequisites_now() {
-	IFS=' ' read -r cfmgr_probe_uptime cfmgr_probe_idle < /proc/uptime || return 1
+	IFS=' ' read -r cfmgr_probe_uptime cfmgr_probe_idle </proc/uptime || return 1
 	cfmgr_probe_now=${cfmgr_probe_uptime%%.*}
 	case "$cfmgr_probe_now" in '' | *[!0-9]*) return 1 ;; esac
 }
 
 # Check the native supervision substrate even when every required tool is absent.
 cfmgr_prerequisites_supervisor() {
-	IFS= read -r cfmgr_probe_boot < /proc/sys/kernel/random/boot_id || return 2
-	IFS= read -r cfmgr_probe_self < /proc/self/stat || return 2
+	IFS= read -r cfmgr_probe_boot </proc/sys/kernel/random/boot_id || return 2
+	IFS= read -r cfmgr_probe_self </proc/self/stat || return 2
 	cfmgr_probe_owner=${cfmgr_probe_self%% *}
 	cfmgr_prerequisites_now || return 2
 }
@@ -98,15 +98,15 @@ cfmgr_prerequisites_pause() {
 _cfmgr_prerequisites_attachment() {
 	if [ "${cfmgr_config_lock_fd0:-0}" = 1 ]; then cfmgr_store_fd_is "${cfmgr_store_lock:-}" 0 || return 1; fi
 	case ${cfmgr_probe_mode:-none} in
-		acquire-*) cfmgr_acquire_attached ;;
-		install-report | install-report-ls) cfmgr_bootstrap_native_attached ;;
-		launch-*) cfmgr_launch_attachment_ok ;;
-		status-*) cfmgr_status_attachment_ok ;;
-		store-*) cfmgr_store_attachment_ok ;;
-		archive-*) cfmgr_archive_attachment_ok ;;
-		history-*) cfmgr_backup_history_attached ;;
-		repair-*) cfmgr_dependencies_attachment_ok ;;
-		*) cfmgr_prerequisites_attachment_ok ;;
+	acquire-*) cfmgr_acquire_attached ;;
+	install-report | install-report-ls) cfmgr_bootstrap_native_attached ;;
+	launch-*) cfmgr_launch_attachment_ok ;;
+	status-*) cfmgr_status_attachment_ok ;;
+	store-*) cfmgr_store_attachment_ok ;;
+	archive-*) cfmgr_archive_attachment_ok ;;
+	history-*) cfmgr_backup_history_attached ;;
+	repair-*) cfmgr_dependencies_attachment_ok ;;
+	*) cfmgr_prerequisites_attachment_ok ;;
 	esac
 }
 
@@ -126,90 +126,90 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_reason=arguments
 	[ "$#" -ge 9 ] || return 2
 	case $1 in
-		repair-remove) ;; # Its existing exact finite operand gate remains below.
-		store-archive-config) [ "$#" -eq 23 ] || return 2 ;;
-		*) [ "$#" -le 22 ] || return 2 ;;
+	repair-remove) ;; # Its existing exact finite operand gate remains below.
+	store-archive-config) [ "$#" -eq 23 ] || return 2 ;;
+	*) [ "$#" -le 22 ] || return 2 ;;
 	esac
 	cfmgr_probe_mode=$1 cfmgr_probe_context=$2 cfmgr_probe_shell=$3
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
-		history-meta | history-proc-meta | history-inode | history-count | history-digest | history-realpath | history-readlink | history-hexdump | history-script-prefix | history-blkid | history-proc-list | history-proc-pids | history-policy-decode) [ "$#" -eq 10 ] || return 2 ;;
-		history-directory | history-mount | history-cron-read) [ "$#" -eq 11 ] || return 2 ;;
-		history-volume | history-argv) [ "$#" -eq 13 ] || return 2 ;;
-		history-parse) [ "$#" -eq 15 ] || return 2 ;;
-		history-policy-json | history-append | history-frame) [ "$#" -eq 14 ] || return 2 ;;
-		history-account | history-lock | history-syslog-version | history-syslog-check | history-logrotate-version | history-logrotate-debug) [ "$#" -eq 9 ] || return 2 ;;
-		store-archive-plan | archive-control) if [ "$cfmgr_probe_mode" = store-archive-plan ]; then [ "$#" -eq 12 ]; else [ "$#" -eq 14 ]; fi || return 2 ;;
-		archive-chmod) [ "$#" -eq 13 ] || return 2 ;;
-		archive-count | archive-meta | archive-inode | archive-digest | archive-gunzip-test | archive-timezone | archive-date | archive-source-realpath | archive-source-blkid | archive-hexdump) [ "$#" -eq 10 ] || return 2 ;;
-		archive-source-mount) [ "$#" -eq 11 ] || return 2 ;;
-		archive-tar-header) [ "$#" -eq 13 ] || return 2 ;;
-		archive-payload-json | archive-write) [ "$#" -eq 14 ] || return 2 ;;
-		archive-payload-yaml | archive-payload-match) [ "$#" -eq 12 ] || return 2 ;;
-		archive-payload-index) [ "$#" -eq 13 ] || return 2 ;;
-		archive-payload-pem) [ "$#" -eq 11 ] || return 2 ;;
-		archive-memory | archive-flush) [ "$#" -eq 9 ] || return 2 ;;
-		archive-space | archive-space-values | archive-stage-meta) [ "$#" -eq 10 ] || return 2 ;;
-		archive-directory | archive-stage-mkdir | archive-stage-rmdir | archive-archive-remove) [ "$#" -eq 12 ] || return 2 ;;
-		archive-publish) [ "$#" -eq 15 ] || return 2 ;;
-		archive-format-inventory) [ "$#" -eq 14 ] || return 2 ;;
-		archive-format-manifest | archive-unlink) [ "$#" -eq 12 ] || return 2 ;;
-		archive-list-compare) [ "$#" -eq 11 ] || return 2 ;;
-		archive-copy-blocks | archive-copy-tail | archive-copy-small) [ "$#" -eq 15 ] || return 2 ;;
-		archive-tar-create) [ "$#" -eq 14 ] || return 2 ;;
-		archive-gzip | archive-gunzip | archive-tar-list | archive-tar-verbose | archive-tar-bodies | archive-metahex | archive-base64) [ "$#" -eq 13 ] || return 2 ;;
-		acquire-api | acquire-raw) [ "$#" -eq 14 ] || return 2 ;;
-		acquire-curl-version) [ "$#" -eq 9 ] || return 2 ;;
-		acquire-curl-offline | acquire-manifest | acquire-entry | acquire-chmod) [ "$#" -eq 11 ] || return 2 ;;
-		acquire-extract) [ "$#" -eq 12 ] || return 2 ;;
-		acquire-awk | acquire-awk-file) [ "$#" -eq 11 ] || return 2 ;;
-		acquire-catalog) [ "$#" -eq 12 ] || return 2 ;;
-		acquire-text) [ "$#" -eq 13 ] || return 2 ;;
-		acquire-curl-features | acquire-ca-pem | acquire-ca-decode | acquire-wc | acquire-lines | acquire-ls | acquire-digest | acquire-shell | acquire-mkdir | acquire-remove | acquire-rmdir) [ "$#" -eq 10 ] || return 2 ;;
-		store-backup-config) [ "$#" -eq 18 ] || return 2 ;;
-		store-archive-config) [ "$#" -eq 23 ] || return 2 ;;
-		store-backup-mounts | store-backup-mount) [ "$#" -eq 11 ] || return 2 ;;
-		store-backup-blkid) [ "$#" -eq 10 ] || return 2 ;;
-		store-backup-mkdir | store-backup-chmod) [ "$#" -eq 9 ] || return 2 ;;
-		store-settings) [ "$#" -eq 17 ] || return 2 ;;
-		store-copy | store-move | store-intent | store-space-frame) [ "$#" -eq 11 ] || return 2 ;;
-		store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;
-		store-count | store-meta | store-meta-frame | store-snapshot | store-digest | store-digest-frame | store-lock-create | store-lock-test | store-mkdir | store-remove | store-rmdir | store-space) [ "$#" -eq 10 ] || return 2 ;;
-		status-config) [ "$#" -eq 20 ] || return 2 ;;
-		status-snapshot | status-nvram | status-space | status-realpath | status-metadata | status-count) [ "$#" -eq 10 ] || return 2 ;;
-		status-fields) [ "$#" -eq 13 ] || return 2 ;;
-		status-native | status-mount) [ "$#" -eq 11 ] || return 2 ;;
-		status-date) [ "$#" -eq 9 ] || return 2 ;;
-		launch-config-check | launch-config-scope) [ "$#" -eq 13 ] || return 2 ;;
-		launch-config-observe | launch-config-patch) [ "$#" -eq 17 ] || return 2 ;;
-		launch-copy) [ "$#" -eq 11 ] || return 2 ;;
-		launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-report | launch-readonly) [ "$#" -eq 10 ] || return 2 ;;
-		repair-awk) [ "$#" -ge 14 ] && [ "$#" -le 22 ] || return 2 ;;
-		repair-inventory) [ "$#" -eq 12 ] || return 2 ;;
-		repair-identity-parse | repair-readlink | repair-list | repair-copy | repair-mkdir | repair-chmod | repair-link | repair-signal) [ "$#" -eq 11 ] || return 2 ;;
-		repair-remove) [ "$#" -ge 10 ] && [ "$#" -le 73 ] || return 2 ;;
-		repair-report | repair-identity | repair-file | repair-root | repair-guard-root | repair-bind4 | repair-bind7 | repair-private | repair-unbindable | repair-seal | repair-unmount | repair-fifo | repair-rmdir | repair-retire) [ "$#" -eq 10 ] || return 2 ;;
-		native-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
-		native-curl-https) [ "$#" -eq 12 ] || return 2 ;;
-		native-curl-version) [ "$#" -eq 9 ] || return 2 ;;
-		native-dns-native-srv) [ "$#" -eq 10 ] || return 2 ;;
-		native-dns-dig-srv) [ "$#" -eq 9 ] || return 2 ;;
-		native-dns-native-a | native-dns-dig-a | native-dns-parse-srv) [ "$#" -eq 11 ] || return 2 ;;
-		native-dns-classify | native-dns-parse-a) [ "$#" -eq 12 ] || return 2 ;;
-		native-curl-features | native-ca-pem | native-ca-decode | native-rmdir) [ "$#" -eq 10 ] || return 2 ;;
-		install-copy | install-rename | install-publish) [ "$#" -eq 11 ] || return 2 ;;
-		install-report | install-report-ls | install-sha | install-wc | install-ls | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df | install-remove) [ "$#" -eq 10 ] || return 2 ;;
-		install-flush | install-nvram) [ "$#" -eq 9 ] || return 2 ;;
-		install-config-check) [ "$#" -eq 12 ] || return 2 ;;
-		install-config) [ "$#" -eq 16 ] || return 2 ;;
-		jq-good | jq-bad | sha-bytes | sha-good | sha-bad | wc-jq | wc-sha | timeout-exit | timeout-expiry | flock-first | flock-compete | flock-after | flock-release | flock-finish | flock-entware-first | flock-entware-compete | flock-entware-after | flock-entware-release | flock-entware-finish | dig-version) [ "$#" -eq 9 ] || return 2 ;;
-		blkid)
-			[ "$#" -eq 10 ] || return 2
-			case "${10}" in /*) ;; *) return 2 ;; esac
-			[ -b "${10}" ] || return 2
-			;;
-		*) return 2 ;;
+	history-meta | history-proc-meta | history-inode | history-count | history-digest | history-realpath | history-readlink | history-hexdump | history-script-prefix | history-blkid | history-proc-list | history-proc-pids | history-policy-decode) [ "$#" -eq 10 ] || return 2 ;;
+	history-directory | history-mount | history-cron-read | history-writer-fd-list) [ "$#" -eq 11 ] || return 2 ;;
+	history-volume | history-argv | history-writer-parse) [ "$#" -eq 13 ] || return 2 ;;
+	history-parse) [ "$#" -eq 15 ] || return 2 ;;
+	history-policy-json | history-append | history-frame) [ "$#" -eq 14 ] || return 2 ;;
+	history-account | history-lock | history-syslog-version | history-syslog-check | history-logrotate-version | history-logrotate-debug) [ "$#" -eq 9 ] || return 2 ;;
+	store-archive-plan | archive-control) if [ "$cfmgr_probe_mode" = store-archive-plan ]; then [ "$#" -eq 12 ]; else [ "$#" -eq 14 ]; fi || return 2 ;;
+	archive-chmod) [ "$#" -eq 13 ] || return 2 ;;
+	archive-count | archive-meta | archive-inode | archive-digest | archive-gunzip-test | archive-timezone | archive-date | archive-source-realpath | archive-source-blkid | archive-hexdump) [ "$#" -eq 10 ] || return 2 ;;
+	archive-source-mount) [ "$#" -eq 11 ] || return 2 ;;
+	archive-tar-header) [ "$#" -eq 13 ] || return 2 ;;
+	archive-payload-json | archive-write) [ "$#" -eq 14 ] || return 2 ;;
+	archive-payload-yaml | archive-payload-match) [ "$#" -eq 12 ] || return 2 ;;
+	archive-payload-index) [ "$#" -eq 13 ] || return 2 ;;
+	archive-payload-pem) [ "$#" -eq 11 ] || return 2 ;;
+	archive-memory | archive-flush) [ "$#" -eq 9 ] || return 2 ;;
+	archive-space | archive-space-values | archive-stage-meta) [ "$#" -eq 10 ] || return 2 ;;
+	archive-directory | archive-stage-mkdir | archive-stage-rmdir | archive-archive-remove) [ "$#" -eq 12 ] || return 2 ;;
+	archive-publish) [ "$#" -eq 15 ] || return 2 ;;
+	archive-format-inventory) [ "$#" -eq 14 ] || return 2 ;;
+	archive-format-manifest | archive-unlink) [ "$#" -eq 12 ] || return 2 ;;
+	archive-list-compare) [ "$#" -eq 11 ] || return 2 ;;
+	archive-copy-blocks | archive-copy-tail | archive-copy-small) [ "$#" -eq 15 ] || return 2 ;;
+	archive-tar-create) [ "$#" -eq 14 ] || return 2 ;;
+	archive-gzip | archive-gunzip | archive-tar-list | archive-tar-verbose | archive-tar-bodies | archive-metahex | archive-base64) [ "$#" -eq 13 ] || return 2 ;;
+	acquire-api | acquire-raw) [ "$#" -eq 14 ] || return 2 ;;
+	acquire-curl-version) [ "$#" -eq 9 ] || return 2 ;;
+	acquire-curl-offline | acquire-manifest | acquire-entry | acquire-chmod) [ "$#" -eq 11 ] || return 2 ;;
+	acquire-extract) [ "$#" -eq 12 ] || return 2 ;;
+	acquire-awk | acquire-awk-file) [ "$#" -eq 11 ] || return 2 ;;
+	acquire-catalog) [ "$#" -eq 12 ] || return 2 ;;
+	acquire-text) [ "$#" -eq 13 ] || return 2 ;;
+	acquire-curl-features | acquire-ca-pem | acquire-ca-decode | acquire-wc | acquire-lines | acquire-ls | acquire-digest | acquire-shell | acquire-mkdir | acquire-remove | acquire-rmdir) [ "$#" -eq 10 ] || return 2 ;;
+	store-backup-config) [ "$#" -eq 18 ] || return 2 ;;
+	store-archive-config) [ "$#" -eq 23 ] || return 2 ;;
+	store-backup-mounts | store-backup-mount) [ "$#" -eq 11 ] || return 2 ;;
+	store-backup-blkid) [ "$#" -eq 10 ] || return 2 ;;
+	store-backup-mkdir | store-backup-chmod) [ "$#" -eq 9 ] || return 2 ;;
+	store-settings) [ "$#" -eq 17 ] || return 2 ;;
+	store-copy | store-move | store-intent | store-space-frame) [ "$#" -eq 11 ] || return 2 ;;
+	store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;
+	store-count | store-meta | store-meta-frame | store-snapshot | store-digest | store-digest-frame | store-lock-create | store-lock-test | store-mkdir | store-remove | store-rmdir | store-space) [ "$#" -eq 10 ] || return 2 ;;
+	status-config) [ "$#" -eq 20 ] || return 2 ;;
+	status-snapshot | status-nvram | status-space | status-realpath | status-metadata | status-count) [ "$#" -eq 10 ] || return 2 ;;
+	status-fields) [ "$#" -eq 13 ] || return 2 ;;
+	status-native | status-mount) [ "$#" -eq 11 ] || return 2 ;;
+	status-date) [ "$#" -eq 9 ] || return 2 ;;
+	launch-config-check | launch-config-scope) [ "$#" -eq 13 ] || return 2 ;;
+	launch-config-observe | launch-config-patch) [ "$#" -eq 17 ] || return 2 ;;
+	launch-copy) [ "$#" -eq 11 ] || return 2 ;;
+	launch-ls | launch-wc | launch-sha | launch-remove | launch-rmdir | launch-report | launch-readonly) [ "$#" -eq 10 ] || return 2 ;;
+	repair-awk) [ "$#" -ge 14 ] && [ "$#" -le 22 ] || return 2 ;;
+	repair-inventory) [ "$#" -eq 12 ] || return 2 ;;
+	repair-identity-parse | repair-readlink | repair-list | repair-copy | repair-mkdir | repair-chmod | repair-link | repair-signal) [ "$#" -eq 11 ] || return 2 ;;
+	repair-remove) [ "$#" -ge 10 ] && [ "$#" -le 73 ] || return 2 ;;
+	repair-report | repair-identity | repair-file | repair-root | repair-guard-root | repair-bind4 | repair-bind7 | repair-private | repair-unbindable | repair-seal | repair-unmount | repair-fifo | repair-rmdir | repair-retire) [ "$#" -eq 10 ] || return 2 ;;
+	native-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
+	native-curl-https) [ "$#" -eq 12 ] || return 2 ;;
+	native-curl-version) [ "$#" -eq 9 ] || return 2 ;;
+	native-dns-native-srv) [ "$#" -eq 10 ] || return 2 ;;
+	native-dns-dig-srv) [ "$#" -eq 9 ] || return 2 ;;
+	native-dns-native-a | native-dns-dig-a | native-dns-parse-srv) [ "$#" -eq 11 ] || return 2 ;;
+	native-dns-classify | native-dns-parse-a) [ "$#" -eq 12 ] || return 2 ;;
+	native-curl-features | native-ca-pem | native-ca-decode | native-rmdir) [ "$#" -eq 10 ] || return 2 ;;
+	install-copy | install-rename | install-publish) [ "$#" -eq 11 ] || return 2 ;;
+	install-report | install-report-ls | install-sha | install-wc | install-ls | install-mkdir-private | install-mkdir-public | install-chmod-private | install-chmod-readonly | install-chmod-executable | install-df | install-remove) [ "$#" -eq 10 ] || return 2 ;;
+	install-flush | install-nvram) [ "$#" -eq 9 ] || return 2 ;;
+	install-config-check) [ "$#" -eq 12 ] || return 2 ;;
+	install-config) [ "$#" -eq 16 ] || return 2 ;;
+	jq-good | jq-bad | sha-bytes | sha-good | sha-bad | wc-jq | wc-sha | timeout-exit | timeout-expiry | flock-first | flock-compete | flock-after | flock-release | flock-finish | flock-entware-first | flock-entware-compete | flock-entware-after | flock-entware-release | flock-entware-finish | dig-version) [ "$#" -eq 9 ] || return 2 ;;
+	blkid)
+		[ "$#" -eq 10 ] || return 2
+		case "${10}" in /*) ;; *) return 2 ;; esac
+		[ -b "${10}" ] || return 2
+		;;
+	*) return 2 ;;
 	esac
 	for cfmgr_probe_path in "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_env" "$cfmgr_probe_awk" "$cfmgr_probe_sleep" "$cfmgr_probe_wc" "$cfmgr_probe_tool"; do
 		case "$cfmgr_probe_path" in /*) ;; *) return 2 ;; esac
@@ -241,28 +241,28 @@ cfmgr_prerequisites_run() {
 	esac
 	case $cfmgr_probe_mode in store-*)
 		case ${cfmgr_store_deadline:-} in
-			'' | *[!0-9]*) return 2 ;;
-			*)
-				[ "$cfmgr_probe_now" -lt "$cfmgr_store_deadline" ] || return 1
-				[ "$cfmgr_store_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_store_deadline
-				;;
+		'' | *[!0-9]*) return 2 ;;
+		*)
+			[ "$cfmgr_probe_now" -lt "$cfmgr_store_deadline" ] || return 1
+			[ "$cfmgr_store_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_store_deadline
+			;;
 		esac
 		;;
 	esac
 	case $cfmgr_probe_mode in status-*)
 		case ${cfmgr_status_deadline:-} in
-			[0-9]*) [ "$cfmgr_status_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_status_deadline ;;
+		[0-9]*) [ "$cfmgr_status_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_status_deadline ;;
 		esac
 		;;
 	esac
 	case $cfmgr_probe_mode in repair-*)
 		case ${cfmgr_dependencies_operation_deadline:-} in
-			'') ;;
-			*[!0-9]*) return 2 ;;
-			*)
-				[ "$cfmgr_probe_now" -lt "$cfmgr_dependencies_operation_deadline" ] || return 1
-				[ "$cfmgr_dependencies_operation_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_dependencies_operation_deadline
-				;;
+		'') ;;
+		*[!0-9]*) return 2 ;;
+		*)
+			[ "$cfmgr_probe_now" -lt "$cfmgr_dependencies_operation_deadline" ] || return 1
+			[ "$cfmgr_dependencies_operation_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_dependencies_operation_deadline
+			;;
 		esac
 		;;
 	esac
@@ -272,13 +272,13 @@ cfmgr_prerequisites_run() {
 	}
 	cfmgr_probe_label=$cfmgr_probe_mode
 	case "$cfmgr_probe_mode" in
-		install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-* | archive-* | history-*)
-			cfmgr_probe_serial=${cfmgr_probe_serial:-0}
-			case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
-			[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
-			cfmgr_probe_serial=$((cfmgr_probe_serial + 1))
-			cfmgr_probe_label=$cfmgr_probe_mode.$cfmgr_probe_serial
-			;;
+	install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-* | archive-* | history-*)
+		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
+		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
+		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
+		cfmgr_probe_serial=$((cfmgr_probe_serial + 1))
+		cfmgr_probe_label=$cfmgr_probe_mode.$cfmgr_probe_serial
+		;;
 	esac
 	cfmgr_probe_stdout=$cfmgr_probe_context/$cfmgr_probe_label.out
 	cfmgr_probe_stderr=$cfmgr_probe_context/$cfmgr_probe_label.err
@@ -286,7 +286,7 @@ cfmgr_prerequisites_run() {
 	(
 		umask 077
 		set -C
-		: > "$cfmgr_probe_stdout" && : > "$cfmgr_probe_stderr"
+		: >"$cfmgr_probe_stdout" && : >"$cfmgr_probe_stderr"
 	) || return 2
 	if [ "${cfmgr_config_lock_fd0:-0}" = 1 ]; then
 		if _cfmgr_prerequisites_start_locked "$@" 9<&0; then :; else
@@ -294,7 +294,7 @@ cfmgr_prerequisites_run() {
 			return 2
 		fi
 	else
-		(_cfmgr_prerequisites_exec "$@") > "$cfmgr_probe_stdout" 2> "$cfmgr_probe_stderr" &
+		(_cfmgr_prerequisites_exec "$@") >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
 		cfmgr_probe_pid=$!
 	fi
 	# Save identity before supervising. A vanished immediate child is already reapable.
@@ -392,14 +392,14 @@ cfmgr_prerequisites_run() {
 
 cfmgr_prerequisites_text() {
 	# Only bounded regular outputs and a native WC count produced by run are passed.
-	IFS=' 	' read -r cfmgr_prereq_count cfmgr_prereq_count_extra < "$3" || return 1
+	IFS=' 	' read -r cfmgr_prereq_count cfmgr_prereq_count_extra <"$3" || return 1
 	[ -z "$cfmgr_prereq_count_extra" ] && [ "$cfmgr_prereq_count" = "$((${#2} + 1))" ] || return 1
 	{
 		IFS= read -r cfmgr_prereq_line && [ "$cfmgr_prereq_line" = "$2" ] || return 1
 		cfmgr_prereq_extra=''
 		if IFS= read -r cfmgr_prereq_extra; then return 1; fi
 		[ -z "$cfmgr_prereq_extra" ]
-	} < "$1"
+	} <"$1"
 }
 
 cfmgr_prerequisites_output() {
@@ -414,13 +414,13 @@ cfmgr_prerequisites_output() {
 # attachment, clock, invalid supervision and unresolved ownership remain fatal.
 cfmgr_prerequisites_probe_code() {
 	case "$1" in
-		0) return 0 ;;
-		1)
-			case "$cfmgr_probe_reason" in attachment | clock) return 2 ;; esac
-			return 1
-			;;
-		3) return 3 ;;
-		*) return 2 ;;
+	0) return 0 ;;
+	1)
+		case "$cfmgr_probe_reason" in attachment | clock) return 2 ;; esac
+		return 1
+		;;
+	3) return 3 ;;
+	*) return 2 ;;
 	esac
 }
 
@@ -428,10 +428,10 @@ cfmgr_prerequisites_probe_code() {
 # callers collect other ordinary deficiencies, never continue a fatal failure.
 cfmgr_prerequisites_capability() {
 	case "$1" in
-		jq) cfmgr_prereq_modes='jq-good jq-bad' ;;
-		timeout) cfmgr_prereq_modes='timeout-exit timeout-expiry' ;;
-		sha) cfmgr_prereq_modes='sha-bytes sha-good sha-bad' ;;
-		*) return 2 ;;
+	jq) cfmgr_prereq_modes='jq-good jq-bad' ;;
+	timeout) cfmgr_prereq_modes='timeout-exit timeout-expiry' ;;
+	sha) cfmgr_prereq_modes='sha-bytes sha-good sha-bad' ;;
+	*) return 2 ;;
 	esac
 	for cfmgr_prereq_mode in $cfmgr_prereq_modes; do
 		if cfmgr_prerequisites_run "$cfmgr_prereq_mode" "$cfmgr_prereq_context" "$cfmgr_prereq_shell" "$cfmgr_prereq_helper" "$cfmgr_prereq_env" "$cfmgr_prereq_awk" "$cfmgr_prereq_sleep" "$cfmgr_prereq_wc" "$2"; then
@@ -441,24 +441,24 @@ cfmgr_prerequisites_capability() {
 		fi
 		cfmgr_prerequisites_probe_code "$cfmgr_prereq_code" || return $?
 		case "$cfmgr_prereq_mode:$cfmgr_probe_exit" in
-			jq-good:0)
-				if cfmgr_prerequisites_output wc-jq true; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
-				cfmgr_prerequisites_probe_code "$cfmgr_prereq_code" || return $?
-				;;
-			jq-bad:0) return 1 ;;
-			jq-bad:*)
-				[ ! -s "$cfmgr_probe_stdout" ] && IFS= read -r cfmgr_prereq_line < "$cfmgr_probe_stderr" || return 1
-				case "$cfmgr_prereq_line" in 'parse error:'* | 'jq: parse error:'*) ;; *) return 1 ;; esac
-				;;
-			timeout-exit:7 | timeout-expiry:124 | sha-good:0 | sha-bad:1) ;;
-			sha-bytes:0)
-				if cfmgr_prerequisites_output wc-sha 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  bytes'; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
-				cfmgr_prerequisites_probe_code "$cfmgr_prereq_code" || return $?
-				;;
-			*) return 1 ;;
+		jq-good:0)
+			if cfmgr_prerequisites_output wc-jq true; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
+			cfmgr_prerequisites_probe_code "$cfmgr_prereq_code" || return $?
+			;;
+		jq-bad:0) return 1 ;;
+		jq-bad:*)
+			[ ! -s "$cfmgr_probe_stdout" ] && IFS= read -r cfmgr_prereq_line <"$cfmgr_probe_stderr" || return 1
+			case "$cfmgr_prereq_line" in 'parse error:'* | 'jq: parse error:'*) ;; *) return 1 ;; esac
+			;;
+		timeout-exit:7 | timeout-expiry:124 | sha-good:0 | sha-bad:1) ;;
+		sha-bytes:0)
+			if cfmgr_prerequisites_output wc-sha 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  bytes'; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
+			cfmgr_prerequisites_probe_code "$cfmgr_prereq_code" || return $?
+			;;
+		*) return 1 ;;
 		esac
 		case "$cfmgr_prereq_mode" in
-			timeout-* | sha-good | sha-bad) [ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1 ;;
+		timeout-* | sha-good | sha-bad) [ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1 ;;
 		esac
 	done
 }
@@ -491,18 +491,18 @@ cfmgr_prerequisites_check() {
 	(
 		umask 077
 		set -C
-		printf '%s\n' '{"answer":[1,2],"ok":true}' > "$cfmgr_prereq_context/json.good" &&
-			printf '%s\n' '{broken' > "$cfmgr_prereq_context/json.bad" &&
-			printf abc > "$cfmgr_prereq_context/bytes" &&
-			printf '%s\n' 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  bytes' > "$cfmgr_prereq_context/checksum.good" &&
-			printf '%s\n' 'aa7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  bytes' > "$cfmgr_prereq_context/checksum.bad"
+		printf '%s\n' '{"answer":[1,2],"ok":true}' >"$cfmgr_prereq_context/json.good" &&
+			printf '%s\n' '{broken' >"$cfmgr_prereq_context/json.bad" &&
+			printf abc >"$cfmgr_prereq_context/bytes" &&
+			printf '%s\n' 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  bytes' >"$cfmgr_prereq_context/checksum.good" &&
+			printf '%s\n' 'aa7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  bytes' >"$cfmgr_prereq_context/checksum.bad"
 	) || return 2
 	cfmgr_prereq_result=checking-capabilities
 	for cfmgr_prereq_capability in jq timeout sha; do
 		case "$cfmgr_prereq_capability" in
-			jq) cfmgr_prereq_tool=$cfmgr_prereq_jq_path cfmgr_prereq_package=jq ;;
-			timeout) cfmgr_prereq_tool=$cfmgr_prereq_timeout_path cfmgr_prereq_package=coreutils-timeout ;;
-			sha) cfmgr_prereq_tool=$cfmgr_prereq_sha_path cfmgr_prereq_package=coreutils-sha256sum ;;
+		jq) cfmgr_prereq_tool=$cfmgr_prereq_jq_path cfmgr_prereq_package=jq ;;
+		timeout) cfmgr_prereq_tool=$cfmgr_prereq_timeout_path cfmgr_prereq_package=coreutils-timeout ;;
+		sha) cfmgr_prereq_tool=$cfmgr_prereq_sha_path cfmgr_prereq_package=coreutils-sha256sum ;;
 		esac
 		if [ "$cfmgr_prereq_tool" = - ]; then
 			cfmgr_prereq_code=1
@@ -517,13 +517,13 @@ cfmgr_prerequisites_check() {
 	done
 	# Separate open descriptions prove contention. Parent-held descriptors retain
 	# locks after the short flock executable exits; no background holder is needed.
-	if (: <&4) 2> /dev/null || (: <&5) 2> /dev/null; then return 2; fi
+	if (: <&4) 2>/dev/null || (: <&5) 2>/dev/null; then return 2; fi
 	(
 		umask 077
 		set -C
-		: > "$cfmgr_prereq_context/lock"
+		: >"$cfmgr_prereq_context/lock"
 	) || return 2
-	exec 4<> "$cfmgr_prereq_context/lock" 5<> "$cfmgr_prereq_context/lock"
+	exec 4<>"$cfmgr_prereq_context/lock" 5<>"$cfmgr_prereq_context/lock"
 	cfmgr_prereq_flock=unusable
 	for cfmgr_prereq_candidate in native entware; do
 		case "$cfmgr_prereq_candidate" in native) cfmgr_prereq_tool=$cfmgr_prereq_native_flock ;; entware) cfmgr_prereq_tool=$cfmgr_prereq_entware_flock ;; esac
@@ -531,13 +531,13 @@ cfmgr_prerequisites_check() {
 		if [ "$cfmgr_prereq_candidate" = entware ]; then
 			if cfmgr_prerequisites_admit_tool "$cfmgr_prereq_tool"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
 			case "$cfmgr_prereq_code" in
-				0) ;;
-				1) continue ;;
-				*)
-					exec 4>&- 5>&-
-					[ "$cfmgr_prereq_code" -ne 3 ] || return 3
-					return 2
-					;;
+			0) ;;
+			1) continue ;;
+			*)
+				exec 4>&- 5>&-
+				[ "$cfmgr_prereq_code" -ne 3 ] || return 3
+				return 2
+				;;
 			esac
 		fi
 		cfmgr_prereq_flock=usable
@@ -547,15 +547,15 @@ cfmgr_prerequisites_check() {
 			if cfmgr_prerequisites_run "$cfmgr_prereq_run_mode" "$cfmgr_prereq_context" "$cfmgr_prereq_shell" "$cfmgr_prereq_helper" "$cfmgr_prereq_env" "$cfmgr_prereq_awk" "$cfmgr_prereq_sleep" "$cfmgr_prereq_wc" "$cfmgr_prereq_tool"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
 			if cfmgr_prerequisites_probe_code "$cfmgr_prereq_code"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
 			case "$cfmgr_prereq_code" in
-				0) ;;
-				1)
-					cfmgr_prereq_flock=unusable
-					break
-					;;
-				*)
-					exec 4>&- 5>&-
-					return "$cfmgr_prereq_code"
-					;;
+			0) ;;
+			1)
+				cfmgr_prereq_flock=unusable
+				break
+				;;
+			*)
+				exec 4>&- 5>&-
+				return "$cfmgr_prereq_code"
+				;;
 			esac
 			case "$cfmgr_prereq_mode:$cfmgr_probe_exit" in flock-compete:1 | flock-first:0 | flock-release:0 | flock-after:0 | flock-finish:0) ;; *)
 				cfmgr_prereq_flock=unusable
@@ -573,7 +573,7 @@ cfmgr_prerequisites_check() {
 		fi
 		# Release descriptors before considering a different implementation.
 		exec 4>&- 5>&-
-		exec 4<> "$cfmgr_prereq_context/lock" 5<> "$cfmgr_prereq_context/lock"
+		exec 4<>"$cfmgr_prereq_context/lock" 5<>"$cfmgr_prereq_context/lock"
 	done
 	exec 4>&- 5>&-
 	[ "$cfmgr_prereq_flock" = usable ] || cfmgr_prereq_missing="${cfmgr_prereq_missing:+$cfmgr_prereq_missing }flock"
@@ -591,13 +591,13 @@ cfmgr_prerequisites_check() {
 				else cfmgr_prereq_code=$?; fi
 			else cfmgr_prereq_code=$?; fi
 			case "$cfmgr_prereq_code" in
-				0)
-					# Executability only; the tunnel consumer must prove live SRV/A queries.
-					cfmgr_prereq_dns=dig-executable cfmgr_prereq_dns_provider=entware
-					;;
-				1) cfmgr_prereq_missing="${cfmgr_prereq_missing:+$cfmgr_prereq_missing }bind-dig" ;;
-				3) return 3 ;;
-				*) return 2 ;;
+			0)
+				# Executability only; the tunnel consumer must prove live SRV/A queries.
+				cfmgr_prereq_dns=dig-executable cfmgr_prereq_dns_provider=entware
+				;;
+			1) cfmgr_prereq_missing="${cfmgr_prereq_missing:+$cfmgr_prereq_missing }bind-dig" ;;
+			3) return 3 ;;
+			*) return 2 ;;
 			esac
 		fi
 	fi
@@ -611,7 +611,7 @@ cfmgr_prerequisites_check() {
 # its support pin before supervision. Child9 closes after duplication to0, and
 # no probe mode consumes9. Independent contention still admits lock semantics.
 _cfmgr_prerequisites_start_locked() {
-	(_cfmgr_prerequisites_exec "$@") 0<&9 9<&- > "$cfmgr_probe_stdout" 2> "$cfmgr_probe_stderr" &
+	(_cfmgr_prerequisites_exec "$@") 0<&9 9<&- >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
 	cfmgr_probe_pid=$!
 }
 
@@ -624,43 +624,43 @@ _cfmgr_prerequisites_exec() {
 		DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 		OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
 	case "$cfmgr_probe_mode" in
-		history-*)
-			cfmgr_archive_uint "${cfmgr_history_probe_limit:-}" || exit 2
-			cfmgr_history_child_limit=$cfmgr_history_probe_limit
-			if [ "$cfmgr_probe_mode" = history-append ]; then cfmgr_history_child_limit=${14}; fi
-			ulimit -f "$(((cfmgr_history_child_limit + 511) / 512))" || exit 2
-			;;
-		store-archive-plan) ulimit -f 1040 || exit 2 ;;
-		archive-*)
-			# Native ash uses 512-byte blocks. Post-run WC enforces exact bytes on
-			# host shells whose ulimit units differ. Never inherit the probe quota.
-			cfmgr_archive_uint "${cfmgr_archive_limit:-}" || exit 2
-			ulimit -f "$(((cfmgr_archive_limit + 511) / 512))" || exit 2
-			;;
-		acquire-api | acquire-raw)
-			# Native ash uses 512-byte file-limit blocks; host bash may use1024.
-			# Exact native WC validation also enforces the declared byte boundary.
-			case ${14} in '' | *[!0-9]*) exit 2 ;; esac
-			[ "${14}" -gt 0 ] && [ "${14}" -le 1048576 ] || exit 2
-			ulimit -f "$(((${14} + 511) / 512))" || exit 2
-			;;
-		repair-*) ulimit -f 8192 || exit 2 ;;
-		acquire-extract) ulimit -f 192 || exit 2 ;;
-		acquire-manifest) ulimit -f 512 || exit 2 ;;
-		status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-archive-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;;
-		install-copy | launch-copy) ulimit -f 2048 || exit 2 ;;
-		launch-config-patch) ulimit -f 128 || exit 2 ;;
-		*) ulimit -f 8 || exit 2 ;;
+	history-*)
+		cfmgr_archive_uint "${cfmgr_history_probe_limit:-}" || exit 2
+		cfmgr_history_child_limit=$cfmgr_history_probe_limit
+		if [ "$cfmgr_probe_mode" = history-append ]; then cfmgr_history_child_limit=${14}; fi
+		ulimit -f "$(((cfmgr_history_child_limit + 511) / 512))" || exit 2
+		;;
+	store-archive-plan) ulimit -f 1040 || exit 2 ;;
+	archive-*)
+		# Native ash uses 512-byte blocks. Post-run WC enforces exact bytes on
+		# host shells whose ulimit units differ. Never inherit the probe quota.
+		cfmgr_archive_uint "${cfmgr_archive_limit:-}" || exit 2
+		ulimit -f "$(((cfmgr_archive_limit + 511) / 512))" || exit 2
+		;;
+	acquire-api | acquire-raw)
+		# Native ash uses 512-byte file-limit blocks; host bash may use1024.
+		# Exact native WC validation also enforces the declared byte boundary.
+		case ${14} in '' | *[!0-9]*) exit 2 ;; esac
+		[ "${14}" -gt 0 ] && [ "${14}" -le 1048576 ] || exit 2
+		ulimit -f "$(((${14} + 511) / 512))" || exit 2
+		;;
+	repair-*) ulimit -f 8192 || exit 2 ;;
+	acquire-extract) ulimit -f 192 || exit 2 ;;
+	acquire-manifest) ulimit -f 512 || exit 2 ;;
+	status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-archive-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;;
+	install-copy | launch-copy) ulimit -f 2048 || exit 2 ;;
+	launch-config-patch) ulimit -f 128 || exit 2 ;;
+	*) ulimit -f 8 || exit 2 ;;
 	esac
 	case "$cfmgr_probe_mode" in
-		install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-* | archive-* | history-*)
-			shift 9
-			exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
-			;;
-		timeout-exit) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" ;;
-		timeout-expiry) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_sleep" ;;
-		blkid) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" blkid "$cfmgr_probe_tool" "$cfmgr_probe_context" "${10}" ;;
-		*) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" ;;
+	install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-* | archive-* | history-*)
+		shift 9
+		exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
+		;;
+	timeout-exit) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" ;;
+	timeout-expiry) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_sleep" ;;
+	blkid) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" blkid "$cfmgr_probe_tool" "$cfmgr_probe_context" "${10}" ;;
+	*) exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" ;;
 	esac
 }
 
@@ -695,7 +695,7 @@ cfmgr_dependencies_inventory() {
 cfmgr_dependencies_select() {
 	[ "$#" -eq 4 ] || return 2
 	cfmgr_dependencies_inventory "$2" || return 2
-	cfmgr_dependencies_query_bytes=$("$4" -c < "$3") || return 1
+	cfmgr_dependencies_query_bytes=$("$4" -c <"$3") || return 1
 	case $cfmgr_dependencies_query_bytes in '' | *[!0-9\ ]*) return 1 ;; esac
 	[ "$cfmgr_dependencies_query_bytes" -le 65536 ] || return 1
 	"$1" -v expected="$cfmgr_dependencies_query_bytes" -v missing="$2" '
@@ -745,7 +745,7 @@ _cfmgr_dependencies_owner_active() {
 		return 0
 	fi
 	[ ! -L "$cfmgr_dependencies_context/owner" ] || return 3
-	cfmgr_dependencies_owner_bytes=$("$cfmgr_dependencies_wc" -c < "$cfmgr_dependencies_context/owner") || return 3
+	cfmgr_dependencies_owner_bytes=$("$cfmgr_dependencies_wc" -c <"$cfmgr_dependencies_context/owner") || return 3
 	case $cfmgr_dependencies_owner_bytes in '' | *[!0-9\ ]*) return 3 ;; esac
 	[ "$cfmgr_dependencies_owner_bytes" -le 96 ] || return 3
 	cfmgr_dependencies_owner_line='' cfmgr_dependencies_owner_tail=''
@@ -753,16 +753,16 @@ _cfmgr_dependencies_owner_active() {
 		IFS= read -r cfmgr_dependencies_owner_line || return 3
 		if IFS= read -r cfmgr_dependencies_owner_tail; then return 3; fi
 		[ -z "$cfmgr_dependencies_owner_tail" ] || return 3
-	} < "$cfmgr_dependencies_context/owner" || return 3
+	} <"$cfmgr_dependencies_context/owner" || return 3
 	[ "$cfmgr_dependencies_owner_bytes" -eq "$((${#cfmgr_dependencies_owner_line} + 1))" ] || return 3
-	IFS=' ' read -r cfmgr_dependencies_owner_pid cfmgr_dependencies_owner_start cfmgr_dependencies_owner_boot cfmgr_dependencies_extra << EOF_OWNER
+	IFS=' ' read -r cfmgr_dependencies_owner_pid cfmgr_dependencies_owner_start cfmgr_dependencies_owner_boot cfmgr_dependencies_extra <<EOF_OWNER
 $cfmgr_dependencies_owner_line
 EOF_OWNER
 	[ -z "$cfmgr_dependencies_extra" ] || return 3
 	case $cfmgr_dependencies_owner_pid:$cfmgr_dependencies_owner_start in *[!0-9:]* | :* | *: | 0* | *:0*) return 3 ;; esac
 	[ "${#cfmgr_dependencies_owner_pid}" -le 10 ] && [ "${#cfmgr_dependencies_owner_start}" -le 20 ] || return 3
 	[ "$cfmgr_dependencies_owner_line" = "$cfmgr_dependencies_owner_pid $cfmgr_dependencies_owner_start $cfmgr_dependencies_owner_boot" ] || return 3
-	IFS= read -r cfmgr_dependencies_current_boot < /proc/sys/kernel/random/boot_id || return 3
+	IFS= read -r cfmgr_dependencies_current_boot </proc/sys/kernel/random/boot_id || return 3
 	[ "$cfmgr_dependencies_owner_boot" = "$cfmgr_dependencies_current_boot" ] || return 3
 	cfmgr_prerequisites_identity "$cfmgr_dependencies_owner_pid" || return 3
 	[ "$cfmgr_identity_start" = "$cfmgr_dependencies_owner_start" ] && [ "$cfmgr_identity_state" != Z ] || return 3
@@ -839,15 +839,15 @@ cfmgr_dependencies_repair() {
 	fi
 	cfmgr_dependencies_state=retained cfmgr_dependencies_phase=preparing
 	cfmgr_dependencies_claim_admit "$cfmgr_dependencies_context" || return 3
-	exec 5< "$cfmgr_dependencies_context" || return 3
+	exec 5<"$cfmgr_dependencies_context" || return 3
 	cfmgr_dependencies_claimed=1
 	cfmgr_prerequisites_identity "$$" || return 3
 	cfmgr_dependencies_owner_start=$cfmgr_identity_start
-	IFS= read -r cfmgr_dependencies_owner_boot < /proc/sys/kernel/random/boot_id || return 3
+	IFS= read -r cfmgr_dependencies_owner_boot </proc/sys/kernel/random/boot_id || return 3
 	(
 		umask 077
 		set -C
-		printf '%s %s %s\n' "$$" "$cfmgr_dependencies_owner_start" "$cfmgr_dependencies_owner_boot" > "$cfmgr_dependencies_context/owner"
+		printf '%s %s %s\n' "$$" "$cfmgr_dependencies_owner_start" "$cfmgr_dependencies_owner_boot" >"$cfmgr_dependencies_context/owner"
 	) || return 3
 	# Snapshot all cleanup code while source and storage are still attached.
 
@@ -866,7 +866,7 @@ cfmgr_dependencies_repair() {
 	(
 		umask 077
 		set -C
-		: > "$cfmgr_dependencies_context/foreign.ids"
+		: >"$cfmgr_dependencies_context/foreign.ids"
 	) || return 3
 	cfmgr_dependencies_phase=construction
 	if cfmgr_execution_view_create "$cfmgr_dependencies_native_root" "$cfmgr_dependencies_context" "$cfmgr_dependencies_awk" "$cfmgr_dependencies_readlink" "$cfmgr_dependencies_context/storage.sh"; then
@@ -874,11 +874,11 @@ cfmgr_dependencies_repair() {
 		cfmgr_dependencies_inside_tools || return 3
 		if cfmgr_execution_tasks_start "$cfmgr_dependencies_context" "$cfmgr_dependencies_env" "$cfmgr_dependencies_chroot" "$cfmgr_dependencies_shell" "$cfmgr_dependencies_context/worker.sh" \
 			"$cfmgr_dependencies_awk" "$cfmgr_dependencies_readlink" "$cfmgr_dependencies_usleep" "$cfmgr_dependencies_inside_shell" "$cfmgr_dependencies_inside_awk" "$cfmgr_dependencies_inside_readlink" "$cfmgr_dependencies_inside_usleep"; then
-			if cfmgr_dependencies_select "$cfmgr_dependencies_awk" "$cfmgr_dependencies_missing" "$cfmgr_dependencies_context/receipt" "$cfmgr_dependencies_wc" > "$cfmgr_dependencies_context/selection"; then
-				IFS= read -r cfmgr_dependencies_selection < "$cfmgr_dependencies_context/selection" || return 3
+			if cfmgr_dependencies_select "$cfmgr_dependencies_awk" "$cfmgr_dependencies_missing" "$cfmgr_dependencies_context/receipt" "$cfmgr_dependencies_wc" >"$cfmgr_dependencies_context/selection"; then
+				IFS= read -r cfmgr_dependencies_selection <"$cfmgr_dependencies_context/selection" || return 3
 				cfmgr_dependencies_phase=repair
 				cfmgr_dependencies_code=0
-				if type cfmgr_dependencies_before_repair > /dev/null 2>&1; then
+				if type cfmgr_dependencies_before_repair >/dev/null 2>&1; then
 					if cfmgr_dependencies_before_repair; then :; else cfmgr_dependencies_code=$?; fi
 				fi
 				if [ "$cfmgr_dependencies_code" -eq 3 ]; then
@@ -956,22 +956,22 @@ _cfmgr_dependencies_early_cleanup() {
 
 cfmgr_execution_view_quiescent() {
 	case ${1:-active} in
-		active) cfmgr_execution_tasks_quiescent ;;
-		retired) [ "$cfmgr_tasks_state:$cfmgr_view_pin_state" = quiescent:retired ] ;;
-		*) return 2 ;;
+	active) cfmgr_execution_tasks_quiescent ;;
+	retired) [ "$cfmgr_tasks_state:$cfmgr_view_pin_state" = quiescent:retired ] ;;
+	*) return 2 ;;
 	esac
 }
 cfmgr_execution_view_keeper() {
 	case $1 in
-		start)
-			cfmgr_dependencies_native mkdir "$2/keeper" 700 || return $?
-			cfmgr_mount_keeper_start "$2/keeper" "$cfmgr_dependencies_shell" "$2/worker.sh" "$2/execution.sh" \
-				"$cfmgr_dependencies_env" "$cfmgr_dependencies_mknod" "$cfmgr_dependencies_awk" "$cfmgr_dependencies_usleep"
-			;;
-		retain) cfmgr_mount_keeper_retain "$2" ;;
-		check) cfmgr_mount_keeper_check "$2" "$3" ;;
-		release) cfmgr_mount_keeper_release ;;
-		*) return 2 ;;
+	start)
+		cfmgr_dependencies_native mkdir "$2/keeper" 700 || return $?
+		cfmgr_mount_keeper_start "$2/keeper" "$cfmgr_dependencies_shell" "$2/worker.sh" "$2/execution.sh" \
+			"$cfmgr_dependencies_env" "$cfmgr_dependencies_mknod" "$cfmgr_dependencies_awk" "$cfmgr_dependencies_usleep"
+		;;
+	retain) cfmgr_mount_keeper_retain "$2" ;;
+	check) cfmgr_mount_keeper_check "$2" "$3" ;;
+	release) cfmgr_mount_keeper_release ;;
+	*) return 2 ;;
 	esac
 }
 cfmgr_mount_keeper_native() {
@@ -1019,11 +1019,11 @@ _cfmgr_view_call() {
 	if cfmgr_execution_view_native "$@"; then return 0; else
 		cfmgr_view_code=$?
 		case $cfmgr_view_code in
-			1 | 2) return "$cfmgr_view_code" ;;
-			*)
-				cfmgr_view_pending=native-unresolved
-				return 3
-				;;
+		1 | 2) return "$cfmgr_view_code" ;;
+		*)
+			cfmgr_view_pending=native-unresolved
+			return 3
+			;;
 		esac
 	fi
 }
@@ -1041,7 +1041,7 @@ _cfmgr_view_pin() {
 	# Called with the actual newly observed target borrowed on FD4. Parent source
 	# FD4 is saved/restored by function-call redirection, never globally replaced.
 	_cfmgr_view_call awk top "$1" "$2" "$cfmgr_view_context/pin.id" || return 3
-	IFS= read -r cfmgr_view_pin_id < "$cfmgr_view_context/pin.id" || return 3
+	IFS= read -r cfmgr_view_pin_id <"$cfmgr_view_context/pin.id" || return 3
 	_cfmgr_view_keeper retain "$cfmgr_view_pin_id"
 }
 
@@ -1050,18 +1050,18 @@ _cfmgr_view_pin() {
 # shellcheck disable=SC2016
 cfmgr_execution_view_awk() {
 	case $1 in
-		source)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+	source)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { context=ARGV[1]; ARGV[1]="" }
 			$5==context || index($5,context "/")==1 { next }
 			{ if (NF!=10 || ++n>256 || seen[$5]++) { bad=1; exit 1 }; rows[n]=$0 }
 			END { if (bad || n>256) exit 1; for (i=1;i<=n;i++) print rows[i] }
-		' "$cfmgr_view_context" "$1" > "$2"
-			;;
-		order)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		' "$cfmgr_view_context" "$1" >"$2"
+		;;
+	order)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { root=ARGV[1]; ARGV[1]=""; prefix=root=="/" ? "/" : root "/" }
 			{ relative=substr($5,length(prefix)+1)
 			  if ($5==root || index(relative,"/")==0) next
@@ -1070,11 +1070,11 @@ cfmgr_execution_view_awk() {
 			  while (j>0 && d[j]>depth) { row[j+1]=row[j]; d[j+1]=d[j]; j-- }
 			  row[j+1]=r; d[j+1]=depth }
 			  for (i=1;i<=n;i++) print row[i] }
-		' "$cfmgr_view_native_root" "$1" > "$2"
-			;;
-		change)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		' "$cfmgr_view_native_root" "$1" >"$2"
+		;;
+	change)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { mode=ARGV[1]; point=ARGV[2]; remove=ARGV[3]; ARGV[1]=ARGV[2]=ARGV[3]="" }
 			FILENAME==ARGV[4] { old[$1]=$0; oldpoint[$1]=$5; count++; next }
 			{ current[$1]=$0
@@ -1095,28 +1095,28 @@ cfmgr_execution_view_awk() {
 			  } else if (added || missing || changed>1) bad=1
 			  exit bad ? 1 : 0 }
 		' "$1" "$2" "$3" "$4" "$5"
-			;;
-		same)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		;;
+	same)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			FILENAME==ARGV[1] { expected[$1]=$0; n++; next }
 			{ if (!($1 in expected) || expected[$1]!=$0) bad=1; m++ }
 			END { exit bad || n!=m ? 1 : 0 }
 		' "$1" "$2"
-			;;
-		recover)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		;;
+	recover)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			FILENAME==ARGV[1] { expected[$1]=$0; next }
 			FILENAME==ARGV[2] { live[$1]=1; next }
 			{ if (!($1 in expected) || expected[$1]!=$0) bad=1; current[$1]=$0; rows[++n]=$0 }
 			END { for (id in expected) if (!(id in current) && (id in live)) bad=1
 			  if (bad) exit 1; for (i=1;i<=n;i++) print rows[i] }
-		' "$1" "$2" "$3" > "$4"
-			;;
-		dynamic)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		' "$1" "$2" "$3" >"$4"
+		;;
+	dynamic)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { root=ARGV[1]; guard=root; sub(/\/view$/,"/guard",guard); ARGV[1]="" }
 			function protected_cover(p, id,best,depth,n,top,a) {
 			  for (id in visible) if (path[id]=="/" || path[id]==p || index(p,path[id] "/")==1) {
@@ -1150,33 +1150,33 @@ cfmgr_execution_view_awk() {
 			  for (i=2;i<=count;i++) { row=out[i]; depth=d[i]; j=i-1
 			    while (j>0 && d[j]>depth) { out[j+1]=out[j]; d[j+1]=d[j]; j-- }; out[j+1]=row; d[j+1]=depth }
 			  for (i=1;i<=count;i++) print out[i] }
-		' "$1" "$2" "$3" "$4" > "$5"
-			;;
-		merge)
-			shift
-			"$cfmgr_view_awk" -F '\t' '{ if (seen[$1]++) exit 1; print }' "$1" "$2" > "$3"
-			;;
-		cover-private)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		' "$1" "$2" "$3" "$4" >"$5"
+		;;
+	merge)
+		shift
+		"$cfmgr_view_awk" -F '\t' '{ if (seen[$1]++) exit 1; print }' "$1" "$2" >"$3"
+		;;
+	cover-private)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { target=ARGV[1]; ARGV[1]="" }
 			$5=="/" || $5==target || index(target,$5 "/")==1 {
 			  if (length($5)>depth) { depth=length($5); n=0; propagation=$10 }
 			  if (length($5)==depth) n++ }
 			END { exit n!=1 || propagation!="private" ? 1 : 0 }
 		' "$1" "$2"
-			;;
-		fd-record)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		;;
+	fd-record)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			FILENAME==ARGV[1] && /^mnt_id:/ { split($0,a,/ +|\t+/); id=a[2]; n++; next }
 			FILENAME==ARGV[2] && $1==id { row=$0; matches++ }
 			END { if (n!=1 || id !~ /^[1-9][0-9]*$/ || matches!=1) exit 1; print row }
-		' "/proc/self/fdinfo/$1" "$2" > "$3"
-			;;
-		bind-proof)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		' "/proc/self/fdinfo/$1" "$2" >"$3"
+		;;
+	bind-proof)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { source=ARGV[1]; target=ARGV[2]; ARGV[1]=ARGV[2]="" }
 			FILENAME==ARGV[3] { split($0,original,"\t"); n++; next }
 			$5==target { row[$1]=$0; parent[$2]=1 }
@@ -1189,10 +1189,10 @@ cfmgr_execution_view_awk() {
 			  exit bound[3]!=original[3] || bound[4]!=expected || bound[6]!=original[6] ||
 			    bound[7]!=original[7] || bound[8]!=original[8] || bound[9]!=original[9] ? 1 : 0 }
 		' "$1" "$2" "$3" "$4"
-			;;
-		properties)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		;;
+	properties)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { mode=ARGV[1]; target=ARGV[2]; ARGV[1]=ARGV[2]="" }
 			$5==target { row[$1]=$0; parent[$2]=1 }
 			END { for (id in row) if (!(id in parent)) { n++; split(row[id],a,"\t") }
@@ -1202,17 +1202,17 @@ cfmgr_execution_view_awk() {
 			  if (mode=="seal") exit a[8] !~ /(^|,)ro(,|$)/ ? 1 : 0
 			  exit a[8] !~ /(^|,)rw(,|$)/ || a[10]!="private" ? 1 : 0 }
 		' "$1" "$2" "$3"
-			;;
-		top)
-			shift
-			"$cfmgr_view_awk" -F '\t' '
+		;;
+	top)
+		shift
+		"$cfmgr_view_awk" -F '\t' '
 			BEGIN { point=ARGV[1]; ARGV[1]="" }
 			$5==point { ids[$1]=1; parents[$2]=1 }
 			END { for (id in ids) if (!(id in parents)) { n++; top=id }
 			  if (n!=1) exit 1; print top }
-		' "$1" "$2" > "$3"
-			;;
-		*) return 2 ;;
+		' "$1" "$2" >"$3"
+		;;
+	*) return 2 ;;
 	esac
 }
 
@@ -1233,18 +1233,18 @@ _cfmgr_view_source_check() {
 	while IFS= read -r cfmgr_view_name; do
 		cfmgr_view_source_index=$((cfmgr_view_source_index + 1))
 		_cfmgr_view_call identity "${cfmgr_view_native_root%/}/$cfmgr_view_name" "$cfmgr_view_context/identity.current" || return $?
-		IFS= read -r cfmgr_view_current_identity < "$cfmgr_view_context/identity.current" || return 1
-		IFS= read -r cfmgr_view_saved_identity < "$cfmgr_view_context/source.$cfmgr_view_source_index" || return 1
+		IFS= read -r cfmgr_view_current_identity <"$cfmgr_view_context/identity.current" || return 1
+		IFS= read -r cfmgr_view_saved_identity <"$cfmgr_view_context/source.$cfmgr_view_source_index" || return 1
 		[ "$cfmgr_view_current_identity" = "$cfmgr_view_saved_identity" ] || return 1
-	done < "$cfmgr_view_context/top.names"
+	done <"$cfmgr_view_context/top.names"
 }
 
 _cfmgr_view_exact() {
 	[ -z "$cfmgr_view_pending" ] || return 3
 	case ${cfmgr_view_pin_state:-none} in
-		active) _cfmgr_view_keeper check 0 "$cfmgr_view_context/expected.mounts" || return $? ;;
-		retired) ;;
-		*) return 3 ;;
+	active) _cfmgr_view_keeper check 0 "$cfmgr_view_context/expected.mounts" || return $? ;;
+	retired) ;;
+	*) return 3 ;;
 	esac
 	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/current.mounts" || return $?
 	_cfmgr_view_call awk same "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/current.mounts"
@@ -1273,7 +1273,7 @@ _cfmgr_view_mutate() {
 	[ "$cfmgr_view_sequence" -lt 4096 ] || return 3
 	cfmgr_view_sequence=$((cfmgr_view_sequence + 1))
 	cfmgr_view_pending=$cfmgr_view_sequence
-	printf '%s\t%s\n' "$1" "$2" > "$cfmgr_view_context/intent.$cfmgr_view_sequence" || return 3
+	printf '%s\t%s\n' "$1" "$2" >"$cfmgr_view_context/intent.$cfmgr_view_sequence" || return 3
 	if _cfmgr_view_call "$1" "$2"; then cfmgr_view_operation_code=0; else cfmgr_view_operation_code=$?; fi
 	[ "$cfmgr_view_operation_code" -ne 3 ] || return 3
 	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/observed.mounts" || return 3
@@ -1292,13 +1292,13 @@ _cfmgr_view_mutate() {
 	case $1 in root | guard-root | bind4 | bind7)
 		# Keep each mount before any overlay can hide it or a writer can enter.
 		# shellcheck disable=SC2094 # Borrow only new mount FD; ledger files are distinct.
-		_cfmgr_view_pin "$2" "$cfmgr_view_context/observed.mounts" 4< "$2" || return 3
+		_cfmgr_view_pin "$2" "$cfmgr_view_context/observed.mounts" 4<"$2" || return 3
 		_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/pinned.mounts" || return 3
 		_cfmgr_view_call awk same "$cfmgr_view_context/observed.mounts" "$cfmgr_view_context/pinned.mounts" || return 3
 		;;
 	esac
 	_cfmgr_view_call copy "$cfmgr_view_context/observed.mounts" "$cfmgr_view_context/expected.mounts" || return 3
-	printf '%s\t%s\n' "$1" "$2" > "$cfmgr_view_context/done.$cfmgr_view_sequence" || return 3
+	printf '%s\t%s\n' "$1" "$2" >"$cfmgr_view_context/done.$cfmgr_view_sequence" || return 3
 	cfmgr_view_pending=''
 }
 
@@ -1309,7 +1309,7 @@ _cfmgr_view_bind() {
 	_cfmgr_view_target "$2" || return 1
 	[ -e "$2" ] && [ ! -L "$2" ] || return 1
 	if [ "$1" = - ]; then cfmgr_view_bind_mode=bind7; else
-		exec 4< "$1" || return 1
+		exec 4<"$1" || return 1
 		cfmgr_view_bind_mode=bind4
 	fi
 	cfmgr_view_bind_fd=4 cfmgr_view_bind_source=$1
@@ -1362,10 +1362,10 @@ cfmgr_execution_view_create() {
 	for cfmgr_view_argument; do _cfmgr_storage_path "$cfmgr_view_argument" || return 2; done
 	cfmgr_view_native_root=$1 cfmgr_view_context=$2 cfmgr_view_awk=$3 cfmgr_view_readlink=$4 cfmgr_view_parser=$5
 	[ -d "$1" ] && [ ! -L "$1" ] && [ -d "$2" ] && [ ! -L "$2" ] || return 2
-	if (: <&4) 2> /dev/null; then return 2; fi
-	if (: <&3) 2> /dev/null; then return 2; fi
+	if (: <&4) 2>/dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null; then return 2; fi
 	# Pinned ash includes type, but its optional command builtin is disabled.
-	type cfmgr_execution_view_keeper > /dev/null 2>&1 || return 2
+	type cfmgr_execution_view_keeper >/dev/null 2>&1 || return 2
 	cfmgr_storage_attached && [ -n "${cfmgr_storage_uuid_value:-}" ] || return 2
 	case $1 in "$2" | "$2"/*) return 2 ;; esac
 	cfmgr_view_root=$2/view cfmgr_view_guard=$2/guard
@@ -1374,7 +1374,7 @@ cfmgr_execution_view_create() {
 	(
 		umask 077
 		set -C
-		: > "$2/expected.mounts"
+		: >"$2/expected.mounts"
 	) || return 2
 	cfmgr_view_state=building
 	# Private propagation must exist before the first mount. Do not change an
@@ -1387,7 +1387,7 @@ cfmgr_execution_view_create() {
 	_cfmgr_view_call awk source "$2/source.raw" "$2/source.mounts" || return $?
 	_cfmgr_view_call awk order "$2/source.mounts" "$2/children.mounts" || return $?
 	_cfmgr_view_call identity "$1" "$2/root.identity" || return $?
-	IFS='	' read -r cfmgr_view_root_inode cfmgr_view_root_mode cfmgr_view_root_uid cfmgr_view_root_gid < "$2/root.identity" || return 2
+	IFS='	' read -r cfmgr_view_root_inode cfmgr_view_root_mode cfmgr_view_root_uid cfmgr_view_root_gid <"$2/root.identity" || return 2
 	case $cfmgr_view_root_mode in '' | *[!0-7]*) return 2 ;; esac
 	[ "${#cfmgr_view_root_mode}" -le 4 ] && [ "$cfmgr_view_root_uid:$cfmgr_view_root_gid" = 0:0 ] || return 2
 	_cfmgr_view_call list "$1" "$2/top.names" || return $?
@@ -1397,7 +1397,7 @@ cfmgr_execution_view_create() {
 		cfmgr_view_source_index=$((cfmgr_view_source_index + 1))
 		[ "$cfmgr_view_source_index" -le 256 ] || return 2
 		_cfmgr_view_call identity "${1%/}/$cfmgr_view_name" "$2/source.$cfmgr_view_source_index" || return $?
-	done < "$2/top.names"
+	done <"$2/top.names"
 	_cfmgr_view_keeper start "$cfmgr_view_context" || return $?
 	cfmgr_view_pin_state=active
 	_cfmgr_view_call mkdir "$cfmgr_view_guard" 700 || return $?
@@ -1422,7 +1422,7 @@ cfmgr_execution_view_create() {
 				cfmgr_view_link_extra=''
 				if IFS= read -r cfmgr_view_link_extra; then return 2; fi
 				[ -z "$cfmgr_view_link_extra" ] || return 2
-			} < "$cfmgr_view_context/link.text"
+			} <"$cfmgr_view_context/link.text"
 			[ "${#cfmgr_view_link}" -le 4096 ] || return 2
 			case $cfmgr_view_link in '' | *[!\ -~]*) return 2 ;; esac
 			_cfmgr_view_call link "$cfmgr_view_link" "$cfmgr_view_to" || return $?
@@ -1434,7 +1434,7 @@ cfmgr_execution_view_create() {
 			else return 2; fi
 			_cfmgr_view_guarded_bind "$cfmgr_view_from" "$cfmgr_view_to" || return $?
 		fi
-	done < "$cfmgr_view_context/top.names"
+	done <"$cfmgr_view_context/top.names"
 	if [ "$cfmgr_view_has_opt" -eq 0 ]; then
 		_cfmgr_view_call mkdir "$cfmgr_view_root/opt" 755 || return $?
 		_cfmgr_view_guarded_bind - "$cfmgr_view_root/opt" || return $?
@@ -1451,14 +1451,14 @@ cfmgr_execution_view_create() {
 			fi
 			;;
 		esac
-	done < "$cfmgr_view_context/children.mounts"
+	done <"$cfmgr_view_context/children.mounts"
 	# Native /tmp mirrors the controller's private directory. Hide only that
 	# owned context, never create a directory through a bound native parent.
 	case $cfmgr_view_context in
-		"${cfmgr_view_native_root%/}"/*)
-			cfmgr_view_relative=${cfmgr_view_context#"${cfmgr_view_native_root%/}"/}
-			_cfmgr_view_bind "$cfmgr_view_guard" "$cfmgr_view_root/$cfmgr_view_relative" || return $?
-			;;
+	"${cfmgr_view_native_root%/}"/*)
+		cfmgr_view_relative=${cfmgr_view_context#"${cfmgr_view_native_root%/}"/}
+		_cfmgr_view_bind "$cfmgr_view_guard" "$cfmgr_view_root/$cfmgr_view_relative" || return $?
+		;;
 	esac
 	_cfmgr_view_call chmod "$cfmgr_view_root" "$cfmgr_view_root_mode" || return $?
 	_cfmgr_view_mutate seal "$cfmgr_view_root" || return $?
@@ -1481,11 +1481,11 @@ cfmgr_execution_view_reconcile() {
 		_cfmgr_view_target "$cfmgr_view_dynamic_point" || return 3
 		cfmgr_view_sequence=$((cfmgr_view_sequence + 1))
 		cfmgr_view_pending=dynamic-unverified
-		printf 'dynamic\t%s\n' "$cfmgr_view_dynamic_point" > "$cfmgr_view_context/intent.$cfmgr_view_sequence" || return 3
-		_cfmgr_view_pin "$cfmgr_view_dynamic_point" "$cfmgr_view_context/current.mounts" 4< "$cfmgr_view_dynamic_point" || return 3
-		printf 'dynamic\t%s\n' "$cfmgr_view_dynamic_point" > "$cfmgr_view_context/done.$cfmgr_view_sequence" || return 3
+		printf 'dynamic\t%s\n' "$cfmgr_view_dynamic_point" >"$cfmgr_view_context/intent.$cfmgr_view_sequence" || return 3
+		_cfmgr_view_pin "$cfmgr_view_dynamic_point" "$cfmgr_view_context/current.mounts" 4<"$cfmgr_view_dynamic_point" || return 3
+		printf 'dynamic\t%s\n' "$cfmgr_view_dynamic_point" >"$cfmgr_view_context/done.$cfmgr_view_sequence" || return 3
 		cfmgr_view_pending=dynamic-unverified
-	done < "$cfmgr_view_context/new.mounts"
+	done <"$cfmgr_view_context/new.mounts"
 	_cfmgr_view_inventory "$cfmgr_view_context" "$cfmgr_view_context/pinned.mounts" || return 3
 	_cfmgr_view_call awk same "$cfmgr_view_context/current.mounts" "$cfmgr_view_context/pinned.mounts" || return 3
 	_cfmgr_view_call awk merge "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/new.mounts" "$cfmgr_view_context/merged.mounts" || return 3
@@ -1509,9 +1509,9 @@ cfmgr_execution_view_release() {
 	case ${cfmgr_view_state:-invalid} in building | ready | retained) ;; *) return 2 ;; esac
 	cfmgr_view_state=retained
 	case $cfmgr_view_pin_state in
-		active) cfmgr_execution_view_quiescent || return 3 ;;
-		retired) cfmgr_execution_view_quiescent retired || return 3 ;;
-		*) return 3 ;;
+	active) cfmgr_execution_view_quiescent || return 3 ;;
+	retired) cfmgr_execution_view_quiescent retired || return 3 ;;
+	*) return 3 ;;
 	esac
 	[ -z "$cfmgr_view_pending" ] || return 3
 	_cfmgr_view_inventory / "$cfmgr_view_context/all.mounts" || return $?
@@ -1521,22 +1521,22 @@ cfmgr_execution_view_release() {
 	# Ledger reconciles while all retained IDs remain lifetime-pinned. Only then
 	# retire reference authority, release/reap keeper, and recheck every unmount.
 	case $cfmgr_view_pin_state in
-		active)
-			_cfmgr_view_exact || return 3
-			_cfmgr_view_keeper release || return 3
-			cfmgr_view_pin_state=retired
-			;;
-		retired) ;;
-		*) return 3 ;;
+	active)
+		_cfmgr_view_exact || return 3
+		_cfmgr_view_keeper release || return 3
+		cfmgr_view_pin_state=retired
+		;;
+	retired) ;;
+	*) return 3 ;;
 	esac
 	cfmgr_view_release_sequence=$cfmgr_view_sequence
 	while [ "$cfmgr_view_release_sequence" -gt 0 ]; do
 		if [ -f "$cfmgr_view_context/done.$cfmgr_view_release_sequence" ]; then
-			IFS='	' read -r cfmgr_view_done_mode cfmgr_view_done_target < "$cfmgr_view_context/done.$cfmgr_view_release_sequence" || return 3
+			IFS='	' read -r cfmgr_view_done_mode cfmgr_view_done_target <"$cfmgr_view_context/done.$cfmgr_view_release_sequence" || return 3
 			case $cfmgr_view_done_mode in root | guard-root | bind4 | bind7 | dynamic)
 				_cfmgr_view_exact || return 3
 				if _cfmgr_view_call awk top "$cfmgr_view_done_target" "$cfmgr_view_context/expected.mounts" "$cfmgr_view_context/top.id"; then
-					IFS= read -r cfmgr_view_remove_id < "$cfmgr_view_context/top.id" || return 3
+					IFS= read -r cfmgr_view_remove_id <"$cfmgr_view_context/top.id" || return 3
 					if _cfmgr_view_mutate unmount "$cfmgr_view_done_target"; then :; else return $?; fi
 				else
 					cfmgr_view_top_status=$?
@@ -1561,7 +1561,7 @@ cfmgr_execution_view_release() {
 # Never signal from a retired ledger, unknown root, or partially read thread group.
 
 _cfmgr_tasks_now() {
-	IFS=' ' read -r cfmgr_tasks_clock cfmgr_tasks_idle < /proc/uptime || return 3
+	IFS=' ' read -r cfmgr_tasks_clock cfmgr_tasks_idle </proc/uptime || return 3
 	cfmgr_tasks_now=${cfmgr_tasks_clock%%.*}
 	case $cfmgr_tasks_now in '' | *[!0-9]*) return 3 ;; esac
 }
@@ -1573,17 +1573,17 @@ _cfmgr_tasks_identity() {
 	# Capture complete LF-terminated proc records before AWK; getline alone
 	# cannot distinguish a truncated final record on the supported AWK variants.
 	cfmgr_tasks_stat_lines=0 cfmgr_tasks_stat_bytes=0 cfmgr_tasks_stat_tail=''
-	: > "$cfmgr_tasks_context/stat.raw" || return 3
+	: >"$cfmgr_tasks_context/stat.raw" || return 3
 	{
 		while IFS= read -r cfmgr_tasks_stat_tail; do
 			cfmgr_tasks_stat_lines=$((cfmgr_tasks_stat_lines + 1))
 			cfmgr_tasks_stat_bytes=$((cfmgr_tasks_stat_bytes + ${#cfmgr_tasks_stat_tail} + 1))
 			[ "$cfmgr_tasks_stat_lines" -le 17 ] && [ "$cfmgr_tasks_stat_bytes" -le 4096 ] || return 3
-			printf '%s\n' "$cfmgr_tasks_stat_tail" >> "$cfmgr_tasks_context/stat.raw" || return 3
+			printf '%s\n' "$cfmgr_tasks_stat_tail" >>"$cfmgr_tasks_context/stat.raw" || return 3
 			cfmgr_tasks_stat_tail=''
 		done
 		[ -z "$cfmgr_tasks_stat_tail" ] || return 3
-	} 2> /dev/null < "$1/stat" || return 3
+	} 2>/dev/null <"$1/stat" || return 3
 	"$cfmgr_tasks_awk" '
 		{ bytes+=length($0)+1; if (bytes>4096 || NR>17) bad=1
 		  record=record (NR==1 ? "" : "\n") $0 }
@@ -1594,8 +1594,8 @@ _cfmgr_tasks_identity() {
 		    a[2] !~ /^[0-9]+$/ || a[7] !~ /^[0-9]+$/ || a[20] !~ /^[1-9][0-9]*$/) exit 1
 		  for (i=2;i<=n;i++) if (a[i] !~ /^-?[0-9]+$/) exit 1
 		  print pid,a[20],a[1],a[2],a[7] }
-	' "$cfmgr_tasks_context/stat.raw" > "$cfmgr_tasks_context/identity" 2> /dev/null || return 3
-	IFS=' ' read -r cfmgr_tasks_tid cfmgr_tasks_start cfmgr_tasks_identity_state cfmgr_tasks_parent cfmgr_tasks_flags < "$cfmgr_tasks_context/identity" || return 3
+	' "$cfmgr_tasks_context/stat.raw" >"$cfmgr_tasks_context/identity" 2>/dev/null || return 3
+	IFS=' ' read -r cfmgr_tasks_tid cfmgr_tasks_start cfmgr_tasks_identity_state cfmgr_tasks_parent cfmgr_tasks_flags <"$cfmgr_tasks_context/identity" || return 3
 }
 
 # Only actual CLOEXEC regular shell bookkeeping is allowed above the known I/O.
@@ -1639,8 +1639,8 @@ _cfmgr_tasks_classify() {
 		    if (!(parent[cursor] in parent)) { if (point[cursor]!="/") exit 1; print "foreign"; exit }
 		    cursor=parent[cursor]
 		  }; exit 1 }
-	' "$1" "$cfmgr_view_context/expected.mounts" "$2" ignored "$cfmgr_view_root" "$cfmgr_view_guard" > "$cfmgr_tasks_context/class" || return 3
-	IFS= read -r cfmgr_tasks_class < "$cfmgr_tasks_context/class" || return 3
+	' "$1" "$cfmgr_view_context/expected.mounts" "$2" ignored "$cfmgr_view_root" "$cfmgr_view_guard" >"$cfmgr_tasks_context/class" || return 3
+	IFS= read -r cfmgr_tasks_class <"$cfmgr_tasks_context/class" || return 3
 }
 
 # Borrow/restore FD4 to reopen the current task root before accepting the row.
@@ -1658,13 +1658,13 @@ _cfmgr_tasks_thread() {
 	if "$cfmgr_tasks_awk" -v flags="$cfmgr_tasks_flags" 'BEGIN { exit int(flags/2097152)%2 ? 0 : 1 }'; then return 0; fi
 	# Keep a missing-root open failure inside the compound command; exec is a
 	# POSIX special builtin and its failing redirection can otherwise exit ash.
-	if { exec 4<&0; } 2> /dev/null < "$2/root"; then :; else return 3; fi
+	if { exec 4<&0; } 2>/dev/null <"$2/root"; then :; else return 3; fi
 	"$cfmgr_tasks_awk" '/^mnt_id:/ { n++; if (NF!=2 || $2 !~ /^[1-9][0-9]*$/) bad=1; id=$2 }
-	  END { if (n!=1 || bad) exit 1; print id }' /proc/self/fdinfo/4 > "$cfmgr_tasks_context/root.id" || {
+	  END { if (n!=1 || bad) exit 1; print id }' /proc/self/fdinfo/4 >"$cfmgr_tasks_context/root.id" || {
 		exec 4<&-
 		return 3
 	}
-	IFS= read -r cfmgr_tasks_root_id < "$cfmgr_tasks_context/root.id" || {
+	IFS= read -r cfmgr_tasks_root_id <"$cfmgr_tasks_context/root.id" || {
 		exec 4<&-
 		return 3
 	}
@@ -1674,7 +1674,7 @@ _cfmgr_tasks_thread() {
 	  FILENAME==ARGV[1] && $1==id { owned=1 }
 	  FILENAME==ARGV[2] && $1==id { foreign=1 }
 	  END { if (owned) print "owned"; else if (foreign) print "foreign"; else exit 1 }
-	' "$cfmgr_view_context/expected.mounts" "$cfmgr_tasks_context/foreign.ids" > "$cfmgr_tasks_context/class"; then
+	' "$cfmgr_view_context/expected.mounts" "$cfmgr_tasks_context/foreign.ids" >"$cfmgr_tasks_context/class"; then
 		# Use the full controller namespace, never a chroot-filtered task inventory.
 		# New root mounts need another complete reconciliation while FD4 holds the
 		# actual object. If it detached before registration, ancestry is unknown.
@@ -1686,7 +1686,7 @@ _cfmgr_tasks_thread() {
 			exec 4<&-
 			return 3
 		fi
-	else IFS= read -r cfmgr_tasks_class < "$cfmgr_tasks_context/class" || {
+	else IFS= read -r cfmgr_tasks_class <"$cfmgr_tasks_context/class" || {
 		exec 4<&-
 		return 3
 	}; fi
@@ -1710,12 +1710,12 @@ _cfmgr_tasks_thread() {
 			exec 4<&-
 			return 3
 		fi
-		if [ "$cfmgr_tasks_class" = foreign ]; then printf '%s\n' "$cfmgr_tasks_root_id" >> "$cfmgr_tasks_context/foreign.ids" || {
+		if [ "$cfmgr_tasks_class" = foreign ]; then printf '%s\n' "$cfmgr_tasks_root_id" >>"$cfmgr_tasks_context/foreign.ids" || {
 			exec 4<&-
 			return 3
 		}; fi
 	fi
-	if ! _cfmgr_tasks_root_again "$cfmgr_tasks_root_id" 4< "$2/root"; then
+	if ! _cfmgr_tasks_root_again "$cfmgr_tasks_root_id" 4<"$2/root"; then
 		exec 4<&-
 		return 3
 	fi
@@ -1723,9 +1723,9 @@ _cfmgr_tasks_thread() {
 	if ! _cfmgr_tasks_identity "$2"; then return 3; fi
 	[ "$cfmgr_tasks_before" = "$cfmgr_tasks_tid:$cfmgr_tasks_start" ] || return 3
 	case $cfmgr_tasks_class in
-		owned) printf '%s %s %s owned %s\n' "$1" "$cfmgr_tasks_tid" "$cfmgr_tasks_start" "$cfmgr_tasks_group_start" >> "$cfmgr_tasks_context/${cfmgr_tasks_rows:-sweep}" || return 3 ;;
-		foreign) printf '%s %s %s foreign %s\n' "$1" "$cfmgr_tasks_tid" "$cfmgr_tasks_start" "$cfmgr_tasks_group_start" >> "$cfmgr_tasks_context/${cfmgr_tasks_rows:-sweep}" || return 3 ;;
-		*) return 3 ;;
+	owned) printf '%s %s %s owned %s\n' "$1" "$cfmgr_tasks_tid" "$cfmgr_tasks_start" "$cfmgr_tasks_group_start" >>"$cfmgr_tasks_context/${cfmgr_tasks_rows:-sweep}" || return 3 ;;
+	foreign) printf '%s %s %s foreign %s\n' "$1" "$cfmgr_tasks_tid" "$cfmgr_tasks_start" "$cfmgr_tasks_group_start" >>"$cfmgr_tasks_context/${cfmgr_tasks_rows:-sweep}" || return 3 ;;
+	*) return 3 ;;
 	esac
 }
 
@@ -1736,7 +1736,7 @@ cfmgr_execution_tasks_sweep() {
 	_cfmgr_tasks_now || return 3
 	cfmgr_tasks_sweep_deadline=$((cfmgr_tasks_now + 5))
 	case ${cfmgr_tasks_cleanup_deadline:-} in
-		[0-9]*) if [ "$cfmgr_tasks_cleanup_deadline" -lt "$cfmgr_tasks_sweep_deadline" ]; then cfmgr_tasks_sweep_deadline=$cfmgr_tasks_cleanup_deadline; fi ;;
+	[0-9]*) if [ "$cfmgr_tasks_cleanup_deadline" -lt "$cfmgr_tasks_sweep_deadline" ]; then cfmgr_tasks_sweep_deadline=$cfmgr_tasks_cleanup_deadline; fi ;;
 	esac
 	if [ "${cfmgr_tasks_state:-none}" = running ] && [ -z "${cfmgr_tasks_cleanup_deadline:-}" ]; then
 		[ "$cfmgr_tasks_deadline" -ge "$cfmgr_tasks_sweep_deadline" ] || cfmgr_tasks_sweep_deadline=$cfmgr_tasks_deadline
@@ -1744,7 +1744,7 @@ cfmgr_execution_tasks_sweep() {
 	while :; do
 		cfmgr_mount_keeper_check 0 || return 3
 		cfmgr_execution_view_reconcile || return 3
-		: > "$cfmgr_tasks_context/sweep" || return 3
+		: >"$cfmgr_tasks_context/sweep" || return 3
 		# Proc task names are bounded numeric kernel entries, not executable data.
 		cfmgr_tasks_glob=on
 		case $- in *f*) cfmgr_tasks_glob=off ;; esac
@@ -1799,7 +1799,7 @@ cfmgr_execution_tasks_sweep() {
 	# Mixed groups cannot authorize group signals, even if one thread is owned.
 	# shellcheck disable=SC2016
 	"$cfmgr_tasks_awk" '{ if ($4=="owned") owned[$1]=1; else foreign[$1]=1 }
-	  END { for (p in owned) if (p in foreign) exit 1; for (p in owned) print p }' "$cfmgr_tasks_context/sweep" > "$cfmgr_tasks_context/owned" || return 3
+	  END { for (p in owned) if (p in foreign) exit 1; for (p in owned) print p }' "$cfmgr_tasks_context/sweep" >"$cfmgr_tasks_context/owned" || return 3
 }
 
 # CONTEXT ENV CHROOT NATIVE_ASH COPIED_HELPER AWK READLINK USLEEP
@@ -1815,22 +1815,22 @@ cfmgr_execution_tasks_start() {
 	cfmgr_tasks_parser=$cfmgr_view_parser
 	cfmgr_prerequisites_identity "$$" || return 2
 	cfmgr_tasks_owner=$$ cfmgr_tasks_owner_start=$cfmgr_identity_start
-	IFS= read -r cfmgr_tasks_boot < /proc/sys/kernel/random/boot_id || return 2
+	IFS= read -r cfmgr_tasks_boot </proc/sys/kernel/random/boot_id || return 2
 	cfmgr_execution_tasks_fd_admit "$$" "$cfmgr_tasks_awk" || return 2
 	cfmgr_execution_tasks_native fifo "$cfmgr_tasks_context/gate" || return $?
 	(
 		umask 077
 		set -C
-		: > "$cfmgr_tasks_context/receipt"
+		: >"$cfmgr_tasks_context/receipt"
 		[ -f "$cfmgr_tasks_context/foreign.ids" ] && [ ! -L "$cfmgr_tasks_context/foreign.ids" ] && [ ! -s "$cfmgr_tasks_context/foreign.ids" ]
 	) || return 2
-	exec 4<> "$cfmgr_tasks_context/gate" || return 3
+	exec 4<>"$cfmgr_tasks_context/gate" || return 3
 	cfmgr_tasks_state=retained
 	"$cfmgr_tasks_env" -i PATH="${cfmgr_tasks_inside_shell%/*}:/bin:/usr/bin:/sbin:/usr/sbin" LC_ALL=C OPENSSL_CONF=/dev/null \
 		"$cfmgr_tasks_chroot" "$cfmgr_view_root" "$cfmgr_tasks_inside_shell" /proc/self/fd/9 dependency \
 		"$cfmgr_tasks_inside_awk" "$cfmgr_tasks_inside_readlink" "$cfmgr_tasks_inside_usleep" \
-		0<&4 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9< "$cfmgr_tasks_helper" \
-		> "$cfmgr_tasks_context/receipt" 2> /dev/null &
+		0<&4 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9<"$cfmgr_tasks_helper" \
+		>"$cfmgr_tasks_context/receipt" 2>/dev/null &
 	cfmgr_tasks_pid=$!
 	cfmgr_prerequisites_identity "$cfmgr_tasks_pid" || return 3
 	cfmgr_tasks_direct_start=$cfmgr_identity_start
@@ -1838,7 +1838,7 @@ cfmgr_execution_tasks_start() {
 	_cfmgr_tasks_now || return 3
 	cfmgr_tasks_deadline=$((cfmgr_tasks_now + 120))
 	case ${cfmgr_dependencies_operation_deadline:-} in
-		[0-9]*) [ "$cfmgr_dependencies_operation_deadline" -ge "$cfmgr_tasks_deadline" ] || cfmgr_tasks_deadline=$cfmgr_dependencies_operation_deadline ;;
+	[0-9]*) [ "$cfmgr_dependencies_operation_deadline" -ge "$cfmgr_tasks_deadline" ] || cfmgr_tasks_deadline=$cfmgr_dependencies_operation_deadline ;;
 	esac
 	cfmgr_execution_tasks_receipt ready || return 3
 	# The launch helper is a direct child, and actual root FD proves the view.
@@ -1858,7 +1858,7 @@ _cfmgr_tasks_direct() {
 		return 1
 	fi
 	[ "$cfmgr_identity_start:$cfmgr_identity_parent" = "$cfmgr_tasks_direct_start:$cfmgr_tasks_owner" ] || return 3
-	IFS= read -r cfmgr_tasks_current_boot < /proc/sys/kernel/random/boot_id || return 3
+	IFS= read -r cfmgr_tasks_current_boot </proc/sys/kernel/random/boot_id || return 3
 	[ "$cfmgr_tasks_current_boot" = "$cfmgr_tasks_boot" ] || return 3
 }
 
@@ -1969,7 +1969,7 @@ _cfmgr_tasks_signal_admit() {
 	# shellcheck disable=SC2016
 	"$cfmgr_tasks_awk" -v pid="$1" -v start="$cfmgr_tasks_group_start" '$1==pid && $5!=start { bad=1 } END { exit bad ? 1 : 0 }' "$cfmgr_tasks_context/sweep" || return 3
 	cfmgr_tasks_rows=signal
-	: > "$cfmgr_tasks_context/signal" || return 3
+	: >"$cfmgr_tasks_context/signal" || return 3
 	cfmgr_tasks_glob=on
 	case $- in *f*) cfmgr_tasks_glob=off ;; esac
 	set +f
@@ -2029,7 +2029,7 @@ cfmgr_execution_tasks_finish() {
 				cfmgr_tasks_signal_code=$?
 				[ "$cfmgr_tasks_signal_code" -eq 1 ] || return 3
 			fi
-		done < "$cfmgr_tasks_context/owned"
+		done <"$cfmgr_tasks_context/owned"
 		"$cfmgr_tasks_usleep" 100000 || return 3
 	done
 	# An empty owned-root sweep cannot prove a pre-chroot launch child exited.
@@ -2068,15 +2068,15 @@ cfmgr_execution_tasks_quiescent() {
 
 # shellcheck disable=SC2034 # Proc uptime second field is deliberately consumed.
 _cfmgr_keeper_now() {
-	IFS=' ' read -r cfmgr_keeper_uptime cfmgr_keeper_idle < /proc/uptime || return 3
+	IFS=' ' read -r cfmgr_keeper_uptime cfmgr_keeper_idle </proc/uptime || return 3
 	cfmgr_keeper_now=${cfmgr_keeper_uptime%%.*}
 	case $cfmgr_keeper_now in '' | *[!0-9]*) return 3 ;; esac
 	# Fixed controller's optional whole-phase budget also bounds ACK/FD retries.
 	# Empty for standalone keeper consumers; never derived from environment.
 	case ${cfmgr_keeper_outer_deadline:-} in
-		'') ;;
-		*[!0-9]*) return 3 ;;
-		*) [ "$cfmgr_keeper_now" -lt "$cfmgr_keeper_outer_deadline" ] || return 3 ;;
+	'') ;;
+	*[!0-9]*) return 3 ;;
+	*) [ "$cfmgr_keeper_now" -lt "$cfmgr_keeper_outer_deadline" ] || return 3 ;;
 	esac
 }
 
@@ -2085,7 +2085,7 @@ _cfmgr_keeper_owned() {
 	cfmgr_prerequisites_identity "$cfmgr_keeper_pid" || return 3
 	if [ "$cfmgr_identity_start" != "$cfmgr_keeper_start" ] || [ "$cfmgr_identity_parent" != "$cfmgr_keeper_owner" ]; then return 3; fi
 	[ "$cfmgr_identity_state" != Z ] || return 3
-	IFS= read -r cfmgr_keeper_current_boot < /proc/sys/kernel/random/boot_id || return 3
+	IFS= read -r cfmgr_keeper_current_boot </proc/sys/kernel/random/boot_id || return 3
 	[ "$cfmgr_keeper_current_boot" = "$cfmgr_keeper_boot" ] || return 3
 }
 
@@ -2101,7 +2101,7 @@ _cfmgr_keeper_wait() {
 				if IFS= read -r cfmgr_keeper_line; then
 					if IFS= read -r cfmgr_keeper_extra; then cfmgr_keeper_extra=invalid; fi
 				else cfmgr_keeper_line=''; fi
-			} < "$cfmgr_keeper_context/receipt"
+			} <"$cfmgr_keeper_context/receipt"
 			if [ -z "$cfmgr_keeper_extra" ]; then
 				if [ "$cfmgr_keeper_line" = "$1 $2 $3 END" ]; then
 					cfmgr_keeper_receipt=$cfmgr_keeper_line
@@ -2139,7 +2139,7 @@ _cfmgr_keeper_fdscan() {
 			END { for (i=1;i<ARGC;i++) if (count[ARGV[i]]!=1) bad=1
 			  if (bad || ARGC>1025) exit 1; for (id in ids) print id }
 			' "$@"
-		) > "$cfmgr_keeper_context/fds.current" 2> "$cfmgr_keeper_context/fds.err"; then return 0; fi
+		) >"$cfmgr_keeper_context/fds.current" 2>"$cfmgr_keeper_context/fds.err"; then return 0; fi
 		_cfmgr_keeper_now || return 3
 		[ "$cfmgr_keeper_now" -lt "$cfmgr_keeper_scan_deadline" ] || return 3
 		"$cfmgr_keeper_usleep" 10000 || return 3
@@ -2181,7 +2181,7 @@ cfmgr_mount_keeper_start() {
 	# Never discard a keeper identity or FIFO that may still hold references.
 	case ${cfmgr_keeper_state:-invalid} in active | retained)
 		[ -z "${cfmgr_keeper_pid:-}" ] || return 3
-		if (: <&3) 2> /dev/null; then return 3; fi
+		if (: <&3) 2>/dev/null; then return 3; fi
 		;;
 	esac
 	cfmgr_keeper_state=invalid
@@ -2191,7 +2191,7 @@ cfmgr_mount_keeper_start() {
 		case $cfmgr_keeper_argument in *[!\ -~]* | *//* | */./* | */../* | */. | */.. | */) return 2 ;; esac
 	done
 	[ -d "$1" ] && [ ! -L "$1" ] || return 2
-	if (: <&3) 2> /dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null; then return 2; fi
 	cfmgr_keeper_pid=''
 	cfmgr_keeper_context=$1 cfmgr_keeper_shell=$2 cfmgr_keeper_helper=$3 cfmgr_keeper_prerequisites=$4
 	cfmgr_keeper_env=$5 cfmgr_keeper_mknod=$6 cfmgr_keeper_awk=$7 cfmgr_keeper_usleep=$8
@@ -2207,32 +2207,32 @@ cfmgr_mount_keeper_start() {
 		umask 077
 		set -C
 		for cfmgr_keeper_file in pins receipt stdout stderr fds.current fds.base fds.err; do
-			: > "$1/$cfmgr_keeper_file" || exit 1
+			: >"$1/$cfmgr_keeper_file" || exit 1
 		done
 	) || return 2
 	cfmgr_keeper_state=retained
-	IFS= read -r cfmgr_keeper_self < /proc/self/stat || return 2
+	IFS= read -r cfmgr_keeper_self </proc/self/stat || return 2
 	cfmgr_keeper_owner=${cfmgr_keeper_self%% *}
 	cfmgr_prerequisites_identity "$cfmgr_keeper_owner" || return 2
 	cfmgr_keeper_owner_start=$cfmgr_identity_start
-	IFS= read -r cfmgr_keeper_boot < /proc/sys/kernel/random/boot_id || return 2
+	IFS= read -r cfmgr_keeper_boot </proc/sys/kernel/random/boot_id || return 2
 	cfmgr_mount_keeper_native fifo "$cfmgr_keeper_mknod" "$1/control" || return 3
 	[ -p "$1/control" ] && [ ! -L "$1/control" ] || return 3
 	# Linux FIFO O_RDWR does not wait for a peer; private admission precedes open.
-	exec 3<> "$1/control" || return 3
+	exec 3<>"$1/control" || return 3
 	# Native applets may live in /usr/bin. An admitted fixture applet directory
 	# deliberately precedes these native directories; no ambient PATH survives.
 	"$cfmgr_keeper_env" -i PATH="${cfmgr_keeper_shell%/*}:/bin:/usr/bin:/sbin:/usr/sbin" LC_ALL=C LANGUAGE='' \
 		"$cfmgr_keeper_shell" "$cfmgr_keeper_helper" mount-keeper "$1" "$cfmgr_keeper_owner" "$cfmgr_keeper_owner_start" "$cfmgr_keeper_boot" \
 		"$cfmgr_keeper_limit" "$cfmgr_keeper_awk" "$cfmgr_keeper_prerequisites" "$cfmgr_keeper_usleep" \
-		3<> "$1/control" 4<&- 5<&- 6<&- 7<&- 8<&- 9<&- < /dev/null > "$1/stdout" 2> "$1/stderr" &
+		3<>"$1/control" 4<&- 5<&- 6<&- 7<&- 8<&- 9<&- </dev/null >"$1/stdout" 2>"$1/stderr" &
 	cfmgr_keeper_pid=$!
 	cfmgr_prerequisites_identity "$cfmgr_keeper_pid" || return 3
 	cfmgr_keeper_start=$cfmgr_identity_start
 	_cfmgr_keeper_wait ready 0 0 || return 3
 	_cfmgr_keeper_fdscan || return 3
 	# Private RAM copy by shell; no extra native utility/operation dispatch.
-	while IFS= read -r cfmgr_keeper_base_id; do printf '%s\n' "$cfmgr_keeper_base_id"; done < "$1/fds.current" > "$1/fds.base" || return 3
+	while IFS= read -r cfmgr_keeper_base_id; do printf '%s\n' "$cfmgr_keeper_base_id"; done <"$1/fds.current" >"$1/fds.base" || return 3
 	cfmgr_keeper_state=active
 	cfmgr_mount_keeper_check 0
 }
@@ -2252,7 +2252,7 @@ cfmgr_mount_keeper_retain() {
 	cfmgr_keeper_sequence=$((cfmgr_keeper_sequence + 1))
 	printf 'hold %s %s\n' "$cfmgr_keeper_sequence" "$1" >&3 || return 3
 	if _cfmgr_keeper_wait held "$cfmgr_keeper_sequence" "$1"; then
-		printf '%s\n' "$1" >> "$cfmgr_keeper_context/pins" || return 3
+		printf '%s\n' "$1" >>"$cfmgr_keeper_context/pins" || return 3
 		cfmgr_keeper_count=$((cfmgr_keeper_count + 1))
 		cfmgr_mount_keeper_check 0 || {
 			cfmgr_keeper_state=retained
@@ -2298,7 +2298,7 @@ cfmgr_mount_keeper_release() {
 		IFS= read -r cfmgr_keeper_line || return 3
 		if IFS= read -r cfmgr_keeper_extra; then return 3; fi
 		[ -z "$cfmgr_keeper_extra" ] || return 3
-	} < "$cfmgr_keeper_context/receipt"
+	} <"$cfmgr_keeper_context/receipt"
 	[ "$cfmgr_keeper_line" = "released $cfmgr_keeper_sequence 0 END" ] || return 3
 	exec 3<&-
 	cfmgr_keeper_state=released
@@ -2332,7 +2332,7 @@ cfmgr_native_check() {
 	for cfmgr_native_argument; do cfmgr_native_path "$cfmgr_native_argument" || return 2; done
 	cfmgr_native_context=$1 cfmgr_native_curl=$2 cfmgr_native_openssl=$3 cfmgr_native_ca=$4
 	[ -d "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ -x "$2" ] && [ -f "$3" ] && [ -x "$3" ] || return 2
-	if (: <&3) 2> /dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null; then return 2; fi
 	for cfmgr_native_claim in native.source native.destination native.copy native.published native.directory; do
 		if [ -e "$1/$cfmgr_native_claim" ] || [ -L "$1/$cfmgr_native_claim" ]; then
 			cfmgr_native_reason=context-not-fresh

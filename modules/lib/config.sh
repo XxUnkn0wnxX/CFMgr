@@ -14,20 +14,20 @@ cfmgr_config_path_valid() (
 	[ -n "$cfmgr_config_path_value" ] || return 1
 	[ "${#cfmgr_config_path_value}" -le 4096 ] || return 1
 	case $cfmgr_config_path_value in
-		*[[:cntrl:]]* | *//* | ./?* | ../?* | */./* | */../* | */. | */..) return 1 ;;
+	*[[:cntrl:]]* | *//* | ./?* | ../?* | */./* | */../* | */. | */..) return 1 ;;
 	esac
 	case $cfmgr_config_path_kind in
-		absolute)
-			case $cfmgr_config_path_value in /*) ;; *) return 1 ;; esac
-			[ "$cfmgr_config_path_value" = / ] ||
-				[ "${cfmgr_config_path_value%/}" = "$cfmgr_config_path_value" ]
-			;;
-		relative)
-			case $cfmgr_config_path_value in /* | */) return 1 ;; esac
-			# A verified Entware mount may itself be the filesystem root.
-			[ "$cfmgr_config_path_value" != .. ]
-			;;
-		*) return 1 ;;
+	absolute)
+		case $cfmgr_config_path_value in /*) ;; *) return 1 ;; esac
+		[ "$cfmgr_config_path_value" = / ] ||
+			[ "${cfmgr_config_path_value%/}" = "$cfmgr_config_path_value" ]
+		;;
+	relative)
+		case $cfmgr_config_path_value in /* | */) return 1 ;; esac
+		# A verified Entware mount may itself be the filesystem root.
+		[ "$cfmgr_config_path_value" != .. ]
+		;;
+	*) return 1 ;;
 	esac
 )
 
@@ -57,7 +57,7 @@ cfmgr_config_defaults_exec() {
 
 	[ -n "$cfmgr_config_branch" ] && [ "${#cfmgr_config_branch}" -le 128 ] || return 2
 	case $cfmgr_config_branch in
-		*[!A-Za-z0-9_./-]* | . | .. | ./* | ../* | */./* | */../* | */. | */..) return 2 ;;
+	*[!A-Za-z0-9_./-]* | . | .. | ./* | ../* | */./* | */../* | */. | */..) return 2 ;;
 	esac
 
 	[ "${#cfmgr_config_uuid}" -eq 36 ] || return 2
@@ -73,7 +73,7 @@ cfmgr_config_defaults_exec() {
 		[ "${#cfmgr_config_uuid_c}" -eq 4 ] && [ "${#cfmgr_config_uuid_d}" -eq 4 ] &&
 		[ "${#cfmgr_config_uuid_e}" -eq 12 ] || return 2
 	case $cfmgr_config_uuid_a$cfmgr_config_uuid_b$cfmgr_config_uuid_c$cfmgr_config_uuid_d$cfmgr_config_uuid_e in
-		*[!0123456789abcdefABCDEF]*) return 2 ;;
+	*[!0123456789abcdefABCDEF]*) return 2 ;;
 	esac
 
 	case $cfmgr_config_filesystem in ext2 | ext3 | ext4) ;; *) return 2 ;; esac
@@ -260,11 +260,11 @@ cfmgr_store_prepare() {
 	done
 	cfmgr_store_jffs_mount=$(cfmgr_storage_mountinfo /usr/bin/awk /jffs /proc/self/mountinfo) || return 1
 	cfmgr_store_tmp_mount=$(cfmgr_storage_mountinfo /usr/bin/awk /tmp /proc/self/mountinfo) || return 1
-	IFS='	' read -r cfmgr_store_id cfmgr_store_parent cfmgr_store_device cfmgr_store_root cfmgr_store_point cfmgr_store_type cfmgr_store_mount_source cfmgr_store_mount_flags cfmgr_store_mount_super << EOF_JFFS
+	IFS='	' read -r cfmgr_store_id cfmgr_store_parent cfmgr_store_device cfmgr_store_root cfmgr_store_point cfmgr_store_type cfmgr_store_mount_source cfmgr_store_mount_flags cfmgr_store_mount_super <<EOF_JFFS
 $cfmgr_store_jffs_mount
 EOF_JFFS
 	[ "$cfmgr_store_point:$cfmgr_store_type" = /jffs:jffs2 ] && cfmgr_store_mount_writable || return 1
-	IFS='	' read -r cfmgr_store_id cfmgr_store_parent cfmgr_store_device cfmgr_store_root cfmgr_store_point cfmgr_store_type cfmgr_store_mount_source cfmgr_store_mount_flags cfmgr_store_mount_super << EOF_RAM
+	IFS='	' read -r cfmgr_store_id cfmgr_store_parent cfmgr_store_device cfmgr_store_root cfmgr_store_point cfmgr_store_type cfmgr_store_mount_source cfmgr_store_mount_flags cfmgr_store_mount_super <<EOF_RAM
 $cfmgr_store_tmp_mount
 EOF_RAM
 	case $cfmgr_store_type in tmpfs | ramfs | rootfs) ;; *) return 1 ;; esac
@@ -272,13 +272,13 @@ EOF_RAM
 	[ "$(cfmgr_storage_mountinfo /usr/bin/awk "$cfmgr_store_source" /proc/self/mountinfo)" = "$cfmgr_store_jffs_mount" ] || return 1
 	if [ ! -e "$cfmgr_store_ram" ] && [ ! -L "$cfmgr_store_ram" ]; then /bin/mkdir -m 700 "$cfmgr_store_ram" || return 1; fi
 	cfmgr_store_admit_private "$cfmgr_store_ram" directory && cfmgr_store_admit_private "$cfmgr_store_source" directory || return 1
-	IFS= read -r cfmgr_store_self < /proc/self/stat || return 1
+	IFS= read -r cfmgr_store_self </proc/self/stat || return 1
 	cfmgr_store_pid=${cfmgr_store_self%% *}
 	cfmgr_prerequisites_identity "$cfmgr_store_pid" || return 1
 	cfmgr_store_context=$cfmgr_store_ram/settings.$cfmgr_store_pid.$cfmgr_identity_start
 	umask 077
 	/bin/mkdir -m 700 "$cfmgr_store_context" || return 1
-	exec 5< "$cfmgr_store_context" 8< "$cfmgr_store_jffs" 9< "$cfmgr_store_source" || return 3
+	exec 5<"$cfmgr_store_context" 8<"$cfmgr_store_jffs" 9<"$cfmgr_store_source" || return 3
 	cfmgr_store_context_fd=5 cfmgr_store_borrowed=0 cfmgr_probe_pid='' cfmgr_probe_serial=0
 	trap 'cfmgr_store_interrupt=1' HUP INT TERM
 	cfmgr_prerequisites_now || return 1
@@ -290,7 +290,7 @@ EOF_RAM
 cfmgr_store_admit_private() {
 	[ ! -L "$1" ] || return 1
 	cfmgr_store_metadata=$(/bin/ls -ldn "$1") || return 1
-	IFS=' ' read -r cfmgr_store_mode cfmgr_store_links cfmgr_store_uid cfmgr_store_rest << EOF_MODE
+	IFS=' ' read -r cfmgr_store_mode cfmgr_store_links cfmgr_store_uid cfmgr_store_rest <<EOF_MODE
 $cfmgr_store_metadata
 EOF_MODE
 	case $2:$cfmgr_store_mode:$cfmgr_store_uid in directory:drwx------:0 | file:-rw-------:0) return 0 ;; *) return 1 ;; esac
@@ -306,7 +306,7 @@ cfmgr_store_protected() {
 	while :; do
 		[ ! -L "$cfmgr_store_protected_path" ] || return 1
 		cfmgr_store_protected_meta=$("$cfmgr_store_ls" -ldn "$cfmgr_store_protected_path") || return 1
-		IFS=' ' read -r cfmgr_store_protected_mode cfmgr_store_protected_links cfmgr_store_protected_uid cfmgr_store_rest << EOF_PROTECTED
+		IFS=' ' read -r cfmgr_store_protected_mode cfmgr_store_protected_links cfmgr_store_protected_uid cfmgr_store_rest <<EOF_PROTECTED
 $cfmgr_store_protected_meta
 EOF_PROTECTED
 		[ "$cfmgr_store_protected_uid" = 0 ] || return 1
@@ -337,7 +337,7 @@ cfmgr_store_attachment_ok() {
 			:
 		elif [ "${cfmgr_store_retiring:-0}:${cfmgr_probe_mode:-}" = 1:store-rmdir ] && [ -n "${cfmgr_probe_pid:-}" ]; then
 			cfmgr_store_deleted=$("$cfmgr_store_ls" -Ldn /proc/self/fd/4) || return 1
-			IFS=' ' read -r cfmgr_store_deleted_mode cfmgr_store_deleted_links cfmgr_store_deleted_uid cfmgr_store_rest << EOF_DELETED
+			IFS=' ' read -r cfmgr_store_deleted_mode cfmgr_store_deleted_links cfmgr_store_deleted_uid cfmgr_store_rest <<EOF_DELETED
 $cfmgr_store_deleted
 EOF_DELETED
 			[ "$cfmgr_store_deleted_mode:$cfmgr_store_deleted_links:$cfmgr_store_deleted_uid" = drwx------:0:0 ] || return 1
@@ -362,13 +362,13 @@ cfmgr_store_read_line() {
 		IFS= read -r cfmgr_store_line || return 1
 		if IFS= read -r cfmgr_store_tail; then return 1; fi
 		[ -z "$cfmgr_store_tail" ]
-	} < "$1"
+	} <"$1"
 }
 
 cfmgr_store_count() {
 	cfmgr_store_run store-count "$cfmgr_store_wc" "$1" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' ' read -r cfmgr_store_bytes cfmgr_store_extra << EOF_COUNT
+	IFS=' ' read -r cfmgr_store_bytes cfmgr_store_extra <<EOF_COUNT
 $cfmgr_store_line
 EOF_COUNT
 	case $cfmgr_store_bytes:$cfmgr_store_extra in *[!0-9:]*) return 1 ;; esac
@@ -404,16 +404,16 @@ cfmgr_store_parse() {
 		return $?
 	fi
 	case ${cfmgr_store_scope:-settings} in
-		archive-preferences | archive-history)
-			case $1 in
-				settings-read) ;;
-				settings-observe | settings-patch)
-					cfmgr_store_archive_parse "$cfmgr_store_scope-${1#settings-}" "$2" "$3"
-					return $?
-					;;
-				*) return 2 ;;
-			esac
+	archive-preferences | archive-history)
+		case $1 in
+		settings-read) ;;
+		settings-observe | settings-patch)
+			cfmgr_store_archive_parse "$cfmgr_store_scope-${1#settings-}" "$2" "$3"
+			return $?
 			;;
+		*) return 2 ;;
+		esac
+		;;
 	esac
 	cfmgr_store_run store-settings "$cfmgr_store_awk" "$cfmgr_store_source/modules/lib/config.sh" "$cfmgr_store_source/modules/lib/config.sh" \
 		"$1" "$2" "$3" "$cfmgr_store_mask" "$cfmgr_store_want_check" "$cfmgr_store_want_auto"
@@ -431,17 +431,17 @@ cfmgr_store_backup_read() {
 	cfmgr_store_backup_parse backup-read "$cfmgr_store_snapshot" "$cfmgr_store_snapshot_bytes" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
 	IFS=' ' read -r cfmgr_backup_tag cfmgr_backup_schema cfmgr_store_generation cfmgr_backup_saved_present \
-		cfmgr_backup_saved_mount_hex cfmgr_backup_saved_uuid_hex cfmgr_backup_saved_filesystem_hex cfmgr_backup_saved_root_hex cfmgr_backup_end cfmgr_backup_extra << EOF_BACKUP_CONFIG
+		cfmgr_backup_saved_mount_hex cfmgr_backup_saved_uuid_hex cfmgr_backup_saved_filesystem_hex cfmgr_backup_saved_root_hex cfmgr_backup_end cfmgr_backup_extra <<EOF_BACKUP_CONFIG
 $cfmgr_store_line
 EOF_BACKUP_CONFIG
 	[ "$cfmgr_backup_tag:$cfmgr_backup_schema:$cfmgr_backup_end:$cfmgr_backup_extra" = CFMGR-BACKUP-CONFIG:1:END: ] || return 1
 	case $cfmgr_backup_saved_present in
-		0) [ "$cfmgr_store_line" = "CFMGR-BACKUP-CONFIG 1 $cfmgr_store_generation 0 - - - - END" ] ;;
-		1)
-			cfmgr_backup_decode "$cfmgr_backup_saved_mount_hex" > /dev/null && cfmgr_backup_decode "$cfmgr_backup_saved_uuid_hex" > /dev/null &&
-				cfmgr_backup_decode "$cfmgr_backup_saved_filesystem_hex" > /dev/null && cfmgr_backup_decode "$cfmgr_backup_saved_root_hex" > /dev/null
-			;;
-		*) return 1 ;;
+	0) [ "$cfmgr_store_line" = "CFMGR-BACKUP-CONFIG 1 $cfmgr_store_generation 0 - - - - END" ] ;;
+	1)
+		cfmgr_backup_decode "$cfmgr_backup_saved_mount_hex" >/dev/null && cfmgr_backup_decode "$cfmgr_backup_saved_uuid_hex" >/dev/null &&
+			cfmgr_backup_decode "$cfmgr_backup_saved_filesystem_hex" >/dev/null && cfmgr_backup_decode "$cfmgr_backup_saved_root_hex" >/dev/null
+		;;
+	*) return 1 ;;
 	esac
 }
 
@@ -465,7 +465,7 @@ cfmgr_store_archive_read() {
 	cfmgr_store_snapshot "$cfmgr_store_live" || return $?
 	cfmgr_store_archive_parse archive-read "$cfmgr_store_snapshot" "$cfmgr_store_snapshot_bytes" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' ' read -r cfmgr_store_archive_tag cfmgr_store_archive_version cfmgr_store_archive_schema cfmgr_store_archive_generation cfmgr_store_archive_format cfmgr_store_archive_keep cfmgr_store_archive_set cfmgr_store_archive_end cfmgr_store_archive_extra << EOF_ARCHIVE_CONFIG
+	IFS=' ' read -r cfmgr_store_archive_tag cfmgr_store_archive_version cfmgr_store_archive_schema cfmgr_store_archive_generation cfmgr_store_archive_format cfmgr_store_archive_keep cfmgr_store_archive_set cfmgr_store_archive_end cfmgr_store_archive_extra <<EOF_ARCHIVE_CONFIG
 $cfmgr_store_line
 EOF_ARCHIVE_CONFIG
 	[ "$cfmgr_store_archive_tag:$cfmgr_store_archive_version:$cfmgr_store_archive_end:$cfmgr_store_archive_extra" = CFMGR-ARCHIVE-CONFIG:1:END: ] || return 1
@@ -476,7 +476,7 @@ EOF_ARCHIVE_CONFIG
 	case $cfmgr_store_archive_keep in 0 | 3 | 4 | 5) ;; *) return 1 ;; esac
 	if [ "$cfmgr_store_archive_set" != - ]; then
 		case $cfmgr_store_archive_set in *[!0-9a-f-]*) return 1 ;; esac
-		IFS=- read -r cfmgr_store_archive_u1 cfmgr_store_archive_u2 cfmgr_store_archive_u3 cfmgr_store_archive_u4 cfmgr_store_archive_u5 cfmgr_store_archive_u6 << EOF_ARCHIVE_UUID
+		IFS=- read -r cfmgr_store_archive_u1 cfmgr_store_archive_u2 cfmgr_store_archive_u3 cfmgr_store_archive_u4 cfmgr_store_archive_u5 cfmgr_store_archive_u6 <<EOF_ARCHIVE_UUID
 $cfmgr_store_archive_set
 EOF_ARCHIVE_UUID
 		[ "${#cfmgr_store_archive_u1}:${#cfmgr_store_archive_u2}:${#cfmgr_store_archive_u3}:${#cfmgr_store_archive_u4}:${#cfmgr_store_archive_u5}:${#cfmgr_store_archive_u6}" = 8:4:4:4:12:0 ] && [ "${#cfmgr_store_archive_set}" = 36 ] || return 1
@@ -491,7 +491,7 @@ cfmgr_store_archive_save() {
 	case $1 in preferences | history) ;; *) return 2 ;; esac
 	# Flush3 and guard4 must not replace source/rotation ownership. Neither this
 	# same-context API nor its caller's already-held lock is implicitly reset.
-	if (: <&3) 2> /dev/null || (: <&4) 2> /dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null || (: <&4) 2>/dev/null; then return 2; fi
 	[ "${cfmgr_store_guard_owned:-0}" = 0 ] || return 2
 	case ${cfmgr_store_archive_lock_held:-0}:${cfmgr_config_lock_fd0:-0} in 0:0 | 1:1) ;; *) return 2 ;; esac
 	cfmgr_store_scope=archive-$1 cfmgr_store_operation=save
@@ -533,18 +533,18 @@ cfmgr_store_target_matches() {
 		[ "$cfmgr_store_line" = "CFMGR-BACKUP-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
 	fi
 	case ${cfmgr_store_scope:-settings} in
-		archive-preferences | archive-history)
-			cfmgr_store_archive_parse "$cfmgr_store_scope-observe" "$cfmgr_store_snapshot" "$cfmgr_store_target_bytes" || return $?
-			cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-			[ "$cfmgr_store_line" = "CFMGR-ARCHIVE-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
-			;;
+	archive-preferences | archive-history)
+		cfmgr_store_archive_parse "$cfmgr_store_scope-observe" "$cfmgr_store_snapshot" "$cfmgr_store_target_bytes" || return $?
+		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+		[ "$cfmgr_store_line" = "CFMGR-ARCHIVE-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
+		;;
 	esac
 }
 
 cfmgr_store_flags() {
 	cfmgr_store_parse settings-read "$1" "$2" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' ' read -r cfmgr_store_tag cfmgr_store_schema cfmgr_store_generation cfmgr_store_check cfmgr_store_auto cfmgr_store_developer cfmgr_store_end cfmgr_store_extra << EOF_FLAGS
+	IFS=' ' read -r cfmgr_store_tag cfmgr_store_schema cfmgr_store_generation cfmgr_store_check cfmgr_store_auto cfmgr_store_developer cfmgr_store_end cfmgr_store_extra <<EOF_FLAGS
 $cfmgr_store_line
 EOF_FLAGS
 	[ "$cfmgr_store_tag:$cfmgr_store_schema:$cfmgr_store_end:$cfmgr_store_extra" = CFMGR-SETTINGS:1:END: ] || return 1
@@ -559,7 +559,7 @@ cfmgr_store_native_tool() {
 	cfmgr_store_tool_target=$("$cfmgr_store_readlink" -f "$1") || return 1
 	case $cfmgr_store_tool_target in "$1" | /bin/busybox) ;; *) return 1 ;; esac
 	cfmgr_store_tool_metadata=$("$cfmgr_store_ls" -ldn "$cfmgr_store_tool_target") || return 1
-	IFS=' ' read -r cfmgr_store_tool_mode cfmgr_store_tool_links cfmgr_store_tool_uid cfmgr_store_rest << EOF_TOOL
+	IFS=' ' read -r cfmgr_store_tool_mode cfmgr_store_tool_links cfmgr_store_tool_uid cfmgr_store_rest <<EOF_TOOL
 $cfmgr_store_tool_metadata
 EOF_TOOL
 	[ "$cfmgr_store_tool_uid" = 0 ] || return 1
@@ -573,7 +573,7 @@ cfmgr_store_digest_admit() {
 	(
 		umask 077
 		set -C
-		printf abc > "$cfmgr_store_context/sha-vector"
+		printf abc >"$cfmgr_store_context/sha-vector"
 	) || return 1
 	cfmgr_store_digest "$cfmgr_store_context/sha-vector" || return $?
 	[ "$cfmgr_store_digest_value" = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad ]
@@ -604,7 +604,7 @@ cfmgr_store_lock_acquire() {
 	else cfmgr_store_native_tool "$cfmgr_store_flock" || return 1; fi
 	cfmgr_store_run store-lock-create "$cfmgr_store_sh" "$cfmgr_store_lock" || return $?
 	cfmgr_store_admit_private "$cfmgr_store_lock" file || return 1
-	exec 0<> "$cfmgr_store_lock" || return 1
+	exec 0<>"$cfmgr_store_lock" || return 1
 	cfmgr_config_lock_fd0=1
 	cfmgr_store_fd_is "$cfmgr_store_lock" 0 || return 1
 	if cfmgr_store_run store-lock "$cfmgr_store_flock"; then :; else
@@ -629,7 +629,7 @@ cfmgr_store_lock_excludes_fresh_open() {
 cfmgr_store_flush() {
 	cfmgr_store_attachment_ok || return 1
 	[ ! -L "$1" ] && { [ -f "$1" ] || [ -d "$1" ]; } || return 1
-	exec 3< "$1" || return 1
+	exec 3<"$1" || return 1
 	if cfmgr_store_run store-flush "$cfmgr_store_fsync"; then cfmgr_store_flush_code=0; else cfmgr_store_flush_code=$?; fi
 	exec 3<&-
 	return "$cfmgr_store_flush_code"
@@ -682,13 +682,13 @@ cfmgr_store_work() {
 		return 1
 	fi
 	case ${cfmgr_store_scope:-settings}:${cfmgr_store_archive_lock_held:-0} in
-		archive-preferences:1 | archive-history:1) cfmgr_store_archive_borrow_lock || return $? ;;
-		*) cfmgr_store_lock_acquire || return $? ;;
+	archive-preferences:1 | archive-history:1) cfmgr_store_archive_borrow_lock || return $? ;;
+	*) cfmgr_store_lock_acquire || return $? ;;
 	esac
 	cfmgr_store_setup_ok || return $?
 	case ${cfmgr_store_scope:-settings} in
-		archive-preferences | archive-history) cfmgr_store_archive_digest_admit || return $? ;;
-		*) cfmgr_store_digest_admit || return $? ;;
+	archive-preferences | archive-history) cfmgr_store_archive_digest_admit || return $? ;;
+	*) cfmgr_store_digest_admit || return $? ;;
 	esac
 	if [ "$cfmgr_store_operation" = recover ]; then
 		cfmgr_store_recover
@@ -713,7 +713,7 @@ cfmgr_store_work() {
 		cfmgr_store_base_sha=$cfmgr_store_digest_value
 		cfmgr_store_parse settings-observe "$cfmgr_store_base" "$cfmgr_store_base_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-		IFS=' ' read -r cfmgr_store_tag cfmgr_store_schema cfmgr_store_old cfmgr_store_new cfmgr_store_changed cfmgr_store_target_check cfmgr_store_target_auto cfmgr_store_target_dev cfmgr_store_input_bytes cfmgr_store_target_bytes cfmgr_store_end cfmgr_store_extra << EOF_PATCH
+		IFS=' ' read -r cfmgr_store_tag cfmgr_store_schema cfmgr_store_old cfmgr_store_new cfmgr_store_changed cfmgr_store_target_check cfmgr_store_target_auto cfmgr_store_target_dev cfmgr_store_input_bytes cfmgr_store_target_bytes cfmgr_store_end cfmgr_store_extra <<EOF_PATCH
 $cfmgr_store_line
 EOF_PATCH
 		cfmgr_store_patch_tag=CFMGR-SETTINGS-PATCH
@@ -786,7 +786,7 @@ cfmgr_store_prepare_guard() {
 	cfmgr_store_guard=$cfmgr_store_source/.config-save.preparing
 	cfmgr_store_run store-mkdir /bin/mkdir "$cfmgr_store_guard" || return $?
 	cfmgr_store_guard_owned=1 cfmgr_store_pending=1 cfmgr_store_result=recovery
-	exec 4< "$cfmgr_store_guard" || return 3
+	exec 4<"$cfmgr_store_guard" || return 3
 	cfmgr_store_copy "$cfmgr_store_base" "$cfmgr_store_guard/old" || return $?
 	cfmgr_store_copy "$cfmgr_store_candidate" "$cfmgr_store_guard/candidate" || return $?
 	cfmgr_store_digest "$cfmgr_store_guard/old" || return $?
@@ -794,13 +794,13 @@ cfmgr_store_prepare_guard() {
 	cfmgr_store_digest "$cfmgr_store_guard/candidate" || return $?
 	[ "$cfmgr_store_digest_value" = "$cfmgr_store_candidate_sha" ] || return 1
 	case ${cfmgr_store_scope:-settings} in
-		archive-preferences | archive-history) cfmgr_store_intent=$cfmgr_store_context/intent.archive.$cfmgr_probe_serial.$cfmgr_store_attempt ;;
-		*) cfmgr_store_intent=$cfmgr_store_context/intent.$cfmgr_store_attempt ;;
+	archive-preferences | archive-history) cfmgr_store_intent=$cfmgr_store_context/intent.archive.$cfmgr_probe_serial.$cfmgr_store_attempt ;;
+	*) cfmgr_store_intent=$cfmgr_store_context/intent.$cfmgr_store_attempt ;;
 	esac
 	(
 		umask 077
 		set -C
-		printf 'CFMGR-SETTINGS-INTENT 1 %s %s %s %s %s %s END\n' "$cfmgr_store_base_generation" "$cfmgr_store_new" "$cfmgr_store_base_bytes" "$cfmgr_store_target_bytes" "$cfmgr_store_base_sha" "$cfmgr_store_candidate_sha" > "$cfmgr_store_intent"
+		printf 'CFMGR-SETTINGS-INTENT 1 %s %s %s %s %s %s END\n' "$cfmgr_store_base_generation" "$cfmgr_store_new" "$cfmgr_store_base_bytes" "$cfmgr_store_target_bytes" "$cfmgr_store_base_sha" "$cfmgr_store_candidate_sha" >"$cfmgr_store_intent"
 	) || return 1
 	cfmgr_store_copy "$cfmgr_store_intent" "$cfmgr_store_guard/intent" || return $?
 	cfmgr_store_flush "$cfmgr_store_guard" && cfmgr_store_flush "$cfmgr_store_source"
@@ -867,7 +867,7 @@ cfmgr_store_recover() {
 		return 0
 	fi
 	[ "$cfmgr_store_phase_count" = 1 ] && cfmgr_store_admit_private "$cfmgr_store_guard" directory || return 1
-	exec 4< "$cfmgr_store_guard" || return 3
+	exec 4<"$cfmgr_store_guard" || return 3
 	cfmgr_store_guard_owned=1 cfmgr_store_pending=1
 	cfmgr_store_guard_inventory || return $?
 	if [ "$cfmgr_store_guard" = "$cfmgr_store_source/.config-save.retired" ]; then
@@ -877,7 +877,7 @@ cfmgr_store_recover() {
 		cfmgr_store_snapshot "$cfmgr_store_guard/intent" || return $?
 		cfmgr_store_run store-intent "$cfmgr_store_awk" "$cfmgr_store_snapshot" "$cfmgr_store_snapshot_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-		IFS=' ' read -r cfmgr_store_old cfmgr_store_new cfmgr_store_base_bytes cfmgr_store_target_bytes cfmgr_store_base_sha cfmgr_store_candidate_sha << EOF_INTENT
+		IFS=' ' read -r cfmgr_store_old cfmgr_store_new cfmgr_store_base_bytes cfmgr_store_target_bytes cfmgr_store_base_sha cfmgr_store_candidate_sha <<EOF_INTENT
 $cfmgr_store_line
 EOF_INTENT
 		cfmgr_store_snapshot "$cfmgr_store_guard/old" || return $?
@@ -939,18 +939,18 @@ cfmgr_store_validate_retired() {
 		cfmgr_store_snapshot "$cfmgr_store_guard/intent" || return $?
 		cfmgr_store_run store-intent "$cfmgr_store_awk" "$cfmgr_store_snapshot" "$cfmgr_store_snapshot_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-		IFS=' ' read -r cfmgr_store_old cfmgr_store_new cfmgr_store_base_bytes cfmgr_store_target_bytes cfmgr_store_base_sha cfmgr_store_candidate_sha << EOF_RETIRED
+		IFS=' ' read -r cfmgr_store_old cfmgr_store_new cfmgr_store_base_bytes cfmgr_store_target_bytes cfmgr_store_base_sha cfmgr_store_candidate_sha <<EOF_RETIRED
 $cfmgr_store_line
 EOF_RETIRED
 		case $cfmgr_store_retired_sha:$cfmgr_store_retired_bytes:$cfmgr_store_retired_generation in
-			"$cfmgr_store_base_sha:$cfmgr_store_base_bytes:$cfmgr_store_old" | "$cfmgr_store_candidate_sha:$cfmgr_store_target_bytes:$cfmgr_store_new") ;;
-			*) return 1 ;;
+		"$cfmgr_store_base_sha:$cfmgr_store_base_bytes:$cfmgr_store_old" | "$cfmgr_store_candidate_sha:$cfmgr_store_target_bytes:$cfmgr_store_new") ;;
+		*) return 1 ;;
 		esac
 		for cfmgr_store_retired_item in old candidate; do
 			[ -e "$cfmgr_store_guard/$cfmgr_store_retired_item" ] || continue
 			case $cfmgr_store_retired_item in
-				old) cfmgr_store_retired_item_sha=$cfmgr_store_base_sha cfmgr_store_retired_item_bytes=$cfmgr_store_base_bytes cfmgr_store_retired_item_gen=$cfmgr_store_old ;;
-				candidate) cfmgr_store_retired_item_sha=$cfmgr_store_candidate_sha cfmgr_store_retired_item_bytes=$cfmgr_store_target_bytes cfmgr_store_retired_item_gen=$cfmgr_store_new ;;
+			old) cfmgr_store_retired_item_sha=$cfmgr_store_base_sha cfmgr_store_retired_item_bytes=$cfmgr_store_base_bytes cfmgr_store_retired_item_gen=$cfmgr_store_old ;;
+			candidate) cfmgr_store_retired_item_sha=$cfmgr_store_candidate_sha cfmgr_store_retired_item_bytes=$cfmgr_store_target_bytes cfmgr_store_retired_item_gen=$cfmgr_store_new ;;
 			esac
 			cfmgr_store_snapshot "$cfmgr_store_guard/$cfmgr_store_retired_item" || return $?
 			[ "$cfmgr_store_snapshot_bytes" = "$cfmgr_store_retired_item_bytes" ] || return 1
@@ -975,9 +975,9 @@ cfmgr_config_store_observation_lock() {
 	cfmgr_store_sleep=$cfmgr_install_sleep cfmgr_store_wc=$cfmgr_install_wc cfmgr_store_ls=$cfmgr_install_ls cfmgr_store_readlink=$cfmgr_install_readlink
 	cfmgr_store_result=unavailable cfmgr_config_lock_fd0=0 cfmgr_store_flock_entware=0 cfmgr_store_flock=/usr/bin/flock cfmgr_store_archive_lock_held=0
 	case ${cfmgr_prereq_flock_provider:-none} in
-		native) ;;
-		entware) cfmgr_store_flock_entware=1 cfmgr_store_flock=/opt/bin/flock ;;
-		*) return 1 ;;
+	native) ;;
+	entware) cfmgr_store_flock_entware=1 cfmgr_store_flock=/opt/bin/flock ;;
+	*) return 1 ;;
 	esac
 	cfmgr_store_admit_private "$cfmgr_store_ram" directory || return 1
 	cfmgr_prerequisites_now || return 1

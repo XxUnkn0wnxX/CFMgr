@@ -20,7 +20,7 @@ mkdir -m 755 "$fixture/jffs"
 # shellcheck disable=SC1090
 . "$installer_package/modules/lib/package.sh"
 cfmgr_test_cost() {
-	IFS=' ' read -r cfmgr_test_uptime _ < /proc/uptime
+	IFS=' ' read -r cfmgr_test_uptime _ </proc/uptime
 	printf 'CFMGR-TEST-COST 1 %s %s\n' "$1" "$cfmgr_test_uptime" >&2
 }
 cfmgr_test_cost_installer=1
@@ -108,9 +108,9 @@ cfmgr_install_jffs=$fixture/jffs cfmgr_install_opt=$cfmgr_storage_opt cfmgr_inst
 cfmgr_install_sha=$installer_sha cfmgr_install_jq=$installer_jq cfmgr_install_df=$installer_df
 cfmgr_install_mv=$installer_mv cfmgr_install_fsync=$installer_fsync
 cfmgr_install_nvram=$view_ram/nvram
-printf '#!/bin/sh\nprintf "1\\n"\n' > "$cfmgr_install_nvram"
+printf '#!/bin/sh\nprintf "1\\n"\n' >"$cfmgr_install_nvram"
 chmod 755 "$cfmgr_install_nvram"
-exec 0< "$cfmgr_install_context" 8< "$fixture/jffs" 9< "$installer_package"
+exec 0<"$cfmgr_install_context" 8<"$fixture/jffs" 9<"$installer_package"
 if [ -n "${dependency_retained_fixture:-}" ]; then
 	cfmgr_test_cost_installer=0
 	# Fixed Python-admitted fixture extension, no production environment override.

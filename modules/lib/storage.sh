@@ -16,12 +16,12 @@
 cfmgr_storage_flush_fd() (
 	[ "$#" -eq 1 ] || return 2
 	case $1 in
-		/*) ;;
-		*) return 2 ;;
+	/*) ;;
+	*) return 2 ;;
 	esac
 	[ -f "$1" ] && [ -x "$1" ] || return 2
 	# Validate inheritance without opening a pathname or changing the descriptor.
-	(: <&3) 2> /dev/null || return 2
+	(: <&3) 2>/dev/null || return 2
 	# The fixed operand bounds native errno diagnostics. Appending the marker
 	# inside substitution preserves even newline-only output, which command
 	# substitution would otherwise trim. It is appended only after exit zero.
@@ -43,13 +43,13 @@ cfmgr_storage_flush_fd() (
 _cfmgr_storage_path() {
 	[ "$#" -eq 1 ] && [ "${#1}" -le 4096 ] || return 1
 	case $1 in
-		/*) ;;
-		*) return 1 ;;
+	/*) ;;
+	*) return 1 ;;
 	esac
 	case $1 in
-		*[!\ -~]* | *//* | */./* | */../* | */. | */..) return 1 ;;
-		/) ;;
-		*/) return 1 ;;
+	*[!\ -~]* | *//* | */./* | */../* | */. | */..) return 1 ;;
+	/) ;;
+	*/) return 1 ;;
 	esac
 }
 
@@ -61,12 +61,12 @@ _cfmgr_storage_canonical() {
 	# Preserve newlines until validation; plain command substitution could turn an
 	# unsafe newline-bearing pathname into a different, apparently safe pathname.
 	case $_cfmgr_storage_resolved in
-		*'
+	*'
 
 .') _cfmgr_storage_resolved=${_cfmgr_storage_resolved%'
 
 .'} ;;
-		*) return 1 ;;
+	*) return 1 ;;
 	esac
 	_cfmgr_storage_path "$_cfmgr_storage_resolved" || return 1
 	printf '%s\n' "$_cfmgr_storage_resolved"
@@ -118,7 +118,7 @@ cfmgr_storage_pin() {
 	IFS='	' read -r cfmgr_storage_mount_id cfmgr_storage_parent_id \
 		cfmgr_storage_device cfmgr_storage_fsroot cfmgr_storage_mount \
 		cfmgr_storage_filesystem cfmgr_storage_source cfmgr_storage_options \
-		cfmgr_storage_superoptions << EOF
+		cfmgr_storage_superoptions <<EOF
 $cfmgr_storage_snapshot
 EOF
 	# These initial capability profiles admit Linux ext filesystems. A bind mount
@@ -129,8 +129,8 @@ EOF
 	case ,$cfmgr_storage_options, in *,noexec,* | *,ro,*) return 1 ;; esac
 	case ,$cfmgr_storage_superoptions, in *,rw,*) ;; *) return 1 ;; esac
 	[ "$(_cfmgr_storage_canonical "$cfmgr_storage_mount")" = "$cfmgr_storage_mount" ] || return 1
-	exec 6< "$cfmgr_storage_mount" || return 1
-	if ! exec 7< "$cfmgr_storage_opt"; then
+	exec 6<"$cfmgr_storage_mount" || return 1
+	if ! exec 7<"$cfmgr_storage_opt"; then
 		exec 6<&-
 		return 1
 	fi
@@ -486,7 +486,7 @@ cfmgr_storage_mountinfo() {
 cfmgr_native_mode() {
 	cfmgr_native_step mutation-metadata install-ls "$1" || return $?
 	[ "$cfmgr_native_exit" -eq 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-	IFS=' ' read -r cfmgr_native_mode cfmgr_native_links cfmgr_native_uid cfmgr_native_gid cfmgr_native_rest < "$cfmgr_native_output" || return 1
+	IFS=' ' read -r cfmgr_native_mode cfmgr_native_links cfmgr_native_uid cfmgr_native_gid cfmgr_native_rest <"$cfmgr_native_output" || return 1
 	[ "$cfmgr_native_mode" = "$2" ]
 }
 
@@ -495,8 +495,8 @@ cfmgr_native_mutations() {
 	(
 		umask 077
 		set -C
-		printf 'original\n' > "$cfmgr_native_context/native.source" &&
-			printf 'retained\n' > "$cfmgr_native_context/native.destination"
+		printf 'original\n' >"$cfmgr_native_context/native.source" &&
+			printf 'retained\n' >"$cfmgr_native_context/native.destination"
 	) || return 1
 	cfmgr_native_step mutation-mkdir install-mkdir-private "$cfmgr_native_context/native.directory" || return $?
 	cfmgr_native_zero || return 1
@@ -513,19 +513,19 @@ cfmgr_native_mutations() {
 	cfmgr_native_zero || return 1
 	cfmgr_native_step mutation-rename install-rename "$cfmgr_native_context/native.copy" "$cfmgr_native_context/native.destination" || return $?
 	cfmgr_native_zero || return 1
-	IFS= read -r cfmgr_native_text < "$cfmgr_native_context/native.destination" || return 1
+	IFS= read -r cfmgr_native_text <"$cfmgr_native_context/native.destination" || return 1
 	[ "$cfmgr_native_text" = original ] && [ ! -e "$cfmgr_native_context/native.copy" ] || return 1
 	cfmgr_native_step mutation-publish install-publish "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.destination" || return $?
 	cfmgr_native_zero || return 1
 	[ -f "$cfmgr_native_context/native.source" ] && [ ! -L "$cfmgr_native_context/native.source" ] || return 1
-	printf 'retained\n' > "$cfmgr_native_context/native.destination" || return 1
+	printf 'retained\n' >"$cfmgr_native_context/native.destination" || return 1
 	cfmgr_native_step mutation-publish install-publish "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.destination" || return $?
 	cfmgr_native_zero || return 1
-	IFS= read -r cfmgr_native_text < "$cfmgr_native_context/native.destination" || return 1
+	IFS= read -r cfmgr_native_text <"$cfmgr_native_context/native.destination" || return 1
 	[ "$cfmgr_native_text" = retained ] && [ -f "$cfmgr_native_context/native.source" ] || return 1
 	cfmgr_native_step mutation-publish install-publish "$cfmgr_native_context/native.source" "$cfmgr_native_context/native.published" || return $?
 	cfmgr_native_zero || return 1
-	IFS= read -r cfmgr_native_text < "$cfmgr_native_context/native.published" || return 1
+	IFS= read -r cfmgr_native_text <"$cfmgr_native_context/native.published" || return 1
 	[ "$cfmgr_native_text" = original ] && [ ! -e "$cfmgr_native_context/native.source" ] || return 1
 	for cfmgr_native_permission in private readonly executable; do
 		cfmgr_native_step mutation-chmod "install-chmod-$cfmgr_native_permission" "$cfmgr_native_context/native.destination" || return $?
@@ -535,9 +535,9 @@ cfmgr_native_mutations() {
 	done
 	# FD3 is free before prerequisite flock/view work. Borrow it for the same
 	# fsync probe used by the installer, including native errno/diagnostics.
-	cfmgr_native_step mutation-flush install-flush 3< "$cfmgr_native_context/native.destination" || return $?
+	cfmgr_native_step mutation-flush install-flush 3<"$cfmgr_native_context/native.destination" || return $?
 	cfmgr_native_zero || return 1
-	cfmgr_native_step mutation-flush install-flush 3< "$cfmgr_native_context/native.directory" || return $?
+	cfmgr_native_step mutation-flush install-flush 3<"$cfmgr_native_context/native.directory" || return $?
 	cfmgr_native_zero || return 1
 }
 

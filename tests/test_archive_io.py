@@ -149,7 +149,7 @@ def archive(tmp_path, shell):
             wrapper.write_text(
                 "#!/bin/sh\n"
                 + lock_check
-                + ("printf '   '\n" if name == "ls" else "")
+                + ("case $1 in -*i*) printf '   ' ;; esac\n" if name == "ls" else "")
                 + f'exec {shlex.quote(tools[name])} "$@"\n'
             )
             wrapper.chmod(0o700)
@@ -159,7 +159,7 @@ def archive(tmp_path, shell):
         # whose large inode numbers otherwise conceal a parser regression.
         padded_ls = tmp_path / "padded-ls"
         padded_ls.write_text(
-            f"#!/bin/sh\nprintf '   '\nexec {shlex.quote(tools['ls'])} \"$@\"\n"
+            f"#!/bin/sh\ncase $1 in -*i*) printf '   ' ;; esac\nexec {shlex.quote(tools['ls'])} \"$@\"\n"
         )
         padded_ls.chmod(0o700)
         tools["ls"] = str(padded_ls)

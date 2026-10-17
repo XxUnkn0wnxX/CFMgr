@@ -125,29 +125,29 @@ cfmgr_backup_work() {
 	fi
 	cfmgr_store_backup_read || return $?
 	case $cfmgr_backup_operation in
-		list)
-			cfmgr_backup_list && cfmgr_backup_check_saved || return $?
-			cfmgr_backup_result=list
-			;;
-		check)
-			cfmgr_backup_check_saved || return $?
-			cfmgr_backup_result=checked
-			;;
-		save)
-			[ "$cfmgr_store_pending" = 0 ] || {
-				cfmgr_backup_result=recovery
-				return 1
-			}
-			cfmgr_store_native_tool /sbin/blkid && cfmgr_store_native_tool /bin/chmod || return 1
-			cfmgr_backup_pin_selected || return $?
-			if cfmgr_store_backup_save; then :; else
-				cfmgr_backup_save_code=$?
-				case $cfmgr_store_result in busy | recovery) cfmgr_backup_result=$cfmgr_store_result ;; esac
-				return "$cfmgr_backup_save_code"
-			fi
-			cfmgr_backup_result=$cfmgr_store_result cfmgr_backup_availability=available
-			cfmgr_store_backup_read || return $?
-			;;
+	list)
+		cfmgr_backup_list && cfmgr_backup_check_saved || return $?
+		cfmgr_backup_result=list
+		;;
+	check)
+		cfmgr_backup_check_saved || return $?
+		cfmgr_backup_result=checked
+		;;
+	save)
+		[ "$cfmgr_store_pending" = 0 ] || {
+			cfmgr_backup_result=recovery
+			return 1
+		}
+		cfmgr_store_native_tool /sbin/blkid && cfmgr_store_native_tool /bin/chmod || return 1
+		cfmgr_backup_pin_selected || return $?
+		if cfmgr_store_backup_save; then :; else
+			cfmgr_backup_save_code=$?
+			case $cfmgr_store_result in busy | recovery) cfmgr_backup_result=$cfmgr_store_result ;; esac
+			return "$cfmgr_backup_save_code"
+		fi
+		cfmgr_backup_result=$cfmgr_store_result cfmgr_backup_availability=available
+		cfmgr_store_backup_read || return $?
+		;;
 	esac
 }
 
@@ -188,7 +188,7 @@ cfmgr_backup_list() {
 		cfmgr_backup_row="CFMGR-BACKUP-DRIVE 1 $cfmgr_backup_count $cfmgr_backup_list_label_hex $cfmgr_backup_list_mount_hex $cfmgr_backup_list_uuid_hex $cfmgr_backup_list_fs_hex $cfmgr_backup_list_root_hex $cfmgr_backup_list_snapshot_hex END"
 		if [ "$cfmgr_backup_count" = 1 ]; then cfmgr_backup_rows=$cfmgr_backup_row; else cfmgr_backup_rows="$cfmgr_backup_rows
 $cfmgr_backup_row"; fi
-	done 3< "$cfmgr_backup_inventory"
+	done 3<"$cfmgr_backup_inventory"
 }
 
 cfmgr_backup_check_saved() {
@@ -232,88 +232,88 @@ cfmgr_backup_ui_parse_frame() {
 		cfmgr_backup_ui_lines=$((cfmgr_backup_ui_lines + 1))
 		[ "$cfmgr_backup_ui_lines" -le 35 ] || return 1
 		case $cfmgr_backup_ui_line in
-			'CFMGR-BACKUP-EXIT '*)
-				[ "$cfmgr_backup_ui_sentinel" = 0 ] || return 1
-				IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_exit cfmgr_backup_ui_extra << EOF_BACKUP_EXIT
+		'CFMGR-BACKUP-EXIT '*)
+			[ "$cfmgr_backup_ui_sentinel" = 0 ] || return 1
+			IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_exit cfmgr_backup_ui_extra <<EOF_BACKUP_EXIT
 $cfmgr_backup_ui_line
 EOF_BACKUP_EXIT
-				[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP-EXIT $cfmgr_backup_ui_exit" ] && [ -z "$cfmgr_backup_ui_extra" ] || return 1
-				case $cfmgr_backup_ui_exit in 0 | 1 | 3) ;; *) return 1 ;; esac
-				cfmgr_backup_ui_sentinel=1
-				;;
-			*)
-				[ "$cfmgr_backup_ui_sentinel" = 0 ] || return 1
-				if [ "$cfmgr_backup_ui_header" = 0 ]; then
-					IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_result \
-						cfmgr_backup_ui_generation cfmgr_backup_ui_pending cfmgr_backup_ui_availability \
-						cfmgr_backup_ui_expected_count cfmgr_backup_ui_end cfmgr_backup_ui_extra << EOF_BACKUP_HEADER
+			[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP-EXIT $cfmgr_backup_ui_exit" ] && [ -z "$cfmgr_backup_ui_extra" ] || return 1
+			case $cfmgr_backup_ui_exit in 0 | 1 | 3) ;; *) return 1 ;; esac
+			cfmgr_backup_ui_sentinel=1
+			;;
+		*)
+			[ "$cfmgr_backup_ui_sentinel" = 0 ] || return 1
+			if [ "$cfmgr_backup_ui_header" = 0 ]; then
+				IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_result \
+					cfmgr_backup_ui_generation cfmgr_backup_ui_pending cfmgr_backup_ui_availability \
+					cfmgr_backup_ui_expected_count cfmgr_backup_ui_end cfmgr_backup_ui_extra <<EOF_BACKUP_HEADER
 $cfmgr_backup_ui_line
 EOF_BACKUP_HEADER
-					[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP 1 $cfmgr_backup_ui_result $cfmgr_backup_ui_generation $cfmgr_backup_ui_pending $cfmgr_backup_ui_availability $cfmgr_backup_ui_expected_count END" ] || return 1
-					cfmgr_backup_ui_uint "$cfmgr_backup_ui_generation" 20 && cfmgr_backup_ui_uint "$cfmgr_backup_ui_expected_count" 2 || return 1
-					case $cfmgr_backup_ui_expected_count in 0 | [1-9] | [12][0-9] | 3[0-2]) ;; *) return 1 ;; esac
-					case $cfmgr_backup_ui_pending in 0 | 1) ;; *) return 1 ;; esac
-					case $cfmgr_backup_ui_availability in none | available | unavailable) ;; *) return 1 ;; esac
-					[ "$cfmgr_backup_ui_result" != unresolved ] || [ "$cfmgr_backup_ui_pending" = 1 ] || return 1
-					cfmgr_backup_ui_header=1
-				elif [ "${cfmgr_backup_ui_line%% *}" = CFMGR-BACKUP-DEST ]; then
-					[ "$cfmgr_backup_ui_dest" = 0 ] && [ "$cfmgr_backup_ui_count" = 0 ] || return 1
-					IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_mount_hex \
-						cfmgr_backup_ui_uuid_hex cfmgr_backup_ui_filesystem_hex cfmgr_backup_ui_root_hex \
-						cfmgr_backup_ui_end cfmgr_backup_ui_extra << EOF_BACKUP_DEST
+				[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP 1 $cfmgr_backup_ui_result $cfmgr_backup_ui_generation $cfmgr_backup_ui_pending $cfmgr_backup_ui_availability $cfmgr_backup_ui_expected_count END" ] || return 1
+				cfmgr_backup_ui_uint "$cfmgr_backup_ui_generation" 20 && cfmgr_backup_ui_uint "$cfmgr_backup_ui_expected_count" 2 || return 1
+				case $cfmgr_backup_ui_expected_count in 0 | [1-9] | [12][0-9] | 3[0-2]) ;; *) return 1 ;; esac
+				case $cfmgr_backup_ui_pending in 0 | 1) ;; *) return 1 ;; esac
+				case $cfmgr_backup_ui_availability in none | available | unavailable) ;; *) return 1 ;; esac
+				[ "$cfmgr_backup_ui_result" != unresolved ] || [ "$cfmgr_backup_ui_pending" = 1 ] || return 1
+				cfmgr_backup_ui_header=1
+			elif [ "${cfmgr_backup_ui_line%% *}" = CFMGR-BACKUP-DEST ]; then
+				[ "$cfmgr_backup_ui_dest" = 0 ] && [ "$cfmgr_backup_ui_count" = 0 ] || return 1
+				IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_mount_hex \
+					cfmgr_backup_ui_uuid_hex cfmgr_backup_ui_filesystem_hex cfmgr_backup_ui_root_hex \
+					cfmgr_backup_ui_end cfmgr_backup_ui_extra <<EOF_BACKUP_DEST
 $cfmgr_backup_ui_line
 EOF_BACKUP_DEST
-					[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP-DEST 1 $cfmgr_backup_ui_mount_hex $cfmgr_backup_ui_uuid_hex $cfmgr_backup_ui_filesystem_hex $cfmgr_backup_ui_root_hex END" ] || return 1
-					cfmgr_backup_ui_hex "$cfmgr_backup_ui_mount_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_uuid_hex" 2048 &&
-						cfmgr_backup_ui_hex "$cfmgr_backup_ui_filesystem_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_root_hex" 2048 || return 1
-					cfmgr_backup_ui_dest_mount=$(cfmgr_backup_decode "$cfmgr_backup_ui_mount_hex") &&
-						cfmgr_backup_ui_dest_uuid=$(cfmgr_backup_decode "$cfmgr_backup_ui_uuid_hex") &&
-						cfmgr_backup_ui_dest_filesystem=$(cfmgr_backup_decode "$cfmgr_backup_ui_filesystem_hex") &&
-						cfmgr_backup_ui_dest_root=$(cfmgr_backup_decode "$cfmgr_backup_ui_root_hex") || return 1
-					case $cfmgr_backup_ui_dest_mount in /tmp/mnt/?*) ;; *) return 1 ;; esac
-					[ "$cfmgr_backup_ui_dest_root" = / ] || return 1
-					cfmgr_backup_ui_dest=1
-				else
-					[ "${cfmgr_backup_ui_line%% *}" = CFMGR-BACKUP-DRIVE ] || return 1
-					cfmgr_backup_ui_count=$((cfmgr_backup_ui_count + 1))
-					[ "$cfmgr_backup_ui_count" -le 32 ] || return 1
-					IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_index \
-						cfmgr_backup_ui_label_hex cfmgr_backup_ui_mount_hex cfmgr_backup_ui_uuid_hex \
-						cfmgr_backup_ui_filesystem_hex cfmgr_backup_ui_root_hex cfmgr_backup_ui_snapshot_hex \
-						cfmgr_backup_ui_end cfmgr_backup_ui_extra << EOF_BACKUP_DRIVE
+				[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP-DEST 1 $cfmgr_backup_ui_mount_hex $cfmgr_backup_ui_uuid_hex $cfmgr_backup_ui_filesystem_hex $cfmgr_backup_ui_root_hex END" ] || return 1
+				cfmgr_backup_ui_hex "$cfmgr_backup_ui_mount_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_uuid_hex" 2048 &&
+					cfmgr_backup_ui_hex "$cfmgr_backup_ui_filesystem_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_root_hex" 2048 || return 1
+				cfmgr_backup_ui_dest_mount=$(cfmgr_backup_decode "$cfmgr_backup_ui_mount_hex") &&
+					cfmgr_backup_ui_dest_uuid=$(cfmgr_backup_decode "$cfmgr_backup_ui_uuid_hex") &&
+					cfmgr_backup_ui_dest_filesystem=$(cfmgr_backup_decode "$cfmgr_backup_ui_filesystem_hex") &&
+					cfmgr_backup_ui_dest_root=$(cfmgr_backup_decode "$cfmgr_backup_ui_root_hex") || return 1
+				case $cfmgr_backup_ui_dest_mount in /tmp/mnt/?*) ;; *) return 1 ;; esac
+				[ "$cfmgr_backup_ui_dest_root" = / ] || return 1
+				cfmgr_backup_ui_dest=1
+			else
+				[ "${cfmgr_backup_ui_line%% *}" = CFMGR-BACKUP-DRIVE ] || return 1
+				cfmgr_backup_ui_count=$((cfmgr_backup_ui_count + 1))
+				[ "$cfmgr_backup_ui_count" -le 32 ] || return 1
+				IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_index \
+					cfmgr_backup_ui_label_hex cfmgr_backup_ui_mount_hex cfmgr_backup_ui_uuid_hex \
+					cfmgr_backup_ui_filesystem_hex cfmgr_backup_ui_root_hex cfmgr_backup_ui_snapshot_hex \
+					cfmgr_backup_ui_end cfmgr_backup_ui_extra <<EOF_BACKUP_DRIVE
 $cfmgr_backup_ui_line
 EOF_BACKUP_DRIVE
-					[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP-DRIVE 1 $cfmgr_backup_ui_index $cfmgr_backup_ui_label_hex $cfmgr_backup_ui_mount_hex $cfmgr_backup_ui_uuid_hex $cfmgr_backup_ui_filesystem_hex $cfmgr_backup_ui_root_hex $cfmgr_backup_ui_snapshot_hex END" ] || return 1
-					[ "$cfmgr_backup_ui_index" = "$cfmgr_backup_ui_count" ] || return 1
-					cfmgr_backup_ui_hex "$cfmgr_backup_ui_label_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_mount_hex" 2048 &&
-						cfmgr_backup_ui_hex "$cfmgr_backup_ui_uuid_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_filesystem_hex" 2048 &&
-						cfmgr_backup_ui_hex "$cfmgr_backup_ui_root_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_snapshot_hex" 16384 || return 1
-					cfmgr_backup_ui_label=$(cfmgr_backup_decode "$cfmgr_backup_ui_label_hex") &&
-						cfmgr_backup_ui_mount=$(cfmgr_backup_decode "$cfmgr_backup_ui_mount_hex") &&
-						cfmgr_backup_ui_uuid=$(cfmgr_backup_decode "$cfmgr_backup_ui_uuid_hex") &&
-						cfmgr_backup_ui_filesystem=$(cfmgr_backup_decode "$cfmgr_backup_ui_filesystem_hex") &&
-						cfmgr_backup_ui_root=$(cfmgr_backup_decode "$cfmgr_backup_ui_root_hex") || return 1
-					case $cfmgr_backup_ui_mount in /tmp/mnt/?*) ;; *) return 1 ;; esac
-					[ "$cfmgr_backup_ui_root" = / ] || return 1
-					cfmgr_backup_unhex "$cfmgr_backup_ui_snapshot_hex" snapshot || return 1
-					if [ -z "$cfmgr_backup_ui_rows" ]; then cfmgr_backup_ui_rows=$cfmgr_backup_ui_line; else
-						cfmgr_backup_ui_rows="$cfmgr_backup_ui_rows
+				[ "$cfmgr_backup_ui_line" = "CFMGR-BACKUP-DRIVE 1 $cfmgr_backup_ui_index $cfmgr_backup_ui_label_hex $cfmgr_backup_ui_mount_hex $cfmgr_backup_ui_uuid_hex $cfmgr_backup_ui_filesystem_hex $cfmgr_backup_ui_root_hex $cfmgr_backup_ui_snapshot_hex END" ] || return 1
+				[ "$cfmgr_backup_ui_index" = "$cfmgr_backup_ui_count" ] || return 1
+				cfmgr_backup_ui_hex "$cfmgr_backup_ui_label_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_mount_hex" 2048 &&
+					cfmgr_backup_ui_hex "$cfmgr_backup_ui_uuid_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_filesystem_hex" 2048 &&
+					cfmgr_backup_ui_hex "$cfmgr_backup_ui_root_hex" 2048 && cfmgr_backup_ui_hex "$cfmgr_backup_ui_snapshot_hex" 16384 || return 1
+				cfmgr_backup_ui_label=$(cfmgr_backup_decode "$cfmgr_backup_ui_label_hex") &&
+					cfmgr_backup_ui_mount=$(cfmgr_backup_decode "$cfmgr_backup_ui_mount_hex") &&
+					cfmgr_backup_ui_uuid=$(cfmgr_backup_decode "$cfmgr_backup_ui_uuid_hex") &&
+					cfmgr_backup_ui_filesystem=$(cfmgr_backup_decode "$cfmgr_backup_ui_filesystem_hex") &&
+					cfmgr_backup_ui_root=$(cfmgr_backup_decode "$cfmgr_backup_ui_root_hex") || return 1
+				case $cfmgr_backup_ui_mount in /tmp/mnt/?*) ;; *) return 1 ;; esac
+				[ "$cfmgr_backup_ui_root" = / ] || return 1
+				cfmgr_backup_unhex "$cfmgr_backup_ui_snapshot_hex" snapshot || return 1
+				if [ -z "$cfmgr_backup_ui_rows" ]; then cfmgr_backup_ui_rows=$cfmgr_backup_ui_line; else
+					cfmgr_backup_ui_rows="$cfmgr_backup_ui_rows
 $cfmgr_backup_ui_line"
-					fi
 				fi
-				;;
+			fi
+			;;
 		esac
-	done << EOF_BACKUP_FRAME
+	done <<EOF_BACKUP_FRAME
 $cfmgr_backup_ui_raw
 EOF_BACKUP_FRAME
 	[ "$cfmgr_backup_ui_header:$cfmgr_backup_ui_sentinel:$cfmgr_backup_ui_count" = "1:1:$cfmgr_backup_ui_expected_count" ] || return 1
 	case $cfmgr_backup_ui_action_name:$cfmgr_backup_ui_exit:$cfmgr_backup_ui_result in
-		list:0:list | check:0:checked | save:0:saved | save:0:unchanged | recover:0:recovered | recover:0:unchanged | \
-			list:1:unavailable | check:1:unavailable | save:1:unavailable | recover:1:unavailable | \
-			list:1:busy | check:1:busy | save:1:busy | recover:1:busy | \
-			list:1:recovery | check:1:recovery | save:1:recovery | recover:1:recovery | \
-			list:3:unresolved | check:3:unresolved | save:3:unresolved | recover:3:unresolved) ;;
-		*) return 1 ;;
+	list:0:list | check:0:checked | save:0:saved | save:0:unchanged | recover:0:recovered | recover:0:unchanged | \
+		list:1:unavailable | check:1:unavailable | save:1:unavailable | recover:1:unavailable | \
+		list:1:busy | check:1:busy | save:1:busy | recover:1:busy | \
+		list:1:recovery | check:1:recovery | save:1:recovery | recover:1:recovery | \
+		list:3:unresolved | check:3:unresolved | save:3:unresolved | recover:3:unresolved) ;;
+	*) return 1 ;;
 	esac
 	if [ "$cfmgr_backup_ui_exit" != 0 ]; then
 		[ "$cfmgr_backup_ui_generation:$cfmgr_backup_ui_expected_count:$cfmgr_backup_ui_availability:$cfmgr_backup_ui_dest:$cfmgr_backup_ui_count" = 0:0:unavailable:0:0 ] || return 1
@@ -326,16 +326,16 @@ EOF_BACKUP_FRAME
 		case $cfmgr_backup_ui_availability:$cfmgr_backup_ui_dest in available:1 | none:0 | unavailable:1) ;; *) return 1 ;; esac
 	fi
 	case $cfmgr_backup_ui_action_name:$cfmgr_backup_ui_exit in
-		check:0)
-			[ "$cfmgr_backup_ui_count" = 0 ] || return 1
-			;;
-		save:0)
-			[ "$cfmgr_backup_ui_dest:$cfmgr_backup_ui_availability:$cfmgr_backup_ui_pending:$cfmgr_backup_ui_count" = 1:available:0:0 ] || return 1
-			;;
-		recover:0)
-			[ "$cfmgr_backup_ui_pending:$cfmgr_backup_ui_count" = 0:0 ] || return 1
-			;;
-		*) ;;
+	check:0)
+		[ "$cfmgr_backup_ui_count" = 0 ] || return 1
+		;;
+	save:0)
+		[ "$cfmgr_backup_ui_dest:$cfmgr_backup_ui_availability:$cfmgr_backup_ui_pending:$cfmgr_backup_ui_count" = 1:available:0:0 ] || return 1
+		;;
+	recover:0)
+		[ "$cfmgr_backup_ui_pending:$cfmgr_backup_ui_count" = 0:0 ] || return 1
+		;;
+	*) ;;
 	esac
 }
 
@@ -354,10 +354,10 @@ cfmgr_backup_ui_action() {
 
 cfmgr_backup_ui_report() {
 	case $cfmgr_backup_ui_result in
-		busy) printf '[CFMGR] backup: warning: storage or settings lock is busy\n' >&2 ;;
-		unavailable) printf '[CFMGR] backup: warning: backup storage or saved destination is unavailable\n' >&2 ;;
-		recovery) printf '[CFMGR] backup: warning: pending recovery must be completed before Save\n' >&2 ;;
-		unresolved) printf '[CFMGR] backup: error: operation is unresolved; leaving Backup / Restore\n' >&2 ;;
+	busy) printf '[CFMGR] backup: warning: storage or settings lock is busy\n' >&2 ;;
+	unavailable) printf '[CFMGR] backup: warning: backup storage or saved destination is unavailable\n' >&2 ;;
+	recovery) printf '[CFMGR] backup: warning: pending recovery must be completed before Save\n' >&2 ;;
+	unresolved) printf '[CFMGR] backup: error: operation is unresolved; leaving Backup / Restore\n' >&2 ;;
 	esac
 }
 
@@ -367,8 +367,8 @@ cfmgr_backup_ui_show_state() {
 	else
 		if [ "$cfmgr_backup_ui_dest" = 1 ]; then
 			case $cfmgr_backup_ui_availability in
-				available) printf 'Saved destination: %s/CFBackup (available)\n' "$cfmgr_backup_ui_dest_mount" ;;
-				*) printf 'Saved destination: %s/CFBackup (unavailable)\n' "$cfmgr_backup_ui_dest_mount" ;;
+			available) printf 'Saved destination: %s/CFBackup (available)\n' "$cfmgr_backup_ui_dest_mount" ;;
+			*) printf 'Saved destination: %s/CFBackup (unavailable)\n' "$cfmgr_backup_ui_dest_mount" ;;
 			esac
 		else printf '%s\n' 'Saved destination: unset'; fi
 		if [ "$cfmgr_backup_ui_count" = 0 ]; then
@@ -398,7 +398,7 @@ cfmgr_backup_ui_drive_fields() {
 	IFS=' ' read -r cfmgr_backup_ui_tag cfmgr_backup_ui_schema cfmgr_backup_ui_index \
 		cfmgr_backup_ui_label_hex cfmgr_backup_ui_mount_hex cfmgr_backup_ui_uuid_hex \
 		cfmgr_backup_ui_filesystem_hex cfmgr_backup_ui_root_hex cfmgr_backup_ui_snapshot_hex \
-		cfmgr_backup_ui_end cfmgr_backup_ui_extra << EOF_BACKUP_DRIVE_FIELDS
+		cfmgr_backup_ui_end cfmgr_backup_ui_extra <<EOF_BACKUP_DRIVE_FIELDS
 $1
 EOF_BACKUP_DRIVE_FIELDS
 	cfmgr_backup_ui_label=$(cfmgr_backup_decode "$cfmgr_backup_ui_label_hex") &&
@@ -414,7 +414,7 @@ cfmgr_backup_ui_select_drive() {
 	while IFS= read -r cfmgr_backup_ui_drive_row; do
 		cfmgr_backup_ui_drive_fields "$cfmgr_backup_ui_drive_row" || return 1
 		printf '%s) %s | %s\n' "$cfmgr_backup_ui_index" "$cfmgr_backup_ui_label" "$cfmgr_backup_ui_mount"
-	done << EOF_BACKUP_DRIVE_LIST
+	done <<EOF_BACKUP_DRIVE_LIST
 $cfmgr_backup_ui_rows
 EOF_BACKUP_DRIVE_LIST
 	printf '%s' 'Drive number (or e to cancel): '
@@ -436,7 +436,7 @@ EOF_BACKUP_DRIVE_LIST
 			printf 'Staged selection: %s | %s\n' "$cfmgr_backup_ui_label" "$cfmgr_backup_ui_mount"
 			return 0
 		fi
-	done << EOF_BACKUP_DRIVE_SELECT
+	done <<EOF_BACKUP_DRIVE_SELECT
 $cfmgr_backup_ui_rows
 EOF_BACKUP_DRIVE_SELECT
 	printf '%s\n' 'Invalid drive selection.'
@@ -508,36 +508,36 @@ cfmgr_backup_menu() {
 		else printf '%s\n' 'Archive preferences: unknown'; fi
 		IFS= read -r cfmgr_backup_ui_choice || return 0
 		case $cfmgr_backup_ui_choice in
-			1)
-				if cfmgr_backup_ui_select_drive; then :; else cfmgr_backup_ui_leave=1; fi
-				;;
-			s)
-				if cfmgr_backup_ui_save; then :; else
-					cfmgr_backup_ui_operation_code=$?
-					[ "$cfmgr_backup_ui_operation_code" != 3 ] || return 0
-					[ "$cfmgr_backup_ui_operation_code" != 2 ] || return 0
-				fi
-				;;
-			r)
-				if cfmgr_backup_ui_recover; then :; else
-					cfmgr_backup_ui_operation_code=$?
-					[ "$cfmgr_backup_ui_operation_code" != 3 ] || return 0
-					[ "$cfmgr_backup_ui_operation_code" != 2 ] || return 0
-				fi
-				;;
-			2)
-				if cfmgr_backup_archive_create; then :; else
-					cfmgr_backup_archive_code=$?
-					[ "$cfmgr_backup_archive_code" != 3 ] || cfmgr_backup_ui_leave=1
-				fi
-				;;
-			3)
-				if cfmgr_backup_archive_preferences; then :; else
-					cfmgr_backup_archive_code=$?
-					[ "$cfmgr_backup_archive_code" != 3 ] || cfmgr_backup_ui_leave=1
-				fi
-				;;
-			e) return 0 ;;
+		1)
+			if cfmgr_backup_ui_select_drive; then :; else cfmgr_backup_ui_leave=1; fi
+			;;
+		s)
+			if cfmgr_backup_ui_save; then :; else
+				cfmgr_backup_ui_operation_code=$?
+				[ "$cfmgr_backup_ui_operation_code" != 3 ] || return 0
+				[ "$cfmgr_backup_ui_operation_code" != 2 ] || return 0
+			fi
+			;;
+		r)
+			if cfmgr_backup_ui_recover; then :; else
+				cfmgr_backup_ui_operation_code=$?
+				[ "$cfmgr_backup_ui_operation_code" != 3 ] || return 0
+				[ "$cfmgr_backup_ui_operation_code" != 2 ] || return 0
+			fi
+			;;
+		2)
+			if cfmgr_backup_archive_create; then :; else
+				cfmgr_backup_archive_code=$?
+				[ "$cfmgr_backup_archive_code" != 3 ] || cfmgr_backup_ui_leave=1
+			fi
+			;;
+		3)
+			if cfmgr_backup_archive_preferences; then :; else
+				cfmgr_backup_archive_code=$?
+				[ "$cfmgr_backup_archive_code" != 3 ] || cfmgr_backup_ui_leave=1
+			fi
+			;;
+		e) return 0 ;;
 		esac
 	done
 }
@@ -562,7 +562,7 @@ cfmgr_archive_action() (
 	cfmgr_store_pending=0 cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
 	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
 	cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0 cfmgr_archive_source_pinned=0
-	cfmgr_create_result=unavailable cfmgr_create_published=0 cfmgr_create_name_hex=-
+	cfmgr_create_result=unavailable cfmgr_create_published=0 cfmgr_create_publish_attempted=0 cfmgr_create_name_hex=-
 	cfmgr_create_retention=none cfmgr_create_history=none cfmgr_create_ram_serial=0
 	cfmgr_archive_saved_format=- cfmgr_archive_saved_keep=0 cfmgr_archive_saved_set_id=- cfmgr_archive_saved_generation=0
 	cfmgr_archive_stage='' cfmgr_archive_format_tracking=0 cfmgr_format_owned='' cfmgr_format_receipts=''
@@ -575,16 +575,35 @@ cfmgr_archive_action() (
 		# Cancellation stops work first. A separate bounded cleanup allowance is
 		# only for positively owned temporary data after every child has reaped.
 		cfmgr_store_interrupt=0
-		if [ "${cfmgr_history_lock_held:-0}" = 1 ]; then cfmgr_backup_history_release || cfmgr_create_code=1; fi
-		cfmgr_archive_source_release
-		if [ -n "$cfmgr_archive_stage" ]; then
-			if cfmgr_prerequisites_now; then
-				cfmgr_archive_deadline=$((cfmgr_probe_now + 20))
-				if cfmgr_payload_cleanup && cfmgr_archive_stage_close; then :; else
-					cfmgr_create_cleanup_code=$?
-					if [ "$cfmgr_create_cleanup_code" = 3 ] || [ "${cfmgr_probe_status:-}" != reaped ]; then
-						cfmgr_create_code=3 cfmgr_create_result=unresolved cfmgr_store_pending=1
-					elif [ "$cfmgr_create_published" = 0 ]; then cfmgr_create_code=1; fi
+		if [ "${cfmgr_history_lock_held:-0}" = 1 ]; then
+			if cfmgr_backup_history_release; then :; else
+				cfmgr_create_release_code=$?
+				if [ "$cfmgr_create_release_code" = 3 ]; then
+					cfmgr_create_code=3 cfmgr_create_result=unresolved cfmgr_store_pending=1
+				else cfmgr_create_code=1; fi
+			fi
+		fi
+		if [ "$cfmgr_create_code" != 3 ]; then
+			cfmgr_archive_source_release
+			if [ -n "$cfmgr_archive_stage" ]; then
+				if cfmgr_prerequisites_now; then
+					cfmgr_archive_deadline=$((cfmgr_probe_now + 20))
+					if cfmgr_payload_cleanup && cfmgr_archive_stage_close; then :; else
+						cfmgr_create_cleanup_code=$?
+						if [ "$cfmgr_create_cleanup_code" = 3 ] || [ "${cfmgr_probe_status:-}" != reaped ]; then
+							cfmgr_create_code=3 cfmgr_create_result=unresolved cfmgr_store_pending=1
+						elif [ "$cfmgr_create_published" = 0 ]; then
+							cfmgr_create_code=1
+						else
+							cfmgr_store_pending=1
+							printf '[CFMGR] backup: warning: archive created; temporary cleanup is pending\n' >&2
+						fi
+					fi
+				else
+					cfmgr_store_pending=1
+					if [ "$cfmgr_create_published" = 1 ]; then
+						printf '[CFMGR] backup: warning: archive created; temporary cleanup is pending\n' >&2
+					else cfmgr_create_code=1; fi
 				fi
 			fi
 		fi
@@ -740,7 +759,7 @@ cfmgr_archive_plan_storage() {
 		cfmgr_history_want_root=$cfmgr_backup_decoded
 		cfmgr_backup_unhex "$cfmgr_create_p4" text || return 1
 		cfmgr_history_want_relative=$cfmgr_backup_decoded
-	done 1< "$cfmgr_create_plan"
+	done 1<"$cfmgr_create_plan"
 	[ "$cfmgr_create_storage_seen" = 1 ]
 }
 
@@ -780,9 +799,9 @@ cfmgr_archive_capture_certificate() {
 		cfmgr_ac_cert_code=$?
 		[ "$cfmgr_ac_cert_need" = optional ] || return "$cfmgr_ac_cert_code"
 		case $cfmgr_ac_cert_code in
-			4) cfmgr_capture_note "$cfmgr_ac_cert_role" absent "$cfmgr_ac_cert_hex" absent ;;
-			5) cfmgr_capture_note "$cfmgr_ac_cert_role" unavailable "$cfmgr_ac_cert_hex" storage-unavailable ;;
-			*) return "$cfmgr_ac_cert_code" ;;
+		4) cfmgr_capture_note "$cfmgr_ac_cert_role" absent "$cfmgr_ac_cert_hex" absent ;;
+		5) cfmgr_capture_note "$cfmgr_ac_cert_role" unavailable "$cfmgr_ac_cert_hex" storage-unavailable ;;
+		*) return "$cfmgr_ac_cert_code" ;;
 		esac
 		return $?
 	fi
@@ -833,16 +852,16 @@ cfmgr_archive_capture_yaml_prepare() {
 		[ "$cfmgr_ac_tag:$cfmgr_ac_a" = FILE:data.cloudflared.yaml ] || continue
 		[ -z "$cfmgr_ac_yaml$cfmgr_ac_rest" ] && [ "$cfmgr_ac_b" = required ] || return 1
 		case $cfmgr_ac_c in
-			2f6f70742f?*) cfmgr_ac_yaml_scope=entware cfmgr_ac_yaml_hex=${cfmgr_ac_c#2f6f70742f} ;;
-			2f6a6666732f?*) cfmgr_ac_yaml_scope=jffs cfmgr_ac_yaml_hex=${cfmgr_ac_c#2f6a6666732f} ;;
-			*) return 1 ;;
+		2f6f70742f?*) cfmgr_ac_yaml_scope=entware cfmgr_ac_yaml_hex=${cfmgr_ac_c#2f6f70742f} ;;
+		2f6a6666732f?*) cfmgr_ac_yaml_scope=jffs cfmgr_ac_yaml_hex=${cfmgr_ac_c#2f6a6666732f} ;;
+		*) return 1 ;;
 		esac
 		cfmgr_capture_source "$cfmgr_ac_yaml_scope" "$cfmgr_ac_yaml_hex" || return $?
 		cfmgr_ac_yaml=$cfmgr_archive_stage/capture-yaml
 		cfmgr_capture_snapshot "$cfmgr_capture_source" "$cfmgr_ac_yaml" whole || return $?
 		cfmgr_archive_format_retire || return $?
 		cfmgr_payload_yaml "/proc/self/fd/7/$cfmgr_archive_stage_leaf/capture-yaml" || return $?
-	done 1< "$cfmgr_ac_plan"
+	done 1<"$cfmgr_ac_plan"
 }
 
 cfmgr_archive_capture_history() {
@@ -863,56 +882,56 @@ cfmgr_archive_capture_history() {
 			[ "$cfmgr_ac_cloud_code" = 4 ] || return "$cfmgr_ac_cloud_code"
 			cfmgr_ac_cloud_skip=1
 		fi
-	done 1< "$cfmgr_history_output"
+	done 1<"$cfmgr_history_output"
 	cfmgr_ac_history_header=0 cfmgr_ac_history_end=0 cfmgr_ac_history_states=''
 	while IFS=' ' read -r cfmgr_ac_tag cfmgr_ac_a cfmgr_ac_b cfmgr_ac_c cfmgr_ac_d cfmgr_ac_e cfmgr_ac_more <&1; do
 		[ "$cfmgr_ac_history_end" = 0 ] || return 1
 		case $cfmgr_ac_tag in
-			CFMGR-HISTORY)
-				[ "$cfmgr_ac_history_header:$cfmgr_ac_a:$cfmgr_ac_b$cfmgr_ac_c$cfmgr_ac_d$cfmgr_ac_e$cfmgr_ac_more" = 0:1: ] || return 1
-				cfmgr_ac_history_header=1
-				;;
-			FILE)
-				[ "$cfmgr_ac_history_header:${cfmgr_history_lock_held:-0}:$cfmgr_ac_e:$cfmgr_ac_more" = 1:1:END: ] || return 1
-				case $cfmgr_ac_a in history.ddns | history.ip_sync | history.cloudflared) ;; *) return 1 ;; esac
-				case $cfmgr_ac_b in 2f6f70742f?*) cfmgr_ac_history_hex=${cfmgr_ac_b#2f6f70742f} ;; *) return 1 ;; esac
-				cfmgr_ac_history_role=$cfmgr_ac_a cfmgr_ac_history_generation=$cfmgr_ac_c
-				[ "$cfmgr_ac_history_role:$cfmgr_ac_cloud_skip" != history.cloudflared:1 ] || continue
-				cfmgr_archive_capture_mode=whole
-				case $cfmgr_ac_d in
-					live)
-						if [ "$cfmgr_ac_history_role" = history.cloudflared ]; then
-							cfmgr_archive_capture_mode=$cfmgr_ac_cloud_mode
-						fi
-						;;
-					rotation) ;;
-					*) return 1 ;;
-				esac
-				case $cfmgr_archive_capture_mode in whole | prefix) ;; *) return 1 ;; esac
-				cfmgr_capture_file "$cfmgr_ac_history_role" entware "$cfmgr_ac_history_hex" "$cfmgr_ac_history_generation" - "$cfmgr_archive_capture_mode" || return $?
-				if [ "$cfmgr_ac_history_role:$cfmgr_ac_d" = history.cloudflared:live ]; then
-					cfmgr_archive_cloud_capture_revalidate "$cfmgr_ac_cloud_input" || return $?
+		CFMGR-HISTORY)
+			[ "$cfmgr_ac_history_header:$cfmgr_ac_a:$cfmgr_ac_b$cfmgr_ac_c$cfmgr_ac_d$cfmgr_ac_e$cfmgr_ac_more" = 0:1: ] || return 1
+			cfmgr_ac_history_header=1
+			;;
+		FILE)
+			[ "$cfmgr_ac_history_header:${cfmgr_history_lock_held:-0}:$cfmgr_ac_e:$cfmgr_ac_more" = 1:1:END: ] || return 1
+			case $cfmgr_ac_a in history.ddns | history.ip_sync | history.cloudflared) ;; *) return 1 ;; esac
+			case $cfmgr_ac_b in 2f6f70742f?*) cfmgr_ac_history_hex=${cfmgr_ac_b#2f6f70742f} ;; *) return 1 ;; esac
+			cfmgr_ac_history_role=$cfmgr_ac_a cfmgr_ac_history_generation=$cfmgr_ac_c
+			[ "$cfmgr_ac_history_role:$cfmgr_ac_cloud_skip" != history.cloudflared:1 ] || continue
+			cfmgr_archive_capture_mode=whole
+			case $cfmgr_ac_d in
+			live)
+				if [ "$cfmgr_ac_history_role" = history.cloudflared ]; then
+					cfmgr_archive_capture_mode=$cfmgr_ac_cloud_mode
 				fi
 				;;
-			STATE)
-				[ "$cfmgr_ac_history_header:$cfmgr_ac_d:$cfmgr_ac_e$cfmgr_ac_more" = 1:END: ] || return 1
-				case $cfmgr_ac_a in ddns | ip_sync | cloudflared) ;; *) return 1 ;; esac
-				case " $cfmgr_ac_history_states " in *" $cfmgr_ac_a "*) return 1 ;; esac
-				case $cfmgr_ac_b in included | absent | unavailable | not_applicable) ;; *) return 1 ;; esac
-				cfmgr_ac_history_states="${cfmgr_ac_history_states:+$cfmgr_ac_history_states }$cfmgr_ac_a"
-				if [ "$cfmgr_ac_a:$cfmgr_ac_cloud_skip" = cloudflared:1 ]; then
-					cfmgr_ac_b=unavailable cfmgr_ac_c=writer-unknown
-				fi
-				cfmgr_capture_note "history.$cfmgr_ac_a" "$cfmgr_ac_b" - "$cfmgr_ac_c" || return $?
-				;;
-			EFFECTIVE) [ "$cfmgr_ac_history_header" = 1 ] || return 1 ;; # Owned adapter policy evidence; no payload path.
-			END)
-				[ "$cfmgr_ac_history_header:$cfmgr_ac_a$cfmgr_ac_b$cfmgr_ac_c$cfmgr_ac_d$cfmgr_ac_e$cfmgr_ac_more" = 1: ] || return 1
-				cfmgr_ac_history_end=1
-				;;
+			rotation) ;;
 			*) return 1 ;;
+			esac
+			case $cfmgr_archive_capture_mode in whole | prefix) ;; *) return 1 ;; esac
+			cfmgr_capture_file "$cfmgr_ac_history_role" entware "$cfmgr_ac_history_hex" "$cfmgr_ac_history_generation" - "$cfmgr_archive_capture_mode" || return $?
+			if [ "$cfmgr_ac_history_role:$cfmgr_ac_d" = history.cloudflared:live ]; then
+				cfmgr_archive_cloud_capture_revalidate "$cfmgr_ac_cloud_input" || return $?
+			fi
+			;;
+		STATE)
+			[ "$cfmgr_ac_history_header:$cfmgr_ac_d:$cfmgr_ac_e$cfmgr_ac_more" = 1:END: ] || return 1
+			case $cfmgr_ac_a in ddns | ip_sync | cloudflared) ;; *) return 1 ;; esac
+			case " $cfmgr_ac_history_states " in *" $cfmgr_ac_a "*) return 1 ;; esac
+			case $cfmgr_ac_b in included | absent | unavailable | not_applicable) ;; *) return 1 ;; esac
+			cfmgr_ac_history_states="${cfmgr_ac_history_states:+$cfmgr_ac_history_states }$cfmgr_ac_a"
+			if [ "$cfmgr_ac_a:$cfmgr_ac_cloud_skip" = cloudflared:1 ]; then
+				cfmgr_ac_b=unavailable cfmgr_ac_c=writer-unknown
+			fi
+			cfmgr_capture_note "history.$cfmgr_ac_a" "$cfmgr_ac_b" - "$cfmgr_ac_c" || return $?
+			;;
+		EFFECTIVE) [ "$cfmgr_ac_history_header" = 1 ] || return 1 ;; # Owned adapter policy evidence; no payload path.
+		END)
+			[ "$cfmgr_ac_history_header:$cfmgr_ac_a$cfmgr_ac_b$cfmgr_ac_c$cfmgr_ac_d$cfmgr_ac_e$cfmgr_ac_more" = 1: ] || return 1
+			cfmgr_ac_history_end=1
+			;;
+		*) return 1 ;;
 		esac
-	done 1< "$cfmgr_history_output"
+	done 1<"$cfmgr_history_output"
 	[ "$cfmgr_ac_history_end" = 1 ] || return 1
 	for cfmgr_ac_feature in ddns ip_sync cloudflared; do
 		case " $cfmgr_ac_history_states " in *" $cfmgr_ac_feature "*) ;; *) return 1 ;; esac
@@ -929,45 +948,45 @@ cfmgr_archive_capture_data() {
 	cfmgr_archive_capture_yaml_prepare && cfmgr_payload_index && cfmgr_capture_start || return $?
 	while IFS=' ' read -r cfmgr_ac_tag cfmgr_ac_a cfmgr_ac_b cfmgr_ac_c cfmgr_ac_d cfmgr_ac_e cfmgr_ac_f cfmgr_ac_g cfmgr_ac_more <&1; do
 		case $cfmgr_ac_tag in
-			FILE)
-				[ -z "$cfmgr_ac_more" ] && [ "$cfmgr_ac_g" = whole ] || return 1
-				case $cfmgr_ac_a in
-					data.cloudflared.certificate | data.cloudflared.certificate-recovery)
-						cfmgr_archive_capture_certificate "$cfmgr_ac_a" "$cfmgr_ac_b" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" || return $?
-						continue
-						;;
-					manager.config)
-						cfmgr_capture_file "$cfmgr_ac_a" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" whole "$cfmgr_ac_config" || return $?
-						;;
-					data.cloudflared.yaml)
-						[ -n "$cfmgr_ac_yaml" ] || return 1
-						cfmgr_capture_file "$cfmgr_ac_a" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" whole "/proc/self/fd/7/$cfmgr_archive_stage_leaf/capture-yaml" || return $?
-						;;
-					*) cfmgr_capture_file "$cfmgr_ac_a" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" whole || return $? ;;
-				esac
-				cfmgr_ac_last=/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_capture_last##*/}
-				case $cfmgr_ac_a in
-					data.cloudflared.json) cfmgr_payload_json runtime-json "$cfmgr_ac_last" "$cfmgr_payload_authority" || return $? ;;
-					data.setup-drafts) cfmgr_payload_json drafts "$cfmgr_ac_last" "$cfmgr_ac_e" || return $? ;;
-				esac
+		FILE)
+			[ -z "$cfmgr_ac_more" ] && [ "$cfmgr_ac_g" = whole ] || return 1
+			case $cfmgr_ac_a in
+			data.cloudflared.certificate | data.cloudflared.certificate-recovery)
+				cfmgr_archive_capture_certificate "$cfmgr_ac_a" "$cfmgr_ac_b" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" || return $?
+				continue
 				;;
-			NOTE)
-				[ "$cfmgr_ac_e:$cfmgr_ac_f$cfmgr_ac_g$cfmgr_ac_more" = END: ] || return 1
-				if [ "$cfmgr_ac_a:$cfmgr_ac_b" = data.setup-drafts:not_applicable ]; then
-					if cfmgr_capture_source jffs 6164646f6e732f43464d67722e642f73657475702d647261667473; then
-						return 1
-					else [ "$?" = 4 ] || return 1; fi
-				fi
-				cfmgr_capture_note "$cfmgr_ac_a" "$cfmgr_ac_b" "$cfmgr_ac_c" "$cfmgr_ac_d" || return $?
+			manager.config)
+				cfmgr_capture_file "$cfmgr_ac_a" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" whole "$cfmgr_ac_config" || return $?
 				;;
-			EXTERNAL)
-				[ -z "$cfmgr_ac_d$cfmgr_ac_e$cfmgr_ac_f$cfmgr_ac_g$cfmgr_ac_more" ] || return 1
-				cfmgr_capture_note "$cfmgr_ac_a" external "$cfmgr_ac_b" "$cfmgr_ac_c" || return $?
+			data.cloudflared.yaml)
+				[ -n "$cfmgr_ac_yaml" ] || return 1
+				cfmgr_capture_file "$cfmgr_ac_a" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" whole "/proc/self/fd/7/$cfmgr_archive_stage_leaf/capture-yaml" || return $?
 				;;
-			CFMGR-CAPTURE-PLAN | BACKUP | AUTH | CERT | HISTORY | END) ;;
-			*) return 1 ;;
+			*) cfmgr_capture_file "$cfmgr_ac_a" "$cfmgr_ac_c" "$cfmgr_ac_d" "$cfmgr_ac_e" "$cfmgr_ac_f" whole || return $? ;;
+			esac
+			cfmgr_ac_last=/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_capture_last##*/}
+			case $cfmgr_ac_a in
+			data.cloudflared.json) cfmgr_payload_json runtime-json "$cfmgr_ac_last" "$cfmgr_payload_authority" || return $? ;;
+			data.setup-drafts) cfmgr_payload_json drafts "$cfmgr_ac_last" "$cfmgr_ac_e" || return $? ;;
+			esac
+			;;
+		NOTE)
+			[ "$cfmgr_ac_e:$cfmgr_ac_f$cfmgr_ac_g$cfmgr_ac_more" = END: ] || return 1
+			if [ "$cfmgr_ac_a:$cfmgr_ac_b" = data.setup-drafts:not_applicable ]; then
+				if cfmgr_capture_source jffs 6164646f6e732f43464d67722e642f73657475702d647261667473; then
+					return 1
+				else [ "$?" = 4 ] || return 1; fi
+			fi
+			cfmgr_capture_note "$cfmgr_ac_a" "$cfmgr_ac_b" "$cfmgr_ac_c" "$cfmgr_ac_d" || return $?
+			;;
+		EXTERNAL)
+			[ -z "$cfmgr_ac_d$cfmgr_ac_e$cfmgr_ac_f$cfmgr_ac_g$cfmgr_ac_more" ] || return 1
+			cfmgr_capture_note "$cfmgr_ac_a" external "$cfmgr_ac_b" "$cfmgr_ac_c" || return $?
+			;;
+		CFMGR-CAPTURE-PLAN | BACKUP | AUTH | CERT | HISTORY | END) ;;
+		*) return 1 ;;
 		esac
-	done 1< "$cfmgr_payload_capture_plan"
+	done 1<"$cfmgr_payload_capture_plan"
 	[ -z "$cfmgr_ac_yaml" ] || cfmgr_archive_format_remove "$cfmgr_ac_yaml" || return $?
 	cfmgr_archive_capture_history && cfmgr_capture_finish || return $?
 	cfmgr_archive_identity_check || return $?
@@ -990,20 +1009,20 @@ cfmgr_archive_format_inode() {
 	# Stage reads can block on detached storage: supervise them. RAM receipt
 	# bookkeeping retains Store's bounded native-RAM cleanup boundary instead.
 	case $1 in
-		"$cfmgr_store_context"/* | /proc/self/fd/5/*) cfmgr_archive_format_ram_inode "$1" ;;
-		*)
-			cfmgr_archive_identity_check || return $?
-			cfmgr_archive_inode "$1" || return $?
-			cfmgr_format_requested_inode=$cfmgr_archive_inode
-			cfmgr_archive_identity_check || return $?
-			cfmgr_format_inode=$cfmgr_format_requested_inode
-			;;
+	"$cfmgr_store_context"/* | /proc/self/fd/5/*) cfmgr_archive_format_ram_inode "$1" ;;
+	*)
+		cfmgr_archive_identity_check || return $?
+		cfmgr_archive_inode "$1" || return $?
+		cfmgr_format_requested_inode=$cfmgr_archive_inode
+		cfmgr_archive_identity_check || return $?
+		cfmgr_format_inode=$cfmgr_format_requested_inode
+		;;
 	esac
 }
 
 cfmgr_archive_format_ram_inode() {
 	cfmgr_format_inode_line=$("$cfmgr_store_ls" -id "$1") || return 1
-	IFS=' ' read -r cfmgr_format_inode cfmgr_format_inode_rest << EOF_FORMAT_INODE
+	IFS=' ' read -r cfmgr_format_inode cfmgr_format_inode_rest <<EOF_FORMAT_INODE
 $cfmgr_format_inode_line
 EOF_FORMAT_INODE
 	cfmgr_archive_uint "$cfmgr_format_inode" && [ "$cfmgr_format_inode" -gt 0 ]
@@ -1119,7 +1138,7 @@ cfmgr_archive_format_stream() {
 cfmgr_archive_format_hash() {
 	cfmgr_archive_io digest 4096 "$1" || return $?
 	cfmgr_store_read_line "$cfmgr_archive_output" || return 1
-	IFS=' ' read -r cfmgr_format_hash cfmgr_format_hash_path << EOF_FORMAT_HASH
+	IFS=' ' read -r cfmgr_format_hash cfmgr_format_hash_path <<EOF_FORMAT_HASH
 $cfmgr_store_line
 EOF_FORMAT_HASH
 	cfmgr_format_hash_path=${cfmgr_format_hash_path#\*}
@@ -1140,7 +1159,7 @@ cfmgr_archive_format_walk() {
 		cfmgr_archive_run archive-hexdump 4096 /usr/bin/hexdump "/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_format_header##*/}" || return $?
 		cfmgr_archive_run archive-tar-header 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" "$cfmgr_probe_stdout" "$cfmgr_format_offset" "$cfmgr_format_raw_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-		IFS=' ' read -r cfmgr_format_marker cfmgr_format_version cfmgr_format_kind cfmgr_format_member cfmgr_format_size cfmgr_format_body cfmgr_format_next cfmgr_format_end cfmgr_format_extra << EOF_FORMAT_HEADER
+		IFS=' ' read -r cfmgr_format_marker cfmgr_format_version cfmgr_format_kind cfmgr_format_member cfmgr_format_size cfmgr_format_body cfmgr_format_next cfmgr_format_end cfmgr_format_extra <<EOF_FORMAT_HEADER
 $cfmgr_store_line
 EOF_FORMAT_HEADER
 		[ "$cfmgr_format_marker:$cfmgr_format_version:$cfmgr_format_end:$cfmgr_format_extra" = CFMGR-TAR-HEADER:1:END: ] || return 1
@@ -1151,19 +1170,19 @@ EOF_FORMAT_HEADER
 		else
 			[ "$cfmgr_format_kind" = file ] && [ "$cfmgr_format_zeros" = 0 ] || return 1
 			case $cfmgr_format_members in
-				0)
-					[ "$cfmgr_format_member" = manifest ] && [ "$cfmgr_format_size" -gt 0 ] && [ "$cfmgr_format_size" -le 4096 ] || return 1
-					cfmgr_format_manifest_size=$cfmgr_format_size
-					;;
-				1)
-					[ "$cfmgr_format_member" = inventory ] && [ "$cfmgr_format_size" -gt 0 ] && [ "$cfmgr_format_size" -le "$cfmgr_archive_inventory_limit" ] || return 1
-					cfmgr_format_inventory_size=$cfmgr_format_size
-					;;
-				*)
-					[ "$cfmgr_format_members" -le 100000000 ] || return 1
-					cfmgr_format_expected=$(printf 'p%08d' "$((cfmgr_format_members - 1))")
-					[ "$cfmgr_format_member" = "$cfmgr_format_expected" ] || return 1
-					;;
+			0)
+				[ "$cfmgr_format_member" = manifest ] && [ "$cfmgr_format_size" -gt 0 ] && [ "$cfmgr_format_size" -le 4096 ] || return 1
+				cfmgr_format_manifest_size=$cfmgr_format_size
+				;;
+			1)
+				[ "$cfmgr_format_member" = inventory ] && [ "$cfmgr_format_size" -gt 0 ] && [ "$cfmgr_format_size" -le "$cfmgr_archive_inventory_limit" ] || return 1
+				cfmgr_format_inventory_size=$cfmgr_format_size
+				;;
+			*)
+				[ "$cfmgr_format_members" -le 100000000 ] || return 1
+				cfmgr_format_expected=$(printf 'p%08d' "$((cfmgr_format_members - 1))")
+				[ "$cfmgr_format_member" = "$cfmgr_format_expected" ] || return 1
+				;;
 			esac
 			[ "$cfmgr_format_sum" -le "$((9223372036854775296 - cfmgr_format_size))" ] || return 1
 			cfmgr_archive_write "$cfmgr_format_index" "$cfmgr_archive_inventory_limit" append "$cfmgr_format_member $cfmgr_format_size $cfmgr_format_body $cfmgr_format_sum
@@ -1188,7 +1207,7 @@ cfmgr_archive_format_metadata() {
 	cfmgr_archive_format_stream metahex "$((cfmgr_format_manifest_size * 3))" "$cfmgr_format_manifest_anchor" "$cfmgr_format_hex" || return $?
 	cfmgr_archive_run archive-format-manifest 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" "/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_format_hex##*/}" "$cfmgr_format_expected_set" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' ' read -r cfmgr_format_marker cfmgr_format_version cfmgr_format_set cfmgr_format_id cfmgr_format_epoch cfmgr_format_day cfmgr_format_clock cfmgr_format_timezone cfmgr_format_zone cfmgr_format_order cfmgr_format_schema cfmgr_format_generation cfmgr_format_rows cfmgr_format_inventory_bytes cfmgr_format_inventory_sha cfmgr_format_files cfmgr_format_payload_bytes cfmgr_format_end cfmgr_format_extra << EOF_FORMAT_MANIFEST
+	IFS=' ' read -r cfmgr_format_marker cfmgr_format_version cfmgr_format_set cfmgr_format_id cfmgr_format_epoch cfmgr_format_day cfmgr_format_clock cfmgr_format_timezone cfmgr_format_zone cfmgr_format_order cfmgr_format_schema cfmgr_format_generation cfmgr_format_rows cfmgr_format_inventory_bytes cfmgr_format_inventory_sha cfmgr_format_files cfmgr_format_payload_bytes cfmgr_format_end cfmgr_format_extra <<EOF_FORMAT_MANIFEST
 $cfmgr_store_line
 EOF_FORMAT_MANIFEST
 	[ "$cfmgr_format_marker:$cfmgr_format_version:$cfmgr_format_end:$cfmgr_format_extra" = CFMGR-MANIFEST:1:END: ] && [ "$cfmgr_format_inventory_bytes" = "$cfmgr_format_inventory_size" ] && [ "$cfmgr_format_files" = "$((cfmgr_format_members - 2))" ] || return 1
@@ -1215,7 +1234,7 @@ cfmgr_archive_format_payloads() {
 	cfmgr_format_seen=0 cfmgr_format_complete=0
 	cfmgr_format_stream_position=$((cfmgr_format_manifest_size + cfmgr_format_inventory_size))
 	cfmgr_format_records_anchor=/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_format_records##*/}
-	exec 4< "$cfmgr_format_records_anchor" || return 1
+	exec 4<"$cfmgr_format_records_anchor" || return 1
 	while IFS=' ' read -r cfmgr_format_tag cfmgr_format_name cfmgr_format_role cfmgr_format_scope cfmgr_format_pathhex cfmgr_format_file_generation cfmgr_format_mode cfmgr_format_size cfmgr_format_sha cfmgr_format_capture cfmgr_format_stream_offset cfmgr_format_extra <&4; do
 		[ "$cfmgr_format_complete" = 0 ] || return 1
 		if [ "$cfmgr_format_tag" = COMPLETE ]; then
@@ -1276,14 +1295,14 @@ _cfmgr_archive_format_verify() {
 cfmgr_archive_format_verify() {
 	# OWNED_RAW EXPECTED_SET_UUID. The raw file must be an immutable owned
 	# direct child of the current private stage. Failure grants no acceptance.
-	cfmgr_archive_verified=0
+	cfmgr_archive_verified=0 cfmgr_archive_verification_status=incomplete
 	cfmgr_archive_set_id='' cfmgr_archive_id='' cfmgr_archive_epoch='' cfmgr_archive_day='' cfmgr_archive_clock=''
 	cfmgr_archive_timezone_hex='' cfmgr_archive_utc_offset='' cfmgr_archive_date_order=''
 	cfmgr_archive_config_schema='' cfmgr_archive_config_generation=''
 	[ "$#" -eq 2 ] && [ -n "${cfmgr_archive_stage:-}" ] && [ "${1%/*}" = "$cfmgr_archive_stage" ] && [ -f "$1" ] && [ ! -L "$1" ] || return 2
 	[ "${cfmgr_archive_source_pinned:-0}" != 1 ] && [ -z "${cfmgr_format_owned:-}${cfmgr_format_receipts:-}" ] || return 2
-	if (: <&3) 2> /dev/null || (: <&4) 2> /dev/null; then return 2; fi
-	[ "$(command -v cfmgr_archive_verify_payload)" = cfmgr_archive_verify_payload ] && [ "$(command -v cfmgr_archive_verify_complete)" = cfmgr_archive_verify_complete ] || return 2
+	if (: <&3) 2>/dev/null || (: <&4) 2>/dev/null; then return 2; fi
+	type cfmgr_archive_verify_payload >/dev/null 2>&1 && type cfmgr_archive_verify_complete >/dev/null 2>&1 || return 2
 	cfmgr_archive_uint "${cfmgr_archive_inventory_limit:-}" && [ "$cfmgr_archive_inventory_limit" -gt 0 ] || return 2
 	case ${2} in *[!0-9a-f-]* | '') return 2 ;; esac
 	[ "${#2}" = 36 ] || return 2
@@ -1295,6 +1314,18 @@ cfmgr_archive_format_verify() {
 	cfmgr_format_raw=/proc/self/fd/7/$cfmgr_archive_stage_leaf/${1##*/}
 	cfmgr_format_expected_set=$2 cfmgr_archive_format_tracking=1
 	if _cfmgr_archive_format_verify; then cfmgr_format_code=0; else cfmgr_format_code=$?; fi
+	# Only a completed trusted parser rejection positively excludes a candidate.
+	# I/O, resource, decompressor and unclassified failures remain incomplete.
+	if [ "$cfmgr_format_code" = 1 ] && [ "${cfmgr_probe_status:-}:${cfmgr_probe_exit:-}:${cfmgr_probe_reason:-}" = reaped:1: ] &&
+		[ -f "$cfmgr_probe_stderr" ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+		case ${cfmgr_probe_mode:-} in
+		archive-tar-header | archive-format-manifest | archive-format-inventory | archive-payload-plan | archive-payload-json | archive-payload-pem | archive-payload-match)
+			cfmgr_archive_verification_status=excluded
+			;;
+		esac
+	fi
+	# YAML exit 1 also reports the current metadata budget being exhausted.
+	# Keep it incomplete so an uninspected valid archive cannot authorize pruning.
 	exec 4<&-
 	cfmgr_archive_format_tracking=0
 	[ "$cfmgr_format_code" = 0 ] || return "$cfmgr_format_code"
@@ -1302,7 +1333,7 @@ cfmgr_archive_format_verify() {
 	cfmgr_archive_epoch=$cfmgr_format_epoch cfmgr_archive_day=$cfmgr_format_day cfmgr_archive_clock=$cfmgr_format_clock
 	cfmgr_archive_timezone_hex=$cfmgr_format_timezone cfmgr_archive_utc_offset=$cfmgr_format_zone cfmgr_archive_date_order=$cfmgr_format_order
 	cfmgr_archive_config_schema=$cfmgr_format_schema cfmgr_archive_config_generation=$cfmgr_format_generation
-	cfmgr_archive_verified=1
+	cfmgr_archive_verified=1 cfmgr_archive_verification_status=verified
 }
 
 # ---- backup archive io ----
@@ -1348,18 +1379,18 @@ cfmgr_archive_input() {
 	# private RAM/stage snapshot; never reopen /opt or a mounted pathname.
 	[ "$#" -eq 1 ] && _cfmgr_storage_path "$1" || return 1
 	case $1 in
-		/proc/self/fd/3/?*)
-			[ "${cfmgr_archive_source_pinned:-0}" = 1 ] || return 1
-			cfmgr_archive_input_root=/proc/self/fd/3
-			;;
-		/proc/self/fd/5/?*) cfmgr_archive_input_root=/proc/self/fd/5 ;;
-		/proc/self/fd/7/?*) cfmgr_archive_input_root=/proc/self/fd/7 ;;
-		/proc/self/fd/8/?*) cfmgr_archive_input_root=/proc/self/fd/8 ;;
-		"$cfmgr_store_context"/?*)
-			[ "${1%/*}" = "$cfmgr_store_context" ] || return 1
-			cfmgr_archive_input_root=$cfmgr_store_context
-			;;
-		*) return 1 ;;
+	/proc/self/fd/3/?*)
+		[ "${cfmgr_archive_source_pinned:-0}" = 1 ] || return 1
+		cfmgr_archive_input_root=/proc/self/fd/3
+		;;
+	/proc/self/fd/5/?*) cfmgr_archive_input_root=/proc/self/fd/5 ;;
+	/proc/self/fd/7/?*) cfmgr_archive_input_root=/proc/self/fd/7 ;;
+	/proc/self/fd/8/?*) cfmgr_archive_input_root=/proc/self/fd/8 ;;
+	"$cfmgr_store_context"/?*)
+		[ "${1%/*}" = "$cfmgr_store_context" ] || return 1
+		cfmgr_archive_input_root=$cfmgr_store_context
+		;;
+	*) return 1 ;;
 	esac
 	[ -f "$1" ] || return 1
 	cfmgr_archive_input_component=$1
@@ -1375,9 +1406,9 @@ cfmgr_archive_output_path() {
 	case $cfmgr_archive_name in '' | . | .. | *[!A-Za-z0-9_.-]*) return 2 ;; esac
 	cfmgr_archive_directory=${1%/*}
 	case $cfmgr_archive_directory in
-		"$cfmgr_store_context") cfmgr_archive_anchor=/proc/self/fd/5 ;;
-		"${cfmgr_archive_stage:-}") cfmgr_archive_anchor=/proc/self/fd/7/$cfmgr_archive_stage_leaf ;;
-		*) return 2 ;;
+	"$cfmgr_store_context") cfmgr_archive_anchor=/proc/self/fd/5 ;;
+	"${cfmgr_archive_stage:-}") cfmgr_archive_anchor=/proc/self/fd/7/$cfmgr_archive_stage_leaf ;;
+	*) return 2 ;;
 	esac
 	# shellcheck disable=SC3013
 	[ -d "$cfmgr_archive_directory" ] && [ ! -L "$cfmgr_archive_directory" ] &&
@@ -1407,7 +1438,7 @@ cfmgr_archive_inode() {
 	[ "$#" -eq 1 ] && [ ! -L "$1" ] && { [ -f "$1" ] || [ -d "$1" ]; } || return 2
 	cfmgr_archive_run archive-inode 4096 "$cfmgr_store_ls" "$1" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' ' read -r cfmgr_archive_inode cfmgr_archive_inode_rest << EOF_ARCHIVE_INODE
+	IFS=' ' read -r cfmgr_archive_inode cfmgr_archive_inode_rest <<EOF_ARCHIVE_INODE
 $cfmgr_store_line
 EOF_ARCHIVE_INODE
 	cfmgr_archive_uint "$cfmgr_archive_inode" && [ "$cfmgr_archive_inode" -gt 0 ]
@@ -1434,7 +1465,7 @@ cfmgr_archive_identity_check() {
 cfmgr_archive_measure() {
 	cfmgr_archive_run archive-count 4096 "$cfmgr_store_wc" "$1" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' 	' read -r cfmgr_archive_bytes cfmgr_archive_extra << EOF_ARCHIVE_COUNT
+	IFS=' 	' read -r cfmgr_archive_bytes cfmgr_archive_extra <<EOF_ARCHIVE_COUNT
 $cfmgr_store_line
 EOF_ARCHIVE_COUNT
 	[ "$cfmgr_archive_extra" = "$1" ] && cfmgr_archive_uint "$cfmgr_archive_bytes"
@@ -1456,19 +1487,19 @@ _cfmgr_archive_write() {
 	cfmgr_archive_write_path=$1 cfmgr_archive_write_cap=$2
 	cfmgr_archive_output_path "$1" || return 2
 	case $3 in
-		new) [ ! -e "$1" ] && [ ! -L "$1" ] || return 1 ;;
-		append)
-			[ -f "$1" ] && [ ! -L "$1" ] || return 1
-			cfmgr_archive_run archive-meta 4096 "$cfmgr_store_ls" "$1" || return $?
-			cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-			IFS=' ' read -r cfmgr_archive_append_inode cfmgr_archive_inode_rest << EOF_ARCHIVE_WRITE_INODE
+	new) [ ! -e "$1" ] && [ ! -L "$1" ] || return 1 ;;
+	append)
+		[ -f "$1" ] && [ ! -L "$1" ] || return 1
+		cfmgr_archive_run archive-meta 4096 "$cfmgr_store_ls" "$1" || return $?
+		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+		IFS=' ' read -r cfmgr_archive_append_inode cfmgr_archive_inode_rest <<EOF_ARCHIVE_WRITE_INODE
 $cfmgr_store_line
 EOF_ARCHIVE_WRITE_INODE
-			cfmgr_archive_uint "$cfmgr_archive_append_inode" && [ "$cfmgr_archive_append_inode" -gt 0 ] || return 1
-			cfmgr_archive_append_path=$1
-			cfmgr_archive_identity_check || return $?
-			;;
-		*) return 2 ;;
+		cfmgr_archive_uint "$cfmgr_archive_append_inode" && [ "$cfmgr_archive_append_inode" -gt 0 ] || return 1
+		cfmgr_archive_append_path=$1
+		cfmgr_archive_identity_check || return $?
+		;;
+	*) return 2 ;;
 	esac
 	if cfmgr_archive_run archive-write "$2" /usr/bin/printf "$cfmgr_archive_anchor" "$cfmgr_archive_directory" "$cfmgr_archive_name" "$3" "$4"; then
 		cfmgr_archive_write_code=0
@@ -1496,48 +1527,48 @@ _cfmgr_archive_io() {
 	shift 2
 	cfmgr_archive_uint "$cfmgr_archive_cap" && [ "$cfmgr_archive_cap" -gt 0 ] || return 2
 	case $cfmgr_archive_mode in
-		count | meta | digest | gunzip-test | hexdump)
-			[ "$#" -eq 1 ] && [ "$cfmgr_archive_cap" = 4096 ] && cfmgr_archive_input "$1" || return 2
-			case $cfmgr_archive_mode in
-				count) cfmgr_archive_tool=$cfmgr_store_wc ;;
-				meta) cfmgr_archive_tool=$cfmgr_store_ls ;;
-				digest) cfmgr_archive_tool=$cfmgr_store_openssl ;;
-				gunzip-test) cfmgr_archive_tool=/bin/gunzip ;;
-				hexdump)
-					cfmgr_archive_measure "$1" || return $?
-					[ "$cfmgr_archive_bytes" -le 512 ] || return 2
-					cfmgr_archive_tool=/usr/bin/hexdump
-					;;
-			esac
-			cfmgr_archive_run "archive-$cfmgr_archive_mode" 4096 "$cfmgr_archive_tool" "$1" || return $?
+	count | meta | digest | gunzip-test | hexdump)
+		[ "$#" -eq 1 ] && [ "$cfmgr_archive_cap" = 4096 ] && cfmgr_archive_input "$1" || return 2
+		case $cfmgr_archive_mode in
+		count) cfmgr_archive_tool=$cfmgr_store_wc ;;
+		meta) cfmgr_archive_tool=$cfmgr_store_ls ;;
+		digest) cfmgr_archive_tool=$cfmgr_store_openssl ;;
+		gunzip-test) cfmgr_archive_tool=/bin/gunzip ;;
+		hexdump)
+			cfmgr_archive_measure "$1" || return $?
+			[ "$cfmgr_archive_bytes" -le 512 ] || return 2
+			cfmgr_archive_tool=/usr/bin/hexdump
 			;;
-		timezone | date)
-			[ "$cfmgr_archive_cap" = 4096 ] || return 2
-			case $cfmgr_archive_mode in
-				timezone)
-					[ "$#" -eq 0 ] || return 2
-					cfmgr_archive_run archive-timezone 4096 /usr/sbin/nvram time_zone_x || return $?
-					;;
-				date)
-					[ "$#" -eq 1 ] || return 2
-					cfmgr_archive_run archive-date 4096 /bin/date "$1" || return $?
-					;;
-			esac
+		esac
+		cfmgr_archive_run "archive-$cfmgr_archive_mode" 4096 "$cfmgr_archive_tool" "$1" || return $?
+		;;
+	timezone | date)
+		[ "$cfmgr_archive_cap" = 4096 ] || return 2
+		case $cfmgr_archive_mode in
+		timezone)
+			[ "$#" -eq 0 ] || return 2
+			cfmgr_archive_run archive-timezone 4096 /bin/nvram time_zone_x || return $?
 			;;
-		gzip | gunzip | tar-list | tar-verbose | tar-bodies | metahex | base64)
-			[ "$#" -eq 2 ] && cfmgr_archive_input "$1" && cfmgr_archive_output_path "$2" || return 2
-			cfmgr_archive_output=$2
-			case $cfmgr_archive_mode in gzip) cfmgr_archive_tool=/bin/gzip ;; gunzip) cfmgr_archive_tool=/bin/gunzip ;; metahex) cfmgr_archive_tool=/usr/bin/hexdump ;; base64) cfmgr_archive_tool=$cfmgr_store_openssl ;; *) cfmgr_archive_tool=/bin/tar ;; esac
-			cfmgr_archive_run "archive-$cfmgr_archive_mode" "$cfmgr_archive_cap" "$cfmgr_archive_tool" \
-				"$1" "$cfmgr_archive_anchor" "$cfmgr_archive_directory" "$cfmgr_archive_name" || return $?
+		date)
+			[ "$#" -eq 1 ] || return 2
+			cfmgr_archive_run archive-date 4096 /bin/date "$1" || return $?
 			;;
-		tar-create)
-			[ "$#" -eq 3 ] && [ "$1" = "${cfmgr_archive_stage:-}" ] && cfmgr_archive_input "$2" && cfmgr_archive_output_path "$3" || return 2
-			cfmgr_archive_output=$3
-			cfmgr_archive_run archive-tar-create "$cfmgr_archive_cap" /bin/tar \
-				"/proc/self/fd/7/$cfmgr_archive_stage_leaf" "$cfmgr_archive_anchor" "$cfmgr_archive_directory" "$cfmgr_archive_name" "$2" || return $?
-			;;
-		*) return 2 ;;
+		esac
+		;;
+	gzip | gunzip | tar-list | tar-verbose | tar-bodies | metahex | base64)
+		[ "$#" -eq 2 ] && cfmgr_archive_input "$1" && cfmgr_archive_output_path "$2" || return 2
+		cfmgr_archive_output=$2
+		case $cfmgr_archive_mode in gzip) cfmgr_archive_tool=/bin/gzip ;; gunzip) cfmgr_archive_tool=/bin/gunzip ;; metahex) cfmgr_archive_tool=/usr/bin/hexdump ;; base64) cfmgr_archive_tool=$cfmgr_store_openssl ;; *) cfmgr_archive_tool=/bin/tar ;; esac
+		cfmgr_archive_run "archive-$cfmgr_archive_mode" "$cfmgr_archive_cap" "$cfmgr_archive_tool" \
+			"$1" "$cfmgr_archive_anchor" "$cfmgr_archive_directory" "$cfmgr_archive_name" || return $?
+		;;
+	tar-create)
+		[ "$#" -eq 3 ] && [ "$1" = "${cfmgr_archive_stage:-}" ] && cfmgr_archive_input "$2" && cfmgr_archive_output_path "$3" || return 2
+		cfmgr_archive_output=$3
+		cfmgr_archive_run archive-tar-create "$cfmgr_archive_cap" /bin/tar \
+			"/proc/self/fd/7/$cfmgr_archive_stage_leaf" "$cfmgr_archive_anchor" "$cfmgr_archive_directory" "$cfmgr_archive_name" "$2" || return $?
+		;;
+	*) return 2 ;;
 	esac
 	cfmgr_archive_receipt_out=$cfmgr_probe_stdout cfmgr_archive_receipt_err=$cfmgr_probe_stderr
 	[ -n "$cfmgr_archive_output" ] || cfmgr_archive_output=$cfmgr_probe_stdout
@@ -1588,7 +1619,7 @@ _cfmgr_archive_copy() {
 	if [ "$cfmgr_archive_copy_tail" -gt 0 ]; then
 		cfmgr_archive_run archive-meta 4096 "$cfmgr_store_ls" "$cfmgr_archive_copy_output" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-		IFS=' ' read -r cfmgr_archive_append_inode cfmgr_archive_inode_rest << EOF_ARCHIVE_COPY_INODE
+		IFS=' ' read -r cfmgr_archive_append_inode cfmgr_archive_inode_rest <<EOF_ARCHIVE_COPY_INODE
 $cfmgr_store_line
 EOF_ARCHIVE_COPY_INODE
 		cfmgr_archive_uint "$cfmgr_archive_append_inode" && [ "$cfmgr_archive_append_inode" -gt 0 ] || return 1
@@ -1633,54 +1664,54 @@ cfmgr_archive_ui_parse_frame() {
 		cfmgr_archive_ui_lines=$((cfmgr_archive_ui_lines + 1))
 		[ "$cfmgr_archive_ui_lines" -le 2 ] || return 1
 		case $cfmgr_archive_ui_line in
-			'CFMGR-ARCHIVE-EXIT '*)
-				[ "$cfmgr_archive_ui_sentinel" = 0 ] || return 1
-				IFS=' ' read -r cfmgr_archive_ui_tag cfmgr_archive_ui_exit cfmgr_archive_ui_extra << EOF_ARCHIVE_EXIT
+		'CFMGR-ARCHIVE-EXIT '*)
+			[ "$cfmgr_archive_ui_sentinel" = 0 ] || return 1
+			IFS=' ' read -r cfmgr_archive_ui_tag cfmgr_archive_ui_exit cfmgr_archive_ui_extra <<EOF_ARCHIVE_EXIT
 $cfmgr_archive_ui_line
 EOF_ARCHIVE_EXIT
-				[ "$cfmgr_archive_ui_line" = "CFMGR-ARCHIVE-EXIT $cfmgr_archive_ui_exit" ] && [ -z "$cfmgr_archive_ui_extra" ] || return 1
-				case $cfmgr_archive_ui_exit in 0 | 1 | 3) ;; *) return 1 ;; esac
-				cfmgr_archive_ui_sentinel=1
-				;;
-			*)
-				[ "$cfmgr_archive_ui_header" = 0 ] && [ "$cfmgr_archive_ui_sentinel" = 0 ] || return 1
-				IFS=' ' read -r cfmgr_archive_ui_tag cfmgr_archive_ui_schema cfmgr_archive_ui_result \
-					cfmgr_archive_ui_generation cfmgr_archive_ui_pending cfmgr_archive_ui_format \
-					cfmgr_archive_ui_keep cfmgr_archive_ui_set_present cfmgr_archive_ui_name_hex \
-					cfmgr_archive_ui_retention cfmgr_archive_ui_history cfmgr_archive_ui_end cfmgr_archive_ui_extra << EOF_ARCHIVE_HEADER
+			[ "$cfmgr_archive_ui_line" = "CFMGR-ARCHIVE-EXIT $cfmgr_archive_ui_exit" ] && [ -z "$cfmgr_archive_ui_extra" ] || return 1
+			case $cfmgr_archive_ui_exit in 0 | 1 | 3) ;; *) return 1 ;; esac
+			cfmgr_archive_ui_sentinel=1
+			;;
+		*)
+			[ "$cfmgr_archive_ui_header" = 0 ] && [ "$cfmgr_archive_ui_sentinel" = 0 ] || return 1
+			IFS=' ' read -r cfmgr_archive_ui_tag cfmgr_archive_ui_schema cfmgr_archive_ui_result \
+				cfmgr_archive_ui_generation cfmgr_archive_ui_pending cfmgr_archive_ui_format \
+				cfmgr_archive_ui_keep cfmgr_archive_ui_set_present cfmgr_archive_ui_name_hex \
+				cfmgr_archive_ui_retention cfmgr_archive_ui_history cfmgr_archive_ui_end cfmgr_archive_ui_extra <<EOF_ARCHIVE_HEADER
 $cfmgr_archive_ui_line
 EOF_ARCHIVE_HEADER
-				[ "$cfmgr_archive_ui_line" = "CFMGR-ARCHIVE-ACTION 1 $cfmgr_archive_ui_result $cfmgr_archive_ui_generation $cfmgr_archive_ui_pending $cfmgr_archive_ui_format $cfmgr_archive_ui_keep $cfmgr_archive_ui_set_present $cfmgr_archive_ui_name_hex $cfmgr_archive_ui_retention $cfmgr_archive_ui_history END" ] || return 1
-				cfmgr_archive_ui_uint "$cfmgr_archive_ui_generation" 20 || return 1
-				case $cfmgr_archive_ui_pending in 0 | 1) ;; *) return 1 ;; esac
-				case $cfmgr_archive_ui_set_present in 0 | 1) ;; *) return 1 ;; esac
-				case $cfmgr_archive_ui_format in - | DMY | MDY | YMD) ;; *) return 1 ;; esac
-				case $cfmgr_archive_ui_keep in 0 | 3 | 4 | 5) ;; *) return 1 ;; esac
-				case $cfmgr_archive_ui_name_hex in
-					-) cfmgr_archive_ui_name_value='' ;;
-					*)
-						case $cfmgr_archive_ui_name_hex in *[!0-9a-f]*) return 1 ;; esac
-						[ "$((${#cfmgr_archive_ui_name_hex} % 2))" = 0 ] && [ "${#cfmgr_archive_ui_name_hex}" -le 126 ] || return 1
-						cfmgr_archive_ui_name_value=$(cfmgr_backup_decode "$cfmgr_archive_ui_name_hex") || return 1
-						cfmgr_archive_ui_name "$cfmgr_archive_ui_name_value" || return 1
-						;;
-				esac
-				case $cfmgr_archive_ui_retention in none | complete | failed | unresolved) ;; *) return 1 ;; esac
-				case $cfmgr_archive_ui_history in none | saved | failed) ;; *) return 1 ;; esac
-				cfmgr_archive_ui_header=1
+			[ "$cfmgr_archive_ui_line" = "CFMGR-ARCHIVE-ACTION 1 $cfmgr_archive_ui_result $cfmgr_archive_ui_generation $cfmgr_archive_ui_pending $cfmgr_archive_ui_format $cfmgr_archive_ui_keep $cfmgr_archive_ui_set_present $cfmgr_archive_ui_name_hex $cfmgr_archive_ui_retention $cfmgr_archive_ui_history END" ] || return 1
+			cfmgr_archive_ui_uint "$cfmgr_archive_ui_generation" 20 || return 1
+			case $cfmgr_archive_ui_pending in 0 | 1) ;; *) return 1 ;; esac
+			case $cfmgr_archive_ui_set_present in 0 | 1) ;; *) return 1 ;; esac
+			case $cfmgr_archive_ui_format in - | DMY | MDY | YMD) ;; *) return 1 ;; esac
+			case $cfmgr_archive_ui_keep in 0 | 3 | 4 | 5) ;; *) return 1 ;; esac
+			case $cfmgr_archive_ui_name_hex in
+			-) cfmgr_archive_ui_name_value='' ;;
+			*)
+				case $cfmgr_archive_ui_name_hex in *[!0-9a-f]*) return 1 ;; esac
+				[ "$((${#cfmgr_archive_ui_name_hex} % 2))" = 0 ] && [ "${#cfmgr_archive_ui_name_hex}" -le 126 ] || return 1
+				cfmgr_archive_ui_name_value=$(cfmgr_backup_decode "$cfmgr_archive_ui_name_hex") || return 1
+				cfmgr_archive_ui_name "$cfmgr_archive_ui_name_value" || return 1
 				;;
+			esac
+			case $cfmgr_archive_ui_retention in none | complete | failed | unresolved) ;; *) return 1 ;; esac
+			case $cfmgr_archive_ui_history in none | saved | failed) ;; *) return 1 ;; esac
+			cfmgr_archive_ui_header=1
+			;;
 		esac
-	done << EOF_ARCHIVE_FRAME
+	done <<EOF_ARCHIVE_FRAME
 $cfmgr_archive_ui_raw
 EOF_ARCHIVE_FRAME
 	[ "$cfmgr_archive_ui_header:$cfmgr_archive_ui_sentinel" = 1:1 ] || return 1
 	case $cfmgr_archive_ui_action_name:$cfmgr_archive_ui_exit:$cfmgr_archive_ui_result in
-		read:0:read | preferences:0:saved | preferences:0:unchanged | create:0:created | \
-			read:1:unavailable | read:1:busy | read:1:recovery | read:1:failed | \
-			preferences:1:unavailable | preferences:1:busy | preferences:1:recovery | preferences:1:failed | \
-			create:1:unavailable | create:1:busy | create:1:recovery | create:1:preferences-needed | create:1:failed | create:1:collision | \
-			read:3:unresolved | preferences:3:unresolved | create:3:unresolved) ;;
-		*) return 1 ;;
+	read:0:read | preferences:0:saved | preferences:0:unchanged | create:0:created | \
+		read:1:unavailable | read:1:busy | read:1:recovery | read:1:failed | \
+		preferences:1:unavailable | preferences:1:busy | preferences:1:recovery | preferences:1:failed | \
+		create:1:unavailable | create:1:busy | create:1:recovery | create:1:preferences-needed | create:1:failed | create:1:collision | \
+		read:3:unresolved | preferences:3:unresolved | create:3:unresolved) ;;
+	*) return 1 ;;
 	esac
 	if [ "$cfmgr_archive_ui_exit" = 3 ]; then [ "$cfmgr_archive_ui_pending" = 1 ] || return 1; fi
 	if [ "$cfmgr_archive_ui_action_name" = create ] && [ "$cfmgr_archive_ui_result" = created ]; then
@@ -1692,22 +1723,31 @@ EOF_ARCHIVE_FRAME
 		[ "$cfmgr_archive_ui_name_hex:$cfmgr_archive_ui_retention:$cfmgr_archive_ui_history" = '-:none:none' ] || return 1
 	fi
 	case $cfmgr_archive_ui_action_name:$cfmgr_archive_ui_result in
-		read:read | preferences:saved | preferences:unchanged | create:created | \
-			read:unavailable | read:busy | read:recovery | read:failed | read:unresolved | \
-			preferences:unavailable | preferences:busy | preferences:recovery | preferences:failed | preferences:unresolved | \
-			create:unavailable | create:busy | create:recovery | create:preferences-needed | create:failed | create:collision | create:unresolved) ;;
-		*) return 1 ;;
+	read:read | preferences:saved | preferences:unchanged | create:created | \
+		read:unavailable | read:busy | read:recovery | read:failed | read:unresolved | \
+		preferences:unavailable | preferences:busy | preferences:recovery | preferences:failed | preferences:unresolved | \
+		create:unavailable | create:busy | create:recovery | create:preferences-needed | create:failed | create:collision | create:unresolved) ;;
+	*) return 1 ;;
 	esac
 	case $cfmgr_archive_ui_action_name:$cfmgr_archive_ui_result in
-		read:read | preferences:saved | preferences:unchanged | create:created)
-			[ "$cfmgr_archive_ui_generation" != 0 ] || return 1
-			;;
-		*) [ "$cfmgr_archive_ui_generation" = 0 ] || return 1 ;;
+	read:read | preferences:saved | preferences:unchanged | create:created)
+		[ "$cfmgr_archive_ui_generation" != 0 ] || return 1
+		;;
+	*) : ;; # Failure can follow a successful read of a known generation.
 	esac
+}
+
+cfmgr_archive_ui_clear() {
+	cfmgr_archive_ui_result=unknown cfmgr_archive_ui_generation=0 cfmgr_archive_ui_pending=1
+	cfmgr_archive_ui_format=- cfmgr_archive_ui_keep=0 cfmgr_archive_ui_set_present=0
+	cfmgr_archive_ui_name_hex=- cfmgr_archive_ui_name_value=''
+	cfmgr_archive_ui_retention=none cfmgr_archive_ui_history=none cfmgr_archive_ui_exit=3
+	cfmgr_archive_ui_preferences_known=0
 }
 
 cfmgr_backup_archive_ui_action() {
 	cfmgr_archive_ui_action_name=$1
+	cfmgr_archive_ui_clear
 	cfmgr_archive_ui_raw=$(
 		cfmgr_archive_action "$@"
 		cfmgr_archive_ui_action_exit=$?
@@ -1715,8 +1755,8 @@ cfmgr_backup_archive_ui_action() {
 	)
 	if cfmgr_archive_ui_parse_frame; then :; else
 		printf '[CFMGR] backup: error: invalid archive backend result; archive state is unknown\n' >&2
-		cfmgr_archive_ui_preferences_known=0
-		return 2
+		cfmgr_archive_ui_clear
+		return 3
 	fi
 }
 
@@ -1725,9 +1765,10 @@ cfmgr_backup_archive_ui_read() {
 		cfmgr_archive_ui_preferences_known=0
 		cfmgr_archive_ui_set_present=0 cfmgr_archive_ui_format=- cfmgr_archive_ui_keep=0
 		case $cfmgr_archive_ui_result in
-			busy) printf '[CFMGR] backup: warning: archive settings lock is busy; preferences are unknown\n' >&2 ;;
-			unresolved) printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2 ;;
-			*) printf '[CFMGR] backup: warning: archive preferences are unavailable\n' >&2 ;;
+		unknown) return 3 ;;
+		busy) printf '[CFMGR] backup: warning: archive settings lock is busy; preferences are unknown\n' >&2 ;;
+		unresolved) printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2 ;;
+		*) printf '[CFMGR] backup: warning: archive preferences are unavailable\n' >&2 ;;
 		esac
 		[ "$cfmgr_archive_ui_exit" != 3 ] || return 3
 		return 1
@@ -1736,12 +1777,13 @@ cfmgr_backup_archive_ui_read() {
 		cfmgr_archive_ui_preferences_known=0
 		cfmgr_archive_ui_set_present=0 cfmgr_archive_ui_format=- cfmgr_archive_ui_keep=0
 		case $cfmgr_archive_ui_result in
-			busy) printf '[CFMGR] backup: warning: archive settings lock is busy; preferences are unknown\n' >&2 ;;
-			unresolved)
-				printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2
-				return 3
-				;;
-			*) printf '[CFMGR] backup: warning: archive preferences are unavailable\n' >&2 ;;
+		unknown) return 3 ;;
+		busy) printf '[CFMGR] backup: warning: archive settings lock is busy; preferences are unknown\n' >&2 ;;
+		unresolved)
+			printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2
+			return 3
+			;;
+		*) printf '[CFMGR] backup: warning: archive preferences are unavailable\n' >&2 ;;
 		esac
 		return 1
 	fi
@@ -1790,12 +1832,13 @@ cfmgr_backup_archive_preferences() {
 			"$cfmgr_archive_ui_result" "$cfmgr_archive_ui_new_format" "$cfmgr_archive_ui_new_keep"
 	else
 		case $cfmgr_archive_ui_result in
-			busy) printf '[CFMGR] backup: warning: archive settings lock is busy; preferences were not saved\n' >&2 ;;
-			unresolved)
-				printf '[CFMGR] backup: error: archive preference save is unresolved; leaving Backup / Restore\n' >&2
-				return 3
-				;;
-			*) printf '[CFMGR] backup: warning: archive preferences were not saved (%s)\n' "$cfmgr_archive_ui_result" >&2 ;;
+		unknown) return 3 ;;
+		busy) printf '[CFMGR] backup: warning: archive settings lock is busy; preferences were not saved\n' >&2 ;;
+		unresolved)
+			printf '[CFMGR] backup: error: archive preference save is unresolved; leaving Backup / Restore\n' >&2
+			return 3
+			;;
+		*) printf '[CFMGR] backup: warning: archive preferences were not saved (%s)\n' "$cfmgr_archive_ui_result" >&2 ;;
 		esac
 	fi
 }
@@ -1806,11 +1849,11 @@ cfmgr_backup_archive_create() {
 		return 0
 	fi
 	case $cfmgr_archive_ui_format:$cfmgr_archive_ui_keep in
-		DMY:3 | DMY:4 | DMY:5 | MDY:3 | MDY:4 | MDY:5 | YMD:3 | YMD:4 | YMD:5) ;;
-		*)
-			printf '%s\n' 'Choose archive date order and retention in option 3 before creating an archive.'
-			return 0
-			;;
+	DMY:3 | DMY:4 | DMY:5 | MDY:3 | MDY:4 | MDY:5 | YMD:3 | YMD:4 | YMD:5) ;;
+	*)
+		printf '%s\n' 'Choose archive date order and retention in option 3 before creating an archive.'
+		return 0
+		;;
 	esac
 	printf '%s\n' \
 		"Create a manual CFMgr data archive using $cfmgr_archive_ui_format dates and retaining $cfmgr_archive_ui_keep archives?" \
@@ -1829,15 +1872,16 @@ cfmgr_backup_archive_create() {
 		case $cfmgr_archive_ui_history in saved) printf '%s\n' 'Archive history saved.' ;; failed) printf '%s\n' 'Archive created, but history was not saved.' >&2 ;; esac
 	else
 		case $cfmgr_archive_ui_result in
-			unresolved)
-				printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2
-				[ -z "$cfmgr_archive_ui_name_value" ] || printf 'Published archive name: %s\n' "$cfmgr_archive_ui_name_value"
-				return 3
-				;;
-			busy) printf '[CFMGR] backup: warning: archive storage or settings lock is busy\n' >&2 ;;
-			preferences-needed) printf '%s\n' 'Set archive date order and retention in option 3 before creating an archive.' ;;
-			collision) printf '%s\n' 'An archive with that name already exists; no archive was replaced.' ;;
-			*) printf '[CFMGR] backup: warning: archive was not created (%s)\n' "$cfmgr_archive_ui_result" >&2 ;;
+		unknown) return 3 ;;
+		unresolved)
+			printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2
+			[ -z "$cfmgr_archive_ui_name_value" ] || printf 'Published archive name: %s\n' "$cfmgr_archive_ui_name_value"
+			return 3
+			;;
+		busy) printf '[CFMGR] backup: warning: archive storage or settings lock is busy\n' >&2 ;;
+		preferences-needed) printf '%s\n' 'Set archive date order and retention in option 3 before creating an archive.' ;;
+		collision) printf '%s\n' 'An archive with that name already exists; no archive was replaced.' ;;
+		*) printf '[CFMGR] backup: warning: archive was not created (%s)\n' "$cfmgr_archive_ui_result" >&2 ;;
 		esac
 	fi
 }
@@ -1889,9 +1933,9 @@ cfmgr_archive_space_reserve() {
 
 cfmgr_archive_uuid() {
 	# The kernel generates an opaque ID; reads do not touch persistent config.
-	IFS= read -r cfmgr_archive_uuid < /proc/sys/kernel/random/uuid || return 1
+	IFS= read -r cfmgr_archive_uuid </proc/sys/kernel/random/uuid || return 1
 	case $cfmgr_archive_uuid in *[!0-9a-f-]*) return 1 ;; esac
-	IFS=- read -r cfmgr_archive_u1 cfmgr_archive_u2 cfmgr_archive_u3 cfmgr_archive_u4 cfmgr_archive_u5 cfmgr_archive_u6 << EOF_ARCHIVE_UUID
+	IFS=- read -r cfmgr_archive_u1 cfmgr_archive_u2 cfmgr_archive_u3 cfmgr_archive_u4 cfmgr_archive_u5 cfmgr_archive_u6 <<EOF_ARCHIVE_UUID
 $cfmgr_archive_uuid
 EOF_ARCHIVE_UUID
 	[ "${#cfmgr_archive_uuid}:${#cfmgr_archive_u1}:${#cfmgr_archive_u2}:${#cfmgr_archive_u3}:${#cfmgr_archive_u4}:${#cfmgr_archive_u5}:${#cfmgr_archive_u6}" = 36:8:4:4:4:12:0 ]
@@ -1904,22 +1948,22 @@ cfmgr_archive_clock() {
 	cfmgr_archive_zone_hex=$(cfmgr_backup_hex "$cfmgr_archive_zone") || return 1
 	cfmgr_archive_io date 4096 "$cfmgr_archive_zone" || return $?
 	cfmgr_store_read_line "$cfmgr_archive_output" || return 1
-	IFS='|' read -r cfmgr_archive_epoch cfmgr_archive_day cfmgr_archive_clock_time cfmgr_archive_offset cfmgr_archive_clock_extra << EOF_ARCHIVE_DATE
+	IFS='|' read -r cfmgr_archive_epoch cfmgr_archive_day cfmgr_archive_clock_time cfmgr_archive_offset cfmgr_archive_clock_extra <<EOF_ARCHIVE_DATE
 $cfmgr_store_line
 EOF_ARCHIVE_DATE
 	[ -z "$cfmgr_archive_clock_extra" ] && [ "$cfmgr_store_line" = "$cfmgr_archive_epoch|$cfmgr_archive_day|$cfmgr_archive_clock_time|$cfmgr_archive_offset" ] || return 1
 	cfmgr_archive_uint "$cfmgr_archive_epoch" && [ "${#cfmgr_archive_epoch}" -le 10 ] || return 1
 	case $cfmgr_archive_day:$cfmgr_archive_clock_time:$cfmgr_archive_offset in
-		[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]:[0-9][0-9]-[0-9][0-9]-[0-9][0-9]:[+-][0-9][0-9][0-9][0-9]) ;;
-		*) return 1 ;;
+	[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]:[0-9][0-9]-[0-9][0-9]-[0-9][0-9]:[+-][0-9][0-9][0-9][0-9]) ;;
+	*) return 1 ;;
 	esac
 	cfmgr_archive_year=${cfmgr_archive_day%%-*} cfmgr_archive_monthday=${cfmgr_archive_day#*-}
 	cfmgr_archive_month=${cfmgr_archive_monthday%-*} cfmgr_archive_date=${cfmgr_archive_monthday#*-}
 	case $cfmgr_archive_saved_format in
-		DMY) cfmgr_archive_date_label=$cfmgr_archive_date-$cfmgr_archive_month-$cfmgr_archive_year ;;
-		MDY) cfmgr_archive_date_label=$cfmgr_archive_month-$cfmgr_archive_date-$cfmgr_archive_year ;;
-		YMD) cfmgr_archive_date_label=$cfmgr_archive_day ;;
-		*) return 1 ;;
+	DMY) cfmgr_archive_date_label=$cfmgr_archive_date-$cfmgr_archive_month-$cfmgr_archive_year ;;
+	MDY) cfmgr_archive_date_label=$cfmgr_archive_month-$cfmgr_archive_date-$cfmgr_archive_year ;;
+	YMD) cfmgr_archive_date_label=$cfmgr_archive_day ;;
+	*) return 1 ;;
 	esac
 	# Complete calendar/offset validation also occurs in the manifest verifier
 	# before publication. Neither the filename nor router locale selects order.
@@ -1937,7 +1981,7 @@ cfmgr_archive_ram_new() {
 	(
 		umask 077
 		set -C
-		cd /proc/self/fd/5 && : > "${cfmgr_create_ram##*/}"
+		cd /proc/self/fd/5 && : >"${cfmgr_create_ram##*/}"
 	) || return 1
 }
 
@@ -1986,6 +2030,7 @@ cfmgr_archive_stage_close() {
 cfmgr_archive_verify_owned() {
 	# The caller's compressed/raw files must survive the verifier's scratch
 	# cleanup. Preserve its exact ownership ledger independently in all outcomes.
+	cfmgr_archive_verification_status=incomplete
 	cfmgr_create_verify_owned=$cfmgr_format_owned
 	cfmgr_archive_format_retire && cfmgr_payload_cleanup || return $?
 	cfmgr_format_owned=''
@@ -1993,17 +2038,22 @@ cfmgr_archive_verify_owned() {
 	cfmgr_format_owned="${cfmgr_format_owned:+$cfmgr_format_owned }$cfmgr_create_verify_owned"
 	cfmgr_archive_format_tracking=1
 	if [ "$cfmgr_create_verify_code" = 3 ] || [ "${cfmgr_probe_status:-}" != reaped ]; then return 3; fi
-	cfmgr_payload_cleanup || return $?
+	if cfmgr_payload_cleanup; then :; else
+		cfmgr_create_verify_cleanup_code=$?
+		cfmgr_archive_verification_status=incomplete
+		return "$cfmgr_create_verify_cleanup_code"
+	fi
 	return "$cfmgr_create_verify_code"
 }
 
 cfmgr_archive_existing() {
 	# A foreign/corrupt/unsupported regular archive never grants pruning rights.
 	# This function's caller cleans owned candidate scratch before continuing.
+	cfmgr_create_existing_status=incomplete
 	cfmgr_create_existing_name=$1
 	cfmgr_create_existing_input=/proc/self/fd/7/$1
 	cfmgr_archive_input "$cfmgr_create_existing_input" || return 1
-	cfmgr_capture_snapshot "$cfmgr_create_existing_input" "$cfmgr_archive_stage/existing.gz" whole || return $?
+	cfmgr_capture_snapshot "$cfmgr_create_existing_input" "$cfmgr_archive_stage/existing.gz" whole container || return $?
 	cfmgr_create_existing_inode=${cfmgr_capture_before_identity%%:*}
 	cfmgr_create_existing_size=$cfmgr_capture_bytes cfmgr_create_existing_sha=$cfmgr_capture_sha
 	cfmgr_archive_space || return $?
@@ -2013,10 +2063,15 @@ cfmgr_archive_existing() {
 	cfmgr_create_expand_cap=$(((cfmgr_archive_free - 1048576) / 8))
 	[ "$cfmgr_create_expand_cap" -ge 2048 ] || return 1
 	cfmgr_archive_format_stream gunzip "$cfmgr_create_expand_cap" "/proc/self/fd/7/$cfmgr_archive_stage_leaf/existing.gz" "$cfmgr_archive_stage/existing.raw" || return $?
-	cfmgr_archive_verify_owned "$cfmgr_archive_stage/existing.raw" || return $?
+	if cfmgr_archive_verify_owned "$cfmgr_archive_stage/existing.raw"; then :; else
+		cfmgr_create_existing_code=$?
+		cfmgr_create_existing_status=$cfmgr_archive_verification_status
+		return "$cfmgr_create_existing_code"
+	fi
 	[ "$cfmgr_archive_verified" = 1 ] || return 1
 	cfmgr_create_record="ARCHIVE $cfmgr_create_existing_name $cfmgr_create_existing_inode $cfmgr_create_existing_size $cfmgr_create_existing_sha $cfmgr_archive_epoch $cfmgr_archive_day $cfmgr_archive_id END"
-	cfmgr_archive_ledger_append "$cfmgr_create_record"
+	cfmgr_archive_ledger_append "$cfmgr_create_record" || return $?
+	cfmgr_create_existing_status=verified
 }
 
 cfmgr_archive_ledger_append() {
@@ -2024,12 +2079,12 @@ cfmgr_archive_ledger_append() {
 	cfmgr_create_ledger_bytes=$((${cfmgr_create_ledger_bytes:-0} + ${#1} + 1))
 	[ "$cfmgr_create_ledger_bytes" -le "$cfmgr_archive_inventory_limit" ] && cfmgr_archive_attachment_ok || return 1
 	# Only generated metadata is appended to our already admitted RAM receipt.
-	printf '%s\n' "$1" >> "$cfmgr_create_ledger"
+	printf '%s\n' "$1" >>"$cfmgr_create_ledger"
 }
 
 cfmgr_archive_recognize_existing() {
 	cfmgr_archive_ram_new || return 1
-	cfmgr_create_ledger=$cfmgr_create_ram cfmgr_create_ledger_bytes=0
+	cfmgr_create_ledger=$cfmgr_create_ram cfmgr_create_ledger_bytes=0 cfmgr_create_scan_complete=0
 	cfmgr_archive_identity_check || return $?
 	cfmgr_archive_run archive-directory "$cfmgr_archive_inventory_limit" "$cfmgr_store_ls" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_directory_kib" || return $?
 	cfmgr_create_directory=$cfmgr_probe_stdout
@@ -2037,15 +2092,17 @@ cfmgr_archive_recognize_existing() {
 	cfmgr_archive_ram_preserve "$cfmgr_probe_stdout" || return $?
 	cfmgr_create_candidates=$cfmgr_create_ram
 	cfmgr_archive_format_retire || return 1
+	cfmgr_create_scan_complete=1
 	while IFS= read -r cfmgr_create_candidate <&1; do
 		cfmgr_archive_identity_check || return $?
 		if cfmgr_archive_existing "$cfmgr_create_candidate"; then :; else
 			cfmgr_create_candidate_code=$?
 			[ "$cfmgr_create_candidate_code" != 3 ] && [ "${cfmgr_probe_status:-}" = reaped ] || return 3
+			[ "${cfmgr_create_existing_status:-incomplete}" = excluded ] || cfmgr_create_scan_complete=0
 			cfmgr_prerequisites_now && [ "$cfmgr_probe_now" -lt "$cfmgr_archive_deadline" ] && cfmgr_archive_attachment_ok || return 1
 		fi
 		cfmgr_payload_cleanup && cfmgr_archive_format_cleanup || return $?
-	done 1< "$cfmgr_create_candidates"
+	done 1<"$cfmgr_create_candidates"
 }
 
 cfmgr_archive_choose_name() {
@@ -2056,7 +2113,7 @@ cfmgr_archive_choose_name() {
 	cfmgr_create_same_day=0
 	while IFS=' ' read -r cfmgr_create_tag cfmgr_create_old_name cfmgr_create_old_inode cfmgr_create_old_size cfmgr_create_old_sha cfmgr_create_old_epoch cfmgr_create_old_day cfmgr_create_old_id cfmgr_create_old_end <&1; do
 		[ "$cfmgr_create_old_day" != "$cfmgr_create_day" ] || cfmgr_create_same_day=1
-	done 1< "$cfmgr_create_ledger"
+	done 1<"$cfmgr_create_ledger"
 	cfmgr_create_name=CFbackup-$cfmgr_archive_date_label
 	[ "$cfmgr_create_same_day" = 0 ] || cfmgr_create_name=${cfmgr_create_name}_$cfmgr_create_clock
 	cfmgr_create_name=$cfmgr_create_name.tar.gz
@@ -2080,10 +2137,10 @@ END
 	cfmgr_archive_write "$cfmgr_archive_stage/manifest" 4096 new "$cfmgr_create_manifest" && cfmgr_archive_format_record "$cfmgr_archive_stage/manifest" || return $?
 	cfmgr_archive_ram_new || return 1
 	cfmgr_create_members=$cfmgr_create_ram
-	printf '%s\n' manifest inventory >> "$cfmgr_create_members" || return 1
+	printf '%s\n' manifest inventory >>"$cfmgr_create_members" || return 1
 	cfmgr_create_member_index=1
 	while [ "$cfmgr_create_member_index" -le "$cfmgr_capture_files" ]; do
-		printf 'p%08d\n' "$cfmgr_create_member_index" >> "$cfmgr_create_members" || return 1
+		printf 'p%08d\n' "$cfmgr_create_member_index" >>"$cfmgr_create_members" || return 1
 		cfmgr_create_member_index=$((cfmgr_create_member_index + 1))
 	done
 	cfmgr_archive_space_reserve 0 || return $?
@@ -2108,8 +2165,8 @@ END
 	cfmgr_create_keep_owned='' cfmgr_create_retire_owned=''
 	for cfmgr_create_owned_token in $cfmgr_format_owned; do
 		case ${cfmgr_create_owned_token%:*} in
-			candidate.tar.gz | candidate.raw) cfmgr_create_keep_owned="${cfmgr_create_keep_owned:+$cfmgr_create_keep_owned }$cfmgr_create_owned_token" ;;
-			*) cfmgr_create_retire_owned="${cfmgr_create_retire_owned:+$cfmgr_create_retire_owned }$cfmgr_create_owned_token" ;;
+		candidate.tar.gz | candidate.raw) cfmgr_create_keep_owned="${cfmgr_create_keep_owned:+$cfmgr_create_keep_owned }$cfmgr_create_owned_token" ;;
+		*) cfmgr_create_retire_owned="${cfmgr_create_retire_owned:+$cfmgr_create_retire_owned }$cfmgr_create_owned_token" ;;
 		esac
 	done
 	cfmgr_format_owned=$cfmgr_create_retire_owned
@@ -2123,9 +2180,9 @@ END
 
 cfmgr_archive_flush_owned() {
 	[ "${cfmgr_archive_source_pinned:-0}" != 1 ] && cfmgr_archive_identity_check || return 1
-	if (: <&3) 2> /dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null; then return 2; fi
 	[ ! -L "$1" ] && { [ -f "$1" ] || [ -d "$1" ]; } || return 1
-	exec 3< "$1" || return 1
+	exec 3<"$1" || return 1
 	if cfmgr_archive_run archive-flush 4096 "$cfmgr_store_fsync"; then cfmgr_create_flush_code=0; else cfmgr_create_flush_code=$?; fi
 	[ "$cfmgr_create_flush_code" != 3 ] || return 3
 	exec 3<&-
@@ -2149,14 +2206,25 @@ cfmgr_archive_publish() {
 		cfmgr_create_result=collision
 		return 1
 	fi
-	cfmgr_archive_run archive-publish 4096 "$cfmgr_store_mv" "/proc/self/fd/7/$cfmgr_archive_stage_leaf" "$cfmgr_archive_stage" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" candidate.tar.gz "$cfmgr_create_name" || return $?
-	cfmgr_archive_identity_check || return $?
-	[ ! -e "/proc/self/fd/7/$cfmgr_archive_stage_leaf/candidate.tar.gz" ] && [ ! -L "/proc/self/fd/7/$cfmgr_archive_stage_leaf/candidate.tar.gz" ] || return 1
-	cfmgr_archive_format_inode "/proc/self/fd/7/$cfmgr_create_name" || return $?
-	[ "$cfmgr_format_inode" = "$cfmgr_create_published_inode" ] || return 1
+	cfmgr_create_publish_attempted=1
+	if cfmgr_archive_run archive-publish 4096 "$cfmgr_store_mv" "/proc/self/fd/7/$cfmgr_archive_stage_leaf" "$cfmgr_archive_stage" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" candidate.tar.gz "$cfmgr_create_name"; then :; else
+		cfmgr_create_publish_move_code=$?
+		[ "$cfmgr_create_publish_move_code" != 3 ] && [ "${cfmgr_probe_status:-}" = reaped ] || return 3
+		# A reaped failed move is ordinary nonpublication only when the pinned
+		# destination is still absent and the exact candidate remains intact.
+		cfmgr_archive_identity_check || return 3
+		[ ! -e "/proc/self/fd/7/$cfmgr_create_name" ] && [ ! -L "/proc/self/fd/7/$cfmgr_create_name" ] || return 3
+		cfmgr_archive_format_inode "$cfmgr_archive_stage/candidate.tar.gz" && [ "$cfmgr_format_inode" = "$cfmgr_create_published_inode" ] || return 3
+		cfmgr_archive_measure "/proc/self/fd/7/$cfmgr_archive_stage_leaf/candidate.tar.gz" && [ "$cfmgr_archive_bytes" = "$cfmgr_create_published_size" ] || return 3
+		cfmgr_archive_format_hash "/proc/self/fd/7/$cfmgr_archive_stage_leaf/candidate.tar.gz" && [ "$cfmgr_format_hash" = "$cfmgr_create_published_sha" ] || return 3
+		return 1
+	fi
+	cfmgr_archive_identity_check || return 3
+	[ ! -e "/proc/self/fd/7/$cfmgr_archive_stage_leaf/candidate.tar.gz" ] && [ ! -L "/proc/self/fd/7/$cfmgr_archive_stage_leaf/candidate.tar.gz" ] || return 3
+	cfmgr_archive_format_inode "/proc/self/fd/7/$cfmgr_create_name" && [ "$cfmgr_format_inode" = "$cfmgr_create_published_inode" ] || return 3
+	cfmgr_archive_measure "/proc/self/fd/7/$cfmgr_create_name" && [ "$cfmgr_archive_bytes" = "$cfmgr_create_published_size" ] || return 3
+	cfmgr_archive_format_hash "/proc/self/fd/7/$cfmgr_create_name" && [ "$cfmgr_format_hash" = "$cfmgr_create_published_sha" ] || return 3
 	cfmgr_create_published=1 cfmgr_create_name_hex=$(cfmgr_backup_hex "$cfmgr_create_name")
-	cfmgr_archive_format_hash "/proc/self/fd/7/$cfmgr_create_name" || return $?
-	[ "$cfmgr_format_hash" = "$cfmgr_create_published_sha" ] || return 1
 	# The renamed archive leaves temporary cleanup authority immediately.
 	cfmgr_create_remaining_owned=''
 	for cfmgr_create_owned_token in $cfmgr_format_owned; do
@@ -2170,7 +2238,7 @@ cfmgr_archive_publish() {
 
 cfmgr_archive_retention() {
 	cfmgr_create_retention=failed
-	[ "${cfmgr_create_published:-0}" = 1 ] || return 1
+	[ "${cfmgr_create_published:-0}" = 1 ] && [ "${cfmgr_create_scan_complete:-0}" = 1 ] || return 1
 	cfmgr_prerequisites_now || return 1
 	cfmgr_archive_deadline=$((cfmgr_probe_now + 180))
 	cfmgr_archive_run archive-control "$cfmgr_archive_inventory_limit" "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" retention "$cfmgr_create_ledger" "$cfmgr_archive_saved_keep" "$cfmgr_create_name" || return $?
@@ -2190,7 +2258,7 @@ cfmgr_archive_retention() {
 		cfmgr_archive_identity_check || return $?
 		[ ! -e "/proc/self/fd/7/$cfmgr_create_old_name" ] && [ ! -L "/proc/self/fd/7/$cfmgr_create_old_name" ] || return 1
 		cfmgr_archive_format_retire || return 1
-	done 1< "$cfmgr_create_prune"
+	done 1<"$cfmgr_create_prune"
 	cfmgr_archive_flush_owned /proc/self/fd/7 || return $?
 	cfmgr_create_retention=complete
 }
@@ -2229,13 +2297,13 @@ cfmgr_capture_source() {
 	cfmgr_archive_attachment_ok && cfmgr_capture_decode "$2" || return 1
 	case $cfmgr_capture_relative in '' | /* | */../* | ../* | */./* | ./* | */.. | */. | *//* | *\\*) return 1 ;; esac
 	case $1 in
-		jffs) cfmgr_capture_root=/proc/self/fd/8 cfmgr_capture_original=$cfmgr_store_jffs ;;
-		entware)
-			[ "${cfmgr_archive_source_pinned:-0}" = 1 ] || return 5
-			cfmgr_capture_root=/proc/self/fd/3
-			cfmgr_capture_original=$cfmgr_archive_source_root
-			;;
-		*) return 1 ;;
+	jffs) cfmgr_capture_root=/proc/self/fd/8 cfmgr_capture_original=$cfmgr_store_jffs ;;
+	entware)
+		[ "${cfmgr_archive_source_pinned:-0}" = 1 ] || return 5
+		cfmgr_capture_root=/proc/self/fd/3
+		cfmgr_capture_original=$cfmgr_archive_source_root
+		;;
+	*) return 1 ;;
 	esac
 	cfmgr_capture_source=$cfmgr_capture_root/$cfmgr_capture_relative
 	cfmgr_capture_cursor=$cfmgr_capture_root cfmgr_capture_remaining=$cfmgr_capture_relative
@@ -2255,7 +2323,7 @@ cfmgr_capture_source() {
 			cfmgr_capture_listing=$cfmgr_probe_stdout
 			while IFS= read -r cfmgr_capture_entry <&1; do
 				[ "$cfmgr_capture_entry" != "$cfmgr_capture_component" ] || return 1
-			done 1< "$cfmgr_capture_listing"
+			done 1<"$cfmgr_capture_listing"
 			cfmgr_archive_identity_check || return $?
 			return 4
 		fi
@@ -2267,22 +2335,33 @@ cfmgr_capture_source() {
 cfmgr_capture_metadata() {
 	cfmgr_archive_io meta 4096 "$1" || return $?
 	cfmgr_store_read_line "$cfmgr_archive_output" || return 1
-	IFS=' ' read -r cfmgr_capture_inode cfmgr_capture_mode cfmgr_capture_links cfmgr_capture_uid cfmgr_capture_gid cfmgr_capture_size cfmgr_capture_meta_rest << EOF_CAPTURE_META
+	IFS=' ' read -r cfmgr_capture_inode cfmgr_capture_mode cfmgr_capture_links cfmgr_capture_uid cfmgr_capture_gid cfmgr_capture_size cfmgr_capture_meta_rest <<EOF_CAPTURE_META
 $cfmgr_store_line
 EOF_CAPTURE_META
 	cfmgr_archive_uint "$cfmgr_capture_inode" && [ "$cfmgr_capture_inode" -gt 0 ] &&
-		cfmgr_archive_uint "$cfmgr_capture_size" && [ "$cfmgr_capture_uid" = 0 ] || return 1
-	# Data only. Do not launder an executable by removing its mode in the tar.
-	case $cfmgr_capture_mode in -[r-][w-]-[r-][w-]-[r-][w-]-) ;; *) return 1 ;; esac
+		cfmgr_archive_uint "$cfmgr_capture_size" || return 1
+	if [ "${2:-source}" = container ]; then
+		# A retained compressed container is inert bytes. FAT/NTFS may emulate
+		# executable bits and ownership; its decoded source payload stays strict.
+		cfmgr_archive_uint "$cfmgr_capture_uid" && cfmgr_archive_uint "$cfmgr_capture_gid" || return 1
+		case $cfmgr_capture_mode in -[r-][w-][x-][r-][w-][x-][r-][w-][x-]) ;; *) return 1 ;; esac
+	else
+		[ "${2:-source}" = source ] && [ "$cfmgr_capture_uid" = 0 ] || return 1
+		# Data only. Do not launder an executable by removing its mode in the tar.
+		case $cfmgr_capture_mode in -[r-][w-]-[r-][w-]-[r-][w-]-) ;; *) return 1 ;; esac
+	fi
 	cfmgr_capture_identity="$cfmgr_capture_inode:$cfmgr_capture_mode:$cfmgr_capture_uid:$cfmgr_capture_gid"
 }
 
 cfmgr_capture_snapshot() {
-	# INPUT NEW_OUTPUT whole|prefix. Prefix is only for an admitted append-only
+	# INPUT NEW_OUTPUT whole|prefix [source|container]. The strict source
+	# profile is default; only retained compressed-container reads select container.
+	# Prefix is only for an admitted append-only
 	# Cloudflared live writer; ordinary files require stable exact bytes.
-	cfmgr_capture_input=$1 cfmgr_capture_output=$2 cfmgr_capture_kind=$3
+	cfmgr_capture_input=$1 cfmgr_capture_output=$2 cfmgr_capture_kind=$3 cfmgr_capture_profile=${4:-source}
+	case $cfmgr_capture_profile:$3 in source:whole | source:prefix | container:whole) ;; *) return 2 ;; esac
 	case $3 in whole) ;; prefix) [ "${cfmgr_history_lock_held:-0}" = 1 ] || return 1 ;; *) return 2 ;; esac
-	cfmgr_capture_metadata "$1" || return $?
+	cfmgr_capture_metadata "$1" "$cfmgr_capture_profile" || return $?
 	cfmgr_capture_before_identity=$cfmgr_capture_identity cfmgr_capture_before_size=$cfmgr_capture_size
 	cfmgr_archive_space_reserve "$cfmgr_capture_before_size" || return $?
 	if [ "$cfmgr_capture_kind" = whole ]; then
@@ -2303,7 +2382,7 @@ cfmgr_capture_snapshot() {
 		[ "$cfmgr_capture_sha" = "$cfmgr_format_hash" ] || return 1
 		cfmgr_archive_format_remove "$cfmgr_capture_compare" || return $?
 	fi
-	cfmgr_capture_metadata "$cfmgr_capture_input" || return $?
+	cfmgr_capture_metadata "$cfmgr_capture_input" "$cfmgr_capture_profile" || return $?
 	[ "$cfmgr_capture_identity" = "$cfmgr_capture_before_identity" ] || return 1
 	if [ "$cfmgr_capture_kind" = whole ]; then
 		[ "$cfmgr_capture_size" = "$cfmgr_capture_before_size" ] || return 1
@@ -2453,7 +2532,7 @@ cfmgr_history_new() {
 		set -C
 		cd /proc/self/fd/5 || exit 1
 		[ . -ef "$cfmgr_history_context" ] || exit 1
-		: > "${cfmgr_history_new_path##*/}"
+		: >"${cfmgr_history_new_path##*/}"
 	) || return 1
 	cfmgr_history_runtime_created "$cfmgr_history_new_path" || return $?
 	cfmgr_history_owned="${cfmgr_history_owned:+$cfmgr_history_owned }${cfmgr_history_new_path##*/}"
@@ -2461,17 +2540,17 @@ cfmgr_history_new() {
 
 cfmgr_history_line() {
 	cfmgr_history_line_value='' cfmgr_history_extra=''
-	IFS= read -r cfmgr_history_line_value < "$1" || return 1
+	IFS= read -r cfmgr_history_line_value <"$1" || return 1
 	{
 		IFS= read -r cfmgr_history_line_value && ! IFS= read -r cfmgr_history_extra
-	} < "$1" && [ -z "$cfmgr_history_extra" ] || return 1
+	} <"$1" && [ -z "$cfmgr_history_extra" ] || return 1
 	cfmgr_history_runtime_consume "$1"
 }
 
 cfmgr_history_meta() {
 	cfmgr_history_call meta "$1" || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
-	IFS=' ' read -r cfmgr_history_inode cfmgr_history_mode cfmgr_history_links cfmgr_history_uid cfmgr_history_gid cfmgr_history_bytes cfmgr_history_name << EOF_HISTORY_META
+	IFS=' ' read -r cfmgr_history_inode cfmgr_history_mode cfmgr_history_links cfmgr_history_uid cfmgr_history_gid cfmgr_history_bytes cfmgr_history_name <<EOF_HISTORY_META
 $cfmgr_history_line_value
 EOF_HISTORY_META
 	case $cfmgr_history_inode:$cfmgr_history_bytes in *[!0-9:]* | :* | *:) return 1 ;; esac
@@ -2484,7 +2563,7 @@ EOF_HISTORY_META
 cfmgr_history_hash() {
 	cfmgr_history_call hash "$1" || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
-	IFS=' ' read -r cfmgr_history_digest cfmgr_history_hash_path << EOF_HISTORY_HASH
+	IFS=' ' read -r cfmgr_history_digest cfmgr_history_hash_path <<EOF_HISTORY_HASH
 $cfmgr_history_line_value
 EOF_HISTORY_HASH
 	cfmgr_history_hash_path=${cfmgr_history_hash_path#\*}
@@ -2510,7 +2589,7 @@ cfmgr_history_read() {
 	[ "$cfmgr_history_meta_value" = "$cfmgr_history_before_meta" ] || return 1
 	cfmgr_history_hash "$cfmgr_history_path" || return $?
 	[ "$cfmgr_history_digest" = "$cfmgr_history_before_hash" ] || return 1
-	cfmgr_history_runtime_write "$cfmgr_history_fingerprints" "$cfmgr_history_path $cfmgr_history_before_hash" || return 1
+	cfmgr_history_runtime_write "$cfmgr_history_fingerprints" "$cfmgr_history_path $cfmgr_history_before_hash" || return $?
 	[ "$cfmgr_history_label" != fragment ] || return 0
 	cfmgr_history_runtime_write "$cfmgr_history_bundle" "$cfmgr_history_packed"
 }
@@ -2519,6 +2598,9 @@ cfmgr_history_query() {
 	cfmgr_history_query_label=$1
 	shift
 	cfmgr_history_call "$@" || return $?
+	if [ "$cfmgr_history_query_label" = cron ] && [ -n "${cfmgr_hr_cron_fingerprint:-}" ]; then
+		cfmgr_history_runtime_write "$cfmgr_history_fingerprints" "$cfmgr_hr_cron_fingerprint" || return $?
+	fi
 	cfmgr_history_call read-private "$cfmgr_history_result" || return $?
 	cfmgr_history_call parse pack "$cfmgr_history_result" "$cfmgr_history_query_label" || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
@@ -2530,7 +2612,7 @@ cfmgr_history_base() {
 	cfmgr_history_line "$cfmgr_history_result" && [ "$cfmgr_history_line_value" = /jffs/scripts/scribe ] || return 1
 	for cfmgr_history_tool in /opt/sbin/syslog-ng /opt/sbin/logrotate; do
 		cfmgr_history_hash "$cfmgr_history_tool" || return $?
-		cfmgr_history_runtime_write "$cfmgr_history_fingerprints" "$cfmgr_history_tool $cfmgr_history_digest" || return 1
+		cfmgr_history_runtime_write "$cfmgr_history_fingerprints" "$cfmgr_history_tool $cfmgr_history_digest" || return $?
 	done
 	for cfmgr_history_directory in /opt/etc/syslog-ng.d /opt/etc/logrotate.d /opt/var/log; do
 		cfmgr_history_meta "$cfmgr_history_directory" directory || return $?
@@ -2549,7 +2631,7 @@ cfmgr_history_base() {
 	cfmgr_history_debug=$cfmgr_history_result
 	cfmgr_history_call parse pack "$cfmgr_history_debug" rotate-debug || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
-	cfmgr_history_runtime_write "$cfmgr_history_bundle" "$cfmgr_history_line_value" || return 1
+	cfmgr_history_runtime_write "$cfmgr_history_bundle" "$cfmgr_history_line_value" || return $?
 	cfmgr_history_call parse includes "$cfmgr_history_debug" || return $?
 	cfmgr_history_includes_file=$cfmgr_history_result
 	while IFS=' ' read -r cfmgr_history_marker cfmgr_history_include_hex cfmgr_history_end cfmgr_history_more <&1; do
@@ -2561,11 +2643,11 @@ cfmgr_history_base() {
 		[ "$cfmgr_history_include" != /opt/etc/logrotate.conf ] || continue
 		cfmgr_history_read "$cfmgr_history_include" fragment || return $?
 		# Replace only our generated DATA label; the third field is lowerhex.
-		IFS=' ' read -r cfmgr_history_marker cfmgr_history_label cfmgr_history_content << EOF_HISTORY_FRAGMENT
+		IFS=' ' read -r cfmgr_history_marker cfmgr_history_label cfmgr_history_content <<EOF_HISTORY_FRAGMENT
 $cfmgr_history_packed
 EOF_HISTORY_FRAGMENT
-		cfmgr_history_runtime_write "$cfmgr_history_bundle" "FRAGMENT $cfmgr_history_include_hex $cfmgr_history_content" || return 1
-	done 1< "$cfmgr_history_includes_file"
+		cfmgr_history_runtime_write "$cfmgr_history_bundle" "FRAGMENT $cfmgr_history_include_hex $cfmgr_history_content" || return $?
+	done 1<"$cfmgr_history_includes_file"
 	cfmgr_history_call parse base "$cfmgr_history_bundle" || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
 	case $cfmgr_history_line_value in 'BASE ready '*' END') ;; *) return 1 ;; esac
@@ -2590,7 +2672,7 @@ _cfmgr_backup_history_observe() {
 	cfmgr_history_bundle=$cfmgr_history_new_path
 	cfmgr_history_new || return $?
 	cfmgr_history_fingerprints=$cfmgr_history_new_path
-	cfmgr_history_runtime_write "$cfmgr_history_output" 'CFMGR-HISTORY 1' || return 1
+	cfmgr_history_runtime_write "$cfmgr_history_output" 'CFMGR-HISTORY 1' || return $?
 	while IFS=' ' read -r cfmgr_history_marker cfmgr_history_feature cfmgr_history_request cfmgr_history_reason cfmgr_history_generation cfmgr_history_rule_sha cfmgr_history_policy_hex cfmgr_history_end cfmgr_history_more <&1; do
 		[ "$cfmgr_history_marker:$cfmgr_history_end:$cfmgr_history_more" = REQUEST:END: ] || return 1
 		case $cfmgr_history_feature in ddns | ip_sync | cloudflared) ;; *) return 1 ;; esac
@@ -2598,7 +2680,7 @@ _cfmgr_backup_history_observe() {
 			if [ "$cfmgr_history_base_ready" = 0 ]; then
 				if cfmgr_history_base; then cfmgr_history_base_ready=1; else
 					cfmgr_history_code=$?
-					[ "$cfmgr_history_code" != 3 ] || return 3
+					case $cfmgr_history_code in 2 | 3) return "$cfmgr_history_code" ;; esac
 					cfmgr_history_base_ready=unavailable
 				fi
 			fi
@@ -2612,9 +2694,9 @@ _cfmgr_backup_history_observe() {
 				cfmgr_history_request=unavailable cfmgr_history_reason=unsupported-or-stale-history
 			fi
 		fi
-		cfmgr_history_runtime_write "$cfmgr_history_output" "STATE $cfmgr_history_feature $cfmgr_history_request $cfmgr_history_reason END" || return 1
-	done 1< "$cfmgr_history_requests"
-	cfmgr_history_runtime_write "$cfmgr_history_output" END || return 1
+		cfmgr_history_runtime_write "$cfmgr_history_output" "STATE $cfmgr_history_feature $cfmgr_history_request $cfmgr_history_reason END" || return $?
+	done 1<"$cfmgr_history_requests"
+	cfmgr_history_runtime_write "$cfmgr_history_output" END || return $?
 	cfmgr_history_ready=1
 }
 
@@ -2629,7 +2711,7 @@ cfmgr_history_feature() {
 	cfmgr_history_policy=$cfmgr_history_line_value
 	cfmgr_history_call parse assess "$cfmgr_history_bundle" "$cfmgr_history_feature" "$cfmgr_history_policy" || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
-	IFS=' ' read -r cfmgr_history_marker cfmgr_history_check_feature cfmgr_history_effective_mode cfmgr_history_effective_size cfmgr_history_rotate cfmgr_history_age cfmgr_history_end cfmgr_history_more << EOF_HISTORY_EFFECTIVE
+	IFS=' ' read -r cfmgr_history_marker cfmgr_history_check_feature cfmgr_history_effective_mode cfmgr_history_effective_size cfmgr_history_rotate cfmgr_history_age cfmgr_history_end cfmgr_history_more <<EOF_HISTORY_EFFECTIVE
 $cfmgr_history_line_value
 EOF_HISTORY_EFFECTIVE
 	[ "$cfmgr_history_marker:$cfmgr_history_check_feature:$cfmgr_history_end:$cfmgr_history_more" = "EFFECTIVE:$cfmgr_history_feature:END:" ] || return 1
@@ -2662,36 +2744,56 @@ EOF_HISTORY_EFFECTIVE
 		[ "$cfmgr_history_resolved_device" = "$cfmgr_history_opt_device" ] &&
 			[ "$cfmgr_history_resolved_inode" = "$cfmgr_history_member_inode" ] &&
 			[ "$cfmgr_history_resolved_canonical" = "${cfmgr_history_log_canonical}2f$cfmgr_history_member_suffix" ] || return 1
-		cfmgr_history_runtime_write "$cfmgr_history_coverage" "OWN $cfmgr_history_pathhex $cfmgr_history_resolved_canonical $cfmgr_history_resolved_device $cfmgr_history_resolved_inode $cfmgr_history_kind" || return 2
+		cfmgr_history_runtime_write "$cfmgr_history_coverage" "OWN $cfmgr_history_pathhex $cfmgr_history_resolved_canonical $cfmgr_history_resolved_device $cfmgr_history_resolved_inode $cfmgr_history_kind" || {
+			cfmgr_history_code=$?
+			[ "$cfmgr_history_code" != 3 ] || return 3
+			return 2
+		}
 		cfmgr_history_feature_state=included
-	done 1< "$cfmgr_history_members"
+	done 1<"$cfmgr_history_members"
 	cfmgr_history_call parse targets "$cfmgr_history_debug" "$cfmgr_history_feature" || return $?
 	cfmgr_history_targets=$cfmgr_history_result
 	while IFS=' ' read -r cfmgr_history_marker cfmgr_history_target_hex cfmgr_history_scope cfmgr_history_exists cfmgr_history_end cfmgr_history_more <&1; do
 		[ "$cfmgr_history_marker:$cfmgr_history_end:$cfmgr_history_more" = TARGET:END: ] || return 1
 		if [ "$cfmgr_history_exists" = absent ]; then
-			cfmgr_history_runtime_write "$cfmgr_history_coverage" "ABSENT $cfmgr_history_target_hex $cfmgr_history_scope" || return 2
+			cfmgr_history_runtime_write "$cfmgr_history_coverage" "ABSENT $cfmgr_history_target_hex $cfmgr_history_scope" || {
+				cfmgr_history_code=$?
+				[ "$cfmgr_history_code" != 3 ] || return 3
+				return 2
+			}
 		else
 			[ "$cfmgr_history_exists" = present ] || return 1
 			cfmgr_history_call parse target-path "$cfmgr_history_targets" "$cfmgr_history_target_hex" || return $?
 			cfmgr_history_line "$cfmgr_history_result" || return 1
 			cfmgr_history_resolve "$cfmgr_history_line_value" || return $?
-			cfmgr_history_runtime_write "$cfmgr_history_coverage" "TARGET $cfmgr_history_target_hex $cfmgr_history_resolved_canonical $cfmgr_history_resolved_device $cfmgr_history_resolved_inode $cfmgr_history_scope" || return 2
+			cfmgr_history_runtime_write "$cfmgr_history_coverage" "TARGET $cfmgr_history_target_hex $cfmgr_history_resolved_canonical $cfmgr_history_resolved_device $cfmgr_history_resolved_inode $cfmgr_history_scope" || {
+				cfmgr_history_code=$?
+				[ "$cfmgr_history_code" != 3 ] || return 3
+				return 2
+			}
 		fi
-	done 1< "$cfmgr_history_targets"
+	done 1<"$cfmgr_history_targets"
 	cfmgr_history_call parse audit "$cfmgr_history_coverage" || return $?
-	cfmgr_history_runtime_write "$cfmgr_history_output" "$cfmgr_history_effective" || return 2
+	cfmgr_history_runtime_write "$cfmgr_history_output" "$cfmgr_history_effective" || {
+		cfmgr_history_code=$?
+		[ "$cfmgr_history_code" != 3 ] || return 3
+		return 2
+	}
 	while IFS=' ' read -r cfmgr_history_marker cfmgr_history_pathhex cfmgr_history_kind cfmgr_history_end cfmgr_history_more <&1; do
 		[ "$cfmgr_history_marker" != FAMILY ] || continue
-		cfmgr_history_runtime_write "$cfmgr_history_output" "FILE history.$cfmgr_history_feature $cfmgr_history_pathhex $cfmgr_history_generation $cfmgr_history_kind END" || return 2
+		cfmgr_history_runtime_write "$cfmgr_history_output" "FILE history.$cfmgr_history_feature $cfmgr_history_pathhex $cfmgr_history_generation $cfmgr_history_kind END" || {
+			cfmgr_history_code=$?
+			[ "$cfmgr_history_code" != 3 ] || return 3
+			return 2
+		}
 		cfmgr_history_has_payload=1
-	done 1< "$cfmgr_history_members"
+	done 1<"$cfmgr_history_members"
 }
 
 cfmgr_history_resolve() {
 	cfmgr_history_call resolve "$1" || return $?
 	cfmgr_history_line "$cfmgr_history_result" || return 1
-	IFS=' ' read -r cfmgr_history_marker cfmgr_history_resolved_canonical cfmgr_history_resolved_device cfmgr_history_resolved_inode cfmgr_history_end cfmgr_history_more << EOF_HISTORY_RESOLVED
+	IFS=' ' read -r cfmgr_history_marker cfmgr_history_resolved_canonical cfmgr_history_resolved_device cfmgr_history_resolved_inode cfmgr_history_end cfmgr_history_more <<EOF_HISTORY_RESOLVED
 $cfmgr_history_line_value
 EOF_HISTORY_RESOLVED
 	[ "$cfmgr_history_marker:$cfmgr_history_end:$cfmgr_history_more" = RESOLVED:END: ] || return 1
@@ -2703,10 +2805,10 @@ EOF_HISTORY_RESOLVED
 cfmgr_backup_history_lock() {
 	[ "${cfmgr_history_ready:-0}" = 1 ] && [ "${cfmgr_history_lock_held:-0}" = 0 ] || return 1
 	[ "${cfmgr_history_has_payload:-0}" = 1 ] || return 0
-	cfmgr_history_meta /tmp/scribeLogRotate.flock file || return $?
+	cfmgr_history_rotation_meta || return $?
 	cfmgr_history_rotation_identity=$cfmgr_history_meta_value
 	[ -f /tmp/scribeLogRotate.flock ] && [ ! -L /tmp/scribeLogRotate.flock ] || return 1
-	exec 4< /tmp/scribeLogRotate.flock || return 1
+	exec 4</tmp/scribeLogRotate.flock || return 1
 	if [ ! /tmp/scribeLogRotate.flock -ef /proc/self/fd/4 ]; then
 		exec 4<&-
 		return 1
@@ -2727,7 +2829,7 @@ cfmgr_backup_history_lock() {
 cfmgr_backup_history_revalidate() {
 	[ "${cfmgr_history_ready:-0}:${cfmgr_history_lock_held:-0}" = 1:1 ] &&
 		[ ! -L /tmp/scribeLogRotate.flock ] && [ /tmp/scribeLogRotate.flock -ef /proc/self/fd/4 ] || return 1
-	cfmgr_history_meta /tmp/scribeLogRotate.flock file || return $?
+	cfmgr_history_rotation_meta || return $?
 	[ "$cfmgr_history_meta_value" = "$cfmgr_history_rotation_identity" ] || return 1
 	# Re-evaluate actual tools/schedule/process/include/family scope under the
 	# rotation lock. The previous receipt must agree exactly; no newly discovered
@@ -2739,6 +2841,9 @@ cfmgr_backup_history_revalidate() {
 	_cfmgr_backup_history_observe "$cfmgr_history_plan" || return $?
 	cfmgr_history_call parse compare "$cfmgr_history_fingerprints" "$cfmgr_history_previous_fingerprints" || return $?
 	cfmgr_history_call parse compare "$cfmgr_history_output" "$cfmgr_history_previous_output" || return $?
+	cfmgr_history_rotation_meta || return $?
+	[ "$cfmgr_history_meta_value" = "$cfmgr_history_rotation_identity" ] &&
+		[ /tmp/scribeLogRotate.flock -ef /proc/self/fd/4 ] || return 1
 	cfmgr_history_output=$cfmgr_history_previous_output
 	cfmgr_history_fingerprints=$cfmgr_history_previous_fingerprints
 	cfmgr_history_runtime_checkpoint "$cfmgr_history_output" "$cfmgr_history_fingerprints"
@@ -2747,6 +2852,11 @@ cfmgr_backup_history_revalidate() {
 cfmgr_backup_history_release() {
 	[ "${cfmgr_history_lock_held:-0}" != unresolved ] || return 3
 	[ "${cfmgr_history_lock_held:-0}" = 1 ] || return 0
+	# Capture may have retained archive receipts since the last history probe.
+	cfmgr_history_runtime_seed || return 1
+	cfmgr_history_rotation_meta || return $?
+	[ "$cfmgr_history_meta_value" = "$cfmgr_history_rotation_identity" ] &&
+		[ ! -L /tmp/scribeLogRotate.flock ] && [ /tmp/scribeLogRotate.flock -ef /proc/self/fd/4 ] || return 1
 	exec 4<&-
 	cfmgr_history_lock_held=0
 }
@@ -2764,20 +2874,38 @@ cfmgr_backup_history_release() {
 # shellcheck disable=SC2034,SC2154,SC3013,SC2094
 
 cfmgr_history_runtime_init() {
+	[ "$#" = 1 ] && cfmgr_archive_uint "${cfmgr_history_limit:-}" && [ "$cfmgr_history_limit" -gt 0 ] || return 2
+	# Include receipts created by intervening archive/Store consumers BEFORE
+	# any phase-admission probe can allocate another supervised output pair.
+	cfmgr_history_runtime_seed || return 1
+	# A failed optional phase admission must not change the caller phase/pins.
+	cfmgr_hr_saved_phase=${cfmgr_hr_phase:-native} cfmgr_hr_saved_anchor=${cfmgr_hr_anchor:-}
+	cfmgr_hr_saved_root=${cfmgr_hr_root:-} cfmgr_hr_saved_snapshot=${cfmgr_hr_snapshot:-}
+	if _cfmgr_history_runtime_init "$@"; then
+		return 0
+	else
+		cfmgr_hr_init_code=$?
+		cfmgr_hr_phase=$cfmgr_hr_saved_phase cfmgr_hr_anchor=$cfmgr_hr_saved_anchor
+		cfmgr_hr_root=$cfmgr_hr_saved_root cfmgr_hr_snapshot=$cfmgr_hr_saved_snapshot
+		return "$cfmgr_hr_init_code"
+	fi
+}
+
+_cfmgr_history_runtime_init() {
 	[ "$#" = 1 ] || return 2
 	case $1 in
-		native) cfmgr_hr_anchor='' cfmgr_hr_root='' cfmgr_hr_snapshot='' ;;
-		entware)
-			[ "${cfmgr_storage_pinned:-0}" = 1 ] || return 1
-			cfmgr_hr_anchor=/proc/self/fd/7 cfmgr_hr_root=$cfmgr_storage_opt
-			cfmgr_hr_snapshot=$cfmgr_storage_snapshot
-			;;
-		source)
-			[ "${cfmgr_archive_source_pinned:-0}" = 1 ] || return 1
-			cfmgr_hr_anchor=/proc/self/fd/3 cfmgr_hr_root=$cfmgr_archive_source_root
-			cfmgr_hr_snapshot=$cfmgr_archive_source_snapshot
-			;;
-		*) return 2 ;;
+	native) cfmgr_hr_anchor='' cfmgr_hr_root='' cfmgr_hr_snapshot='' ;;
+	entware)
+		[ "${cfmgr_storage_pinned:-0}" = 1 ] || return 1
+		cfmgr_hr_anchor=/proc/self/fd/7 cfmgr_hr_root=$cfmgr_storage_opt
+		cfmgr_hr_snapshot=$cfmgr_storage_snapshot
+		;;
+	source)
+		[ "${cfmgr_archive_source_pinned:-0}" = 1 ] || return 1
+		cfmgr_hr_anchor=/proc/self/fd/3 cfmgr_hr_root=$cfmgr_archive_source_root
+		cfmgr_hr_snapshot=$cfmgr_archive_source_snapshot
+		;;
+	*) return 2 ;;
 	esac
 	cfmgr_hr_phase=$1 cfmgr_history_context=$cfmgr_store_context
 	cfmgr_archive_uint "${cfmgr_history_limit:-}" && [ "$cfmgr_history_limit" -gt 0 ] &&
@@ -2789,7 +2917,7 @@ cfmgr_history_runtime_init() {
 	cfmgr_hr_lib=/proc/self/fd/8/$cfmgr_hr_support_relative/modules/lib
 	cfmgr_backup_history_attached || return 1
 	if [ "$cfmgr_hr_phase" = native ]; then return 0; fi
-	IFS='	' read -r cfmgr_hr_mount_id cfmgr_hr_mount_parent cfmgr_hr_device cfmgr_hr_mount_root cfmgr_hr_mount_point cfmgr_hr_mount_fs cfmgr_hr_mount_source cfmgr_hr_mount_flags cfmgr_hr_mount_super << EOF_HISTORY_MOUNT
+	IFS='	' read -r cfmgr_hr_mount_id cfmgr_hr_mount_parent cfmgr_hr_device cfmgr_hr_mount_root cfmgr_hr_mount_point cfmgr_hr_mount_fs cfmgr_hr_mount_source cfmgr_hr_mount_flags cfmgr_hr_mount_super <<EOF_HISTORY_MOUNT
 $cfmgr_hr_snapshot
 EOF_HISTORY_MOUNT
 	case ,$cfmgr_hr_mount_flags, in *,rw,*) ;; *) return 1 ;; esac
@@ -2821,13 +2949,13 @@ EOF_HISTORY_MOUNT
 cfmgr_backup_history_attached() {
 	cfmgr_store_attachment_ok || return 1
 	case ${cfmgr_hr_phase:-} in
-		native) return 0 ;;
-		entware) cfmgr_storage_attached ;;
-		source)
-			cfmgr_archive_source_attached || return 1
-			[ "${cfmgr_backup_folder_pinned:-0}" != 1 ] || cfmgr_backup_attached
-			;;
-		*) return 1 ;;
+	native) return 0 ;;
+	entware) cfmgr_storage_attached ;;
+	source)
+		cfmgr_archive_source_attached || return 1
+		[ "${cfmgr_backup_folder_pinned:-0}" != 1 ] || cfmgr_backup_attached
+		;;
+	*) return 1 ;;
 	esac
 }
 
@@ -2847,6 +2975,9 @@ cfmgr_hr_run() {
 		"$cfmgr_store_sleep" "$cfmgr_store_wc" "$cfmgr_hr_run_tool" "$@"; then
 		cfmgr_hr_run_code=0
 	else cfmgr_hr_run_code=$?; fi
+	# Unresolved supervision preserves all evidence immediately. An accounting
+	# failure must never turn that state into an ordinary, cleanable error.
+	[ "$cfmgr_hr_run_code" != 3 ] || return 3
 	[ "${cfmgr_probe_status:-}" != reaped ] || cfmgr_hr_register_pair || return 1
 	[ "$cfmgr_hr_run_code" = 0 ] || return "$cfmgr_hr_run_code"
 	[ "$cfmgr_probe_exit" = 0 ] || return 1
@@ -2871,7 +3002,7 @@ cfmgr_hr_ram_meta() {
 	# FD5-pinned and all file names are generated. No USB/JFFS lookup is allowed.
 	[ "${1%/*}" = "$cfmgr_store_context" ] && [ -f "$1" ] && [ ! -L "$1" ] || return 1
 	cfmgr_hr_ram_line=$("$cfmgr_store_ls" -ildn "$1") || return 1
-	IFS=' ' read -r cfmgr_hr_ram_inode cfmgr_hr_ram_mode cfmgr_hr_ram_links cfmgr_hr_ram_uid cfmgr_hr_ram_gid cfmgr_hr_ram_size cfmgr_hr_ram_name << EOF_HISTORY_RAM_META
+	IFS=' ' read -r cfmgr_hr_ram_inode cfmgr_hr_ram_mode cfmgr_hr_ram_links cfmgr_hr_ram_uid cfmgr_hr_ram_gid cfmgr_hr_ram_size cfmgr_hr_ram_name <<EOF_HISTORY_RAM_META
 $cfmgr_hr_ram_line
 EOF_HISTORY_RAM_META
 	cfmgr_archive_uint "$cfmgr_hr_ram_inode" && [ "$cfmgr_hr_ram_inode" -gt 0 ] && cfmgr_archive_uint "$cfmgr_hr_ram_size"
@@ -2882,26 +3013,52 @@ cfmgr_hr_register_pair() {
 	for cfmgr_hr_register_path in "$cfmgr_probe_stdout" "$cfmgr_probe_stderr"; do
 		cfmgr_hr_ram_meta "$cfmgr_hr_register_path" || return 1
 		[ "$cfmgr_hr_ram_size" -le "$cfmgr_history_probe_limit" ] || return 1
+		cfmgr_hr_charge "$cfmgr_hr_register_path" || return 1
 		cfmgr_hr_receipts="${cfmgr_hr_receipts:+$cfmgr_hr_receipts }${cfmgr_hr_register_path##*/}:$cfmgr_hr_ram_inode"
 	done
 }
 
+cfmgr_history_runtime_seed() {
+	cfmgr_store_attachment_ok || return 1
+	# Charge every retained Store/controller receipt once at each phase boundary.
+	# No other producer runs between history probes; births/retirement below keep
+	# the totals current without an external stat census on every invocation.
+	cfmgr_hr_live_bytes=0 cfmgr_hr_live_files=0
+	case $- in *f*) cfmgr_hr_seed_noglob=1 ;; *) cfmgr_hr_seed_noglob=0 ;; esac
+	set +f
+	set -- "$cfmgr_store_context"/* "$cfmgr_store_context"/.[!.]* "$cfmgr_store_context"/..?*
+	[ "$cfmgr_hr_seed_noglob" = 0 ] || set -f
+	for cfmgr_hr_seed_path; do
+		[ -e "$cfmgr_hr_seed_path" ] || [ -L "$cfmgr_hr_seed_path" ] || continue
+		cfmgr_hr_ram_meta "$cfmgr_hr_seed_path" || return 1
+		cfmgr_hr_charge "$cfmgr_hr_seed_path" || return 1
+	done
+	cfmgr_hr_account_context=$cfmgr_store_context
+}
+
+cfmgr_hr_charge() {
+	cfmgr_hr_growth=$((cfmgr_hr_ram_size + ${#1} - ${#cfmgr_store_context} - 1 + 64))
+	[ "$cfmgr_hr_growth" -le "$((cfmgr_history_limit - cfmgr_hr_live_bytes))" ] || return 1
+	cfmgr_hr_live_bytes=$((cfmgr_hr_live_bytes + cfmgr_hr_growth))
+	cfmgr_hr_live_files=$((cfmgr_hr_live_files + 1))
+	[ "$cfmgr_hr_live_files" -le 512 ]
+}
+
+cfmgr_hr_retire() {
+	cfmgr_hr_ram_meta "$1" || return 1
+	[ "$cfmgr_hr_ram_inode" = "$2" ] || return 1
+	cfmgr_hr_live_bytes=$((cfmgr_hr_live_bytes - cfmgr_hr_ram_size - ${#1} + ${#cfmgr_store_context} + 1 - 64))
+	cfmgr_hr_live_files=$((cfmgr_hr_live_files - 1))
+	(cd /proc/self/fd/5 && exec /bin/rm -f "${1##*/}")
+}
+
 cfmgr_history_runtime_reserve() {
 	[ "$#" = 1 ] && cfmgr_archive_uint "$1" && cfmgr_backup_history_attached || return 1
-	cfmgr_hr_requested=$1 cfmgr_hr_live_bytes=0 cfmgr_hr_live_files=0
-	for cfmgr_hr_account_token in ${cfmgr_hr_receipts:-} ${cfmgr_hr_generated:-}; do
-		cfmgr_hr_account_leaf=${cfmgr_hr_account_token%:*}
-		cfmgr_hr_ram_meta "$cfmgr_store_context/$cfmgr_hr_account_leaf" || return 1
-		case $cfmgr_hr_account_token in *:*) [ "$cfmgr_hr_ram_inode" = "${cfmgr_hr_account_token##*:}" ] || return 1 ;; esac
-		cfmgr_hr_growth=$((cfmgr_hr_ram_size + ${#cfmgr_hr_account_leaf} + 64))
-		[ "$cfmgr_hr_growth" -le "$((cfmgr_history_limit - cfmgr_hr_live_bytes))" ] || return 1
-		cfmgr_hr_live_bytes=$((cfmgr_hr_live_bytes + cfmgr_hr_growth))
-		cfmgr_hr_live_files=$((cfmgr_hr_live_files + 1))
-		# Leave room for the next supervised pair inside Store's existing512
-		# file guard; unrelated Store receipts remain the controller's charge.
-		[ "$cfmgr_hr_live_files" -le 510 ] || return 1
-	done
-	[ "$cfmgr_hr_requested" -le "$((cfmgr_history_limit - cfmgr_hr_live_bytes))" ]
+	[ "${cfmgr_hr_account_context:-}" = "$cfmgr_store_context" ] || cfmgr_history_runtime_seed || return 1
+	# Two fresh supervised receipts must fit Store's complete 512-file cleanup
+	# bound, including files created before this history adapter was entered.
+	[ "$cfmgr_hr_live_files" -le 510 ] &&
+		[ "$1" -le "$((cfmgr_history_limit - cfmgr_hr_live_bytes))" ]
 }
 
 cfmgr_history_runtime_consume() {
@@ -2917,7 +3074,7 @@ cfmgr_history_runtime_consume() {
 		case $cfmgr_hr_consume_leaf in "$cfmgr_hr_consume_stem.out" | "$cfmgr_hr_consume_stem.err")
 			cfmgr_hr_ram_meta "$cfmgr_store_context/$cfmgr_hr_consume_leaf" || return 1
 			[ "$cfmgr_hr_ram_inode" = "${cfmgr_hr_consume_token##*:}" ] || return 1
-			(cd /proc/self/fd/5 && exec /bin/rm -f "$cfmgr_hr_consume_leaf") || return 1
+			cfmgr_hr_retire "$cfmgr_store_context/$cfmgr_hr_consume_leaf" "${cfmgr_hr_consume_token##*:}" || return 1
 			;;
 		*) cfmgr_hr_kept="${cfmgr_hr_kept:+$cfmgr_hr_kept }$cfmgr_hr_consume_token" ;;
 		esac
@@ -2932,6 +3089,7 @@ cfmgr_history_runtime_write() {
 	if cfmgr_hr_run history-append 4096 /usr/bin/printf /proc/self/fd/5 "$cfmgr_store_context" "${1##*/}" "$2" "$cfmgr_history_limit"; then
 		cfmgr_hr_write_code=0
 	else cfmgr_hr_write_code=$?; fi
+	cfmgr_hr_live_bytes=$((cfmgr_hr_live_bytes + cfmgr_hr_pending))
 	cfmgr_hr_pending=0
 	[ "$cfmgr_hr_write_code" = 0 ] || return "$cfmgr_hr_write_code"
 	cfmgr_history_runtime_consume "$cfmgr_probe_stdout"
@@ -2950,41 +3108,41 @@ cfmgr_hr_map() {
 	cfmgr_hr_logical=$1 cfmgr_hr_base=''
 	case $1:${cfmgr_hr_phase:-} in /opt*:native) return 1 ;; esac
 	case $1 in
-		/opt | /opt/etc | /opt/etc/syslog-ng.d | /opt/etc/logrotate.d | /opt/var/log)
-			cfmgr_hr_relative=${1#/opt}
-			;;
-		/opt/sbin/syslog-ng | /opt/sbin/logrotate | /opt/etc/syslog-ng.conf | /opt/etc/logrotate.conf)
-			cfmgr_hr_relative=${1#/opt}
-			;;
-		/opt/etc/logrotate.d/?*)
-			cfmgr_hr_leaf=${1##*/}
-			case $cfmgr_hr_leaf in *[!A-Za-z0-9_-]*) return 1 ;; esac
-			[ "${1%/*}" = /opt/etc/logrotate.d ] || return 1
-			cfmgr_hr_relative=${1#/opt}
-			;;
-		/opt/var/log/ddns.log* | /opt/var/log/ip-sync.log* | /opt/var/log/cloudflared.log*)
-			cfmgr_hr_leaf=${1##*/}
-			case $cfmgr_hr_leaf in ddns.log | ip-sync.log | cloudflared.log) ;;
-			*)
-				cfmgr_hr_rotation=${cfmgr_hr_leaf#*.log.}
-				cfmgr_archive_uint "$cfmgr_hr_rotation" && [ "$cfmgr_hr_rotation" -gt 0 ] || return 1
-				;;
-			esac
-			[ "${1%/*}" = /opt/var/log ] || return 1
-			cfmgr_hr_relative=${1#/opt}
-			;;
-		/jffs/scripts/scribe | /jffs/addons/scribe.d/config)
-			cfmgr_hr_base=/proc/self/fd/8 cfmgr_hr_relative=${1#/jffs}
-			cfmgr_hr_expected=$cfmgr_store_jffs$cfmgr_hr_relative
-			;;
-		/tmp/scribeLogRotate.flock)
-			cfmgr_hr_base=/tmp cfmgr_hr_relative=/scribeLogRotate.flock cfmgr_hr_expected=$1
-			;;
+	/opt | /opt/bin | /opt/etc | /opt/etc/syslog-ng.d | /opt/etc/logrotate.d | /opt/var/log)
+		cfmgr_hr_relative=${1#/opt}
+		;;
+	/opt/bin/cloudflared | /opt/sbin/syslog-ng | /opt/sbin/logrotate | /opt/etc/syslog-ng.conf | /opt/etc/logrotate.conf)
+		cfmgr_hr_relative=${1#/opt}
+		;;
+	/opt/etc/logrotate.d/?*)
+		cfmgr_hr_leaf=${1##*/}
+		case $cfmgr_hr_leaf in *[!A-Za-z0-9_-]*) return 1 ;; esac
+		[ "${1%/*}" = /opt/etc/logrotate.d ] || return 1
+		cfmgr_hr_relative=${1#/opt}
+		;;
+	/opt/var/log/ddns.log* | /opt/var/log/ip-sync.log* | /opt/var/log/cloudflared.log*)
+		cfmgr_hr_leaf=${1##*/}
+		case $cfmgr_hr_leaf in ddns.log | ip-sync.log | cloudflared.log) ;;
 		*)
-			cfmgr_hr_private "$1" || return 1
-			cfmgr_hr_base=/proc/self/fd/5 cfmgr_hr_relative=/${1##*/}
-			cfmgr_hr_expected=$cfmgr_store_context$cfmgr_hr_relative
+			cfmgr_hr_rotation=${cfmgr_hr_leaf#*.log.}
+			cfmgr_archive_uint "$cfmgr_hr_rotation" && [ "$cfmgr_hr_rotation" -gt 0 ] || return 1
 			;;
+		esac
+		[ "${1%/*}" = /opt/var/log ] || return 1
+		cfmgr_hr_relative=${1#/opt}
+		;;
+	/jffs/scripts/scribe | /jffs/addons/scribe.d/config)
+		cfmgr_hr_base=/proc/self/fd/8 cfmgr_hr_relative=${1#/jffs}
+		cfmgr_hr_expected=$cfmgr_store_jffs$cfmgr_hr_relative
+		;;
+	/tmp/scribeLogRotate.flock)
+		cfmgr_hr_base=/tmp cfmgr_hr_relative=/scribeLogRotate.flock cfmgr_hr_expected=$1
+		;;
+	*)
+		cfmgr_hr_private "$1" || return 1
+		cfmgr_hr_base=/proc/self/fd/5 cfmgr_hr_relative=/${1##*/}
+		cfmgr_hr_expected=$cfmgr_store_context$cfmgr_hr_relative
+		;;
 	esac
 	if [ -z "$cfmgr_hr_base" ]; then
 		cfmgr_hr_base=$cfmgr_hr_anchor cfmgr_hr_expected=$cfmgr_hr_root$cfmgr_hr_relative
@@ -2995,7 +3153,7 @@ cfmgr_hr_map() {
 cfmgr_hr_meta_raw() {
 	cfmgr_hr_run history-meta 4096 "$cfmgr_store_ls" "$1" || return $?
 	cfmgr_hr_line "$cfmgr_hr_result" || return 1
-	IFS=' ' read -r cfmgr_hr_inode cfmgr_hr_mode cfmgr_hr_links cfmgr_hr_uid cfmgr_hr_gid cfmgr_hr_size cfmgr_hr_meta_name << EOF_HISTORY_NATIVE_META
+	IFS=' ' read -r cfmgr_hr_inode cfmgr_hr_mode cfmgr_hr_links cfmgr_hr_uid cfmgr_hr_gid cfmgr_hr_size cfmgr_hr_meta_name <<EOF_HISTORY_NATIVE_META
 $cfmgr_hr_line
 EOF_HISTORY_NATIVE_META
 	cfmgr_archive_uint "$cfmgr_hr_inode" && [ "$cfmgr_hr_inode" -gt 0 ] &&
@@ -3029,7 +3187,7 @@ cfmgr_hr_native() {
 	# Extra native tools not prepared by Store are admitted with already trusted
 	# native readlink/ls. No candidate is executed to learn its own provenance.
 	[ "$#" = 1 ] || return 2
-	case $1 in /usr/bin/hexdump | /usr/sbin/nvram | /usr/sbin/openssl | /usr/bin/flock | /bin/busybox | /sbin/blkid) ;; *) return 2 ;; esac
+	case $1 in /usr/bin/hexdump | /bin/nvram | /usr/sbin/openssl | /usr/bin/flock | /bin/busybox | /sbin/blkid) ;; *) return 2 ;; esac
 	case " ${cfmgr_hr_native_admitted:-} " in *" $1 "*)
 		[ -f "$1" ] && [ -x "$1" ]
 		return $?
@@ -3061,22 +3219,22 @@ cfmgr_hr_tool() {
 	[ -x "$cfmgr_hr_tool_path" ] || return 1
 	cfmgr_hr_tool_identity=$cfmgr_hr_device:$cfmgr_hr_inode:$cfmgr_hr_mode:$cfmgr_hr_uid:$cfmgr_hr_gid
 	case $cfmgr_hr_tool_logical in
-		/opt/sbin/syslog-ng)
-			[ -z "${cfmgr_hr_syslog_identity:-}" ] || [ "$cfmgr_hr_syslog_identity" = "$cfmgr_hr_tool_identity" ] || return 1
-			cfmgr_hr_syslog_identity=$cfmgr_hr_tool_identity
-			;;
-		/opt/sbin/logrotate)
-			[ -z "${cfmgr_hr_rotate_identity:-}" ] || [ "$cfmgr_hr_rotate_identity" = "$cfmgr_hr_tool_identity" ] || return 1
-			cfmgr_hr_rotate_identity=$cfmgr_hr_tool_identity
-			;;
-		*) return 2 ;;
+	/opt/sbin/syslog-ng)
+		[ -z "${cfmgr_hr_syslog_identity:-}" ] || [ "$cfmgr_hr_syslog_identity" = "$cfmgr_hr_tool_identity" ] || return 1
+		cfmgr_hr_syslog_identity=$cfmgr_hr_tool_identity
+		;;
+	/opt/sbin/logrotate)
+		[ -z "${cfmgr_hr_rotate_identity:-}" ] || [ "$cfmgr_hr_rotate_identity" = "$cfmgr_hr_tool_identity" ] || return 1
+		cfmgr_hr_rotate_identity=$cfmgr_hr_tool_identity
+		;;
+	*) return 2 ;;
 	esac
 }
 
 cfmgr_hr_measure() {
 	cfmgr_hr_run history-count 4096 "$cfmgr_store_wc" "$1" || return $?
 	cfmgr_hr_line "$cfmgr_hr_result" || return 1
-	IFS=' 	' read -r cfmgr_hr_bytes cfmgr_hr_count_name << EOF_HISTORY_NATIVE_COUNT
+	IFS=' 	' read -r cfmgr_hr_bytes cfmgr_hr_count_name <<EOF_HISTORY_NATIVE_COUNT
 $cfmgr_hr_line
 EOF_HISTORY_NATIVE_COUNT
 	cfmgr_archive_uint "$cfmgr_hr_bytes" && [ "$cfmgr_hr_count_name" = "$1" ]
@@ -3094,75 +3252,79 @@ cfmgr_backup_history_probe() {
 	case $cfmgr_hr_operation:${cfmgr_hr_phase:-} in parse:* | policy:* | read-private:*) ;; *:native) return 1 ;; esac
 	shift
 	case $cfmgr_hr_operation in
-		meta)
-			[ "$#" = 1 ] && cfmgr_hr_admit "$1" || return 1
-			cfmgr_hr_run history-meta 4096 "$cfmgr_store_ls" "$cfmgr_hr_input"
-			;;
-		hash)
-			[ "$#" = 1 ] && cfmgr_hr_admit "$1" || return 1
-			cfmgr_hr_hash_logical=$1 cfmgr_hr_hash_input=$cfmgr_hr_input
-			cfmgr_hr_native /usr/sbin/openssl || return $?
-			cfmgr_hr_run history-digest 4096 /usr/sbin/openssl "$cfmgr_hr_hash_input" || return $?
-			cfmgr_hr_line "$cfmgr_hr_result" || return 1
-			IFS=' ' read -r cfmgr_hr_hash cfmgr_hr_hash_name << EOF_HISTORY_RUNTIME_HASH
+	meta)
+		[ "$#" = 1 ] || return 2
+		cfmgr_hr_admit "$1" || return $?
+		cfmgr_hr_run history-meta 4096 "$cfmgr_store_ls" "$cfmgr_hr_input"
+		;;
+	hash)
+		[ "$#" = 1 ] || return 2
+		cfmgr_hr_admit "$1" || return $?
+		cfmgr_hr_hash_logical=$1 cfmgr_hr_hash_input=$cfmgr_hr_input
+		cfmgr_hr_native /usr/sbin/openssl || return $?
+		cfmgr_hr_run history-digest 4096 /usr/sbin/openssl "$cfmgr_hr_hash_input" || return $?
+		cfmgr_hr_line "$cfmgr_hr_result" || return 1
+		IFS=' ' read -r cfmgr_hr_hash cfmgr_hr_hash_name <<EOF_HISTORY_RUNTIME_HASH
 $cfmgr_hr_line
 EOF_HISTORY_RUNTIME_HASH
-			cfmgr_hr_hash_name=${cfmgr_hr_hash_name#\*}
-			[ "${#cfmgr_hr_hash}" = 64 ] && [ "$cfmgr_hr_hash_name" = "$cfmgr_hr_hash_input" ] || return 1
-			case $cfmgr_hr_hash in *[!0-9a-f]*) return 1 ;; esac
-			cfmgr_hr_text_frame hash "$cfmgr_hr_hash" "$cfmgr_hr_hash_logical"
-			;;
-		read | read-private)
-			[ "$#" = 1 ] || return 2
-			if [ "$cfmgr_hr_operation" = read-private ]; then
-				cfmgr_hr_private "$1" || return 1
-			else cfmgr_hr_admit "$1" || return 1; fi
-			cfmgr_hr_read_input=$cfmgr_hr_input
-			cfmgr_hr_native /usr/bin/hexdump || return $?
-			if [ "$1" = /jffs/scripts/scribe ]; then
-				cfmgr_hr_run history-script-prefix 8192 "$cfmgr_store_dd" "$cfmgr_hr_read_input" || return $?
-				cfmgr_hr_read_input=$cfmgr_hr_result
-			fi
-			cfmgr_hr_measure "$cfmgr_hr_read_input" || return $?
-			[ "$cfmgr_hr_bytes" -le "$((cfmgr_history_limit / 3))" ] || return 1
-			cfmgr_hr_run history-hexdump "$cfmgr_history_limit" /usr/bin/hexdump "$cfmgr_hr_read_input"
-			;;
-		readlink)
-			[ "$#:$1" = 1:/opt/bin/scribe ] || return 2
-			cfmgr_hr_run history-readlink 4096 "$cfmgr_store_readlink" "$cfmgr_hr_anchor/bin/scribe"
-			;;
-		syslog-version | syslog-check | logrotate-version | logrotate-debug)
-			[ "$#" = 0 ] || return 2
-			case $cfmgr_hr_operation in syslog-*) cfmgr_hr_tool /opt/sbin/syslog-ng ;; *) cfmgr_hr_tool /opt/sbin/logrotate ;; esac || return $?
-			cfmgr_hr_exec_tool=$cfmgr_hr_tool_path
-			case $cfmgr_hr_operation in
-				syslog-check) cfmgr_hr_admit /opt/etc/syslog-ng.conf || return $? ;;
-				logrotate-debug) cfmgr_hr_admit /opt/etc/logrotate.conf || return $? ;;
-			esac
-			cfmgr_hr_run "history-$cfmgr_hr_operation" "$cfmgr_history_limit" "$cfmgr_hr_exec_tool"
-			;;
-		list)
-			[ "$#:$1" = 1:/opt/var/log ] && cfmgr_hr_admit "$1" || return 1
-			cfmgr_hr_run history-directory "$cfmgr_history_limit" "$cfmgr_store_ls" "$cfmgr_hr_input" "$cfmgr_history_memory_kib"
-			;;
-		cron) [ "$#" = 0 ] && cfmgr_hr_cron ;;
-		processes) [ "$#" = 0 ] && cfmgr_hr_processes ;;
-		resolve) [ "$#" = 1 ] && cfmgr_hr_resolve "$1" ;;
-		parse) cfmgr_hr_parse "$@" ;;
-		policy) [ "$#" = 2 ] && cfmgr_hr_policy "$1" "$2" ;;
-		lock)
-			[ "$#" = 0 ] && [ ! -L /tmp/scribeLogRotate.flock ] &&
-				[ /tmp/scribeLogRotate.flock -ef /proc/self/fd/4 ] || return 1
-			cfmgr_hr_native /usr/bin/flock || return $?
-			cfmgr_hr_run history-lock 4096 /usr/bin/flock
-			;;
-		*) return 2 ;;
+		cfmgr_hr_hash_name=${cfmgr_hr_hash_name#\*}
+		[ "${#cfmgr_hr_hash}" = 64 ] && [ "$cfmgr_hr_hash_name" = "$cfmgr_hr_hash_input" ] || return 1
+		case $cfmgr_hr_hash in *[!0-9a-f]*) return 1 ;; esac
+		cfmgr_hr_text_frame hash "$cfmgr_hr_hash" "$cfmgr_hr_hash_logical"
+		;;
+	read | read-private)
+		[ "$#" = 1 ] || return 2
+		if [ "$cfmgr_hr_operation" = read-private ]; then
+			cfmgr_hr_private "$1" || return 1
+		else cfmgr_hr_admit "$1" || return $?; fi
+		cfmgr_hr_read_input=$cfmgr_hr_input
+		cfmgr_hr_native /usr/bin/hexdump || return $?
+		if [ "$1" = /jffs/scripts/scribe ]; then
+			cfmgr_hr_run history-script-prefix 8192 "$cfmgr_store_dd" "$cfmgr_hr_read_input" || return $?
+			cfmgr_hr_read_input=$cfmgr_hr_result
+		fi
+		cfmgr_hr_measure "$cfmgr_hr_read_input" || return $?
+		[ "$cfmgr_hr_bytes" -le "$((cfmgr_history_limit / 3))" ] || return 1
+		cfmgr_hr_run history-hexdump "$cfmgr_history_limit" /usr/bin/hexdump "$cfmgr_hr_read_input"
+		;;
+	readlink)
+		[ "$#:$1" = 1:/opt/bin/scribe ] || return 2
+		cfmgr_hr_run history-readlink 4096 "$cfmgr_store_readlink" "$cfmgr_hr_anchor/bin/scribe"
+		;;
+	syslog-version | syslog-check | logrotate-version | logrotate-debug)
+		[ "$#" = 0 ] || return 2
+		case $cfmgr_hr_operation in syslog-*) cfmgr_hr_tool /opt/sbin/syslog-ng ;; *) cfmgr_hr_tool /opt/sbin/logrotate ;; esac || return $?
+		cfmgr_hr_exec_tool=$cfmgr_hr_tool_path
+		case $cfmgr_hr_operation in
+		syslog-check) cfmgr_hr_admit /opt/etc/syslog-ng.conf || return $? ;;
+		logrotate-debug) cfmgr_hr_admit /opt/etc/logrotate.conf || return $? ;;
+		esac
+		cfmgr_hr_run "history-$cfmgr_hr_operation" "$cfmgr_history_limit" "$cfmgr_hr_exec_tool"
+		;;
+	list)
+		[ "$#:$1" = 1:/opt/var/log ] && cfmgr_hr_admit "$1" || return 1
+		cfmgr_hr_run history-directory "$cfmgr_history_limit" "$cfmgr_store_ls" "$cfmgr_hr_input" "$cfmgr_history_memory_kib"
+		;;
+	cron) [ "$#" = 0 ] && cfmgr_hr_cron ;;
+	rotation) [ "$#" = 0 ] && cfmgr_hr_rotation ;;
+	processes) [ "$#" = 0 ] && cfmgr_hr_processes ;;
+	resolve) [ "$#" = 1 ] && cfmgr_hr_resolve "$1" ;;
+	parse) cfmgr_hr_parse "$@" ;;
+	policy) [ "$#" = 2 ] && cfmgr_hr_policy "$1" "$2" ;;
+	lock)
+		[ "$#" = 0 ] && [ ! -L /tmp/scribeLogRotate.flock ] &&
+			[ /tmp/scribeLogRotate.flock -ef /proc/self/fd/4 ] || return 1
+		cfmgr_hr_native /usr/bin/flock || return $?
+		cfmgr_hr_run history-lock 4096 /usr/bin/flock
+		;;
+	*) return 2 ;;
 	esac
 }
 
 cfmgr_history_runtime_created() {
 	[ "$#" = 1 ] && cfmgr_hr_ram_meta "$1" || return 1
 	case ${1##*/} in history-[0-9]*) ;; *) return 1 ;; esac
+	cfmgr_hr_charge "$1" || return 1
 	cfmgr_hr_generated="${cfmgr_hr_generated:+$cfmgr_hr_generated }${1##*/}:$cfmgr_hr_ram_inode"
 }
 
@@ -3178,7 +3340,7 @@ cfmgr_history_runtime_checkpoint() {
 			cfmgr_hr_checkpoint_tokens="${cfmgr_hr_checkpoint_tokens:+$cfmgr_hr_checkpoint_tokens }$cfmgr_hr_checkpoint_token"
 			cfmgr_history_owned="${cfmgr_history_owned:+$cfmgr_history_owned }$cfmgr_hr_checkpoint_leaf"
 			;;
-		*) (cd /proc/self/fd/5 && exec /bin/rm -f "$cfmgr_hr_checkpoint_leaf") || return 1 ;;
+		*) cfmgr_hr_retire "$cfmgr_store_context/$cfmgr_hr_checkpoint_leaf" "${cfmgr_hr_checkpoint_token##*:}" || return 1 ;;
 		esac
 	done
 	cfmgr_hr_generated=$cfmgr_hr_checkpoint_tokens cfmgr_hr_receipts=''
@@ -3214,30 +3376,109 @@ cfmgr_hr_native_path() {
 	cfmgr_hr_protect
 }
 
+cfmgr_hr_mount_identity() {
+	cfmgr_hr_run history-mount 8192 "$cfmgr_store_awk" "$cfmgr_hr_lib/storage.sh" "$1" || return $?
+	cfmgr_hr_line "$cfmgr_hr_result" || return 1
+	IFS='	' read -r cfmgr_hr_observed_mount cfmgr_hr_observed_parent cfmgr_hr_observed_device cfmgr_hr_observed_rest <<EOF_HISTORY_MOUNT_IDENTITY
+$cfmgr_hr_line
+EOF_HISTORY_MOUNT_IDENTITY
+	cfmgr_archive_uint "$cfmgr_hr_observed_mount" || return 1
+	case $cfmgr_hr_observed_device in *[!0-9:]* | :* | *: | '') return 1 ;; esac
+	cfmgr_hr_observed_mount_identity=$cfmgr_hr_line
+}
+
+cfmgr_hr_rotation() {
+	# Scribe opens/truncates this exact existing lock before flock. Its content,
+	# write bits and mtime are not authority; held inode/mount/owner are.
+	[ ! -L /tmp/scribeLogRotate.flock ] || return 1
+	cfmgr_hr_meta_raw /tmp/scribeLogRotate.flock || return $?
+	case $cfmgr_hr_mode:$cfmgr_hr_uid:$cfmgr_hr_links in -?????????:0:1) ;; *) return 1 ;; esac
+	cfmgr_hr_rotation_inode=$cfmgr_hr_inode
+	cfmgr_hr_mount_identity /tmp/scribeLogRotate.flock || return $?
+	cfmgr_hr_text_frame text "ROTATION $cfmgr_hr_rotation_inode $cfmgr_hr_observed_mount $cfmgr_hr_observed_device END
+"
+}
+
+cfmgr_history_rotation_meta() {
+	cfmgr_history_call rotation || return $?
+	cfmgr_history_line "$cfmgr_history_result" || return 1
+	IFS=' ' read -r cfmgr_history_rotation_tag cfmgr_history_rotation_inode cfmgr_history_rotation_mount cfmgr_history_rotation_device cfmgr_history_rotation_end cfmgr_history_rotation_extra <<EOF_HISTORY_ROTATION_META
+$cfmgr_history_line_value
+EOF_HISTORY_ROTATION_META
+	[ "$cfmgr_history_rotation_tag:$cfmgr_history_rotation_end:$cfmgr_history_rotation_extra" = ROTATION:END: ] || return 1
+	cfmgr_archive_uint "$cfmgr_history_rotation_inode" && cfmgr_archive_uint "$cfmgr_history_rotation_mount" || return 1
+	case $cfmgr_history_rotation_device in *[!0-9:]* | :* | *: | '') return 1 ;; esac
+	cfmgr_history_meta_value=$cfmgr_history_rotation_inode:$cfmgr_history_rotation_mount:$cfmgr_history_rotation_device
+}
+
+cfmgr_hr_cron_boundary() {
+	# This is native scheduler DATA, not executable/config authority. /var may
+	# be a root-owned sticky tmpfs; no nonsticky /tmp canonical alias is allowed.
+	cfmgr_hr_run history-realpath 4096 "$cfmgr_store_readlink" "$cfmgr_hr_cron_path" || return $?
+	cfmgr_hr_line "$cfmgr_hr_result" || return 1
+	[ "$cfmgr_hr_line" = "$cfmgr_hr_cron_path" ] && [ ! -L "$cfmgr_hr_cron_path" ] || return 1
+	cfmgr_hr_cron_chain=''
+	for cfmgr_hr_cron_dir in / /var /var/spool /var/spool/cron /var/spool/cron/crontabs; do
+		cfmgr_hr_meta_raw "$cfmgr_hr_cron_dir" || return $?
+		case $cfmgr_hr_mode:$cfmgr_hr_uid in d?????????:0) ;; *) return 1 ;; esac
+		if [ "$cfmgr_hr_cron_dir" = /var ]; then
+			case $cfmgr_hr_mode in drwxr-xr-x | drwxrwxrwt) ;; *) return 1 ;; esac
+		else case $cfmgr_hr_mode in ?????w???? | ????????w?) return 1 ;; esac fi
+		cfmgr_hr_cron_chain=$cfmgr_hr_cron_chain:$cfmgr_hr_inode:$cfmgr_hr_mode
+	done
+	cfmgr_hr_meta_raw "$cfmgr_hr_cron_path" || return $?
+	case $cfmgr_hr_mode:$cfmgr_hr_uid:$cfmgr_hr_links in -?????????:0:1) ;; *) return 1 ;; esac
+	[ "$cfmgr_hr_size" -gt 0 ] && [ "$cfmgr_hr_size" -le "$((cfmgr_history_limit / 8))" ] || return 1
+	cfmgr_hr_cron_bytes=$cfmgr_hr_size
+	cfmgr_hr_cron_file=$cfmgr_hr_inode:$cfmgr_hr_mode:$cfmgr_hr_size
+	cfmgr_hr_mount_identity "$cfmgr_hr_cron_path" || return $?
+	cfmgr_hr_cron_observed=$cfmgr_hr_cron_chain:$cfmgr_hr_cron_file:$cfmgr_hr_observed_mount_identity
+}
+
 cfmgr_hr_cron() {
-	cfmgr_hr_native /usr/sbin/nvram || return $?
-	cfmgr_hr_run history-account 4096 /usr/sbin/nvram || return $?
+	cfmgr_hr_cron_admitted=0
+	if _cfmgr_hr_cron; then return 0; else cfmgr_hr_cron_code=$?; fi
+	[ "$cfmgr_hr_cron_code" != 3 ] || return 3
+	# Once the initial scheduler snapshot has been admitted, changed bytes or
+	# identity are a failed observation, never an optional-history absence.
+	[ "$cfmgr_hr_cron_admitted" = 0 ] || return 2
+	return "$cfmgr_hr_cron_code"
+}
+
+_cfmgr_hr_cron() {
+	cfmgr_hr_native /bin/nvram || return $?
+	cfmgr_hr_run history-account 4096 /bin/nvram || return $?
 	cfmgr_hr_line "$cfmgr_hr_result" || return 1
 	case $cfmgr_hr_line in '' | . | .. | *[!A-Za-z0-9_-]*) return 1 ;; esac
 	[ "${#cfmgr_hr_line}" -le 64 ] || return 1
-	cfmgr_hr_cron_path=/var/spool/cron/crontabs/$cfmgr_hr_line
-	# /var is a native firmware symlink. Canonicalize once, then admit the
-	# canonical chain; require the original path to remain attached afterward.
-	cfmgr_hr_run history-realpath 4096 "$cfmgr_store_readlink" "$cfmgr_hr_cron_path" || return $?
-	cfmgr_hr_line "$cfmgr_hr_result" || return 1
-	cfmgr_hr_cron_canonical=$cfmgr_hr_line
-	cfmgr_hr_native_path "$cfmgr_hr_cron_canonical" || return $?
-	cfmgr_hr_meta_raw "$cfmgr_hr_cron_canonical" || return $?
-	cfmgr_hr_cron_identity=$cfmgr_hr_inode:$cfmgr_hr_size
-	cfmgr_hr_measure "$cfmgr_hr_cron_path" || return $?
-	[ "$cfmgr_hr_bytes" -gt 0 ] && [ "$cfmgr_hr_bytes" -le "$cfmgr_history_limit" ] || return 1
-	cfmgr_hr_run history-cron-read "$cfmgr_history_limit" "$cfmgr_store_dd" "$cfmgr_hr_cron_path" "$cfmgr_hr_bytes" || return $?
-	cfmgr_hr_cron_result=$cfmgr_hr_result
-	cfmgr_hr_run history-realpath 4096 "$cfmgr_store_readlink" "$cfmgr_hr_cron_path" || return $?
-	cfmgr_hr_line "$cfmgr_hr_result" && [ "$cfmgr_hr_line" = "$cfmgr_hr_cron_canonical" ] || return 1
-	cfmgr_hr_meta_raw "$cfmgr_hr_cron_canonical" || return $?
-	[ "$cfmgr_hr_inode:$cfmgr_hr_size" = "$cfmgr_hr_cron_identity" ] || return 1
-	cfmgr_probe_stdout=$cfmgr_hr_cron_result cfmgr_hr_result=$cfmgr_hr_cron_result
+	cfmgr_hr_cron_account=$cfmgr_hr_line
+	cfmgr_hr_cron_path=/var/spool/cron/crontabs/$cfmgr_hr_cron_account
+	cfmgr_hr_cron_boundary || return $?
+	cfmgr_hr_cron_admitted=1
+	cfmgr_hr_cron_before=$cfmgr_hr_cron_observed cfmgr_hr_cron_size=$cfmgr_hr_cron_bytes
+	cfmgr_hr_run history-cron-read "$cfmgr_hr_cron_size" "$cfmgr_store_dd" "$cfmgr_hr_cron_path" "$cfmgr_hr_cron_size" || return $?
+	cfmgr_hr_cron_result=$cfmgr_hr_result cfmgr_hr_cron_stderr=$cfmgr_probe_stderr
+	cfmgr_hr_measure "$cfmgr_hr_cron_result" || return $?
+	[ "$cfmgr_hr_bytes" = "$cfmgr_hr_cron_size" ] || return 1
+	cfmgr_hr_writer_digest "$cfmgr_hr_cron_result" || return $?
+	cfmgr_hr_cron_sha=$cfmgr_hr_writer_sha
+	cfmgr_hr_cron_boundary || return $?
+	[ "$cfmgr_hr_cron_observed" = "$cfmgr_hr_cron_before" ] || return 1
+	cfmgr_hr_run history-cron-read "$cfmgr_hr_cron_size" "$cfmgr_store_dd" "$cfmgr_hr_cron_path" "$cfmgr_hr_cron_size" || return $?
+	cfmgr_hr_cron_second=$cfmgr_hr_result
+	cfmgr_hr_measure "$cfmgr_hr_cron_second" || return $?
+	[ "$cfmgr_hr_bytes" = "$cfmgr_hr_cron_size" ] || return 1
+	cfmgr_hr_writer_digest "$cfmgr_hr_cron_second" || return $?
+	[ "$cfmgr_hr_writer_sha" = "$cfmgr_hr_cron_sha" ] || return 1
+	cfmgr_history_runtime_consume "$cfmgr_hr_cron_second" || return $?
+	cfmgr_hr_cron_boundary || return $?
+	[ "$cfmgr_hr_cron_observed" = "$cfmgr_hr_cron_before" ] || return 1
+	cfmgr_hr_run history-account 4096 /bin/nvram || return $?
+	cfmgr_hr_line "$cfmgr_hr_result" && [ "$cfmgr_hr_line" = "$cfmgr_hr_cron_account" ] || return 1
+	cfmgr_hr_cron_fingerprint="cron $cfmgr_hr_cron_account $cfmgr_hr_cron_path $cfmgr_hr_cron_before $cfmgr_hr_cron_sha"
+	# Restore BOTH retained files. Later metadata probes consumed their own pair.
+	[ -f "$cfmgr_hr_cron_result" ] && [ -f "$cfmgr_hr_cron_stderr" ] && [ ! -s "$cfmgr_hr_cron_stderr" ] || return 1
+	cfmgr_probe_stdout=$cfmgr_hr_cron_result cfmgr_probe_stderr=$cfmgr_hr_cron_stderr cfmgr_hr_result=$cfmgr_hr_cron_result
 }
 
 cfmgr_hr_resolve() {
@@ -3258,7 +3499,7 @@ cfmgr_hr_resolve() {
 	case $cfmgr_hr_mode in -????????? | d?????????) ;; *) return 1 ;; esac
 	cfmgr_hr_run history-mount 8192 "$cfmgr_store_awk" "$cfmgr_hr_lib/storage.sh" "$cfmgr_hr_resolve_canonical" || return $?
 	cfmgr_hr_line "$cfmgr_hr_result" || return 1
-	IFS='	' read -r cfmgr_hr_rm_id cfmgr_hr_rm_parent cfmgr_hr_resolve_device cfmgr_hr_rm_rest << EOF_HISTORY_RESOLVE_MOUNT
+	IFS='	' read -r cfmgr_hr_rm_id cfmgr_hr_rm_parent cfmgr_hr_resolve_device cfmgr_hr_rm_rest <<EOF_HISTORY_RESOLVE_MOUNT
 $cfmgr_hr_line
 EOF_HISTORY_RESOLVE_MOUNT
 	cfmgr_hr_run history-realpath 4096 "$cfmgr_store_readlink" "$cfmgr_hr_resolve_input" || return $?
@@ -3271,15 +3512,17 @@ EOF_HISTORY_RESOLVE_MOUNT
 cfmgr_hr_stat() {
 	# No external command in the scan loop: matched native ash lacks builtin
 	# test/printf. Parse only stat identity, then inspect bounded candidates.
-	IFS= read -r cfmgr_hr_stat_line < "/proc/$1/stat" || return 1
+	IFS= read -r cfmgr_hr_stat_line <"/proc/$1/stat" || return 1
 	cfmgr_hr_stat_pid=${cfmgr_hr_stat_line%% *}
 	cfmgr_hr_stat_comm=${cfmgr_hr_stat_line#*(}
 	cfmgr_hr_stat_comm=${cfmgr_hr_stat_comm%)*}
 	cfmgr_hr_stat_tail=${cfmgr_hr_stat_line##*) }
+	case $- in *f*) cfmgr_hr_stat_noglob=1 ;; *) cfmgr_hr_stat_noglob=0 ;; esac
 	set -f
 	# Numeric Linux stat fields have no pathname meaning.
 	# shellcheck disable=SC2086
 	set -- $cfmgr_hr_stat_tail
+	[ "$cfmgr_hr_stat_noglob" = 1 ] || set +f
 	case $# in 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19) return 1 ;; esac
 	shift 19
 	cfmgr_hr_stat_start=$1
@@ -3304,7 +3547,7 @@ cfmgr_hr_processes() {
 		case $cfmgr_hr_kind:$cfmgr_hr_line in "syslog:$cfmgr_hr_root/sbin/syslog-ng" | cron:/bin/busybox) ;; *) continue ;; esac
 		cfmgr_hr_run history-proc-meta 4096 "$cfmgr_store_ls" "/proc/$cfmgr_hr_pid/exe" || return $?
 		cfmgr_hr_line "$cfmgr_hr_result" || return 1
-		IFS=' ' read -r cfmgr_hr_proc_inode cfmgr_hr_proc_rest << EOF_HISTORY_PROC_INODE
+		IFS=' ' read -r cfmgr_hr_proc_inode cfmgr_hr_proc_rest <<EOF_HISTORY_PROC_INODE
 $cfmgr_hr_line
 EOF_HISTORY_PROC_INODE
 		[ "$cfmgr_hr_kind" != syslog ] || [ "$cfmgr_hr_proc_inode" = "$cfmgr_hr_syslog_inode" ] || return 1
@@ -3312,17 +3555,216 @@ EOF_HISTORY_PROC_INODE
 		if cfmgr_hr_run history-argv 32768 "$cfmgr_store_awk" "$cfmgr_hr_result" "$cfmgr_hr_kind" "$cfmgr_hr_pid" "$cfmgr_hr_pid_start"; then
 			:
 		else
+			cfmgr_hr_argv_code=$?
+			[ "$cfmgr_hr_argv_code" != 3 ] || return 3
 			[ "${cfmgr_probe_exit:-}" = 4 ] && [ "${cfmgr_probe_status:-}" = reaped ] && continue
-			return 1
+			return "$cfmgr_hr_argv_code"
 		fi
 		cfmgr_hr_line "$cfmgr_hr_result" || return 1
 		cfmgr_hr_candidate_row=$cfmgr_hr_line
+		cfmgr_hr_run history-realpath 4096 "$cfmgr_store_readlink" "/proc/$cfmgr_hr_pid/exe" || return $?
+		cfmgr_hr_line "$cfmgr_hr_result" || return 1
+		case $cfmgr_hr_kind:$cfmgr_hr_line in "syslog:$cfmgr_hr_root/sbin/syslog-ng" | cron:/bin/busybox) ;; *) return 1 ;; esac
+		cfmgr_hr_run history-proc-meta 4096 "$cfmgr_store_ls" "/proc/$cfmgr_hr_pid/exe" || return $?
+		cfmgr_hr_line "$cfmgr_hr_result" || return 1
+		IFS=' ' read -r cfmgr_hr_proc_after_inode cfmgr_hr_proc_rest <<EOF_HISTORY_PROC_AFTER
+$cfmgr_hr_line
+EOF_HISTORY_PROC_AFTER
+		[ "$cfmgr_hr_proc_after_inode" = "$cfmgr_hr_proc_inode" ] || return 1
 		cfmgr_hr_stat "$cfmgr_hr_pid" && [ "$cfmgr_hr_stat_start" = "$cfmgr_hr_pid_start" ] || return 1
 		cfmgr_hr_process_text="$cfmgr_hr_process_text$cfmgr_hr_candidate_row
 "
 		[ "${#cfmgr_hr_process_text}" -le "$cfmgr_history_limit" ] || return 1
-	done 1< "$cfmgr_hr_pids"
+	done 1<"$cfmgr_hr_pids"
 	cfmgr_hr_text_frame text "$cfmgr_hr_process_text"
+}
+
+# Relevant managed logger admission. Process names discover candidates only;
+# executable ownership, source-backed argv and the actual append FD grant use.
+cfmgr_hr_writer_parse() {
+	cfmgr_hr_run history-writer-parse 4096 "$cfmgr_store_awk" "${cfmgr_hr_lib%/lib}/backup.sh" "$1" "$2" "${3:-}" || return $?
+	cfmgr_hr_line "$cfmgr_hr_result"
+}
+
+cfmgr_hr_writer_digest() {
+	cfmgr_hr_native /usr/sbin/openssl || return $?
+	cfmgr_hr_run history-digest 4096 /usr/sbin/openssl "$1" || return $?
+	cfmgr_hr_line "$cfmgr_hr_result" || return 1
+	cfmgr_hr_writer_sha=${cfmgr_hr_line%% *}
+	[ "${#cfmgr_hr_writer_sha}" = 64 ] || return 1
+	case $cfmgr_hr_writer_sha in *[!0-9a-f]*) return 1 ;; esac
+}
+
+cfmgr_hr_writer_failure() {
+	[ "$1" != 3 ] || return 3
+	[ -d "/proc/$cfmgr_hr_writer_pid" ] || return 5
+	return 4
+}
+
+cfmgr_hr_writer_identity() {
+	cfmgr_hr_stat "$cfmgr_hr_writer_pid" || {
+		cfmgr_hr_writer_failure 1
+		return $?
+	}
+	[ "$cfmgr_hr_stat_comm:$cfmgr_hr_stat_start" = "cloudflared:$cfmgr_hr_writer_start" ] || return 4
+	cfmgr_hr_run history-realpath 4096 "$cfmgr_store_readlink" "/proc/$cfmgr_hr_writer_pid/exe" || {
+		cfmgr_hr_writer_failure "$?"
+		return $?
+	}
+	cfmgr_hr_line "$cfmgr_hr_result" || return 1
+	[ "$cfmgr_hr_line" = "$cfmgr_hr_root/bin/cloudflared" ] || return 4
+	cfmgr_hr_run history-proc-meta 4096 "$cfmgr_store_ls" "/proc/$cfmgr_hr_writer_pid/exe" || {
+		cfmgr_hr_writer_failure "$?"
+		return $?
+	}
+	cfmgr_hr_line "$cfmgr_hr_result" || return 1
+	IFS=' ' read -r cfmgr_hr_writer_observed_inode cfmgr_hr_writer_meta_rest <<EOF_HISTORY_WRITER_INODE
+$cfmgr_hr_line
+EOF_HISTORY_WRITER_INODE
+	[ "$cfmgr_hr_writer_observed_inode" = "$cfmgr_hr_writer_inode" ] || return 4
+	cfmgr_hr_writer_digest "/proc/$cfmgr_hr_writer_pid/exe" || {
+		cfmgr_hr_writer_failure "$?"
+		return $?
+	}
+	[ "$cfmgr_hr_writer_sha" = "$cfmgr_hr_writer_expected_sha" ] || return 4
+	IFS= read -r cfmgr_hr_writer_current_boot </proc/sys/kernel/random/boot_id || return 1
+	[ "$cfmgr_hr_writer_current_boot" = "$cfmgr_hr_writer_boot" ] || return 4
+}
+
+cfmgr_hr_writer_observe() {
+	cfmgr_hr_writer_count=0 cfmgr_hr_writer_pid='' cfmgr_hr_writer_evidence=''
+	IFS= read -r cfmgr_hr_writer_boot </proc/sys/kernel/random/boot_id || return 1
+	cfmgr_hr_run history-proc-list "$cfmgr_history_limit" "$cfmgr_store_ls" "$cfmgr_history_memory_kib" || return $?
+	cfmgr_hr_run history-proc-pids "$cfmgr_history_limit" "$cfmgr_store_awk" "$cfmgr_hr_result" || return $?
+	cfmgr_hr_writer_pids=$cfmgr_hr_result cfmgr_hr_writer_scanned=0
+	while IFS= read -r cfmgr_hr_writer_candidate <&1; do
+		cfmgr_hr_writer_scanned=$((cfmgr_hr_writer_scanned + 1))
+		[ "$cfmgr_hr_writer_scanned" -le 4096 ] || return 4
+		# Unrelated disappearing processes grant no authority and are irrelevant.
+		if cfmgr_hr_stat "$cfmgr_hr_writer_candidate"; then :; else
+			[ ! -d "/proc/$cfmgr_hr_writer_candidate" ] || return 4
+			continue
+		fi
+		case $cfmgr_hr_stat_comm in cloudflared) ;; *) continue ;; esac
+		cfmgr_hr_writer_count=$((cfmgr_hr_writer_count + 1))
+		[ "$cfmgr_hr_writer_count" = 1 ] || return 4
+		cfmgr_hr_writer_pid=$cfmgr_hr_writer_candidate cfmgr_hr_writer_start=$cfmgr_hr_stat_start
+	done 1<"$cfmgr_hr_writer_pids"
+	cfmgr_history_runtime_consume "$cfmgr_hr_writer_pids" || return $?
+	[ "$cfmgr_hr_writer_count" != 0 ] || {
+		cfmgr_hr_writer_evidence=absent
+		return 0
+	}
+	cfmgr_hr_writer_expected_sha='' cfmgr_hr_writer_generation='' cfmgr_hr_writer_owner=0
+	while IFS=' ' read -r cfmgr_hr_w_tag cfmgr_hr_w_a cfmgr_hr_w_b cfmgr_hr_w_c cfmgr_hr_w_d cfmgr_hr_w_more <&1; do
+		case $cfmgr_hr_w_tag:$cfmgr_hr_w_a in
+		WRITER:cloudflared)
+			[ -z "$cfmgr_hr_writer_expected_sha$cfmgr_hr_w_more" ] && [ "$cfmgr_hr_w_b" = 2f6f70742f62696e2f636c6f7564666c61726564 ] || return 4
+			cfmgr_archive_uint "$cfmgr_hr_w_c" && [ "$cfmgr_hr_w_c" -gt 0 ] || return 4
+			cfmgr_hr_writer_expected_sha=$cfmgr_hr_w_d cfmgr_hr_writer_generation=$cfmgr_hr_w_c
+			;;
+		OWNER:history.cloudflared)
+			[ "$cfmgr_hr_w_b" = 2f6f70742f7661722f6c6f672f636c6f7564666c617265642e6c6f67 ] || return 4
+			cfmgr_hr_writer_owner=$((cfmgr_hr_writer_owner + 1))
+			;;
+		esac
+	done 1<"$cfmgr_history_plan"
+	[ "$cfmgr_hr_writer_owner:${#cfmgr_hr_writer_expected_sha}" = 1:64 ] || return 4
+	case $cfmgr_hr_writer_expected_sha in *[!0-9a-f]*) return 4 ;; esac
+	cfmgr_hr_admit /opt/bin/cloudflared || {
+		cfmgr_hr_writer_failure "$?"
+		return $?
+	}
+	cfmgr_hr_writer_binary=$cfmgr_hr_input
+	cfmgr_hr_meta_raw "$cfmgr_hr_writer_binary" || return $?
+	cfmgr_hr_writer_inode=$cfmgr_hr_inode
+	case $cfmgr_hr_mode:$cfmgr_hr_uid in -?????????:0) ;; *) return 4 ;; esac
+	cfmgr_hr_writer_digest "$cfmgr_hr_writer_binary" || return $?
+	[ "$cfmgr_hr_writer_sha" = "$cfmgr_hr_writer_expected_sha" ] || return 4
+	cfmgr_hr_writer_identity || return $?
+	cfmgr_hr_native /usr/bin/hexdump || return $?
+	cfmgr_hr_run history-hexdump 98304 /usr/bin/hexdump "/proc/$cfmgr_hr_writer_pid/cmdline" || {
+		cfmgr_hr_writer_failure "$?"
+		return $?
+	}
+	cfmgr_hr_writer_argv=$cfmgr_hr_result
+	cfmgr_hr_writer_digest "$cfmgr_hr_writer_argv" || return $?
+	cfmgr_hr_writer_argv_sha=$cfmgr_hr_writer_sha
+	if cfmgr_hr_writer_parse argv "$cfmgr_hr_writer_argv"; then :; else
+		cfmgr_hr_writer_code=$?
+		[ "$cfmgr_hr_writer_code" != 3 ] || return 3
+		return 4
+	fi
+	[ "$cfmgr_hr_line" = 'ARGV supported END' ] || return 4
+	cfmgr_history_runtime_consume "$cfmgr_hr_writer_argv" || return $?
+	cfmgr_hr_writer_matches=0 cfmgr_hr_writer_fd_evidence='' cfmgr_hr_writer_fd_count=0
+	cfmgr_hr_run history-writer-fd-list 4096 "$cfmgr_store_ls" "$cfmgr_hr_writer_pid" "$cfmgr_history_memory_kib" || return $?
+	cfmgr_hr_writer_fd_list=$cfmgr_hr_result
+	while IFS= read -r cfmgr_hr_writer_fd <&1; do
+		cfmgr_hr_writer_info=/proc/$cfmgr_hr_writer_pid/fdinfo/$cfmgr_hr_writer_fd
+		cfmgr_hr_writer_fd_count=$((cfmgr_hr_writer_fd_count + 1))
+		[ "$cfmgr_hr_writer_fd_count" -le 256 ] || return 4
+		case $cfmgr_hr_writer_fd in '' | *[!0-9]*) return 4 ;; esac
+		cfmgr_hr_writer_flags='' cfmgr_hr_writer_flags_count=0 cfmgr_hr_writer_info_lines=0
+		while IFS=' 	' read -r cfmgr_hr_writer_key cfmgr_hr_writer_value cfmgr_hr_writer_more <&1; do
+			cfmgr_hr_writer_info_lines=$((cfmgr_hr_writer_info_lines + 1))
+			[ "$cfmgr_hr_writer_info_lines" -le 8 ] || return 4
+			case $cfmgr_hr_writer_key in flags:)
+				[ -z "$cfmgr_hr_writer_more" ] || return 4
+				cfmgr_hr_writer_flags=$cfmgr_hr_writer_value
+				cfmgr_hr_writer_flags_count=$((cfmgr_hr_writer_flags_count + 1))
+				break
+				;;
+			esac
+		done 1<"$cfmgr_hr_writer_info" || return 4
+		[ "$cfmgr_hr_writer_flags_count" = 1 ] || return 4
+		case $cfmgr_hr_writer_flags in '' | *[!0-7]*) return 4 ;; esac
+		[ "${#cfmgr_hr_writer_flags}" -le 11 ] || return 4
+		cfmgr_hr_writer_flags_number=$((0$cfmgr_hr_writer_flags))
+		[ "$((cfmgr_hr_writer_flags_number % 4))" = 1 ] && [ "$((cfmgr_hr_writer_flags_number / 1024 % 2))" = 1 ] || continue
+		cfmgr_hr_writer_fd_path=/proc/$cfmgr_hr_writer_pid/fd/$cfmgr_hr_writer_fd
+		[ "$cfmgr_hr_writer_fd_path" -ef "$cfmgr_hr_writer_source" ] || continue
+		cfmgr_hr_writer_matches=$((cfmgr_hr_writer_matches + 1))
+		[ "$cfmgr_hr_writer_matches" = 1 ] || return 4
+		cfmgr_hr_writer_fd_evidence=$cfmgr_hr_writer_fd:$cfmgr_hr_writer_flags
+	done 1<"$cfmgr_hr_writer_fd_list"
+	cfmgr_history_runtime_consume "$cfmgr_hr_writer_fd_list" || return $?
+	[ "$cfmgr_hr_writer_matches" = 1 ] || return 4
+	cfmgr_hr_writer_identity || return $?
+	cfmgr_hr_writer_evidence=$cfmgr_hr_writer_boot:$cfmgr_hr_writer_pid:$cfmgr_hr_writer_start:$cfmgr_hr_writer_inode:$cfmgr_hr_writer_expected_sha:$cfmgr_hr_writer_generation:$cfmgr_hr_writer_argv_sha:$cfmgr_hr_writer_fd_evidence
+}
+
+cfmgr_archive_cloud_capture_mode() {
+	[ "$#" = 1 ] && [ "${cfmgr_history_lock_held:-0}:${cfmgr_config_lock_fd0:-0}" = 1:1 ] &&
+		[ "${cfmgr_hr_phase:-}" = source ] && cfmgr_backup_history_attached || return 1
+	[ "$1" -ef /proc/self/fd/3/var/log/cloudflared.log ] || return 1
+	cfmgr_hr_writer_source=$1
+	# Capture producers may have retained new receipts since the phase boundary.
+	cfmgr_history_runtime_seed || return 1
+	if cfmgr_hr_writer_observe; then :; else
+		cfmgr_hr_writer_code=$?
+		[ "$cfmgr_hr_writer_code" = 5 ] || return "$cfmgr_hr_writer_code"
+		# One fresh complete discovery can establish ordinary process exit.
+		cfmgr_hr_writer_observe || {
+			cfmgr_hr_writer_code=$?
+			[ "$cfmgr_hr_writer_code" != 5 ] || cfmgr_hr_writer_code=4
+			return "$cfmgr_hr_writer_code"
+		}
+	fi
+	cfmgr_hr_writer_saved=$cfmgr_hr_writer_evidence
+	case $cfmgr_hr_writer_saved in absent) cfmgr_archive_capture_mode=whole ;; *) cfmgr_archive_capture_mode=prefix ;; esac
+}
+
+cfmgr_archive_cloud_capture_revalidate() {
+	[ "$#" = 1 ] && [ "$1" = "${cfmgr_hr_writer_source:-}" ] &&
+		[ "${cfmgr_history_lock_held:-0}:${cfmgr_config_lock_fd0:-0}" = 1:1 ] && cfmgr_backup_history_attached || return 1
+	cfmgr_history_runtime_seed || return 1
+	if cfmgr_hr_writer_observe; then :; else
+		cfmgr_hr_writer_code=$?
+		[ "$cfmgr_hr_writer_code" != 3 ] || return 3
+		return 1
+	fi
+	[ "$cfmgr_hr_writer_evidence" = "$cfmgr_hr_writer_saved" ]
 }
 
 # ---- backup payload ----
@@ -3418,7 +3860,7 @@ cfmgr_payload_certificate_decode() {
 	cfmgr_archive_run archive-payload-pem 131072 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" \
 		"/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_payload_hex##*/}" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
-	IFS=' ' read -r cfmgr_payload_tag cfmgr_payload_version cfmgr_payload_base64 cfmgr_payload_end cfmgr_payload_extra << EOF_PAYLOAD_PEM
+	IFS=' ' read -r cfmgr_payload_tag cfmgr_payload_version cfmgr_payload_base64 cfmgr_payload_end cfmgr_payload_extra <<EOF_PAYLOAD_PEM
 $cfmgr_store_line
 EOF_PAYLOAD_PEM
 	[ "$cfmgr_payload_tag:$cfmgr_payload_version:$cfmgr_payload_end:$cfmgr_payload_extra" = CFMGR-PEM:1:END: ] || return 1
@@ -3426,7 +3868,7 @@ EOF_PAYLOAD_PEM
 	(
 		umask 077
 		set -C
-		cd /proc/self/fd/5 && printf '%s\n' "$cfmgr_payload_base64" > "${cfmgr_payload_ram##*/}"
+		cd /proc/self/fd/5 && printf '%s\n' "$cfmgr_payload_base64" >"${cfmgr_payload_ram##*/}"
 	) || return 1
 	cfmgr_payload_ram_record "$cfmgr_payload_ram" || return 1
 	cfmgr_payload_encoded=$cfmgr_payload_ram
@@ -3452,37 +3894,37 @@ cfmgr_payload_index() {
 		[ "$cfmgr_payload_index_end" = 0 ] || return 1
 		cfmgr_payload_index_lines=$((cfmgr_payload_index_lines + 1))
 		case $cfmgr_payload_tag in
-			CFMGR-CAPTURE-PLAN)
-				[ "$cfmgr_payload_index_lines:$cfmgr_payload_a" = 1:1 ] && [ -z "$cfmgr_payload_d$cfmgr_payload_rest" ] || return 1
-				cfmgr_payload_schema=$cfmgr_payload_b cfmgr_payload_generation=$cfmgr_payload_c
-				;;
-			BACKUP)
-				[ "$cfmgr_payload_index_backup" = 0 ] && [ -z "$cfmgr_payload_d$cfmgr_payload_rest" ] || return 1
-				cfmgr_payload_index_backup=1 cfmgr_payload_date_order=$cfmgr_payload_a cfmgr_payload_keep=$cfmgr_payload_b cfmgr_payload_set_id=$cfmgr_payload_c
-				;;
-			AUTH)
-				[ -z "$cfmgr_payload_auth_line$cfmgr_payload_rest" ] || return 1
-				cfmgr_payload_auth_line="CFMGR-AUTH 1 $cfmgr_payload_a $cfmgr_payload_b $cfmgr_payload_c $cfmgr_payload_d END"
-				;;
-			CERT)
-				[ -z "$cfmgr_payload_certificate_account$cfmgr_payload_rest" ] || return 1
-				cfmgr_payload_certificate_account=$cfmgr_payload_b
-				;;
-			END)
-				[ "$cfmgr_payload_a" = "$((cfmgr_payload_index_lines - 1))" ] && [ -z "$cfmgr_payload_b$cfmgr_payload_c$cfmgr_payload_d$cfmgr_payload_rest" ] || return 1
-				cfmgr_payload_index_end=1
-				;;
-			FILE | NOTE | EXTERNAL | HISTORY) ;;
-			*) return 1 ;;
+		CFMGR-CAPTURE-PLAN)
+			[ "$cfmgr_payload_index_lines:$cfmgr_payload_a" = 1:1 ] && [ -z "$cfmgr_payload_d$cfmgr_payload_rest" ] || return 1
+			cfmgr_payload_schema=$cfmgr_payload_b cfmgr_payload_generation=$cfmgr_payload_c
+			;;
+		BACKUP)
+			[ "$cfmgr_payload_index_backup" = 0 ] && [ -z "$cfmgr_payload_d$cfmgr_payload_rest" ] || return 1
+			cfmgr_payload_index_backup=1 cfmgr_payload_date_order=$cfmgr_payload_a cfmgr_payload_keep=$cfmgr_payload_b cfmgr_payload_set_id=$cfmgr_payload_c
+			;;
+		AUTH)
+			[ -z "$cfmgr_payload_auth_line$cfmgr_payload_rest" ] || return 1
+			cfmgr_payload_auth_line="CFMGR-AUTH 1 $cfmgr_payload_a $cfmgr_payload_b $cfmgr_payload_c $cfmgr_payload_d END"
+			;;
+		CERT)
+			[ -z "$cfmgr_payload_certificate_account$cfmgr_payload_rest" ] || return 1
+			cfmgr_payload_certificate_account=$cfmgr_payload_b
+			;;
+		END)
+			[ "$cfmgr_payload_a" = "$((cfmgr_payload_index_lines - 1))" ] && [ -z "$cfmgr_payload_b$cfmgr_payload_c$cfmgr_payload_d$cfmgr_payload_rest" ] || return 1
+			cfmgr_payload_index_end=1
+			;;
+		FILE | NOTE | EXTERNAL | HISTORY) ;;
+		*) return 1 ;;
 		esac
-	done 1< "$cfmgr_payload_capture_plan"
+	done 1<"$cfmgr_payload_capture_plan"
 	[ "$cfmgr_payload_index_end:$cfmgr_payload_index_backup" = 1:1 ] || return 1
 	if [ -n "$cfmgr_payload_auth_line" ]; then
 		cfmgr_payload_ram_name
 		(
 			umask 077
 			set -C
-			cd /proc/self/fd/5 && printf '%s\n' "$cfmgr_payload_auth_line" > "${cfmgr_payload_ram##*/}"
+			cd /proc/self/fd/5 && printf '%s\n' "$cfmgr_payload_auth_line" >"${cfmgr_payload_ram##*/}"
 		) || return 1
 		cfmgr_payload_ram_record "$cfmgr_payload_ram" || return 1
 		cfmgr_payload_authority=$cfmgr_payload_ram
@@ -3492,20 +3934,20 @@ cfmgr_payload_index() {
 cfmgr_archive_verify_payload() {
 	[ "$#" -eq 9 ] || return 1
 	case $1 in
-		manager.config) cfmgr_payload_json plan "$9" - ;;
-		manager.catalog) [ "$6" -gt 0 ] && [ "$6" -le 1048576 ] ;; # Informational data; never code selection.
-		data.cloudflared.yaml) cfmgr_payload_yaml "$9" ;;
-		data.cloudflared.json)
-			cfmgr_payload_preserve "$9" 65536 || return $?
-			cfmgr_payload_json=$cfmgr_payload_result
-			;;
-		data.cloudflared.certificate | data.cloudflared.certificate-recovery)
-			cfmgr_payload_certificate_decode "$9" || return $?
-			if [ "$1" = data.cloudflared.certificate ]; then cfmgr_payload_certificate=$cfmgr_payload_result; else cfmgr_payload_recovery=$cfmgr_payload_result; fi
-			;;
-		data.setup-drafts) cfmgr_payload_json drafts "$9" "$4" ;;
-		data.cloudflared.yaml-backup | data.cloudflared.input.* | history.ddns | history.ip_sync | history.cloudflared) return 0 ;;
-		*) return 1 ;;
+	manager.config) cfmgr_payload_json plan "$9" - ;;
+	manager.catalog) [ "$6" -gt 0 ] && [ "$6" -le 1048576 ] ;; # Informational data; never code selection.
+	data.cloudflared.yaml) cfmgr_payload_yaml "$9" ;;
+	data.cloudflared.json)
+		cfmgr_payload_preserve "$9" 65536 || return $?
+		cfmgr_payload_json=$cfmgr_payload_result
+		;;
+	data.cloudflared.certificate | data.cloudflared.certificate-recovery)
+		cfmgr_payload_certificate_decode "$9" || return $?
+		if [ "$1" = data.cloudflared.certificate ]; then cfmgr_payload_certificate=$cfmgr_payload_result; else cfmgr_payload_recovery=$cfmgr_payload_result; fi
+		;;
+	data.setup-drafts) cfmgr_payload_json drafts "$9" "$4" ;;
+	data.cloudflared.yaml-backup | data.cloudflared.input.* | history.ddns | history.ip_sync | history.cloudflared) return 0 ;;
+	*) return 1 ;;
 	esac
 }
 
@@ -3536,7 +3978,7 @@ cfmgr_archive_verify_complete() {
 cfmgr_backup_mount_record() {
 	IFS='	' read -r cfmgr_backup_id cfmgr_backup_parent cfmgr_backup_device cfmgr_backup_root \
 		cfmgr_backup_mount cfmgr_backup_filesystem cfmgr_backup_device_path cfmgr_backup_options \
-		cfmgr_backup_super cfmgr_backup_propagation cfmgr_backup_extra << EOF_BACKUP_MOUNT
+		cfmgr_backup_super cfmgr_backup_propagation cfmgr_backup_extra <<EOF_BACKUP_MOUNT
 $1
 EOF_BACKUP_MOUNT
 	[ -z "$cfmgr_backup_extra" ] || return 1
@@ -3586,7 +4028,7 @@ cfmgr_backup_uuid_parse() {
 		}' "$cfmgr_backup_device_path" "$cfmgr_backup_filesystem" "$1") || return 1
 	{
 		IFS= read -r cfmgr_backup_uuid && IFS= read -r cfmgr_backup_label
-	} << EOF_BACKUP_IDENTITY
+	} <<EOF_BACKUP_IDENTITY
 $cfmgr_backup_identity
 EOF_BACKUP_IDENTITY
 }
@@ -3627,7 +4069,7 @@ cfmgr_backup_pin_selected() {
 	cfmgr_backup_observe_mount "$cfmgr_backup_want_mount" || return $?
 	[ "$cfmgr_backup_mount:$cfmgr_backup_filesystem:$cfmgr_backup_root" = "$cfmgr_backup_want_mount:$cfmgr_backup_want_filesystem:$cfmgr_backup_want_root" ] &&
 		[ "$cfmgr_backup_snapshot" = "$cfmgr_backup_want_snapshot" ] || return 1
-	{ exec 6<&3; } 3< "$cfmgr_backup_mount" || return 1
+	{ exec 6<&3; } 3<"$cfmgr_backup_mount" || return 1
 	cfmgr_backup_pinned=1 cfmgr_store_backup_gate=1
 	cfmgr_backup_attached || return 1
 	cfmgr_backup_observe_uuid || return $?
@@ -3651,7 +4093,7 @@ cfmgr_backup_prepare_folder() {
 cfmgr_backup_folder_admit() {
 	cfmgr_backup_attached && [ -d "$cfmgr_backup_mount/CFBackup" ] && [ ! -L "$cfmgr_backup_mount/CFBackup" ] || return 1
 	[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount/CFBackup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
-	{ exec 7<&3; } 3< "$cfmgr_backup_mount/CFBackup" || return 1
+	{ exec 7<&3; } 3<"$cfmgr_backup_mount/CFBackup" || return 1
 	cfmgr_backup_folder_pinned=1
 	cfmgr_backup_attached
 }
@@ -3668,12 +4110,12 @@ cfmgr_archive_source_pin() {
 	# Saved UUID FILESYSTEM FSROOT RELATIVE; no config reads or alias fallback.
 	[ "$#" -eq 4 ] && [ "${cfmgr_archive_source_pinned:-0}" != 1 ] || return 2
 	# FD3 must be free; never discard another owner's descriptor.
-	if (: <&3) 2> /dev/null; then return 2; fi
+	if (: <&3) 2>/dev/null; then return 2; fi
 	case $2 in ext2 | ext3 | ext4) ;; *) return 1 ;; esac
 	_cfmgr_storage_path "$3" || return 2
 	case $4 in
-		.) ;;
-		'' | /* | *[!\ -~]* | *//* | ./* | ../* | */./* | */../* | */. | */.. | */) return 2 ;;
+	.) ;;
+	'' | /* | *[!\ -~]* | *//* | ./* | ../* | */./* | */../* | */. | */.. | */) return 2 ;;
 	esac
 	cfmgr_archive_source_want_uuid=$1 cfmgr_archive_source_want_fs=$2
 	cfmgr_archive_source_want_root=$3 cfmgr_archive_source_want_relative=$4
@@ -3687,7 +4129,7 @@ cfmgr_archive_source_pin() {
 	cfmgr_archive_source_snapshot=$cfmgr_store_line
 	IFS='	' read -r cfmgr_archive_source_id cfmgr_archive_source_parent cfmgr_archive_source_device \
 		cfmgr_archive_source_fsroot cfmgr_archive_source_mount cfmgr_archive_source_fs \
-		cfmgr_archive_source_device_path cfmgr_archive_source_options cfmgr_archive_source_super cfmgr_archive_source_extra << EOF_ARCHIVE_SOURCE
+		cfmgr_archive_source_device_path cfmgr_archive_source_options cfmgr_archive_source_super cfmgr_archive_source_extra <<EOF_ARCHIVE_SOURCE
 $cfmgr_archive_source_snapshot
 EOF_ARCHIVE_SOURCE
 	[ -z "$cfmgr_archive_source_extra" ] && [ -b "$cfmgr_archive_source_device_path" ] &&
@@ -3709,7 +4151,7 @@ EOF_ARCHIVE_SOURCE
 		cfmgr_storage_uuid "$cfmgr_probe_stdout" && printf '%s\n' "$cfmgr_storage_uuid_value"
 	) || return 1
 	[ "$cfmgr_archive_source_uuid" = "$cfmgr_archive_source_want_uuid" ] || return 1
-	exec 3< "$cfmgr_archive_source_root" || return 1
+	exec 3<"$cfmgr_archive_source_root" || return 1
 	cfmgr_archive_source_pinned=1
 	if ! cfmgr_archive_source_attached; then
 		cfmgr_archive_source_release
@@ -4277,14 +4719,6 @@ cfmgr_backup_awk_backup_cloud_writer() {
 # Bounded native FD/argv observation parser. No tokens or raw process data are
 # emitted on failure. Hex input retains actual NUL argv boundaries.
 function fail() { bad=1; exit 1 }
-function uint(s) { return s ~ /^(0|[1-9][0-9]*)$/ && length(s)<=20 }
-function same(a,b) { return "i" a == "i" b }
-function octal(s, n,i,c) {
-    if(s !~ /^[0-7]+$/ || length(s)>12) fail()
-    n=0
-    for(i=1;i<=length(s);i++) { c=substr(s,i,1)+0; n=n*8+c; if(n>2147483647)fail() }
-    return n
-}
 function hexbyte(s, i,n,c) {
     n=0
     for(i=1;i<=2;i++) { c=index("0123456789abcdef",substr(s,i,1))-1; if(c<0)fail(); n=n*16+c }
@@ -4298,92 +4732,37 @@ function argcheck( i,t,k,v,p,phase,logs,runs,seen,position) {
         if(t=="tunnel" && phase==0) { phase=1; continue }
         if(t=="run" && phase==1) { phase=2; runs++; continue }
         if(t ~ /^--/) {
+            if(position)fail()
             p=index(t,"="); k=p?substr(t,1,p-1):t; v=p?substr(t,p+1):""
-            if(k=="--no-autoupdate") {
-                if(p || seen[k]++)fail()
-                continue
-            }
-            # A deliberately small supported normal invocation. Unknown options
-            # are unknown ownership; never guess arities or reinterpret values.
-            if(k!="--logfile" && k!="--config" && k!="--loglevel" &&
-               k!="--transport-loglevel" && k!="--credentials-file" &&
-               k!="--origincert" && k!="--metrics" && k!="--protocol" &&
-               k!="--edge-ip-version" && k!="--token" && k!="--log-directory")fail()
             if(seen[k]++)fail()
+            if(k=="--no-autoupdate") { if(p || phase==2)fail(); continue }
+            if(k=="--token" || k=="--token-file") { if(phase!=2)fail() }
+            else if(k=="--protocol" || k=="--credentials-file") {}
+            else if(k=="--logfile" || k=="--config" || k=="--log-directory" || k=="--loglevel" ||
+                    k=="--transport-loglevel" || k=="--metrics" || k=="--edge-ip-version" ||
+                    k=="--retries" || k=="--origincert") { if(phase==2)fail() }
+            else fail()
             if(!p) { if(i==argc)fail(); v=argv[++i]; if(v ~ /^-/)fail() }
             if(v=="")fail()
             if(k=="--logfile") { if(v!="/opt/var/log/cloudflared.log")fail(); logs++ }
             continue
         }
-        if(phase!=2 || ++position>1 || t !~ /^[A-Za-z0-9_-]+$/)fail()
+        if(phase!=2 || ++position>1 || length(t)!=36 || t !~ /^[0-9a-fA-F-]+$/ ||
+           substr(t,9,1)!="-" || substr(t,14,1)!="-" || substr(t,19,1)!="-" || substr(t,24,1)!="-")fail()
+        v=t; gsub(/-/,"",v); if(length(v)!=32 || v~/[^0-9a-fA-F]/)fail()
     }
     if(phase!=2 || runs!=1 || logs!=1)fail()
     print "ARGV supported END"
 }
-BEGIN {
-    mode=cfmgr_writer_mode; arg=cfmgr_writer_arg
-    if(mode!~/^(scan|fdmeta|stat|flags|boot|argv)$/)fail()
-    if(mode=="scan" && !uint(arg))fail()
-}
+BEGIN { if(cfmgr_writer_mode!="argv")fail() }
 {
-    if(length($0)>4096 || ++lines>131072)fail()
-    if(mode=="scan") {
-        if($0=="")next
-        if($0 ~ /^\/proc\/[1-9][0-9]*\/fd:$/) {
-            pid=$0; sub(/^\/proc\//,"",pid); sub(/\/fd:$/,"",pid)
-            if(headers[pid]++ || ++dirs>1024)fail()
-            next
-        }
-        if(!pid)fail()
-        if($0 ~ /^total [0-9]+$/)next
-        if(!uint($1) || $2 !~ /^[-bcdlps][rwxSsTt-][rwxSsTt-][rwxSsTt-][rwxSsTt-][rwxSsTt-][rwxSsTt-][rwxSsTt-][rwxSsTt-][rwxSsTt-]$/ ||
-           !uint($3) || !uint($4) || !uint($5) || !uint($NF))fail()
-        if($2 ~ /^-/ && same($1,arg)) {
-            if(NF!=10 || !uint($6) || ++candidates>64)fail()
-            result=result "CANDIDATE " pid " " $NF " " $1 " " $2 " " $4 " " $5 " END\n"
-        }
-        next
-    }
-    if(mode=="fdmeta") {
-        if(NR!=1 || NF!=10 || !uint($1) || $2 !~ /^-[rwxSsTt-]+$/ || length($2)!=10 || !uint($4) || !uint($5))fail()
-        result="FD " $1 " " $2 " " $4 " " $5 " END"
-        next
-    }
     if($0 !~ /^[0-9a-f][0-9a-f]$/ || ++bytes>32768)fail()
     n=hexbyte($0)
-    if(mode=="argv") {
-        if(n==0) { if(length(token)>4096)fail(); argv[++argc]=token; token=""; finalnul=1 }
-        else { if(n<32 || n>126)fail(); token=token sprintf("%c",n); finalnul=0 }
-    } else {
-        if(n!=10 && n!=9 && (n<32 || n>126))fail()
-        text=text sprintf("%c",n)
-    }
+    if(n==0) { if(length(token)>4096)fail(); argv[++argc]=token; token=""; finalnul=1 }
+    else { if(n<32 || n>126)fail(); token=token sprintf("%c",n); finalnul=0 }
 }
-END {
-    if(bad)exit 1
-    if(mode=="scan") { if(dirs<2)exit 1; printf "%s",result; print "SCAN " dirs " " candidates+0 " END" }
-    else if(mode=="fdmeta") { if(!result)exit 1; print result }
-    else if(mode=="argv") { if(!finalnul)exit 1; argcheck() }
-    else if(mode=="boot") {
-        if(text !~ /^[0-9a-f-]+\n$/ || length(text)!=37)exit 1
-        sub(/\n$/,"",text); print "BOOT " text " END"
-    } else if(mode=="stat") {
-        p=index(text," ("); tail=text; sub(/^.*\) /,"",tail)
-        if(!p || substr(text,1,p-1)!=arg || tail==text)exit 1
-        count=split(tail,a," ")
-        if(count<20 || !uint(a[20]) || a[20]=="0")exit 1
-        print "PID " arg " " a[20] " END"
-    } else if(mode=="flags") {
-        count=split(text,a,"\n"); flags=""; found=0
-        for(i=1;i<=count;i++)if(a[i]~/^flags:[ \t]+/) {
-            if(found++)exit 1
-            flags=a[i]; sub(/^flags:[ \t]+/,"",flags)
-        }
-        if(!found)exit 1
-        n=octal(flags)
-        print "FLAGS " flags " " (n%4==1 && int(n/1024)%2==1?"append":"other") " END"
-    }
-}
+END { if(bad || !finalnul)exit 1; argcheck() }
+
 '
 	# CFMGR-AWK-END backup_cloud_writer
 }
@@ -5257,8 +5636,12 @@ function hh_base(    a,n,i,line,k,v,schedule,count,p,scriptver,scripttag,sysloc,
 	if(cadence!~/^(2|3|4|6|8|12|24)$/) hh_fail("scribe-config")
 	schedule="5 " (cadence=="24"?"0":"*/" cadence) " * * * /jffs/scripts/scribe LogRotate"
 	n=hh_lines(hh_data["cron"],a)
+	hh_cron_shell="/bin/sh"
 	for(i=1;i<=n;i++) {
-		line=hh_trim(a[i]); if(index(line,"scribeLogRotate") || index(line,"/jffs/scripts/scribe LogRotate")) {
+		line=hh_trim(a[i])
+		if(line ~ /^SHELL[ 	]*=/) { sub(/^SHELL[ 	]*=[ 	]*/,"",line); hh_cron_shell=hh_trim(line); continue }
+		if(index(line,"scribeLogRotate") || index(line,"/jffs/scripts/scribe LogRotate")) {
+			if(hh_cron_shell!="/bin/sh")hh_fail("cron-shell")
 			if(line!~/#scribeLogRotate#/) hh_fail("rotation-schedule")
 			gsub(/#scribeLogRotate#/,"",line); gsub(/[ \t]+/," ",line); line=hh_trim(line)
 			if(line!=schedule) hh_fail("rotation-schedule"); count++
