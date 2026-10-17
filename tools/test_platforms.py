@@ -1349,10 +1349,23 @@ def execute_native_busybox(manifest: dict[str, Any]) -> None:
         and (not destination.exists() or destination.is_file()),
         "unsafe native BusyBox destination",
     )
+    # These external aliases match firmware PATH dispatch; the selected shell's
+    # disabled builtins and no-fork configuration remain unchanged. Validate all
+    # destinations before replacing the binary or creating any alias.
+    aliases = tuple(destination.parent / name for name in ("[", "test", "printf"))
+    for alias in aliases:
+        _require(
+            (alias.is_symlink() and os.readlink(alias) == "busybox")
+            or (not alias.is_symlink() and not alias.exists()),
+            f"unsafe native BusyBox alias destination: {alias.name}",
+        )
     shutil.copyfile(binary, destination)
     verify_hash(destination, expected)
     verify_elf(destination, "x86_64")
     destination.chmod(0o755)
+    for alias in aliases:
+        if not alias.is_symlink():
+            alias.symlink_to("busybox")
     print(f"Verified native vendor BusyBox staged at {destination.relative_to(ROOT)}")
 
 

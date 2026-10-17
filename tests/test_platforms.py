@@ -1036,9 +1036,10 @@ def test_native_cache_requires_native_elf_and_target_receipt(
     assert platforms.build_busybox(item, tmp_path, target="native") == binary
 
 
-def test_native_mode_stages_only_verified_binary_and_refuses_symlinks(
-    manifest: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.fixture
+def native_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Path, list[str]]:
     monkeypatch.setattr(platforms, "ROOT", tmp_path)
     monkeypatch.setattr(platforms, "require_linux_host", lambda: None)
 
@@ -1062,11 +1063,32 @@ def test_native_mode_stages_only_verified_binary_and_refuses_symlinks(
         return binary
 
     monkeypatch.setattr(platforms, "build_busybox", build)
+    return binary, checked
+
+
+def test_native_mode_stages_verified_binary_and_fixed_external_aliases(
+    manifest: dict, tmp_path: Path, native_staging: tuple[Path, list[str]]
+) -> None:
+    binary, checked = native_staging
     platforms.execute_native_busybox(manifest)
     assert checked == ["make", "gcc", "git", "dpkg-query"]
     destination = tmp_path / ".tmp/native-busybox/bin/busybox"
     assert destination.read_bytes() == binary.read_bytes()
     assert destination.stat().st_mode & 0o777 == 0o755
+    aliases = [destination.parent / name for name in ("[", "test", "printf")]
+    assert {path.name for path in destination.parent.iterdir()} == {
+        "busybox",
+        "[",
+        "test",
+        "printf",
+    }
+    for alias in aliases:
+        assert alias.is_symlink() and os.readlink(alias) == "busybox"
+        assert alias.resolve() == destination
+    alias_inodes = [alias.lstat().st_ino for alias in aliases]
+    platforms.execute_native_busybox(manifest)
+    assert [alias.lstat().st_ino for alias in aliases] == alias_inodes
+    assert destination.read_bytes() == binary.read_bytes()
     destination.unlink()
     untouched = tmp_path / "untouched"
     untouched.write_text("preserve")
@@ -1074,6 +1096,53 @@ def test_native_mode_stages_only_verified_binary_and_refuses_symlinks(
     with pytest.raises(platforms.PlatformError, match="unsafe native"):
         platforms.execute_native_busybox(manifest)
     assert untouched.read_text() == "preserve"
+
+
+@pytest.mark.parametrize("name", ["[", "test", "printf"])
+@pytest.mark.parametrize(
+    "kind", ["regular", "directory", "wrong-link", "directory-link"]
+)
+def test_native_alias_conflict_preserves_all_destinations_before_mutation(
+    manifest: dict,
+    tmp_path: Path,
+    native_staging: tuple[Path, list[str]],
+    name: str,
+    kind: str,
+) -> None:
+    del native_staging
+    directory = tmp_path / ".tmp/native-busybox/bin"
+    directory.mkdir(parents=True)
+    destination = directory / "busybox"
+    destination.write_bytes(b"existing staged binary")
+    conflict = directory / name
+    untouched = tmp_path / "unrelated"
+    if kind in {"directory", "directory-link"}:
+        preserved = conflict if kind == "directory" else untouched
+        preserved.mkdir()
+        (preserved / "keep").write_text("preserve")
+    else:
+        preserved = conflict if kind == "regular" else untouched
+        preserved.write_text("preserve")
+    if kind in {"wrong-link", "directory-link"}:
+        conflict.symlink_to(untouched, target_is_directory=kind == "directory-link")
+    before = conflict.lstat()
+    with pytest.raises(platforms.PlatformError, match="unsafe native BusyBox alias"):
+        platforms.execute_native_busybox(manifest)
+    assert destination.read_bytes() == b"existing staged binary"
+    assert {path.name for path in directory.iterdir()} == {"busybox", name}
+    after = conflict.lstat()
+    assert (after.st_dev, after.st_ino, after.st_mode, after.st_size) == (
+        before.st_dev,
+        before.st_ino,
+        before.st_mode,
+        before.st_size,
+    )
+    if kind in {"directory", "directory-link"}:
+        assert (preserved / "keep").read_text() == "preserve"
+    else:
+        assert preserved.read_text() == "preserve"
+    if conflict.is_symlink():
+        assert os.readlink(conflict) == str(untouched)
 
 
 def test_native_cli_routing_rejects_guest_combinations_and_non_linux_host(

@@ -6,6 +6,24 @@
 [ "${dependency_pid_namespace:-}" != "$("$readlink" /proc/self/ns/pid)" ] || fail 'dependency fixture needs its own PID namespace'
 [ "$("$readlink" /proc/1/ns/pid)" = "$("$readlink" /proc/self/ns/pid)" ] || fail 'dependency fixture needs matching private procfs'
 view_prepare
+# Keep controller-side applet lookup representative of the pinned native ash:
+# its build disables the test and printf shell builtins.
+dependency_controller_bin=$fixture/controller-bin
+mkdir -m 700 "$dependency_controller_bin" ||
+	fail 'controller applet path setup failed'
+for dependency_applet in '[' test printf; do
+	ln -s "$view_busybox" "$dependency_controller_bin/$dependency_applet" ||
+		fail "controller applet link failed: $dependency_applet"
+done
+PATH=$dependency_controller_bin:$PATH
+export PATH
+hash -r 2>/dev/null || :
+for dependency_applet in '[' test printf; do
+	dependency_target=$("$readlink" "$dependency_controller_bin/$dependency_applet") ||
+		fail "controller applet target check failed: $dependency_applet"
+	[ "$dependency_target" = "$view_busybox" ] ||
+		fail "controller applet does not target selected BusyBox: $dependency_applet"
+done
 # Fixed synthetic phase evidence survives loss of the private tmpfs/namespace.
 # This file contains no arguments, package/config data, or trusted ownership input.
 (

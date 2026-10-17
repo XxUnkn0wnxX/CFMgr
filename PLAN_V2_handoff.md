@@ -78,7 +78,7 @@ reported in the unfinished groups. Named logs/metadata are retained under
 The earlier forty-minute serial run **39022377733** at `7a02dc2` is also terminal
 cancelled, as the user requested. Host passed in 8m47; native reached 87% before
 cancellation after 31m13. This shows slow execution, not a proved deadlock. Neither
-cancelled run provides a complete core pass. No CI job is currently active.
+cancelled run provides a complete core pass.
 
 ### Implemented next candidate and diagnosis
 
@@ -92,12 +92,36 @@ local runner behavior is preserved. The complete partition remains 47 test modul
 collection gives Backup 361 cases, Manager 566, Status 36 (**963 product cases**)
 and Tooling 166. No product test was dropped or made optional.
 
-Local evidence on the dirty next candidate: `tests/test_dev_runners.py` **99 passed
+Published workflow/profile candidate: **`31ada7ff6220362070369aff77c493d0ec37abdd`**.
+All eight repository-owned workflow names are registered in GitHub. Its premature
+automatic Checks run **39026672475** is terminal cancelled while diagnosis runs.
+Optional **Tools Checks 39026690046** passed all 166 tests on both host (0.84s)
+and native BusyBox (0.71s), including independent preflight. Native Dev Checks
+**39026686131** passed the positive verifier in **80.44s** (21.83 user / 46.34
+system): 367 probes, 245 inode probes, 1,698 attachments, 1,101 observations,
+367 pauses and 1,468 RAM inode reads. Its identical 300-command microbenchmark
+passed with both backends: current host applets **0.343s** (0.071 user / 0.273
+system), external vendor applets **0.204s** (0.093 / 0.114). Native installer
+**39026688120** passed in **176.49s** (87.09 user / 91.18 system): repair 126.53s,
+full prerequisite checks 1.17s and 1.79s, transaction 41.88s. All are terminal.
+
+The next bounded fidelity correction stages only external `[`, `test` and
+`printf` aliases beside the verified native binary; builtins and no-fork remain
+disabled. The dependency fixture restores those three controller aliases inside
+its private namespace because sudo drops the incoming PATH prefix. Production
+sanitized worker paths remain unchanged. Both workers returned ownership; parent
+reviewed the diff. Platform staging tests: **52 passed in 0.67s**, plus fixture
+syntax, ShellCheck, shfmt, Ruff/format/compile, planning/package/whitespace passed.
+No runtime code changed. Repeat the identical two native cases before judging
+the whole-module cost impact; their full assertions and deadlines are retained.
+
+Local evidence before that commit: `tests/test_dev_runners.py` **99 passed
 in 1.79s**; Ruff/format/compile/YAML/embedded shell syntax/whitespace passed. Parent
 `tools/test.py --checks-only --skip-shellcheck` passed all common source gates and
 host syntax. Workflow worker `module_consolidation` returned ownership; reviewer
 `consolidation_review` passed the final optional-tools delta. No full local suite
-is due because no main goal is complete. Named workflow execution is still pending.
+is due because no main goal is complete. Complete product workflow execution
+remains pending the measured correction.
 
 Fixture-only profiling is implemented in `tests/test_archive_io.py` and
 `tests/test_archive_verify.py`; worker `archive_tools_fixture` returned ownership.
