@@ -107,7 +107,8 @@ pauses differ by one scheduling iteration. Installer phase times became repair
 178 cases on host (1.47s) and native (1.25s). Premature core **39027143995** is
 terminal cancelled. These are meaningful work-cost improvements, not core acceptance.
 
-The next candidate is locally implemented and reviewed, not yet published:
+Current candidate: **`171f899903eae85210c2fa693746d4d791d0df2a`**, published and
+focused-native passed. Its premature core **39028150001** is terminal cancelled.
 
 - Runtime: builtin `case` replaces scalar tests in four hot backup functions and
   the first prerequisite/supervisor section of execution. Strict literal equality,
@@ -119,7 +120,12 @@ The next candidate is locally implemented and reviewed, not yet published:
   tests/test_archive_io.py --skip-shellcheck` passed common statics/host syntax and
   **35 tests / 14 explicit Linux skips in 9.85s**. The positive verifier passed
   **47.91s** on macOS, with the same counters; this does not demonstrate a host
-  speedup. Native comparison and all affected groups are pending.
+  speedup. Native Dev **39028169040** passed complete prerequisites/I/O: **48 passed,
+  one workstation-only skip, 14.73s**. Positive verifier **39028164447** passed in
+  **42.10s** (14.59 user / 14.04 system), retaining the same 367 probes, 245 inode
+  probes, 1,468 RAM reads and 367 pauses. Actual installer **39028166604** passed
+  in **127.91s** (75.96 user / 52.89 system). Both small runtime refinements retain
+  a measured CPU/wall reduction compared with the preceding alias-only candidate.
 - Scheduling: each main-module workflow has complete host and native jobs on
   separate VMs, max two per module, fail-fast off, ten minutes per job. Planner
   **PASS WITH NOTES**: shared-host parallelism would collide in real cloudflared
@@ -127,22 +133,34 @@ The next candidate is locally implemented and reviewed, not yet published:
   start to latest finish including setup, with queue delay separate. Platform
   scheduling cannot replace actual cost reduction or a passing complete module.
   Tools remains optional with its cheap serial host/native default. Workflow tests
-  **106 passed in 1.88s**; Ruff/compile/YAML/embedded shell checks passed.
+  **106 passed in 1.88s**; Ruff/compile/YAML/embedded shell checks passed. Optional
+  Tools **39028225945** passed all **185** cases on host (1.52s) and native (1.25s),
+  including independent preflight through the updated composite action.
 - User flagged AGENTS size. Parent consolidated repeated rules from **30,948 to
   22,995 bytes**, preserving permissions/gates; independent comparison to retained
   `.tmp/archive-creation/AGENTS.before-consolidation.md` returned **PASS**.
 
-All workers returned ownership. Parent owns AGENTS and V2 records. No CI remains
-active. Complete collection excludes four optional diagnostics and proves exact
+All implementation/review workers returned ownership. Parent owns AGENTS and V2
+records; `checkpoint_ci_wait` monitors runs only. Complete collection excludes
+four optional diagnostics and proves exact
 ownership: Backup **361**, Manager **566**, Status **36** (963 required product
 cases); optional Tools now **185**. The private `pending-quick-groups.json` has
 17 temporary, owner-specific diagnostic selections covering all 927 Backup/Manager
 cases exactly once; Status remains a complete fast group, Tools stays optional.
 
-Next: publish this reviewed candidate, cancel premature core, repeat the positive
-verifier and installer plus complete prerequisites/I/O in Dev. Once those pass,
-run every temporary diagnostic batch (at most three concurrent), requiring each
-within two to three minutes; diagnose any exception. Then run full Checks at the
+All eleven Backup diagnostic selections passed at this candidate, individually
+within 98 seconds, but their summed pytest cost is approximately eleven minutes.
+That is not yet the complete-module budget. A bounded fixture refinement reduces
+hash rejection to two mandatory members and unsafe-path rejection to three. The
+config callback must run before catalog hash failure; unsafe paths must reach the
+actual reaped inventory-parser rejection. Completion stays absent, and the full
+five-member positive binary/empty traversal is unchanged. Worker returned ownership;
+the two changed host cases passed in 104.47s (106.92 wall, 38.42 user, 31.25 system),
+with Ruff/format/compile checks. This macOS timing is not a native-speed claim.
+Remaining Manager diagnostic selections are
+running at the existing candidate (at most three concurrent); completed groups
+include dependencies at 160.62s and execution at approximately 48s.
+Require every diagnostic batch within two to three minutes, then run full Checks at the
 same final SHA, verifying both platforms and every module's complete makespan
 within roughly ten minutes. Accept the six IDs/update README only after that gate.
 Publish records and stop for the day, without reviewing or suggesting another block.

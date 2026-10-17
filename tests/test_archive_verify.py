@@ -70,9 +70,10 @@ def make_archive(
         "etc/cloudflared/config.yml",
     ]
     if compact:
-        # Raw-header rejection and callback admission need only the two mandatory
-        # members. Binary/empty/body traversal remains in the full positive case.
-        data, roles, paths = data[:2], roles[:2], paths[:2]
+        # True retains the two mandatory members; a count can retain the JSON
+        # member for inventory path rejection. Full traversal stays positive.
+        count = 2 if compact is True else compact
+        data, roles, paths = data[:count], roles[:count], paths[:count]
     if mutation == "unsafe-path":
         paths[2] = "etc/cloudflared/../foreign.json"
     if mutation == "control-path":
@@ -80,7 +81,7 @@ def make_archive(
     rows = []
     for index, (body, role, path) in enumerate(zip(data, roles, paths), 1):
         digest = hashlib.sha256(body).hexdigest()
-        if mutation == "hash" and index == 4:
+        if mutation == "hash" and index == (2 if compact else 4):
             digest = "0" * 64
         rows.append(
             f"FILE p{index:08d} {role} {'jffs' if index <= 2 else 'entware'} {path.encode().hex()} 1 0600 {len(body)} {digest} {'prefix' if index == 4 else 'whole'}"
@@ -285,10 +286,18 @@ def test_raw_rejection_precedes_every_native_tar_call(archive, shell, mutation):
 
 @pytest.mark.parametrize("mutation", ["hash", "unsafe-path"])
 def test_inventory_and_hash_fail_closed(archive, shell, mutation):
-    make_archive(archive, mutation=mutation)
+    make_archive(archive, mutation=mutation, compact=2 if mutation == "hash" else 3)
     result = verify(archive, shell)
     assert result.returncode != 0 and b"verified=0" in result.stdout, result
     assert not (archive[1] / "complete-callback").exists()
+    if mutation == "hash":
+        assert (archive[1] / "payload-callbacks").read_text().splitlines() == [
+            "manager.config"
+        ]
+    else:
+        assert b"probe=archive-format-inventory status=reaped " in result.stdout, result
+        assert b" child_exit=1 " in result.stdout, result
+        assert not (archive[1] / "payload-callbacks").exists()
 
 
 @pytest.mark.parametrize("failure", ["missing", "payload", "complete", "wrong-set"])
