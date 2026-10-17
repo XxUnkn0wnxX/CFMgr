@@ -722,6 +722,7 @@ def test_rotation_release_rechecks_inode_and_mount_but_ignores_truncation(
         library.read_text()
         .replace("/tmp/scribeLogRotate.flock", str(rotation))
         .replace("cfmgr_hr_meta_raw() {", "cfmgr_test_hr_meta_raw() {", 1)
+        .replace("cfmgr_hr_mount_identity() {", "cfmgr_test_hr_mount_identity() {", 1)
     )
     archive[-1]["TEST_ROTATION_CHANGE"] = change
     passed(
@@ -732,6 +733,11 @@ def test_rotation_release_rechecks_inode_and_mount_but_ignores_truncation(
             + r"""
 cfmgr_hr_phase=source
 cfmgr_hr_meta_raw() { cfmgr_test_hr_meta_raw "$@" || return $?; cfmgr_hr_uid=0; }
+cfmgr_hr_mount_identity() {
+    cfmgr_test_hr_mount_identity "$@" || return $?
+    # Inject a changed observation after the actual mount lookup succeeds.
+    [ -z "${observed_mount:-}" ] || cfmgr_hr_observed_mount=$((cfmgr_hr_observed_mount+1))
+}
 cfmgr_history_rotation_meta || exit 82
 cfmgr_history_rotation_identity=$cfmgr_history_meta_value
 exec 4<"$ram/rotation"

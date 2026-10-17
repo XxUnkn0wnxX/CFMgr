@@ -50,7 +50,7 @@ Interim commits, diagnostics and repairs inside the current block continue witho
 repeat push approval. This supersedes older every-single-subgoal pause wording;
 the current block remains S14.01 and S14.04–S14.08 plus consolidation proof.
 
-Current published diagnostic candidate: `9d6fb842c8176b48e681b8dd48d38984f3bd3709`.
+Current published diagnostic candidate: `581bacda9705b801048b47427db4ef48660a0111`.
 The complete shared execution group is green: Quick `39017718100`, **164 passed,
 one platform skip**, 35.99s pytest / 36.15s wall, 18.36 user / 12.34 system.
 History diagnostic `39017527850` at `483e6d8` isolated `history-proc-list`:
@@ -70,7 +70,8 @@ must not be read as idle work. The next native diagnostic allows the existing
 production 600s create deadline plus bounded setup/cleanup (660s outer), solely
 to measure one complete run and choose a supported permanent test bound.
 The host guard stays 180s; production deadlines and separate cancellation/reaping
-tests are unchanged. Native diagnostic `39018031248` at `d65f878` is running.
+tests are unchanged. Native diagnostic `39018031248` at `d65f878` completed;
+its failure and resulting directory-flush repair are recorded below.
 Cost review identified three observation-only external printf calls per probe
 (about 2,442 starts by probe 814). The fixture now records each route once and
 samples begin/end progress every 64 probes, retaining every failure and phase
@@ -99,6 +100,16 @@ is the next short gate before repeating full creation. Total measurement was
 205.35s pytest / 205.58s wall, 55.81 user / 116.43 system; this is failed behavior,
 not a completed positive benchmark. Automatic cores `39018026352` and
 `39018250738` were cancelled. No CI job remains running at this repair point.
+
+At `581bacd`, transaction/menu Quick `39018465997` passed **26 tests in 63.83s**
+(64.05s wall, 17.81 user / 35.84 system), including real native publication and
+retention. History Quick `39018464309` passed all four actual writer cases and
+37 total cases before the mount-change test exposed an unwired fault variable.
+That test now changes the returned mount ID only after the actual native lookup
+succeeds; the held inode and truncate/replacement checks remain real. Group cost
+before failure was 32.99s pytest / 33.22s wall, 9.64 user / 19.07 system. The full
+history group and complete creation journey are next; automatic core
+`39018462892` was cancelled. No worker or CI job remains active at this repair.
 
 Initial published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
 Automatic core run `39015067310` was cancelled before focused diagnosis.
