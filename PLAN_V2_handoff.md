@@ -50,7 +50,28 @@ Interim commits, diagnostics and repairs inside the current block continue witho
 repeat push approval. This supersedes older every-single-subgoal pause wording;
 the current block remains S14.01 and S14.04–S14.08 plus consolidation proof.
 
-Published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
+Current published diagnostic candidate: `9d6fb842c8176b48e681b8dd48d38984f3bd3709`.
+The complete shared execution group is green: Quick `39017718100`, **164 passed,
+one platform skip**, 35.99s pytest / 36.15s wall, 18.36 user / 12.34 system.
+History diagnostic `39017527850` at `483e6d8` isolated `history-proc-list`:
+positively reaped exit 1 before any PID inspection. Exact retained vendor `ls`
+source stats every enumerated name even with `-1A`; a disappearing PID can fail
+the listing. A bounded numeric-name enumeration repair is in progress, retaining
+all later actual writer/executable/append-FD identity checks.
+
+Create diagnostic `39017714823` disproved a fixed early block: at 180s it had
+advanced to probe 814 in real archive inventory verification. The tiny recorded
+CPU total does not include the killed shell's unreaped action subshell tree and
+must not be read as idle work. The next native diagnostic allows the existing
+production 600s create deadline plus bounded setup/cleanup (660s outer), solely
+to measure one complete run and choose a supported permanent test bound.
+The host guard stays 180s; production deadlines and separate cancellation/reaping
+tests are unchanged. Parent owns this fixture/records; the consolidation worker
+owns the two runtime owners and history test for the numeric-enumeration repair.
+No acceptance is awarded. Automatic cores `39017523766` and `39017709804` were
+cancelled during focused diagnosis.
+
+Initial published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
 Automatic core run `39015067310` was cancelled before focused diagnosis.
 Initial payload/tool Quick `39015102266` failed in the native BusyBox build:
 the newly enabled date applet references `stime`, unavailable in the runner's

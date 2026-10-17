@@ -356,6 +356,10 @@ cfmgr_archive_action create
         "cfmgr_archive_action create",
         'printf "lock-open\\n" >"$ram/create-phase"\n: >"$ram/lock"\nchmod 600 "$ram/lock"\nexec 0<>"$ram/lock"\nprintf "action-start\\n" >"$ram/create-phase"\ncfmgr_archive_action create',
     )
+    # Native diagnostics reached probe 814 while still advancing through the
+    # real verifier. Allow production's 600s create budget plus bounded setup/
+    # cleanup for one measured complete run; retain the shorter host guard.
+    timeout = 660 if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1" else 180
     try:
         return subprocess.run(
             [
@@ -371,11 +375,11 @@ cfmgr_archive_action create
             env=environment,
             capture_output=True,
             check=False,
-            timeout=180,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         pytest.fail(
-            f"Manual create exceeded180s; {create_failure_summary(creation)}",
+            f"Manual create exceeded {timeout}s; {create_failure_summary(creation)}",
             pytrace=False,
         )
 
