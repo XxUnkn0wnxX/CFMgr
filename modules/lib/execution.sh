@@ -319,6 +319,7 @@ cfmgr_prerequisites_run() {
 		return 3
 	fi
 	cfmgr_probe_reason=
+	cfmgr_probe_first_observation=1
 	while :; do
 		_cfmgr_prerequisites_observe || return 3
 		[ "$cfmgr_probe_observation" -eq 1 ] && break
@@ -352,6 +353,16 @@ cfmgr_prerequisites_run() {
 				case $cfmgr_identity_state in Z) ;; *) kill -TERM "$cfmgr_probe_pid" || : ;; esac
 			fi
 			break
+			;;
+		esac
+		case $cfmgr_probe_first_observation in
+		1)
+			# A short child can finish during the guards above. Observe once before
+			# sleeping; a live child keeps the ordinary pause and later cadence.
+			cfmgr_probe_first_observation=0
+			_cfmgr_prerequisites_observe || return 3
+			[ "$cfmgr_probe_observation" -eq 1 ] && break
+			case $cfmgr_identity_state in Z) break ;; esac
 			;;
 		esac
 		cfmgr_prerequisites_pause || {

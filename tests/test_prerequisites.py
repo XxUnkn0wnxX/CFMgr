@@ -288,6 +288,131 @@ def test_native_supervisor_is_explicitly_unavailable_without_proc(
 
 
 @pytest.mark.parametrize(
+    "scenario",
+    ["absent", "zombie", "live", "unknown", "attachment", "clock", "deadline"],
+)
+def test_supervisor_one_shot_reobserve_keeps_guards_final_wait_and_evidence(
+    shell: list[str], tmp_path: Path, scenario: str
+) -> None:
+    """Controlled proc/clock adapters exercise the real loop, not Linux ownership."""
+    executable = shutil.which(shell[0])
+    assert executable
+    result = invoke(
+        shell,
+        r"""
+. "$1"
+cf_test_context=$2 cf_test_scenario=$3 cf_test_tool=$4
+cf_test_trace=$cf_test_context/trace
+cf_test_observations=0 cf_test_attachments=0 cf_test_pauses=0
+cfmgr_config_lock_fd0=0 cfmgr_probe_first_observation=0
+cf_test_note() { printf '%s\n' "$1" >>"$cf_test_trace"; }
+cfmgr_prerequisites_supervisor() {
+    cf_test_note supervisor
+    cfmgr_probe_now=100 cfmgr_probe_owner=12345 cfmgr_probe_boot=fixture-boot
+}
+cfmgr_prerequisites_identity() {
+    cf_test_note identity
+    cfmgr_identity_start=77 cfmgr_identity_parent=$cfmgr_probe_owner
+    cfmgr_identity_state=S cfmgr_identity_read=1
+}
+cfmgr_prerequisites_owned() {
+    cf_test_observations=$((cf_test_observations+1))
+    if [ "$cf_test_observations" = 1 ] ||
+       { [ "$cf_test_scenario" = live ] && [ "$cf_test_observations" -le 3 ]; }; then
+        cf_test_state=live
+    else
+        case $cf_test_scenario in zombie|unknown) cf_test_state=$cf_test_scenario ;; *) cf_test_state=absent ;; esac
+    fi
+    cf_test_note "observe:$cf_test_state"
+    case $cf_test_state in
+    live) cfmgr_identity_state=S; return 0 ;;
+    zombie) cfmgr_identity_state=Z; return 0 ;;
+    absent) return 1 ;;
+    unknown) return 3 ;;
+    esac
+}
+cfmgr_prerequisites_attachment_ok() {
+    cf_test_attachments=$((cf_test_attachments+1))
+    cf_test_note "attachment:$cf_test_attachments"
+    [ "$cf_test_scenario:$cf_test_attachments" != attachment:2 ]
+}
+cfmgr_prerequisites_now() {
+    cf_test_note clock
+    case $cf_test_scenario in clock) return 1 ;; deadline) cfmgr_probe_now=102 ;; *) cfmgr_probe_now=101 ;; esac
+}
+_cfmgr_prerequisites_exec() { printf 'child-evidence\n'; printf 'child-error\n' >&2; return 7; }
+cfmgr_prerequisites_pause() {
+    cf_test_note pause
+    cf_test_pauses=$((cf_test_pauses+1))
+    [ "$cf_test_pauses" -le 3 ]
+}
+wait() { cf_test_note wait; unset -f wait; wait "$@"; }
+kill() { cf_test_note signal; return 0; }
+if cfmgr_prerequisites_run jq-good "$cf_test_context" "$cf_test_tool" "$cf_test_tool" "$cf_test_tool" "$cf_test_tool" "$cf_test_tool" "$cf_test_tool" "$cf_test_tool"; then
+    cf_test_code=0
+else cf_test_code=$?; fi
+printf 'code=%s status=%s reason=%s exit=%s first=%s pid=%s start=%s owner=%s boot=%s\n' \
+    "$cf_test_code" "$cfmgr_probe_status" "${cfmgr_probe_reason:-none}" "${cfmgr_probe_exit:-unset}" \
+    "$cfmgr_probe_first_observation" "$cfmgr_probe_pid" "$cfmgr_probe_start" "$cfmgr_probe_owner" "$cfmgr_probe_boot"
+# Explicit fixture cleanup after capturing production's result. This bypasses
+# the wait trace so unresolved cases must independently prove no product wait.
+unset -f wait
+wait "$cfmgr_probe_pid" 2>/dev/null || :
+""",
+        tmp_path,
+        scenario,
+        executable,
+    )
+    assert result.returncode == 0 and result.stderr == b"", result
+    fields = dict(part.split("=", 1) for part in result.stdout.decode().split())
+    failed_guard = scenario in {"attachment", "clock", "deadline"}
+    assert fields["code"] == (
+        "1" if failed_guard else "3" if scenario == "unknown" else "0"
+    )
+    assert fields["status"] == ("unresolved" if scenario == "unknown" else "reaped")
+    assert fields["reason"] == (scenario if failed_guard else "none")
+    assert fields["exit"] == ("unset" if scenario == "unknown" else "7")
+    assert fields["first"] == ("1" if failed_guard else "0")
+    assert int(fields["pid"]) > 0
+    assert (fields["start"], fields["owner"], fields["boot"]) == (
+        "77",
+        "12345",
+        "fixture-boot",
+    )
+    assert (tmp_path / "jq-good.out").read_bytes() == b"child-evidence\n"
+    assert (tmp_path / "jq-good.err").read_bytes() == b"child-error\n"
+    prefix = [
+        "supervisor",
+        "attachment:1",
+        "identity",
+        "observe:live",
+        "attachment:2",
+        "clock",
+    ]
+    if failed_guard:
+        expected = prefix + ["observe:absent"] * 4 + ["wait", "attachment:3"]
+    elif scenario == "live":
+        expected = prefix + [
+            "observe:live",
+            "pause",
+            "observe:live",
+            "attachment:3",
+            "clock",
+            "pause",
+            "observe:absent",
+            "observe:absent",
+            "wait",
+            "attachment:4",
+        ]
+    elif scenario == "unknown":
+        expected = prefix + ["observe:unknown"]
+    else:
+        state = "absent" if scenario == "absent" else "zombie"
+        expected = prefix + [f"observe:{state}"] * 2 + ["wait", "attachment:3"]
+    assert (tmp_path / "trace").read_text().splitlines() == expected
+
+
+@pytest.mark.parametrize(
     "native_usable", [True, False], ids=["native-first", "entware-fallback"]
 )
 def test_linux_supervisor_and_real_flock_capabilities(

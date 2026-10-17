@@ -206,6 +206,15 @@ skips. The unchanged complete positive verifier passed in 30.14s on macOS versus
 while retaining all 122 other operations and full payload assertions. Native
 execution and the complete module budget remain separate pending gates.
 
+At published `004d852`, native metadata safety passed all 15 selected cases in
+4.12s, including both original and combined deadline/reap/FD variants. The complete
+positive verifier passed in 31.59s and confirmed the same 279/157/1,116 operation
+counts, with 279 pauses and 837 ownership observations. All affected Backup
+diagnostic selections passed at that revision, covering 375 unique cases; only
+the two deadline variants intentionally overlap the initial safety selection and
+complete history/I/O batch. The required complete module gate still decides cost
+acceptance; these focused receipts alone award no product credit.
+
 An independent scheduling audit rejected sharing one host between the complete
 host/native suites: both real-writer fixtures discover global cloudflared process
 candidates and would observe each other's children. Isolated platform VMs avoid
@@ -214,6 +223,32 @@ approved refinement allows two jobs per module (six product VMs), disables matri
 fail-fast and requires all results. Module cost is the earliest job start through
 latest completion including setup, with queue delay separate; scheduling alone
 does not establish reduced CPU cost or satisfy the complete ten-minute module gate.
+
+The final core attempt [39030592757](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39030592757)
+at `004d852` did not satisfy cost acceptance: native Backup continued passing
+through 98% before the ten-minute test-step timeout. Manager completed both
+platforms in 7m47s including setup; Status completed in 52s. Backup host passed
+374 cases with one explicit platform skip in 329.31s. No assertion failure was
+reported in the unfinished native group. The aggregate correctly failed and all
+six product acceptance boxes remain pending.
+
+The bounded contingency adds one exact-child ownership observation after the first
+successful attachment/clock/deadline guards and before sleeping. A child finishing
+during those guards can reach the unchanged final observation/wait without a
+50ms delay. The flag resets per invocation and is consumed once; a still-live child
+retains the ordinary pause and all subsequent cadence. Unknown ownership retains
+return 3. Failure/TERM/KILL, timeout-child, absolute deadline and post-wait attachment
+paths are unchanged. Independent design audit **PASS WITH NOTES** and exact-delta
+source review **PASS**; native safety and measured cost remain required. The host
+positive case passed in 23.19s, but its labelled supervisor adapter does not execute
+this Linux loop, so that timing cannot establish the optimization's benefit.
+Seven controlled tests invoke the production loop and observation wrapper with
+labelled proc/clock adapters and a finite real child. They prove the first flag
+resets, exact final wait/postwait attachment, later pause cadence, unknown evidence
+retention with no product wait/signal, and prior attachment/clock/deadline failures.
+Focused local runner/common statics passed 42 cases with 15 explicit Linux skips
+in 6.66s. Fixture compatibility uses `unset -f` and builtin wait, preserving the
+vendor shell's disabled command builtin. Native proof remains required.
 
 ## S14.06–S14.08 history runtime admission review
 

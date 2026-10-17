@@ -36,6 +36,38 @@ select or suggest another block. Checkpoint, repair and documentation pushes are
 authorized. No router, release or deployment authority is implied. Acceptance
 remains **15/157 (9.6%), 0/16 main goals (0%)**; the six current IDs remain pending.
 
+### Current repair after complete-module budget failure
+
+Final core **39030592757** at **`004d852c1383f3e7328132d0f0d94ae6a3234104`**
+is terminal cancelled: native Backup reached 98% with continuing passes before its
+ten-minute step limit. No assertion failure was reported. Backup host passed
+374/1 platform skip in 329.31s; Manager native passed 565/1 workstation skip in
+441.93s and the complete Manager module took 7m47s including setup. Status passed
+both platforms within 52s. Aggregate correctly failed. Acceptance remains unchanged.
+Private complete logs/metadata are `.tmp/archive-creation/ci-39030592757.{log,json}`.
+
+The independently audited contingency is now the active bounded cost repair:
+perform one extra exact-child ownership observation after successful first-loop
+attachment/clock/deadline guards, before the first 50ms pause. Only positive
+absence/zombie completion can break to the unchanged final observation/wait;
+uncertain ownership stays return 3. A live child keeps the existing pause and all
+later cadence. No signal, failure, deadline or post-reap attachment changes.
+Parent owns `modules/lib/execution.sh`, manifest and records; `module_consolidation`
+owns controlled supervisor regression tests in `tests/test_prerequisites.py`.
+`consolidation_review` reviews the delta read-only. Required proof: focused local
+supervision/deadline checks, existing positive profile with wall/CPU and pause
+counts, complete affected native diagnostic groups, then complete exact core.
+Retain only a measured useful improvement. No new target or permission is needed.
+
+The 11-line runtime delta has exact-source review **PASS**. Seven controlled
+production-loop cases cover absence, zombie, still-live cadence, unknown ownership,
+attachment, clock and deadline paths. The fixture uses native `unset -f` plus the
+real wait builtin; it does not require the unavailable command builtin. Focused
+local runner/common statics passed **42 cases / 15 explicit Linux skips in 6.66s**.
+Host positive verification passed 23.19s, but its supervisor adapter cannot prove
+this Linux-loop speedup. Native safety/profile and all complete affected diagnostic
+batches remain next, then full module core; do not accept on local evidence alone.
+
 ### Latest user-approved CI contract
 
 - Permanent groups follow actual main modules: **Backup Checks**, **Manager
