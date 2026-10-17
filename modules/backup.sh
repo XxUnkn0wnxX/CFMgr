@@ -1406,7 +1406,9 @@ cfmgr_archive_output_path() {
 	case $cfmgr_archive_name in '' | . | .. | *[!A-Za-z0-9_.-]*) return 2 ;; esac
 	cfmgr_archive_directory=${1%/*}
 	case $cfmgr_archive_directory in
-	"$cfmgr_store_context") cfmgr_archive_anchor=/proc/self/fd/5 ;;
+	# The directory component avoids passing the proc magic symlink itself to
+	# workers that require a nonsymlink directory anchor before the -ef check.
+	"$cfmgr_store_context") cfmgr_archive_anchor=/proc/self/fd/5/. ;;
 	"${cfmgr_archive_stage:-}") cfmgr_archive_anchor=/proc/self/fd/7/$cfmgr_archive_stage_leaf ;;
 	*) return 2 ;;
 	esac

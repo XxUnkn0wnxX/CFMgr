@@ -300,7 +300,9 @@ def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
 cfmgr_archive_inventory_limit=65536
 cfmgr_archive_deadline=$((cfmgr_probe_now+60))
     if ! cfmgr_archive_format_verify "$stage/candidate" 01234567-89ab-cdef-0123-456789abcdef; then
-        printf 'failed mode=%s exit=%s\\n' "$cfmgr_probe_mode" "$cfmgr_probe_exit"
+        printf 'failed mode=%s exit=%s status=%s reason=%s probe=%s now=%s deadline=%s\\n' \
+            "$cfmgr_probe_mode" "$cfmgr_probe_exit" "$cfmgr_probe_status" \
+            "$cfmgr_probe_reason" "$cfmgr_probe_serial" "$cfmgr_probe_now" "$cfmgr_archive_deadline"
         cat "$cfmgr_probe_stdout" "$cfmgr_probe_stderr"
         awk '!/^AUTH /' "$cfmgr_payload_capture_plan"
         cat "$cfmgr_payload_inventory"

@@ -73,6 +73,22 @@ The cheap mode/rewrite/real-worker regression plus inert/range checks passed:
 Raw CI log and focused red/green receipts remain under `.tmp/archive-creation/`.
 Automatic core `39015342275` was cancelled while diagnosis was pending.
 
+Quick `39015607735` at `819e902` progressed through native archive work, then
+failed with `archive-copy-small` exit 2 in 58.52s. Parent traced a production
+RAM anchor mismatch: `/proc/self/fd/5` is a proc symlink, while worker directory
+admission rejects a symlink final component. The anchor now uses
+`/proc/self/fd/5/.`; original-path nonsymlink, exact identity, cwd and output
+checks remain unchanged. Focused RAM copy/write and existing range/refusal tests
+passed locally (3 passes / 1 Linux skip, 3.85s; wall 5.45 / user 2.68 / system 1.48).
+Native RAM replacement proof and the unchanged full semantic journey are next.
+Automatic core `39015606449` was cancelled. The run used 16.80 user / 32.81 system
+seconds; independent cost review attributes substantial native cost to the
+source-matched ash configuration without builtin test/printf or nofork. Keep
+that representative configuration. The semantic fixture's 60s positive deadline
+is distinct from production create's 600s bound; first verify the actual repair,
+then base any harness-cost correction on measured successful work, preserving
+the separate deadline/cancellation/ownership tests.
+
 The user started the recorded manual archive-creation package on 2026-10-17,
 then explicitly rejected its excessive helper-file fragmentation: backup should
 be one module, config one module, and networking/DDNS similarly grouped by real

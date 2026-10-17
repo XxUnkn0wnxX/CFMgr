@@ -320,6 +320,58 @@ def test_exact_range_and_empty_copy_preserve_binary_and_source(archive, shell):
     assert source.read_bytes() == data
 
 
+def test_ram_copy_and_write_use_retained_directory_anchor(archive, shell):
+    ram = archive[1]
+    (ram / "input").write_bytes(b"pinned-data")
+    passed(
+        run(
+            archive,
+            shell,
+            r"""
+cfmgr_archive_output_path "$ram/copy" || exit 80
+if [ "$TEST_LINUX" = 1 ]; then
+    [ "$cfmgr_archive_anchor" = /proc/self/fd/5/. ] || exit 81
+    [ ! -L "$cfmgr_archive_anchor" ] && [ "$cfmgr_archive_anchor" -ef "$ram" ] || exit 82
+else [ "$cfmgr_archive_anchor" = "$ram/." ] || exit 83; fi
+cfmgr_archive_copy "$ram/input" "$ram/copy" 2 7 || exit 84
+cfmgr_archive_write "$ram/written" 4096 new 'written data' || exit 85
+""",
+        )
+    )
+    assert (ram / "copy").read_bytes() == b"nned-da"
+    assert (ram / "written").read_bytes() == b"written data"
+    assert (ram / "input").read_bytes() == b"pinned-data"
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="Retained RAM directory FD proof requires Linux proc",
+)
+def test_ram_worker_refuses_replaced_original_directory_before_copy_or_write(
+    archive, shell
+):
+    _support, ram, mount, stage, _environment = archive
+    (stage / "input").write_bytes(b"pinned")
+    passed(
+        run(
+            archive,
+            shell,
+            r"""
+mv "$ram" "$mount/old-ram"
+mkdir "$ram"
+[ /proc/self/fd/5/. -ef "$mount/old-ram" ] && [ ! /proc/self/fd/5/. -ef "$ram" ] || exit 80
+# Invoke the actual child boundary directly: each must reject the changed
+# original directory by identity, before reaching its output tool/open.
+if "$TEST_SH" "$support/modules/helpers/worker.sh" archive-copy-small "$TEST_DD" "$ram" "$stage/input" /proc/self/fd/5/. "$ram" copy 0 4; then exit 81; else [ "$?" = 1 ] || exit 82; fi
+if "$TEST_SH" "$support/modules/helpers/worker.sh" archive-write "$TEST_PRINTF" "$ram" /proc/self/fd/5/. "$ram" written new data; then exit 83; else [ "$?" = 1 ] || exit 84; fi
+""",
+        )
+    )
+    for directory in (ram, mount / "old-ram"):
+        assert not (directory / "copy").exists()
+        assert not (directory / "written").exists()
+
+
 def test_short_eof_existing_output_and_symlink_refused(archive, shell):
     ram, stage = archive[1], archive[3]
     (ram / "input").write_bytes(b"short")
