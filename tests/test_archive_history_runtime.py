@@ -589,6 +589,9 @@ exec 4<>"$ram/rotation"
                 shell,
                 setup
                 + r"""
+# This fixture reuses RAM across two invocations; production controllers have
+# fresh contexts. Keep the independent inactive probe receipts in their own range.
+cfmgr_probe_serial=100000
 if cfmgr_archive_cloud_capture_mode "$TEST_SOURCE/var/log/cloudflared.log"; then :; else
     code=$?; cfmgr_test_writer_diagnostic "$code"; exit 82
 fi
@@ -642,12 +645,12 @@ fi
                 + r"""
 if cfmgr_archive_cloud_capture_mode "$TEST_SOURCE/var/log/cloudflared.log"; then code=0; else code=$?; fi
 if [ "$TEST_WRITER_KIND" = append ]; then
-    [ "$code:$cfmgr_archive_capture_mode" = 0:prefix ] || exit 82
-    cfmgr_archive_cloud_capture_revalidate "$TEST_SOURCE/var/log/cloudflared.log" || exit 83
+    [ "$code:$cfmgr_archive_capture_mode" = 0:prefix ] || { cfmgr_test_writer_diagnostic "$code"; exit 82; }
+    cfmgr_archive_cloud_capture_revalidate "$TEST_SOURCE/var/log/cloudflared.log" || { code=$?; cfmgr_test_writer_diagnostic "$code"; exit 83; }
     kill -TERM "$TEST_LOGGER_PID" || exit 84
     cfmgr_archive_cloud_capture_revalidate "$TEST_SOURCE/var/log/cloudflared.log" && exit 85
     [ "$?" = 1 ] || exit 86
-else [ "$code" = 4 ] || exit 84; fi
+else [ "$code" = 4 ] || { cfmgr_test_writer_diagnostic "$code"; exit 84; }; fi
 """,
                 timeout=70,
             )

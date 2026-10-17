@@ -83,6 +83,23 @@ Parent owns all integrated files; no worker owns edits now.
 No acceptance is awarded. Automatic cores `39017523766` and `39017709804` were
 cancelled during focused diagnosis.
 
+Quick `39018263480` at `210af4f` passed the new enumeration case and the inactive
+writer observation, then exposed a fixture receipt collision on its second
+independent invocation (30 passes before failure, 6.42s). Its reused RAM context
+now gives the inactive invocation a distinct serial range; production controllers
+already allocate fresh contexts. Actual writer outcomes now share the existing
+bounded failure diagnostic. No runtime receipt safety or assertion was relaxed.
+
+Create measurement `39018031248` finished in 203.91s but reported unresolved
+after confirmed publication. The exact final call path reached directory flush:
+`cfmgr_archive_flush_owned` rejects a final symlink, yet publication and retention
+passed bare `/proc/self/fd/7`. Both callers now use `/proc/self/fd/7/.`, preserving
+the opened directory and existing identity checks. Native publication/retention
+is the next short gate before repeating full creation. Total measurement was
+205.35s pytest / 205.58s wall, 55.81 user / 116.43 system; this is failed behavior,
+not a completed positive benchmark. Automatic cores `39018026352` and
+`39018250738` were cancelled. No CI job remains running at this repair point.
+
 Initial published candidate: `803b60f793db7183baaf2aa7e82463cd77e0b128`.
 Automatic core run `39015067310` was cancelled before focused diagnosis.
 Initial payload/tool Quick `39015102266` failed in the native BusyBox build:

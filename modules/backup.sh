@@ -2233,7 +2233,7 @@ cfmgr_archive_publish() {
 		[ "${cfmgr_create_owned_token%:*}" = candidate.tar.gz ] || cfmgr_create_remaining_owned="${cfmgr_create_remaining_owned:+$cfmgr_create_remaining_owned }$cfmgr_create_owned_token"
 	done
 	cfmgr_format_owned=$cfmgr_create_remaining_owned
-	cfmgr_archive_flush_owned /proc/self/fd/7 || return $?
+	cfmgr_archive_flush_owned /proc/self/fd/7/. || return $?
 	cfmgr_create_record="ARCHIVE $cfmgr_create_name $cfmgr_create_published_inode $cfmgr_create_published_size $cfmgr_create_published_sha $cfmgr_create_epoch $cfmgr_create_day $cfmgr_create_id END"
 	cfmgr_archive_ledger_append "$cfmgr_create_record"
 }
@@ -2261,7 +2261,7 @@ cfmgr_archive_retention() {
 		[ ! -e "/proc/self/fd/7/$cfmgr_create_old_name" ] && [ ! -L "/proc/self/fd/7/$cfmgr_create_old_name" ] || return 1
 		cfmgr_archive_format_retire || return 1
 	done 1<"$cfmgr_create_prune"
-	cfmgr_archive_flush_owned /proc/self/fd/7 || return $?
+	cfmgr_archive_flush_owned /proc/self/fd/7/. || return $?
 	cfmgr_create_retention=complete
 }
 
