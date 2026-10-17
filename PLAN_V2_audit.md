@@ -151,11 +151,60 @@ The privileged installer fixture's equivalent PATH correction reduced its actual
 repair/publication case from 176.49s to 133.95s, with CPU 178.27s to 135.01s.
 Shell builtins/no-fork remain disabled and production worker PATHs are unchanged.
 
-The subsequent bounded runtime scalar conversion is locally focused-tested and
-independently reviewed PASS: quoted case patterns preserve literal comparisons,
-short-circuit/return ordering and integer admission; filesystem and numeric-bound
-predicates, deadlines, signals and waits remain intact. Native performance and
-complete-group acceptance remain unverified. No RAM metadata batching was added.
+The subsequent bounded runtime scalar conversion is focused-tested and independently
+reviewed PASS: quoted case patterns preserve literal comparisons, short-circuit/
+return ordering and integer admission; filesystem and numeric-bound predicates,
+deadlines, signals and waits remain intact. At `171f899`, native positive verification
+passed in 42.10s (28.63s CPU) and actual repair/publication in 127.91s (128.85s CPU),
+retaining the original supervision counters and complete behavior assertions.
+Complete prerequisites/I/O passed 48 cases with one workstation-only skip.
+No RAM metadata batching was added.
+
+All 17 disjoint diagnostic selections then passed at that candidate, covering
+all 927 Backup/Manager cases (926 passed, one explicit workstation-only skip;
+four optional dependency diagnostics excluded). Each batch was under 161 seconds.
+Summed pytest cost was 665.80s for Backup and 490.14s for Manager. These are useful
+cost measurements, not a passing complete-module gate. A further bounded verifier
+fixture correction at `0179864` removes unrelated payload members from two
+rejection cases: two members for catalog hash rejection, three for unsafe JSON
+path rejection. Stronger callback/parser assertions identify the intended failure;
+the full five-member binary/empty positive case is unchanged. The two host cases
+passed; native integrity cost fell from 62.39s to approximately 41s, with all three
+complete verifier selections passing. The final complete-module gate remains pending.
+
+The next bounded optimization has an independent **PASS WITH NOTES** design audit.
+For a flat nonsymlink stage file/directory with no active append guard, one supervised
+native `ls -id STAGE TARGET STAGE` can replace three separately supervised metadata
+probes. Both matched retained `ls.c` copies have SHA-256
+`8d76a7301817e798954b27d822915dc95a15b0869bc3d5668c2db7e7b7525264`; their operand
+loop performs a fresh stat for every argument, including repeats, before sorting
+output. The parser must match exact names and multiplicity without assuming display
+order: two stage observations equal the stored inode, one valid target observation,
+no missing/extra/unknown/partial rows. Existing archive supervision, directory
+identity, nonsymlink/type checks and other-path/active-append fallbacks remain.
+
+The fusion can perform a bounded read-only target metadata lookup before the parent
+rejects a mismatching first stage sample. Parent and planner accept this limited
+failure-order change under the existing cooperative-root contract: it grants no
+ownership, content access, mutation, publication or deletion. Mutation/cleanup
+boundaries are unchanged. Runtime implementation, focused substitution/deadline
+proof and measured native saving must still pass; the design audit alone is not
+runtime or acceptance evidence.
+
+Implementation review caught parent-side target type tests before stage admission.
+The selector now examines path syntax only; the supervised worker retains the
+original nonsymlink file-or-directory predicate after stage/path-to-anchor checks.
+Flat directories therefore retain metadata-only support through the same operation;
+`ls -id` never lists their contents. Independent corrective review returned **PASS**.
+The planner independently rechecked this exact file/directory refinement and also
+returned **PASS**, confirming original accepted input kinds and the supervisor's
+completion attachment check. No additional product scope or permission is involved.
+Focused host safety checks passed 15 cases with two explicit Linux-only deadline
+skips. The unchanged complete positive verifier passed in 30.14s on macOS versus
+47.91s previously. Its profile proves 88 fewer supervisor launches (367→279),
+88 fewer inode probes (245→157), and 352 fewer RAM receipt inode reads (1,468→1,116),
+while retaining all 122 other operations and full payload assertions. Native
+execution and the complete module budget remain separate pending gates.
 
 An independent scheduling audit rejected sharing one host between the complete
 host/native suites: both real-writer fixtures discover global cloudflared process

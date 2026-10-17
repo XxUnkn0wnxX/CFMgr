@@ -495,3 +495,167 @@ cfmgr_archive_format_cleanup && exit 81
     )
     assert (passed.returncode, passed.stdout, passed.stderr) == (0, b"", b""), passed
     assert (archive[3] / "owned").read_bytes() == b"foreign"
+
+
+@pytest.mark.parametrize("kind", ["file", "directory", "symlink"])
+def test_stage_entry_inode_uses_one_real_combined_probe_for_both_path_forms(
+    archive, shell, kind
+):
+    target = archive[3] / "owned"
+    if kind == "directory":
+        target.mkdir()
+        (target / "keep").write_bytes(b"retained content")
+    elif kind == "symlink":
+        referent = archive[3] / "referent"
+        referent.write_bytes(b"retained content")
+        target.symlink_to(referent)
+    else:
+        target.write_bytes(b"retained content")
+    result = run(
+        archive,
+        shell,
+        r"""
+for candidate in "$stage/owned" "/proc/self/fd/7/stage/owned"; do
+    before=$cfmgr_probe_serial
+    if cfmgr_archive_format_inode "$candidate"; then code=0; else code=$?; fi
+    if [ "$2" = 0 ]; then
+        [ "$code" = 0 ] && [ "$cfmgr_format_inode" = "$1" ] || exit 81
+    else [ "$code" = 1 ] || exit 84; fi
+    [ "$cfmgr_probe_serial" = "$((before+1))" ] || exit 82
+    [ "$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit" = "archive-stage-inodes:reaped:$2" ] || exit 83
+done
+""",
+        target.stat().st_ino,
+        2 if kind == "symlink" else 0,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
+    assert (
+        target / "keep" if kind == "directory" else target
+    ).read_bytes() == b"retained content"
+    assert target.is_symlink() == (kind == "symlink")
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        "shuffled",
+        "stage-mismatch",
+        "missing",
+        "extra",
+        "duplicate-target",
+        "unknown",
+        "malformed",
+        "partial",
+    ],
+)
+def test_stage_inode_listing_requires_exact_complete_names_and_multiplicity(
+    archive, shell, rows
+):
+    _support, ram, _mount, stage, environment = archive
+    target = stage / "owned"
+    target.write_bytes(b"retained content")
+    stage_inode, target_inode = stage.stat().st_ino, target.stat().st_ino
+    listing = [(stage_inode, "$2"), (target_inode, "$3"), (stage_inode, "$4")]
+    if rows == "shuffled":
+        listing = [listing[1], listing[2], listing[0]]
+    elif rows == "stage-mismatch":
+        listing[2] = (stage_inode + 1, "$4")
+    elif rows == "missing":
+        listing.pop()
+    elif rows == "extra":
+        listing.append(listing[0])
+    elif rows == "duplicate-target":
+        listing.append(listing[1])
+    elif rows == "unknown":
+        listing.append((stage_inode, "$2/unknown"))
+    elif rows == "malformed":
+        listing[1] = ("not-an-inode", "$3")
+    elif rows == "partial":
+        listing.append(listing[1])
+    tool = ram / "inode-listing"
+    output = []
+    for index, (inode, name) in enumerate(listing):
+        ending = "" if rows == "partial" and index == len(listing) - 1 else r"\n"
+        output.append(f"printf '%s %s{ending}' {inode} \"{name}\"\n")
+    tool.write_text(
+        "#!/bin/sh\n"
+        + (
+            f"[ /proc/self/fd/0 -ef {shlex.quote(str(ram / 'lock'))} ] || exit 91\n"
+            if environment["TEST_LINUX"] == "1"
+            else ""
+        )
+        + '[ "$#" = 4 ] && [ "$1" = -id ] && [ "$2" = "$4" ] || exit 92\n'
+        + "".join(output)
+    )
+    tool.chmod(0o700)
+    expected = 0 if rows == "shuffled" else 1
+    result = run(
+        archive,
+        shell,
+        r"""
+cfmgr_store_ls=$ram/inode-listing
+if cfmgr_archive_format_inode "$stage/owned"; then code=0; else code=$?; fi
+[ "$code" = "$1" ] || exit 81
+[ "$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit" = archive-stage-inodes:reaped:0 ] || exit 82
+if [ "$code" = 0 ]; then [ "$cfmgr_format_inode" = "$2" ] || exit 83; fi
+""",
+        expected,
+        target_inode,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
+    assert target.read_bytes() == b"retained content"
+
+
+def test_combined_inode_probe_refuses_actual_stage_replacement(archive, shell):
+    _support, ram, mount, stage, environment = archive
+    target = stage / "owned"
+    target.write_bytes(b"retained content")
+    tool = ram / "replace-inode-stage"
+    tool.write_text(
+        "#!/bin/sh\n"
+        + (
+            f"[ /proc/self/fd/0 -ef {shlex.quote(str(ram / 'lock'))} ] || exit 91\n"
+            if environment["TEST_LINUX"] == "1"
+            else ""
+        )
+        + f"mv {shlex.quote(str(stage))} {shlex.quote(str(mount / 'old-stage'))} || exit 92\n"
+        + f"mkdir {shlex.quote(str(stage))} || exit 93\n"
+        + f"printf foreign >{shlex.quote(str(target))} || exit 94\n"
+        + f'exec {shlex.quote(environment["TEST_LS"])} "$@"\n'
+    )
+    tool.chmod(0o700)
+    result = run(
+        archive,
+        shell,
+        r"""
+cfmgr_store_ls=$ram/replace-inode-stage
+cfmgr_archive_format_inode "$stage/owned" && exit 81
+[ "$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit" = archive-stage-inodes:reaped:0 ]
+""",
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
+    assert (mount / "old-stage/owned").read_bytes() == b"retained content"
+    assert target.read_bytes() == b"foreign"
+
+
+def test_inode_fallbacks_retain_ram_published_and_append_checks(archive, shell):
+    ram, mount, stage = archive[1:4]
+    paths = (ram / "receipt", mount / "CFBackup/published", stage / "owned")
+    for path in paths:
+        path.write_bytes(b"retained content")
+    result = run(
+        archive,
+        shell,
+        r"""
+cfmgr_archive_format_inode "$ram/receipt" || exit $?
+[ "$cfmgr_format_inode" = "$1" ] && [ "$cfmgr_probe_serial" = 0 ] || exit 81
+cfmgr_archive_format_inode "/proc/self/fd/7/published" || exit $?
+[ "$cfmgr_format_inode" = "$2" ] && [ "$cfmgr_probe_mode" = archive-inode ] || exit 82
+cfmgr_archive_append_path="/proc/self/fd/7/stage/owned" cfmgr_archive_append_inode=$3
+cfmgr_archive_format_inode "$stage/owned" || exit $?
+[ "$cfmgr_format_inode" = "$3" ] && [ "$cfmgr_probe_mode" = archive-inode ] || exit 83
+""",
+        *(path.stat().st_ino for path in paths),
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
+    assert all(path.read_bytes() == b"retained content" for path in paths)

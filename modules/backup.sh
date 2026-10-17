@@ -1011,6 +1011,25 @@ cfmgr_archive_format_inode() {
 	case $1 in
 	"$cfmgr_store_context"/* | /proc/self/fd/5/*) cfmgr_archive_format_ram_inode "$1" ;;
 	*)
+		# The native ls observes every operand in argv order, including repeats;
+		# display sorting does not change those observations. Keep stage-before,
+		# target, stage-after inside one bounded child for a flat owned stage path.
+		# Append guards and other paths retain their separate identity checks.
+		cfmgr_format_stage_anchor=/proc/self/fd/7/${cfmgr_archive_stage_leaf:-}
+		case ${cfmgr_archive_append_path:-}:${1##*/} in
+		: | :. | :.. | :*[!A-Za-z0-9_.-]*) ;;
+		:*)
+			case ${1%/*} in
+			"${cfmgr_archive_stage:-}" | "$cfmgr_format_stage_anchor")
+				case ${cfmgr_archive_stage:-} in '') ;; *)
+					cfmgr_archive_format_stage_inode "$cfmgr_format_stage_anchor/${1##*/}"
+					return $?
+					;;
+				esac
+				;;
+			esac
+			;;
+		esac
 		cfmgr_archive_identity_check || return $?
 		cfmgr_archive_inode "$1" || return $?
 		cfmgr_format_requested_inode=$cfmgr_archive_inode
@@ -1018,6 +1037,32 @@ cfmgr_archive_format_inode() {
 		cfmgr_format_inode=$cfmgr_format_requested_inode
 		;;
 	esac
+}
+
+cfmgr_archive_format_stage_inode() {
+	cfmgr_format_stage_target=$1 cfmgr_format_stage_seen=0 cfmgr_format_target_seen=0
+	cfmgr_format_target_inode=''
+	cfmgr_archive_run archive-stage-inodes 4096 "$cfmgr_store_ls" "$cfmgr_format_stage_anchor" "$cfmgr_archive_stage" "${cfmgr_format_stage_target##*/}" || return $?
+	# Match exact names and multiplicity, never display order. Both fresh stage
+	# observations must match the admitted inode before exposing the target inode.
+	while IFS=' ' read -r cfmgr_format_row_inode cfmgr_format_row_name; do
+		cfmgr_archive_uint "$cfmgr_format_row_inode" && [ "$cfmgr_format_row_inode" -gt 0 ] || return 1
+		case $cfmgr_format_row_name in
+		"$cfmgr_format_stage_anchor")
+			case $cfmgr_format_row_inode in "${cfmgr_archive_stage_inode:-}") ;; *) return 1 ;; esac
+			cfmgr_format_stage_seen=$((cfmgr_format_stage_seen + 1))
+			[ "$cfmgr_format_stage_seen" -le 2 ] || return 1
+			;;
+		"$cfmgr_format_stage_target")
+			case $cfmgr_format_target_seen in 0) ;; *) return 1 ;; esac
+			cfmgr_format_target_seen=1 cfmgr_format_target_inode=$cfmgr_format_row_inode
+			;;
+		*) return 1 ;;
+		esac
+	done <"$cfmgr_probe_stdout"
+	case $cfmgr_format_row_inode$cfmgr_format_row_name in '') ;; *) return 1 ;; esac
+	case $cfmgr_format_stage_seen:$cfmgr_format_target_seen in 2:1) ;; *) return 1 ;; esac
+	cfmgr_format_inode=$cfmgr_format_target_inode
 }
 
 cfmgr_archive_format_ram_inode() {

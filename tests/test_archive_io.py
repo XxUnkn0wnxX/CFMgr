@@ -288,7 +288,7 @@ def run(archive, shell, script, *arguments, timeout=15, profile=False):
             probe_marker,
             probe_marker
             + "    cfmgr_test_profile_probes=$((cfmgr_test_profile_probes+1))\n"
-            + "    case $1 in archive-inode) cfmgr_test_profile_archive_inode_probes=$((cfmgr_test_profile_archive_inode_probes+1)) ;; *) cfmgr_test_profile_other_probes=$((cfmgr_test_profile_other_probes+1)) ;; esac\n",
+            + "    case $1 in archive-inode|archive-stage-inodes) cfmgr_test_profile_archive_inode_probes=$((cfmgr_test_profile_archive_inode_probes+1)) ;; *) cfmgr_test_profile_other_probes=$((cfmgr_test_profile_other_probes+1)) ;; esac\n",
             1,
         )
         profile_prefix = (
@@ -831,9 +831,16 @@ def test_stage_replacement_during_write_fails_postcheck(archive, shell):
 @pytest.mark.skipif(
     sys.platform != "linux", reason="Native child supervision needs Linux proc"
 )
-def test_stage_inode_probe_is_deadline_bounded(archive, shell):
+@pytest.mark.parametrize("operation", ["combined", "write"])
+def test_stage_inode_probe_is_deadline_bounded(archive, shell, operation):
+    (archive[3] / "owned").write_bytes(b"retained content")
     blocker = archive[1] / "block-ls"
-    blocker.write_text("#!/bin/sh\nexec /bin/sleep 10\n")
+    blocker.write_text(
+        f"#!/bin/sh\n[ /proc/self/fd/0 -ef {shlex.quote(str(archive[1] / 'lock'))} ] || exit 80\n"
+        "[ ! -e /proc/self/fd/9 ] || exit 81\n"
+        f": >{shlex.quote(str(archive[1] / 'inode-started'))}\n"
+        "exec /bin/sleep 10\n"
+    )
     blocker.chmod(0o700)
     passed(
         run(
@@ -841,13 +848,31 @@ def test_stage_inode_probe_is_deadline_bounded(archive, shell):
             shell,
             r"""
 cfmgr_store_ls=$ram/block-ls
-cfmgr_prerequisites_now || exit 80
-cfmgr_archive_deadline=$((cfmgr_probe_now+1))
-cfmgr_archive_write "$stage/generated" 4096 new contents && exit 81
-[ "$cfmgr_probe_status:$cfmgr_probe_reason" = reaped:deadline ] && [ ! -e "$stage/generated" ]
+expected_mode=archive-stage-inodes
+if [ "$1" = write ]; then expected_mode=archive-inode; fi
+# Arm the short deadline after the actual child proves its inherited lock.
+deadline_armed=0
+cfmgr_store_attachment_ok() {
+    [ -d "$ram" ] || return 1
+    if [ -f "$ram/inode-started" ] && [ "$deadline_armed" = 0 ] &&
+       [ "$cfmgr_probe_mode" = "$expected_mode" ]; then
+        cfmgr_prerequisites_now || return 1
+        cfmgr_probe_deadline=$((cfmgr_probe_now+1))
+        deadline_armed=1
+    fi
+}
+if [ "$1" = combined ]; then
+    cfmgr_archive_format_inode "$stage/owned" && exit 81
+else cfmgr_archive_write "$stage/generated" 4096 new contents && exit 81; fi
+[ "$cfmgr_probe_mode" = "$expected_mode" ] &&
+[ "$cfmgr_probe_status:$cfmgr_probe_reason" = reaped:deadline ] &&
+[ "$deadline_armed" = 1 ] && [ -f "$ram/inode-started" ] &&
+[ ! -d "/proc/$cfmgr_probe_pid" ] && [ ! -e "$stage/generated" ]
 """,
+            operation,
         )
     )
+    assert (archive[3] / "owned").read_bytes() == b"retained content"
 
 
 def test_append_replacement_during_write_is_not_accepted(archive, shell):

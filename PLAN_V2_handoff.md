@@ -157,13 +157,68 @@ actual reaped inventory-parser rejection. Completion stays absent, and the full
 five-member positive binary/empty traversal is unchanged. Worker returned ownership;
 the two changed host cases passed in 104.47s (106.92 wall, 38.42 user, 31.25 system),
 with Ruff/format/compile checks. This macOS timing is not a native-speed claim.
-Remaining Manager diagnostic selections are
-running at the existing candidate (at most three concurrent); completed groups
-include dependencies at 160.62s and execution at approximately 48s.
-Require every diagnostic batch within two to three minutes, then run full Checks at the
-same final SHA, verifying both platforms and every module's complete makespan
-within roughly ten minutes. Accept the six IDs/update README only after that gate.
-Publish records and stop for the day, without reviewing or suggesting another block.
+All 17 diagnostic selections passed at `171f899`, covering 926 passes and one
+workstation-only skip across the 927 assigned Backup/Manager cases. Four optional
+dependency diagnostics were deselected. Summed pytest costs are **665.80s Backup**
+and **490.14s Manager**; every individual batch was under 161s. Exact receipts:
+
+| Diagnostic batch | Run | Result | Pytest | CPU user/system |
+| --- | --- | --- | --- | --- |
+| backup-history | 39028874570 | 104 passed | 42.77s | 22.16/10.25s |
+| backup-create | 39028388915 | 6 passed | 97.95s | 31.36/21.75s |
+| backup-transaction-menu | 39028876338 | 26 passed | 30.49s | 10.29/7.88s |
+| backup-payload | 39028878219 | 115 passed | 52.30s | 19.01/16.83s |
+| backup-config-entry | 39028953455 | 73 passed | 62.11s | 30.78/25.43s |
+| backup-capture-populated | 39028391024 | 1 passed | 74.45s | 26.85/24.97s |
+| backup-capture-snapshot | 39028520908 | 10 passed | 44.83s | 15.64/10.69s |
+| backup-capture-certificate-history | 39028704441 | 4 passed | 57.82s | 20.88/19.47s |
+| backup-verifier-structure | 39028658220 | 16 passed | 70.74s | 25.54/16.77s |
+| backup-verifier-integrity | 39028659924 | 2 passed | 62.39s | 21.41/19.88s |
+| backup-verifier-callbacks | 39028569009 | 4 passed | 69.95s | 24.09/22.66s |
+| manager-package-entry | 39028976973 | 61 passed | 89.69s | 38.38/24.13s |
+| manager-execution | 39028979811 | 177 passed, 1 skipped | 47.62s | 24.47/17.77s |
+| manager-reinstall-native | 39029072327 | 104 passed | 37.04s | 13.70/9.99s |
+| manager-config | 39029133010 | 132 passed | 61.87s | 33.80/24.45s |
+| manager-dependencies | 39028393190 | 21 passed, 4 deselected | 160.62s | 95.08/65.49s |
+| manager-install-retained | 39029152407 | 70 passed | 93.30s | 54.30/36.06s |
+
+The fixture refinement is published at **`017986442904c9cfe3b5496669b445f62428a1a6`**.
+Common statics/host syntax passed. Premature core **39029323040** is terminal
+cancelled. Complete verifier scopes **39029335482** (structure, ~79s),
+**39029337608** (integrity, ~41s), **39029340869** (callbacks, ~70s) passed. The
+integrity reduction is real, but projected total cost remains above ten minutes.
+
+A bounded stage-metadata fusion is now implemented-unverified. Parent owns
+`modules/backup.sh`, `modules/lib/execution.sh`, `modules/helpers/worker.sh` and
+manifest; `module_consolidation` owns focused tests in archive verifier/I/O;
+`consolidation_review` independently reviews the runtime. Planner **PASS WITH
+NOTES** approved a fixed supervised `ls -id STAGE TARGET STAGE` for safe flat stage
+paths, without an append guard. Parent-side target type checks were removed after
+independent review: dispatch is syntactic; the worker keeps the original nonsymlink
+file/directory predicate after stage admission. Corrective review **PASS**. Matched native source performs each fresh
+stat in operand order before sorting display. Parse exact names/multiplicity,
+require both stage inodes, and retain regular/nonlink/-ef checks, finite operands,
+existing deadline/reap/attachment/FD handling and all other-path fallbacks.
+One extra read-only target metadata observation can occur before rejecting a
+mismatched first stage; it cannot authorize ownership/content/write and remains
+bounded. No payload, mutation or publication boundary moves. Native cost and
+complete affected-group proof are still required before the complete core gate.
+
+Implementation and both corrective reviews passed. New focused local safety proof:
+**15 passed / two Linux-only deadline variants skipped, 2.86s**; real flat file/dir
+and symlink cases, unordered/exact receipt parsing, actual stage substitution,
+RAM/published/append fallback and existing target/append replacement. Both original
+blocked-write and combined-inode deadline cases remain for native execution.
+The existing full positive verifier passed on macOS in **30.14s** (30.53 wall,
+12.81 user, 10.33 system), down from 47.91s on the prior runtime. Its profile now
+has **279 probes / 157 inode probes / 1,116 RAM inode reads**, compared with
+367 / 245 / 1,468. The 122 other operations and complete payload assertions remain.
+Common statics/host syntax passed; native performance still requires measurement.
+
+Run full Checks after the affected diagnostic scopes pass, verifying both platforms
+and each module's complete makespan within roughly ten minutes. Accept the six IDs
+and update README only after that gate. Publish records and stop for the day,
+without reviewing or suggesting another block.
 
 ### Prior validation state before the cost correction
 

@@ -748,6 +748,17 @@ archive-inode)
 	[ "$#" -eq 1 ] && [ ! -L "$1" ] && { [ -f "$1" ] || [ -d "$1" ]; } || exit 2
 	exec "$tool" -id "$1"
 	;;
+archive-stage-inodes)
+	[ "$#" -eq 3 ] && [ -d "$1" ] && [ ! -L "$1" ] && [ -d "$2" ] && [ ! -L "$2" ] || exit 2
+	# shellcheck disable=SC3013
+	[ "$1" -ef "$2" ] || exit 2
+	case $3 in '' | . | .. | *[!A-Za-z0-9_.-]*) exit 2 ;; esac
+	stage_inode_target=$1/$3
+	[ ! -L "$stage_inode_target" ] && { [ -f "$stage_inode_target" ] || [ -d "$stage_inode_target" ]; } || exit 2
+	# Matched native ls stats each operand in order before sorting its output.
+	# Repeated stage operands therefore bracket the target's fresh observation.
+	exec "$tool" -id "$1" "$stage_inode_target" "$1"
+	;;
 archive-count | archive-meta | archive-digest | archive-gunzip-test | archive-hexdump)
 	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
 	case $mode in

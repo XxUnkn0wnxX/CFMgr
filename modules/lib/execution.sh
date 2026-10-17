@@ -148,7 +148,7 @@ cfmgr_prerequisites_run() {
 	archive-source-mount) [ "$#" -eq 11 ] || return 2 ;;
 	archive-tar-header) [ "$#" -eq 13 ] || return 2 ;;
 	archive-payload-json | archive-write) [ "$#" -eq 14 ] || return 2 ;;
-	archive-payload-yaml | archive-payload-match) [ "$#" -eq 12 ] || return 2 ;;
+	archive-payload-yaml | archive-payload-match | archive-stage-inodes) [ "$#" -eq 12 ] || return 2 ;;
 	archive-payload-index) [ "$#" -eq 13 ] || return 2 ;;
 	archive-payload-pem) [ "$#" -eq 11 ] || return 2 ;;
 	archive-memory | archive-flush) [ "$#" -eq 9 ] || return 2 ;;
