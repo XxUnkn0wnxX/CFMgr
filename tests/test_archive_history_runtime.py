@@ -30,9 +30,11 @@ def archive(base_archive):
             "${CFMGR_PAYLOAD_MODE:-}",
             "${CFMGR_PAYLOAD_MODE:-history-${CFMGR_HISTORY_MODE:-}}",
         )
+        mode_list = "plan|runtime-json|certificate-json|drafts|drafts-review)"
+        assert body.count(mode_list) == 1
         body = body.replace(
-            "plan|runtime-json|certificate-json|drafts)",
-            "plan|runtime-json|certificate-json|drafts|history-policy)",
+            mode_list,
+            "plan|runtime-json|certificate-json|drafts|drafts-review|history-policy)",
         )
         wrapper.write_text(body)
     return base_archive
