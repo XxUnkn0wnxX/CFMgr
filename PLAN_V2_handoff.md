@@ -23,17 +23,254 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a14803-6b23-7b22-b261-581bee5dfce5
 Eighth ID verified 2026-10-17 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a151ca-9b8c-7d21-a424-11c9013c54fd
+Ninth ID verified 2026-10-19 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — closed; paused for the day
+## Active checkpoint — S04.01 safe data parsing
 
-**The agreed final checkpoint is complete. End the turn and wait.** S14.01 and
+On 2026-10-19 the user instructed **"ok read handoff & start"**, authorizing the
+recommended Route A S04.01 checkpoint below. Finish the existing parser contract
+through its real consumers, repair demonstrated gaps, review/test, publish the
+authorized develop checkpoint and exact required CI, update justified acceptance
+and receipt records, then **stop**. S14.03 remains a separate unstarted checkpoint.
+No requirement change, router deployment, release or history rewrite is authorized.
+
+Restart verification: local develop and actual remote both equal
+`848ee4ecda3371172fba30b8b8baeaeaf6c59a21`; the sole pre-existing dirty file is this
+handoff's scoping update. Preserve that recommendation and earlier receipts.
+Current credit: **21/157 subgoals (13.4%), 0/16 main goals (0%)**; Goal 4 has
+**2/9 accepted (22.2%)**. S04.01 remains unchecked pending its complete proof.
+
+Current ownership: parent owns V2 records, manifest generation, integration and
+publication; package worker owns `modules/lib/package.sh`, `tests/test_install.py`
+and `tests/test_retained_launch.py`. YAML/config test work and both source reviews
+are complete. The independent planner is checking the implemented package delta
+and the measured local Backup cost. No new runtime owner or permanent test group
+is authorized. The user reiterated consolidation and cost optimization before
+checkpoint closure.
+
+Confirmed repairs and proof:
+
+- YAML plain scalars reject closing flow indicators and separated `-`/`?`, while
+  preserving quoted values, negative numbers, ordinary punctuation and URLs.
+  Existing full-byte capture, unsupported-YAML retention and credential/PEM tests
+  remain. The existing JSON consumer test adds depth/node/string/input limits.
+- Shared bootstrap metadata now takes explicit private snapshot arguments,
+  checks bounded byte/LF framing and ASCII grammar using admitted native WC/AWK,
+  and preserves retained launch before Entware/storage repair. Fresh admission
+  checks both live inputs before supervised copies and binds manifest digest and
+  catalog size/hash to those parsed copies. Parent caught and corrected a draft
+  distribution-mode check on the private catalog copy; private copies need not
+  have distribution mode 0644. Healthy fresh/retained diagnostics are required.
+- Complete local Backup on `848ee4e` plus YAML/config-test/record changes:
+  `/usr/bin/time -l .venv/bin/python tools/test.py --core-batch backup --skip-shellcheck`
+  passed **360**, with **23 explicit platform skips**, in **694.94s pytest /
+  697.10s wall / 301.72s user / 242.51s system**. Initial required statics passed.
+  Log: `.tmp/s0401/backup-local-initial.log`. Package work began only after this
+  run ended. Linux/BusyBox proof remains pending.
+- Optional ShellCheck 0.11.0 `--extended-analysis=false` exited 1 with informational
+  diagnostics, **29.13s wall / 26.93s user / 0.69s system**, about 394 MB maximum
+  RSS (`.tmp/s0401/shellcheck-initial.log`). No optional lint pass is claimed;
+  extended analysis remains unrun under the existing resource limitation.
+
+**Cost gate remains open.** The complete Mac Backup group exceeded ten minutes;
+no tests were pre-split. Its largest file totals are verify 154.89s, capture
+151.24s, create 102.91s, history 75.51s, backup menu 55.78s and payload semantics
+45.94s. Parent and a read-only worker found small existing fixtures and distinct
+required safety/consumer proof, rather than removable bulk or duplicated setup.
+The real verifier measured 279 probes, including 157 inode probes. A safe small
+fixture optimization recovering the roughly 98s overrun has not been identified;
+no safety case has been removed, mocked away or relabeled to satisfy timing.
+The independent planner is reviewing this conclusion. No extra full run solely
+for timings is authorized. Existing exact CI baseline including setup is Backup
+7m31s, Manager 8m21s, Status 38s; final same-platform candidate costs remain due.
+
+Package repair and independent implementation review are complete. Complete local
+Manager passed **522**, with **72 platform skips** and **four excluded optional
+diagnostics**, in **342.17s pytest / 343.89s wall / 161.66s user / 110.35s system**:
+`/usr/bin/time -l .venv/bin/python tools/test.py --core-batch manager --skip-shellcheck`
+(`.tmp/s0401/manager-local.log`). Largest file totals: install 72.03s, retained
+launch 60.27s, Store 53.25s, dependency reinstall 44.64s. Required common statics
+passed; final benchmark-only Python edit also passed Ruff/format/compile. Parent
+review and the planner's implementation audit agree; no further code blocker.
+
+The planner confirms no safe small fixture reduction closing the Mac Backup
+overrun. One independent native benchmark now performs each distinct assertion
+once on both backends, removing **594 redundant applet launches**. The prior
+benchmark consumed 0.402s wall / 0.411s CPU on CI; no broad speedup is claimed.
+This native-only edit does not change the executed Mac Backup path. Its native
+proof remains due. The local cost decision must be presented with the finished
+candidate evidence before accepting/closing the checkpoint.
+
+Next publish the authorized candidate, cancel its premature automatic core run
+while Dev evidence is pending, and run these existing whole-module selections:
+
+- Package/config: `tests/test_install.py tests/test_retained_launch.py tests/test_config_observation.py`.
+- Archive parsing/applets: `tests/test_archive_yaml.py tests/test_archive_verify.py tests/test_archive_io.py`.
+
+Then run exact complete core Checks for all three modules/platforms.
+Do not award S04.01 or close the checkpoint while required proof or the cost
+finding remains unresolved. No full local suite is due. Initial ETA was 60–90
+minutes (up to about two hours if broader gaps); latest update was 60–90 minutes
+remaining after the measured Backup overrun, revised to **15–25 minutes for final
+CI evidence** after both local groups completed. Closure still requires the cost
+decision; no exception is authorized by this record.
+
+## Scoped recommendation — authorized first checkpoint above
+
+The preceding scoping instruction was to **scope the next target(s), leave the result
+in the handoff and stop**. It authorized this recommendation only; the active
+checkpoint above now supersedes that stop for S04.01. The
+completed checkpoint below remains accepted. This handoff update is local;
+`develop` and the verified remote remain at
+**`848ee4ecda3371172fba30b8b8baeaeaf6c59a21`**, the documentation receipt for tested
+code **`4942b3416fbc68aeeace15284dccf6077f3cf138`**. Recheck actual Git state on resume.
+
+### Recommended first checkpoint: S04.01 safe data parsing
+
+**Route A — one independently completable foundation subgoal.** Audit and finish
+the existing bounded data-parser contract through its real installed consumers.
+Do not begin with another archive feature or a general parser rewrite. The manual
+archive package now supplies actual YAML/JSON/certificate consumers alongside the
+existing config/schema and package/catalog readers; absence of Cloudflared setup
+is not a hard prerequisite for accepting this shared foundation. Future setup,
+provider and restore consumers retain their own integration gates. This is a
+readiness finding, not a completed acceptance audit or a new checkbox.
+
+Parent review and an independent Astra scope audit agree on this ordering after
+the archive-versus-setup dependency comparison. The smaller remaining cost is an
+inference from existing consumers, not an exhaustive proof of parser completeness;
+the first authorized step is the requirement-to-evidence map below.
+
+| Input / existing owner | Real consumer and current proof to inspect |
+| --- | --- |
+| Config schema and JSON — `modules/lib/config.sh` | Installed defaults, scoped Save, settings/status and archive capture/verification; `test_config.py`, `test_config_schema2.py`, `test_config_store.py`, `test_config_observation.py`. |
+| Catalog/package metadata — `modules/lib/package.sh` | Package admission, fresh/retained installed entry and acquisition; `test_package.py`, `test_install.py`, `test_entry_package.py`, `test_acquire.py`, `test_acquire_install.py`. |
+| Full YAML, credential JSON and certificate data — `modules/backup.sh`, reusing the config JSON parser | Actual coherent capture and full archive verifier, including populated advanced data; `test_archive_capture.py::test_populated_capture_preserves_full_bytes_and_off_history` and `test_archive_payload_semantics.py::test_real_archive_verifier_runs_payload_callbacks_with_native_tools`, plus the existing YAML/payload/verification modules. |
+
+After the user authorizes this checkpoint:
+
+1. Map every S04.01 requirement to the current parser, its actual callers and
+   written proof: malformed/ambiguous/duplicate fields, encoding/framing, unsafe
+   paths, unknown required schemas, complete bounded work/output, and treating all
+   input as data. Record supported syntax and limits from the existing approved
+   contract and implementation; do not expand or weaken syntax silently.
+2. Verify that callers enforce the parsers' input-size/snapshot prerequisites and
+   handle rejected/incomplete results correctly. In particular, preserve complete
+   user YAML bytes, require real JSON/certificate identity checks, and avoid
+   interpreting a conservative parser rejection as proof of a corrupt archive.
+   Parsing a certificate is not current remote-authentication evidence.
+3. Repair only demonstrated gaps and missing meaningful tests. Reuse current
+   readers/fixtures; extend their coherent owners rather than adding parser files,
+   wrappers or function-per-script modules. If the current implementation already
+   satisfies the whole ID, finish the audit/evidence mapping without inventing a
+   refactor. Substantial new behavior or requirement changes need a user decision.
+4. Review the complete relevant parser/caller surface and measured test cost;
+   finish required local/platform/static gates, then exact-candidate core CI where
+   new changes require it. Record audit dispositions and only justified S04.01
+   acceptance/README/receipt updates. **Pause at this checkpoint**, even though the
+   following candidate is already scoped.
+
+This does not include S04.04–S04.09, Cloudflared setup/import, native Cloudflared
+configuration validation, service activation, provider calls or full restore.
+Their shared parsing overlap gives them no credit. No runtime owner or new core
+test group is needed. Parent owns the records and acceptance; a bounded parser
+review/repair package can be delegated after its exact gaps and ownership are known.
+
+**Future validation:** use existing complete test modules for each changed parser
+and its consumers, with lean local fixtures and available statics. Backup and
+Manager are the principal affected core groups; shared config changes also require
+Status consumer proof. Reconcile existing exact-code evidence with every required
+case and reuse valid results; relevant code/test changes require new proof. Finish
+through **Checks → independent Backup, Manager and Status Checks**, both platforms,
+at the final code candidate, following the current focused-Dev/final-core sequence.
+No full local suite is due for this single-ID checkpoint. Optional Tools/Lint/
+Diagnostics remain optional; no workflow redesign or speculative stress matrix.
+
+### Following candidate: S14.03 archive selection/actions
+
+This is the next substantive feature candidate, **a separate checkpoint requiring
+permission after the first closes**, not a bundled commitment. Its real journey is
+installed menu `4` → numbered newest archive list → selection → inspect/full verify/
+restore-effects review or confirmed single-archive deletion. An alternate source
+drive must leave the saved backup destination/preferences unchanged, including
+when no destination/set has yet been saved. Order by validated manifest chronology,
+not localized filename order; handle empty/no-drive/invalid-input/exit/signal cases.
+
+Keep the implementation in **`modules/backup.sh`**. Reuse
+`cfmgr_archive_format_verify`, payload identity/semantic checks and the existing
+mount/file pinning and deletion-safety patterns. These are foundations, not an
+already working browser: `cfmgr_archive_existing` and
+`cfmgr_archive_recognize_existing` assume a creation/retention context, the saved
+set UUID and scratch beneath the destination. Separate source admission and bounded
+private scratch from that context before reuse. Discover/admit the selected
+archive's own set without weakening creation/retention's same-set restrictions;
+list/review must not save settings, create a backup destination or prune archives.
+
+The required review must show actual admitted archived feature/state, schema,
+path/dependency, migration/remapping and deferred-history effects or uncertainties.
+Keep secrets out of output and escape terminal controls. Clearly distinguish
+container/data verification from restore readiness and current auth/health.
+S14.03 explicitly says **review restore**; actual Save/publication/reconstruction
+and activation remain S14.09–S14.11. A generic “restore unavailable” placeholder
+cannot complete the review, and this package cannot claim executable restore.
+
+Before confirmed deletion, revalidate the selected archive and mount/file identity;
+changed, foreign or uncertain data must remain untouched. Confirmation/EOF/cancel
+and failed-delete reporting need real consumer tests. Preserve creation, retention,
+source-snapshot and required-payload behavior. The stale main-menu text in
+`cfmgr_launch_menu` that still says archive creation is unavailable can be corrected
+with this consumer integration. Change shared libraries only for demonstrated reuse.
+
+Extend existing Backup menu/control/format/payload/transaction coverage and the
+installed-entry journey. Use complete Backup proof, affected shared/Manager
+consumers, and the same final exact three-module Checks gate. Apply the same pause
+and single-ID acceptance boundary; do not roll directly into restore or Goal 5.
+
+### Alternatives and remaining dependencies
+
+| Candidate | Why it is not the first checkpoint |
+| --- | --- |
+| S14.03 first | A viable feature-sized alternative, but S04.01 now has real consumers and can be closed as a smaller foundation audit/gap package. No need to bundle the two merely because they share parsers. |
+| S05.01 A1 existing-token setup | Still needs the actual submenu/private input, checked official binary installation, reviewed Save and shared activation/runtime path; token storage alone cannot close it. |
+| S05.02 B choice/import | Adds source discovery/selection, full referenced-data/native validation, guarded selected-method replacement and the honest fresh-creation branch; archive readers alone do not implement import. A1/A2/B remain unimplemented. |
+| S14.09–S14.11 restore | Requires current feature reconstruction, owned lifecycle stop/start, fresh auth/source admission, logging integration and auth-aware rollback. Those production consumers are missing; completing all remaining Backup IDs now is not an independent small package. |
+| S03.08/S03.10/S04.06/S13.13 | Respectively still need production feature-history writers, full health presentation, a real masked credential-input consumer, or syslog plus eligible feature-file delivery. Helpers/layout alone do not close them. |
+
+**Route B — broader coordinated work is not recommended now.** A full restore or
+Cloudflared setup checkpoint would require a separate minimal dependency design;
+this scoping pass does not authorize one or treat whole adjacent goals as hard
+prerequisites. S04.01 can support later work without absorbing those contracts.
+
+Test-cost baseline from the accepted code: Backup **7m31s**, Manager **8m21s**,
+Status **38s**, including setup. Start with each complete affected core group;
+only if it exceeds roughly ten minutes split temporary disjoint Dev diagnostic
+batches, isolate/optimize, rerun every chunk toward two to three minutes, then
+rerun the complete group. Preserve required cases and visible timings; no permanent
+submodule CI split or fragmented runtime libraries to hide cost.
+
+**Stop state:** no implementation, product acceptance or requirements changed.
+Read-only scope reviews are complete; no worker or new CI job remains active.
+Documentation checks passed: `.venv/bin/python tools/check.py` (157 aligned IDs,
+16 README goal links, active links/privacy) and `git diff --check`. Only this
+handoff is modified; no commit, push or runtime test was performed for scoping.
+Progress stays **21/157 subgoals (13.4%), 0/16 main goals (0%)**; Goal 14 stays
+**7/11 (63.6%)**. S04.01 and S14.03 remain unchecked. The next session should read
+this section and the authoritative records, verify the baseline, and wait for or
+follow explicit authorization for the chosen checkpoint. The previous archive
+package is complete and must not be restarted from the historical queue below.
+
+## Previous checkpoint — closed
+
+**The agreed final checkpoint is complete.** S14.01 and
 S14.04–S14.08 manual archive creation, responsibility-based consolidation and the
-approved test/CI correction are accepted. Do not review, select, suggest or start
-another block without the user's explicit permission. No router, release or
-live-deployment authority is implied.
+approved test/CI correction are accepted. The later scoping-only instruction is
+recorded above; it permits no implementation of another block. No router, release
+or live-deployment authority is implied.
 
 Tested and published code: **`4942b3416fbc68aeeace15284dccf6077f3cf138`**.
 Automatic [Checks 39034472135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034472135) started three **independent** module runs and

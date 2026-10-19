@@ -584,6 +584,37 @@ def test_invalid_observation_and_wrong_byte_count_are_rejected(
         assert (rejected.returncode, rejected.stdout, rejected.stderr) == (1, b"", b"")
 
 
+def test_passive_extension_at_string_limit_is_preserved(
+    commands, config, tmp_path
+) -> None:
+    value = json.loads(config)
+    value["future"] = {"passive": "x" * 16384}
+    original = json.dumps(value, separators=(",", ":")).encode()
+    result = invoke(commands, tmp_path, original, "patch", OBSERVATION)
+    assert (result.returncode, result.stdout, result.stderr) == (0, original, b"")
+
+
+def test_parser_resource_limits_reject_before_candidate(
+    commands, config, tmp_path
+) -> None:
+    over_depth = {"leaf": True}
+    for _ in range(33):
+        over_depth = [over_depth]
+    over_nodes = [None] * 4100
+    over_string = "x" * 16385
+    oversized = config + b" " * (65537 - len(config))
+    originals = []
+    for extension in (over_depth, over_nodes, over_string):
+        value = json.loads(config)
+        value["future"] = extension
+        originals.append(json.dumps(value, separators=(",", ":")).encode())
+    originals.append(oversized)
+
+    for original in originals:
+        result = invoke(commands, tmp_path, original, "patch", OBSERVATION)
+        assert (result.returncode, result.stdout, result.stderr) == (1, b"", b"")
+
+
 def test_retained_utf8_backslash_paths_survive_noop_and_other_changes(
     commands, config, tmp_path
 ) -> None:

@@ -4296,6 +4296,8 @@ function scalar(s,    q,out,i,c,e,n,low,closed) {
 	q=substr(s,1,1)
 	if (q!="\"" && q!="\047") {
 		if (s ~ /^[\[\{&*!%@`]/ || s ~ /\t/) fail("unsupported-syntax")
+		if (q=="]" || q=="}" || q=="," ||
+			((q=="-" || q=="?") && (length(s)==1 || substr(s,2,1)==" "))) fail("unsupported-syntax")
 		if (s ~ /:($| )/) fail("unsupported-scalar")
 		return s
 	}

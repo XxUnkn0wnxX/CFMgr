@@ -8,6 +8,91 @@ The checklist remains authoritative for acceptance; the handoff owns current wor
 permissions, jobs, next actions and session lineage. Deferred risks remain in the
 review notes. This record creates no requirements, product credit or permissions.
 
+## S04.01 safe data parsing review
+
+The current installed consumers provide a concrete foundation audit: fresh and
+retained package admission, scoped configuration Save and settings/status readers,
+and full manual archive capture/verification. The following map records reviewed
+implementation and existing proof; final candidate results remain pending in the
+checklist until all required gates pass. Future setup/provider/restore consumers
+retain their own integration gates.
+
+| Contract | Current owner and consumer proof |
+| --- | --- |
+| JSON is data; malformed syntax, decoded duplicate keys and invalid UTF-8/framing reject | `config.sh` JSON tree getter, used by the fixed `worker.sh` config/payload modes; `test_config_observation.py` exercises escaped duplicates, malformed data, byte counts, NUL/invalid UTF-8 and preserved literal bytes. |
+| Required schema and safe paths | `config.sh` schema/observation consumers admit schema 1/2 and typed nested versions; `test_config_schema2.py` covers invalid authority and real Store refusal without changing live bytes. Unknown passive extensions remain preserved. |
+| Finite configuration input/output | Private immutable snapshots, independent size checks and supervised parsing in Store/launch/archive; JSON limits are 65,536 input bytes, depth 32, 4,096 nodes, 16,384 decoded string bytes and a 131,072-byte tree/token budget. |
+| Catalog/package inputs remain passive | `package.sh`, fixed worker grammar and entry framing enforce version/schema, complete module correspondence, safe relative paths and digest admission before use. `test_entry_package.py`, `test_acquire.py` and `test_install.py` exercise the real entry/acquisition/install boundaries. |
+| Full YAML bytes survive | `backup.sh` snapshots and copies the original data, deriving a separate identity/dependency receipt. `test_populated_capture_preserves_full_bytes_and_off_history` checks exact bytes, sizes and hashes. The supported subset does not rewrite full YAML. |
+| Credential/certificate identity | Shared JSON parsing plus Backup payload joins require selected account/UUID/secret identity; PEM framing and native decoding precede account checks. `test_archive_payload.py` and `test_real_archive_verifier_runs_payload_callbacks_with_native_tools` exercise these joins. Parsing establishes no current remote-authentication claim. |
+| Rejection grants no deletion authority | Conservative YAML rejection stays incomplete during retention; `test_archive_transaction.py` contains the real metadata-budget rejection and no-pruning regression. Operational failure is distinct from positively identified optional certificate damage. |
+
+The reviewed YAML subset is one mapping document with block mappings/sequences,
+plain/quoted values, ordinary block scalars and JSON-compatible quoted escapes.
+LF/CRLF and a missing final newline are supported for YAML; flow containers,
+anchors/aliases, merges, tags, directives and multiline quoted values reject
+conservatively. It validates UTF-8, limits depth to 64, physical lines to 65,536
+bytes and referenced paths to 1,024 printable ASCII bytes. Whole-source capture
+is bounded by admitted available space and the existing operation deadline;
+metadata/output consume the admitted 65,536–16,777,216-byte inventory budget.
+These are existing parser/caller limits, not a claim of general YAML support.
+
+Credential/certificate JSON uses the shared 65,536-byte input limit. PEM input is
+also bounded to 65,536 bytes, physical lines to 160 and base64 lines to 128, with
+one token block amid supported labels. Its decoded JSON still must match the
+selected account. Package manifest admission uses a 131,072-byte input cap,
+512 entries, 1 MiB per member, 16 MiB total, 256-byte relative paths and depth 16.
+Manifest/catalog require final LF, unlike the separately supported YAML framing.
+
+Two read-only reviewers and parent inspection identified these bounded gaps:
+
+- YAML plain values starting with closing flow indicators or a separated `-`/`?`
+  were accepted. Parent reproduced successful receipts for `foo: ]`, `foo: - child`
+  and `foo: ? child`. The existing scalar guard needs the missing leading-indicator
+  checks while retaining URLs, ordinary punctuation and quoted data. This follows
+  the [YAML plain-scalar grammar](https://yaml.org/spec/1.2.2/#733-plain-style),
+  without introducing a broader YAML parser or changing the supported subset.
+- The shared bootstrap manifest/catalog grammar omitted strict byte/newline
+  framing. Parent reproduced success for otherwise valid metadata with final LF
+  removed. Fresh bootstrap additionally reached catalog parsing before its later
+  regular-file and actual-size admission. The repair must precede those reads and
+  preserve native retained-launch access before Entware admission; installed entry
+  and remote acquisition already supply framing checks.
+
+Both demonstrated gaps are repaired in their existing owners. The YAML scalar
+guard now rejects the missing leading indicators; positive punctuation and quoted
+values remain covered. Fresh bootstrap admits both regular metadata inputs before
+supervised copying and passes explicit private copies to the shared parser. Native
+WC byte/LF counts and C-locale ASCII/grammar checks agree on those same copies;
+the manifest digest and catalog size/hash bind the parsed bytes to publication.
+Retained launch reuses its existing copies before storage pin/repair and preserves
+their migration and later live-file digest comparisons. A review-stage private
+snapshot mode mismatch was corrected: private copies are checked by size/hash,
+while live distribution files retain their metadata checks.
+
+Parent and independent planner source review agree on these repairs. Sixteen new
+package cases add cheap direct grammar/framing checks, fresh missing-LF/oversize/
+FIFO rejection before config/JFFS claim, and retained corrupted-snapshot refusal
+before pin/repair. Healthy fresh and retained journeys plus those cases passed
+18 tests in 23.13s; their strengthened early-refusal subset passed 15 in 1.85s.
+The existing configuration test module now covers depth/node/string/input limits;
+existing NUL/UTF-8 and archive-incomplete regressions are reused. Complete local
+Manager and exact-candidate native/core gates remain pending.
+
+Complete local Backup passed 360 tests with 23 explicit platform skips in 697.10s
+wall (301.72s user, 242.51s system). The cost audit found only 5.88s of pytest setup;
+the large costs are distinct real capture, verification, creation and corruption
+boundaries with already-small fixtures. Parent, worker and planner found no small
+fixture-only reduction recovering the 97.10s local budget overrun without losing
+required proof. One separate native benchmark repeated identical assertions 100
+times on each backend; this is reduced to one observation per assertion/backend,
+removing 594 redundant applet launches while retaining semantic checks. It does
+not resolve the macOS overrun. Its native validation and the local cost decision
+remain open; no timing budget, acceptance requirement or safety test was waived.
+
+No new owner, permanent core group, requirement or live-router claim is introduced.
+Functional acceptance and checkpoint closure remain pending the required gates.
+
 ## S14.01, S14.04–S14.08 accepted checkpoint disposition
 
 Parent and independent source/security reviews agree that the manual creation,

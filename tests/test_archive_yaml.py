@@ -222,6 +222,21 @@ metadata:
     )
 
 
+def test_plain_scalar_indicator_literals_remain_supported(awk_programs) -> None:
+    source = (
+        IDENTITY
+        + """negative: -123
+question: ?query
+vector: ::vector
+url: https://example.test/path
+status: http_status:404
+punctuation: word,part]tail}end
+quoted-indicator: "]"
+"""
+    )
+    _success(awk_programs, source)
+
+
 @pytest.mark.parametrize(
     ("extra", "reason"),
     [
@@ -249,6 +264,13 @@ metadata:
         ("ingress:\n  -\n    - service: http_status:404\n", "unsupported-container"),
         ("foo: &anchor value\n", "unsupported-syntax"),
         ("foo: *anchor\n", "unsupported-syntax"),
+        ("foo: ]\n", "unsupported-syntax"),
+        ("foo: }\n", "unsupported-syntax"),
+        ("foo: ,\n", "unsupported-syntax"),
+        ("foo: -\n", "unsupported-syntax"),
+        ("foo: - child\n", "unsupported-syntax"),
+        ("foo: ?\n", "unsupported-syntax"),
+        ("foo: ? child\n", "unsupported-syntax"),
         ("<<: defaults\n", "unsupported-merge"),
         ("foo: !tag value\n", "unsupported-syntax"),
         ("---\n", "multiple-documents"),

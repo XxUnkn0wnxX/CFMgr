@@ -170,6 +170,10 @@ cfmgr_prerequisites_run() {
     if [ "$host_scenario" = cleanup-flush ] && [ "$mode" = launch-rmdir ] && [ "$cfmgr_probe_exit" -eq 0 ]; then
         : >"$cfmgr_install_context/guard-retired"
     fi
+    if [ "$host_scenario:$mode" = snapshot-framing:launch-copy ] &&
+        [ "${2-}" = "$cfmgr_install_context/catalog.txt.snapshot" ] && [ "$cfmgr_probe_exit" -eq 0 ]; then
+        printf '\000' >>"$2"
+    fi
 }
 cfmgr_bootstrap_native_prepare() { [ "$1:$2" = /jffs/addons/CFMgr.d:launch ]; }
 cfmgr_bootstrap_cleanup() { printf 'cleanup\n' >>"$cfmgr_install_jffs/cleanup-route"; }
@@ -286,6 +290,34 @@ def test_source_inert(shell: list[str], tmp_path: Path) -> None:
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_invalid_metadata_snapshot_blocks_before_storage_pin_or_repair(
+    shell: list[str],
+    tools: dict[str, str],
+    legacy_fsync: Path,
+    retained_package: Path,
+    retained_config: bytes,
+    tmp_path: Path,
+) -> None:
+    result, support = launch_host(
+        shell,
+        tools,
+        legacy_fsync,
+        retained_package,
+        retained_config,
+        tmp_path,
+        "snapshot-framing",
+    )
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert b"status=1 recovery=0" in result.stdout
+    catalog = (support / "catalog.txt").read_bytes()
+    assert (tmp_path / "private RAM/catalog.txt.snapshot").read_bytes() == (
+        catalog + b"\0"
+    )
+    assert (support / "config").read_bytes() == retained_config
+    assert not (support / ".storage-observation").exists()
+    assert not (tmp_path / "jffs/routes").exists()
 
 
 @pytest.mark.parametrize(

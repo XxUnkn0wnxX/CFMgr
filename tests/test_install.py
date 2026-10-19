@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -313,6 +314,118 @@ def test_corrupt_executable_package_fails_before_generation_or_jffs_claim(
     assert not (tmp_path / "executed").exists()
     assert list((tmp_path / "jffs").iterdir()) == []
     assert not list(tmp_path.glob("ram-*/install-config.*"))
+
+
+@pytest.mark.parametrize(
+    ("name", "damage"),
+    [
+        ("manifest.txt", "modern"),
+        ("manifest.txt", "legacy"),
+        ("manifest.txt", "missing-lf"),
+        ("catalog.txt", "missing-lf"),
+        ("manifest.txt", "nul"),
+        ("catalog.txt", "nul"),
+        ("manifest.txt", "non-ascii"),
+        ("catalog.txt", "crlf"),
+        ("manifest.txt", "empty"),
+        ("catalog.txt", "empty"),
+        ("manifest.txt", "oversize"),
+        ("catalog.txt", "oversize"),
+    ],
+)
+def test_shared_metadata_parser_requires_bounded_complete_ascii_records(
+    shell: list[str],
+    tools: dict[str, str],
+    package: Path,
+    tmp_path: Path,
+    name: str,
+    damage: str,
+) -> None:
+    for filename in ("manifest.txt", "catalog.txt"):
+        shutil.copy2(package / filename, tmp_path / filename)
+    path = tmp_path / name
+    content = path.read_bytes()
+    if damage in {"modern", "legacy"}:
+        assert content.startswith(b"CFMGR-MANIFEST 2 0.1.0 1 2\n")
+    if damage == "legacy":
+        content = content.replace(
+            b"CFMGR-MANIFEST 2 0.1.0 1 2\n", b"CFMGR-MANIFEST 1 0.1.0\n", 1
+        )
+        assert content.startswith(b"CFMGR-MANIFEST 1 0.1.0\n")
+    elif damage == "missing-lf":
+        content = content[:-1]
+    elif damage == "nul":
+        content = content.replace(b"\n", b"\0\n", 1)
+    elif damage == "non-ascii":
+        content = content.replace(b"\n", b"\xff\n", 1)
+    elif damage == "crlf":
+        content = content.replace(b"\n", b"\r\n", 1)
+    elif damage == "empty":
+        content = b""
+    elif damage == "oversize":
+        content = b"x" * 131073
+    path.write_bytes(content)
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            (
+                '. "$1"; CFMGR_VERSION=0.1.0; cfmgr_install_awk=$2; '
+                "cfmgr_install_wc=$3; cfmgr_install_context=$4; "
+                'cfmgr_bootstrap_manifest_records "$4/manifest.txt" "$4/catalog.txt"'
+            ),
+            "metadata-parser",
+            str(BOOTSTRAP),
+            tools["awk"],
+            tools["wc"],
+            str(tmp_path),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=2,
+    )
+    assert result.returncode == (0 if damage in {"modern", "legacy"} else 1), (
+        result.stdout,
+        result.stderr,
+    )
+    if damage in {"empty", "oversize"}:
+        assert not (tmp_path / "records").exists()
+
+
+@pytest.mark.parametrize("damage", ["missing-lf", "oversize", "fifo"])
+def test_catalog_admission_rejects_before_config_or_jffs_claim(
+    shell: list[str],
+    tools: dict[str, str],
+    legacy_fsync: Path,
+    package: Path,
+    tmp_path: Path,
+    damage: str,
+) -> None:
+    altered = tmp_path / "invalid metadata package"
+    shutil.copytree(package, altered)
+    catalog = altered / "catalog.txt"
+    if damage == "fifo":
+        catalog.unlink()
+        os.mkfifo(catalog)
+    else:
+        content = catalog.read_bytes()[:-1] if damage == "missing-lf" else b"x" * 131073
+        catalog.write_bytes(content)
+        # A matching manifest hash cannot authorize malformed catalog framing.
+        metadata = altered / "manifest.txt"
+        metadata.write_text(
+            "".join(
+                f"0644\t{len(content)}\t{hashlib.sha256(content).hexdigest()}\tcatalog.txt\n"
+                if line.endswith("\tcatalog.txt\n")
+                else line
+                for line in metadata.read_text().splitlines(keepends=True)
+            )
+        )
+    result = install(shell, tools, legacy_fsync, altered, tmp_path)
+    assert result.returncode == 1
+    assert list((tmp_path / "jffs").iterdir()) == []
+    assert not list(tmp_path.glob("ram-*/install-config.*"))
+    if damage in {"oversize", "fifo"}:
+        assert not list(tmp_path.glob("ram-*/records"))
 
 
 @pytest.mark.parametrize(

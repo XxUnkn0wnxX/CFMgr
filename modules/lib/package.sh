@@ -563,11 +563,19 @@ cfmgr_bootstrap_inventory() {
 }
 
 cfmgr_bootstrap_manifest() {
-	[ -f "$cfmgr_install_source/manifest.txt" ] && [ ! -L "$cfmgr_install_source/manifest.txt" ] || return 1
-	cfmgr_bootstrap_metadata "$cfmgr_install_source/manifest.txt" "$cfmgr_install_owner" 0644 || return $?
-	cfmgr_bootstrap_size "$cfmgr_install_source/manifest.txt" || return $?
-	[ "$cfmgr_install_size" -le 131072 ] || return 1
-	cfmgr_bootstrap_manifest_records || return $?
+	# Admit both live metadata files before reading either grammar. Parse private
+	# bounded copies so subsequent live/staged hash checks bind the parsed bytes.
+	for cfmgr_install_passive in manifest.txt catalog.txt; do
+		[ -f "$cfmgr_install_source/$cfmgr_install_passive" ] && [ ! -L "$cfmgr_install_source/$cfmgr_install_passive" ] || return 1
+		cfmgr_bootstrap_metadata "$cfmgr_install_source/$cfmgr_install_passive" "$cfmgr_install_owner" 0644 || return $?
+		cfmgr_bootstrap_size "$cfmgr_install_source/$cfmgr_install_passive" || return $?
+		[ "$cfmgr_install_size" -gt 0 ] && [ "$cfmgr_install_size" -le 131072 ] || return 1
+	done
+	for cfmgr_install_passive in manifest.txt catalog.txt; do
+		[ ! -e "$cfmgr_install_context/$cfmgr_install_passive.snapshot" ] && [ ! -L "$cfmgr_install_context/$cfmgr_install_passive.snapshot" ] || return 1
+		cfmgr_bootstrap_action install-copy "$cfmgr_install_source/$cfmgr_install_passive" "$cfmgr_install_context/$cfmgr_install_passive.snapshot" || return $?
+	done
+	cfmgr_bootstrap_manifest_records "$cfmgr_install_context/manifest.txt.snapshot" "$cfmgr_install_context/catalog.txt.snapshot" || return $?
 	cfmgr_bootstrap_inventory "$cfmgr_install_source" || return 1
 	# shellcheck disable=SC2016
 	"$cfmgr_install_awk" 'BEGIN { FS="\t" } NR==FNR {
@@ -583,19 +591,44 @@ cfmgr_bootstrap_manifest() {
 			;;
 		esac
 	done <"$cfmgr_install_context/inventory"
-	cfmgr_bootstrap_digest "$cfmgr_install_source/manifest.txt" || return $?
+	cfmgr_bootstrap_digest "$cfmgr_install_context/manifest.txt.snapshot" || return $?
 	cfmgr_install_manifest_digest=$cfmgr_install_digest
 	while IFS='	' read -r cfmgr_install_expected_mode cfmgr_install_expected_size cfmgr_install_expected_digest cfmgr_install_relative; do
+		if [ "$cfmgr_install_relative" = catalog.txt ]; then
+			[ "$cfmgr_install_catalog_bytes" -eq "$cfmgr_install_expected_size" ] || return 1
+			cfmgr_bootstrap_digest "$cfmgr_install_context/catalog.txt.snapshot" || return $?
+			[ "$cfmgr_install_digest" = "$cfmgr_install_expected_digest" ] || return 1
+		fi
 		cfmgr_bootstrap_file "$cfmgr_install_source/$cfmgr_install_relative" || return $?
 	done <"$cfmgr_install_context/records"
 }
 
 cfmgr_bootstrap_manifest_records() {
-	# Parse bounded manifest data, never eval/source it. Output is also bounded by
-	# the finite input/count/path limits and lives in the private RAM context.
+	# Explicit private snapshots only. Direct admitted native tools are required
+	# here: retained structural admission precedes storage/tool repair supervision.
+	[ "$#" -eq 2 ] || return 2
+	for cfmgr_install_passive in "$1" "$2"; do
+		[ -f "$cfmgr_install_passive" ] && [ ! -L "$cfmgr_install_passive" ] || return 1
+		cfmgr_install_counts=$(LC_ALL=C "$cfmgr_install_wc" -l -c <"$cfmgr_install_passive") || return 1
+		IFS=' 	' read -r cfmgr_install_lines cfmgr_install_bytes cfmgr_install_extra <<EOF_COUNTS
+$cfmgr_install_counts
+EOF_COUNTS
+		[ -z "$cfmgr_install_extra" ] || return 1
+		case $cfmgr_install_lines:$cfmgr_install_bytes in *[!0-9:]* | :* | *:) return 1 ;; esac
+		[ "${#cfmgr_install_lines}" -le 6 ] && [ "${#cfmgr_install_bytes}" -le 6 ] || return 1
+		[ "$cfmgr_install_bytes" -gt 0 ] && [ "$cfmgr_install_bytes" -le 131072 ] || return 1
+		if [ "$cfmgr_install_passive" = "$1" ]; then
+			cfmgr_install_manifest_bytes=$cfmgr_install_bytes cfmgr_install_manifest_lines=$cfmgr_install_lines
+		else
+			cfmgr_install_catalog_bytes=$cfmgr_install_bytes cfmgr_install_catalog_lines=$cfmgr_install_lines
+		fi
+	done
+	# Reconstruct bytes and compare LF counts independently of AWK record handling:
+	# missing final LF or implementations discarding NUL cannot become valid data.
 	# shellcheck disable=SC2016
-	"$cfmgr_install_awk" '
-		BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
+	LC_ALL=C "$cfmgr_install_awk" '
+		BEGIN { FS="\t"; version=ARGV[1]; expected_bytes=ARGV[2]; expected_lines=ARGV[3]; ARGV[1]=ARGV[2]=ARGV[3]="" }
+		{ bytes+=length($0)+1; if ($0~/[^\t -~]/) bad=1 }
 		NR==1 { modern=($0=="CFMGR-MANIFEST 2 " version " 1 2"); if ($0 != "CFMGR-MANIFEST 1 " version && !modern) bad=1; next }
 		{
 			if (NF!=4 || length($0)>512 || $1 !~ /^0(644|755)$/ ||
@@ -613,20 +646,21 @@ cfmgr_bootstrap_manifest_records() {
 			required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
 			if (modern) required=required " modules/backup.sh modules/lib/package.sh"
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
-			if (bad || count<2) exit 1
+			if (bad || count<2 || bytes!=expected_bytes || NR!=expected_lines) exit 1
 		}
-	' "$CFMGR_VERSION" "$cfmgr_install_source/manifest.txt" >"$cfmgr_install_context/records" || return 1
+	' "$CFMGR_VERSION" "$cfmgr_install_manifest_bytes" "$cfmgr_install_manifest_lines" "$1" >"$cfmgr_install_context/records" || return 1
 	# Catalog is passive schema/versioned data matching the complete module set.
 	# shellcheck disable=SC2016
-	"$cfmgr_install_awk" 'BEGIN { FS="\t"; version=ARGV[1]; ARGV[1]="" }
+	LC_ALL=C "$cfmgr_install_awk" 'BEGIN { FS="\t"; version=ARGV[1]; expected_bytes=ARGV[2]; expected_lines=ARGV[3]; ARGV[1]=ARGV[2]=ARGV[3]="" }
 		NR==FNR { if ($4~/^modules\//) expected[$4]=1; next }
+		{ bytes+=length($0)+1; lines++; if ($0~/[^\t -~]/) bad=1 }
 		FNR==1 { if ($0!="CFMGR-CATALOG 1 " version) bad=1; next }
 		{
 			kind=($1~/^modules\/lib\// ? "library" : ($1~/^modules\/helpers\// ? "helper" : "data"))
 			if (NF!=2 || !expected[$1] || seen[$1]++ || $2!=kind) bad=1
 		}
-		END { for (path in expected) if (!seen[path]) bad=1; if (bad) exit 1 }
-	' "$CFMGR_VERSION" "$cfmgr_install_context/records" "$cfmgr_install_source/catalog.txt" || return 1
+		END { for (path in expected) if (!seen[path]) bad=1; if (bad || bytes!=expected_bytes || lines!=expected_lines) exit 1 }
+	' "$CFMGR_VERSION" "$cfmgr_install_catalog_bytes" "$cfmgr_install_catalog_lines" "$cfmgr_install_context/records" "$2" || return 1
 }
 
 cfmgr_bootstrap_file() {
@@ -1897,7 +1931,7 @@ cfmgr_launch_package_structure() {
 	for cfmgr_launch_passive in manifest.txt catalog.txt; do
 		cfmgr_launch_action launch-copy "$cfmgr_install_source/$cfmgr_launch_passive" "$cfmgr_install_context/$cfmgr_launch_passive.snapshot" || return $?
 	done
-	cfmgr_bootstrap_manifest_records || return $?
+	cfmgr_bootstrap_manifest_records "$cfmgr_install_context/manifest.txt.snapshot" "$cfmgr_install_context/catalog.txt.snapshot" || return $?
 	cfmgr_launch_metadata "$cfmgr_install_source/setup-state" config || return $?
 	cfmgr_launch_size "$cfmgr_install_source/setup-state" 128 || return $?
 	cfmgr_launch_setup="CFMGR-SETUP 1 $CFMGR_VERSION complete"
