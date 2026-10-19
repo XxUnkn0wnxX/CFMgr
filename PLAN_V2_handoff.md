@@ -30,149 +30,113 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Resumed — S04.01 local test-cost review
+## Paused checkpoint — S04.01 accepted
 
-On 2026-10-19 the user instructed **"ok read handoff & start"**, authorizing Route A
-S04.01 only: finish the current parsing contract, repair demonstrated gaps,
-review/test, publish the develop candidate and exact CI, then update justified
-acceptance/receipts and stop. S14.03 remains a separate unstarted checkpoint.
-No requirement change, deployment, release, history rewrite or new module/group
-is authorized. The user explicitly reiterated consolidation and test optimization
-before closing. Initial local/remote head was `848ee4ecda3371172fba30b8b8baeaeaf6c59a21`;
-this file's prior scoping note was the sole pre-existing edit and is preserved below.
+The user authorized **"ok read handoff & start"** for Route A S04.01 only, required
+an ETA, consolidation and test-cost optimization, then requested a deeper review
+for redundant work and pointless edge cases. After an explicit temporary pause,
+**"ok continue"** resumed the same package. During final CI the user reaffirmed
+**"ensure we pause as this checkpoint also"**. That checkpoint is now complete:
+**pause here**. Do not review, select, suggest or start another target without new
+user permission. S14.03 remains separate and unstarted.
 
-**Current tested/published code:** `efdd465882babd54984c7aa8f0aed94549900ea3` on
-develop, confirmed again on the actual remote. Runtime is unchanged, but two test
-fixture edits passed complete affected local proof and now require exact-candidate CI.
-All original implementation, parent review, independent audits and functional
-gates passed at that code SHA. The user requested a further review of redundant
-work and pointless edge cases before considering any timing exception, then
-explicitly instructed **"i need you to pause for a bit"**, followed by
-**"ok continue"**, authorizing resume of the same package. No exception has been
-approved. No runtime/test change was made before the pause, and no new tests
-were run then. A Sol analyst could not start due to capacity; the existing
-read-only Astra reviewer was interrupted. On resume no child threads remained.
-Parent owns all records, integration and publication. The bounded Mac fixture
-worker completed `tests/test_archive_io.py` and `tests/test_archive_verify.py`
-with focused before/after proof and statics. Independent Astra review passed with
-notes: preserve the distinct expensive failure cases. The complete Mac Backup
-run passed in budget; its wait-only agent is finished. No worker or CI job is active.
+**Accepted/tested code:** `c8c76f0d5cc44792387dc43388f7dc418a7fb3fb` on develop,
+verified on the actual remote. The parser repair is
+`efdd465882babd54984c7aa8f0aed94549900ea3`; the final candidate adds the measured
+Mac fixture optimization, the user-requested optional-check rule and evidence.
+Runtime bytes did not change between those two candidates. The closing
+README/checklist/audit/handoff receipt is documentation-only and names this tested
+code SHA; do not claim the receipt commit itself received runtime CI.
 
-Current uncommitted edits are `AGENTS.md`, `PLAN_V2_audit.md`,
-`PLAN_V2_checklist.md`, this handoff, `tests/test_archive_io.py` and
-`tests/test_archive_verify.py`. These edits have not yet been committed/pushed;
-tested/published runtime remains the SHA above.
+**Accepted progress:** **22/157 subgoals (14.0%)**, **0/16 main goals (0%)**.
+Goal 4 is **3/9 accepted and implemented/written-focused-tested (33.3%)**;
+S04.01 is the only newly accepted ID. Six Goal 4 subgoals and 135 total product IDs
+remain unaccepted. No main-goal audit/full-local gate or beta/router readiness is
+claimed. No worker or required CI job remains active.
 
-The user also explicitly required validation of additions/changes to optional
-code/tests. The parent added that narrow standing rule to `AGENTS.md`: affected
-Diagnostics, Tools, lint/link checks must run before closure; unrelated optional
-checks stay nonroutine. The user confirmed they remain manually triggered, not
-default runs. Product scope and requirements are unchanged. The rule edit is
-saved locally; its documentation validation/publication remains pending.
+### Completed scope and review
 
-**Acceptance awaits exact-candidate CI; the cost gate passed.** Current accepted totals:
-**21/157 subgoals (13.4%), 0/16 main goals (0%)**. Goal 4 has **2/9 accepted
-(22.2%)** and **3/9 implemented/written-focused-tested (33.3%)**, including S04.01.
-Its local-proof box is checked; its acceptance box and README credit remain
-unchanged. No other target may start from this handoff.
+- Existing `modules/backup.sh` rejects invalid YAML plain-scalar indicators while
+  preserving supported syntax and full original data bytes. Existing
+  `modules/lib/package.sh` admits bounded private manifest/catalog copies,
+  validates ASCII/byte/LF framing and binds the parsed metadata to digests before
+  fresh or retained use. JSON resource limits have cheap written boundary proof.
+- Parent and independent audits mapped actual package, Store/settings/status and
+  archive capture/verification consumers to the full current S04.01 contract.
+  Future setup/provider/restore consumers retain their own integration gates.
+  The [audit record](PLAN_V2_audit.md#s0401-safe-data-parsing-review) contains the
+  findings, repairs and review agreement. No new runtime owner or permanent core
+  test group was introduced.
+- The user explicitly required affected optional code/tests to be run during
+  development. That narrow rule is published in `AGENTS.md`: Diagnostics, Tools,
+  lint/link-check changes require affected validation before closure, while CI
+  triggers remain manual-only and unrelated optional checks remain nonroutine.
+  No optional test/tool/check implementation changed in this checkpoint; required
+  planning/link checks did run. No workflow trigger or product requirement changed.
 
-Repairs remain in `modules/backup.sh` and `modules/lib/package.sh`: YAML rejects
-invalid leading plain-scalar indicators while preserving valid data; fresh and
-retained package readers parse bounded private manifest/catalog copies, enforce
-ASCII/byte/LF framing, and bind the parsed metadata to digest admission. Existing
-JSON tests now cover resource limits. The [audit](PLAN_V2_audit.md#s0401-safe-data-parsing-review)
-contains the complete consumer map and independent review agreement. Future
-setup/provider/restore consumers retain their own integration gates.
+### Final gates and measured cost
 
-### Verified gates and cost
-
-| Gate | Result and measured cost |
+| Gate | Exact result |
 | --- | --- |
-| Initial complete Mac Backup | 360 passed / 23 explicit platform skips; 694.94s pytest, **697.10s wall / 301.72s user / 242.51s system**. |
-| Optimized complete Mac Backup | Same 360 passed / 23 explicit platform skips; 546.93s pytest, **549.47s wall / 264.71s user / 184.94s system**. Within the ten-minute target; no exception needed. |
-| Complete Mac Manager | 522 passed / 72 explicit platform skips, four optional diagnostics excluded; 342.17s pytest, **343.89s wall / 161.66s user / 110.35s system**. |
-| [Package/config Dev 39188206449](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188206449) | Complete install, retained-launch and config-observation modules: **96 passed**, 115.24s wall / 68.07s user / 48.12s system; **132s including setup**. |
-| [Archive Dev 39188227079](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188227079) | Complete YAML, verifier and I/O modules: **106 passed**, 89.76s wall / 49.35s user / 37.79s system; **111s including setup**. |
-| [Final Checks 39188440805](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188440805) | Exact candidate preflight, dispatch and collector passed; cancellation-only cleanup correctly skipped. |
-| [Backup 39188475190](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188475190) | Both required jobs passed; host 382 passed / one platform skip, native 383 passed; **6m00s module elapsed including setup**. |
-| [Manager 39188476617](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188476617) | Both required jobs passed; host 565 passed / 29 platform skips, native 593 passed / one workstation-only skip; four optional diagnostics excluded per platform; **7m16s including setup**. |
-| [Status 39188478149](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188478149) | Both required jobs passed, 36 tests each; **37s including setup**. |
+| Complete Mac Backup, optimized fixture | **360 passed / 23 explicit Linux-only skips**, all 383 cases retained; **546.93s pytest, 549.47s wall / 264.71s user / 184.94s system**. |
+| Complete Mac Manager, unchanged consumer proof | **522 passed / 72 platform skips**, four optional diagnostics excluded; **342.17s pytest, 343.89s wall / 161.66s user / 110.35s system**, from the original parser candidate. |
+| [Native I/O/verifier Dev 39193491808](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193491808) | **56 passed**, 108.49s pytest, **108.68s wall / 56.74s user / 52.41s system**, **130s including setup**, at the final SHA. |
+| [Final Checks 39193784039](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193784039) | Exact-candidate preflight, dispatch and collector passed; cancellation-only cleanup correctly skipped. Successful-job span **9m12s**. |
+| [Backup 39193829112](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193829112) | Both required jobs passed: host **382 / one platform skip**, native **383 passed**. Complete module **6m05s including setup**. |
+| [Manager 39193830861](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193830861) | Both required jobs passed: host **565 / 29 platform skips**, native **593 / one workstation-only skip**, four optional diagnostics excluded per platform. Complete module **8m30s including setup**. |
+| [Status 39193832435](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193832435) | Both required jobs passed, **36 each**. Complete module **33s including setup**. |
 
 Core totals: **983 host passes / 30 platform skips**, **1,012 native passes / one
-workstation-only skip**. Ubuntu/vendor BusyBox is representative development proof,
-not Merlin/ARM/live-router qualification. No full local suite was due or run.
-Required planning/package, Ruff/format/compile, shell syntax, shfmt and whitespace
-gates passed. Optional ShellCheck `--extended-analysis=false` exited 1 with
-informational diagnostics (29.13s wall / 26.93s user / 0.69s system, about 394 MB
-RSS); no full optional lint pass or extended-analysis proof is claimed. Existing
-resource limitations remain in review notes.
+workstation-only skip**. Parent independently verified the exact candidate,
+terminal success and expected jobs in every receipt. Ubuntu/vendor BusyBox is
+representative development evidence, not Merlin/ARM/live-router qualification.
+No full local suite was due or run. Required planning/package, Ruff lint/format,
+compile, shell syntax, shfmt and whitespace gates passed. Optional ShellCheck
+`--extended-analysis=false` previously returned informational diagnostics (29.13s
+wall / 26.93s user / 0.69s system, about 394 MB RSS); no full optional lint pass or
+extended-analysis proof is claimed. Its existing limitations remain in review notes.
+
+The original complete Mac Backup run was **697.10s wall / 301.72s user / 242.51s
+system**. A renewed review found repeated fixture work missed by the earlier
+bounded reviews: an extra Mac shell around every native inode listing solely to
+force leading whitespace. The shared fixture now uses native ls directly; the
+existing focused stage/RAM/published/append inode tests retain forced padding.
+Linux FD0/FD9 wrappers and padding are unchanged. No test or assertion was removed.
+
+The same five focused cases passed before and after: **37.66s to 28.75s wall**,
+**29.39s to 22.25s aggregate CPU**. The complete module then passed below ten
+minutes, with the same **279 supervised probes and 1,116 RAM inode observations**.
+Its measured wall reduction is **147.63s** and aggregate CPU reduction **94.58s**;
+host/run variation is uncontrolled, so not every saved second is attributed solely
+to the wrapper change. **No timing exception or safety waiver is needed.**
+
+Parent and renewed Astra review retained the expensive negatives because they
+prove distinct raw/header ordering, byte integrity, path rejection, callback
+failure/cleanup, expected-set wiring, required-data absence and certificate
+recovery outcomes. Cheap grammar variants already cover other input spellings.
+No further trivial cut was justified; this is a bounded finding, not a claim that
+future optimization is impossible. A separate earlier change removed 594 repeated
+native benchmark applet launches, preserving one observation per assertion on
+both backends; its measured 0.402s-to-0.006s saving was not claimed to solve the Mac
+budget. No permanent group/module split or reduced assurance was used.
+
+### Receipts and stop boundary
 
 Local commands were `/usr/bin/time -l .venv/bin/python tools/test.py --core-batch
-backup --skip-shellcheck` and the same command with `manager`. Logs and exact CI
-JSON receipts are under `.tmp/s0401/`: `backup-local-initial.log`,
-`manager-local.log`, `dev-{package,archive}.{log,json}`, and
-`core-{checks,backup,manager,status}.json` with module `.log` files.
-The automatic [Checks 39188189418](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188189418)
-was cancelled while focused Dev proof was pending; a later commit-wide listing
-confirmed no module runs from that parent. Final core ran only after both Dev
-runs passed. Exact final results were independently checked by the parent.
+backup --skip-shellcheck` and the same command with `manager`. Ignored receipts
+are in `.tmp/s0401/`: `backup-local-initial.log`, `backup-local-optimized.log`,
+`manager-local.log`, `cost-wrapper-{before,after}.{log,time}`,
+`dev-fixture.{json,log}` and `final-{checks,backup,manager,status}.json`, with module
+`.log` files. Earlier parser Dev/core receipts remain there for provenance.
+Premature automatic [Checks 39193479176](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193479176)
+was cancelled while Dev was pending; no child workflow was dispatched. It grants
+no proof. The final complete core above ran only after focused proof passed.
 
-### Cost review and remaining gates
-
-The complete Mac Backup group exceeded the ten-minute target by **97.10s (16.2%)**.
-It was run whole first. Parent, worker and planner reviews found only 5.88s of
-pytest setup; the expensive calls are distinct required capture, archive creation,
-verification and corruption/recovery paths with small existing fixtures. The real
-verifier measured 279 probes, including 157 inode probes. No safe small fixture
-change recovering the overrun was identified; no safety assertion was removed,
-mocked away or moved out of core, and no permanent group/module was split.
-
-One evidence-backed optimization removed **594 redundant native applet launches**
-by exercising each distinct assertion once on both backends. Native proof passed;
-that check fell from 0.402s wall / 0.411s CPU to 0.006s wall/CPU. It does not run on
-the Mac and cannot resolve or conceal the local overrun. Complete CI modules are
-all below ten minutes, but they do not establish the Mac timing target.
-
-The parent asked whether to accept a one-time Mac timing exception or keep the
-checkpoint open. The user requested clarification and exact workflow/gate
-details, then explicitly required a further check for redundant work and pointless
-edge cases. This authorizes that review and small evidence-backed optimizations,
-not a timing exception or weakened safety proof. Backup CI completed successfully
-in 6m00s; the 11m37s overrun was local Mac execution, not a stalled workflow.
-The cost decision follows the complete-module rule under Practical test policy
-in `AGENTS.md`; it is not a functional failure or new publication permission.
-
-**Implemented fixture optimization after resume:** removed the global Mac
-`padded-ls` shell wrapper from the shared archive fixture and retained it in the
-existing stage-inode and RAM/published/append inode tests. Broad Mac integrations
-still run real native ls; Linux FD0/FD9 wrappers and padding are unchanged. The
-five-case paired selection passed before/after: **37.66s to 28.75s wall**, CPU
-**29.39s to 22.25s**. The actual verifier call fell from 33.01s to 26.45s. No case
-or assertion was removed. Ruff lint/format, compile and whitespace passed.
-Logs/timings: `.tmp/s0401/cost-wrapper-{before,after}.{log,time}`.
-
-Parent and renewed Astra review agree that the formatting proof remains intact.
-The detailed audit maps expensive negatives to distinct real rejection/cleanup
-boundaries; no further trivial cut was justified. Earlier review findings are
-superseded by this measured improvement, not proof that optimization is impossible.
-The complete affected run `/usr/bin/time -l .venv/bin/python tools/test.py
---core-batch backup --skip-shellcheck` passed, logged to
-`.tmp/s0401/backup-local-optimized.log` (parent verified exit 0). All
-383 collected cases remain: 360 passed and 23 Linux-only skips. Measured cost is
-549.47s wall, 264.71s user and 184.94s system, versus the original 697.10s wall.
-The profile still has 279 supervised probes and 1,116 RAM inode observations.
-No timing exception is needed. Shared fixture consumers are archive I/O, verification,
-capture, creation, payload semantics, history runtime and transactions, all in
-the existing complete Backup group. No separate core group is introduced.
-
-Current execution: publish and verify complete native I/O/verifier Dev modules,
-then exact final core CI. Do not
-infer a budget exception, add permanent groups or start another product target.
-If no safe sufficient reduction is found, report the concrete remaining cost and
-retain the pending decision. Validate and publish the authorized documentation
-receipt at the agreed checkpoint. If the complete module meets budget and all
-prescribed gates pass, accept S04.01 and stop without starting another target.
-Acceptance remains unchanged until those gates close.
+The authorized checkpoint includes the closing documentation receipt on develop.
+It changes no runtime/test/workflow bytes from the accepted candidate. Verify
+planning/link/privacy/whitespace and actual remote/clean worktree after publishing.
+Then remain paused. No deployment, release, main branch, router execution,
+requirement expansion or next package is authorized by this handoff.
 
 ## Scoped recommendation — authorized first checkpoint above
 

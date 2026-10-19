@@ -13,8 +13,8 @@ review notes. This record creates no requirements, product credit or permissions
 The current installed consumers provide a concrete foundation audit: fresh and
 retained package admission, scoped configuration Save and settings/status readers,
 and full manual archive capture/verification. The following map records reviewed
-implementation and existing proof; final candidate results remain pending in the
-checklist until all required gates pass. Future setup/provider/restore consumers
+implementation and proof, accepted at `c8c76f0d5cc44792387dc43388f7dc418a7fb3fb`
+after all required gates passed. Future setup/provider/restore consumers
 retain their own integration gates.
 
 | Contract | Current owner and consumer proof |
@@ -125,8 +125,8 @@ speedup claim. The subsequent complete affected Backup gate passed the unchanged
 probes and 1,116 RAM inode observations are unchanged. Compared with the original
 complete run, measured wall fell 147.63s and aggregate CPU fell 94.58s; host/run
 variation is not controlled, so the entire difference is not attributed solely to
-the fixture change. No timing exception is needed. Exact-candidate CI remains
-pending for this new test revision.
+the fixture change. No timing exception is needed. Final native Dev passed all
+56 I/O/verifier tests in 130s including setup at the new candidate.
 
 The renewed negative-case audit retained distinct real proofs: malformed archive
 rejection before tar; a bad second payload digest before its callback; unsafe
@@ -140,8 +140,17 @@ trivial case deletion/consolidation was justified; this is a bounded review
 finding, not a claim that no future optimization is possible.
 
 No new owner, permanent core group, requirement or live-router claim is introduced.
-The original candidate passed its functional gates; acceptance and checkpoint
-closure await exact-candidate CI evidence for the new test revision.
+The original candidate passed its functional gates. Final acceptance is at
+**`c8c76f0d5cc44792387dc43388f7dc418a7fb3fb`**, with
+[Checks 39193784039](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193784039)
+and every required host/BusyBox module job verified successful at that exact SHA.
+Complete module elapsed including setup is Backup **365s**, Manager **510s** and
+Status **33s**, all within budget. Native Backup behavior used **342.86s wall /
+207.64s user / 128.30s system**; Manager used **491.97s wall / 285.39s user /
+200.23s system**. Their runtime and Linux fixture paths are unchanged by the Mac
+optimization; timing variation is not a new code-performance claim. No further
+small cost repair is justified by these passing, within-budget results. Parent
+review agrees with the independent functional and fixture audits; S04.01 is accepted.
 
 ## S14.01, S14.04–S14.08 accepted checkpoint disposition
 

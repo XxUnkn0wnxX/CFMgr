@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**21 of 157 product subgoals accepted — 13.4% overall subgoal completion.**
+**22 of 157 product subgoals accepted — 14.0% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -28,7 +28,9 @@ This changes test organization and cost control, not product requirements.
 local suite and exact full core CI at the complete main-goal checkpoint. Full
 local suites remain reserved for that boundary; core CI runs for code, tests,
 tooling and Actions changes on develop pushes and PRs targeting develop; documentation-only changes
-do not trigger CI. Tools Checks, Lint Checks and Diagnostics Checks are optional and manual-only. Full core CI runs
+do not trigger CI. Tools Checks, Lint Checks and Diagnostics Checks are optional
+and manual-only; changed optional code/tests still require their affected checks
+under the [practical test policy](AGENTS.md#practical-test-policy). Full core CI runs
 last at the checkpoint after all applicable focused local/Dev groups pass;
 local platform skips still require CI proof. Automatically pause after each
 agreed major checkpoint (the approved task/subgoal block) under the standing
@@ -289,7 +291,7 @@ history writers, full diagnostics and final terminal presentation remain separat
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [x] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
+| [x] | [x] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
 | [x] | [x] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
 | [x] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
@@ -299,29 +301,30 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S04.08 | **Ownership and locks:** Stable lock identities, verified process start/boot identity, correct provider-child versus connector descriptor lifetime. |
 | [ ] | [ ] | S04.09 | **Generation and resource bounds:** Compatible package per invocation, current-state checks, late-result rejection and bounded whole-action cleanup. |
 
-S04.01 implementation and written focused proof are complete at
-**`efdd465882babd54984c7aa8f0aed94549900ea3`**; acceptance remains unchecked while
-the measured local test-cost gate is unresolved. The
-[parser audit](PLAN_V2_audit.md#s0401-safe-data-parsing-review) records the
-current-consumer map, repairs and review. Complete Mac Backup passed **360 / 23
-platform skips** in **697.10s wall**; Manager passed **522 / 72 platform skips**
-in **343.89s wall**, with four optional diagnostics excluded. Required statics
-passed. Native [package/config Dev](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188206449)
-passed **96 in 115.02s**, and [archive Dev](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188227079)
-passed **106 in 89.62s**. Final exact [Checks 39188440805](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188440805)
-and all six required module jobs passed: [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188475190)
-**6m00s**, [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188476617)
-**7m16s**, [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188478149)
-**37s**, including setup. Core host total **983 passed / 30 platform skips**;
+S04.01 accepted at **`c8c76f0d5cc44792387dc43388f7dc418a7fb3fb`**. The
+[parser audit](PLAN_V2_audit.md#s0401-safe-data-parsing-review) records the complete
+current-consumer contract, repairs, independent agreement and cost review. Future
+setup/provider/restore consumers retain their own integration gates. Complete Mac
+Backup passed **360 / 23 platform skips** in **549.47s wall / 264.71s user /
+184.94s system**, with all 383 cases and safety assertions retained. Unchanged
+Manager local proof remains **522 / 72 platform skips**, **343.89s wall**, from
+the original parser candidate `efdd465882babd54984c7aa8f0aed94549900ea3`; four
+optional diagnostics were excluded. Required statics passed.
+
+Final native [I/O/verifier Dev](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193491808)
+passed **56 tests**, **108.68s wall / 56.74s user / 52.41s system**, **130s including
+setup**. Exact [Checks 39193784039](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193784039)
+and all six required module jobs passed: [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193829112)
+**6m05s**, [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193830861)
+**8m30s**, [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39193832435)
+**33s**, including setup. Core host total **983 passed / 30 platform skips**;
 native **1,012 passed / one workstation-only skip**; four optional diagnostics
 excluded per platform. These are representative Ubuntu/BusyBox results, not
-Merlin/ARM qualification. A subsequent Mac fixture optimization retained all
-five focused inode/verifier cases and assertions while reducing measured wall
-time from **37.66s to 28.75s**, and aggregate CPU from **29.39s to 22.25s**.
-The complete affected Backup gate then passed the same **360 / 23 platform skips**
-in **549.47s wall / 264.71s user / 184.94s system**, within the ten-minute target.
-No timing exception is needed. Exact-candidate CI for the fixture revision remains
-pending; the earlier SHA's pass does not establish the new test revision.
+Merlin/ARM qualification. Complete Mac Backup fell from **697.10s to 549.47s wall**
+after repeated padding-wrapper launches were removed from broad fixtures;
+dedicated inode-padding proof remains. The paired five-case comparison also
+reduced CPU cost. No timing exception, permanent group split or safety waiver
+was needed. No full local suite or main-goal completion gate is claimed.
 
 S04.02 accepted at **`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`**.
 Focused local proof passed on the prepared tree based on `95ecbdd`:
