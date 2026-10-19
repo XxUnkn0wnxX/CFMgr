@@ -301,7 +301,7 @@ cfmgr_worker_program() {
 		. "$1" || exit 2
 		. "$2" || exit 2
 		;;
-	archive-control | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | status-native | status-fields | status-mount | repair-inventory)
+	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | status-native | status-fields | status-mount | repair-inventory)
 		. "$1" || exit 2
 		;;
 	esac
@@ -345,7 +345,7 @@ $cfmgr_awk_program"
 		cfmgr_awk_program="$cfmgr_worker_json
 $cfmgr_awk_program"
 		;;
-	archive-control) cfmgr_backup_awk_backup_archive_control ;;
+	archive-control | archive-browser-review) cfmgr_backup_awk_backup_archive_control ;;
 	history-parse) cfmgr_backup_awk_backup_history ;;
 	history-writer-parse) cfmgr_backup_awk_backup_cloud_writer ;;
 	history-mount | archive-source-mount | store-backup-mounts | store-backup-mount | status-mount | repair-inventory) cfmgr_storage_awk_mountinfo ;;
@@ -354,7 +354,7 @@ $cfmgr_awk_program"
 	archive-payload-match) cfmgr_backup_awk_backup_payload_match ;;
 	archive-payload-pem) cfmgr_backup_awk_backup_pem ;;
 	archive-tar-header) cfmgr_backup_awk_backup_tar ;;
-	archive-format-manifest) cfmgr_backup_awk_backup_manifest ;;
+	archive-format-manifest | archive-browser-manifest) cfmgr_backup_awk_backup_manifest ;;
 	archive-format-inventory)
 		cfmgr_backup_awk_backup_manifest
 		cfmgr_worker_json=$cfmgr_awk_program
@@ -391,10 +391,17 @@ store-archive-plan)
 	;;
 archive-control)
 	[ "$#" -eq 5 ] && [ -f "$1" ] && [ -f "$3" ] && [ ! -L "$3" ] || exit 2
-	case $2 in names | retention) ;; *) exit 2 ;; esac
+	case $2 in names | retention | browse) ;; *) exit 2 ;; esac
 	export CFMGR_ARCHIVE_CONTROL_MODE="$2" CFMGR_ARCHIVE_KEEP="$4" CFMGR_ARCHIVE_NEW_NAME="$5"
 	cfmgr_worker_program "$@"
 	exec "$tool" "$cfmgr_awk_program" "$3"
+	;;
+archive-browser-review)
+	[ "$#" -eq 4 ] && [ -f "$1" ] || exit 2
+	for input in "$2" "$3" "$4"; do [ -f "$input" ] && [ ! -L "$input" ] || exit 2; done
+	export CFMGR_ARCHIVE_CONTROL_MODE=review
+	cfmgr_worker_program "$@"
+	exec "$tool" "$cfmgr_awk_program" "$2" "$3" "$4"
 	;;
 archive-chmod)
 	[ "$#" -eq 4 ] && [ -d "$1" ] && [ "$1" -ef "$2" ] || exit 2
@@ -565,7 +572,7 @@ archive-payload-json)
 		;;
 	runtime-json) export CFMGR_PAYLOAD_AUTHORITY="$auxiliary" ;;
 	certificate-json) export CFMGR_PAYLOAD_ACCOUNT_HEX="$auxiliary" ;;
-	drafts) export CFMGR_PAYLOAD_GENERATION="$auxiliary" ;;
+	drafts | drafts-review) export CFMGR_PAYLOAD_GENERATION="$auxiliary" ;;
 	*) exit 2 ;;
 	esac
 	cfmgr_worker_program "$@"
@@ -691,6 +698,12 @@ archive-format-manifest)
 	cfmgr_worker_program "$@"
 	exec "$tool" "$cfmgr_awk_program" "$2"
 	;;
+archive-browser-manifest)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	export CFMGR_ARCHIVE_FORMAT_MODE=discover
+	cfmgr_worker_program "$@"
+	exec "$tool" "$cfmgr_awk_program" "$2"
+	;;
 archive-format-inventory)
 	[ "$#" -eq 5 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] && [ -f "$3" ] && [ ! -L "$3" ] && [ -f "$4" ] && [ ! -L "$4" ] || exit 2
 	# Parameter frame is trusted normalized manifest output, never code.
@@ -768,6 +781,12 @@ archive-count | archive-meta | archive-digest | archive-gunzip-test | archive-he
 	archive-gunzip-test) exec "$tool" -t "$1" ;;
 	archive-hexdump) exec "$tool" -v -e '1/1 "%02x"' "$1" ;;
 	esac
+	;;
+archive-header-hex)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in '' | *[!0-9]* | 0?*) exit 2 ;; esac
+	[ "${#2}" -le 19 ] && [ "$2" -le 9223372036854775296 ] || exit 2
+	exec "$tool" -v -n 512 -s "$2" -e '1/1 "%02x"' "$1"
 	;;
 archive-source-realpath)
 	[ "$#" -eq 1 ] && [ "$1" = /opt ] || exit 2

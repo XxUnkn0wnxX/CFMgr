@@ -7,13 +7,18 @@ import json
 import os
 import pty
 import shlex
+import shutil
 import signal
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from entry_package_fixture import finish_package
-from test_config_observation import commands, config
+from test_archive_config import configured
+from test_archive_create import prior_archive
+from test_archive_io import SETUP as ARCHIVE_SETUP
+from test_config_observation import commands, config, schema2_config
 from test_config_store import ADAPTER, store_fixture
 from test_install import legacy_fsync, shell, tools
 from test_manager_settings_entry import (
@@ -23,6 +28,7 @@ from test_manager_settings_entry import (
     run_entry,
     wait_for_output,
 )
+from test_prerequisites import pause_definition
 
 ROOT = Path(__file__).resolve().parents[1]
 __all__ = [
@@ -30,6 +36,7 @@ __all__ = [
     "commands",
     "config",
     "legacy_fsync",
+    "schema2_config",
     "shell",
     "store_fixture",
     "tools",
@@ -112,6 +119,177 @@ cfmgr_backup_folder_admit() { cfmgr_backup_attached; }
     adapter_path.chmod(0o600)
     finish_package(entry, support, tools, shell)
     return entry, support, ram
+
+
+def test_installed_archive_browser_uses_real_backend_without_saved_destination(
+    shell, installed_backup_entry, tools, schema2_config
+):
+    entry, support, ram = installed_backup_entry
+    source = ram / "Drive one"
+    folder = source / "CFBackup"
+    folder.mkdir()
+    selected = folder / "CFbackup-2023-11-14.tar.gz"
+    selected_bytes = prior_archive(configured(schema2_config))
+    selected.write_bytes(selected_bytes)
+    sibling = folder / "unrelated.txt"
+    sibling.write_bytes(b"keep unrelated data\n")
+    config_before = (support / "config").read_bytes()
+    assert b'"destination":null' in config_before
+    assert json.loads(config_before)["backup"].get("set_id") is None
+
+    # Keep Store's existing adapter, but archive probes use the actual production
+    # single-exec/ulimit entry and Linux supervisor. Firmware mount admission is
+    # explicit fixture data; no real mount policy or Mac proc proof is claimed.
+    execution = support / "modules/lib/execution.sh"
+    execution.write_text(
+        execution.read_text().replace(
+            "cfmgr_prerequisites_run() {", "cfmgr_test_real_run() {", 1
+        )
+    )
+    adapter_path = support / "modules/lib/config_store_test_adapter.sh"
+    adapter = (
+        adapter_path.read_text()
+        .replace("cfmgr_prerequisites_run() {", "cfmgr_browser_test_store_run() {", 1)
+        .replace("cfmgr_store_prepare() {", "cfmgr_browser_test_store_prepare() {", 1)
+    )
+    fixture_tools = dict(tools)
+    for name in ("dd", "openssl", "gzip", "gunzip", "tar", "hexdump", "date", "printf"):
+        resolved = shutil.which(name)
+        assert resolved, f"Actual archive browser tool {name} is required"
+        fixture_tools[name] = resolved
+    if os.environ.get("CFMGR_REQUIRE_BUSYBOX") == "1":
+        applets = ram / "browser-applets"
+        applets.mkdir()
+        for name in (
+            "awk",
+            "ls",
+            "wc",
+            "dd",
+            "gzip",
+            "gunzip",
+            "tar",
+            "hexdump",
+            "date",
+            "printf",
+        ):
+            target = applets / name
+            target.symlink_to(Path(tools["sh"]).resolve())
+            fixture_tools[name] = str(target)
+    adapter += "\n" + "\n".join(
+        f"TEST_{name.upper()}={shlex.quote(value)}"
+        for name, value in fixture_tools.items()
+    )
+    adapter += f"\nTEST_LINUX={'1' if sys.platform == 'linux' else '0'}\n"
+    adapter += pause_definition(shell)
+    adapter += ARCHIVE_SETUP[
+        ARCHIVE_SETUP.index("cfmgr_prerequisites_run() {") :
+    ].replace("cfmgr_prerequisites_run() {", "cfmgr_browser_test_archive_run() {", 1)
+    adapter += r"""
+cfmgr_store_prepare() {
+    cfmgr_browser_test_store_prepare || return $?
+    cfmgr_test_ram=$cfmgr_store_context cfmgr_test_backup="$ram/Drive one/CFBackup"
+    cfmgr_prerequisites_now || return 1
+    cfmgr_store_deadline=$((cfmgr_probe_now+20))
+}
+cfmgr_store_native_tool() {
+    case $1 in
+    /bin/gzip) [ -x "$TEST_GZIP" ] ;;
+    /bin/gunzip) [ -x "$TEST_GUNZIP" ] ;;
+    /bin/tar) [ -x "$TEST_TAR" ] ;;
+    /usr/bin/hexdump) [ -x "$TEST_HEXDUMP" ] ;;
+    /usr/bin/printf) [ -x "$TEST_PRINTF" ] ;;
+    /sbin/blkid) return 0 ;;
+    *) [ -x "$1" ] ;;
+    esac
+}
+cfmgr_prerequisites_run() {
+    case $1 in archive-*)
+        printf '%s\n' "$1" >>"$ram/routes"
+        cfmgr_browser_test_archive_run "$@" ;;
+    *) cfmgr_browser_test_store_run "$@" ;;
+    esac
+}
+cfmgr_backup_pin_selected() {
+    [ "$cfmgr_backup_want_mount" = '/tmp/mnt/Drive one' ] &&
+        [ "$cfmgr_backup_want_uuid" = abcd-1234 ] &&
+        [ "$cfmgr_backup_want_snapshot" = "$backup_record1" ] || return 1
+    cfmgr_backup_mount="$ram/Drive one" cfmgr_backup_pinned=1 cfmgr_store_backup_gate=1
+    exec 6<"$cfmgr_backup_mount"
+}
+cfmgr_backup_folder_admit() {
+    [ -d "$ram/Drive one/CFBackup" ] && [ ! -L "$ram/Drive one/CFBackup" ] || return 1
+    exec 7<"$ram/Drive one/CFBackup"
+    cfmgr_backup_folder_pinned=1
+}
+"""
+    if sys.platform == "linux":
+        adapter += r"""
+cfmgr_prerequisites_now() { IFS=' ' read -r cfmgr_probe_uptime cfmgr_probe_idle </proc/uptime || return 1; cfmgr_probe_now=${cfmgr_probe_uptime%%.*}; }
+"""
+    else:
+        adapter += "\ncfmgr_archive_uuid() { cfmgr_archive_uuid=00000000-0000-4000-8000-123456789abc; }\n"
+        backup = support / "modules/backup.sh"
+        body = (
+            backup.read_text()
+            .replace("/proc/self/fd/5", "${cfmgr_test_ram}")
+            .replace("/proc/self/fd/7", "${cfmgr_test_backup}")
+        )
+        for variable in ("ram", "backup"):
+            body = body.replace(
+                f"cd ${{cfmgr_test_{variable}}}", f'cd "${{cfmgr_test_{variable}}}"'
+            )
+            body = body.replace(
+                f" ${{cfmgr_test_{variable}}} ", f' "${{cfmgr_test_{variable}}}" '
+            )
+        backup.write_text(body)
+        memory = ram / "browser-meminfo"
+        memory.write_text("MemAvailable: 65536 kB\n")
+        worker = support / "modules/helpers/worker.sh"
+        worker.write_text(
+            worker.read_text().replace("/proc/meminfo", shlex.quote(str(memory)))
+        )
+    adapter_path.write_text(adapter)
+    finish_package(entry, support, tools, shell)
+    answers = (
+        b"4\n4\n1\n1\n3\nd\nn\ne\ne\ne\n"
+        if sys.platform == "linux"
+        else b"4\n4\n1\ne\ne\n"
+    )
+    result = run_entry(shell, entry, answers, timeout=180)
+    assert result.returncode == 0, (result.stdout[-3000:], result.stderr[-2000:])
+    assert b"4 Browse archives" in result.stdout
+    assert b"Saved destination: unset" in result.stdout
+    assert (
+        b"Archive source drives (saved destination will be preserved)" in result.stdout
+    )
+    routes = (ram / "routes").read_text().splitlines()
+    assert "archive-directory" in routes and "archive-gunzip" in routes
+    if sys.platform == "linux":
+        assert b"1) 2023-11-14 22-13-20" in result.stdout
+        assert b"Full data verification passed" in result.stdout
+        assert b"ddns: never configured" in result.stdout
+        assert b"Deletion cancelled; archive preserved" in result.stdout
+        assert "archive-browser-review" in routes
+    else:
+        assert b"archive scan is incomplete" in result.stderr
+        assert b"No archive list is available from the incomplete scan" in result.stdout
+        assert b"Full data verification passed" not in result.stdout
+    assert "archive-archive-remove" not in routes
+    assert not any(
+        route
+        in {
+            "store-lock",
+            "store-backup-mkdir",
+            "store-backup-chmod",
+        }
+        for route in routes
+    )
+    assert selected.read_bytes() == selected_bytes
+    assert sibling.read_bytes() == b"keep unrelated data\n"
+    assert (support / "config").read_bytes() == config_before
+    assert not (ram / "Drive two/CFBackup").exists()
+    assert not (ram / "context").exists()
+    assert not list(folder.glob(".create.*"))
 
 
 def test_backup_menu_scoped_save_preserves_edits_during_review_and_reopens(

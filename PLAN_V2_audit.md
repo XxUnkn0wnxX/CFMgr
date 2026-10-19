@@ -8,6 +8,164 @@ The checklist remains authoritative for acceptance; the handoff owns current wor
 permissions, jobs, next actions and session lineage. Deferred risks remain in the
 review notes. This record creates no requirements, product credit or permissions.
 
+## S14.03 archive selection and actions review
+
+The authorized standalone package extends the existing Backup owner with source
+selection, metadata listing, selected full verification/effects review and
+confirmed single deletion. Actual restore Save/reconstruction/activation retains
+its S14.09–S14.11 gates. Parent and independent Astra scope review agree that
+accepted parsing, drive identity and archive foundations permit this boundary;
+no new runtime owner or permanent test group is justified.
+
+Source review identified three concrete integration hazards:
+
+- `cfmgr_archive_work` may persist an absent backup-set identity and assumes
+  creation preferences. Browsing needs a separate operation-local controller and
+  existing-folder admission, preserving saved destination, preferences and set.
+- `cfmgr_archive_existing` fully copies/decompresses/verifies every candidate
+  against the saved set. Browser listing needs bounded metadata discovery and
+  the selected archive's admitted own-set identity, while creation/retention keep
+  strict same-set checks. Metadata recognition grants no full-verification or
+  deletion authority.
+- The real payload plan contains both useful STATE/CLOUD/LOG/STORAGE fields and
+  secret-bearing AUTH rows. Only an explicit safe projection of fully verified
+  data may reach the UI; raw plans/configuration cannot be displayed.
+
+The lightweight archive supervisor tracks a direct exec, not an arbitrary
+pipeline. Parent and worker therefore rejected a gunzip/dd pipeline. The reviewed
+replacement uses a bounded compressed prefix (at most 65,536 bytes) and one
+supervised gunzip writing an exclusively owned stage output under its file-size
+limit. Strict admission of the first regular manifest header and complete
+manifest bytes yields only metadata recognition. A selected action still requires
+the complete immutable snapshot, payload/hash/semantic verification and fresh
+identity/content checks before deletion.
+
+Independent Astra review returned **PASS WITH NOTES**, agreed by the parent:
+preserve the decompressor's original exit/status/reason/stderr before other probes
+overwrite shared results; require positively reaped ownership and no supervisor
+failure reason; admit only demonstrated successful/expected file-limit outcomes
+with their exact native/host output bounds; disable child core dumps; and keep
+unexpected errors/insufficient prefixes visibly incomplete. The native 4,608-byte
+and host-adapter 9,216-byte limit behavior and SIGXFSZ outcome remain execution
+claims to verify, not assumed platform proof. No generic exit-one or stderr
+suppression exception was approved. Prefix inode/size observations do not prove
+unchanged content during concurrent same-inode rewrites.
+
+Independent backend implementation review returned **PASS WITH NOTES**. The
+review traced the public operation-local source controller, immutable selected
+snapshot, own-set semantic verification, receipt-bound one-file deletion and
+cleanup/unresolved outcomes, finding no material defect. The safe projection
+excludes AUTH values, credential references, raw logging policy and draft inputs;
+unrecognized future draft-stage names display as incomplete rather than arbitrary
+saved strings. Creation/retention retain explicit saved-set matching.
+
+Focused local execution proves small exit-zero metadata recognition, secret-safe
+projection, changed-byte/lost-attachment refusal and real selected full verification
+plus deletion with unrelated data preserved. Big Sur's gunzip catches the output
+limit and emits stderr/exit 1, so its large-prefix outcome correctly remains
+incomplete. This is a host limit, not evidence of a native pass or permission to
+broaden accepted error outcomes. Native capped-prefix behavior remains pending.
+
+The installed-entry Mac journey now proves entry/source selection without a
+saved destination/set, the real public controller and native archive tools,
+truthful incomplete metadata discovery, owned cleanup and unchanged configuration,
+archives and unrelated data. The same test's native branch must still prove the
+complete numbered-list/selected-verification/effects/default-no deletion journey.
+The Mac branch does not substitute for that pending platform evidence.
+
+The first complete local Backup group passed 375 cases with 23 explicit Linux-only
+skips but took 789.40s, exceeding the ten-minute target. A matched unchanged
+verifier using the old runtime and current runtime on the same Mac took 40.07s
+and 37.80s respectively, with nearly identical CPU work and identical supervised
+probe, attachment and per-file inode observations. Fifteen new cases contributed
+26.03s; most growth was in existing cases. This supports host/tool-cost variation
+as the principal observed cause, without waiving the measured cost gate.
+
+Review identified repeated native `ls` launches for private RAM stdout/stderr
+receipt ownership. Independent Astra proposal review returned **PASS WITH NOTES**
+for batching those genuine observations: preserve every exact path, multiplicity
+and inode check, validate the existing 128-file bound before execution, reject
+all uncertain/partial results before cleanup, and preserve the original probe
+outcome. Profile accounting must distinguish native launches from per-file
+observations. This is a bounded existing-owner optimization, not permission to
+reduce safety proof or add a runtime module.
+
+Parent and independent implementation review found no material regression in the
+batching patch. Explicit safe leaf operands are unique and bounded before native
+execution; each remains a regular nonsymlink file under the pinned RAM context.
+The parser validates the exact observed set/count and positive inode values
+without depending on display order. Retirement compares the complete observed
+ledger before its single anchored deletion and preserves the ledger on failure.
+Original probe results remain intact. Native command-substitution trailing-LF
+normalization is accepted: a complete exact identity record needs no additional
+process merely to distinguish its cosmetic terminal newline. This does not relax
+archive payload/container framing or any missing/partial identity rejection.
+
+Focused execution confirmed genuine pair/multi-pair observations, original failed
+probe preservation, complete refusal after a real inode substitution, and no
+enumeration for empty/over-limit ledgers. Cheap missing/duplicate/unexpected-row,
+nonzero-exit and inode-mismatch cases preserve every file and the original ledger.
+A redundant truncated-name variant was removed because exact unexpected-name
+matching already proves that boundary. The unchanged real verifier retained 279
+supervised probes, 157 archive inode probes, 979 attachment checks and all 1,116
+RAM inode observations while reducing native RAM `ls` launches to 302 (814 fewer).
+Its call time fell from 35.84s to 24.07s. The optimized combined selection,
+including the then-seven cheap cases, took 27.21s wall / 14.36s user / 7.84s sys;
+the preceding verifier-only selection took 37.80s / 18.69s / 12.61s. Those CPU
+selections differ, but the larger optimized selection used less CPU as well as
+less wall time. Complete-module cost remains a separate gate.
+
+The subsequent complete Backup gate passed 381 cases with 23 platform skips in
+607.79s wall / 327.15s user / 188.74s sys, improving both wall and CPU cost but
+remaining 7.79s above the target including setup. Parent identified one further
+repeated lifecycle: the raw walker and browser create, measure, record and delete
+a temporary 512-byte header solely to pass it to hexdump. Independent Astra review
+returned **PASS WITH NOTES** on replacing that lifecycle with a fixed supervised
+512-byte range read from the admitted immutable raw snapshot, retaining existing
+input admission and before/after stage identity checks. Parent authorized this
+as the final bounded repair in the current cost review.
+
+The pinned vendor [hexdump offset parser](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/util-linux/hexdump.c#L102-L115)
+and [regular-file seeking](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/libbb/dump.c#L305-L324)
+support the proposed offset operation; the repository's native configuration
+enables large-file support. Local host reads at offsets 0, 13 and 256 matched
+nonuniform expected bytes. Short reads can return zero, and the pinned reader
+can [report I/O errors on stderr](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/busybox/libbb/dump.c#L369-L403)
+without a failing exit. Therefore admission requires successful execution, empty
+stderr and exactly 1,024 hex bytes before invoking the strict header parser.
+Short/failed reads remain incomplete rather than being reclassified as parser
+exclusions. Preserve the hex receipt across measurement/identity probes and retire
+RAM receipts at the existing per-header boundary. Native tool execution remains
+pending; source compatibility and Mac proof do not qualify Merlin/ARM.
+
+Parent and independent implementation review returned **PASS**: both consumers
+use the same fixed reader, output survives measurement/identity probes, short
+reads stay outside the trusted parser-exclusion path, and per-header RAM retirement
+remains intact. The direct helper test passed actual offset bytes, noncanonical
+offset rejection before execution, a 511-byte remaining-input refusal and owned
+cleanup. The representative verifier/browser selection passed locally (native
+capability explicitly pending), using 234 supervised operations and 257 RAM `ls`
+launches in the verifier versus 279 and 302 before this change. Removed inode
+observations belonged to header scratch files that no longer exist; required
+input/stage/remaining-receipt and payload checks are preserved. Variable-host
+focused timings do not establish a wall speedup; the complete-module gate must
+provide the final cost result.
+
+The final Mac group stopped on an existing installed destination-Save PTY wait:
+332 passed, 18 skipped and one failed in 616.03s wall, with 319.43s user / 177.60s
+sys. The fixture exceeded its eight-second notification wait; later cases were
+not run. A subsequent read of the retained fixture established byte-for-byte
+equality with the test's expected final configuration, preserved unrelated edits,
+the selected folder present and the other folder absent. These data effects
+support a notification-timing problem but do not establish a passing test or
+justify changing the assertion without further evidence. Heavy local testing
+was stopped at the user's resource request; remaining local gates and exact
+remote proof are explicitly pending in the handoff.
+
+These findings and focused results are not acceptance. Complete affected groups,
+the optimization's focused safety proof and cost review, native execution and
+exact candidate CI must establish the S14.03 result before its checkbox changes.
+
 ## S04.01 safe data parsing review
 
 The current installed consumers provide a concrete foundation audit: fresh and

@@ -149,11 +149,13 @@ cfmgr_prerequisites_run() {
 		;;
 	archive-chmod) [ "$#" -eq 13 ] || return 2 ;;
 	archive-count | archive-meta | archive-inode | archive-digest | archive-gunzip-test | archive-timezone | archive-date | archive-source-realpath | archive-source-blkid | archive-hexdump) [ "$#" -eq 10 ] || return 2 ;;
-	archive-source-mount) [ "$#" -eq 11 ] || return 2 ;;
+	archive-source-mount | archive-header-hex) [ "$#" -eq 11 ] || return 2 ;;
 	archive-tar-header) [ "$#" -eq 13 ] || return 2 ;;
 	archive-payload-json | archive-write) [ "$#" -eq 14 ] || return 2 ;;
 	archive-payload-yaml | archive-payload-match | archive-stage-inodes) [ "$#" -eq 12 ] || return 2 ;;
 	archive-payload-index) [ "$#" -eq 13 ] || return 2 ;;
+	archive-browser-review) [ "$#" -eq 13 ] || return 2 ;;
+	archive-browser-manifest) [ "$#" -eq 11 ] || return 2 ;;
 	archive-payload-pem) [ "$#" -eq 11 ] || return 2 ;;
 	archive-memory | archive-flush) [ "$#" -eq 9 ] || return 2 ;;
 	archive-space | archive-space-values | archive-stage-meta) [ "$#" -eq 10 ] || return 2 ;;
@@ -690,6 +692,9 @@ _cfmgr_prerequisites_exec() {
 	archive-*)
 		# Native ash uses 512-byte blocks. Post-run WC enforces exact bytes on
 		# host shells whose ulimit units differ. Never inherit the probe quota.
+		# Browsing deliberately caps a single gunzip prefix. No core containing
+		# private archive bytes may be left when that writer reaches SIGXFSZ.
+		case $cfmgr_probe_mode in archive-gunzip) ulimit -c 0 || exit 2 ;; esac
 		cfmgr_archive_uint "${cfmgr_archive_limit:-}" || exit 2
 		ulimit -f "$(((cfmgr_archive_limit + 511) / 512))" || exit 2
 		;;

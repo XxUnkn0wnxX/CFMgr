@@ -499,7 +499,7 @@ cfmgr_backup_menu() {
 	while [ "$cfmgr_backup_ui_leave" = 0 ]; do
 		printf '%s\n' 'Backup / Restore: manual archive and destination management'
 		cfmgr_backup_ui_show_state
-		printf '%s\n' '1 Select backup drive' '2 Create archive' '3 Archive preferences' 's Save destination' 'e Back'
+		printf '%s\n' '1 Select backup drive' '2 Create archive' '3 Archive preferences' '4 Browse archives' 's Save destination' 'e Back'
 		[ "$cfmgr_backup_ui_pending" != 1 ] || printf '%s\n' 'r Recover previous Save'
 		if [ "${cfmgr_archive_ui_preferences_known:-0}" = 1 ]; then
 			if { [ "$cfmgr_archive_ui_format" != - ] || [ "$cfmgr_archive_ui_keep" != 0 ]; }; then
@@ -536,6 +536,9 @@ cfmgr_backup_menu() {
 				cfmgr_backup_archive_code=$?
 				[ "$cfmgr_backup_archive_code" != 3 ] || cfmgr_backup_ui_leave=1
 			fi
+			;;
+		4)
+			if cfmgr_backup_archive_browse; then :; else cfmgr_backup_ui_leave=1; fi
 			;;
 		e) return 0 ;;
 		esac
@@ -738,6 +741,271 @@ cfmgr_archive_work() {
 		[ "$?" != 3 ] || return 3
 	fi
 	return 0
+}
+
+# ---- operation-local archive browsing ----
+# Each public call owns its short-lived pins/stage and releases them before the
+# menu reads input. Five source fields are the exact existing picker receipt.
+# No destination/config Save, archive creation or retention belongs here.
+cfmgr_archive_browser_action() (
+	case ${1:-}:$# in list:6 | inspect:7 | verify:7 | review:7 | delete:10) ;; *) exit 2 ;; esac
+	cfmgr_browser_operation=$1
+	cfmgr_backup_unhex "$2" text || exit 2
+	cfmgr_backup_want_mount=$cfmgr_backup_decoded
+	cfmgr_backup_unhex "$3" text || exit 2
+	cfmgr_backup_want_uuid=$cfmgr_backup_decoded
+	cfmgr_backup_unhex "$4" text || exit 2
+	cfmgr_backup_want_filesystem=$cfmgr_backup_decoded
+	cfmgr_backup_unhex "$5" text || exit 2
+	cfmgr_backup_want_root=$cfmgr_backup_decoded
+	cfmgr_backup_unhex "$6" snapshot || exit 2
+	cfmgr_backup_want_snapshot=$cfmgr_backup_decoded
+	cfmgr_browser_name=${7:-}
+	if [ "$cfmgr_browser_operation" != list ]; then cfmgr_archive_ui_name "$cfmgr_browser_name" || exit 2; fi
+	case $cfmgr_browser_name in *__* | *--*) exit 2 ;; esac
+	cfmgr_browser_expected_inode=${8:-} cfmgr_browser_expected_bytes=${9:-} cfmgr_browser_expected_sha=${10:-}
+	if [ "$cfmgr_browser_operation" = delete ]; then
+		cfmgr_archive_uint "$cfmgr_browser_expected_inode" && [ "$cfmgr_browser_expected_inode" -gt 0 ] &&
+			cfmgr_archive_uint "$cfmgr_browser_expected_bytes" && [ "$cfmgr_browser_expected_bytes" -gt 0 ] || exit 2
+		case $cfmgr_browser_expected_sha in *[!0-9a-f]*) exit 2 ;; esac
+		[ "${#cfmgr_browser_expected_sha}" = 64 ] || exit 2
+	fi
+	cfmgr_store_scope=backup cfmgr_store_backup_gate=0 cfmgr_store_archive_lock_held=0
+	cfmgr_store_result=unavailable cfmgr_store_pending=0 cfmgr_store_generation=0
+	cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
+	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
+	cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0 cfmgr_archive_source_pinned=0
+	cfmgr_archive_stage='' cfmgr_archive_format_tracking=0 cfmgr_format_owned='' cfmgr_format_receipts=''
+	cfmgr_payload_ram_owned='' cfmgr_create_ram_serial=0
+	cfmgr_browser_result=unavailable cfmgr_browser_deleted=0 cfmgr_browser_count=0 cfmgr_browser_rows='' cfmgr_browser_effects='' cfmgr_browser_receipt=''
+	cfmgr_browser_projection=0 cfmgr_browser_drafts=''
+	if cfmgr_store_prepare && cfmgr_archive_browser_work; then cfmgr_browser_code=0; else cfmgr_browser_code=$?; fi
+	if [ "$cfmgr_browser_code" = 3 ] || { [ -n "${cfmgr_probe_pid:-}" ] && [ "${cfmgr_probe_status:-}" != reaped ]; }; then
+		cfmgr_browser_code=3 cfmgr_browser_result=unresolved cfmgr_store_pending=1
+	else
+		cfmgr_store_interrupt=0
+		if [ -n "$cfmgr_archive_stage" ]; then
+			if cfmgr_prerequisites_now; then
+				cfmgr_archive_deadline=$((cfmgr_probe_now + 20))
+				if cfmgr_payload_cleanup && cfmgr_archive_stage_close; then :; else
+					cfmgr_browser_cleanup_code=$? cfmgr_store_pending=1
+					if [ "$cfmgr_browser_cleanup_code" = 3 ] || [ "${cfmgr_probe_status:-}" != reaped ]; then
+						cfmgr_browser_code=3 cfmgr_browser_result=unresolved
+					else cfmgr_browser_code=1 cfmgr_browser_result=recovery; fi
+				fi
+			else cfmgr_browser_code=1 cfmgr_browser_result=recovery cfmgr_store_pending=1; fi
+		fi
+		if [ "$cfmgr_browser_code" != 3 ]; then
+			cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+			exec 0<&- 3<&- 4<&- 6<&- 7<&-
+			cfmgr_config_lock_fd0=0
+			if [ -n "$cfmgr_store_context" ] && ! cfmgr_store_cleanup; then
+				cfmgr_browser_code=1 cfmgr_browser_result=recovery cfmgr_store_pending=1
+			fi
+		fi
+	fi
+	# A later cleanup failure cannot undo an already proved single deletion.
+	if [ "$cfmgr_browser_deleted" = 1 ]; then cfmgr_browser_result=deleted; fi
+	if [ "$((${#cfmgr_browser_rows} + ${#cfmgr_browser_effects} + ${#cfmgr_browser_receipt} + 128))" -gt 65536 ]; then
+		cfmgr_browser_code=1 cfmgr_browser_effects=''
+		if [ "$cfmgr_browser_deleted" != 1 ]; then cfmgr_browser_result=unavailable; fi
+	fi
+	case $cfmgr_browser_result in listed | incomplete | verified | deleted) ;; *)
+		cfmgr_browser_count=0 cfmgr_browser_rows='' cfmgr_browser_effects='' cfmgr_browser_receipt=''
+		;;
+	esac
+	printf 'CFMGR-ARCHIVE-BROWSER 1 %s %s %s END\n' "$cfmgr_browser_result" "$cfmgr_store_pending" "$cfmgr_browser_count"
+	[ -z "$cfmgr_browser_rows" ] || printf '%s\n' "$cfmgr_browser_rows"
+	[ -z "$cfmgr_browser_receipt" ] || printf '%s\n' "$cfmgr_browser_receipt"
+	[ -z "$cfmgr_browser_effects" ] || printf '%s\n' "$cfmgr_browser_effects"
+	case $cfmgr_browser_code in 0 | 3) exit "$cfmgr_browser_code" ;; *) exit 1 ;; esac
+)
+
+cfmgr_archive_browser_work() {
+	cfmgr_store_pending
+	if cfmgr_store_setup_ok; then :; else
+		cfmgr_browser_setup_code=$?
+		[ "$cfmgr_browser_setup_code" != 3 ] || return 3
+		cfmgr_browser_result=recovery
+		return 1
+	fi
+	[ "$cfmgr_store_pending" = 0 ] || {
+		cfmgr_browser_result=recovery
+		return 1
+	}
+	cfmgr_backup_pin_selected && cfmgr_backup_folder_admit || return $?
+	cfmgr_prerequisites_now || return 1
+	cfmgr_archive_deadline=$((cfmgr_probe_now + 600)) cfmgr_archive_format_tracking=1
+	cfmgr_capture_payload_bytes=0 cfmgr_capture_inventory_bytes=0 cfmgr_capture_files=0
+	cfmgr_archive_resources && cfmgr_archive_space_reserve 65536 && cfmgr_archive_stage_open || return $?
+	case $cfmgr_browser_operation in
+	list) cfmgr_archive_browser_list ;;
+	*) cfmgr_archive_browser_selected ;;
+	esac
+}
+
+cfmgr_archive_browser_manifest() {
+	# RAW_ANCHOR BYTES: only the fixed first regular manifest is discovered.
+	# This admission grants chronology/own-set metadata, never payload validity.
+	cfmgr_browser_raw=$1 cfmgr_browser_raw_bytes=$2
+	cfmgr_archive_uint "$2" && [ "$2" -ge 1024 ] || return 1
+	cfmgr_archive_format_header_hex "$1" 0 || return $?
+	cfmgr_archive_run archive-tar-header 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" "$cfmgr_archive_output" 0 "$cfmgr_browser_raw_bytes" || return $?
+	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+	IFS=' ' read -r cfmgr_browser_marker cfmgr_browser_version cfmgr_browser_kind cfmgr_browser_member cfmgr_browser_size cfmgr_browser_body cfmgr_browser_next cfmgr_browser_end cfmgr_browser_extra <<EOF_BROWSER_HEADER
+$cfmgr_store_line
+EOF_BROWSER_HEADER
+	[ "$cfmgr_browser_marker:$cfmgr_browser_version:$cfmgr_browser_kind:$cfmgr_browser_member:$cfmgr_browser_body:$cfmgr_browser_end:$cfmgr_browser_extra" = CFMGR-TAR-HEADER:1:file:manifest:512:END: ] || return 1
+	cfmgr_archive_uint "$cfmgr_browser_size" && [ "$cfmgr_browser_size" -gt 0 ] && [ "$cfmgr_browser_size" -le 4096 ] || return 1
+	cfmgr_archive_format_copy "$cfmgr_browser_raw" "$cfmgr_archive_stage/browser-manifest" 512 "$cfmgr_browser_size" || return $?
+	cfmgr_archive_format_stream metahex "$((cfmgr_browser_size * 3))" "/proc/self/fd/7/$cfmgr_archive_stage_leaf/browser-manifest" "$cfmgr_archive_stage/browser-hex" || return $?
+	cfmgr_archive_run archive-browser-manifest 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" "/proc/self/fd/7/$cfmgr_archive_stage_leaf/browser-hex" || return $?
+	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+	IFS=' ' read -r cfmgr_browser_marker cfmgr_browser_version cfmgr_browser_set cfmgr_browser_id cfmgr_browser_epoch cfmgr_browser_day cfmgr_browser_clock cfmgr_browser_timezone cfmgr_browser_zone cfmgr_browser_order cfmgr_browser_schema cfmgr_browser_generation cfmgr_browser_inventory_rows cfmgr_browser_inventory_bytes cfmgr_browser_inventory_sha cfmgr_browser_files cfmgr_browser_payload_bytes cfmgr_browser_end cfmgr_browser_extra <<EOF_BROWSER_MANIFEST
+$cfmgr_store_line
+EOF_BROWSER_MANIFEST
+	[ "$cfmgr_browser_marker:$cfmgr_browser_version:$cfmgr_browser_end:$cfmgr_browser_extra" = CFMGR-MANIFEST:1:END: ] || return 1
+	cfmgr_archive_format_remove "$cfmgr_archive_stage/browser-manifest" &&
+		cfmgr_archive_format_remove "$cfmgr_archive_stage/browser-hex" && cfmgr_archive_format_retire
+}
+
+cfmgr_archive_browser_discover() {
+	cfmgr_browser_discovery=incomplete
+	cfmgr_capture_metadata "/proc/self/fd/7/$cfmgr_browser_name" container || return $?
+	cfmgr_browser_prefix_identity=$cfmgr_capture_identity cfmgr_browser_prefix_size=$cfmgr_capture_size
+	[ "$cfmgr_capture_size" -gt 0 ] || return 1
+	cfmgr_browser_prefix_bytes=$cfmgr_capture_size
+	[ "$cfmgr_browser_prefix_bytes" -le 65536 ] || cfmgr_browser_prefix_bytes=65536
+	cfmgr_archive_format_copy "/proc/self/fd/7/$cfmgr_browser_name" "$cfmgr_archive_stage/browser.gz" 0 "$cfmgr_browser_prefix_bytes" || return $?
+	cfmgr_archive_output_path "$cfmgr_archive_stage/browser.raw" || return 2
+	if cfmgr_archive_run archive-gunzip 4608 /bin/gunzip "/proc/self/fd/7/$cfmgr_archive_stage_leaf/browser.gz" \
+		"$cfmgr_archive_anchor" "$cfmgr_archive_directory" "$cfmgr_archive_name"; then cfmgr_browser_gzip_code=0; else cfmgr_browser_gzip_code=$?; fi
+	# Capture the exact decompressor outcome before inode/count/parser probes
+	# replace shared probe fields. Expected SIGXFSZ grants metadata only.
+	cfmgr_browser_gzip_status=${cfmgr_probe_status:-invalid} cfmgr_browser_gzip_exit=${cfmgr_probe_exit:-}
+	cfmgr_browser_gzip_reason=${cfmgr_probe_reason:-} cfmgr_browser_gzip_stdout=${cfmgr_probe_stdout:-} cfmgr_browser_gzip_stderr=${cfmgr_probe_stderr:-}
+	if [ "$cfmgr_browser_gzip_code" = 3 ] || [ "$cfmgr_browser_gzip_status" = unresolved ]; then return 3; fi
+	[ "$cfmgr_browser_gzip_status" = reaped ] || return 1
+	if [ -f "$cfmgr_archive_stage/browser.raw" ] && [ ! -L "$cfmgr_archive_stage/browser.raw" ]; then
+		cfmgr_archive_format_record "$cfmgr_archive_stage/browser.raw" || return 1
+	else return 1; fi
+	[ -z "$cfmgr_browser_gzip_reason" ] && [ -f "$cfmgr_browser_gzip_stderr" ] && [ ! -s "$cfmgr_browser_gzip_stderr" ] &&
+		[ -f "$cfmgr_browser_gzip_stdout" ] && [ ! -s "$cfmgr_browser_gzip_stdout" ] || return 1
+	case $cfmgr_browser_gzip_exit in 0 | 153) ;; *) return 1 ;; esac
+	cfmgr_archive_measure "/proc/self/fd/7/$cfmgr_archive_stage_leaf/browser.raw" || return $?
+	# Native ash uses512-byte blocks; a host shell may use1024. Either remains
+	# a tiny metadata prefix. The strict parser never reads outside the manifest.
+	[ "$cfmgr_archive_bytes" -ge 1024 ] && [ "$cfmgr_archive_bytes" -le 9216 ] || return 1
+	if [ "$cfmgr_browser_gzip_exit" = 153 ]; then
+		case $cfmgr_archive_bytes in 4608 | 9216) ;; *) return 1 ;; esac
+	fi
+	cfmgr_browser_decompressed_bytes=$cfmgr_archive_bytes
+	cfmgr_capture_metadata "/proc/self/fd/7/$cfmgr_browser_name" container || return $?
+	[ "$cfmgr_capture_identity:$cfmgr_capture_size" = "$cfmgr_browser_prefix_identity:$cfmgr_browser_prefix_size" ] || return 1
+	if cfmgr_archive_browser_manifest "/proc/self/fd/7/$cfmgr_archive_stage_leaf/browser.raw" "$cfmgr_browser_decompressed_bytes"; then :; else
+		cfmgr_browser_manifest_code=$?
+		if [ "$cfmgr_browser_manifest_code" = 1 ] && [ "${cfmgr_probe_status:-}:${cfmgr_probe_exit:-}:${cfmgr_probe_reason:-}" = reaped:1: ] &&
+			[ -f "$cfmgr_probe_stderr" ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+			case ${cfmgr_probe_mode:-} in archive-tar-header | archive-browser-manifest) cfmgr_browser_discovery=excluded ;; esac
+		fi
+		return "$cfmgr_browser_manifest_code"
+	fi
+	cfmgr_browser_discovery=recognized
+}
+
+cfmgr_archive_browser_list() {
+	cfmgr_archive_ram_new || return 1
+	cfmgr_browser_ledger=$cfmgr_create_ram cfmgr_browser_ledger_bytes=0 cfmgr_browser_scanned=0
+	cfmgr_browser_scan_complete=1
+	cfmgr_archive_run archive-directory "$cfmgr_archive_inventory_limit" "$cfmgr_store_ls" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_directory_kib" || return $?
+	cfmgr_browser_directory=$cfmgr_probe_stdout
+	cfmgr_archive_run archive-control "$cfmgr_archive_inventory_limit" "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" names "$cfmgr_browser_directory" 0 - || return $?
+	cfmgr_archive_ram_preserve "$cfmgr_probe_stdout" || return $?
+	cfmgr_browser_candidates=$cfmgr_create_ram
+	cfmgr_archive_format_retire || return 1
+	while IFS= read -r cfmgr_browser_name <&1; do
+		cfmgr_browser_scanned=$((cfmgr_browser_scanned + 1))
+		if [ "$cfmgr_browser_scanned" -gt 128 ]; then
+			cfmgr_browser_scan_complete=0
+			break
+		fi
+		if cfmgr_archive_browser_discover; then
+			cfmgr_browser_record="BROWSE $cfmgr_browser_name $cfmgr_browser_set $cfmgr_browser_id $cfmgr_browser_epoch $cfmgr_browser_day $cfmgr_browser_clock $cfmgr_browser_timezone $cfmgr_browser_zone $cfmgr_browser_order $cfmgr_browser_schema $cfmgr_browser_generation END"
+			cfmgr_browser_ledger_bytes=$((cfmgr_browser_ledger_bytes + ${#cfmgr_browser_record} + 1))
+			if [ "$cfmgr_browser_ledger_bytes" -gt 60000 ]; then
+				cfmgr_browser_scan_complete=0
+				cfmgr_archive_format_cleanup || return $?
+				break
+			fi
+			printf '%s\n' "$cfmgr_browser_record" >>"$cfmgr_browser_ledger" || return 1
+		else
+			cfmgr_browser_discover_code=$?
+			[ "$cfmgr_browser_discover_code" != 3 ] || return 3
+			[ "$cfmgr_browser_discovery" = excluded ] || cfmgr_browser_scan_complete=0
+		fi
+		cfmgr_archive_format_cleanup || return $?
+		cfmgr_prerequisites_now && [ "$cfmgr_probe_now" -lt "$cfmgr_archive_deadline" ] && cfmgr_archive_attachment_ok || return 1
+	done 1<"$cfmgr_browser_candidates"
+	cfmgr_archive_run archive-control 65536 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" browse "$cfmgr_browser_ledger" 0 - || return $?
+	cfmgr_browser_rows=''
+	while IFS= read -r cfmgr_browser_record <&1; do
+		cfmgr_browser_count=$((cfmgr_browser_count + 1))
+		cfmgr_browser_rows="${cfmgr_browser_rows:+$cfmgr_browser_rows
+}$cfmgr_browser_record"
+	done 1<"$cfmgr_probe_stdout"
+	if [ "$cfmgr_browser_scan_complete" = 1 ]; then
+		cfmgr_browser_result=listed
+		return 0
+	fi
+	cfmgr_browser_result=incomplete
+	return 1
+}
+
+cfmgr_archive_browser_item() {
+	printf 'CFMGR-ARCHIVE-ITEM 1 %s %s %s %s %s %s %s %s %s %s %s %s END' \
+		"$1" "$cfmgr_browser_name" "$cfmgr_browser_set" "$cfmgr_browser_id" "$cfmgr_browser_epoch" \
+		"$cfmgr_browser_day" "$cfmgr_browser_clock" "$cfmgr_browser_timezone" "$cfmgr_browser_zone" \
+		"$cfmgr_browser_order" "$cfmgr_browser_schema" "$cfmgr_browser_generation"
+}
+
+cfmgr_archive_browser_receipt_check() {
+	cfmgr_capture_metadata "/proc/self/fd/7/$cfmgr_browser_name" container || return $?
+	[ "$cfmgr_capture_inode:$cfmgr_capture_size" = "$cfmgr_browser_expected_inode:$cfmgr_browser_expected_bytes" ] || return 1
+	cfmgr_archive_format_hash "/proc/self/fd/7/$cfmgr_browser_name" || return $?
+	[ "$cfmgr_format_hash" = "$cfmgr_browser_expected_sha" ] && cfmgr_archive_identity_check
+}
+
+cfmgr_archive_browser_selected() {
+	[ "$cfmgr_browser_operation" != delete ] || cfmgr_archive_browser_receipt_check || return $?
+	cfmgr_capture_snapshot "/proc/self/fd/7/$cfmgr_browser_name" "$cfmgr_archive_stage/selected.gz" whole container || return $?
+	cfmgr_browser_selected_inode=${cfmgr_capture_before_identity%%:*}
+	cfmgr_browser_selected_bytes=$cfmgr_capture_bytes cfmgr_browser_selected_sha=$cfmgr_capture_sha
+	if [ "$cfmgr_browser_operation" = delete ]; then
+		[ "$cfmgr_browser_selected_inode:$cfmgr_browser_selected_bytes:$cfmgr_browser_selected_sha" = \
+			"$cfmgr_browser_expected_inode:$cfmgr_browser_expected_bytes:$cfmgr_browser_expected_sha" ] || return 1
+	fi
+	cfmgr_archive_space || return $?
+	[ "$cfmgr_archive_free" -gt 1048576 ] || return 1
+	cfmgr_browser_expand_cap=$(((cfmgr_archive_free - 1048576) / 8))
+	[ "$cfmgr_browser_expand_cap" -ge 2048 ] || return 1
+	cfmgr_archive_format_stream gunzip "$cfmgr_browser_expand_cap" "/proc/self/fd/7/$cfmgr_archive_stage_leaf/selected.gz" "$cfmgr_archive_stage/selected.raw" || return $?
+	cfmgr_archive_browser_manifest "/proc/self/fd/7/$cfmgr_archive_stage_leaf/selected.raw" "$cfmgr_archive_bytes" || return $?
+	cfmgr_browser_projection=1
+	cfmgr_browser_drafts=''
+	cfmgr_archive_verify_owned_set "$cfmgr_archive_stage/selected.raw" "$cfmgr_browser_set" || return $?
+	[ "$cfmgr_archive_verified" = 1 ] || return 1
+	cfmgr_browser_expected_inode=$cfmgr_browser_selected_inode cfmgr_browser_expected_bytes=$cfmgr_browser_selected_bytes cfmgr_browser_expected_sha=$cfmgr_browser_selected_sha
+	cfmgr_browser_rows=$(cfmgr_archive_browser_item 1) || return 1
+	cfmgr_browser_count=1
+	cfmgr_browser_receipt="CFMGR-ARCHIVE-RECEIPT 1 $cfmgr_browser_selected_inode $cfmgr_browser_selected_bytes $cfmgr_browser_selected_sha END"
+	if [ "$cfmgr_browser_operation" = delete ]; then
+		cfmgr_archive_browser_receipt_check || return $?
+		# Once unlink is attempted, uncertain completion cannot be retried as an
+		# ordinary refusal. Only its positive result plus postchecks proves done.
+		cfmgr_archive_run archive-archive-remove 4096 /bin/rm /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_browser_name" || return 3
+		[ ! -e "/proc/self/fd/7/$cfmgr_browser_name" ] && [ ! -L "/proc/self/fd/7/$cfmgr_browser_name" ] && cfmgr_archive_identity_check || return 3
+		cfmgr_browser_result=deleted cfmgr_browser_deleted=1
+	else cfmgr_browser_result=verified; fi
 }
 
 cfmgr_archive_preferences() {
@@ -1073,16 +1341,52 @@ EOF_FORMAT_INODE
 	cfmgr_archive_uint "$cfmgr_format_inode" && [ "$cfmgr_format_inode" -gt 0 ]
 }
 
+cfmgr_archive_format_ram_receipts() {
+	# Observe each explicit receipt once in one native ls. This is the same
+	# synchronous private-RAM boundary as single-file bookkeeping, not cached
+	# metadata. Fixed leaf operands avoid quoting/path ambiguity in ls output.
+	[ "$#" -gt 0 ] && [ "$#" -le 128 ] || return 1
+	cfmgr_format_ram_names='' cfmgr_format_ram_limit=0 cfmgr_format_ram_count=$#
+	for cfmgr_format_ram_name; do
+		case $cfmgr_format_ram_name in archive-*.[0-9]*.out | archive-*.[0-9]*.err) ;; *) return 1 ;; esac
+		case $cfmgr_format_ram_name in *[!A-Za-z0-9_.-]*) return 1 ;; esac
+		case " $cfmgr_format_ram_names " in *" $cfmgr_format_ram_name "*) return 1 ;; esac
+		[ -f "/proc/self/fd/5/$cfmgr_format_ram_name" ] && [ ! -L "/proc/self/fd/5/$cfmgr_format_ram_name" ] || return 1
+		cfmgr_format_ram_names="${cfmgr_format_ram_names:+$cfmgr_format_ram_names }$cfmgr_format_ram_name"
+		cfmgr_format_ram_limit=$((cfmgr_format_ram_limit + ${#cfmgr_format_ram_name} + 32))
+	done
+	cfmgr_format_ram_listing=$(
+		cd /proc/self/fd/5 || exit 1
+		# shellcheck disable=SC3013
+		[ . -ef "$cfmgr_store_context" ] || exit 1
+		exec "$cfmgr_store_ls" -id "$@"
+	) || return 1
+	# Command substitution normalizes trailing LF. Identity admission depends
+	# on every complete inode/name pair, not cosmetic final-newline formatting.
+	[ "${#cfmgr_format_ram_listing}" -le "$cfmgr_format_ram_limit" ] || return 1
+	cfmgr_format_ram_observed='' cfmgr_format_ram_seen='' cfmgr_format_ram_rows=0
+	while IFS=' ' read -r cfmgr_format_ram_inode cfmgr_format_ram_name; do
+		cfmgr_archive_uint "$cfmgr_format_ram_inode" && [ "$cfmgr_format_ram_inode" -gt 0 ] || return 1
+		case " $cfmgr_format_ram_names " in *" $cfmgr_format_ram_name "*) ;; *) return 1 ;; esac
+		case " $cfmgr_format_ram_seen " in *" $cfmgr_format_ram_name "*) return 1 ;; esac
+		cfmgr_format_ram_seen="${cfmgr_format_ram_seen:+$cfmgr_format_ram_seen }$cfmgr_format_ram_name"
+		cfmgr_format_ram_observed="${cfmgr_format_ram_observed:+$cfmgr_format_ram_observed }$cfmgr_format_ram_name:$cfmgr_format_ram_inode"
+		cfmgr_format_ram_rows=$((cfmgr_format_ram_rows + 1))
+	done <<EOF_FORMAT_RAM_RECEIPTS
+$cfmgr_format_ram_listing
+EOF_FORMAT_RAM_RECEIPTS
+	[ "$cfmgr_format_ram_rows" = "$cfmgr_format_ram_count" ]
+}
+
 cfmgr_archive_format_track_receipts() {
 	# Called by archive_run only for a positively reaped operation. Fixed probe
 	# filenames are whitespace-free; store inode evidence before retirement.
+	[ "${cfmgr_probe_status:-}" = reaped ] || return 1
 	for cfmgr_format_receipt in "$cfmgr_probe_stdout" "$cfmgr_probe_stderr"; do
-		[ "${cfmgr_format_receipt%/*}" = "$cfmgr_store_context" ] && [ -f "$cfmgr_format_receipt" ] && [ ! -L "$cfmgr_format_receipt" ] || return 1
-		cfmgr_format_receipt_name=${cfmgr_format_receipt##*/}
-		case $cfmgr_format_receipt_name in archive-*.[0-9]*.out | archive-*.[0-9]*.err) ;; *) return 1 ;; esac
-		cfmgr_archive_format_ram_inode "$cfmgr_format_receipt" || return 1
-		cfmgr_format_receipts="${cfmgr_format_receipts:+$cfmgr_format_receipts }$cfmgr_format_receipt_name:$cfmgr_format_inode"
+		[ "${cfmgr_format_receipt%/*}" = "$cfmgr_store_context" ] || return 1
 	done
+	cfmgr_archive_format_ram_receipts "${cfmgr_probe_stdout##*/}" "${cfmgr_probe_stderr##*/}" || return 1
+	cfmgr_format_receipts="${cfmgr_format_receipts:+$cfmgr_format_receipts }$cfmgr_format_ram_observed"
 }
 
 cfmgr_archive_format_retire() {
@@ -1093,15 +1397,14 @@ cfmgr_archive_format_retire() {
 	set --
 	for cfmgr_format_receipt_token in ${cfmgr_format_receipts:-}; do
 		cfmgr_format_receipt_name=${cfmgr_format_receipt_token%:*}
-		cfmgr_format_receipt_expected=${cfmgr_format_receipt_token##*:}
-		cfmgr_format_receipt=/proc/self/fd/5/$cfmgr_format_receipt_name
-		[ -f "$cfmgr_format_receipt" ] && [ ! -L "$cfmgr_format_receipt" ] || return 1
-		cfmgr_archive_format_ram_inode "$cfmgr_format_receipt" || return 1
-		[ "$cfmgr_format_inode" = "$cfmgr_format_receipt_expected" ] || return 1
 		set -- "$@" "$cfmgr_format_receipt_name"
 	done
 	[ "$#" -le 128 ] || return 1
 	if [ "$#" -gt 0 ]; then
+		cfmgr_archive_format_ram_receipts "$@" || return 1
+		for cfmgr_format_receipt_token in $cfmgr_format_ram_observed; do
+			case " $cfmgr_format_receipts " in *" $cfmgr_format_receipt_token "*) ;; *) return 1 ;; esac
+		done
 		(
 			cd "/proc/self/fd/5" || exit 1
 			# shellcheck disable=SC3013
@@ -1191,18 +1494,28 @@ EOF_FORMAT_HASH
 	case $cfmgr_format_hash in *[!0-9a-f]*) return 1 ;; esac
 }
 
+cfmgr_archive_format_header_hex() {
+	# Read one fixed raw header directly from the admitted immutable snapshot.
+	# Native hexdump can succeed on short input, so prove exact output before
+	# the strict header parser. Identity probes must not replace that receipt.
+	[ "$#" -eq 2 ] && cfmgr_archive_input "$1" && cfmgr_archive_uint "$2" || return 2
+	cfmgr_archive_identity_check || return $?
+	cfmgr_archive_run archive-header-hex 4096 /usr/bin/hexdump "$1" "$2" || return $?
+	cfmgr_format_header_hex=$cfmgr_probe_stdout
+	cfmgr_archive_measure "$cfmgr_format_header_hex" || return $?
+	[ "$cfmgr_archive_bytes" = 1024 ] || return 1
+	cfmgr_archive_identity_check || return $?
+	cfmgr_archive_output=$cfmgr_format_header_hex
+}
+
 cfmgr_archive_format_walk() {
 	cfmgr_archive_format_new index || return 1
 	cfmgr_format_index=$cfmgr_format_new_path
 	cfmgr_format_index_anchor=/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_format_index##*/}
 	cfmgr_format_offset=0 cfmgr_format_sum=0 cfmgr_format_members=0 cfmgr_format_zeros=0
 	while [ "$cfmgr_format_offset" -lt "$cfmgr_format_raw_bytes" ]; do
-		cfmgr_format_header=$cfmgr_archive_stage/$cfmgr_format_prefix-header
-		cfmgr_archive_format_copy "$cfmgr_format_raw" "$cfmgr_format_header" "$cfmgr_format_offset" 512 || return $?
-		# Exact copy just proved512 bytes. The header parser itself requires
-		# exactly1024 hex characters, avoiding duplicate native WC scans here.
-		cfmgr_archive_run archive-hexdump 4096 /usr/bin/hexdump "/proc/self/fd/7/$cfmgr_archive_stage_leaf/${cfmgr_format_header##*/}" || return $?
-		cfmgr_archive_run archive-tar-header 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" "$cfmgr_probe_stdout" "$cfmgr_format_offset" "$cfmgr_format_raw_bytes" || return $?
+		cfmgr_archive_format_header_hex "$cfmgr_format_raw" "$cfmgr_format_offset" || return $?
+		cfmgr_archive_run archive-tar-header 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" "$cfmgr_archive_output" "$cfmgr_format_offset" "$cfmgr_format_raw_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
 		IFS=' ' read -r cfmgr_format_marker cfmgr_format_version cfmgr_format_kind cfmgr_format_member cfmgr_format_size cfmgr_format_body cfmgr_format_next cfmgr_format_end cfmgr_format_extra <<EOF_FORMAT_HEADER
 $cfmgr_store_line
@@ -1236,7 +1549,7 @@ EOF_FORMAT_HEADER
 			cfmgr_format_members=$((cfmgr_format_members + 1))
 		fi
 		cfmgr_format_offset=$cfmgr_format_next
-		cfmgr_archive_format_remove "$cfmgr_format_header" || return $?
+		cfmgr_archive_format_retire || return $?
 	done
 	[ "$cfmgr_format_zeros" = 2 ] && [ "$cfmgr_format_members" -ge 4 ] && [ "$cfmgr_format_offset" = "$cfmgr_format_raw_bytes" ]
 }
@@ -1701,6 +2014,318 @@ cfmgr_archive_ui_uint() {
 	[ "${#1}" -le "$2" ]
 }
 
+cfmgr_archive_browser_ui_validate() {
+	[ "${#cfmgr_browser_ui_raw}" -le 65536 ] || return 1
+	CFMGR_BROWSER_UI_ACTION=$cfmgr_browser_ui_action CFMGR_BROWSER_UI_NAME=${cfmgr_browser_ui_name:-} /usr/bin/awk '
+function bad(){failed=1;exit 1}
+function uint(s,n){return s~/^(0|[1-9][0-9]*)$/ && length(s)<=n}
+function hex(s,n, i,c){
+    if(s=="" || length(s)%2 || length(s)>2*n || s~/[^0-9a-f]/)return 0
+    for(i=1;i<=length(s);i+=2){c=(index("0123456789abcdef",substr(s,i,1))-1)*16+index("0123456789abcdef",substr(s,i+1,1))-1;if(c<32 || c>126)return 0}
+    return 1
+}
+function uuid(s,a){return length(s)==36 && split(s,a,"-")==5 && length(a[1])==8 && length(a[2])==4 && length(a[3])==4 && length(a[4])==4 && length(a[5])==12 && s!~/[^0-9a-f-]/}
+function feature(s){return s~/^(ddns|ip_sync|cloudflared)$/}
+function flag(s){return s~/^[01]$/}
+function role(s){return s~/^(manager\.(config|catalog)|data\.(setup-drafts|cloudflared\.(yaml|json|certificate|certificate-recovery|yaml-backup|input\.[A-Za-z][A-Za-z0-9_.-]*))|history\.(ddns|ip_sync|cloudflared))$/}
+function effect( tag){
+    tag=$3
+    if(tag=="SCHEMA") {if(NF!=6 || $4!~/^[12]$/ || $5!=($4==1?"migration-required":"current") || schema++)bad()}
+    else if(tag=="STATE") {if(NF!=7 || !feature($4) || !flag($5) || !flag($6) || state[$4]++)bad()}
+    else if(tag=="CLOUD") {if(NF!=9 || $4!~/^(-|token|advanced)$/ || !flag($5) || !flag($6) || !flag($7) || !flag($8) || cloud++)bad()}
+    else if(tag=="LOG") {if(NF!=9 || !feature($4) || !flag($5) || !flag($6) || !flag($7) || !flag($8) || logging[$4]++)bad()}
+    else if(tag=="STORAGE") {if(NF!=8 || $4!~/^[A-Za-z0-9_.:-]+$/ || length($4)>256 || $5!~/^[A-Za-z0-9_.-]+$/ || !hex($6,1024) || !hex($7,1024) || storage++)bad()}
+    else if(tag=="FILE") {if(NF!=9 || !role($4) || $5!~/^(jffs|entware)$/ || !hex($6,1024) || !uint($7,19) || $8!~/^(whole|prefix|recovered)$/ || files[$4 SUBSEP $6]++)bad();filecount++}
+    else if(tag=="EXTERNAL") {if(NF!=7 || $4!="data.cloudflared.yaml" || !hex($5,1024) || $6!="input-reference")bad()}
+    else if(tag=="NOTE") {if(NF!=8 || !role($4) || $5!~/^(included|absent|unavailable|external|not_applicable)$/ || ($6!="-" && !hex($6,1024)) || $7!~/^[a-z][a-z0-9-]*$/ || length($7)>64)bad()}
+    else if(tag=="DRAFT") {if(NF!=6 || $4!~/^(ddns|ip_sync)$/ || $5!~/^(review|incomplete)$/ || draft[$4]++)bad()}
+    else if(tag=="CURRENT") {if($0!="CFMGR-ARCHIVE-EFFECT 1 CURRENT readiness-unknown auth-unknown END" || current++)bad()}
+    else if(tag=="RESTORE") {if($0!="CFMGR-ARCHIVE-EFFECT 1 RESTORE current-components fresh-admission path-remapping history-may-defer END" || restore++)bad()}
+    else bad()
+}
+{
+    bytes+=length($0)+1;if(bytes>65536 || NR>1024 || length($0)>4096 || $0~/[^ -~]/ || $0~/^ | $|  /)bad()
+    if(done)bad()
+    if(NR==1){
+        if(NF!=6 || $1!="CFMGR-ARCHIVE-BROWSER" || $2!="1" || !flag($4) || !uint($5,3) || $5+0>128 || $6!="END")bad()
+        result=$3;pending=$4;count=$5;next
+    }
+    if($1=="CFMGR-ARCHIVE-BROWSER-EXIT") {if(NF!=2 || $2!~/^[013]$/)bad();code=$2;done=1;next}
+    if($2!="1" || $NF!="END")bad()
+    if($1=="CFMGR-ARCHIVE-ITEM") {
+        if(receipt || effects || NF!=15 || !uint($3,3) || $3!=++items || !($4~/^CFbackup-[0-9][0-9_-]*\.tar\.gz$/) || length($4)>64 || $4~/__|--/ || names[$4]++ || !uuid($5) || !uuid($6) || !uint($7,10) || $8!~/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || $9!~/^[0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || !hex($10,256) || $11!~/^[+-][0-9][0-9][0-9][0-9]$/ || $12!~/^(DMY|MDY|YMD)$/ || $13!~/^[12]$/ || !uint($14,20) || $14=="0")bad()
+        if(ENVIRON["CFMGR_BROWSER_UI_ACTION"]!="list" && $4!=ENVIRON["CFMGR_BROWSER_UI_NAME"])bad()
+    } else if($1=="CFMGR-ARCHIVE-RECEIPT") {
+        if(items!=count || effects || receipt++ || NF!=6 || !uint($3,19) || $3=="0" || !uint($4,19) || $4=="0" || length($5)!=64 || $5~/[^0-9a-f]/)bad()
+    } else if($1=="CFMGR-ARCHIVE-EFFECT") {
+        if(items!=count || receipt!=1)bad();effects++;effect()
+    } else bad()
+}
+END {
+    if(failed)exit 1
+    if(!done || items!=count)exit 1
+    action=ENVIRON["CFMGR_BROWSER_UI_ACTION"]
+    if(action=="list" && ((code==0 && result=="listed") || (code==1 && result=="incomplete"))) {if(receipt || effects || pending!=0)exit 1;exit 0}
+    if(((action~/^(inspect|verify|review)$/ && code==0 && result=="verified" && pending==0) || (action=="delete" && result=="deleted" && ((code==0 && pending==0) || (code~/^[13]$/ && pending==1)))) && count==1 && receipt==1 && schema==1 && storage==1 && current==1 && restore==1 && state["ddns"]==1 && state["ip_sync"]==1 && state["cloudflared"]==1 && filecount>=2)exit 0
+    if(count || receipt || effects)exit 1
+    if(code==1 && result~/^(unavailable|recovery)$/)exit 0
+    if(code==3 && result=="unresolved" && pending==1)exit 0
+    exit 1
+}' <<EOF_BROWSER_UI_VALIDATE
+$cfmgr_browser_ui_raw
+EOF_BROWSER_UI_VALIDATE
+}
+
+cfmgr_archive_browser_ui_call() {
+	cfmgr_browser_ui_action=$1
+	shift
+	cfmgr_browser_ui_raw=$(
+		cfmgr_archive_browser_action "$cfmgr_browser_ui_action" "$cfmgr_browser_source_mount" "$cfmgr_browser_source_uuid" \
+			"$cfmgr_browser_source_fs" "$cfmgr_browser_source_root" "$cfmgr_browser_source_snapshot" "$@"
+		cfmgr_browser_ui_code=$?
+		printf 'CFMGR-ARCHIVE-BROWSER-EXIT %s\n' "$cfmgr_browser_ui_code"
+	)
+	if cfmgr_archive_browser_ui_validate; then :; else
+		printf '[CFMGR] backup: error: invalid archive browser result; leaving Backup / Restore\n' >&2
+		return 3
+	fi
+	cfmgr_browser_ui_items='' cfmgr_browser_ui_effects='' cfmgr_browser_ui_receipt=''
+	while IFS= read -r cfmgr_browser_ui_line; do
+		case $cfmgr_browser_ui_line in
+		'CFMGR-ARCHIVE-BROWSER '*)
+			IFS=' ' read -r cfmgr_browser_ui_tag cfmgr_browser_ui_version cfmgr_browser_ui_result cfmgr_browser_ui_pending cfmgr_browser_ui_count cfmgr_browser_ui_end <<EOF_BROWSER_UI_HEADER
+$cfmgr_browser_ui_line
+EOF_BROWSER_UI_HEADER
+			;;
+		'CFMGR-ARCHIVE-ITEM '*) cfmgr_browser_ui_items="${cfmgr_browser_ui_items:+$cfmgr_browser_ui_items
+}$cfmgr_browser_ui_line" ;;
+		'CFMGR-ARCHIVE-RECEIPT '*) cfmgr_browser_ui_receipt=$cfmgr_browser_ui_line ;;
+		'CFMGR-ARCHIVE-EFFECT '*) cfmgr_browser_ui_effects="${cfmgr_browser_ui_effects:+$cfmgr_browser_ui_effects
+}$cfmgr_browser_ui_line" ;;
+		'CFMGR-ARCHIVE-BROWSER-EXIT '*) cfmgr_browser_ui_exit=${cfmgr_browser_ui_line#* } ;;
+		esac
+	done <<EOF_BROWSER_UI_FRAME
+$cfmgr_browser_ui_raw
+EOF_BROWSER_UI_FRAME
+	[ "$cfmgr_browser_ui_exit" != 3 ] || printf '[CFMGR] backup: error: archive operation is unresolved; leaving Backup / Restore\n' >&2
+}
+
+cfmgr_archive_browser_ui_item_fields() {
+	IFS=' ' read -r cfmgr_browser_ui_tag cfmgr_browser_ui_version cfmgr_browser_ui_index cfmgr_browser_ui_file \
+		cfmgr_browser_ui_set cfmgr_browser_ui_id cfmgr_browser_ui_epoch cfmgr_browser_ui_day cfmgr_browser_ui_clock \
+		cfmgr_browser_ui_timezone cfmgr_browser_ui_zone cfmgr_browser_ui_order cfmgr_browser_ui_schema cfmgr_browser_ui_generation cfmgr_browser_ui_end <<EOF_BROWSER_UI_ITEM
+$1
+EOF_BROWSER_UI_ITEM
+}
+
+cfmgr_archive_browser_ui_source() {
+	cfmgr_backup_ui_refresh || return $?
+	[ "$cfmgr_backup_ui_count" != 0 ] || {
+		printf '%s\n' 'No archive source drives are available.'
+		return 0
+	}
+	cfmgr_browser_source_row='' cfmgr_browser_saved_row=''
+	printf '%s\n' 'Archive source drives (saved destination will be preserved):'
+	while IFS= read -r cfmgr_browser_drive_row; do
+		cfmgr_backup_ui_drive_fields "$cfmgr_browser_drive_row" || return 3
+		printf '%s) %s | %s\n' "$cfmgr_backup_ui_index" "$cfmgr_backup_ui_label" "$cfmgr_backup_ui_mount"
+		if [ "$cfmgr_backup_ui_availability:$cfmgr_backup_ui_dest" = available:1 ] &&
+			[ "$cfmgr_backup_ui_mount" = "$cfmgr_backup_ui_dest_mount" ] &&
+			[ "$(cfmgr_backup_decode "$cfmgr_backup_ui_uuid_hex")" = "$cfmgr_backup_ui_dest_uuid" ] &&
+			[ "$(cfmgr_backup_decode "$cfmgr_backup_ui_filesystem_hex")" = "$cfmgr_backup_ui_dest_filesystem" ] &&
+			[ "$(cfmgr_backup_decode "$cfmgr_backup_ui_root_hex")" = "$cfmgr_backup_ui_dest_root" ]; then
+			cfmgr_browser_saved_row=$cfmgr_browser_drive_row
+		fi
+	done <<EOF_BROWSER_SOURCE_ROWS
+$cfmgr_backup_ui_rows
+EOF_BROWSER_SOURCE_ROWS
+	[ -z "$cfmgr_browser_saved_row" ] || printf 's) Saved source | %s\n' "$cfmgr_backup_ui_dest_mount"
+	printf '%s' 'Source drive number (s for saved source, or e to cancel): '
+	if IFS= read -r cfmgr_browser_choice; then :; else
+		cfmgr_backup_ui_leave=1
+		return 0
+	fi
+	[ "$cfmgr_browser_choice" != e ] || return 0
+	if [ "$cfmgr_browser_choice" = s ]; then cfmgr_browser_source_row=$cfmgr_browser_saved_row; else
+		while IFS= read -r cfmgr_browser_drive_row; do
+			cfmgr_backup_ui_drive_fields "$cfmgr_browser_drive_row" || return 3
+			if [ "$cfmgr_browser_choice" = "$cfmgr_backup_ui_index" ]; then cfmgr_browser_source_row=$cfmgr_browser_drive_row; fi
+		done <<EOF_BROWSER_SOURCE_CHOICE
+$cfmgr_backup_ui_rows
+EOF_BROWSER_SOURCE_CHOICE
+	fi
+	[ -n "$cfmgr_browser_source_row" ] || {
+		printf '%s\n' 'Invalid archive source selection.'
+		return 0
+	}
+	cfmgr_backup_ui_drive_fields "$cfmgr_browser_source_row" || return 3
+	cfmgr_browser_source_mount=$cfmgr_backup_ui_mount_hex cfmgr_browser_source_uuid=$cfmgr_backup_ui_uuid_hex
+	cfmgr_browser_source_fs=$cfmgr_backup_ui_filesystem_hex cfmgr_browser_source_root=$cfmgr_backup_ui_root_hex
+	cfmgr_browser_source_snapshot=$cfmgr_backup_ui_snapshot_hex
+}
+
+cfmgr_archive_browser_ui_details() {
+	cfmgr_archive_browser_ui_item_fields "$cfmgr_browser_selected_item"
+	printf 'Archive: %s\nSet: %s | Archive ID: %s\n' "$cfmgr_browser_ui_file" "$cfmgr_browser_ui_set" "$cfmgr_browser_ui_id"
+	cfmgr_browser_ui_timezone_text=$(cfmgr_backup_decode "$cfmgr_browser_ui_timezone") || return 3
+	printf 'Created: %s %s | %s %s | %s date order\n' "$cfmgr_browser_ui_day" "$cfmgr_browser_ui_clock" "$cfmgr_browser_ui_timezone_text" "$cfmgr_browser_ui_zone" "$cfmgr_browser_ui_order"
+	printf 'Archived config: schema %s, generation %s. Full data verification passed.\n' "$cfmgr_browser_ui_schema" "$cfmgr_browser_ui_generation"
+	printf '%s\n' 'Archive contents are unencrypted and may contain operational credentials.'
+}
+
+cfmgr_archive_browser_ui_review() {
+	printf '%s\n' 'Restore effects for the verified archive:'
+	while IFS=' ' read -r cfmgr_browser_e_tag cfmgr_browser_e_version cfmgr_browser_e_kind cfmgr_browser_e_a cfmgr_browser_e_b cfmgr_browser_e_c cfmgr_browser_e_d cfmgr_browser_e_e cfmgr_browser_e_end; do
+		case $cfmgr_browser_e_kind in
+		SCHEMA) printf 'Schema %s: %s; executable code comes from the current manager.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" ;;
+		STATE)
+			if [ "$cfmgr_browser_e_b" = 0 ]; then
+				cfmgr_browser_state='never configured'
+			elif [ "$cfmgr_browser_e_c" = 1 ]; then cfmgr_browser_state='configured On'; else cfmgr_browser_state='configured Off'; fi
+			printf '%s: %s.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_state"
+			;;
+		CLOUD)
+			cfmgr_browser_installed=no cfmgr_browser_maintenance=disabled
+			[ "$cfmgr_browser_e_d" != 1 ] || cfmgr_browser_installed=yes
+			[ "$cfmgr_browser_e_e" != 1 ] || cfmgr_browser_maintenance=enabled
+			printf 'Cloudflared: method %s; installed %s; maintenance %s. Prepared maintenance does not establish a completed tunnel.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_installed" "$cfmgr_browser_maintenance"
+			;;
+		LOG)
+			cfmgr_browser_log_configured=no cfmgr_browser_log_enabled=no cfmgr_browser_log_optout=no cfmgr_browser_log_policy=absent
+			[ "$cfmgr_browser_e_b" != 1 ] || cfmgr_browser_log_configured=yes
+			[ "$cfmgr_browser_e_c" != 1 ] || cfmgr_browser_log_enabled=yes
+			[ "$cfmgr_browser_e_d" != 1 ] || cfmgr_browser_log_optout=yes
+			[ "$cfmgr_browser_e_e" != 1 ] || cfmgr_browser_log_policy=present
+			printf '%s logging: configured %s, enabled %s, opt-out %s, saved policy %s. Opt-out remains inactive.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_log_configured" "$cfmgr_browser_log_enabled" "$cfmgr_browser_log_optout" "$cfmgr_browser_log_policy"
+			;;
+		STORAGE)
+			cfmgr_browser_review_path=$(cfmgr_backup_decode "$cfmgr_browser_e_c") && cfmgr_browser_review_relative=$(cfmgr_backup_decode "$cfmgr_browser_e_d") || return 3
+			printf 'Archived storage: %s (%s), root %s, relative %s. Verify current storage and remap paths before restore.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" "$cfmgr_browser_review_path" "$cfmgr_browser_review_relative"
+			;;
+		FILE)
+			cfmgr_browser_review_path=$(cfmgr_backup_decode "$cfmgr_browser_e_c") || return 3
+			printf 'Included %s: %s/%s (%s bytes, %s).\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" "$cfmgr_browser_review_path" "$cfmgr_browser_e_d" "$cfmgr_browser_e_e"
+			;;
+		EXTERNAL)
+			cfmgr_browser_review_path=$(cfmgr_backup_decode "$cfmgr_browser_e_b") || return 3
+			printf 'External dependency: %s; not carried in this archive. Check availability or remap it.\n' "$cfmgr_browser_review_path"
+			;;
+		NOTE) printf '%s: %s (%s).\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" "$cfmgr_browser_e_d" ;;
+		DRAFT) printf '%s: inert saved draft (%s); resume validation before completing setup.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" ;;
+		CURRENT) printf '%s\n' 'Current readiness and provider authentication are unknown; archived history grants neither.' ;;
+		RESTORE) printf '%s\n' 'Restore needs current components, fresh local ownership and readiness/auth checks. Configured Off stays Off; never-configured features remain inactive. History may be deferred when Entware/Scribe is unavailable. Remote references cannot recreate deleted provider objects.' ;;
+		esac
+	done <<EOF_BROWSER_REVIEW
+$cfmgr_browser_selected_effects
+EOF_BROWSER_REVIEW
+	printf '%s\n' 'This is a review only. Executable restore and activation are not available yet.'
+}
+
+cfmgr_backup_archive_browse() {
+	cfmgr_browser_source_row=''
+	cfmgr_archive_browser_ui_source || return $?
+	[ -n "$cfmgr_browser_source_row" ] || return 0
+	cfmgr_browser_ui_name=''
+	cfmgr_archive_browser_ui_call list || return $?
+	[ "$cfmgr_browser_ui_exit" != 3 ] || return 3
+	case $cfmgr_browser_ui_result in listed | incomplete) ;; *)
+		printf '[CFMGR] backup: warning: archive source is unavailable\n' >&2
+		return 0
+		;;
+	esac
+	[ "$cfmgr_browser_ui_result" != incomplete ] || printf '[CFMGR] backup: warning: archive scan is incomplete; listed metadata is not full verification\n' >&2
+	if [ "$cfmgr_browser_ui_count" = 0 ]; then
+		if [ "$cfmgr_browser_ui_result" = listed ]; then
+			printf '%s\n' 'No recognized archives are present on this source.'
+		else printf '%s\n' 'No archive list is available from the incomplete scan.'; fi
+		return 0
+	fi
+	printf '%s\n' 'Archives, newest first (metadata recognized; select to fully verify):'
+	while IFS= read -r cfmgr_browser_item; do
+		cfmgr_archive_browser_ui_item_fields "$cfmgr_browser_item"
+		cfmgr_browser_year=${cfmgr_browser_ui_day%%-*} cfmgr_browser_monthday=${cfmgr_browser_ui_day#*-}
+		cfmgr_browser_month=${cfmgr_browser_monthday%-*} cfmgr_browser_day=${cfmgr_browser_monthday#*-}
+		case $cfmgr_browser_ui_order in
+		DMY) cfmgr_browser_label=$cfmgr_browser_day-$cfmgr_browser_month-$cfmgr_browser_year ;;
+		MDY) cfmgr_browser_label=$cfmgr_browser_month-$cfmgr_browser_day-$cfmgr_browser_year ;;
+		YMD) cfmgr_browser_label=$cfmgr_browser_ui_day ;;
+		esac
+		printf '%s) %s %s | %s\n' "$cfmgr_browser_ui_index" "$cfmgr_browser_label" "$cfmgr_browser_ui_clock" "$cfmgr_browser_ui_file"
+	done <<EOF_BROWSER_ITEMS
+$cfmgr_browser_ui_items
+EOF_BROWSER_ITEMS
+	printf '%s' 'Archive number (or e to cancel): '
+	if IFS= read -r cfmgr_browser_choice; then :; else
+		cfmgr_backup_ui_leave=1
+		return 0
+	fi
+	[ "$cfmgr_browser_choice" != e ] || return 0
+	cfmgr_browser_ui_name=''
+	while IFS= read -r cfmgr_browser_item; do
+		cfmgr_archive_browser_ui_item_fields "$cfmgr_browser_item"
+		if [ "$cfmgr_browser_choice" = "$cfmgr_browser_ui_index" ]; then cfmgr_browser_ui_name=$cfmgr_browser_ui_file; fi
+	done <<EOF_BROWSER_SELECTION
+$cfmgr_browser_ui_items
+EOF_BROWSER_SELECTION
+	[ -n "$cfmgr_browser_ui_name" ] || {
+		printf '%s\n' 'Invalid archive selection.'
+		return 0
+	}
+	cfmgr_archive_browser_ui_call inspect "$cfmgr_browser_ui_name" || return $?
+	[ "$cfmgr_browser_ui_exit" != 3 ] || return 3
+	[ "$cfmgr_browser_ui_result" = verified ] || {
+		printf '[CFMGR] backup: warning: selected archive could not be fully verified\n' >&2
+		return 0
+	}
+	cfmgr_browser_selected_item=$cfmgr_browser_ui_items cfmgr_browser_selected_effects=$cfmgr_browser_ui_effects cfmgr_browser_selected_receipt=$cfmgr_browser_ui_receipt
+	cfmgr_archive_browser_ui_details || return $?
+	while :; do
+		printf '%s\n' '1 Inspect details' '2 Verify again' '3 Review restore effects' 'd Delete selected archive' 'e Back'
+		if IFS= read -r cfmgr_browser_choice; then :; else
+			cfmgr_backup_ui_leave=1
+			return 0
+		fi
+		case $cfmgr_browser_choice in
+		1) cfmgr_archive_browser_ui_details || return $? ;;
+		2)
+			cfmgr_archive_browser_ui_call verify "$cfmgr_browser_ui_name" || return $?
+			[ "$cfmgr_browser_ui_exit" != 3 ] || return 3
+			[ "$cfmgr_browser_ui_result" = verified ] || {
+				printf '[CFMGR] backup: warning: archive changed or verification failed\n' >&2
+				return 0
+			}
+			cfmgr_browser_selected_item=$cfmgr_browser_ui_items cfmgr_browser_selected_effects=$cfmgr_browser_ui_effects cfmgr_browser_selected_receipt=$cfmgr_browser_ui_receipt
+			printf '%s\n' 'Full archive verification passed.'
+			;;
+		3) cfmgr_archive_browser_ui_review || return $? ;;
+		d)
+			printf 'Delete only %s? [y/N/e] ' "$cfmgr_browser_ui_name"
+			if IFS= read -r cfmgr_browser_answer; then :; else
+				cfmgr_backup_ui_leave=1
+				return 0
+			fi
+			case $cfmgr_browser_answer in y | Y | yes | YES) ;; *)
+				printf '%s\n' 'Deletion cancelled; archive preserved.'
+				continue
+				;;
+			esac
+			IFS=' ' read -r cfmgr_browser_receipt_tag cfmgr_browser_receipt_version cfmgr_browser_inode cfmgr_browser_bytes cfmgr_browser_sha cfmgr_browser_receipt_end <<EOF_BROWSER_DELETE_RECEIPT
+$cfmgr_browser_selected_receipt
+EOF_BROWSER_DELETE_RECEIPT
+			cfmgr_archive_browser_ui_call delete "$cfmgr_browser_ui_name" "$cfmgr_browser_inode" "$cfmgr_browser_bytes" "$cfmgr_browser_sha" || return $?
+			if [ "$cfmgr_browser_ui_result" = deleted ]; then
+				printf 'Archive deleted: %s\n' "$cfmgr_browser_ui_name"
+				[ "$cfmgr_browser_ui_pending" = 0 ] || printf '[CFMGR] backup: warning: archive was deleted; temporary cleanup is pending\n' >&2
+			else printf '[CFMGR] backup: warning: deletion was not confirmed; source may have changed\n' >&2; fi
+			[ "$cfmgr_browser_ui_exit" != 3 ] || return 3
+			return 0
+			;;
+		e) return 0 ;;
+		*) printf '%s\n' 'Invalid archive action.' ;;
+		esac
+	done
+}
+
 cfmgr_archive_ui_name() {
 	[ "$#" -eq 1 ] && [ "${#1}" -lt 64 ] || return 1
 	case $1 in CFbackup-*.tar.gz)
@@ -2027,7 +2652,7 @@ EOF_ARCHIVE_DATE
 
 # ---- backup archive transaction ----
 # Source-inert private stage, complete candidate recognition and publication.
-# Only the manual controller calls these functions while config exclusion holds.
+# Creation holds config exclusion; browsing uses independent immutable snapshots.
 # shellcheck disable=SC2034,SC2154,SC3013
 
 cfmgr_archive_ram_new() {
@@ -2083,13 +2708,17 @@ cfmgr_archive_stage_close() {
 }
 
 cfmgr_archive_verify_owned() {
+	cfmgr_archive_verify_owned_set "$1" "$cfmgr_archive_saved_set_id"
+}
+
+cfmgr_archive_verify_owned_set() {
 	# The caller's compressed/raw files must survive the verifier's scratch
-	# cleanup. Preserve its exact ownership ledger independently in all outcomes.
+	# cleanup. Every caller still supplies one explicit expected set UUID.
 	cfmgr_archive_verification_status=incomplete
 	cfmgr_create_verify_owned=$cfmgr_format_owned
 	cfmgr_archive_format_retire && cfmgr_payload_cleanup || return $?
 	cfmgr_format_owned=''
-	if cfmgr_archive_format_verify "$1" "$cfmgr_archive_saved_set_id"; then cfmgr_create_verify_code=0; else cfmgr_create_verify_code=$?; fi
+	if cfmgr_archive_format_verify "$1" "$2"; then cfmgr_create_verify_code=0; else cfmgr_create_verify_code=$?; fi
 	cfmgr_format_owned="${cfmgr_format_owned:+$cfmgr_format_owned }$cfmgr_create_verify_owned"
 	cfmgr_archive_format_tracking=1
 	if [ "$cfmgr_create_verify_code" = 3 ] || [ "${cfmgr_probe_status:-}" != reaped ]; then return 3; fi
@@ -3881,6 +4510,7 @@ cfmgr_payload_json() {
 	# MODE INPUT AUXILIARY. AUX is a private authority path, account hex, or
 	# generation. It never supplies shell syntax or an executable/code path.
 	cfmgr_payload_json_mode=$1 cfmgr_payload_json_input=$2 cfmgr_payload_json_aux=$3
+	if [ "$1:${cfmgr_browser_projection:-0}" = drafts:1 ]; then cfmgr_payload_json_mode=drafts-review; fi
 	cfmgr_archive_measure "$2" || return $?
 	[ "$cfmgr_archive_bytes" -gt 0 ] && [ "$cfmgr_archive_bytes" -le 65536 ] || return 1
 	cfmgr_archive_run archive-payload-json 532480 "$cfmgr_store_awk" "$cfmgr_store_source/modules/lib" \
@@ -3888,6 +4518,24 @@ cfmgr_payload_json() {
 	if [ "$cfmgr_payload_json_mode" = plan ]; then
 		cfmgr_payload_preserve "$cfmgr_probe_stdout" 532480 || return $?
 		cfmgr_payload_plan=$cfmgr_payload_result
+	elif [ "$cfmgr_payload_json_mode" = drafts-review ]; then
+		cfmgr_browser_drafts='' cfmgr_browser_drafts_end=0 cfmgr_browser_drafts_seen=''
+		while IFS=' ' read -r cfmgr_browser_draft_tag cfmgr_browser_draft_version cfmgr_browser_draft_feature cfmgr_browser_draft_stage cfmgr_browser_draft_end cfmgr_browser_draft_extra <&1; do
+			if [ "$cfmgr_browser_draft_tag:$cfmgr_browser_draft_version:$cfmgr_browser_draft_feature:$cfmgr_browser_draft_stage:$cfmgr_browser_draft_end:$cfmgr_browser_draft_extra" = CFMGR-PAYLOAD:1:drafts:inert:END: ]; then
+				[ "$cfmgr_browser_drafts_end" = 0 ] || return 1
+				cfmgr_browser_drafts_end=1
+			else
+				[ "$cfmgr_browser_drafts_end" = 0 ] && [ "$cfmgr_browser_draft_tag:$cfmgr_browser_draft_version:$cfmgr_browser_draft_end:$cfmgr_browser_draft_extra" = CFMGR-DRAFT:1:END: ] || return 1
+				case $cfmgr_browser_draft_feature in ddns | ip_sync) ;; *) return 1 ;; esac
+				case " $cfmgr_browser_drafts_seen " in *" $cfmgr_browser_draft_feature "*) return 1 ;; esac
+				case $cfmgr_browser_draft_stage in '' | *[!A-Za-z0-9_.-]*) return 1 ;; esac
+				[ "${#cfmgr_browser_draft_stage}" -le 64 ] || return 1
+				cfmgr_browser_drafts_seen="${cfmgr_browser_drafts_seen:+$cfmgr_browser_drafts_seen }$cfmgr_browser_draft_feature"
+				cfmgr_browser_drafts="${cfmgr_browser_drafts:+$cfmgr_browser_drafts
+}CFMGR-ARCHIVE-EFFECT 1 DRAFT $cfmgr_browser_draft_feature $cfmgr_browser_draft_stage END"
+			fi
+		done 1<"$cfmgr_probe_stdout"
+		[ "$cfmgr_browser_drafts_end" = 1 ]
 	else
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
 		cfmgr_payload_expected=matched
@@ -4029,7 +4677,27 @@ cfmgr_archive_verify_complete() {
 	cfmgr_archive_run archive-payload-match 4096 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" \
 		"$cfmgr_payload_capture_plan" "$cfmgr_payload_inventory" || return $?
 	cfmgr_store_read_line "$cfmgr_probe_stdout" && [ "$cfmgr_store_line" = 'CFMGR-PAYLOAD-MATCH 1 complete END' ] || return 1
+	if [ "${cfmgr_browser_projection:-0}" = 1 ]; then
+		cfmgr_archive_browser_project || return $?
+	fi
 	cfmgr_archive_format_retire
+}
+
+cfmgr_archive_browser_project() {
+	# Fully admitted private plans contain AUTH secrets. Only the fixed reviewed
+	# projection may leave this operation; never print or retain the raw plans.
+	cfmgr_archive_run archive-browser-review 65536 "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" \
+		"$cfmgr_payload_plan" "$cfmgr_payload_capture_plan" "$cfmgr_payload_inventory" || return $?
+	cfmgr_browser_effects='' cfmgr_browser_effect_bytes=0
+	while IFS= read -r cfmgr_browser_effect <&1; do
+		cfmgr_browser_effect_bytes=$((cfmgr_browser_effect_bytes + ${#cfmgr_browser_effect} + 1))
+		[ "$cfmgr_browser_effect_bytes" -le 65536 ] || return 1
+		cfmgr_browser_effects="${cfmgr_browser_effects:+$cfmgr_browser_effects
+}$cfmgr_browser_effect"
+	done 1<"$cfmgr_probe_stdout"
+	if [ -n "${cfmgr_browser_drafts:-}" ]; then cfmgr_browser_effects="$cfmgr_browser_effects
+$cfmgr_browser_drafts"; fi
+	[ -n "$cfmgr_browser_effects" ]
 }
 
 # ---- Backup destination and retained archive source policy ----
@@ -4573,7 +5241,7 @@ function am_calendar(day,clock, d,t,y,m,n,maxday) {
 function am_manifest(line, n,a) {
     n=split(line,a," ");am_lines++
     if(am_lines==1){if(line!="CFMGR-ARCHIVE 1")am_fail()}
-    else if(am_lines==2){if(n!=2 || a[1]!="SET" || !am_uuid(a[2]) || a[2]!=ENVIRON["CFMGR_ARCHIVE_SET"])am_fail();am_set=a[2]}
+    else if(am_lines==2){if(n!=2 || a[1]!="SET" || !am_uuid(a[2]) || (am_mode!="discover" && a[2]!=ENVIRON["CFMGR_ARCHIVE_SET"]))am_fail();am_set=a[2]}
     else if(am_lines==3){if(n!=2 || a[1]!="ARCHIVE" || !am_uuid(a[2]))am_fail();am_archive=a[2]}
     else if(am_lines==4){
         if(n!=7 || a[1]!="CREATED" || !am_uint(a[2],"9999999999") || !am_calendar(a[3],a[4]) || a[6]!~/^[+-][0-9][0-9][0-9][0-9]$/ || substr(a[6],2,2)+0>23 || substr(a[6],4,2)+0>59 || a[7]!~/^(DMY|MDY|YMD)$/)am_fail()
@@ -4589,7 +5257,7 @@ function am_manifest(line, n,a) {
 }
 BEGIN {
     am_max="9223372036854775807";am_mode=ENVIRON["CFMGR_ARCHIVE_FORMAT_MODE"]
-    if(am_mode!="manifest" && am_mode!="inventory")am_fail()
+    if(am_mode!="manifest" && am_mode!="inventory" && am_mode!="discover")am_fail()
 }
 {
     am_ready=0
@@ -4600,7 +5268,7 @@ BEGIN {
         if(length(am_line)+1>4096)am_fail()
         am_decoded=am_line;am_line="";am_ready=1
         if(am_decoded=="" || am_decoded~/^ | $|  /)am_fail()
-        if(am_mode=="manifest")am_manifest(am_decoded)
+        if(am_mode=="manifest" || am_mode=="discover")am_manifest(am_decoded)
     } else {
         if(am_char<32 || am_char>126 || length(am_line)>=4095)am_fail()
         am_line=am_line sprintf("%c",am_char)
@@ -4609,7 +5277,7 @@ BEGIN {
 END {
     if(am_bad)exit 1
     if(am_line!="" || !am_ready || !NR)am_fail()
-    if(am_mode=="manifest") {
+    if(am_mode=="manifest" || am_mode=="discover") {
         if(am_lines!=7 || am_bytes>4096)am_fail()
         print "CFMGR-MANIFEST 1 " am_set " " am_archive " " am_created " " am_config " " am_inventory " END"
     }
@@ -5051,6 +5719,7 @@ function bp_drafts(    drafts,generation,i,name,item,stage) {
         item=bp_type(i,"object"); if(bp_number(item,"schema")!="1") reject()
         stage=bp_text(item,"stage",0); if(length(stage)>64 || stage!~/^[A-Za-z][A-Za-z0-9._-]*$/) reject()
         bp_field(item,"inputs","object"); bp_field(item,"validation","object")
+        if(bp_mode=="drafts-review")bp_emit("CFMGR-DRAFT 1 " name " " (stage=="review" ? "review" : "incomplete") " END")
     }
     bp_emit("CFMGR-PAYLOAD 1 drafts inert END")
 }
@@ -5061,7 +5730,7 @@ BEGIN {
     if(bp_mode=="plan") bp_plan()
     else if(bp_mode=="runtime-json") bp_runtime_json()
     else if(bp_mode=="certificate-json") bp_certificate_json()
-    else if(bp_mode=="drafts") bp_drafts()
+    else if(bp_mode=="drafts" || bp_mode=="drafts-review") bp_drafts()
     else reject()
     if(bp_mode=="plan") bp_emit("END " bp_count)
     for(bp_i=1;bp_i<=bp_count;bp_i++) print bp_rows[bp_i]
@@ -5122,6 +5791,7 @@ cfmgr_backup_awk_backup_archive_control() {
 # no input selects code or a path outside the admitted CFBackup directory.
 function ac_fail() { ac_bad=1; exit 1 }
 function ac_uint(s) { return s ~ /^(0|[1-9][0-9]*)$/ && length(s)<=19 }
+function ac_generation(s) { return s~/^[1-9][0-9]*$/ && length(s)<=20 }
 function ac_hex(s,n) { return length(s)==n && s !~ /[^0-9a-f]/ }
 function ac_uuid(s, a) {
     return length(s)==36 && split(s,a,"-")==5 && ac_hex(a[1],8) && ac_hex(a[2],4) && ac_hex(a[3],4) && ac_hex(a[4],4) && ac_hex(a[5],12)
@@ -5138,6 +5808,12 @@ function ac_newer(epoch,id,name,other, a) {
 }
 function ac_older(left,right, a,b) {
     split(left,a," "); split(right,b," ")
+    if(ac_mode=="browse") {
+        if(length(a[5])!=length(b[5]))return length(a[5])<length(b[5])
+        if("x" a[5]!="x" b[5])return ("x" a[5])<("x" b[5])
+        if("x" a[4]!="x" b[4])return ("x" a[4])<("x" b[4])
+        return ("x" a[2])<("x" b[2])
+    }
     if(length(a[6])!=length(b[6]))return length(a[6])<length(b[6])
     if(a[6]!=b[6])return ("x" a[6])<("x" b[6])
     if(a[8]!=b[8])return ("x" a[8])<("x" b[8])
@@ -5147,15 +5823,63 @@ function ac_record(line, a) {
     if(length(line)>1024 || split(line,a," ")!=9 || line!="ARCHIVE " a[2] " " a[3] " " a[4] " " a[5] " " a[6] " " a[7] " " a[8] " END")return 0
     return ac_name(a[2]) && ac_uint(a[3]) && a[3]!="0" && ac_uint(a[4]) && ac_hex(a[5],64) && ac_uint(a[6]) && length(a[6])<=10 && a[7] ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && ac_uuid(a[8])
 }
+function ac_effect(s) {
+    ac_bytes+=length(s)+30;if(ac_bytes>65536)ac_fail()
+    ac_effects[++ac_effect_count]="CFMGR-ARCHIVE-EFFECT 1 " s " END"
+}
+function ac_feature(s) { return s~/^(ddns|ip_sync|cloudflared)$/ }
+function ac_review(    present) {
+    # These are already validated receipts, but projection still selects exact
+    # columns: LOG policy JSON and CLOUD/AUTH references never become UI data.
+    if(FILENAME==ARGV[1]) {
+        if(FNR==1) {
+            if(NF!=4 || $1!="CFMGR-PAYLOAD-PLAN" || $2!="1" || $3!~/^[12]$/ || !ac_generation($4))ac_fail()
+            ac_schema=$3;ac_effect("SCHEMA " $3 " " ($3=="1" ? "migration-required" : "current"));return
+        }
+        if($1=="STATE") {
+            if(NF!=4 || !ac_feature($2) || $3!~/^[01]$/ || $4!~/^[01]$/ || ac_states[$2]++)ac_fail()
+            ac_effect($0)
+        } else if($1=="CLOUD") {
+            if(NF!=10 || $2!~/^(-|token|advanced)$/ || $3!~/^[01]$/ || $4!~/^[01]$/ || $5!~/^[01]$/ || $6!~/^[01]$/)ac_fail()
+            ac_effect("CLOUD " $2 " " $3 " " $4 " " $5 " " $6)
+        } else if($1=="LOG") {
+            if(NF!=6 || !ac_feature($2) || $3!~/^[01]$/ || $4!~/^[01]$/ || $5!~/^[01]$/)ac_fail()
+            ac_effect("LOG " $2 " " $3 " " $4 " " $5 " " ($6!="-" ? "1" : "0"))
+        } else if($1=="STORAGE") {
+            if(NF!=5 || length($2)>256 || $2!~/^[A-Za-z0-9_.:-]+$/ || $3!~/^[A-Za-z0-9_.-]+$/ || $4!~/^[0-9a-f]+$/ || $5!~/^[0-9a-f]+$/)ac_fail()
+            ac_effect($0)
+        }
+    } else if(FILENAME==ARGV[2]) {
+        if($1=="EXTERNAL") {
+            if(NF!=4 || $2!="data.cloudflared.yaml" || $3!~/^[0-9a-f]+$/ || $4!="input-reference")ac_fail()
+            ac_effect($0)
+        }
+    } else if(FILENAME==ARGV[3]) {
+        if($1=="FILE") {
+            if(NF!=10 || $3!~/^[A-Za-z0-9_.-]+$/ || $4!~/^(jffs|entware)$/ || $5!~/^[0-9a-f]+$/ || !ac_uint($8))ac_fail()
+            ac_effect("FILE " $3 " " $4 " " $5 " " $8 " " $10)
+        } else if($1=="NOTE") {
+            if(NF!=6 || $2!~/^[A-Za-z0-9_.-]+$/ || $3!~/^[a-z_]+$/ || $4!~/^(-|[0-9a-f]+)$/ || $5!~/^[a-z-]+$/ || $6!="END")ac_fail()
+            ac_effect("NOTE " $2 " " $3 " " $4 " " $5)
+        }
+    }
+}
 BEGIN {
     ac_mode=ENVIRON["CFMGR_ARCHIVE_CONTROL_MODE"]
     ac_keep=ENVIRON["CFMGR_ARCHIVE_KEEP"]
     ac_new=ENVIRON["CFMGR_ARCHIVE_NEW_NAME"]
-    if(ac_mode!="names" && ac_mode!="retention")ac_fail()
+    if(ac_mode!="names" && ac_mode!="retention" && ac_mode!="review" && ac_mode!="browse")ac_fail()
+    if(ac_mode=="review" && ARGC!=4)ac_fail()
     if(ac_mode=="retention" && (ac_keep!~/^[345]$/ || !ac_name(ac_new)))ac_fail()
 }
 {
+    if(ac_mode=="review") { if(length($0)>131072)ac_fail(); ac_review();next }
     if(ac_mode=="names") { if(ac_name($0))print $0; next }
+    if(ac_mode=="browse") {
+        if(length($0)>1024 || NF!=13 || $1!="BROWSE" || !ac_name($2) || !ac_uuid($3) || !ac_uuid($4) || !ac_uint($5) || length($5)>10 || $6!~/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || $7!~/^[0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ || $8!~/^[0-9a-f]+$/ || length($8)>512 || length($8)%2 || $9!~/^[+-][0-9][0-9][0-9][0-9]$/ || $10!~/^(DMY|MDY|YMD)$/ || $11!~/^[12]$/ || !ac_generation($12) || $13!="END" || ac_seen[$2]++)ac_fail()
+        ac_bytes+=length($0)+32;if(ac_bytes>65536 || ac_count>=128)ac_fail()
+        ac_remove[++ac_count]=$0;next
+    }
     if(!ac_record($0,ac_fields))ac_fail()
     if(ac_seen[ac_fields[2]]++)ac_fail()
     if(ac_fields[2]==ac_new) { ac_found++; next }
@@ -5172,16 +5896,25 @@ BEGIN {
 }
 END {
     if(ac_bad)exit 1
-    if(ac_mode=="names")exit 0
-    if(ac_found!=1)exit 1
-    ac_retain[ac_new]=1
-    for(ac_i=1;ac_i<ac_keep;ac_i++)if(ac_i in ac_top) { split(ac_top[ac_i],ac_fields," "); ac_retain[ac_fields[2]]=1 }
-    close(ARGV[1])
-    while((ac_status=(getline ac_line < ARGV[1]))>0) {
-        if(!ac_record(ac_line,ac_fields))exit 1
-        if(!(ac_fields[2] in ac_retain))ac_remove[++ac_count]=ac_line
+    if(ac_mode=="review") {
+        if(ac_schema=="" || !ac_states["ddns"] || !ac_states["ip_sync"] || !ac_states["cloudflared"])exit 1
+        ac_effect("CURRENT readiness-unknown auth-unknown")
+        ac_effect("RESTORE current-components fresh-admission path-remapping history-may-defer")
+        for(ac_i=1;ac_i<=ac_effect_count;ac_i++)print ac_effects[ac_i]
+        exit 0
     }
-    if(ac_status<0)exit 1
+    if(ac_mode=="names")exit 0
+    if(ac_mode=="retention") {
+        if(ac_found!=1)exit 1
+        ac_retain[ac_new]=1
+        for(ac_i=1;ac_i<ac_keep;ac_i++)if(ac_i in ac_top) { split(ac_top[ac_i],ac_fields," "); ac_retain[ac_fields[2]]=1 }
+        close(ARGV[1])
+        while((ac_status=(getline ac_line < ARGV[1]))>0) {
+            if(!ac_record(ac_line,ac_fields))exit 1
+            if(!(ac_fields[2] in ac_retain))ac_remove[++ac_count]=ac_line
+        }
+        if(ac_status<0)exit 1
+    }
     # Bottom-up stable merge sort: removals are emitted oldest first without
     # quadratic work, shelling out, or changing the fixed-size keep selection.
     for(ac_width=1;ac_width<ac_count;ac_width*=2) {
@@ -5190,7 +5923,7 @@ END {
             ac_end=ac_start+2*ac_width; if(ac_end>ac_count+1)ac_end=ac_count+1
             ac_left=ac_start; ac_right=ac_mid; ac_out=ac_start
             while(ac_left<ac_mid && ac_right<ac_end) {
-                if(!ac_older(ac_remove[ac_right],ac_remove[ac_left]))ac_sorted[ac_out++]=ac_remove[ac_left++]
+                if(ac_mode=="browse" ? !ac_older(ac_remove[ac_left],ac_remove[ac_right]) : !ac_older(ac_remove[ac_right],ac_remove[ac_left]))ac_sorted[ac_out++]=ac_remove[ac_left++]
                 else ac_sorted[ac_out++]=ac_remove[ac_right++]
             }
             while(ac_left<ac_mid)ac_sorted[ac_out++]=ac_remove[ac_left++]
@@ -5198,7 +5931,10 @@ END {
         }
         for(ac_i=1;ac_i<=ac_count;ac_i++) { ac_remove[ac_i]=ac_sorted[ac_i]; delete ac_sorted[ac_i] }
     }
-    for(ac_i=1;ac_i<=ac_count;ac_i++)print ac_remove[ac_i]
+    for(ac_i=1;ac_i<=ac_count;ac_i++) {
+        if(ac_mode=="browse")print "CFMGR-ARCHIVE-ITEM 1 " ac_i " " substr(ac_remove[ac_i],8)
+        else print ac_remove[ac_i]
+    }
 }
 '
 	# CFMGR-AWK-END backup_archive_control

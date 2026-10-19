@@ -137,7 +137,7 @@ def archive(tmp_path, shell):
                 # retains the inherited lock on9; every other tool keeps0.
                 lock_check = (
                     "case ${CFMGR_PAYLOAD_MODE:-} in\n"
-                    "plan|runtime-json|certificate-json|drafts)\n"
+                    "plan|runtime-json|certificate-json|drafts|drafts-review)\n"
                     f"[ /proc/self/fd/9 -ef {lock} ] || exit 92\n"
                     f"[ ! /proc/self/fd/0 -ef {lock} ] || exit 93\n"
                     f"if [ -f {shlex.quote(str(ram / 'prove-json-lock'))} ]; then\n"
@@ -262,10 +262,27 @@ def run(archive, shell, script, *arguments, timeout=15, profile=False):
             body = body.replace(
                 marker,
                 marker
-                + f"\tcfmgr_test_profile_{counter}=$((cfmgr_test_profile_{counter}+1))\n",
+                + f"\tcfmgr_test_profile_{counter}=$((cfmgr_test_profile_{counter}+1))\n"
+                + (
+                    "\tcfmgr_test_profile_ram_inode_launches=$((cfmgr_test_profile_ram_inode_launches+1))\n"
+                    if counter == "ram_inodes"
+                    else ""
+                ),
                 1,
             )
             fixture_file.write_text(body)
+        fixture_file = support / "modules/backup.sh"
+        body = fixture_file.read_text()
+        batch_launch = "\tcfmgr_format_ram_listing=$(\n"
+        assert body.count(batch_launch) == 1
+        body = body.replace(
+            batch_launch,
+            "\tcfmgr_test_profile_ram_inode_launches=$((cfmgr_test_profile_ram_inode_launches+1))\n"
+            + "\tcfmgr_test_profile_ram_inodes=$((cfmgr_test_profile_ram_inodes+cfmgr_format_ram_count))\n"
+            + batch_launch,
+            1,
+        )
+        fixture_file.write_text(body)
         marker = "cfmgr_prerequisites_pause() { "
         assert pause.count(marker) == 1, "Expected one pause fixture definition"
         pause = pause.replace(
@@ -284,15 +301,16 @@ def run(archive, shell, script, *arguments, timeout=15, profile=False):
         )
         profile_prefix = (
             "cfmgr_test_profile_observations=0 cfmgr_test_profile_pauses=0 "
-            "cfmgr_test_profile_ram_inodes=0 cfmgr_test_profile_attachments=0 "
+            "cfmgr_test_profile_ram_inodes=0 cfmgr_test_profile_ram_inode_launches=0 cfmgr_test_profile_attachments=0 "
             "cfmgr_test_profile_probes=0 cfmgr_test_profile_archive_inode_probes=0 "
             "cfmgr_test_profile_other_probes=0; "
             "trap 'cfmgr_test_profile_exit=$?; trap - EXIT; "
-            'printf "probe_serial=%s probes=%s archive_inode_probes=%s other_probes=%s attachments=%s observations=%s pauses=%s ram_inodes=%s\\n" '
+            'printf "probe_serial=%s probes=%s archive_inode_probes=%s other_probes=%s attachments=%s observations=%s pauses=%s ram_inodes=%s ram_inode_launches=%s\\n" '
             '"${cfmgr_probe_serial:-0}" "${cfmgr_test_profile_probes:-0}" '
             '"${cfmgr_test_profile_archive_inode_probes:-0}" "${cfmgr_test_profile_other_probes:-0}" '
             '"${cfmgr_test_profile_attachments:-0}" "${cfmgr_test_profile_observations:-0}" '
             '"${cfmgr_test_profile_pauses:-0}" "${cfmgr_test_profile_ram_inodes:-0}" '
+            '"${cfmgr_test_profile_ram_inode_launches:-0}" '
             '>"$CFMGR_TEST_PROFILE_PATH" 2>/dev/null; '
             'exit "$cfmgr_test_profile_exit"\' EXIT; '
         )
@@ -327,7 +345,7 @@ def run(archive, shell, script, *arguments, timeout=15, profile=False):
         assert len(profile_lines) == 1
         assert re.fullmatch(
             r"probe_serial=\d+ probes=\d+ archive_inode_probes=\d+ "
-            r"other_probes=\d+ attachments=\d+ observations=\d+ pauses=\d+ ram_inodes=\d+",
+            r"other_probes=\d+ attachments=\d+ observations=\d+ pauses=\d+ ram_inodes=\d+ ram_inode_launches=\d+",
             profile_lines[0],
         )
         print(f"ARCHIVE_PROFILE {profile_lines[0]}", flush=True)
@@ -412,6 +430,186 @@ def benchmark_external_applets(archive, shell, *, profile):
 
 def passed(result):
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
+
+
+def test_ram_receipt_batches_observe_every_inode_and_preserve_probe_failure(
+    archive, shell
+):
+    support, ram, _mount, _stage, environment = archive
+    native_ls = environment["TEST_LS"]
+    traced_ls = support.parent / "receipt-ls"
+    trace = ram / "receipt-ls-counts"
+    traced_ls.write_text(
+        "#!/bin/sh\n"
+        f"printf '%s\\n' \"$#\" >>{shlex.quote(str(trace))}\n"
+        f'exec {shlex.quote(native_ls)} "$@"\n'
+    )
+    traced_ls.chmod(0o700)
+    environment["TEST_RECEIPT_LS"] = str(traced_ls)
+    environment["TEST_RECEIPT_TRACE"] = str(trace)
+    (ram / "input").write_bytes(b"genuine native count\n")
+    (ram / "foreign").write_bytes(b"retain unrelated RAM data\n")
+    script = r"""
+cfmgr_archive_deadline=$((cfmgr_probe_now+60))
+cfmgr_archive_format_tracking=1 cfmgr_format_receipts=''
+cfmgr_store_ls=$TEST_RECEIPT_LS
+cfmgr_probe_status=reaped
+cfmgr_archive_format_retire || exit 79
+cfmgr_format_receipts=$1
+if cfmgr_archive_format_retire; then exit 80; fi
+[ ! -e "$TEST_RECEIPT_TRACE" ] || exit 91
+cfmgr_format_receipts=''
+cfmgr_archive_measure "$ram/input" || exit 81
+first_out=$cfmgr_probe_stdout first_err=$cfmgr_probe_stderr
+if cfmgr_archive_run archive-count 4096 "$cfmgr_store_wc" "$ram/missing"; then exit 82; fi
+[ "$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit:${cfmgr_probe_reason:-}" = archive-count:reaped:2: ] || exit 83
+last_out=$cfmgr_probe_stdout last_err=$cfmgr_probe_stderr
+cfmgr_archive_format_retire || exit 84
+[ "$cfmgr_probe_stdout:$cfmgr_probe_stderr:$cfmgr_probe_mode:$cfmgr_probe_status:$cfmgr_probe_exit:${cfmgr_probe_reason:-}" = "$last_out:$last_err:archive-count:reaped:2:" ] || exit 85
+[ ! -e "$first_out" ] && [ ! -e "$first_err" ] && [ ! -e "$last_out" ] && [ ! -e "$last_err" ] || exit 86
+[ -f "$ram/foreign" ] && [ -z "$cfmgr_format_receipts" ] || exit 87
+cfmgr_archive_measure "$ram/input" || exit 88
+changed_out=$cfmgr_probe_stdout retained_err=$cfmgr_probe_stderr
+mv "$changed_out" "$ram/retained-receipt"
+printf replacement >"$changed_out"
+if cfmgr_archive_format_retire; then exit 89; fi
+[ -f "$changed_out" ] && [ -f "$retained_err" ] && [ -f "$ram/retained-receipt" ] && [ -n "$cfmgr_format_receipts" ] || exit 90
+"""
+    oversized_ledger = " ".join("archive-bound.1.out:1" for _ in range(129))
+    passed(run(archive, shell, script, oversized_ledger, timeout=90))
+    # Two files are observed at each tracking boundary, then all four in one
+    # retirement. A later inode substitution rejects the complete deletion set.
+    assert trace.read_text().splitlines() == ["3", "3", "5", "3", "3"]
+    assert (ram / "foreign").read_bytes() == b"retain unrelated RAM data\n"
+
+
+@pytest.mark.parametrize(
+    "malformation",
+    ["missing", "duplicate", "unexpected", "nonzero", "inode"],
+)
+def test_ram_receipt_retirement_refuses_incomplete_or_uncertain_observations(
+    archive, shell, malformation
+):
+    support, ram, _mount, _stage, environment = archive
+    out_name, err_name = "archive-count.1.out", "archive-count.1.err"
+    out, err = ram / out_name, ram / err_name
+    out.write_bytes(b"owned output\n")
+    err.write_bytes(b"owned diagnostics\n")
+    rows = [(out.stat().st_ino, out_name), (err.stat().st_ino, err_name)]
+    if malformation == "missing":
+        rows = rows[:1]
+    elif malformation == "duplicate":
+        rows[1] = rows[0]
+    elif malformation == "unexpected":
+        rows[1] = (err.stat().st_ino, "archive-count.99.err")
+    elif malformation == "inode":
+        rows[1] = (err.stat().st_ino + 1, err_name)
+    listing = "\n".join(f"{inode} {name}" for inode, name in rows) + "\n"
+    fake_ls = support.parent / "uncertain-receipt-ls"
+    fake_ls.write_text(
+        "#!/bin/sh\n"
+        + "printf '%s' "
+        + shlex.quote(listing)
+        + "\n"
+        + f"exit {1 if malformation == 'nonzero' else 0}\n"
+    )
+    fake_ls.chmod(0o700)
+    environment["TEST_UNCERTAIN_LS"] = str(fake_ls)
+    script = r"""
+cfmgr_probe_status=reaped cfmgr_probe_exit=17 cfmgr_probe_reason=original
+cfmgr_probe_stdout=$ram/archive-count.1.out cfmgr_probe_stderr=$ram/archive-count.1.err
+cfmgr_archive_format_track_receipts || exit 81
+receipt_before=$cfmgr_format_receipts
+cfmgr_store_ls=$TEST_UNCERTAIN_LS
+if cfmgr_archive_format_retire; then exit 82; fi
+[ "$cfmgr_format_receipts" = "$receipt_before" ] && [ -f "$cfmgr_probe_stdout" ] && [ -f "$cfmgr_probe_stderr" ] || exit 83
+[ "$cfmgr_probe_status:$cfmgr_probe_exit:$cfmgr_probe_reason" = reaped:17:original ] || exit 84
+"""
+    passed(run(archive, shell, script))
+    assert out.read_bytes() == b"owned output\n"
+    assert err.read_bytes() == b"owned diagnostics\n"
+
+
+def test_browser_discovery_uses_bounded_prefix_and_keeps_verification_separate(
+    archive, shell
+):
+    import gzip
+
+    from test_archive_verify import make_archive
+
+    raw, _payloads = make_archive(archive, compact=True)
+    content = raw.read_bytes()
+    folder = archive[2] / "CFBackup"
+    (folder / "CFbackup-001.tar.gz").write_bytes(gzip.compress(content[:1024], mtime=0))
+    # Metadata can be recognized without walking a large or valid tail. Only
+    # selecting and fully verifying an immutable snapshot can admit its data.
+    (folder / "CFbackup-002.tar.gz").write_bytes(
+        gzip.compress(content + b"x" * 200000, mtime=0)
+    )
+    script = r"""
+cfmgr_archive_deadline=$((cfmgr_probe_now+60))
+cfmgr_archive_inventory_limit=65536 cfmgr_archive_format_tracking=1
+cfmgr_format_owned='' cfmgr_format_receipts=''
+if [ "$TEST_LINUX" = 0 ]; then
+    cfmgr_browser_test_started=$SECONDS
+    cfmgr_prerequisites_now() { cfmgr_probe_now=$((100+SECONDS-cfmgr_browser_test_started)); }
+fi
+cfmgr_archive_verified=0
+cfmgr_archive_directory_kib=8192 cfmgr_browser_count=0 cfmgr_browser_rows=''
+if cfmgr_archive_browser_list; then listed=1; else listed=0; fi
+case $TEST_LINUX:$listed:$cfmgr_browser_result:$cfmgr_browser_count:$cfmgr_browser_gzip_exit in
+# Big Sur gunzip handles EFBIG itself and emits stderr/exit1. This must stay
+# incomplete; Linux/vendor gzip must positively prove expected signal153.
+0:0:incomplete:1:1 | 1:1:listed:2:153) ;; *) exit 81 ;;
+esac
+[ "$cfmgr_archive_verified" = 0 ] || exit 82
+[ "$cfmgr_browser_set:$cfmgr_browser_day:$cfmgr_browser_order" = 12345678-1234-4abc-8abc-123456789abc:2024-02-29:DMY ] || exit 83
+case $cfmgr_browser_rows in 'CFMGR-ARCHIVE-ITEM 1 1 CFbackup-'*) ;; *) exit 84 ;; esac
+[ "$cfmgr_browser_prefix_bytes" -le 65536 ] || exit 85
+cfmgr_archive_format_cleanup || exit 86
+[ -z "$cfmgr_format_owned$cfmgr_format_receipts" ] || exit 87
+"""
+    result = run(archive, shell, script, timeout=90)
+    assert (result.returncode, result.stdout) == (0, b""), result
+    # Some host shells report the expected terminating signal on their own
+    # stderr. It must never contain data, source paths, or a core-dump notice.
+    assert b"core dumped" not in result.stderr.lower(), result
+    assert not list(folder.glob("core*"))
+    assert not list(archive[3].glob("browser*"))
+
+
+def test_browser_delete_refuses_changed_bytes_and_lost_attachment_before_snapshot(
+    archive, shell
+):
+    import hashlib
+
+    source = archive[2] / "CFBackup/CFbackup-123.tar.gz"
+    original = b"selected archive bytes\n"
+    source.write_bytes(original)
+    script = r"""
+cfmgr_archive_deadline=$((cfmgr_probe_now+60))
+cfmgr_browser_name=CFbackup-123.tar.gz cfmgr_browser_operation=delete
+cfmgr_browser_expected_inode=$1 cfmgr_browser_expected_bytes=$2 cfmgr_browser_expected_sha=$3
+if cfmgr_archive_browser_selected; then exit 81; fi
+[ -f "$mount/CFBackup/$cfmgr_browser_name" ] && [ ! -e "$stage/selected.gz" ] || exit 82
+cfmgr_browser_expected_sha=$4
+cfmgr_backup_attached() { return 1; }
+if cfmgr_archive_browser_selected; then exit 83; fi
+[ -f "$mount/CFBackup/$cfmgr_browser_name" ] && [ ! -e "$stage/selected.gz" ] || exit 84
+"""
+    passed(
+        run(
+            archive,
+            shell,
+            script,
+            source.stat().st_ino,
+            len(original),
+            "0" * 64,
+            hashlib.sha256(original).hexdigest(),
+            timeout=60,
+        )
+    )
+    assert source.read_bytes() == original
 
 
 def test_staged_worker_preserves_executable_admission_after_fixture_rewrite(
@@ -595,6 +793,35 @@ cfmgr_archive_uint "$epoch" && [ "$zone" = +0000 ]
 """,
         )
     )
+
+
+def test_fixed_header_hex_reads_offset_and_refuses_short_input(archive, shell):
+    raw = bytes(range(256)) * 3
+    (archive[3] / "raw").write_bytes(raw)
+    passed(
+        run(
+            archive,
+            shell,
+            r"""
+cfmgr_archive_format_tracking=1 cfmgr_format_receipts=''
+cfmgr_archive_format_header_hex "/proc/self/fd/7/stage/raw" 13 || exit $?
+cat "$cfmgr_archive_output" >"$ram/header-hex"
+cfmgr_archive_format_retire || exit 81
+before=$cfmgr_probe_serial
+cfmgr_archive_format_header_hex "/proc/self/fd/7/stage/raw" 01 && exit 82
+[ "$cfmgr_probe_serial" = "$before" ] || exit 83
+# Exactly511 available bytes: native success cannot admit a partial header.
+cfmgr_archive_format_header_hex "/proc/self/fd/7/stage/raw" 257 && exit 84
+[ "$cfmgr_archive_bytes" = 1022 ] || exit 85
+cfmgr_archive_format_retire || exit 86
+[ -z "$cfmgr_format_receipts" ]
+""",
+        )
+    )
+    assert (archive[1] / "header-hex").read_bytes() == raw[13:525].hex().encode()
+    assert sorted(path.name for path in archive[3].iterdir()) == ["raw"]
+    assert not list(archive[1].glob("archive-*.out"))
+    assert not list(archive[1].glob("archive-*.err"))
 
 
 def test_stage_substitution_refused_before_output(archive, shell):

@@ -54,7 +54,7 @@ def _invoke(
         "CFMGR_ARCHIVE_NEW_NAME": new,
     }
     command = [*awk, "-f", str(CONTROL)]
-    if mode == "retention":
+    if mode in {"retention", "browse"}:
         assert tmp_path is not None
         ledger = tmp_path / "ledger.receipt"
         ledger.write_bytes(data)
@@ -96,6 +96,103 @@ def test_names_mode_selects_only_admitted_archive_basenames(awk_programs):
     for _label, awk in awk_programs:
         result = _invoke(awk, ("\n".join(names) + "\n").encode(), "names")
         assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
+
+
+def test_browser_review_projects_actual_states_paths_and_history_without_secrets(
+    awk_programs, tmp_path
+):
+    plan = tmp_path / "plan"
+    capture = tmp_path / "capture"
+    inventory = tmp_path / "inventory"
+    secret = "never-display-this-token"
+    plan.write_text(
+        "CFMGR-PAYLOAD-PLAN 1 2 7\n"
+        "STATE ddns 1 0\nSTATE ip_sync 0 0\nSTATE cloudflared 0 0\n"
+        "CLOUD token 0 0 1 1 private-runtime-ref private-cert-ref private-account private-tunnel\n"
+        "LOG ddns 1 0 1 deadbeef\nLOG ip_sync 0 0 0 -\nLOG cloudflared 0 0 0 -\n"
+        f"AUTH private json account tunnel {secret.encode().hex()}\n"
+        f"STORAGE source-uuid ext4 {b'/'.hex()} {b'etc/cloudflared'.hex()}\n"
+        "END 12\n"
+    )
+    capture.write_text(
+        "CFMGR-CAPTURE-PLAN 1 2 7\n"
+        f"AUTH private account tunnel {secret.encode().hex()}\n"
+        f"EXTERNAL data.cloudflared.yaml {b'/opt/foreign-ca.pem'.hex()} input-reference\nEND 3\n"
+    )
+    path = b"addons/CFMgr.d/setup-drafts".hex()
+    inventory.write_text(
+        "CFMGR-INVENTORY 1\n"
+        f"FILE p00000003 data.setup-drafts jffs {path} 7 0600 42 {'a' * 64} whole\n"
+        "NOTE history.ddns unavailable - entware-unavailable END\nEND 1 1 42\n"
+    )
+    for _label, awk in awk_programs:
+        result = subprocess.run(
+            awk_arguments(
+                [*awk, "-f", CONTROL, str(plan), str(capture), str(inventory)]
+            ),
+            env={**os.environ, "LC_ALL": "C", "CFMGR_ARCHIVE_CONTROL_MODE": "review"},
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+        assert (result.returncode, result.stderr) == (0, b"")
+        output = result.stdout.decode()
+        assert "STATE ddns 1 0 END" in output
+        assert "CLOUD token 0 0 1 1 END" in output
+        assert "LOG ddns 1 0 1 1 END" in output
+        assert f"FILE data.setup-drafts jffs {path} 42 whole END" in output
+        assert "NOTE history.ddns unavailable - entware-unavailable END" in output
+        assert "EXTERNAL data.cloudflared.yaml" in output
+        assert "CURRENT readiness-unknown auth-unknown END" in output
+        for forbidden in (
+            secret,
+            secret.encode().hex(),
+            "AUTH",
+            "private-",
+            "deadbeef",
+        ):
+            assert forbidden not in output
+        # A malformed projected column cannot partially expose earlier rows.
+        bad = plan.read_text().replace("STATE ddns 1 0", "STATE ddns 1 secret")
+        original = plan.read_text()
+        plan.write_text(bad)
+        rejected = subprocess.run(
+            awk_arguments(
+                [*awk, "-f", CONTROL, str(plan), str(capture), str(inventory)]
+            ),
+            env={**os.environ, "LC_ALL": "C", "CFMGR_ARCHIVE_CONTROL_MODE": "review"},
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+        assert (rejected.returncode, rejected.stdout) == (1, b"")
+        plan.write_text(original)
+
+
+def test_browser_list_orders_manifest_chronology_with_deterministic_ties(
+    awk_programs, tmp_path
+):
+    def row(name, epoch, archive_id):
+        return (
+            f"BROWSE {name} {UUID} {archive_id} {epoch} "
+            "2026-11-01 01-30-00 55544330 +0000 DMY 2 7 END"
+        )
+
+    older = row("CFbackup-999.tar.gz", 9, UUID)
+    tied_a = row("CFbackup-001.tar.gz", 10, UUID)
+    tied_b = row("CFbackup-002.tar.gz", 10, UUID)
+    latest_id = "11234567-89ab-cdef-0123-456789abcdef"
+    newest = row("CFbackup-000.tar.gz", 10, latest_id)
+    for _label, awk in awk_programs:
+        for rows in ([tied_a, newest, older, tied_b], [tied_b, older, newest, tied_a]):
+            result = _invoke(awk, _ledger(rows), "browse", tmp_path=tmp_path)
+            assert (result.returncode, result.stderr) == (0, b"")
+            assert result.stdout.decode().splitlines() == [
+                f"CFMGR-ARCHIVE-ITEM 1 {index} {record.removeprefix('BROWSE ')}"
+                for index, record in enumerate([newest, tied_b, tied_a, older], 1)
+            ]
+        rejected = _invoke(awk, _ledger([tied_a, tied_a]), "browse", tmp_path=tmp_path)
+        assert (rejected.returncode, rejected.stdout) == (1, b"")
 
 
 def test_retention_keeps_new_after_clock_rollback_and_orders_by_epoch(

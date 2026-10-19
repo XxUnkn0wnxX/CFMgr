@@ -156,10 +156,19 @@ def test_native_tar_gzip_and_date_capabilities(
     ).stdout
     assert len(header) == 512
     assert header == archive.read_bytes()[13:525]
-    header_path = tmp_path / "header"
-    header_path.write_bytes(header)
     encoded = subprocess.run(
-        [str(vendor_busybox), "hexdump", "-v", "-e", '1/1 "%02x"', str(header_path)],
+        [
+            str(vendor_busybox),
+            "hexdump",
+            "-v",
+            "-n",
+            "512",
+            "-s",
+            "13",
+            "-e",
+            '1/1 "%02x"',
+            str(archive),
+        ],
         check=True,
         env=env,
         capture_output=True,

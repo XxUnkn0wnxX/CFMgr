@@ -30,6 +30,247 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Active checkpoint — S14.03 archive selection/actions
+
+After **"ok scope out the next target"**, the user authorized **"ok start"** for
+the scoped Route A S14.03 checkpoint below. This includes implementation, focused
+gates, review, develop publication/exact CI, justified acceptance and the closing
+documentation receipt, then **pause**. Initial develop and actual remote were
+`9eda362d7a2525530a2521bbf8160ae946a0b407`; the scoping handoff was the sole existing
+edit. Accepted counts and product requirements remain unchanged until gates pass.
+
+Parent owns candidate/dependency comparison, acceptance boundaries and this
+record. The read-only explorer completed the source/test map, and the independent
+Astra planner returned **PASS WITH NOTES**. Parent agrees: retain independent
+source admission, bounded metadata listing, safe selected-data projection and
+post-prompt identity/content revalidation. Those notes are incorporated below.
+Both scoping reviews are complete. Parent retains architecture/security decisions,
+integration, all V2 records, final review and publication. A single strong worker
+owns the bounded source/list/verify/review/delete backend and related existing
+tests in `modules/backup.sh`, with only demonstrated shared dispatcher support in
+`modules/helpers/worker.sh`, `modules/lib/config.sh` or `modules/lib/execution.sh`. It must freeze/report the
+backend interface and focused proof before the dependent menu/installed-consumer
+package begins. No overlapping writers or new files/groups are authorized.
+Parent may inspect/review while the worker runs, but does not edit its owned files.
+Parent separately owns the small `modules/manager.sh` stale-banner correction;
+no test depended on the old wording. Its ordinary Manager validation remains due.
+The backend interface is frozen and its files have been released. Focused local
+proof includes 23 cheap cases (14.93s pytest; 16.04s wall) and the real selected
+archive/full semantic verification/single deletion journey (3 passed, 55.28s
+pytest; 56.18s wall). Logs are in ignored `.tmp/s1403/backend-*.log` and `.time`.
+Big Sur gunzip returns exit 1 with stderr at the output cap; that remains an
+honest incomplete metadata scan. Small exit-zero prefix discovery passes locally;
+actual native capped discovery and complete installed browsing remain pending.
+The same strong worker owns the next coherent menu/installed-consumer package in
+`modules/backup.sh`, `tests/test_archive_menu.py` and `tests/test_backup_menu.py`,
+reusing the frozen backend contract. An independent read-only analyst reviews the
+backend's public controller, cleanup, verification/deletion and safe projection
+returned **PASS WITH NOTES**, finding no material defect. Parent reviewed the UI
+flow and requested explicit unresolved-operation reporting, now implemented.
+Nine cheap menu journeys passed in 3.38s pytest / 4.08s wall. The installed entry
+test passed its Mac branch in 17.91s pytest / 19.63s wall: no saved destination/set,
+fresh source selection, real public controller/staging/gunzip, truthful incomplete
+listing, owned cleanup and preserved config/archive/unrelated bytes. Its Linux
+branch still requires the full list/select/verify/effects/cancel-delete journey.
+The worker released all files after the complete changed menu modules passed
+**33 tests in 80.54s pytest / 81.54s wall / 37.57s user / 33.80s sys**. Parent owns
+all files, reviewed the combined flow and regenerated `manifest.txt`. The complete
+local Backup gate passed with `tools/test.py --core-batch backup
+--skip-shellcheck`: **375 passed / 23 Linux-only skips, 789.40s wall / 395.09s
+user / 265.76s sys**. Receipts are `.tmp/s1403/local-backup.log` and `.time`.
+This exceeds ten minutes; cost is an open gate, with no exception requested or
+accepted. Existing capture grew from 44.49s to 79.38s and the container verifier
+from 27.70s to 39.27s; the extended real selected/deletion case took 32.51s versus
+the earlier verifier's 26.99s. The increase is predominantly existing work, not
+the fifteen added cases. A matched unchanged verifier comparison on this Mac
+passed with both the old runtime (**40.07s wall / 18.05s user / 12.76s sys**) and
+current runtime (**37.80s wall / 18.69s user / 12.61s sys**). Both retained 279
+supervised probes, 157 archive inode probes, 979 attachment checks and 1,116 RAM
+inode observations. The old case itself rose from its historical 27.70s to
+38.72s today, supporting host/tool-cost variation rather than new code as the
+main cause. Private comparison snapshots and receipts are `.tmp/s1403/cost-*`.
+Parent authorized one bounded optimization package in existing `backup.sh` and
+`test_archive_io.py`: batch actual native RAM receipt inode reads, preserving
+every observed file, exact path/multiplicity/inode checks and refusal of uncertain
+cleanup. The backend/UI worker exclusively owns those edits and focused proof;
+the independent Astra planner returned **PASS WITH NOTES** on the proposal and
+the independent analyst returned **PASS** on the implementation. Parent agrees.
+Focused execution preserved all 1,116 inode observations, 279 supervised probes,
+157 archive inode probes and 979 attachment checks while reducing RAM `ls`
+launches from 1,116 to 302. The same verifier case fell from 35.84s to 24.07s.
+The verifier plus seven cheap checks passed in 25.90s pytest / 27.21s wall /
+14.36s user / 7.84s sys; the CPU comparison is conservative but not identical in
+selection because the preceding 37.80s run contained only the verifier. Parent
+removed one overlapping partial-name variant already covered by exact unexpected-
+name refusal; six new cheap safety cases remain. No expensive rerun was needed
+solely for that deletion. Logs are `.tmp/s1403/cost-ram-optimized.*`.
+Worker statics passed and files were released. Complete optimized Backup
+validation (`tools/test.py --core-batch backup --skip-shellcheck`) passed
+**381 cases / 23 platform skips, 607.79s wall / 327.15s user / 188.74s sys**.
+Parent verified exit zero; receipts are `.tmp/s1403/local-backup-optimized.log`
+and `.time`. That run finished. The cost gate remains open by **7.79s
+including setup**; no exception or timing-only rerun is authorized by this record.
+Parent identified one remaining repeated operation: every raw tar header creates,
+measures, records and deletes a temporary copy before parsing. A bounded native
+512-byte hexdump range could replace that lifecycle while retaining input/identity
+checks, supervision/deadline/output bounds and exact 1,024-byte hex proof before
+strict parsing. Astra returned **PASS WITH NOTES**; parent agrees and authorized
+the final bounded cost-repair attempt. The strong worker exclusively owns the
+header helper/two consumers in `backup.sh`, fixed worker/dispatcher support and
+focused existing I/O/native capability tests. Parent owns manifest/records.
+Verified baseline vendor source `433fc608` uses `off_t`/`fseeko` and the repo enables
+large-file support. Actual host offset reads matched nonuniform bytes; a short
+read returned exit zero, confirming the exact-length pre-parser check is material.
+Keep empty stderr, original input admission and before/after stage identity,
+bounded direct-child supervision, saved hex receipt and per-header RAM retirement;
+no extra per-input inode probes or browser manifest-body redesign. Actual vendor
+execution remains CI proof. Parent and independent analyst reviewed the header
+implementation **PASS**. The direct helper test passed real offset bytes,
+noncanonical-offset refusal, 511-byte short-read refusal and cleanup (1.34s).
+The real verifier/browser selection passed two tests with one explicit vendor
+capability skip in 39.34s wall / 20.04s user / 10.89s sys. The verifier used 234
+supervised operations instead of 279 and 257 RAM `ls` launches instead of 302;
+disappeared observations belong to header scratch files no longer created, while
+required raw/stage and remaining receipt checks are retained. This sample does
+not establish a wall speedup under variable host conditions. Receipts are
+`.tmp/s1403/header-*`. Required focused statics passed; files are released and
+parent regenerated the manifest. An unnecessary default optional ShellCheck was
+stopped after about one minute, exit 143 without diagnostics; it started after
+the timed tests. No analyzer code changed and no optional lint pass is claimed.
+The final Mac Backup run **failed**, stopping at the existing installed-menu
+scoped-Save case: **332 passed / 18 skips / 1 failed**, 613.57s pytest /
+616.03s wall / 319.43s user / 177.60s sys. It exceeded the fixture's eight-second
+wait for `Destination saved: /tmp/mnt/Drive one/CFBackup`; the test killed its
+entry process in cleanup. Remaining collected cases were not run. Parent verified
+exit one; receipts are `.tmp/s1403/local-backup-final.log` and `.time`. No test,
+ShellCheck or matching test-fixture processes remain after a bounded process check.
+Do not claim a completed local group or infer the timeout's cause from host load.
+A subsequent brief low-priority read of the retained fixture found the installed
+config byte-for-byte equal to the test's final expected generation-two bytes,
+including preserved unrelated edits, selected Drive-one destination and only
+that drive's CFBackup folder. This establishes completed Save data effects, not
+successful PTY notification timing or a test pass. No runtime/test timeout was
+changed; reproduce/verify the installed journey in remote CI.
+
+**Latest user steering:** "they local tests are fyring my system any chance you
+can take it lighter". Heavy local runs are stopped. Keep this Mac to brief serial
+checks at lower priority; move long verification to authorized GitHub Actions.
+No further complete local Backup/Manager run or heavy analyzer is authorized by
+this handoff. Preserve unfinished local proof and the Mac failure/cost result;
+this resource instruction does not itself award acceptance or erase local gates.
+No other process/host settings may be changed. Native Dev, complete remote core
+and Manager proof remain pending. Inspect the existing timeout before any repair
+or targeted rerun; no guessed timeout increase or whole rerun merely for timing.
+The native Dev map for this implemented diff is:
+metadata/menus (`test_archive_io.py`, `test_archive_control.py`,
+`test_archive_menu.py`, `test_backup_menu.py`); verification/effects
+(`test_archive_verify.py`, `test_archive_payload_semantics.py`,
+`test_archive_tools.py`); and creation
+regression (`test_archive_create.py`). These are temporary disjoint whole-module
+Dev selections after the measured Backup overrun, not new permanent groups or
+substitutes for exact full core Checks. Native execution, file-limit behavior,
+installed browsing and receipt batching are the pending distinct platform proof.
+The Mac had substantial unrelated background load
+at launch (8 logical/4 physical CPUs; 1-minute load about 7.6); retain wall and CPU
+accounting, without changing unrelated processes. No CI job is active. The
+[design audit](PLAN_V2_audit.md#s1403-archive-selection-and-actions-review) records
+the reviewed single-process bounded metadata-discovery approach and its pending
+native/host execution proof. Router execution,
+deployment, release, unrelated targets and requirement changes remain outside scope.
+
+### Recommended scope and estimate
+
+**Route A: S14.03 only — archive selection/actions.** Complete the installed menu
+`4` journey: select the saved source or another explicitly chosen mounted drive,
+show a numbered newest-first archive list, then inspect, fully verify, review
+actual restore effects, or confirm deletion of that one selected archive. An
+alternate source works without any saved destination/set and never overwrites
+saved destination/preferences. Empty/no-drive/invalid input/EOF/exit/interruption
+return honestly. The recommendation is one acceptance package; implementation
+may use several coherent commits without additional product IDs.
+
+**Rough implementation ETA: 4–6 hours**, including focused implementation/review,
+local/platform checks, measured test-cost review, exact final core CI and closing
+documentation. This is a source-based workload estimate, not a guarantee; source
+context integration, the missing bounded metadata-listing path and the narrow
+Mac test-cost headroom are the main risks. The initial 3–5 hour estimate was
+revised after confirming that the existing scan fully verifies every candidate.
+If substantial shared-owner redesign is needed, report the concrete issue before
+expanding this boundary. After acceptance, publish the receipt and **pause**.
+
+### Verified foundations and missing integration
+
+Accepted S04.01 supplies safe parsing; S02.08 and S14.02 supply mount identity and
+drive selection; S14.04 and S14.06–S14.08 supply chronology, payload semantics and
+verified archive processing. These are available contracts, not a requirement to
+complete all of Goals 2, 4, 5 or 14 before this feature. At scoping, the browser
+itself was absent; current implementation and pending gates are recorded above.
+
+| Existing owner / entry | Scope of the required change |
+| --- | --- |
+| `modules/backup.sh`: `cfmgr_backup_menu`, drive list/pin/folder admission | Add an operation-local source path using an existing selected `CFBackup`; never call destination Save, prepare a missing destination, persist/generate a local set, create an archive or invoke retention while browsing. |
+| `cfmgr_archive_stage_open`, attachment/resource checks | Reuse bounded private temporary staging on the selected existing writable source filesystem, independently of saved destination settings. Preserve space/deadline/mount checks and owned cleanup; no whole-archive RAM fallback or new general storage framework. Read-only-media support is not added to this package. |
+| Manifest parser, `cfmgr_archive_existing`, `cfmgr_archive_format_verify` | Discover the selected archive's own SET through bounded admitted metadata, then verify the exact immutable snapshot and archived-config/manifest agreement. Keep creation/retention's explicit same-set admission unchanged; no generic bypass of expected-set validation. |
+| Control ordering and real payload callbacks | Add bounded metadata recognition/listing ordered by admitted manifest epoch with deterministic ties, not filename spelling; the current scan fully verifies every candidate and is not a cheap browser. Fully verify the selected archive before admitting its detailed effects/deletion. Produce a strictly allowlisted safe summary from fully admitted data; raw plan AUTH rows contain secrets and cannot be printed. Never present metadata recognition as complete verification, or an incomplete scan as an empty list. |
+| Existing identity/content checks and supervised unlink | After default-no confirmation, revalidate the exact mount, selected file and bytes before one deletion. Preserve changed, substituted, unrecognized/non-CFMgr or uncertain data and unrelated archives. A valid archive from another CFMgr set may be explicitly selected; it must not be confused with non-CFMgr data. Report failure honestly; no retention/pruning side effects. |
+| `modules/manager.sh`: existing menu entry | Integrate the real menu journey and correct the stale archive-unavailable banner. No new module, runtime script or permanent core group is planned. |
+
+The restore-effects review must show the selected archive's actual feature
+configured/On/Off/maintenance/draft state, schema/migration needs, storage/path and
+external dependency/remapping implications, saved logging/history choices and
+possible history deferral. Separate archived intent from current readiness/auth,
+and disclose unresolved prerequisites. A generic unavailable message is not a
+review. Actual restore Save, current component installation, lifecycle/auth work
+and reconstruction remain S14.09–S14.11. No provider calls or activation belong
+to this read/review/delete consumer. No config/lifecycle lock may span user input.
+
+### Integration and lean validation order
+
+1. Establish the operation-local source/stage/own-set contract within the existing
+   Backup owner, preserving creation and retention invariants.
+2. Add bounded list and secret-safe review receipts using the real verifier;
+   integrate menu selection and separately confirmed single deletion.
+3. Extend existing menu/control/format/payload/transaction tests. Use cheap cases
+   for ordering, framing and navigation, plus a few genuine installed-consumer,
+   no-saved-destination, saved-destination-preservation, secret-redaction and
+   changed-source/deletion safety cases. Reuse existing parser/corruption proof;
+   do not replicate the full verifier negative matrix through every menu action.
+4. Run required statics and complete affected local Backup/Manager modules;
+   shared library changes additionally retain their consumers' proof. Use complete
+   affected Dev modules for unavailable native/Linux proof, finalizing the exact
+   selection from the implemented diff. Then run exact-candidate complete Checks
+   and all host/BusyBox Backup, Manager and Status jobs. No main-goal full local
+   suite is due. Changed optional checks must run, with manual CI triggers retained.
+5. Review measured wall and CPU cost before closure. Baselines: Mac Backup
+   **549.47s** (360 passed/23 Linux-only skips), Mac Manager **343.89s**;
+   final core module times **6m05s / 8m30s / 33s** at `c8c76f0`. Backup has about
+   **50 seconds** below ten minutes. Reuse immutable fixture setup and minimize
+   duplicate real lifecycles; complete the whole module before any over-budget
+   diagnostic split, preserve safety proof, and rerun the complete affected module
+   after measured optimizations. No timing exception is assumed.
+
+### Alternatives and stop boundary
+
+**Route B is unnecessary for S14.03.** Bundling executable restore would add
+S14.09–S14.11 and missing current-component/lifecycle/auth/logging consumers.
+Cloudflared A1/import (S05.01/S05.02) likewise needs real setup, checked binary and
+activation integration; existing token/parser helpers cannot close those IDs.
+S04.06 still lacks its real masked-credential consumer; S02.07 still requires full
+recovery/safe-Off consumers. None is a demonstrated smaller complete checkpoint
+than this self-contained archive action package. These overlaps earn no ticks.
+
+Official Merlin [Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API),
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts) and
+[Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
+were consulted for the existing storage/integration boundary; this proposal adds
+no firmware hook, schedule or capability claim. No cached firmware evidence is
+being promoted to runtime qualification.
+
+Current acceptance remains **22/157 (14.0%)**, **0/16 main goals (0%)**; Goal 14
+remains **7/11 (63.6%)**. If S14.03 passes all gates, totals would become **23/157
+(14.6%)**, Goal 14 **8/11 (72.7%)**, main goals still **0/16**. S14.09–S14.11 would
+remain open. Finish only this checkpoint and pause; no following target is released.
+
 ## Paused checkpoint — S04.01 accepted
 
 The user authorized **"ok read handoff & start"** for Route A S04.01 only, required
@@ -138,7 +379,7 @@ planning/link/privacy/whitespace and actual remote/clean worktree after publishi
 Then remain paused. No deployment, release, main branch, router execution,
 requirement expansion or next package is authorized by this handoff.
 
-## Scoped recommendation — authorized first checkpoint above
+## Historical scoping — superseded by the current S14.03 recommendation
 
 The preceding scoping instruction was to **scope the next target(s), leave the result
 in the handoff and stop**. It authorized this recommendation only; the active

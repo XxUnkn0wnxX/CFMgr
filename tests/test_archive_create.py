@@ -147,8 +147,8 @@ def creation(base_archive, legacy_fsync, schema2_config):
                 "${CFMGR_PAYLOAD_MODE:-${CFMGR_HISTORY_MODE:+history-}${CFMGR_HISTORY_MODE:-${2%%=*}}}",
             )
             .replace(
-                "plan|runtime-json|certificate-json|drafts)",
-                "plan|runtime-json|certificate-json|drafts|history-policy|cfmgr_config_mode|cfmgr_json_mode)",
+                "plan|runtime-json|certificate-json|drafts|drafts-review)",
+                "plan|runtime-json|certificate-json|drafts|drafts-review|history-policy|cfmgr_config_mode|cfmgr_json_mode)",
             )
         )
         wrapper.write_text(text)

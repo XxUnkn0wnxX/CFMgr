@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import os
 import shutil
@@ -22,6 +23,7 @@ from test_archive_payload import (
     advanced_config,
     capture_rows,
     invoke_index,
+    invoke_payload,
     make_plan,
     serialize,
     yaml_receipt,
@@ -48,6 +50,43 @@ def pem_document(token: bytes, legacy: bool = True) -> bytes:
         + b"\n-----END ARGO TUNNEL TOKEN-----\n"
     )
     return b"\n".join(blocks)
+
+
+def test_draft_review_reports_only_feature_stage_after_same_strict_validation(
+    commands, tmp_path
+):
+    document = serialize(
+        {
+            "schema": 1,
+            "generation": 7,
+            "drafts": {
+                "ddns": {
+                    "schema": 1,
+                    "stage": "secret-stage-identifier",
+                    "inputs": {"token": "secret-draft-token"},
+                    "validation": {"private": "secret-validation-value"},
+                },
+                "ip_sync": None,
+            },
+        }
+    )
+    environment = {"CFMGR_PAYLOAD_GENERATION": "7"}
+    ordinary = invoke_payload(commands, tmp_path, document, "drafts", environment)
+    assert (ordinary.returncode, ordinary.stdout, ordinary.stderr) == (
+        0,
+        b"CFMGR-PAYLOAD 1 drafts inert END\n",
+        b"",
+    )
+    review = invoke_payload(commands, tmp_path, document, "drafts-review", environment)
+    assert (review.returncode, review.stdout, review.stderr) == (
+        0,
+        b"CFMGR-DRAFT 1 ddns incomplete END\nCFMGR-PAYLOAD 1 drafts inert END\n",
+        b"",
+    )
+    rejected = invoke_payload(
+        commands, tmp_path, document, "drafts-review", {"CFMGR_PAYLOAD_GENERATION": "8"}
+    )
+    assert rejected.returncode == 1 and not rejected.stdout
 
 
 def invoke_pem(commands, tmp_path, body: bytes):
@@ -196,7 +235,7 @@ def archive(archive_io):
 def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
     archive, shell, schema2_config
 ):
-    _support, _ram, _mount, stage, _environment = archive
+    _support, _ram, mount, stage, _environment = archive
     config = advanced_config(schema2_config)
     config["ownership"]["components"] = [
         row
@@ -296,19 +335,35 @@ def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
         native = shutil.which(os.environ["CFMGR_TEST_SHELL"].split()[0])
         command = [native, "tar", "-cf", str(raw), "-C", str(stage), *members]
     subprocess.run(awk_arguments(command), check=True, capture_output=True, timeout=5)
+    selected = mount / "CFBackup/CFbackup-2024-02-29.tar.gz"
+    selected.write_bytes(gzip.compress(raw.read_bytes(), mtime=0))
+    selected_digest = hashlib.sha256(selected.read_bytes()).hexdigest()
+    selected_size = selected.stat().st_size
+    sibling = mount / "CFBackup/foreign.tar.gz"
+    sibling.write_bytes(b"preserve unrelated data\n")
     script = """
 cfmgr_archive_inventory_limit=65536
 cfmgr_archive_deadline=$((cfmgr_probe_now+600))
-    if ! cfmgr_archive_format_verify "$stage/candidate" 01234567-89ab-cdef-0123-456789abcdef; then
+cfmgr_format_owned='' cfmgr_format_receipts='' cfmgr_payload_ram_owned=''
+# Space is explicit host fixture data; separate space-policy tests retain real
+# admission/overflow proof. This consumer still performs real native copies,
+# gzip, tar, hash, semantic callbacks and the single supervised unlink.
+cfmgr_archive_space() { cfmgr_archive_free=1073741824; }
+cfmgr_browser_name=CFbackup-2024-02-29.tar.gz cfmgr_browser_operation=delete
+cfmgr_browser_expected_inode=$1 cfmgr_browser_expected_bytes=$2 cfmgr_browser_expected_sha=$3
+# A foreign saved local set must not constrain an explicitly selected source.
+cfmgr_archive_saved_set_id=12345678-1234-4abc-8abc-123456789abc
+    if ! cfmgr_archive_browser_selected; then
         printf 'failed mode=%s exit=%s status=%s reason=%s probe=%s now=%s deadline=%s\\n' \
             "$cfmgr_probe_mode" "$cfmgr_probe_exit" "$cfmgr_probe_status" \
             "$cfmgr_probe_reason" "$cfmgr_probe_serial" "$cfmgr_probe_now" "$cfmgr_archive_deadline"
-        cat "$cfmgr_probe_stdout" "$cfmgr_probe_stderr"
-        awk '!/^AUTH /' "$cfmgr_payload_capture_plan"
-        cat "$cfmgr_payload_inventory"
         exit 1
     fi
+    [ "$cfmgr_browser_result:$cfmgr_browser_deleted:$cfmgr_browser_count" = deleted:1:1 ] || exit 2
+    [ "$cfmgr_browser_set" = 01234567-89ab-cdef-0123-456789abcdef ] || exit 3
+    [ -f "$stage/candidate" ] && [ ! -e "$mount/CFBackup/$cfmgr_browser_name" ] || exit 4
 printf 'verified=%s callbacks=%s\\n' "$cfmgr_archive_verified" "$cfmgr_payload_schema"
+printf '%s\\n' "$cfmgr_browser_effects"
 """
     # Exercise the complete positive journey under production create's 600s
     # deadline. The stripped vendor ash forks for test/printf; its previous
@@ -317,14 +372,29 @@ printf 'verified=%s callbacks=%s\\n' "$cfmgr_archive_verified" "$cfmgr_payload_s
     # Dedicated I/O cases retain
     # the short deadline, cancellation and ownership/reaping assertions.
     result = run(
-        archive, shell, script, timeout=90 if sys.platform == "darwin" else 120
+        archive,
+        shell,
+        script,
+        selected.stat().st_ino,
+        selected_size,
+        selected_digest,
+        timeout=90 if sys.platform == "darwin" else 150,
     )
     assert result.returncode == 0, (
         result.stdout.decode(),
         result.stderr.decode()[-1800:],
     )
-    assert result.stdout == b"verified=1 callbacks=2\n"
+    assert result.stdout.startswith(b"verified=1 callbacks=2\n")
+    assert b"CFMGR-ARCHIVE-EFFECT 1 STATE cloudflared 1 0 END\n" in result.stdout
+    assert b"CFMGR-ARCHIVE-EFFECT 1 CLOUD advanced 1 0 1 1 END\n" in result.stdout
+    assert b"CFMGR-ARCHIVE-EFFECT 1 SCHEMA 2 current END\n" in result.stdout
+    assert sibling.read_bytes() == b"preserve unrelated data\n"
+    assert not selected.exists()
+    assert (stage / "p00000001").read_bytes() == serialize(config)
     assert (
         b"private-api-token" not in result.stdout
         and b"fixture-private-value" not in result.stdout
     )
+    assert b"private-api-token".hex().encode() not in result.stdout
+    assert b"fixture-private-value".hex().encode() not in result.stdout
+    assert b"AUTH" not in result.stdout

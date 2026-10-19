@@ -251,7 +251,7 @@ cfmgr_manager_settings() {
 cfmgr_launch_menu() {
 	[ -t 0 ] || return 1
 	while :; do
-		printf '%s\n' 'CFMgr: backup destination selection available; archive and restore unavailable' '0 Check status' '4 Backup / Restore' 'ao Advanced options' 'e Exit'
+		printf '%s\n' 'CFMgr main menu' '0 Check status' '4 Backup / Restore' 'ao Advanced options' 'e Exit'
 		IFS= read -r cfmgr_launch_choice || return 1
 		case $cfmgr_launch_choice in
 		e) return 1 ;;

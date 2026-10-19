@@ -13,6 +13,208 @@ from test_install import shell
 ROOT = Path(__file__).resolve().parents[1]
 __all__ = ["shell"]
 
+SET_ID = "01234567-89ab-cdef-0123-456789abcdef"
+ARCHIVE_ID = "abcdefab-1234-4abc-8abc-123456789abc"
+BROWSER_NAME = "CFbackup-999.tar.gz"
+
+
+def browser_item(index=1, name=BROWSER_NAME):
+    return (
+        f"CFMGR-ARCHIVE-ITEM 1 {index} {name} {SET_ID} {ARCHIVE_ID} "
+        "1700000000 2024-02-29 23-59-59 55544330 +0000 DMY 2 7 END\n"
+    )
+
+
+def browser_effects():
+    rows = [
+        "SCHEMA 2 current",
+        "STATE ddns 1 0",
+        "STATE ip_sync 0 0",
+        "STATE cloudflared 0 0",
+        "CLOUD - 0 0 1 1",
+        "LOG ddns 1 0 1 1",
+        "LOG ip_sync 0 0 0 0",
+        "LOG cloudflared 0 0 0 0",
+        f"STORAGE source-uuid ext4 {b'/'.hex()} {b'etc/cloudflared'.hex()}",
+        f"FILE manager.config jffs {b'addons/CFMgr.d/config'.hex()} 100 whole",
+        f"FILE manager.catalog jffs {b'addons/CFMgr.d/catalog.txt'.hex()} 10 whole",
+        "DRAFT ip_sync incomplete",
+        f"EXTERNAL data.cloudflared.yaml {b'/opt/external-ca.pem'.hex()} input-reference",
+        "NOTE history.ddns unavailable - entware-unavailable",
+        "CURRENT readiness-unknown auth-unknown",
+        "RESTORE current-components fresh-admission path-remapping history-may-defer",
+    ]
+    return "".join(f"CFMGR-ARCHIVE-EFFECT 1 {row} END\n" for row in rows)
+
+
+def run_browser_menu(shell, tmp_path, answers, *, scenario="normal", selected=None):
+    log = tmp_path / "browser-actions.log"
+    frame = (
+        "CFMGR-ARCHIVE-BROWSER 1 verified 0 1 END\n"
+        + browser_item()
+        + f"CFMGR-ARCHIVE-RECEIPT 1 123 456 {'a' * 64} END\n"
+        + browser_effects()
+    )
+    drives = []
+    for index, mount in enumerate(("/tmp/mnt/Drive one", "/tmp/mnt/Drive two"), 1):
+        fields = [
+            value.encode().hex()
+            for value in ("Drive", mount, "uuid", "ext4", "/", f"snapshot{index}")
+        ]
+        drives.append(f"CFMGR-BACKUP-DRIVE 1 {index} {' '.join(fields)} END")
+    script = (
+        f". {shlex.quote(str(ROOT / 'modules/backup.sh'))}\n"
+        + r"""
+cfmgr_backup_action() {
+    [ "$1" = list ] || { printf 'unexpected-save\n' >>"$BROWSER_LOG"; return 1; }
+    if [ "$BROWSER_SCENARIO" = no-drives ]; then
+        printf '%s\n' 'CFMGR-BACKUP 1 list 7 0 none 0 END'
+    elif [ "$BROWSER_SCENARIO" = saved ]; then
+        printf '%s\n' 'CFMGR-BACKUP 1 list 7 0 available 2 END' "$BROWSER_DEST" "$BROWSER_DRIVES"
+    else printf '%s\n' 'CFMGR-BACKUP 1 list 7 0 none 2 END' "$BROWSER_DRIVES"; fi
+}
+cfmgr_archive_action() {
+    [ "$1" = read ] || { printf 'unexpected-archive-save\n' >>"$BROWSER_LOG"; return 1; }
+    printf '%s\n' 'CFMGR-ARCHIVE-ACTION 1 read 7 0 - 0 0 - none none END'
+}
+cfmgr_archive_browser_action() {
+    printf '%s\n' "$*" >>"$BROWSER_LOG"
+    case $1 in
+    list)
+        case $BROWSER_SCENARIO in
+        incomplete) printf '%s\n' 'CFMGR-ARCHIVE-BROWSER 1 incomplete 0 0 END'; return 1 ;;
+        *) printf '%s\n' 'CFMGR-ARCHIVE-BROWSER 1 listed 0 1 END'; printf '%s' "$BROWSER_ITEM" ;;
+        esac ;;
+    inspect|verify) printf '%s' "$BROWSER_SELECTED" ;;
+    delete)
+        case $BROWSER_SCENARIO in
+        changed) printf '%s\n' 'CFMGR-ARCHIVE-BROWSER 1 unavailable 0 0 END'; return 1 ;;
+        pending|unresolved)
+            printf '%s' "$BROWSER_SELECTED" | sed '1s/verified 0/deleted 1/'
+            [ "$BROWSER_SCENARIO" != unresolved ] || return 3
+            return 1 ;;
+        *) printf '%s' "$BROWSER_SELECTED" | sed '1s/verified/deleted/' ;;
+        esac ;;
+    esac
+}
+cfmgr_backup_menu
+"""
+    )
+    destination = (
+        "CFMGR-BACKUP-DEST 1 "
+        + " ".join(
+            value.encode().hex()
+            for value in ("/tmp/mnt/Drive two", "uuid", "ext4", "/")
+        )
+        + " END"
+    )
+    result = subprocess.run(
+        [*shell, "-c", script],
+        input=answers,
+        env={
+            **os.environ,
+            "LC_ALL": "C",
+            "BROWSER_LOG": str(log),
+            "BROWSER_SCENARIO": scenario,
+            "BROWSER_DRIVES": "\n".join(drives),
+            "BROWSER_DEST": destination,
+            "BROWSER_ITEM": browser_item(),
+            "BROWSER_SELECTED": frame if selected is None else selected,
+        },
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    result.actions = log.read_text().splitlines() if log.exists() else []
+    return result
+
+
+def test_browser_uses_alternate_source_and_reuses_verified_details_effects(
+    shell, tmp_path
+):
+    result = run_browser_menu(
+        shell, tmp_path, b"4\n1\n1\n1\n3\nd\n\ne\ne\n", scenario="saved"
+    )
+    assert result.returncode == 0, result.stderr
+    assert b"4 Browse archives" in result.stdout
+    assert b"s) Saved source | /tmp/mnt/Drive two" in result.stdout
+    assert b"1) 29-02-2024 23-59-59 | CFbackup-999.tar.gz" in result.stdout
+    assert b"ddns: configured Off" in result.stdout
+    assert b"Cloudflared: method -; installed yes; maintenance enabled" in result.stdout
+    assert b"inert saved draft (incomplete)" in result.stdout
+    assert b"External dependency: /opt/external-ca.pem" in result.stdout
+    assert b"history.ddns: unavailable" in result.stdout
+    assert b"Current readiness and provider authentication are unknown" in result.stdout
+    assert b"Executable restore and activation are not available yet" in result.stdout
+    assert b"Deletion cancelled; archive preserved" in result.stdout
+    assert [line.split()[0] for line in result.actions] == ["list", "inspect"]
+    assert all(b"/tmp/mnt/Drive one".hex() in line for line in result.actions)
+    assert b"Saved destination: /tmp/mnt/Drive two/CFBackup" in result.stdout
+
+
+@pytest.mark.parametrize("scenario", ["changed", "pending", "unresolved"])
+def test_browser_delete_passes_exact_receipt_and_reports_actual_outcome(
+    shell, tmp_path, scenario
+):
+    result = run_browser_menu(
+        shell, tmp_path, b"4\n1\n1\n2\nd\ny\ne\n", scenario=scenario
+    )
+    assert result.returncode == 0, result.stderr
+    assert [line.split()[0] for line in result.actions] == [
+        "list",
+        "inspect",
+        "verify",
+        "delete",
+    ]
+    assert result.actions[-1].endswith(f"{BROWSER_NAME} 123 456 {'a' * 64}")
+    if scenario == "changed":
+        assert b"deletion was not confirmed; source may have changed" in result.stderr
+        assert b"Archive deleted:" not in result.stdout
+    else:
+        assert b"Archive deleted: CFbackup-999.tar.gz" in result.stdout
+        assert b"archive was deleted; temporary cleanup is pending" in result.stderr
+    if scenario == "unresolved":
+        assert (
+            b"archive operation is unresolved; leaving Backup / Restore"
+            in result.stderr
+        )
+
+
+@pytest.mark.parametrize("corruption", ["secret", "name", "missing-state", "bad-hex"])
+def test_browser_rejects_entire_selected_frame_before_display(
+    shell, tmp_path, corruption
+):
+    frame = (
+        "CFMGR-ARCHIVE-BROWSER 1 verified 0 1 END\n"
+        + browser_item()
+        + f"CFMGR-ARCHIVE-RECEIPT 1 123 456 {'a' * 64} END\n"
+        + browser_effects()
+    )
+    if corruption == "secret":
+        frame += "CFMGR-ARCHIVE-EFFECT 1 AUTH secret-sentinel END\n"
+    elif corruption == "name":
+        frame = frame.replace(BROWSER_NAME, "CFbackup-111.tar.gz")
+    elif corruption == "missing-state":
+        frame = frame.replace("CFMGR-ARCHIVE-EFFECT 1 STATE ddns 1 0 END\n", "")
+    else:
+        frame = frame.replace(b"/opt/external-ca.pem".hex(), b"secret-sentinel\n".hex())
+    result = run_browser_menu(shell, tmp_path, b"4\n1\n1\n3\ne\n", selected=frame)
+    assert b"invalid archive browser result" in result.stderr
+    assert b"Archive: CFbackup-" not in result.stdout
+    assert b"secret-sentinel" not in result.stdout + result.stderr
+    assert [line.split()[0] for line in result.actions] == ["list", "inspect"]
+
+
+def test_browser_incomplete_scan_and_eof_return_without_mutation(shell, tmp_path):
+    incomplete = run_browser_menu(shell, tmp_path, b"4\n1\ne\n", scenario="incomplete")
+    assert b"scan is incomplete" in incomplete.stderr
+    assert b"No archive list is available from the incomplete scan" in incomplete.stdout
+    assert b"No recognized archives are present" not in incomplete.stdout
+    assert len(incomplete.actions) == 1
+    (tmp_path / "browser-actions.log").unlink()
+    eof = run_browser_menu(shell, tmp_path, b"4\n")
+    assert eof.returncode == 0 and eof.actions == []
+
 
 def run_archive_menu(
     shell_command: list[str],
