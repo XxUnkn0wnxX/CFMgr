@@ -289,7 +289,7 @@ history writers, full diagnostics and final terminal presentation remain separat
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
+| [ ] | [x] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
 | [x] | [x] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
 | [x] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
@@ -298,6 +298,30 @@ history writers, full diagnostics and final terminal presentation remain separat
 | [ ] | [ ] | S04.07 | **Restart recovery:** Inspect guards before activation, preserve damaged/recoverable data and never repeat uncertain provider creation. |
 | [ ] | [ ] | S04.08 | **Ownership and locks:** Stable lock identities, verified process start/boot identity, correct provider-child versus connector descriptor lifetime. |
 | [ ] | [ ] | S04.09 | **Generation and resource bounds:** Compatible package per invocation, current-state checks, late-result rejection and bounded whole-action cleanup. |
+
+S04.01 implementation and written focused proof are complete at
+**`efdd465882babd54984c7aa8f0aed94549900ea3`**; acceptance remains unchecked while
+the measured local test-cost gate is unresolved. The
+[parser audit](PLAN_V2_audit.md#s0401-safe-data-parsing-review) records the
+current-consumer map, repairs and review. Complete Mac Backup passed **360 / 23
+platform skips** in **697.10s wall**; Manager passed **522 / 72 platform skips**
+in **343.89s wall**, with four optional diagnostics excluded. Required statics
+passed. Native [package/config Dev](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188206449)
+passed **96 in 115.02s**, and [archive Dev](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188227079)
+passed **106 in 89.62s**. Final exact [Checks 39188440805](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188440805)
+and all six required module jobs passed: [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188475190)
+**6m00s**, [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188476617)
+**7m16s**, [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188478149)
+**37s**, including setup. Core host total **983 passed / 30 platform skips**;
+native **1,012 passed / one workstation-only skip**; four optional diagnostics
+excluded per platform. These are representative Ubuntu/BusyBox results, not
+Merlin/ARM qualification. A subsequent Mac fixture optimization retained all
+five focused inode/verifier cases and assertions while reducing measured wall
+time from **37.66s to 28.75s**, and aggregate CPU from **29.39s to 22.25s**.
+The complete affected Backup gate then passed the same **360 / 23 platform skips**
+in **549.47s wall / 264.71s user / 184.94s system**, within the ten-minute target.
+No timing exception is needed. Exact-candidate CI for the fixture revision remains
+pending; the earlier SHA's pass does not establish the new test revision.
 
 S04.02 accepted at **`dad30c8ab9c6ac3f2f93d12e8efd9e0187f502ea`**.
 Focused local proof passed on the prepared tree based on `95ecbdd`:

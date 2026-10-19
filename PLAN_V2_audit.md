@@ -77,7 +77,15 @@ before pin/repair. Healthy fresh and retained journeys plus those cases passed
 18 tests in 23.13s; their strengthened early-refusal subset passed 15 in 1.85s.
 The existing configuration test module now covers depth/node/string/input limits;
 existing NUL/UTF-8 and archive-incomplete regressions are reused. Complete local
-Manager and exact-candidate native/core gates remain pending.
+Manager passed 522 tests with 72 explicit platform skips and four optional
+diagnostics excluded, in 343.89s wall / 161.66s user / 110.35s system. Required
+statics passed. At candidate `efdd465882babd54984c7aa8f0aed94549900ea3`, complete
+focused native package/config modules passed 96 in 115.02s and archive/YAML/I/O
+modules passed 106 in 89.62s. Final exact
+[Checks 39188440805](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39188440805)
+and all six independent Backup/Manager/Status platform jobs passed. Host total:
+983 passed / 30 explicit platform skips; native total: 1,012 passed / one
+workstation-only skip, with four optional diagnostics excluded per platform.
 
 Complete local Backup passed 360 tests with 23 explicit platform skips in 697.10s
 wall (301.72s user, 242.51s system). The cost audit found only 5.88s of pytest setup;
@@ -86,12 +94,54 @@ boundaries with already-small fixtures. Parent, worker and planner found no smal
 fixture-only reduction recovering the 97.10s local budget overrun without losing
 required proof. One separate native benchmark repeated identical assertions 100
 times on each backend; this is reduced to one observation per assertion/backend,
-removing 594 redundant applet launches while retaining semantic checks. It does
-not resolve the macOS overrun. Its native validation and the local cost decision
-remain open; no timing budget, acceptance requirement or safety test was waived.
+removing 594 redundant applet launches while retaining semantic checks. Native
+Dev validated this reduction: the check measured 0.006s wall/CPU in total versus
+the previous 0.402s wall / 0.411s CPU. It does not resolve the macOS overrun. The
+local cost decision remains open; no timing budget, acceptance requirement or
+safety test was waived. Complete candidate CI module elapsed times including
+setup were Backup 6m00s, Manager 7m16s and Status 37s, all below ten minutes.
+The native Backup behavior gate used 326.06s wall / 185.35s user / 128.46s system;
+Manager used 411.60s wall / 231.51s user / 155.16s system. These differ from the
+previous runner timings, but the small benchmark change cannot explain the full
+variation and earns no whole-suite performance claim.
+
+The user's renewed cost review found a further fixture improvement missed by
+the earlier bounded reviews: the Mac shared archive fixture wrapped every native
+inode listing in an extra shell solely to force leading-space formatting.
+The existing verifier profile contains 1,116 RAM inode observations plus 157
+supervised inode probes. Broad Mac integrations now use real native ls directly;
+the existing combined stage-inode and RAM/published/append tests retain the exact
+padded-output adapter. Linux lock-checking wrappers and padding are unchanged.
+No assertion or test case was removed. Parent and independent Astra review agree
+that this preserves inode/cleanup coverage and removes repeated fixture work.
+
+Paired focused proof on the same host, using the unchanged five-case selection,
+passed before and after: **37.66s to 28.75s wall**, **14.83s to 12.69s user** and
+**14.56s to 9.56s system** (36.55s to 27.86s pytest). The actual verifier call
+fell from 33.01s to 26.45s. This is a focused comparison, not a whole-module
+speedup claim. The subsequent complete affected Backup gate passed the unchanged
+**360 tests / 23 explicit Linux-only skips** in **549.47s wall / 264.71s user /
+184.94s system** (546.93s pytest), below the ten-minute target. Its 279 supervised
+probes and 1,116 RAM inode observations are unchanged. Compared with the original
+complete run, measured wall fell 147.63s and aggregate CPU fell 94.58s; host/run
+variation is not controlled, so the entire difference is not attributed solely to
+the fixture change. No timing exception is needed. Exact-candidate CI remains
+pending for this new test revision.
+
+The renewed negative-case audit retained distinct real proofs: malformed archive
+rejection before tar; a bad second payload digest before its callback; unsafe
+inventory paths before payload callbacks; separate payload/complete callback
+failure propagation; expected-set wiring; required JSON absence and foreign
+draft refusal; and certificate damage with a valid alternate versus damaged-only
+recovery failure. Cheap header/metadata/JSON/PEM variants already exercise the
+other input forms. Wrong-set classification coverage elsewhere bypasses the real
+metadata orchestration and cannot alone replace its integration proof. No further
+trivial case deletion/consolidation was justified; this is a bounded review
+finding, not a claim that no future optimization is possible.
 
 No new owner, permanent core group, requirement or live-router claim is introduced.
-Functional acceptance and checkpoint closure remain pending the required gates.
+The original candidate passed its functional gates; acceptance and checkpoint
+closure await exact-candidate CI evidence for the new test revision.
 
 ## S14.01, S14.04–S14.08 accepted checkpoint disposition
 

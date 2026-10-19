@@ -159,15 +159,6 @@ def archive(tmp_path, shell):
             )
             wrapper.chmod(0o700)
             tools[name] = str(wrapper)
-    else:
-        # Native ls pads small inode numbers. Force that formatting on hosts
-        # whose large inode numbers otherwise conceal a parser regression.
-        padded_ls = tmp_path / "padded-ls"
-        padded_ls.write_text(
-            f"#!/bin/sh\ncase $1 in -*i*) printf '   ' ;; esac\nexec {shlex.quote(tools['ls'])} \"$@\"\n"
-        )
-        padded_ls.chmod(0o700)
-        tools["ls"] = str(padded_ls)
     environment = {
         **os.environ,
         **{f"TEST_{key.upper()}": value for key, value in tools.items()},

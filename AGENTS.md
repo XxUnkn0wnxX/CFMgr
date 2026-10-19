@@ -156,6 +156,13 @@ visible; assess serious product failures wherever exposed. Python is developer-o
 runners never commit/push/watch CI. Planning checks supplement runtime proof;
 never remove valid runtime code to satisfy obsolete empty-tree rules.
 
+When adding or changing optional code/tests, run the affected optional checks
+before checkpoint closure, including Diagnostics, Tools, lint and link-check
+behavior as applicable. Record their actual results and platform limits; optional
+status excuses no validation of changed work. These CI workflows remain
+manual-only; unrelated optional checks stay nonroutine. Serious failures still
+follow the blocker policy above.
+
 Developer tools must support forks/contributors: derive checkout paths; never
 hardcode personal SSH aliases, router addresses/logins/keys or mounted paths.
 Connection data belongs in ignored `tools/router.local.json`, with fake-value

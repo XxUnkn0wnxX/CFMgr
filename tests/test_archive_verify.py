@@ -44,6 +44,21 @@ def archive(archive_io):
     return archive_io
 
 
+@pytest.fixture
+def padded_inode_archive(archive):
+    if sys.platform == "darwin":
+        # Keep the small-inode whitespace parser proof scoped to the two tests
+        # that exercise inode parsing; broad verifier integrations use native ls.
+        padded_ls = archive[0].parent / "padded-ls"
+        padded_ls.write_text(
+            f"#!/bin/sh\ncase $1 in -*i*) printf '   ' ;; esac\n"
+            f'exec {shlex.quote(archive[4]["TEST_LS"])} "$@"\n'
+        )
+        padded_ls.chmod(0o700)
+        archive[4]["TEST_LS"] = str(padded_ls)
+    return archive
+
+
 def make_archive(
     archive, *, mutation="", manifest_change=None, write_raw=True, compact=False
 ):
@@ -499,8 +514,9 @@ cfmgr_archive_format_cleanup && exit 81
 
 @pytest.mark.parametrize("kind", ["file", "directory", "symlink"])
 def test_stage_entry_inode_uses_one_real_combined_probe_for_both_path_forms(
-    archive, shell, kind
+    padded_inode_archive, shell, kind
 ):
+    archive = padded_inode_archive
     target = archive[3] / "owned"
     if kind == "directory":
         target.mkdir()
@@ -638,7 +654,10 @@ cfmgr_archive_format_inode "$stage/owned" && exit 81
     assert target.read_bytes() == b"foreign"
 
 
-def test_inode_fallbacks_retain_ram_published_and_append_checks(archive, shell):
+def test_inode_fallbacks_retain_ram_published_and_append_checks(
+    padded_inode_archive, shell
+):
+    archive = padded_inode_archive
     ram, mount, stage = archive[1:4]
     paths = (ram / "receipt", mount / "CFBackup/published", stage / "owned")
     for path in paths:
