@@ -162,9 +162,85 @@ justify changing the assertion without further evidence. Heavy local testing
 was stopped at the user's resource request; remaining local gates and exact
 remote proof are explicitly pending in the handoff.
 
-These findings and focused results are not acceptance. Complete affected groups,
-the optimization's focused safety proof and cost review, native execution and
-exact candidate CI must establish the S14.03 result before its checkbox changes.
+Parent and independent closure review found no changed destination-Save path:
+the backup action/work/UI Save functions and configuration transaction are
+unchanged; the new dispatcher operations are archive-only. The retained fixture
+also has no pending Save guard or RAM context, and its last recorded route is
+the post-publication configuration readback. This supports completed publication
+and cleanup, but does not prove the missing acknowledgement, normal return or
+reopen. No new unsafe-write/corruption defect was found. The timing cause remains
+unmeasured; any acceptance exception must preserve this failed local result.
+
+The three exact-`ebe861b12c17fab9a15787c0eb526ce60e6dffc1` native Dev selections
+subsequently passed: metadata/menus **83 tests, 66.51s wall / 33.14s user /
+32.20s sys**; verification/effects **40 tests, 108.27s / 58.21s / 50.12s**;
+creation **6 tests, 46.06s / 27.17s / 15.75s**. Including setup, those jobs took
+84s, 128s and 75s respectively. The complete installed browser journey, bounded
+prefix reader, direct header helper and existing Save/reopen journey all ran
+successfully under actual vendor BusyBox. These are representative native-host
+results, not Mac completion or Merlin/ARM qualification. Exact complete core
+and the local-gate decision remain pending; no acceptance is inferred here.
+
+Complete core on `ebe861b` exposed a shared-test-fixture dependency missed by the
+focused map: `test_archive_io.py` added the `drafts-review` JSON mode, while the
+history fixture's literal replacement still expected the older mode list. It
+therefore failed to add `history-policy` to the branch that checks retained FD9
+instead of redirected stdin. Host and vendor BusyBox both failed the existing
+borrowed-lock case. Parent and the bounded repair worker agree on this direct
+cause; production lock handling did not change. Repair `00b71fe` updates the
+exact mode list and asserts a unique match before replacement, preserving both
+FD identity assertions. No test was removed or relaxed. Brief static checks
+passed; the complete affected history module and fresh exact core remain due.
+
+The complete affected native history module subsequently passed all **46 tests
+in 13.82s** at `00b71feb70eac9d59138eb37310bfd42f95360d4`, with **30s including
+setup** in [Dev 39235693968](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235693968).
+This closes the focused fixture repair, not the pending exact complete core or
+Mac gate/cost decision.
+
+Final complete [Checks 39235896209](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235896209)
+passed at **`00b71feb70eac9d59138eb37310bfd42f95360d4`**, including preflight,
+dispatch, all six module jobs and the strict exact-candidate collector. Parent
+verified logs and terminal job results. Successful aggregate-job span was
+**9m26s**; cancellation-only cleanup correctly skipped. Module elapsed includes
+checkout/setup/post-job work; the separate test-process measurements below
+provide wall and aggregate user/system CPU accounting.
+
+| Complete module | Host tests; wall / user / sys | Native tests; wall / user / sys | Module elapsed |
+| --- | --- | --- | --- |
+| [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235953005) | 404 passed / one platform skip; 127.25s / 46.38s / 42.71s | 405 passed; 441.61s / 241.57s / 200.43s | **7m37s** |
+| [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235955405) | 565 passed / 29 platform skips; 87.94s / 38.31s / 35.59s | 593 passed / one workstation-only skip; 503.89s / 287.98s / 210.83s | **8m47s** |
+| [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235958181) | 36 passed; 13.35s / 2.03s / 1.66s | 36 passed; 16.00s / 4.40s / 2.70s | **46s** |
+
+Four optional Diagnostics cases remain excluded per Manager platform. No optional
+checker/code implementation changed; required planning/link checks passed. No
+runtime module or permanent test group was added. The fixture repair is test-only;
+runtime bytes are unchanged from `ebe861b`.
+
+Final cost review retained the two bounded optimizations rather than deleting
+distinct safety proof. The native Backup group includes 405 cases versus the
+prior 383. Its real new installed browsing journey takes 26.92s and proves the
+actual no-saved-destination consumer; it is not a duplicate parser matrix. The
+largest existing cases remain complete creation/history (57.89s), rich capture
+(44.97s) and selected semantic verification/deletion (25.81s). Complete native
+test time rose from the prior 342.86s to 441.61s, while host time fell from 139.41s
+to 127.25s and host aggregate CPU from 105.47s to 89.09s. These are different CI
+jobs with uncontrolled runner variation and changed scope, not a controlled
+benchmark or proof that one patch caused every difference. All final complete
+modules remain below ten minutes. No further cheap, justified coverage removal
+was identified in this bounded review; this is not a claim that future
+optimization is impossible. No timing-only rerun or broader redesign was added.
+
+After all CI passed, parent explained the outstanding local gates and requested
+one explicit exception. The user replied **"as long CI passed then its fine"**.
+Parent accepts **S14.03 only** using complete exact CI and the written focused Mac
+proof, with the final Mac Backup timeout/failure, unrun final complete Mac Manager
+and earlier 607.79s complete Mac Backup pass preserved in
+[review notes](PLAN_V2_review_notes.md#14-backup-and-restore). The same Save test
+passes on both required CI platforms; its Mac timing cause remains unconfirmed.
+No local failure is relabelled passed, no product assertion/CI gate changes and
+no future full-local exemption is inferred. Ubuntu/vendor BusyBox remains
+representative development evidence; Merlin/ARM/live qualification is deferred.
 
 ## S04.01 safe data parsing review
 

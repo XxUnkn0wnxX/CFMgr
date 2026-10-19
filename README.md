@@ -10,7 +10,7 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 22 of 157 subgoals accepted (14.0%).**
+**0 of 16 main goals complete (0%); 23 of 157 subgoals accepted (14.6%).**
 The development code provides trusted-local fresh installation, private passive
 defaults, scoped checks for shared tools and tunnel DNS, normal dependency repair,
 confirmed selected dependency reinstall, Entware storage-loss handling and a
@@ -22,11 +22,14 @@ with coupled Check/Auto settings and saved/effective status. Backup storage can
 be explicitly selected and saved, with exact drive checks and safe root-level
 `CFBackup` creation or reuse. Manual unencrypted data-only archives capture CFMgr
 settings and eligible history, verify the complete archive before publication, and
-retain 3–5 verified archives from the same backup set. An explicitly trusted
+retain 3–5 verified archives from the same backup set. Archives can be browsed
+newest-first on the saved or another selected drive, fully verified, reviewed for
+restore effects, and individually deleted after confirmation without changing the
+saved destination. An explicitly trusted
 complete bootstrap can also acquire and verify one pinned package for fresh remote
 installation. Installed
-launches verify the complete modular package before loading its features. Archive
-browsing, restore, standalone bootstrap distribution, the updater and remaining
+launches verify the complete modular package before loading its features. Actual
+restore, standalone bootstrap distribution, the updater and remaining
 feature workflows are unfinished. The [v2 plan](PLAN_V2.md)
 defines the requirements, the [checklist](PLAN_V2_checklist.md) records acceptance,
 and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
@@ -48,7 +51,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | [Credential recovery](PLAN_V2.md#11-provider-failures-and-credential-repair) | Scoped authorization failure handling and credential repair without unintended reactivation. | Planned |
 | [Hooks and schedules](PLAN_V2.md#12-hooks-schedules-and-boot-safety) | Identifiable owned hook blocks, safe repair, shared scheduling and bounded outage recovery. | Planned |
 | [Logging](PLAN_V2.md#13-logging-and-rotation) | System messages plus optional per-feature Scribe logs and owned logrotate rules. | Planned |
-| [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 7/11 accepted |
+| [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 8/11 accepted |
 | [Uninstall and reset](PLAN_V2.md#15-uninstall-retained-installation-and-reset) | Retained-config uninstall, full wipe and scoped resets that preserve unrelated data. | Planned |
 | [Compatibility and guidance](PLAN_V2.md#16-product-readiness-and-documentation) | Evidence-based support, usable operating guides and validated release readiness. | Planned |
 

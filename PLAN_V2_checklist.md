@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**22 of 157 product subgoals accepted — 14.0% overall subgoal completion.**
+**23 of 157 product subgoals accepted — 14.6% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -622,7 +622,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | --- | --- | --- | --- |
 | [x] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
 | [x] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
-| [ ] | [ ] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
+| [x] | [x] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
 | [x] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
 | [x] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
 | [x] | [x] | S14.06 | **Coherent data allowlist:** Config/catalog/typed authority/drafts/full YAML/JSON/both cert copies/.bak/preferences/eligible history; no live controls/executables. |
@@ -652,8 +652,8 @@ and live firmware/filesystem qualification remain unfinished.
 S14.01 and S14.04–S14.08 accepted at **`4942b3416fbc68aeeace15284dccf6077f3cf138`** after
 complete implementation, written focused local gates, parent and independent
 reviews, the [controller/consolidation audit](PLAN_V2_audit.md#s1401-s1404s1408-create-controller-review),
-and exact-candidate [Checks 39034472135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034472135). Goal 14 now has **7/11 accepted**;
-S14.03 and S14.09–S14.11 remain unfinished. No main-goal tick is awarded.
+and exact-candidate [Checks 39034472135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39034472135). That checkpoint accepted seven Goal 14 subgoals;
+S14.03's subsequent acceptance is recorded below. No main-goal tick is awarded.
 
 The actual menu/controller creates native unencrypted data-only archives with
 required/optional capture rules, local date naming, full integrity/semantic
@@ -682,6 +682,41 @@ The final CI-only change leaves runtime files identical to `b0a39dc`, whose
 complete core and all eighteen diagnostic groups also passed. Representative
 Ubuntu/vendor BusyBox evidence does not qualify Merlin/ARM or live deployment;
 [retained evidence limits](PLAN_V2_review_notes.md#14-backup-and-restore) remain.
+
+S14.03 accepted at **`00b71feb70eac9d59138eb37310bfd42f95360d4`** after parent and
+independent review, written focused Mac/native tests, statics and exact complete
+[Checks 39235896209](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235896209).
+The installed Backup consumer supports an independent selected source without
+saved destination/set, bounded newest-first metadata listing, selected complete
+verification and secret-safe actual restore-effects review, and default-no
+receipt-bound single deletion. Destination/preferences and unrelated archives
+remain preserved; no restore Save or activation is implemented by this ID.
+
+| Complete required module | Host result | Vendor BusyBox result | Module wall incl. setup/post-job work |
+| --- | --- | --- | --- |
+| [Backup 39235953005](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235953005) | 404 passed / one platform skip | 405 passed | **7m37s** |
+| [Manager 39235955405](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235955405) | 565 passed / 29 platform skips | 593 passed / one workstation-only skip | **8m47s** |
+| [Status 39235958181](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235958181) | 36 passed | 36 passed | **46s** |
+
+Four optional diagnostics were excluded per Manager platform. Required preflight,
+host/native syntax and strict exact-SHA collection passed. The complete changed
+history module also passed **46 tests in 13.82s**, 30s including setup, in
+[Dev 39235693968](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235693968)
+after its stale lock-fixture replacement was repaired. The
+[S14.03 audit](PLAN_V2_audit.md#s1403-archive-selection-and-actions-review) records
+the implementation, two measured process-work optimizations and final cost review.
+
+Focused local evidence includes the real selected verification/deletion journey,
+safe projection, owned cleanup, menu handling, RAM receipt batching and fixed
+header reads. The full installed browser journey and native file-limit/FD proof
+passed in CI. **The user explicitly approved a one-time local-gate exception**
+after all required CI passed: the final Mac Backup run remains failed at its
+eight-second Save acknowledgement wait, complete final Mac Manager was not rerun,
+and the earlier passing complete Backup run took 607.79s. No local complete pass
+is invented. The [review note](PLAN_V2_review_notes.md#14-backup-and-restore)
+records the precise exception and host limits. Goal 14 now has **8/11 accepted**;
+S14.09–S14.11 remain unfinished. No main-goal audit/full-local gate or live-router
+qualification is claimed.
 
 ### 15. Uninstall, retained installation and reset
 

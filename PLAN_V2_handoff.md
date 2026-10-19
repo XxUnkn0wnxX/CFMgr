@@ -30,12 +30,60 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active checkpoint — S14.03 archive selection/actions
+## Paused checkpoint — S14.03 accepted
+
+**Accepted/tested code:** reviewed implementation and all required exact-candidate CI
+passed at **`00b71feb70eac9d59138eb37310bfd42f95360d4`**. No required job or worker
+remains active. After the user-approved Mac exception below, **S14.03 is accepted**:
+**23/157 (14.6%)**, **0/16 main goals (0%)**, Goal 14
+**8/11 (72.7%)**. The next **S03.09 + S03.10** target is scoped below with a
+**12–20 working-hour** estimate; no implementation is authorized.
+**Stop for the day after the documentation receipt.** Wait for a fresh start
+instruction before any next-target implementation. Actual restore S14.09–S14.11
+and 134 total product subgoals remain unaccepted; no main goal is complete.
+
+| Exact final gate | Result | Complete module elapsed including setup/post-job work |
+| --- | --- | --- |
+| [Checks 39235896209](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235896209) | Common preflight, dispatch and strict collector passed; cancellation-only cleanup correctly skipped. | All six module jobs verified at the same SHA. |
+| [Backup 39235953005](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235953005) | Host 404 passed / one platform skip; vendor BusyBox 405 passed. | **7m37s** |
+| [Manager 39235955405](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235955405) | Host 565 passed / 29 platform skips; vendor BusyBox 593 passed / one workstation-only skip; four optional diagnostics excluded per platform. | **8m47s** |
+| [Status 39235958181](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235958181) | Host and vendor BusyBox 36 passed each. | **46s** |
+
+Parent independently checked terminal conclusions, SHA, every required job and
+actual logs. Host totals are **1,005 passed / 30 platform skips**; native totals
+are **1,034 passed / one workstation-only skip**. Receipts are ignored
+`.tmp/s1403/final-{checks,backup,manager,status}.json` and corresponding module
+logs. These are representative Ubuntu/vendor BusyBox results, not live-router
+qualification. All complete CI modules are below the ten-minute budget.
+
+**Explicit user decision:** after clarification that GitHub CI passed while the
+final Mac run did not, the user answered **"as long CI passed then its fine"**.
+This approves the proposed one-time S14.03 local-gate/cost exception: close using
+complete host/vendor BusyBox CI plus focused Mac proof, retaining
+the final Mac Backup failure (eight-second acknowledgement wait; 332 passed /
+18 skipped / one failed, 616.03s), the unrun complete final Mac Manager gate,
+and the earlier complete passing Backup run's 607.79s cost. No failed local result
+is relabelled passed and no heavy Mac tests follow. This decision changes neither
+assertions nor CI gates, and is not a standing waiver of future full-local gates.
+The precise exception is retained in review notes and acceptance evidence.
+
+The closing receipt changes only README/checklist/audit/review notes/handoff and
+names the tested code SHA above; its own documentation commit is not runtime-CI
+proof. Verify proportionate planning/link/privacy/whitespace checks and remote
+develop/clean state after publication. No runtime or test changes remain due.
+
+### Implementation and validation record
+
+The following paragraphs preserve the execution sequence and earlier pending
+states; the accepted closing state above supersedes them.
 
 After **"ok scope out the next target"**, the user authorized **"ok start"** for
 the scoped Route A S14.03 checkpoint below. This includes implementation, focused
 gates, review, develop publication/exact CI, justified acceptance and the closing
-documentation receipt, then **pause**. Initial develop and actual remote were
+documentation receipt, then **pause**. The user's later instruction is to scope
+the next dependency-ready target after this checkpoint clears, record its rough
+ETA and stop for the day without implementing it. This authorizes that scoping
+only; it does not release the next implementation package. Initial develop and actual remote were
 `9eda362d7a2525530a2521bbf8160ae946a0b407`; the scoping handoff was the sole existing
 edit. Accepted counts and product requirements remain unchanged until gates pass.
 
@@ -161,6 +209,59 @@ this resource instruction does not itself award acceptance or erase local gates.
 No other process/host settings may be changed. Native Dev, complete remote core
 and Manager proof remain pending. Inspect the existing timeout before any repair
 or targeted rerun; no guessed timeout increase or whole rerun merely for timing.
+
+Brief low-priority prepublication statics passed with
+`nice -n 15 .venv/bin/python tools/test.py --checks-only --skip-shellcheck`
+(`.tmp/s1403/prepublish-static.log`). Parent committed and pushed the reviewed
+unchecked runtime candidate **`ebe861b12c17fab9a15787c0eb526ce60e6dffc1`** to
+`develop`. Premature automatic [Checks 39234155687](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39234155687)
+is confirmed cancelled before any module child appeared. The following exact-SHA
+native Dev runs all passed; their single Ubuntu/vendor BusyBox jobs completed:
+
+| Selection | Run | Job elapsed including setup |
+| --- | --- | --- |
+| Metadata and menus | [39234193946](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39234193946) | 84s |
+| Verification and effects | [39234214959](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39234214959) | 128s |
+| Creation regression | [39234224914](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39234224914) | 75s |
+
+Parent verified exact candidate and terminal success for all three runs. Their
+optional full-host diagnostic baselines were not requested and correctly skipped.
+Full core [Checks 39234722515](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39234722515)
+failed on that candidate after the focused proof. Both Backup platforms exposed
+the history fixture mismatch below; Manager host and both Status jobs passed.
+The remaining superseded Manager job was cancelled after the concrete failure.
+Runtime edits wait for prescribed results, except necessary repairs. No local
+cost exception, substituted local gate or product acceptance is claimed.
+The independent read-only analyst completed the Mac destination-Save review;
+parent agrees with its narrow evidence limits recorded in the audit. The
+read-only explorer and independent Astra planner completed the next-target
+comparison; parent agrees with the coordinated diagnostics scope below. No next
+target implementation or tests are authorized. All review workers are finished.
+Complete Backup CI exposed a history test-fixture mismatch: its string
+replacement still matches the older JSON mode list, before this checkpoint added
+`drafts-review`, so it fails to recognize history policy's retained FD9 lock.
+The production Save/lock code is not implicated by this finding. Both platforms
+failed `test_history_json_worker_keeps_borrowed_writer_lock`: host **186 passed /
+one skipped / one failed**, native **187 passed / one failed**. Parent reviewed
+the worker's narrow repair to `tests/test_archive_history_runtime.py`, preserving
+both FD identity assertions and adding an explicit replacement-match guard.
+The shared fixture consumer was missing from the original focused selection;
+complete core correctly exposed it. Brief low-priority file statics and complete
+static-only checks passed (`.tmp/s1403/history-fixture-statics.log`). No local
+behavioral suite ran. Repair candidate **`00b71feb70eac9d59138eb37310bfd42f95360d4`**
+is published on develop; runtime bytes are identical to `ebe861b`.
+Premature automatic [Checks 39235664112](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235664112)
+is confirmed cancelled. Complete affected native history-module
+[Dev 39235693968](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235693968)
+passed **46 tests in 13.82s**, **30s including setup**. Parent verified terminal
+success and exact SHA. Final complete
+[Checks 39235896209](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235896209)
+passed with [Backup 39235953005](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235953005),
+[Manager 39235955405](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235955405)
+and [Status 39235958181](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39235958181).
+The awaiter has finished; all required jobs are terminal. The separate Mac
+gate/cost exception was explicitly approved as recorded above. No additional
+runtime/test edit is pending.
 The native Dev map for this implemented diff is:
 metadata/menus (`test_archive_io.py`, `test_archive_control.py`,
 `test_archive_menu.py`, `test_backup_menu.py`); verification/effects
@@ -169,13 +270,14 @@ metadata/menus (`test_archive_io.py`, `test_archive_control.py`,
 regression (`test_archive_create.py`). These are temporary disjoint whole-module
 Dev selections after the measured Backup overrun, not new permanent groups or
 substitutes for exact full core Checks. Native execution, file-limit behavior,
-installed browsing and receipt batching are the pending distinct platform proof.
+installed browsing and receipt batching passed focused and complete core gates.
+The expressly recorded local gate/cost exception permits this acceptance.
 The Mac had substantial unrelated background load
 at launch (8 logical/4 physical CPUs; 1-minute load about 7.6); retain wall and CPU
-accounting, without changing unrelated processes. No CI job is active. The
+accounting, without changing unrelated processes. The
 [design audit](PLAN_V2_audit.md#s1403-archive-selection-and-actions-review) records
-the reviewed single-process bounded metadata-discovery approach and its pending
-native/host execution proof. Router execution,
+the reviewed single-process bounded metadata-discovery approach and completed
+native/host CI proof. Router execution,
 deployment, release, unrelated targets and requirement changes remain outside scope.
 
 ### Recommended scope and estimate
@@ -266,10 +368,104 @@ were consulted for the existing storage/integration boundary; this proposal adds
 no firmware hook, schedule or capability claim. No cached firmware evidence is
 being promoted to runtime qualification.
 
-Current acceptance remains **22/157 (14.0%)**, **0/16 main goals (0%)**; Goal 14
-remains **7/11 (63.6%)**. If S14.03 passes all gates, totals would become **23/157
-(14.6%)**, Goal 14 **8/11 (72.7%)**, main goals still **0/16**. S14.09–S14.11 would
-remain open. Finish only this checkpoint and pause; no following target is released.
+Current acceptance is **23/157 (14.6%)**, **0/16 main goals (0%)**; Goal 14
+is **8/11 (72.7%)**. S14.09–S14.11 remain open. The next target has been scoped
+as requested below; publish the closing receipt and pause for the day. No
+following implementation is released.
+
+## Next target scoped — S03.09 and S03.10, implementation not authorized
+
+The user requested a new target scope before stopping for the day. Parent and
+independent Astra review recommend **S03.09 full health diagnostics + S03.10
+terminal presentation** as one coordinated acceptance package. This recommendation
+does not start implementation. S14.03 is accepted above. After its closing
+documentation receipt, stop; resume this package only after a
+fresh user start instruction.
+
+**Rough ETA: 12–20 working hours across several sessions**, including integration,
+focused evidence, test-cost review and exact final CI. This is a source-based
+estimate, not a delivery promise. The main uncertainties are a trusted standalone
+fallback when package modules are missing and eligible authenticated read-only
+diagnostics. Confirm endpoint/tool capability evidence early; report substantial
+new dependencies before expanding the package.
+
+### Ready outcome and dependencies
+
+Provide an early `--health` command, with identical `--doctor` and `--diagnostic`
+aliases, that remains useful with incomplete installation, missing modules/tools,
+unmounted Entware or damaged configuration. A trusted standalone entry supplies
+the same minimal native fallback without installing. The complete report includes
+the basic dashboard, grouped diagnostic states/causes/next actions and eligible
+bounded read-only probes. Both basic and full reports have usable narrow-terminal
+and redirected plain-text output, with no secrets or unsafe terminal controls.
+
+Accepted **S02.01/.04/.08/.09, S03.02/.07 and S04.01** provide package admission,
+native capabilities, storage identity, state/schema, the actual basic dashboard
+and safe parsing. Whole feature lifecycle/provider-failure/hook goals are not
+hard prerequisites: diagnostics must observe them without invoking repair,
+activation, auth-Off, provider writes or operational-history changes. Supporting
+transport work overlaps **S11.01**; aliases overlap **S03.06**; native fallback
+overlaps **S02.07**. Those supporting portions earn no additional acceptance.
+
+**Route A — a smaller independently complete candidate:** none was demonstrated
+among the reviewed alternatives. S03.10 alone includes the absent full-health
+page; S03.08 lacks actual provider outcome writers; S04.06 lacks a real masked
+credential-input consumer. S10.10 would need a supported setup route plus shared
+cooldown and definitive-auth containment; preseeded test configuration is not a
+usable setup path. Manual manager update/source selection expands into coherent
+retained switching/recovery, selected-runtime integrity and integration handling.
+
+**Route B — minimum coordinated package:** S03.09 + S03.10, using the existing
+Status owner and only the shared prerequisites its actual report consumes. Do not
+add unfinished setup/lifecycle work merely to replace truthful diagnostic SKIP or
+UNKNOWN, but implement supported eligible read-only checks rather than stub them.
+
+### Ownership and integration order
+
+1. Map each required diagnostic group to current native evidence, config and
+   relevant read-only endpoint, verifying primary API/firmware guidance and the
+   original reference where applicable. Freeze the report states, private probe
+   contract, fallback trust boundary and no-mutation rules before implementation.
+2. Add early trusted dispatch/fallback in `cfmgr.sh`, keeping the entry thin and
+   independent of normal launch/dependency repair. Extend `modules/status.sh`;
+   admit optional modules explicitly and preserve independent checks on failure.
+3. Extend `modules/lib/network.sh` for only the bounded private authenticated
+   read transport needed by health. Reuse fixed worker/execution/config/storage
+   owners and existing TLS/parser/supervisor contracts. Present native-only local
+   evidence when prerequisites or credential eligibility fail. Respect cooldowns
+   and stop a rejected scope without persisting operational faults or new intent.
+4. Integrate complete system/dependency, package/config/storage, network, feature,
+   owned-hook/job, logging and recovery/backup groups; share safe one-shot
+   presentation with basic status. Update trusted manifests/callers and focused
+   existing tests. No new runtime category, helper framework or CI group is planned.
+
+Keep one coherent implementation owner until entry/collector/probe interfaces
+are settled; do not split functions or report groups into separate scripts.
+Parent retains architecture, security/trust decisions and the five V2 records.
+
+### Lean validation proposal and stop boundary
+
+Prove actual installed and trusted standalone entry; degraded module/config/tool
+fallback; eligible versus blocked authenticated reads; complete bounded response
+admission, cleanup/no mutation/no credential leakage; and basic/full narrow/plain
+rendering. Reuse current fixtures, with cheap parser/report cases and a small
+number of real entry/transport integrations. Avoid repeating every failure through
+every shell and complete installation lifecycle. Product health belongs in required
+Status checks; optional Diagnostics remains the separate existing stress workflow.
+
+For the next start authorization, propose **brief serial low-priority Mac statics
+and focused tests, complete affected remote modules, then exact complete core CI**.
+This resource approach substitutes remote proof for complete affected Mac groups
+and needs explicit inclusion in the next implementation approval; it is not a
+silent standing waiver. No main-goal full local suite is due for these two IDs.
+Retain complete Status/Manager proof and every affected shared consumer; Backup
+joins the focused map if shared changes affect it. Run changed optional checks
+only when applicable. Review measured whole-module wall/CPU cost against the
+existing ten-minute budget, optimizing actual work before considering any split.
+
+At the agreed two-ID checkpoint, finish review, required gates, justified records
+and authorized develop receipt, then pause. No later goal, live router/provider
+mutation, release, deployment or main-branch action follows from this scope.
 
 ## Paused checkpoint — S04.01 accepted
 
