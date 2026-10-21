@@ -4826,3 +4826,18 @@ against their actual parsers. The shared-cron fixture also now uses an absolute
 selected applet and distinct receipt output paths, avoiding self-truncation.
 These are fixture repairs; no runtime assertion or safety gate is relaxed.
 Automatic core 39573484891 is cancelled; both Dev runs are terminal.
+At d007e83, native Dev 39573879089 passed all 28 focused observer cases in 1.09s
+(1.26s wall, 1.10s user, 0.15s system). Dev 39573883252 reached actual report
+finalization but exhausted the old 248-operation ceiling: 248 operations,
+529 files, 6,737,920 collection-reserved bytes, zero GETs and 54 rows; finalization
+used two operations/four files/790,528 bytes. Its timestamp is **16 seconds through
+finalization**, not collection-only time; wall time was 17.27s. All core runs
+39573827525/39573873799/39573876170/39573879254 are confirmed cancelled.
+An independent focused Astra capacity audit is PASS WITH NOTES. Parent sets a
+provisional 504-operation/1,136-file collection envelope plus unchanged reserved
+8/16 finalization (512/1,152 total), keeping 45 seconds, 12 GETs, 96 rows and 12MiB
+unchanged. Synchronized admission/finalization/staging/cleanup/lookahead guards
+have exact boundary cases, including direct staging and full-counter finalization.
+The first complete successful native ledger must still justify final ceilings;
+this adjustment earns no acceptance. The normal fixture prints its safe numeric
+ledger on success and labels elapsed time correctly as report_seconds.

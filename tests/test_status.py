@@ -1125,14 +1125,18 @@ cfmgr_health_get ddns zone - 4
 [ "$?" = 1 ] && [ "$cfmgr_health_operations" = 0 ] || exit 14
 cfmgr_status_attachment_ok() { return 0; }
 cfmgr_prerequisites_now() { cfmgr_probe_now=100; }
-cfmgr_health_operations=247 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_probe_serial=247
+cfmgr_health_operations=503 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_probe_serial=503
 cfmgr_health_reserve health-date || exit 15
 cfmgr_health_reserve health-date
-[ "$?" = 1 ] && [ "$cfmgr_health_operations" = 248 ] || exit 16
-cfmgr_health_operations=0 cfmgr_health_files=558
+[ "$?" = 1 ] && [ "$cfmgr_health_operations" = 504 ] || exit 16
+cfmgr_health_operations=0 cfmgr_health_files=1134
 cfmgr_health_reserve health-date || exit 17
 cfmgr_health_reserve health-date
-[ "$?" = 1 ] && [ "$cfmgr_health_files" = 560 ] || exit 18
+[ "$?" = 1 ] && [ "$cfmgr_health_files" = 1136 ] || exit 18
+cfmgr_health_files=1135
+cfmgr_health_stage_reserve comparison 2048 || exit 23
+cfmgr_health_stage_reserve dashboard 32768
+[ "$?" = 1 ] && [ "$cfmgr_health_files" = 1136 ] || exit 24
 cfmgr_health_operations=0 cfmgr_health_files=0 cfmgr_health_bytes=11272192
 cfmgr_health_reserve health-snapshot || exit 19
 cfmgr_health_reserve health-date
@@ -2396,7 +2400,7 @@ cfmgr_prerequisites_run status-render
 cfmgr_probe_pid=''
 cfmgr_health_active=1 cfmgr_health_deadline=145 cfmgr_health_collect_deadline=140 cfmgr_health_final_deadline='' clock=110
 cfmgr_health_final_operations=0 cfmgr_health_final_files=0 cfmgr_health_final_bytes=0
-cfmgr_health_operations=20 cfmgr_health_files=40 cfmgr_health_bytes=327680 cfmgr_health_owned='' cfmgr_probe_serial=20
+cfmgr_health_operations=504 cfmgr_health_files=1136 cfmgr_health_bytes=327680 cfmgr_health_owned='' cfmgr_probe_serial=20
 cfmgr_health_final_begin || exit 26
 [ "$cfmgr_health_final_deadline" = 115 ] || exit 27
 clock=111
@@ -2405,7 +2409,7 @@ cfmgr_health_final_begin || exit 28
 cfmgr_health_reserve health-render || exit 30
 cfmgr_health_reserve health-render-count || exit 31
 [ "$cfmgr_health_final_operations:$cfmgr_health_final_files:$cfmgr_health_final_bytes" = 2:4:790528 ] || exit 32
-[ "$cfmgr_health_operations:$cfmgr_health_files:$cfmgr_health_bytes" = 20:40:327680 ] || exit 33
+[ "$cfmgr_health_operations:$cfmgr_health_files:$cfmgr_health_bytes" = 504:1136:327680 ] || exit 33
 cfmgr_health_reserve health-date
 [ "$?" = 1 ] || exit 34
 cfmgr_health_stage_reserve dashboard 32768
@@ -4630,7 +4634,7 @@ def test_health_hooks_cron_rejects_bad_frames_and_process_identity(commands, tmp
     reason="actual health supervision requires Linux proc and FDs",
 )
 def test_linux_full_health_entry_normal_journey(
-    shell, tools, installed_package, schema2_config
+    shell, tools, installed_package, schema2_config, capsys
 ):
     """One normal integrated run per selected host/native shell, CI execution only.
 
@@ -4715,14 +4719,19 @@ def test_linux_full_health_entry_normal_journey(
             "final_operations": final_ops,
             "final_files": final_files,
             "final_bytes": final_bytes,
-            "collection_seconds": seconds,
+            "report_seconds": seconds,
             "wall_seconds": elapsed,
             "reason": ledger[9],
         }
-        print("full-health normal ledger:", measured)
+        with capsys.disabled():
+            print("full-health normal ledger:", measured, flush=True)
+        if ledger[9] != "normal" or requests != 12:
+            print("full-health observed rows:\n" + (audit / "rows").read_text())
+            print("full-health routes:\n" + (audit / "routes").read_text())
         assert process.returncode == 0 and stderr == b"", (measured, stdout, stderr)
         assert ledger[9] == "normal", measured
         assert requests == 12 and 0 < rows <= 96 and 0 < seconds < 45, measured
+        assert operations <= 504 and files <= 1136, measured
         assert reserved + final_bytes <= 12 * 1024 * 1024, measured
         assert final_ops <= 8 and final_files <= 16 and elapsed < 50, measured
         assert immutable_inventory() == before, (

@@ -82,9 +82,9 @@ cfmgr_health_reserve() {
 	[ -z "${cfmgr_health_final_deadline:-}" ] || return 1
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
-		[ "$cfmgr_health_operations" -ge 248 ] ||
+		[ "$cfmgr_health_operations" -ge 504 ] ||
 		[ "$((cfmgr_health_requests + cfmgr_health_mode_get))" -gt 12 ] ||
-		[ "$((cfmgr_health_files + cfmgr_health_mode_files))" -gt 560 ] ||
+		[ "$((cfmgr_health_files + cfmgr_health_mode_files))" -gt 1136 ] ||
 		[ "$((cfmgr_health_bytes + cfmgr_health_mode_bytes))" -gt 11534336 ]; then
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
@@ -114,7 +114,7 @@ cfmgr_health_final_reserve() {
 	[ "$cfmgr_health_final_operations" -lt 8 ] &&
 		[ "$((cfmgr_health_final_files + cfmgr_health_mode_files))" -le 16 ] &&
 		[ "$((cfmgr_health_final_bytes + cfmgr_health_mode_bytes))" -le 1048576 ] || return 1
-	[ "$cfmgr_health_operations" -le 248 ] && [ "$cfmgr_health_files" -le 560 ] &&
+	[ "$cfmgr_health_operations" -le 504 ] && [ "$cfmgr_health_files" -le 1136 ] &&
 		[ "$cfmgr_health_bytes" -le 11534336 ] || return 1
 	cfmgr_health_final_operations=$((cfmgr_health_final_operations + 1))
 	cfmgr_health_final_files=$((cfmgr_health_final_files + cfmgr_health_mode_files))
@@ -172,7 +172,7 @@ cfmgr_health_stage_reserve() {
 	*) case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
-		[ "$cfmgr_health_files" -ge 560 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
+		[ "$cfmgr_health_files" -ge 1136 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
 	fi
@@ -222,7 +222,7 @@ cfmgr_health_cleanup() {
 ${cfmgr_health_file##*/}
 "*) ;; *) return 1 ;; esac
 		cfmgr_health_seen=$((cfmgr_health_seen + 1))
-		[ "$cfmgr_health_seen" -le 576 ] || return 1
+		[ "$cfmgr_health_seen" -le 1152 ] || return 1
 	done
 	set --
 	for cfmgr_health_file in "$cfmgr_status_context"/*; do
@@ -2588,7 +2588,7 @@ cfmgr_health_selected_snapshot() {
 			cfmgr_health_selected_future_ops=$((cfmgr_health_selected_future_ops + 2))
 		fi
 		if [ "$((cfmgr_health_bytes + cfmgr_health_selected_future))" -gt 11534336 ] ||
-			[ "$((cfmgr_health_operations + cfmgr_health_selected_future_ops))" -gt 248 ] || [ "$((cfmgr_health_files + cfmgr_health_selected_future_ops * 2))" -gt 560 ]; then
+			[ "$((cfmgr_health_operations + cfmgr_health_selected_future_ops))" -gt 504 ] || [ "$((cfmgr_health_files + cfmgr_health_selected_future_ops * 2))" -gt 1136 ]; then
 			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 			return 1
 		fi
