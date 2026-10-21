@@ -4811,3 +4811,10 @@ push keeps current 248/560 collection caps unchanged to expose measured limits;
 complete normal resource proof is still required before choosing final caps.
 Next: two disjoint same-SHA Dev selections (focused observer cases and full normal
 journey), repair measured failures, then complete affected modules and final core.
+Native observer Dev 39573229800 at 825972a passed the private Backup projection
+then stopped at a fixture passing `busybox` instead of an absolute AWK applet
+path (1 passed / 1 failed, 0.75s). Normal-journey Dev 39573233511 stopped in fixture
+construction at unresolved relative `busybox` (0.93s); no runtime ledger exists.
+Both are terminal failures, not product gates. Parent fixes native applet binding
+using the existing adapter and PATH resolution; the same selections will rerun.
+Automatic core 39573177859 is cancelled with no dispatched children.

@@ -112,7 +112,7 @@ def test_health_backup_projection_keeps_history_private(commands, schema2_config
     [("tfat", "vfat", "ABCD-1234"), ("ufsd", "ntfs", "0123456789ABCDEF")],
 )
 def test_health_backup_worker_reuses_broad_uuid_policy(
-    shell, commands, tmp_path, filesystem, kind, identity
+    shell, tools, tmp_path, filesystem, kind, identity
 ):
     private = tmp_path / "private"
     private.mkdir()
@@ -123,7 +123,7 @@ def test_health_backup_worker_reuses_broad_uuid_policy(
             *shell,
             ROOT / "modules/helpers/worker.sh",
             "health-backup-uuid",
-            commands[1][0],
+            adapt_native("/usr/bin/awk", tmp_path / "jffs", tools, shell),
             private,
             ROOT / "modules/backup.sh",
             observed,
@@ -204,8 +204,8 @@ printf '%s %s %s %s %s\n' "$result" "$cfmgr_health_backup_state" "${cfmgr_health
             ROOT,
             tmp_path,
             tools["sh"],
-            tools["awk"],
-            tools["ls"],
+            adapt_native("/usr/bin/awk", tmp_path / "jffs", tools, shell),
+            adapt_native("/bin/ls", tmp_path / "jffs", tools, shell),
             damage,
         ],
         capture_output=True,

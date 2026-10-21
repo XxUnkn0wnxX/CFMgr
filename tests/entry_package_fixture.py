@@ -261,10 +261,10 @@ def full_health_package(
     forward("/usr/sbin/openssl", str(Path(shutil.which("openssl")).resolve()))
     forward("/usr/bin/flock", str(Path(shutil.which("flock")).resolve()))
     hexdump = shutil.which("hexdump")
-    busybox = shell[0] if shell[1:] == ["ash"] else shutil.which("busybox")
-    assert (
-        hexdump and busybox
-    ), "Native hex and BusyBox observation fixtures are required"
+    busybox = shutil.which(shell[0] if shell[1:] == ["ash"] else "busybox")
+    assert hexdump and busybox, (
+        "Native hex and BusyBox observation fixtures are required"
+    )
     forward("/usr/bin/hexdump", str(Path(hexdump).resolve()))
     write("/bin/busybox", Path(busybox).resolve().read_bytes(), 0o755)
     ca = Path("/etc/ssl/certs/ca-certificates.crt")
