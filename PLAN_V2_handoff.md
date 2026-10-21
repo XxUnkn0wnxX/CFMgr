@@ -526,6 +526,43 @@ case because that lower-level fixture had not set `cfmgr_health_http_file` for
 the new three-file counter. Curl itself exited zero. Parent supplied the existing
 probe stdout path; lint/format/compile and whitespace passed. Its real TLS/curl
 behavior is Linux-only and remains CI-pending, with no claimed local pass.
+That fixture-only correction is published at
+**`4541ea923fe65f326e011f04b570a31eb3b5dc5c`**; premature core 39564160643 is
+confirmed cancelled with no children. [Dev 39564171339](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39564171339)
+is running the five actual TLS/curl scenarios. The previous three-node native
+repair passed in 0.42s (0.55s wall, 0.45s user, 0.08s system). Once this transport
+repair passes, rerun the eight complete affected modules at the new candidate.
+Dev 39564171339 is now successful. Complete eight-module
+[Dev 39564378958](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39564378958)
+failed at the same `4541ea9` candidate after **58 passes in 3.44s**. Vendor
+BusyBox AWK reported `Math support is not compiled in` for the CIDR residual-bit
+exponentiation. Parent replaced that optional operation with the exact three
+fixed divisors for one/two/three residual bits and added the missing one-bit
+boundary case. All nine DNS/CIDR boundary cases passed locally in **0.88s**;
+Ruff, shell syntax/plain-shfmt and whitespace checks passed. Native confirmation
+and the eight complete modules remain pending. The logging implementation owner may
+perform read-only preparation against the reviewed contracts while this runs;
+it has no write release until parent verifies the required result. Parent retains
+runtime/test ownership meanwhile. `health_logging` is assigned only that read-only
+preparation; the earlier awaiter has completed and no required CI job is active.
+
+The independent remaining-observer audit is PASS WITH NOTES, accepted by parent.
+It preserves the same S03.09/S03.10 scope. Bind package inventory to original
+entry tuples AND all optional verification flags, with ordered catalog/digest,
+fixed known files, empty placeholders, protected metadata and bounded flat
+listings. A standalone copy does not prove the installed entry. Existing hashes
+are earlier report observations, never an atomic current rehash claim. A complete
+protected support-root listing supplies observed absence of all six known launch
+guards; metadata failure cannot erase observed presence. Recovery remains
+independent of config and optional Backup. Backup uses the broad extracted UUID
+policy, exact actual mountpoint/filesystem/root and before/after identities,
+with separate recorded history and no writability/archive-existence claim.
+Hooks reuse logging's cron/process evidence even when Scribe/logging is absent;
+generic ownership digests have no producer-defined whole-file/block scope, so a
+mismatch does not prove a corrupt managed hook. Fixed labelled job schedules are
+observations, not command-dispatch authority. The audit records the detailed
+boundaries and required lean cases. No observer implementation is released until
+the current exact Dev gate finishes; no final cap is approved by these estimates.
 
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).

@@ -1980,7 +1980,8 @@ function hw_bits_match(address,network,bits,    full,remaining,i,mask) {
     full=int(bits/4);remaining=bits-full*4
     for(i=1;i<=full;i++)if(substr(address,i,1)!=substr(network,i,1))return 0
     if(!remaining)return 1
-    mask=int(16/(2^remaining))
+    # Vendor BusyBox AWK omits optional libm/exponentiation support.
+    mask=(remaining==1 ? 8 : (remaining==2 ? 4 : 2))
     return int(hw_hex_value(substr(address,full+1,1))/mask)==int(hw_hex_value(substr(network,full+1,1))/mask)
 }
 function hw_ipv4(value,    a,n,i) { n=split(value,a,"."); if(n!=4) return 0; for(i=1;i<=4;i++) if(a[i]!~/^(0|[1-9][0-9]*)$/ || length(a[i])>3 || a[i]>255) return 0; return 1 }

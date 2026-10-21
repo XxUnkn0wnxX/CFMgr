@@ -727,6 +727,7 @@ def test_health_compare_rejects_malformed_full_receipt_before_positive(
         ("dns", "verified", ["8.8.8.8", "1.1.1.1"], "8.8.8.8", "WARN dns-multiple"),
         ("dns", "partial", ["8.8.8.8"], "8.8.8.8", "UNKNOWN dns-partial"),
         ("items", "partial", ["9.0.0.0/8"], "8.8.8.8", "UNKNOWN list-partial-no-match"),
+        ("items", "verified", ["8.0.0.0/9"], "8.127.255.254", "PASS list-member"),
         ("items", "verified", ["8.0.0.0/10"], "8.63.255.254", "PASS list-member"),
         ("items", "verified", ["8.0.0.0/11"], "8.32.0.1", "WARN list-no-match"),
         (

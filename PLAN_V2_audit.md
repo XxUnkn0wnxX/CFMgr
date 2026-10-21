@@ -410,6 +410,57 @@ malformed private frames; parent reviewed the delta. This provides a pure
 interface only and does not establish the missing logging collector or native
 dispatch proof.
 
+The complete affected native run exposed optional AWK exponentiation in the new
+CIDR residual-bit comparison (`Math support is not compiled in`). Parent replaced
+it with fixed divisors for the three possible residual widths, retaining exact
+IPv4/IPv6 prefix semantics. Nine focused host boundary cases passed in 0.88s,
+including the newly explicit one-bit case; native confirmation remains pending.
+
+The remaining package/recovery/backup/hooks design received **PASS WITH NOTES**;
+parent accepts these evidence-backed qualifications before implementation:
+
+- Entry `cfmgr_health_records` retains optional tuples even after their file
+  verification fails. Package inventory PASS therefore needs all four entry
+  optional flags as well as exact original tuple binding. The new manifest must
+  retain full v1/v2 grammar and measured byte/LF framing; ordered catalog bytes
+  must match the admitted catalog digest and complete module set. Check the
+  fourteen known files, three empty placeholders and four module directories;
+  an unexpected inspected entry fails, while listed uninspected extensions
+  remain UNKNOWN and are never imported. Earlier code hashes are explicitly
+  non-atomic report evidence. A standalone invocation additionally checks the
+  installed entry's presence/protection/digest.
+- The six known guard names match launch structural admission. Absence requires
+  a successfully reaped complete bounded support-root listing, native byte/LF
+  counts, framing and unchanged protected attachment. A present but unstatable
+  guard stays present/type-unverified; a dangling symlink is not followed. The
+  controller must perform the post-list attachment check after the worker's
+  terminal exec. No observation grants recovery or operational authority.
+- Backup identity must use the broader Backup UUID/filesystem policy, an actual
+  mountpoint exactly matching saved selection, and canonical/full-mount identity
+  rechecks. Avoid mutating Backup wrappers and FD6/7 ownership. Read-only or
+  noexec does not invalidate identity; neither rw nor directory metadata proves
+  writability. An unsuccessful CFBackup metadata probe means unverified, not
+  absent. Recorded backup age and set association stay separate from current
+  destination/actual archive existence; do not expose UUID, path, set/archive
+  identifiers or saved arbitrary date/time text.
+- Generic ownership schema provides no hook producer or digest-scope contract.
+  A fixed-hook whole-file digest match may be described only as that byte match;
+  mismatch must not claim a corrupt managed block. Inspect only the seven fixed
+  hooks. Parse exact labelled cron multiplicity/schedule/effective SHELL from
+  the shared private observation without publishing commands. Matching the two
+  documented schedules proves no dispatch/ownership. Hooks reuse the same
+  native scheduler/process observer even if logging is not requested or Scribe
+  is absent; malformed evidence remains distinct from a missing producer.
+
+The practical package-only estimate is approximately 18–22 stages, not the old
+small allowance: around twenty metadata operands already require two batches
+per boundary before snapshots, counts, digest, listings and final validation.
+Final actual combined counters remain necessary. Lean gates cover original tuple
+drift, failed optional admission, unexpected/uninspected entries, standalone
+installed-entry disagreement, incomplete absence evidence and dangling guards,
+broad UUID/read-only/replacement cases, private-marker suppression and shared
+scheduler reuse. None of this design earns an acceptance tick.
+
 The logging bundle can avoid per-file hex subprocesses with an explicitly
 validated raw reader: `LC_ALL=C`, LF record separator, independent native byte/LF
 counts, exact EOF, retained CR/tabs, a prefixed byte lookup, and immediate failure
