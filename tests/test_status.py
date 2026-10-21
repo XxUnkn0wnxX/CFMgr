@@ -4114,6 +4114,25 @@ cfmgr_health_run() {
 }
 cfmgr_health_logging_collect || exit $?
 printf 'LEDGER %s %s %s\n' "$cfmgr_health_operations" "$cfmgr_health_files" "$cfmgr_health_bytes"
+# Cross the 13-operand native batch boundary once. Nested spec creation must
+# preserve the aggregate count receipt's reserved limit.
+if [ ! -e "$base/changed-rule" ]; then
+    count_spec='' count_index=1
+    while [ "$count_index" -le 14 ]; do
+        printf 'one\ntwo\n' >"$cfmgr_status_context/count.$count_index"
+        count_spec="${count_spec}r$count_index	$cfmgr_status_context/count.$count_index
+"
+        count_index=$((count_index + 1))
+    done
+    cfmgr_health_log_spec_write "$count_spec" || exit 31
+    cfmgr_health_log_group counts "$cfmgr_health_log_spec_file" || exit 32
+    count_index=0
+    while IFS='	' read -r tag role bytes lines; do
+        [ "$tag:$bytes:$lines" = COUNT:8:2 ] || exit 33
+        count_index=$((count_index + 1))
+    done <"$cfmgr_health_log_group_file"
+    [ "$count_index" = 14 ] && [ "$cfmgr_health_log_append_limit" = 1825 ] || exit 34
+fi
 """
     result = subprocess.run(
         [
@@ -4384,7 +4403,7 @@ def test_health_logging_mount_anchor_and_native_append_eof(commands, shell, tmp_
         [
             *shell,
             "-c",
-            '. "$1/modules/status.sh"; cfmgr_health_log_append_bytes=0; cfmgr_health_log_append "$2/raw" "$2/output"',
+            '. "$1/modules/status.sh"; cfmgr_health_log_append_bytes=0 cfmgr_health_log_append_limit=65536; cfmgr_health_log_append "$2/raw" "$2/output"',
             "append-test",
             str(ROOT),
             str(tmp_path),
@@ -4395,6 +4414,25 @@ def test_health_logging_mount_anchor_and_native_append_eof(commands, shell, tmp_
     )
     assert result.returncode == 1 and result.stderr == b""
     assert (tmp_path / "output").read_bytes() == b"complete\n"
+
+
+def test_health_logging_append_never_exceeds_its_reserved_extent(shell, tmp_path):
+    (tmp_path / "raw").write_bytes(b"first\nsecond\n")
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            '. "$1/modules/status.sh"; cfmgr_health_log_append_bytes=0 cfmgr_health_log_append_limit=6; cfmgr_health_log_append "$2/raw" "$2/output"; [ "$?" = 1 ] && [ "$cfmgr_health_reason" = budget ]',
+            "append-bound",
+            str(ROOT),
+            str(tmp_path),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    assert (tmp_path / "output").read_bytes() == b"first\n"
 
 
 def test_health_logging_ordinary_failure_keeps_later_groups_available(shell):
@@ -4770,6 +4808,8 @@ def test_linux_full_health_entry_normal_journey(
         }
         with capsys.disabled():
             print("full-health normal ledger:", measured, flush=True)
+        if (audit / "process-diagnostic").exists():
+            print((audit / "process-diagnostic").read_text())
         if ledger[9] != "normal" or requests != 12:
             print("full-health observed rows:\n" + (audit / "rows").read_text())
             print("full-health routes:\n" + (audit / "routes").read_text())

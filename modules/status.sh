@@ -167,7 +167,13 @@ cfmgr_health_stage_reserve() {
 	case $1 in log.spec.* | log.metadata.* | log.process-index.* | log.bundle-index.*)
 		case $1 in *[!A-Za-z0-9.-]* | *..*) return 2 ;; esac
 		case ${1##*.}:$2 in *[!0-9:]* | :* | *:) return 2 ;; esac
-		case $2 in 32768 | 65536) ;; *) return 2 ;; esac
+		case $2 in '' | *[!0-9]* | 0*) return 2 ;; esac
+		[ "${#2}" -le 5 ] || return 2
+		case $1 in
+		log.spec.*) [ "$2" -le 32768 ] || return 2 ;;
+		log.metadata.*) [ "$2" -le 65536 ] || return 2 ;;
+		*) case $2 in 32768 | 65536) ;; *) return 2 ;; esac ;;
+		esac
 		;;
 	*) case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
@@ -3276,8 +3282,10 @@ cfmgr_health_log_spec_write() {
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
 	}
-	cfmgr_health_log_stage spec 32768 || return $?
-	printf '%s' "$1" >"$cfmgr_health_log_stage_file"
+	cfmgr_health_log_spec_bytes=${#1}
+	[ "$cfmgr_health_log_spec_bytes" -gt 0 ] || cfmgr_health_log_spec_bytes=1
+	cfmgr_health_log_stage spec "$cfmgr_health_log_spec_bytes" || return $?
+	printf '%s' "$1" >"$cfmgr_health_log_stage_file" || return 1
 	cfmgr_health_log_spec_file=$cfmgr_health_log_stage_file
 }
 
@@ -3302,10 +3310,7 @@ cfmgr_health_log_metadata() {
 	cfmgr_health_log_meta_spec=$1 cfmgr_health_log_meta_kind=$2
 	cfmgr_health_log_parse spec - "$cfmgr_health_log_meta_spec" || return $?
 	cfmgr_health_log_meta_arg="$cfmgr_health_log_meta_kind	${cfmgr_health_opt:--}	${cfmgr_health_opt_mount:--}"
-	cfmgr_health_log_stage metadata 65536 || return $?
-	cfmgr_health_log_meta_raw=$cfmgr_health_log_stage_file cfmgr_health_log_append_bytes=0
-	cfmgr_health_log_meta_paths='' cfmgr_health_log_meta_result_bytes=0
-	set --
+	cfmgr_health_log_meta_paths='' cfmgr_health_log_meta_result_bytes=0 cfmgr_health_log_meta_raw_bound=0
 	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_profile cfmgr_health_log_op; do
 		cfmgr_health_log_meta_boundary=/
 		cfmgr_health_log_meta_result_bytes=$((cfmgr_health_log_meta_result_bytes + ${#cfmgr_health_log_role} + 256))
@@ -3319,11 +3324,11 @@ $cfmgr_health_log_path
 			*)
 				cfmgr_health_log_meta_paths="$cfmgr_health_log_meta_paths
 $cfmgr_health_log_path"
-				set -- "$@" "$cfmgr_health_log_path"
-				if [ "$#" = 13 ]; then
-					cfmgr_health_log_meta_batch "$@" || return $?
-					set --
-				fi
+				cfmgr_health_log_meta_raw_bound=$((cfmgr_health_log_meta_raw_bound + ${#cfmgr_health_log_path} + 256))
+				[ "$cfmgr_health_log_meta_raw_bound" -le 65536 ] || {
+					cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+					return 1
+				}
 				;;
 			esac
 			[ "$cfmgr_health_log_path" != "$cfmgr_health_log_meta_boundary" ] || break
@@ -3331,6 +3336,22 @@ $cfmgr_health_log_path"
 			[ -n "$cfmgr_health_log_path" ] || cfmgr_health_log_path=/
 		done
 	done <"$cfmgr_health_log_meta_spec"
+	# Reserve unique native rows before any write. The parser's MEMBER output
+	# retains its separate repeated-ancestry bound above.
+	cfmgr_health_log_stage metadata "$cfmgr_health_log_meta_raw_bound" || return $?
+	cfmgr_health_log_meta_raw=$cfmgr_health_log_stage_file cfmgr_health_log_append_bytes=0
+	cfmgr_health_log_append_limit=$cfmgr_health_log_meta_raw_bound
+	set --
+	while IFS= read -r cfmgr_health_log_path; do
+		[ -n "$cfmgr_health_log_path" ] || continue
+		set -- "$@" "$cfmgr_health_log_path"
+		if [ "$#" = 13 ]; then
+			cfmgr_health_log_meta_batch "$@" || return $?
+			set --
+		fi
+	done <<EOF_LOG_METADATA_PATHS
+$cfmgr_health_log_meta_paths
+EOF_LOG_METADATA_PATHS
 	case $# in 0) ;; *) cfmgr_health_log_meta_batch "$@" || return $? ;; esac
 	cfmgr_health_log_parse metadata "$cfmgr_health_log_meta_raw" "$cfmgr_health_log_meta_spec" "$cfmgr_health_log_meta_arg" || return $?
 	cfmgr_health_log_metadata_file=$cfmgr_probe_stdout
@@ -3351,7 +3372,7 @@ cfmgr_health_log_append() {
 		cfmgr_health_log_append_line=''
 		if IFS= read -r cfmgr_health_log_append_line; then
 			cfmgr_health_log_append_bytes=$((cfmgr_health_log_append_bytes + ${#cfmgr_health_log_append_line} + 1))
-			[ "$cfmgr_health_log_append_bytes" -le 65536 ] || {
+			[ "$cfmgr_health_log_append_bytes" -le "$cfmgr_health_log_append_limit" ] && [ "$cfmgr_health_log_append_bytes" -le 65536 ] || {
 				cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 				return 1
 			}
@@ -3378,8 +3399,21 @@ cfmgr_health_log_member() {
 cfmgr_health_log_group() {
 	# Native output is parsed against exact private operands and total/EOF.
 	cfmgr_health_log_group_kind=$1 cfmgr_health_log_group_spec=$2
-	cfmgr_health_log_stage metadata 65536 || return $?
+	cfmgr_health_log_group_bound=0
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_rest; do
+		case $cfmgr_health_log_group_kind in
+		hashes) cfmgr_health_log_group_bound=$((cfmgr_health_log_group_bound + ${#cfmgr_health_log_path} + 128)) ;;
+		counts) cfmgr_health_log_group_bound=$((cfmgr_health_log_group_bound + ${#cfmgr_health_log_role} + 128)) ;;
+		*) return 2 ;;
+		esac
+		[ "$cfmgr_health_log_group_bound" -le 65536 ] || {
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		}
+	done <"$cfmgr_health_log_group_spec"
+	cfmgr_health_log_stage metadata "$cfmgr_health_log_group_bound" || return $?
 	cfmgr_health_log_group_raw=$cfmgr_health_log_stage_file cfmgr_health_log_group_batch_spec='' cfmgr_health_log_append_bytes=0
+	cfmgr_health_log_append_limit=$cfmgr_health_log_group_bound
 	set --
 	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_rest; do
 		set -- "$@" "$cfmgr_health_log_path"

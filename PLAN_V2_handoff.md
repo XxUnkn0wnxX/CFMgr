@@ -4856,3 +4856,18 @@ case. Logging's released owner is read-only, tracing the process-frame and DNS
 observations; parent retains exclusive edit ownership. No further local behavior,
 AWK or ShellCheck execution is authorized for this checkpoint. Time/byte limits
 remain unchanged; measured reservations and repeated work must be reconciled.
+At c1d5333, Dev 39575994586 passed the native argv encoding, private assembler
+and finalization selections. Dev 39575951341 reproduced the exact byte boundary
+with the same 392/839/11,493,376/eight-GET ledger (29s through finalization,
+31.69s wall). Direct stages reserved 1,869,824 bytes; GETs reserved 2,097,152.
+The argv-encoding hypothesis is disproved by focused native evidence. A first
+selection typo in Dev 39575946799 failed collection and earns no runtime proof.
+Core 39575920191 and all three dispatched children are confirmed cancelled;
+Status host's pre-cancellation failure remains to be inspected.
+Astra's focused reservation audit is PASS WITH NOTES. Parent retains all maximum
+sizes, computes spec reservations from known bytes and native aggregation bounds
+from unique paths or normalized role receipts, and checks each append before
+writing beyond its reserved extent. Parsed repeated-ancestry output retains its
+separate bound. Exact append and two-batch count cases supplement existing source
+integrity tests. Fixture-only process stage codes and DNS stream-presence flags
+will identify the remaining readiness mismatch without exposing private values.

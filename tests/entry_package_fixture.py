@@ -529,6 +529,19 @@ cfmgr_prerequisites_run() {
     cfmgr_fixture_actual_run "$@"
     cfmgr_fixture_result=$?
     printf '%s %s %s %s %s %s\n' "$cfmgr_fixture_mode" "$cfmgr_fixture_result" "${cfmgr_probe_exit:-none}" "${cfmgr_probe_pid:-none}" "$((${cfmgr_health_bytes:-0} - cfmgr_fixture_before_bytes))" "${cfmgr_health_bytes:-0}" >>@AUDIT@/routes
+    case $cfmgr_fixture_mode in
+    health-log-process)
+        while IFS= read -r cfmgr_fixture_diagnostic; do
+            case $cfmgr_fixture_diagnostic in PROCESS_STAGE\ *) printf '%s\n' "$cfmgr_fixture_diagnostic" >>@AUDIT@/process-diagnostic ;; esac
+        done <"$cfmgr_probe_stderr"
+        ;;
+    dig-version | health-dig-version)
+        cfmgr_fixture_stdout=0 cfmgr_fixture_stderr=0
+        [ ! -s "$cfmgr_probe_stdout" ] || cfmgr_fixture_stdout=1
+        [ ! -s "$cfmgr_probe_stderr" ] || cfmgr_fixture_stderr=1
+        printf 'DNS_STREAMS %s %s\n' "$cfmgr_fixture_stdout" "$cfmgr_fixture_stderr" >>@AUDIT@/process-diagnostic
+        ;;
+    esac
     return "$cfmgr_fixture_result"
 }
 """.replace("@AUDIT@", shlex.quote(str(audit)))
@@ -540,6 +553,34 @@ cfmgr_prerequisites_run() {
         original = source.read_text()
         text = translate(original)
         if relative.as_posix() == "modules/status.sh":
+            # Failure-only stage numbers diagnose the real private assembler;
+            # no path, identifier, argv or receipt value leaves its context.
+            text = text.replace(
+                "function hl_fail() { exit 1 }",
+                'function hl_fail() { if(mode=="process")print "PROCESS_STAGE " diag_stage " " i " " c " " k > "/dev/stderr";exit 1 }',
+            )
+            text = (
+                text.replace(
+                    'raw=hl_read(input,32768);n=split(raw,lines,"\\n")\n        for',
+                    'diag_stage=1;raw=hl_read(input,32768);n=split(raw,lines,"\\n")\n        for',
+                )
+                .replace(
+                    'c=split(lines[i],a,"\\t");if(c!=7',
+                    'diag_stage=2;c=split(lines[i],a,"\\t");if(c!=7',
+                )
+                .replace(
+                    'receipt=hl_read(spec "/" a[5],32768);',
+                    'diag_stage=3;receipt=hl_read(spec "/" a[5],32768);',
+                )
+                .replace(
+                    'if(index(receipt,"\\n") || b[2]!=a[3]',
+                    'diag_stage=4;if(index(receipt,"\\n") || b[2]!=a[3]',
+                )
+                .replace(
+                    'if(a[2]=="syslog") {if(b[1]!="PROC"',
+                    'diag_stage=(a[2]=="syslog"?5:6);if(a[2]=="syslog") {if(b[1]!="PROC"',
+                )
+            )
             # /tmp is represented by owned RAM only in context preparation;
             # actual /proc process identity and all attachment functions survive.
             start = text.index("cfmgr_status_prepare() {")
