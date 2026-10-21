@@ -2413,7 +2413,7 @@ cfmgr_health_reserve health-render-count || exit 31
 cfmgr_health_reserve health-date
 [ "$?" = 1 ] || exit 34
 cfmgr_health_stage_reserve dashboard 32768
-[ "$?" = 1 ] && [ "$cfmgr_health_files:$cfmgr_health_bytes" = 40:327680 ] || exit 43
+[ "$?" = 1 ] && [ "$cfmgr_health_files:$cfmgr_health_bytes" = 1136:327680 ] || exit 43
 cfmgr_probe_now=110 cfmgr_probe_deadline=112
 cfmgr_prerequisites_report_deadline "$cfmgr_health_final_deadline" || exit 35
 [ "$cfmgr_probe_deadline" = 112 ] || exit 36

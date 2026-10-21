@@ -4841,3 +4841,8 @@ have exact boundary cases, including direct staging and full-counter finalizatio
 The first complete successful native ledger must still justify final ceilings;
 this adjustment earns no acceptance. The normal fixture prints its safe numeric
 ledger on success and labels elapsed time correctly as report_seconds.
+Dev 39574443671 at fcd56c9 passed the operation/file/direct-stage and ownership
+boundaries, then stopped at an unchanged `40` file-count expectation in the
+finalization test (2 passed / 1 failed, 0.81s); its full-capacity setup now correctly
+preserves 1,136 files. Parent fixes that stale expected value. The full journey
+was not reached. Core 39574420386 is cancelled without children.
