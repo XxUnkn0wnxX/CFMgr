@@ -157,6 +157,12 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	health-compare) [ "$#" -eq 11 ] || return 2 ;;
+	health-cloud-frame) [ "$#" -eq 12 ] || return 2 ;;
+	health-selected-metadata) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
+	health-cloud-plan | health-cloud-authority | health-selected-check | health-cloud-join | health-cloud-json) [ "$#" -eq 14 ] || return 2 ;;
+	health-selected-copy | health-selected-hex | health-selected-hash | health-cloud-yaml | health-cloud-pem) [ "$#" -eq 11 ] || return 2 ;;
+	health-cloud-decode) [ "$#" -eq 10 ] || return 2 ;;
 	health-entware-metadata) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
 	health-inventory | health-scope | health-request) [ "$#" -eq 19 ] || return 2 ;;
 	health-get) [ "$#" -eq 15 ] || return 2 ;;
@@ -165,7 +171,8 @@ cfmgr_prerequisites_run() {
 	health-config) [ "$#" -eq 20 ] || return 2 ;;
 	health-native-metadata | health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) [ "$#" -eq 10 ] || return 2 ;;
 	health-fields) [ "$#" -eq 13 ] || return 2 ;;
-	health-native | health-mount | health-curl-offline | health-count-pair) [ "$#" -eq 11 ] || return 2 ;;
+	health-native | health-mount | health-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
+	health-count-get) [ "$#" -eq 12 ] || return 2 ;;
 	health-blkid) [ "$#" -eq 10 ] || return 2 ;;
 	health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | health-wc-jq | health-wc-sha | health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | health-dig-version | health-uname | health-date | health-curl-version) [ "$#" -eq 9 ] || return 2 ;;
 	history-meta | history-proc-meta | history-inode | history-count | history-digest | history-realpath | history-readlink | history-hexdump | history-script-prefix | history-blkid | history-proc-list | history-proc-pids | history-policy-decode) [ "$#" -eq 10 ] || return 2 ;;

@@ -36,20 +36,26 @@ cfmgr_health_begin() {
 cfmgr_health_mode() {
 	cfmgr_health_mode_files=2 cfmgr_health_mode_limit=8 cfmgr_health_mode_get=0
 	case $1 in
-	health-snapshot | health-entware-metadata) cfmgr_health_mode_limit=128 ;;
+	health-snapshot | health-entware-metadata | health-cloud-pem | health-cloud-decode) cfmgr_health_mode_limit=128 ;;
 	health-get) cfmgr_health_mode_limit=64 cfmgr_health_mode_files=4 cfmgr_health_mode_get=1 ;;
 	health-render) cfmgr_health_mode_limit=384 ;;
+	health-cloud-plan) cfmgr_health_mode_limit=64 ;;
+	health-cloud-authority | health-selected-copy | health-selected-hex | health-selected-metadata | health-cloud-yaml | health-cloud-join)
+		case ${cfmgr_health_selected_limit:-} in '' | *[!0-9]* | 0*) return 2 ;; esac
+		[ "${#cfmgr_health_selected_limit}" -le 5 ] && [ "$cfmgr_health_selected_limit" -le 22528 ] || return 2
+		cfmgr_health_mode_limit=$cfmgr_health_selected_limit
+		;;
 	# Only finite typed receipts/empty successful probes use the tiny tier.
 	# Native ash:1024 bytes/file; supported host reservation:2048 bytes/file.
-	health-scope | health-frame | health-request-check | health-response | health-trace | health-count | health-render-count | \
-		health-wc-jq | health-wc-sha | health-count-pair | health-current | health-uuid | health-date | health-native | \
+	health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
+		health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
 		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | \
 		health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | \
 		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | \
 		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline) cfmgr_health_mode_limit=2 ;;
 	health-inventory | health-protected | health-storage | health-uname | health-blkid | health-native-metadata | health-metadata-check | \
 		health-dig-version | health-request | health-config | health-fields | health-mount | health-metadata | \
-		health-nvram | health-space | health-realpath | health-curl-version) ;;
+		health-nvram | health-space | health-realpath | health-curl-version | health-response | health-compare) ;;
 	*) return 2 ;;
 	esac
 	# Reserve the larger host physical payload for EACH writable file.
@@ -150,7 +156,7 @@ cfmgr_health_stage_reserve() {
 	[ "${cfmgr_health_active:-0}" = 1 ] || return 2
 	[ -z "${cfmgr_probe_pid:-}" ] || [ "${cfmgr_probe_status:-}" = reaped ] || return 3
 	[ -z "${cfmgr_health_final_deadline:-}" ] || return 1
-	case $1:$2 in dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac
+	case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
 		[ "$cfmgr_health_files" -ge 560 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
@@ -249,23 +255,50 @@ cfmgr_health_frame() {
 }
 
 cfmgr_health_sizes() {
-	cfmgr_health_run health-count-pair /usr/bin/wc "$cfmgr_health_body" "$cfmgr_health_headers" || return $?
+	cfmgr_health_size_valid=0
+	cfmgr_health_run health-count-get /usr/bin/wc "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" || return $?
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
-	{
-		IFS=' ' read -r cfmgr_health_body_bytes cfmgr_health_body_path &&
-			IFS=' ' read -r cfmgr_health_header_bytes cfmgr_health_header_path &&
-			IFS=' ' read -r cfmgr_health_total_bytes cfmgr_health_total_label || return 1
-		cfmgr_health_extra=''
-		if IFS= read -r cfmgr_health_extra || [ -n "$cfmgr_health_extra" ]; then return 1; fi
-	} <"$cfmgr_probe_stdout"
-	for cfmgr_health_number in "$cfmgr_health_body_bytes" "$cfmgr_health_header_bytes" "$cfmgr_health_total_bytes"; do
-		case $cfmgr_health_number in '' | *[!0-9]* | 0?*) return 1 ;; esac
-		[ "${#cfmgr_health_number}" -le 6 ] || return 1
-	done
-	[ "$cfmgr_health_body_path" = "$cfmgr_health_body" ] && [ "$cfmgr_health_header_path" = "$cfmgr_health_headers" ] &&
-		[ "$cfmgr_health_total_label" = total ] && [ "$cfmgr_health_body_bytes" -le 32768 ] &&
-		[ "$cfmgr_health_header_bytes" -le 8192 ] &&
-		[ "$cfmgr_health_total_bytes" -eq "$((cfmgr_health_body_bytes + cfmgr_health_header_bytes))" ]
+	cfmgr_health_count_index=0
+	cfmgr_health_count_ok=1
+	while :; do
+		cfmgr_health_count_line=''
+		if IFS= read -r cfmgr_health_count_line; then :; else
+			[ -z "$cfmgr_health_count_line" ] || cfmgr_health_count_ok=0
+			break
+		fi
+		cfmgr_health_count_index=$((cfmgr_health_count_index + 1))
+		[ "$cfmgr_health_count_index" -le 4 ] || {
+			cfmgr_health_count_ok=0
+			break
+		}
+		cfmgr_health_count_line=${cfmgr_health_count_line#"${cfmgr_health_count_line%%[! ]*}"}
+		cfmgr_health_count_number=${cfmgr_health_count_line%% *}
+		cfmgr_health_count_label=${cfmgr_health_count_line#* }
+		case $cfmgr_health_count_number in '' | *[!0-9]* | 0?*) cfmgr_health_count_ok=0 ;; esac
+		[ "${#cfmgr_health_count_number}" -le 6 ] || cfmgr_health_count_ok=0
+		if [ "$cfmgr_health_count_index" -le 3 ]; then
+			case $cfmgr_health_count_index in
+			1) cfmgr_health_count_expected=$cfmgr_health_http_file ;;
+			2) cfmgr_health_count_expected=$cfmgr_health_body ;;
+			3) cfmgr_health_count_expected=$cfmgr_health_headers ;;
+			esac
+			[ "$cfmgr_health_count_label" = "$cfmgr_health_count_expected" ] || cfmgr_health_count_ok=0
+			case $cfmgr_health_count_index in
+			1) cfmgr_health_http_bytes=$cfmgr_health_count_number ;;
+			2) cfmgr_health_body_bytes=$cfmgr_health_count_number ;;
+			3) cfmgr_health_header_bytes=$cfmgr_health_count_number ;;
+			esac
+		else
+			[ "$cfmgr_health_count_label" = total ] || cfmgr_health_count_ok=0
+			cfmgr_health_count_total=$cfmgr_health_count_number
+		fi
+	done <"$cfmgr_probe_stdout"
+	[ "$cfmgr_health_count_index" = 4 ] || cfmgr_health_count_ok=0
+	[ "$cfmgr_health_count_ok" = 1 ] || return 1
+	[ "$cfmgr_health_http_bytes" = 4 ] &&
+		[ "$cfmgr_health_count_total" -eq "$((cfmgr_health_http_bytes + cfmgr_health_body_bytes + cfmgr_health_header_bytes))" ] || return 1
+	cfmgr_health_size_valid=1
+	[ "$cfmgr_health_body_bytes" -le 32768 ] && [ "$cfmgr_health_header_bytes" -le 8192 ]
 }
 
 cfmgr_health_snapshot() {
@@ -365,8 +398,13 @@ $cfmgr_health_scope
 		return "$cfmgr_health_code"
 	fi
 	cfmgr_health_http_file=$cfmgr_probe_stdout cfmgr_health_curl_exit=$cfmgr_probe_exit cfmgr_health_curl_error=$cfmgr_probe_stderr
-	cfmgr_health_frame "$cfmgr_health_http_file" http || return $?
+	cfmgr_health_result=transport-unverified
+	if cfmgr_health_sizes; then cfmgr_health_size_code=0; else cfmgr_health_size_code=$?; fi
+	[ "$cfmgr_health_size_code" != 3 ] || return 3
+	[ "$cfmgr_health_size_valid" = 1 ] || return 1
 	IFS= read -r cfmgr_health_http_code <"$cfmgr_health_http_file" || return 1
+	[ "${#cfmgr_health_http_code}" = 3 ] || return 1
+	case $cfmgr_health_http_code in [0-9][0-9][0-9]) ;; *) return 1 ;; esac
 	cfmgr_health_http "$cfmgr_health_http_code" || :
 	cfmgr_health_transport_exit "$cfmgr_health_curl_exit" || return 1
 	# HTTP rejection/throttle is retained even if curl also reports a body limit.
@@ -374,7 +412,7 @@ $cfmgr_health_scope
 		exec 6<&-
 		return 1
 	}
-	cfmgr_health_sizes || return $?
+	[ "$cfmgr_health_size_code" = 0 ] && [ "$cfmgr_health_size_valid" = 1 ] || return 1
 	case $cfmgr_health_kind in
 	trace)
 		cfmgr_health_run health-trace /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_health_body" "$cfmgr_health_body_bytes" "$4" || return $?
@@ -620,10 +658,23 @@ cfmgr_health_entware() {
 
 cfmgr_health_observe() {
 	# Public IDs contain only feature/kind/ordinal, never configured identities.
-	cfmgr_health_observation_id=$1
+	cfmgr_health_observation_id=$1 cfmgr_health_compare_deferred=0
 	shift
 	if cfmgr_health_get "$@"; then
 		IFS=' ' read -r cfmgr_health_marker cfmgr_health_version cfmgr_health_observed cfmgr_health_matches cfmgr_health_evidence cfmgr_health_end <"$cfmgr_health_result_file" || return 1
+		case $2:$cfmgr_health_version in
+		dns:2)
+			if cfmgr_health_comparison_keep DNS "${cfmgr_health_observation_id##*.}" "$cfmgr_health_compare_dns_family" "$cfmgr_health_result_file"; then cfmgr_health_compare_deferred=1; fi
+			;;
+		items:2)
+			case $3 in primary) cfmgr_health_compare_ordinal=1 ;; secondary) cfmgr_health_compare_ordinal=2 ;; *) return 2 ;; esac
+			if cfmgr_health_comparison_keep ITEMS "$cfmgr_health_compare_ordinal" - "$cfmgr_health_result_file"; then cfmgr_health_compare_deferred=1; fi
+			;;
+		trace:1)
+			case $4 in 4) cfmgr_health_compare_ordinal=1 ;; 6) cfmgr_health_compare_ordinal=2 ;; esac
+			cfmgr_health_comparison_keep TRACE "$cfmgr_health_compare_ordinal" "$4" "$cfmgr_health_result_file" || :
+			;;
+		esac
 		case $cfmgr_health_observed:$2:$cfmgr_health_matches in
 		partial:*) cfmgr_health_observation_state=UNKNOWN cfmgr_health_observation_detail='Only a partial provider page was verified; absence is unproved.' ;;
 		*:dns:0) cfmgr_health_observation_state=WARN cfmgr_health_observation_detail='The complete bounded page contained no exact DNS match.' ;;
@@ -655,11 +706,14 @@ cfmgr_health_observe() {
 		cfmgr_health_candidates="$cfmgr_health_candidates
 $1 $cfmgr_health_scope"
 	fi
+	[ "$cfmgr_health_compare_deferred" = 0 ] || return 0
 	cfmgr_health_row "$cfmgr_health_observation_id" "$cfmgr_health_observation_state" "$cfmgr_health_observation_detail" current 'Review configured resource and read permissions.' transport
 }
 
 cfmgr_health_provider_collect() {
 	cfmgr_health_public_feature='' cfmgr_health_dns_index=0 cfmgr_health_candidates=''
+	cfmgr_health_compare_count=0 cfmgr_health_compare_pending=''
+	cfmgr_health_compare_primary4=0 cfmgr_health_compare_primary6=0 cfmgr_health_compare_secondary4=0 cfmgr_health_compare_secondary6=0
 	cfmgr_health_ddns_schedule=0 cfmgr_health_sync_schedule=0
 	while IFS=' ' read -r cfmgr_health_tag cfmgr_health_feature cfmgr_health_a cfmgr_health_b cfmgr_health_c; do
 		case $cfmgr_health_tag in
@@ -682,6 +736,7 @@ cfmgr_health_provider_collect() {
 			ddns)
 				[ "$cfmgr_health_ddns_schedule" = 1 ] || continue
 				cfmgr_health_dns_index=$((cfmgr_health_dns_index + 1))
+				cfmgr_health_compare_dns_family=$cfmgr_health_c
 				# API transport uses IPv4 independently of the record address family.
 				cfmgr_health_observe "ddns.record.$cfmgr_health_dns_index" ddns dns "$cfmgr_health_b" 4 || return $?
 				;;
@@ -694,7 +749,10 @@ cfmgr_health_provider_collect() {
 			;;
 		family)
 			[ "$cfmgr_health_sync_schedule" = 1 ] || continue
-			cfmgr_health_row "ip_sync.$cfmgr_health_a.$cfmgr_health_b" UNKNOWN 'The configured family membership comparison is not yet projected from the retained private item response.' current 'Inspect the configured family target; a resource read alone does not prove membership.' ip_sync || return $?
+			case $cfmgr_health_a:$cfmgr_health_b in
+			primary:ipv4) cfmgr_health_compare_primary4=1 ;; primary:ipv6) cfmgr_health_compare_primary6=1 ;;
+			secondary:ipv4) cfmgr_health_compare_secondary4=1 ;; secondary:ipv6) cfmgr_health_compare_secondary6=1 ;;
+			esac
 			;;
 		additional) [ "$cfmgr_health_a" = 0 ] || cfmgr_health_row ddns.additional UNKNOWN 'Additional configured DNS targets exceed the first-three read schedule.' current 'Inspect remaining configured targets separately.' ddns || return $? ;;
 		esac
@@ -712,7 +770,8 @@ $cfmgr_health_candidates
 EOF_HEALTH_CANDIDATES
 	if [ -z "$cfmgr_health_public_feature" ]; then
 		cfmgr_health_row network.public4 SKIP 'No locally validated configured API scope remains eligible and unheld for public discovery.' current 'Review configured scopes and retained authentication evidence.' config || return $?
-		cfmgr_health_row network.public6 SKIP 'No locally validated configured API scope remains eligible and unheld for public discovery.' current 'Review configured scopes and retained authentication evidence.' config
+		cfmgr_health_row network.public6 SKIP 'No locally validated configured API scope remains eligible and unheld for public discovery.' current 'Review configured scopes and retained authentication evidence.' config || return $?
+		cfmgr_health_comparison_finish
 		return $?
 	fi
 	cfmgr_health_public_eligible=1
@@ -720,8 +779,9 @@ EOF_HEALTH_CANDIDATES
 	if [ "$cfmgr_health_ipv6_ready" = 1 ]; then
 		cfmgr_health_observe network.public6 "$cfmgr_health_public_feature" trace - 6 || return $?
 	else
-		cfmgr_health_row network.public6 SKIP 'No current usable global IPv6 address was proved on the selected WAN interface.' current 'Check selected WAN IPv6 configuration.' network
+		cfmgr_health_row network.public6 SKIP 'No current usable global IPv6 address was proved on the selected WAN interface.' current 'Check selected WAN IPv6 configuration.' network || return $?
 	fi
+	cfmgr_health_comparison_finish
 }
 
 cfmgr_health_collect() {
@@ -818,6 +878,7 @@ cfmgr_health_collect() {
 		cfmgr_health_row storage.entware UNKNOWN 'Protected mounted Entware identity was not proved; Entware executables were not admitted.' current 'Review retained storage identity and mount permissions.' storage || return $?
 		cfmgr_health_row prerequisite.entware SKIP 'Entware capability checks depend on protected mounted identity.' current 'Resolve storage evidence first.' storage || return $?
 	fi
+	cfmgr_health_cloud_collect || return $?
 	# Storage observation descriptors must never alias the private curl request.
 	exec 6<&- 7<&-
 	cfmgr_health_ipv6_ready=0
@@ -828,7 +889,7 @@ cfmgr_health_collect() {
 	else
 		cfmgr_health_row provider.reads SKIP 'Provider reads depend on valid schema-2 scope, current NTP and admitted native TLS.' current 'Resolve shared prerequisites first.' transport || return $?
 	fi
-	for cfmgr_health_pending in cloudflared.local logging hooks recovery backup; do
+	for cfmgr_health_pending in logging hooks recovery backup; do
 		cfmgr_health_row "$cfmgr_health_pending.integration" UNKNOWN 'This required diagnostic group is not connected to the full collector yet.' current 'Pending the subsequent integration package.' report || return $?
 	done
 	if [ "$cfmgr_health_incomplete" = 1 ]; then
@@ -1820,7 +1881,7 @@ cfmgr_status_awk_health_wire() {
 	cfmgr_awk_program='
 BEGIN {
     hw_mode=ENVIRON["CFMGR_HEALTH_MODE"]
-    if(hw_mode=="health-response") { }
+    if(hw_mode=="health-response" || hw_mode=="health-compare") { }
     else if(hw_mode=="health-request-check") { hw_request(ENVIRON["CFMGR_HEALTH_INPUT"],ENVIRON["CFMGR_HEALTH_BYTES"]); if(hw_kind!=ENVIRON["CFMGR_HEALTH_KIND"]) exit 1; exit 0 }
     else if(hw_mode=="health-frame") { hw_frame(ENVIRON["CFMGR_HEALTH_INPUT"],ENVIRON["CFMGR_HEALTH_KIND"]); exit 0 }
     else if(hw_mode=="health-trace") { hw_trace(); exit 0 }
@@ -1867,6 +1928,7 @@ function hw_request(path,bytes,    raw,a,n,url,header,p,count,q) {
 }
 function hw_frame(path,kind,    raw,line,a,n) {
     raw=hw_read(path,8192,0)
+    if(kind=="response" && index(raw,"CFMGR-HEALTH-RESPONSE 2 ")==1) {hw_values(path,"","");return}
     if(raw~/[^ -~\n]/ || index(substr(raw,1,length(raw)-1),"\n")) exit 1
     line=substr(raw,1,length(raw)-1); n=split(line,a," ")
     if(kind=="http") { if(length(raw)!=4 || line!~/^[0-5][0-9][0-9]$/) exit 1; return }
@@ -1876,6 +1938,50 @@ function hw_frame(path,kind,    raw,line,a,n) {
         if(n!=6 || a[1]!="CFMGR-HEALTH-RESPONSE" || a[2]!="1" || a[3]!~/^(verified|partial|observed)$/ || a[4]!~/^(0|[1-9][0-9]*)$/ || a[4]>4096 || a[5]!~/^(api-read|ipv[46]:[0-9a-f:.]+)$/ || a[6]!="END") exit 1
     } else exit 1
     if(line!=a[1]) { hw_rebuilt=a[1]; for(hw_i=2;hw_i<=n;hw_i++) hw_rebuilt=hw_rebuilt " " a[hw_i]; if(hw_rebuilt!=line) exit 1 }
+}
+# Canonicalize only after the existing ingestion validators succeed. Provider
+# receipts retain no raw addresses, names, identifiers or credentials.
+function hw_hex_value(value,    i,n) {
+    n=0;for(i=1;i<=length(value);i++)n=n*16+index("0123456789abcdef",substr(value,i,1))-1
+    return n
+}
+function hw_canonical(value,family,    a,tail,prefix,pos,left,right,na,nb,la,ra,i,out,zeros) {
+    if(family=="4") {split(value,a,".");for(i=1;i<=4;i++)out=out sprintf("%02x",a[i]+0);return out}
+    value=tolower(value)
+    if(index(value,".")) {
+        tail=value;sub(/^.*:/,"",tail);prefix=substr(value,1,length(value)-length(tail));split(tail,a,".")
+        value=prefix sprintf("%04x:%04x",a[1]*256+a[2],a[3]*256+a[4])
+    }
+    pos=index(value,"::")
+    if(pos) {
+        left=substr(value,1,pos-1);right=substr(value,pos+2)
+        na=(left=="" ? 0 : split(left,la,":"));nb=(right=="" ? 0 : split(right,ra,":"));zeros=8-na-nb
+        for(i=1;i<=na;i++)out=out sprintf("%04x",hw_hex_value(la[i]))
+        for(i=1;i<=zeros;i++)out=out "0000"
+        for(i=1;i<=nb;i++)out=out sprintf("%04x",hw_hex_value(ra[i]))
+    } else {split(value,a,":");for(i=1;i<=8;i++)out=out sprintf("%04x",hw_hex_value(a[i]))}
+    return out
+}
+function hw_values(path,expected_kind,expected_family,    raw,lines,a,n,i,c,key,family,width,prefix) {
+    raw=hw_read(path,4096,0);n=split(raw,lines,"\n")
+    if(n<3 || split(lines[1],a," ")!=6 || a[1]!="CFMGR-HEALTH-RESPONSE" || a[2]!="2" || a[3]!~/^(verified|partial)$/ || a[4]!~/^(0|[1-9][0-9]*)$/ || a[4]>50 || a[5]!~/^(dns|items)$/ || a[6]!~/^(4|6|mixed)$/ || lines[1]!=a[1] " " a[2] " " a[3] " " a[4] " " a[5] " " a[6])exit 1
+    hw_value_state=a[3];hw_value_count=a[4]+0;hw_value_kind=a[5];hw_value_family=a[6]
+    if((expected_kind!="" && hw_value_kind!=expected_kind) || (expected_family!="" && hw_value_family!=expected_family) || n!=hw_value_count+3 || lines[n-1]!="END " hw_value_count)exit 1
+    if(hw_value_kind=="dns" ? hw_value_family!~/^[46]$/ : hw_value_family!="mixed")exit 1
+    for(key in hw_value_address)delete hw_value_address[key]
+    for(i=2;i<n-1;i++) {
+        c=split(lines[i],a," ");family=a[2];width=(family=="4" ? 32 : 128);prefix=a[4]
+        if(c!=4 || a[1]!="VALUE" || family!~/^[46]$/ || a[3]~/[^0-9a-f]/ || length(a[3])!=(family=="4" ? 8 : 32) || prefix!~/^(0|[1-9][0-9]*)$/ || length(prefix)>3 || prefix>width || prefix<(family=="4" ? 8 : 12) || lines[i]!="VALUE " family " " a[3] " " prefix)exit 1
+        if(hw_value_kind=="dns" && (family!=hw_value_family || prefix!=width))exit 1
+        hw_value_address[i-1]=a[3];hw_value_prefix[i-1]=prefix+0;hw_value_address_family[i-1]=family
+    }
+}
+function hw_bits_match(address,network,bits,    full,remaining,i,mask) {
+    full=int(bits/4);remaining=bits-full*4
+    for(i=1;i<=full;i++)if(substr(address,i,1)!=substr(network,i,1))return 0
+    if(!remaining)return 1
+    mask=int(16/(2^remaining))
+    return int(hw_hex_value(substr(address,full+1,1))/mask)==int(hw_hex_value(substr(network,full+1,1))/mask)
 }
 function hw_ipv4(value,    a,n,i) { n=split(value,a,"."); if(n!=4) return 0; for(i=1;i<=4;i++) if(a[i]!~/^(0|[1-9][0-9]*)$/ || length(a[i])>3 || a[i]>255) return 0; return 1 }
 function hw_public4(value,    a) {
@@ -1954,8 +2060,16 @@ BEGIN {
                 hr_ttl=hr_uint(hr_field(hr_item,"ttl"))
                 if(hr_proxy!~/^(true|false)$/ || (hr_ttl!=1 && (hr_ttl<30 || hr_ttl>86400))) reject()
             }
-            if(hw_kind=="items" && !hw_list_ip(hr_text(hr_field(hr_item,"ip"),64))) reject()
+            if(hw_kind=="items") {
+                hr_content=hr_text(hr_field(hr_item,"ip"),64);if(!hw_list_ip(hr_content))reject()
+            }
+            if(hw_kind=="dns" || hw_kind=="items") {
+                hr_family=(index(hr_content,":") ? "6" : "4");hr_width=(hr_family=="4" ? 32 : 128)
+                hr_parts=split(hr_content,hr_network,"/");hr_prefix=(hr_parts==1 ? hr_width : hr_network[2]+0)
+                hr_values=hr_values "VALUE " hr_family " " hw_canonical(hr_network[1],hr_family) " " hr_prefix "\n"
+            }
             hr_count++
+            if((hw_kind=="dns" || hw_kind=="items") && hr_count>50)reject()
         }
         if(hw_kind=="items") {
             hr_info=hr_field(1,"result_info"); hr_cursors=hr_field(hr_info,"cursors")
@@ -1972,7 +2086,11 @@ BEGIN {
             if(hr_page!=1 || hr_pages!=1 || hr_total!=hr_count || hr_seen!=hr_count) hr_state="partial"
         }
     }
-    printf "CFMGR-HEALTH-RESPONSE 1 %s %d api-read END\n",hr_state,hr_count
+    if(hw_kind=="dns" || hw_kind=="items") {
+        hr_output="CFMGR-HEALTH-RESPONSE 2 " hr_state " " hr_count " " hw_kind " " (hw_kind=="dns" ? (hr_saved[9]=="A" ? "4" : "6") : "mixed") "\n" hr_values "END " hr_count "\n"
+        if(length(hr_output)>4096)reject()
+        printf "%s",hr_output
+    } else printf "CFMGR-HEALTH-RESPONSE 1 %s %d api-read END\n",hr_state,hr_count
     exit 0
 }
 function hr_hex(value,    i,out) { out=""; for(i=1;i<=length(value);i++) out=out byte_hex[byte_value["b" substr(value,i,1)]]; return out }
@@ -2132,4 +2250,857 @@ function emit_field(label,value) {
 }
 '
 	# CFMGR-AWK-END health_render
+}
+
+cfmgr_status_awk_health_cloud() {
+	# CFMGR-AWK-BEGIN health_cloud
+	cfmgr_awk_program='
+# Three separate private projections. Only the path/policy plan is shell-readable.
+BEGIN {
+    if(!co_observation_ready || co_version!="n2")reject()
+    hc=cs_id(1,"cloudflared"); refs=cs_id(hc,"credential_refs"); paths=cs_id(hc,"paths")
+    registry=cs_id(1,"credentials"); mode=ENVIRON["CFMGR_HEALTH_CLOUD"]
+    runtime_ref=cs_string(refs,"runtime",1); cert_ref=cs_string(refs,"certificate",1)
+    runtime=(runtime_ref=="" ? 0 : cs_credentials[runtime_ref]); cert=(cert_ref=="" ? 0 : cs_credentials[cert_ref])
+    method=cs_string(hc,"method",1); generation=cs_generation(1,"generation")
+    if(mode=="runtime-authority") {
+        if(method!="advanced" || !runtime)exit 1
+        out="CFMGR-AUTH 1 " co_hex(runtime_ref) " " co_hex(cs_string(runtime,"account_tag",0)) " " cs_uuid(cs_string(runtime,"tunnel_id",0)) " " co_hex(cs_string(runtime,"tunnel_secret",0)) " END\n"
+    } else if(mode=="certificate-account") {
+        if(!cert)exit 1
+        out="CFMGR-CERT-ACCOUNT 1 " co_hex(cs_string(cert,"account_id",0)) " END\n"
+    } else if(mode=="plan") {
+        hc_line("CFMGR-CLOUD-PLAN\t1")
+        hc_line("STATE\t" cs_bool(hc,"configured") "\t" cs_bool(hc,"enabled") "\t" cs_bool(hc,"installed") "\t" cs_bool(hc,"maintenance_enabled") "\t" (method=="" ? "-" : method))
+        auto=cs_id(hc,"binary_auto_update"); watchdog=cs_policy(hc,"watchdog"); ready=cs_policy(hc,"readiness")
+        hc_line("POLICY\t" (cfmgr_json_tree_kind[auto]=="null" ? "-" : (cfmgr_json_tree_kind[auto]=="true" ? "1" : "0")) "\t" (watchdog ? "1" : "0") "\t" (watchdog ? cs_int(watchdog,"reconnect_grace_seconds","1","300") : "-") "\t" (watchdog ? cs_int(watchdog,"stability_seconds","60","3600") : "-"))
+        hc_line("READINESS\t" (ready ? cs_int(ready,"response_timeout_seconds","1","2") : "-") "\t" (ready ? cs_int(ready,"command_timeout_seconds","1","3") : "-"))
+        owners=cs_id(cs_id(1,"ownership"),"components")
+        hc_file("yaml",cs_string(paths,"yaml",1),"data.cloudflared.yaml",0)
+        hc_file("json",cs_string(paths,"json",1),"data.cloudflared.json",0)
+        hc_file("certificate",(cert ? cs_string(cert,"path",0) : ""),"data.cloudflared.certificate",cert)
+        hc_file("certificate-recovery",(cert ? cs_string(cert,"recovery_path",0) : ""),"data.cloudflared.certificate-recovery",cert)
+        hc_file("binary","/opt/bin/cloudflared","cloudflared",0)
+        hc_line("AUTH\t" (runtime ? length(co_hex(runtime_ref))/2 : 0) "\t" (method=="advanced" && runtime ? length(co_hex(cs_string(runtime,"account_tag",0)))/2 : 0) "\t" (method=="advanced" && runtime ? length(co_hex(cs_string(runtime,"tunnel_secret",0)))/2 : 0) "\t" (cert ? length(co_hex(cs_string(cert,"account_id",0)))/2 : 0))
+        hc_line("CERT\t" (cert ? cs_string(cert,"provenance",0) : "-") "\t" (cert ? "1" : "0"))
+        for(i=0;(item=co_child[owners,"i" i]);i++)if(cs_string(item,"component",0)~/^data\.cloudflared\.input\.[A-Za-z][A-Za-z0-9._-]*$/) {
+            p=cs_string(item,"path",0);gen=cs_generation(item,"generation");sha=cs_string(item,"sha256",1)
+            hc_line("INPUT-OWNER\t" (hc_path(p) ? "supported" : "unsupported") "\t" (hc_path(p) ? p : "-") "\t" (cs_le(gen,generation) ? "matched" : "conflict") "\t" gen "\t" (sha=="" ? "-" : sha))
+        }
+        out=out "END\t" rows "\n"
+        if(length(out)>32768)reject()
+    } else reject()
+    if(length(out)>131072)reject()
+    printf "%s",out;exit
+}
+function hc_line(s) { out=out s "\n";rows++ }
+function hc_path(p,    a,n,i) {
+    if(p=="" || length(p)>1024 || p!~/^\// || p~/[^ -~]/ || index(p,"\\") || p~/\/$/)return 0
+    n=split(p,a,"/");for(i=2;i<=n;i++)if(a[i]=="" || a[i]=="." || a[i]=="..")return 0
+    return 1
+}
+function hc_file(role,path,component,cert,    i,item,state,gen,hash,found,supported) {
+    state="none";gen=hash="-";found=0
+    for(i=0;(item=co_child[owners,"i" i]);i++)if(cs_string(item,"component",0)==component) {
+        found++;state="matched";gen=cs_generation(item,"generation");hash=cs_string(item,"sha256",1)
+        if(hash=="")hash="-"
+        if(cs_string(item,"path",0)!=path || !cs_le(gen,generation))state="conflict"
+        if(cert && (gen!=cs_generation(cert,"generation") || hash!=cs_string(cert,"sha256",0)))state="conflict"
+    }
+    if(found>1)state="conflict"
+    if(cert && !found) {gen=cs_generation(cert,"generation");hash=cs_string(cert,"sha256",0);if(!cs_le(gen,generation))state="conflict"}
+    supported=(path=="" ? "absent" : (hc_path(path) ? "supported" : "unsupported"))
+    hc_line("FILE\t" role "\t" supported "\t" (supported=="supported" ? path : "-") "\t" state "\t" gen "\t" hash)
+}
+'
+	# CFMGR-AWK-END health_cloud
+}
+
+cfmgr_status_awk_health_selected() {
+	# CFMGR-AWK-BEGIN health_selected
+	cfmgr_awk_program='
+# Fixed private metadata and YAML/authority join. No authority becomes output.
+function hs_fail() { bad=1;exit 1 }
+function hs_unhex(s,    i,n,out) {
+    if(s=="" || length(s)%2 || s~/[^0-9a-f]/)hs_fail()
+    for(i=1;i<=length(s);i+=2) {
+        n=(index("0123456789abcdef",substr(s,i,1))-1)*16+index("0123456789abcdef",substr(s,i+1,1))-1
+        if(n<32 || n>126)hs_fail();out=out sprintf("%c",n)
+    };return out
+}
+function hs_path(p,    a,n,i) {
+    if(p=="/")return p
+    if(length(p)>1024 || p!~/^\// || p~/[^ -~]/ || index(p,"\\"))hs_fail()
+    n=split(p,a,"/");for(i=2;i<=n;i++)if(a[i]=="" || a[i]=="." || a[i]=="..")hs_fail()
+    return p
+}
+function hs_read(p,max,    saved,raw,extra,n) {
+    saved=RS;RS=sprintf("%c",28);n=getline raw <p
+    if(n<0 || (getline extra <p)>0 || length(raw)>max || raw~/[^ -~\n\t]/ || substr(raw,length(raw),1)!="\n")hs_fail()
+    close(p);RS=saved;return raw
+}
+function hs_uint(s,max) { return s~/^(0|[1-9][0-9]*)$/ && length(s)<=length(max) && (length(s)<length(max) || "n" s<="n" max) }
+function hs_hash(s) { return s=="-" || (length(s)==64 && s!~/[^0-9a-f]/) }
+function hs_generation(s) { return s=="-" || (s~/^[1-9][0-9]*$/ && length(s)<=20) }
+function hs_plan(path,    raw,lines,n,i,a,c,roles) {
+    raw=hs_read(path,32768);n=split(raw,lines,"\n");split("yaml json certificate certificate-recovery binary",roles," ")
+    if(n<13 || lines[1]!="CFMGR-CLOUD-PLAN\t1")hs_fail()
+    for(i=2;i<n;i++) {
+        c=split(lines[i],a,"\t")
+        if(i==2) {if(c!=6 || a[1]!="STATE" || a[2]!~/^[01]$/ || a[3]!~/^[01]$/ || a[4]!~/^[01]$/ || a[5]!~/^[01]$/ || a[6]!~/^(-|token|advanced)$/)hs_fail()}
+        else if(i==3) {if(c!=5 || a[1]!="POLICY" || a[2]!~/^(-|0|1)$/ || a[3]!~/^[01]$/ || (a[3]==0 ? (a[4]!="-" || a[5]!="-") : (!hs_uint(a[4],"300") || a[4]+0<1 || !hs_uint(a[5],"3600") || a[5]+0<60)))hs_fail()}
+        else if(i==4) {if(c!=3 || a[1]!="READINESS" || (a[2]=="-" ? a[3]!="-" : (!hs_uint(a[2],"2") || a[2]+0<1 || !hs_uint(a[3],"3") || a[3]+0<a[2]+0)))hs_fail()}
+        else if(i>=5 && i<=9) {
+            if(c!=7 || a[1]!="FILE" || a[2]!=roles[i-4] || a[3]!~/^(supported|unsupported|absent)$/ || a[5]!~/^(none|matched|conflict)$/ || !hs_generation(a[6]) || !hs_hash(a[7]))hs_fail()
+            if(a[3]=="supported")hs_path(a[4]);else if(a[4]!="-")hs_fail()
+        } else if(i==10) {if(c!=5 || a[1]!="AUTH" || !hs_uint(a[2],"65536") || !hs_uint(a[3],"65536") || !hs_uint(a[4],"65536") || !hs_uint(a[5],"65536"))hs_fail()}
+        else if(i==11) {if(c!=3 || a[1]!="CERT" || a[2]!~/^(-|login|import|migration|repair)$/ || a[3]!~/^[01]$/ || ((a[2]=="-")!=(a[3]==0)))hs_fail()}
+        else if(i==n-1) {if(c!=2 || a[1]!="END" || a[2]!=(n-2) "")hs_fail()}
+        else {
+            if(c!=6 || a[1]!="INPUT-OWNER" || a[2]!~/^(supported|unsupported)$/ || a[4]!~/^(matched|conflict)$/ || !hs_generation(a[5]) || a[5]=="-" || !hs_hash(a[6]))hs_fail()
+            if(a[2]=="supported")hs_path(a[3]);else if(a[3]!="-")hs_fail()
+        }
+    }
+}
+function hs_join_frame(path,    raw,n,lines,a,i,c,total) {
+    raw=hs_read(path,262144)
+    if(raw=="CFMGR-CLOUD-YAML-MISMATCH 1 END\n")return
+    n=split(raw,lines,"\n");if(n<3 || split(lines[1],a,"\t")!=4 || a[1]!="CFMGR-CLOUD-YAML" || a[2]!="1" || !hs_uint(a[3],"65536") || !hs_uint(a[4],"65536"))hs_fail()
+    total=a[3]+0;if(n!=total+3)hs_fail()
+    for(i=2;i<n-1;i++) {
+        c=split(lines[i],a,"\t")
+        if(c!=7 || a[1]!="INPUT" || a[2]!=(i-1) "" || a[3]!~/^(origincert|cacert|origin-ca-pool|caPool)$/ || a[5]!~/^(external|matched|conflict)$/ || !hs_generation(a[6]) || !hs_hash(a[7]))hs_fail()
+        hs_path(a[4])
+    }
+    if(lines[n-1]!="END\t" total)hs_fail()
+}
+BEGIN {
+    mode=ARGV[1];input=ARGV[2];profile=ARGV[3];spec=ARGV[4];plan=ARGV[5];ARGC=1
+    if(mode=="frame-plan") {hs_plan(input);exit}
+    if(mode=="frame-join") {hs_join_frame(input);exit}
+    if(mode=="metadata") {
+        if(profile!~/^(private|public|executable)$/)hs_fail()
+        n=split(spec,wanted,"\n");if(n<1 || n>13)hs_fail()
+        for(i=1;i<=n;i++) {hs_path(wanted[i]);if(expected[wanted[i]]++)hs_fail()}
+        raw=hs_read(input,32768);count=split(raw,lines,"\n");if(count!=n+1)hs_fail()
+        for(i=1;i<count;i++) {
+            rest=lines[i]
+            for(j=1;j<=9;j++) {
+                sub(/^ +/,"",rest);if(!match(rest,/^[^ ]+/))hs_fail()
+                f[j]=substr(rest,1,RLENGTH);rest=substr(rest,RLENGTH+1)
+            }
+            sub(/^ +/,"",rest);if(!(rest in expected) || seen[rest]++)hs_fail()
+            if(f[1]!~/^[1-9][0-9]*$/ || length(f[1])>20 || f[3]!~/^[1-9][0-9]*$/ || f[4]!="0" || f[5]!~/^[0-9]+$/ || f[6]!~/^(0|[1-9][0-9]*)$/ || length(f[6])>10 || length(f[2])!=10 || substr(f[2],6,1)=="w" || substr(f[2],9,1)=="w")hs_fail()
+            if(rest==ENVIRON["CFMGR_HEALTH_SELECTED_PATH"]) {
+                if(substr(f[2],1,1)!="-" || (profile=="private" && f[2]!="-rw-------") || (profile=="executable" && substr(f[2],4,1)!="x"))hs_fail()
+                inode=f[1];bytes=f[6]
+            } else if(substr(f[2],1,1)!="d")hs_fail()
+        }
+        print "CFMGR-SELECTED 1 " (inode=="" ? "-" : inode) " " (bytes=="" ? "-" : bytes) " END";exit
+    }
+    if(mode!="yaml-join")hs_fail()
+    raw=hs_read(profile,131072);sub(/\n$/,"",raw)
+    if(index(raw,"\n") || split(raw,a," ")!=7 || raw!="CFMGR-AUTH 1 " a[3] " " a[4] " " a[5] " " a[6] " END" || a[1]!="CFMGR-AUTH" || a[2]!="1" || a[7]!="END")hs_fail()
+    uuid=a[5]
+    if(plan!="-") {
+        hs_plan(plan)
+        raw=hs_read(plan,32768);n=split(raw,lines,"\n")
+        for(i=1;i<n;i++)if(split(lines[i],a,"\t")==6 && a[1]=="INPUT-OWNER" && a[2]=="supported") {
+            p=hs_path(a[3]);if(p in owner)owner[p]="conflict";else owner[p]=a[4]
+            ownergen[p]=a[5];ownerhash[p]=a[6]
+        }
+    }
+    raw=hs_read(input,262144);n=split(raw,lines,"\n")
+    if(n<4 || lines[1]!="CFMGR-YAML 1" || split(lines[2],a," ")!=3 || a[1]!="IDENTITY")hs_fail()
+    mismatch=(a[2]!=uuid || hs_unhex(a[3])!=spec)
+    for(i=3;i<n;i++) {
+        count=split(lines[i],a," ")
+        if(a[1]=="INPUT") {
+            if(ended || count!=4 || a[2]!=++inputs || a[3]!~/^(origincert|cacert|origin-ca-pool|caPool)$/)hs_fail()
+            path=hs_path(hs_unhex(a[4]));output=output "INPUT\t" inputs "\t" a[3] "\t" path "\t" ((path in owner) ? owner[path] : "external") "\t" ((path in owner) ? ownergen[path] : "-") "\t" ((path in owner) ? ownerhash[path] : "-") "\n"
+        } else if(a[1]=="CONTROL") {
+            if(ended || count!=3 || a[2]!~/^(logfile|log-directory|pidfile|trace-output)$/)hs_fail()
+            hs_path(hs_unhex(a[3]));controls++
+        } else if(a[1]=="END") {
+            if(ended++ || i!=n-1 || count!=3 || a[2]!=inputs+0 || a[3]!=controls+0)hs_fail()
+        } else hs_fail()
+    }
+    if(!ended)hs_fail()
+    if(mismatch) {print "CFMGR-CLOUD-YAML-MISMATCH 1 END";exit}
+    if(length(output)+128>262144)hs_fail()
+    # A report does not launch Cloudflared. Explicit output-control paths are
+    # still surfaced as an unproved launch-control association, never executed.
+    printf "CFMGR-CLOUD-YAML\t1\t%d\t%d\n%sEND\t%d\n",inputs,controls,output,inputs;exit
+}
+'
+	# CFMGR-AWK-END health_selected
+}
+
+# These operations consume the retained config only. Authority stdout remains
+# private, is measured natively, and is never read into a shell variable.
+cfmgr_health_cloud_project() {
+	case $1 in plan) cfmgr_health_cloud_mode=health-cloud-plan cfmgr_health_cloud_max=32768 ;;
+	runtime-authority | certificate-account)
+		cfmgr_health_cloud_mode=health-cloud-authority cfmgr_health_cloud_max=131072
+		case $1 in runtime-authority) cfmgr_health_cloud_expected=$cfmgr_health_cloud_runtime_bytes ;; *) cfmgr_health_cloud_expected=$cfmgr_health_cloud_account_bytes ;; esac
+		if [ "$cfmgr_health_cloud_expected" -gt 131072 ]; then
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		fi
+		cfmgr_health_selected_limit=$(((cfmgr_health_cloud_expected + 511) / 512))
+		;;
+	*) return 2 ;;
+	esac
+	cfmgr_health_run "$cfmgr_health_cloud_mode" /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" \
+		"$cfmgr_source/modules/status.sh" "$cfmgr_health_config" "$cfmgr_health_config_bytes" "$1" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_cloud_projection=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_cloud_projection" "$cfmgr_health_cloud_max" || return $?
+	[ "$cfmgr_health_size" -gt 0 ] || return 1
+	case $1 in
+	plan) cfmgr_health_cloud_frame "$cfmgr_health_cloud_projection" plan || return $? ;;
+	*) [ "$cfmgr_health_size" = "$cfmgr_health_cloud_expected" ] || return 1 ;;
+	esac
+}
+
+cfmgr_health_selected_attached() {
+	cfmgr_status_attachment_ok || return 1
+	case $cfmgr_health_selected_logical in /opt/*) cfmgr_health_entware_attachment || return $? ;; esac
+}
+
+cfmgr_health_selected_resolve() {
+	cfmgr_health_selected_attached || return $?
+	[ -f "$cfmgr_health_selected_logical" ] && [ ! -L "$cfmgr_health_selected_logical" ] || return 1
+	cfmgr_health_canonical "$cfmgr_health_selected_logical" || return $?
+	case $cfmgr_health_selected_logical in
+	/opt/*) [ "$cfmgr_health_resolved" = "$cfmgr_health_opt/${cfmgr_health_selected_logical#/opt/}" ] || return 1 ;;
+	*) [ "$cfmgr_health_resolved" = "$cfmgr_health_selected_logical" ] || return 1 ;;
+	esac
+	[ "${#cfmgr_health_resolved}" -le 1024 ] || return 1
+}
+
+cfmgr_health_selected_batch() {
+	# Root-owned regular files/directories have nine bounded native LS fields.
+	# Charge the exact path bytes plus a conservative 256-byte field allowance.
+	cfmgr_health_selected_batch_bytes=0
+	for cfmgr_health_selected_operand; do
+		cfmgr_health_selected_batch_bytes=$((cfmgr_health_selected_batch_bytes + ${#cfmgr_health_selected_operand} + 256))
+	done
+	cfmgr_health_selected_limit=$(((cfmgr_health_selected_batch_bytes + 511) / 512))
+	cfmgr_health_selected_metadata_reserved=$((cfmgr_health_selected_metadata_reserved + cfmgr_health_selected_limit * 2048 + 4096))
+	cfmgr_health_run health-selected-metadata /bin/ls "$@" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_run health-selected-check /usr/bin/awk "$cfmgr_source/modules/status.sh" \
+		"$cfmgr_probe_stdout" "$cfmgr_health_selected_profile" "$cfmgr_health_selected_spec" "$cfmgr_health_selected_path" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	IFS=' ' read -r cfmgr_health_selected_tag cfmgr_health_selected_version cfmgr_health_selected_i cfmgr_health_selected_n cfmgr_health_selected_end cfmgr_health_selected_extra <"$cfmgr_probe_stdout" || return 1
+	[ "$cfmgr_health_selected_tag:$cfmgr_health_selected_version:$cfmgr_health_selected_end:$cfmgr_health_selected_extra" = CFMGR-SELECTED:1:END: ] || return 1
+	if [ "$cfmgr_health_selected_i" != - ]; then
+		cfmgr_health_selected_inode=$cfmgr_health_selected_i cfmgr_health_selected_bytes=$cfmgr_health_selected_n
+	fi
+}
+
+cfmgr_health_selected_metadata() {
+	cfmgr_health_selected_walk=$cfmgr_health_selected_path cfmgr_health_selected_spec=''
+	cfmgr_health_selected_inode='' cfmgr_health_selected_bytes='' cfmgr_health_selected_path_count=0
+	cfmgr_health_selected_metadata_reserved=0
+	set --
+	while :; do
+		[ ! -L "$cfmgr_health_selected_walk" ] || return 1
+		cfmgr_health_selected_path_count=$((cfmgr_health_selected_path_count + 1))
+		set -- "$@" "$cfmgr_health_selected_walk"
+		cfmgr_health_selected_spec="${cfmgr_health_selected_spec}${cfmgr_health_selected_spec:+
+}$cfmgr_health_selected_walk"
+		if [ "$#" = 13 ] || [ "$cfmgr_health_selected_walk" = / ]; then
+			cfmgr_health_selected_batch "$@" || return $?
+			set --
+			cfmgr_health_selected_spec=''
+		fi
+		[ "$cfmgr_health_selected_walk" != / ] || break
+		cfmgr_health_selected_walk=${cfmgr_health_selected_walk%/*}
+		[ -n "$cfmgr_health_selected_walk" ] || cfmgr_health_selected_walk=/
+	done
+	[ -n "$cfmgr_health_selected_inode" ] && [ -n "$cfmgr_health_selected_bytes" ]
+}
+
+# ROLE LOGICAL_PATH PROFILE snapshot|hash|metadata. Parsed YAML has no validity
+# size cap: finite snapshot and three-byte hex funding are checked before copy.
+cfmgr_health_selected_snapshot() {
+	cfmgr_health_selected_role=$1 cfmgr_health_selected_logical=$2 cfmgr_health_selected_profile=$3 cfmgr_health_selected_operation=$4
+	cfmgr_health_selected_file='' cfmgr_health_selected_digest=''
+	cfmgr_health_selected_resolve || return $?
+	cfmgr_health_selected_path=$cfmgr_health_resolved
+	cfmgr_health_selected_metadata || return $?
+	cfmgr_health_selected_before="$cfmgr_health_selected_inode $cfmgr_health_selected_bytes"
+	cfmgr_health_selected_extent=$cfmgr_health_selected_bytes
+	case $cfmgr_health_selected_operation in
+	snapshot)
+		case $cfmgr_health_selected_role in json | certificate | certificate-recovery)
+			[ "$cfmgr_health_selected_extent" -le 65536 ] || return 1
+			;;
+		esac
+		# A copy larger than the entire collection payload allowance cannot be
+		# funded. Reject it before multiplying a potentially large file extent.
+		if [ "$cfmgr_health_selected_extent" -gt 11534336 ]; then
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		fi
+		cfmgr_health_selected_limit=$(((cfmgr_health_selected_extent + 4095) / 4096 * 4096 + 4096 + 511))
+		cfmgr_health_selected_limit=$((cfmgr_health_selected_limit / 512))
+		# Fund copy/count, canonical and after-metadata observations using the
+		# same physical writer tiers as actual dispatch. Only semantic branches
+		# that can run reserve future hex/count work. No counter is reset.
+		cfmgr_health_selected_batches=$(((cfmgr_health_selected_path_count + 12) / 13))
+		cfmgr_health_selected_future=$((cfmgr_health_selected_limit * 2048 + cfmgr_health_selected_metadata_reserved + 4096 + 16384))
+		cfmgr_health_selected_future_ops=$((cfmgr_health_selected_batches * 2 + 3))
+		case $cfmgr_health_selected_logical in /opt/*)
+			cfmgr_health_selected_future=$((cfmgr_health_selected_future + 32768))
+			cfmgr_health_selected_future_ops=$((cfmgr_health_selected_future_ops + 2))
+			;;
+		esac
+		cfmgr_health_selected_future_hex=0
+		if [ "${cfmgr_health_backup:-missing}" = verified ]; then
+			case $cfmgr_health_selected_role in
+			yaml) [ -z "${cfmgr_health_cloud_authority:-}" ] || cfmgr_health_selected_future_hex=1 ;;
+			certificate | certificate-recovery)
+				if [ -n "${cfmgr_health_cloud_account:-}" ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ]; then
+					cfmgr_health_selected_future_hex=1
+					if [ "${cfmgr_health_cloud_certificate_parsed:-0}" = 1 ] && [ "${cfmgr_health_cloud_sha:--}" != - ] &&
+						[ "${cfmgr_health_cloud_sha:-}" = "${cfmgr_health_cloud_certificate_digest:-}" ]; then cfmgr_health_selected_future_hex=0; fi
+				fi
+				;;
+			esac
+		fi
+		if [ "$cfmgr_health_selected_future_hex" = 1 ]; then
+			cfmgr_health_selected_hex_limit=$(((cfmgr_health_selected_extent * 3 + 511) / 512))
+			[ "$cfmgr_health_selected_hex_limit" -gt 0 ] || cfmgr_health_selected_hex_limit=1
+			cfmgr_health_selected_future=$((cfmgr_health_selected_future + cfmgr_health_selected_hex_limit * 2048 + 4096))
+			cfmgr_health_selected_future_ops=$((cfmgr_health_selected_future_ops + 2))
+		fi
+		if [ "$((cfmgr_health_bytes + cfmgr_health_selected_future))" -gt 11534336 ] ||
+			[ "$((cfmgr_health_operations + cfmgr_health_selected_future_ops))" -gt 248 ] || [ "$((cfmgr_health_files + cfmgr_health_selected_future_ops * 2))" -gt 560 ]; then
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		fi
+		cfmgr_health_run health-selected-copy /bin/dd "$cfmgr_health_selected_path" "$cfmgr_health_selected_extent" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_health_selected_file=$cfmgr_probe_stdout
+		cfmgr_health_count "$cfmgr_health_selected_file" "$cfmgr_health_selected_extent" || return $?
+		[ "$cfmgr_health_size" = "$cfmgr_health_selected_extent" ] || return 1
+		;;
+	hash)
+		[ "${cfmgr_health_native_openssl_ok:-0}" = 1 ] || return 1
+		cfmgr_health_run health-selected-hash "$cfmgr_health_openssl" "$cfmgr_health_selected_path" "$cfmgr_health_selected_extent" || return $?
+		cfmgr_health_selected_hash_receipt || return $?
+		;;
+	metadata) ;;
+	*) return 2 ;;
+	esac
+	cfmgr_health_selected_resolve || return $?
+	[ "$cfmgr_health_resolved" = "$cfmgr_health_selected_path" ] || return 1
+	cfmgr_health_selected_metadata || return $?
+	[ "$cfmgr_health_selected_before" = "$cfmgr_health_selected_inode $cfmgr_health_selected_bytes" ] && cfmgr_health_selected_attached
+}
+
+cfmgr_health_selected_hash_receipt() {
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	{
+		IFS= read -r cfmgr_health_selected_hash_line || return 1
+		cfmgr_health_selected_extra=''
+		if IFS= read -r cfmgr_health_selected_extra || [ -n "$cfmgr_health_selected_extra" ]; then return 1; fi
+	} <"$cfmgr_probe_stdout"
+	cfmgr_health_selected_digest=${cfmgr_health_selected_hash_line%% *}
+	[ "${#cfmgr_health_selected_digest}" = 64 ] || return 1
+	case $cfmgr_health_selected_digest in *[!0-9a-f]*) return 1 ;; esac
+	# OpenSSL -r stdin spelling, never accept a partial or named-file receipt.
+	[ "$cfmgr_health_selected_hash_line" = "$cfmgr_health_selected_digest *stdin" ] ||
+		[ "$cfmgr_health_selected_hash_line" = "$cfmgr_health_selected_digest stdin" ]
+}
+
+cfmgr_health_cloud_hex() {
+	cfmgr_health_selected_limit=$((($2 * 3 + 511) / 512))
+	[ "$cfmgr_health_selected_limit" -gt 0 ] || cfmgr_health_selected_limit=1
+	cfmgr_health_run health-selected-hex /usr/bin/hexdump "$1" "$2" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_cloud_hex_file=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_cloud_hex_file" "$(($2 * 3))" || return $?
+	[ "$cfmgr_health_size" = "$(($2 * 3))" ]
+}
+
+cfmgr_health_cloud_frame() {
+	cfmgr_health_run health-cloud-frame /usr/bin/awk "$cfmgr_source/modules/status.sh" "$1" "$2" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] && [ ! -s "$cfmgr_probe_stdout" ]
+}
+
+cfmgr_health_cloud_json() {
+	cfmgr_health_cloud_match_state=unknown
+	cfmgr_health_run health-cloud-json /usr/bin/awk "$cfmgr_source/modules/lib" "$1" "$2" "$3" "$4" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	{
+		IFS= read -r cfmgr_health_cloud_match || return 1
+		cfmgr_health_cloud_extra=''
+		if IFS= read -r cfmgr_health_cloud_extra || [ -n "$cfmgr_health_cloud_extra" ]; then return 1; fi
+	} <"$cfmgr_probe_stdout"
+	case $cfmgr_health_cloud_match in
+	"CFMGR-PAYLOAD 1 $1 matched END") cfmgr_health_cloud_match_state=matched ;;
+	"CFMGR-PAYLOAD 1 $1 mismatch END") cfmgr_health_cloud_match_state=mismatch ;;
+	*) return 1 ;;
+	esac
+}
+
+cfmgr_health_cloud_file_row() {
+	case $1 in yaml) cfmgr_health_cloud_row_id=yaml.identity ;; json) cfmgr_health_cloud_row_id=runtime.local ;; certificate) cfmgr_health_cloud_row_id=certificate.live ;; *) cfmgr_health_cloud_row_id=$1 ;; esac
+	cfmgr_health_row "cloudflared.$cfmgr_health_cloud_row_id" "$2" "$3" current 'Review the selected local Cloudflared files and retained ownership; health performs no repair.' cloudflared
+}
+
+cfmgr_health_cloud_collect() {
+	cfmgr_health_cloud_plan='' cfmgr_health_cloud_authority='' cfmgr_health_cloud_account=''
+	if [ -n "$cfmgr_health_inventory" ] && cfmgr_health_cloud_project plan; then :; else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_cloud_file_row local UNKNOWN 'Strict retained schema-2 Cloudflared authority was unavailable; local selected-file checks are incomplete.'
+		return $?
+	fi
+	cfmgr_health_cloud_plan=$cfmgr_health_cloud_projection
+	cfmgr_health_cloud_method=- cfmgr_health_cloud_cert_selected=0
+	# Fixed trusted projection contains paths/policies only, never credential refs,
+	# accounts, tunnel identity or secrets. Its AWK writer validates before output.
+	while IFS='	' read -r cfmgr_health_cloud_tag cfmgr_health_cloud_a cfmgr_health_cloud_b cfmgr_health_cloud_c cfmgr_health_cloud_d cfmgr_health_cloud_e cfmgr_health_cloud_f; do
+		case $cfmgr_health_cloud_tag in
+		STATE) cfmgr_health_cloud_configured=$cfmgr_health_cloud_a cfmgr_health_cloud_enabled=$cfmgr_health_cloud_b cfmgr_health_cloud_installed=$cfmgr_health_cloud_c cfmgr_health_cloud_maintenance=$cfmgr_health_cloud_d cfmgr_health_cloud_method=$cfmgr_health_cloud_e ;;
+		FILE)
+			case $cfmgr_health_cloud_a in
+			yaml) cfmgr_health_cloud_yaml=$cfmgr_health_cloud_c cfmgr_health_cloud_yaml_support=$cfmgr_health_cloud_b ;;
+			json) cfmgr_health_cloud_json=$cfmgr_health_cloud_c cfmgr_health_cloud_json_support=$cfmgr_health_cloud_b ;;
+			esac
+			;;
+		POLICY) cfmgr_health_cloud_policy="auto-update=$cfmgr_health_cloud_a watchdog=$cfmgr_health_cloud_b grace=$cfmgr_health_cloud_c stability=$cfmgr_health_cloud_d" ;;
+		READINESS) cfmgr_health_cloud_readiness="response=$cfmgr_health_cloud_a command=$cfmgr_health_cloud_b" ;;
+		AUTH) cfmgr_health_cloud_runtime_bytes=$((57 + 2 * (cfmgr_health_cloud_a + cfmgr_health_cloud_b + cfmgr_health_cloud_c))) cfmgr_health_cloud_account_bytes=$((26 + 2 * cfmgr_health_cloud_d)) ;;
+		CERT) cfmgr_health_cloud_cert_selected=$cfmgr_health_cloud_b ;;
+		esac
+	done <"$cfmgr_health_cloud_plan"
+	case $cfmgr_health_cloud_method in
+	token) cfmgr_health_cloud_file_row method PASS 'Token method is recorded; YAML/runtime JSON are not prerequisites and no runtime token is displayed or executed.' ;;
+	advanced) cfmgr_health_cloud_file_row method PASS 'Advanced method is recorded; selected YAML and runtime JSON require independent local identity checks.' ;;
+	*) cfmgr_health_cloud_file_row method SKIP 'No Cloudflared method is configured.' ;;
+	esac || return $?
+	if [ "$cfmgr_health_cloud_method" = advanced ] && [ "${cfmgr_health_backup:-missing}" = verified ]; then
+		if cfmgr_health_cloud_project runtime-authority; then cfmgr_health_cloud_authority=$cfmgr_health_cloud_projection; else [ "$?" != 3 ] || return 3; fi
+	fi
+	if [ "$cfmgr_health_cloud_cert_selected" = 1 ] && [ "${cfmgr_health_backup:-missing}" = verified ]; then
+		if cfmgr_health_cloud_project certificate-account; then cfmgr_health_cloud_account=$cfmgr_health_cloud_projection; else [ "$?" != 3 ] || return 3; fi
+	fi
+	cfmgr_health_cloud_certificate_parsed=0
+	while IFS='	' read -r cfmgr_health_cloud_tag cfmgr_health_cloud_role cfmgr_health_cloud_support cfmgr_health_cloud_path cfmgr_health_cloud_owner cfmgr_health_cloud_gen cfmgr_health_cloud_sha; do
+		[ "$cfmgr_health_cloud_tag" = FILE ] || continue
+		if cfmgr_health_cloud_one; then :; else
+			[ "$?" != 3 ] || return 3
+			cfmgr_health_cloud_file_row "$cfmgr_health_cloud_role" UNKNOWN 'The local check could not finish within its supported parser, native prerequisite or report budget.' || return $?
+		fi
+	done <"$cfmgr_health_cloud_plan"
+	cfmgr_health_cloud_file_row maintenance UNKNOWN "Saved configured=$cfmgr_health_cloud_configured enabled=$cfmgr_health_cloud_enabled installed=$cfmgr_health_cloud_installed maintenance=$cfmgr_health_cloud_maintenance; $cfmgr_health_cloud_policy; readiness $cfmgr_health_cloud_readiness. These are recorded policy only; running jobs and readiness are unproved." || return $?
+}
+
+cfmgr_health_cloud_one() {
+	case $cfmgr_health_cloud_role in yaml | json)
+		[ "$cfmgr_health_cloud_method" = advanced ] || return 0
+		;;
+	esac
+	cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='Selected file observation was unavailable, unsupported, or could not be funded within the report budget.'
+	if [ "$cfmgr_health_cloud_support:$cfmgr_health_cloud_role" = absent:certificate ] || [ "$cfmgr_health_cloud_support:$cfmgr_health_cloud_role" = absent:certificate-recovery ]; then
+		cfmgr_health_cloud_file_row "$cfmgr_health_cloud_role" SKIP 'No management certificate is selected; this optional role is not a runtime prerequisite.'
+		return $?
+	fi
+	if [ "$cfmgr_health_cloud_owner" = conflict ]; then
+		cfmgr_health_cloud_file_row "$cfmgr_health_cloud_role" FAIL 'The selected path, ownership record or generation has a proven retained conflict.'
+		return $?
+	fi
+	if [ "$cfmgr_health_cloud_support" != supported ]; then
+		[ "$cfmgr_health_cloud_support" != absent ] || cfmgr_health_cloud_detail='No selected file is recorded for this role.'
+		cfmgr_health_cloud_file_row "$cfmgr_health_cloud_role" UNKNOWN "$cfmgr_health_cloud_detail"
+		return $?
+	fi
+	case $cfmgr_health_cloud_role in
+	json | certificate | certificate-recovery) cfmgr_health_cloud_profile=private cfmgr_health_cloud_operation=snapshot ;;
+	yaml) cfmgr_health_cloud_profile=public cfmgr_health_cloud_operation=snapshot ;;
+	binary) cfmgr_health_cloud_profile=executable cfmgr_health_cloud_operation=hash ;;
+	*) return 2 ;;
+	esac
+	if cfmgr_health_selected_snapshot "$cfmgr_health_cloud_role" "$cfmgr_health_cloud_path" "$cfmgr_health_cloud_profile" "$cfmgr_health_cloud_operation"; then
+		cfmgr_health_cloud_snapshot=$cfmgr_health_selected_file cfmgr_health_cloud_extent=$cfmgr_health_selected_extent
+		cfmgr_health_cloud_integrity=unproved
+		if [ "$cfmgr_health_cloud_role" != binary ] && [ "$cfmgr_health_cloud_sha" != - ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ]; then
+			cfmgr_health_run health-selected-hash "$cfmgr_health_openssl" "$cfmgr_health_cloud_snapshot" "$cfmgr_health_cloud_extent" || return $?
+			cfmgr_health_selected_hash_receipt || return 1
+		fi
+		if [ -n "$cfmgr_health_selected_digest" ] && [ "$cfmgr_health_cloud_sha" != - ] && [ "$cfmgr_health_selected_digest" != "$cfmgr_health_cloud_sha" ]; then
+			cfmgr_health_cloud_state=FAIL cfmgr_health_cloud_detail='Protected selected bytes differ from the exact retained ownership digest.'
+		else
+			[ -z "$cfmgr_health_selected_digest" ] || cfmgr_health_cloud_integrity=matched
+			cfmgr_health_cloud_semantics || return $?
+			if [ "$cfmgr_health_cloud_state" = PASS ] && [ "$cfmgr_health_cloud_sha" != - ] && [ "$cfmgr_health_cloud_integrity" != matched ]; then
+				cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='Local identity matched, but the retained ownership digest could not be checked with admitted native OpenSSL.'
+			fi
+		fi
+	else
+		[ "$?" != 3 ] || return 3
+	fi
+	cfmgr_health_cloud_file_row "$cfmgr_health_cloud_role" "$cfmgr_health_cloud_state" "$cfmgr_health_cloud_detail"
+}
+
+cfmgr_health_cloud_semantics() {
+	if [ "$cfmgr_health_cloud_role" = binary ]; then
+		if [ "$cfmgr_health_cloud_owner" = matched ] && [ "$cfmgr_health_cloud_sha" != - ]; then
+			cfmgr_health_cloud_state=PASS cfmgr_health_cloud_detail='Protected pinned executable bytes match the exact nonfuture ownership record; Cloudflared was not executed.'
+		else cfmgr_health_cloud_detail='Protected pinned executable was hashed, but exact retained ownership is missing; association remains unproved.'; fi
+		return 0
+	fi
+	if [ "${cfmgr_health_backup:-missing}" != verified ]; then
+		cfmgr_health_cloud_detail='Selected metadata and snapshot were observed; borrowed semantic parsers require the independently verified Backup member.'
+		return 0
+	fi
+	case $cfmgr_health_cloud_role in
+	json)
+		[ -n "$cfmgr_health_cloud_authority" ] || return 0
+		if cfmgr_health_cloud_json runtime-json "$cfmgr_health_cloud_snapshot" "$cfmgr_health_cloud_extent" "$cfmgr_health_cloud_authority"; then
+			if [ "$cfmgr_health_cloud_match_state" = matched ]; then
+				cfmgr_health_cloud_state=PASS cfmgr_health_cloud_detail='Private runtime JSON exactly matches selected account, tunnel and secret authority; no runtime or provider authentication claim is made.'
+			else cfmgr_health_cloud_state=FAIL cfmgr_health_cloud_detail='Complete private runtime JSON conflicts with the exact selected authority.'; fi
+		else
+			[ "$?" != 3 ] || return 3
+			cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='Runtime JSON identity could not be proved by a complete bounded parser receipt.'
+		fi
+		;;
+	yaml)
+		[ -n "$cfmgr_health_cloud_authority" ] || return 0
+		cfmgr_health_cloud_yaml_check || return $?
+		;;
+	certificate | certificate-recovery)
+		[ -n "$cfmgr_health_cloud_account" ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ] || return 0
+		if [ "$cfmgr_health_cloud_certificate_parsed" = 1 ] && [ "$cfmgr_health_selected_digest" = "$cfmgr_health_cloud_certificate_digest" ] && [ "$cfmgr_health_cloud_sha" != - ]; then
+			cfmgr_health_cloud_state=PASS cfmgr_health_cloud_detail='This independently hashed protected certificate matches the same expected bytes and the already verified selected account.'
+		else
+			cfmgr_health_cloud_certificate_check || return $?
+		fi
+		;;
+	esac
+	if [ "$cfmgr_health_cloud_state" = PASS ] && [ "$cfmgr_health_cloud_owner" != matched ]; then
+		cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='Local content identity matched, but exact retained file ownership is missing; association remains unproved.'
+	fi
+}
+
+cfmgr_health_cloud_yaml_check() {
+	[ "$cfmgr_health_cloud_json_support" = supported ] || return 0
+	cfmgr_health_cloud_hex "$cfmgr_health_cloud_snapshot" "$cfmgr_health_cloud_extent" || return $?
+	# Source-sized writer limits preserve the parser's independent 262144-byte
+	# internal metadata budget. Paths serialize as hex plus bounded row framing.
+	cfmgr_health_cloud_yaml_bound=$((cfmgr_health_cloud_extent * 4 + 256))
+	[ "$cfmgr_health_cloud_yaml_bound" -le 262144 ] || cfmgr_health_cloud_yaml_bound=262144
+	cfmgr_health_selected_limit=$(((cfmgr_health_cloud_yaml_bound + 511) / 512))
+	cfmgr_health_run health-cloud-yaml /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_cloud_hex_file" || return $?
+	if [ "$cfmgr_probe_exit" != 0 ] || [ -s "$cfmgr_probe_stderr" ]; then
+		cfmgr_health_cloud_detail='The selected YAML is outside the supported identity/dependency subset or could not be parsed within budget; configuration validity is unchanged.'
+		return 0
+	fi
+	cfmgr_health_cloud_yaml_receipt=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_cloud_yaml_receipt" "$cfmgr_health_cloud_yaml_bound" || return $?
+	cfmgr_health_cloud_join_bound=$((cfmgr_health_size * 8 + 1024))
+	[ "$cfmgr_health_cloud_join_bound" -le 262144 ] || cfmgr_health_cloud_join_bound=262144
+	cfmgr_health_selected_limit=$(((cfmgr_health_cloud_join_bound + 511) / 512))
+	cfmgr_health_run health-cloud-join /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_health_cloud_yaml_receipt" "$cfmgr_health_cloud_authority" "$cfmgr_health_cloud_json" "$cfmgr_health_cloud_plan" || return $?
+	if [ "$cfmgr_probe_exit" != 0 ] || [ -s "$cfmgr_probe_stderr" ]; then
+		cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='A complete supported YAML identity join was unavailable.'
+		return 0
+	fi
+	cfmgr_health_cloud_inputs=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_cloud_inputs" "$cfmgr_health_cloud_join_bound" || return $?
+	cfmgr_health_cloud_frame "$cfmgr_health_cloud_inputs" join || return $?
+	IFS= read -r cfmgr_health_cloud_join_header <"$cfmgr_health_cloud_inputs" || return 1
+	if [ "$cfmgr_health_cloud_join_header" = 'CFMGR-CLOUD-YAML-MISMATCH 1 END' ]; then
+		cfmgr_health_cloud_state=FAIL cfmgr_health_cloud_detail='Complete supported YAML identity or credentials path conflicts with selected authority.'
+		return 0
+	fi
+	cfmgr_health_cloud_state=PASS cfmgr_health_cloud_detail='Supported YAML tunnel identity and credentials path match; ingress and private-network runtime semantics are not proved.'
+	while IFS='	' read -r cfmgr_health_cloud_input_tag cfmgr_health_cloud_input_n cfmgr_health_cloud_input_kind cfmgr_health_cloud_input_path cfmgr_health_cloud_input_owner cfmgr_health_cloud_input_gen cfmgr_health_cloud_input_sha; do
+		if [ "$cfmgr_health_cloud_input_tag" = CFMGR-CLOUD-YAML ] && [ "$cfmgr_health_cloud_input_path" != 0 ]; then
+			cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='YAML identity matched, but explicit output-control paths require separate launch-control ownership proof.'
+		fi
+		[ "$cfmgr_health_cloud_input_tag" = INPUT ] || continue
+		cfmgr_health_cloud_input_profile=public
+		[ "$cfmgr_health_cloud_input_kind" != origincert ] || cfmgr_health_cloud_input_profile=private
+		cfmgr_health_cloud_input_detail='Referenced runtime input availability/protection was not proved.'
+		[ "$cfmgr_health_cloud_input_kind" != origincert ] || cfmgr_health_cloud_input_detail='Referenced management-only origin certificate availability/protection was not proved; this is independent of runtime readiness.'
+		cfmgr_health_cloud_input_state=UNKNOWN
+		if [ "$cfmgr_health_cloud_input_owner" = conflict ]; then
+			cfmgr_health_cloud_input_state=FAIL cfmgr_health_cloud_input_detail='A referenced input has conflicting or future retained ownership.'
+		else
+			cfmgr_health_cloud_input_operation=metadata
+			[ "$cfmgr_health_cloud_input_owner:$cfmgr_health_cloud_input_sha" = external:- ] || cfmgr_health_cloud_input_operation=hash
+			if cfmgr_health_selected_snapshot input "$cfmgr_health_cloud_input_path" "$cfmgr_health_cloud_input_profile" "$cfmgr_health_cloud_input_operation"; then
+				if [ "$cfmgr_health_cloud_input_owner" = external ]; then
+					cfmgr_health_cloud_input_state=PASS cfmgr_health_cloud_input_detail='External referenced input is available with protected ancestry; no managed integrity association is claimed.'
+				elif [ "$cfmgr_health_cloud_input_sha" != - ] && [ "$cfmgr_health_selected_digest" = "$cfmgr_health_cloud_input_sha" ]; then
+					cfmgr_health_cloud_input_state=PASS cfmgr_health_cloud_input_detail='Protected pinned referenced input matches its exact nonfuture retained ownership digest.'
+				elif [ "$cfmgr_health_cloud_input_sha" != - ]; then
+					cfmgr_health_cloud_input_state=FAIL cfmgr_health_cloud_input_detail='Protected referenced input bytes conflict with their exact retained ownership digest.'
+				fi
+			else [ "$?" != 3 ] || return 3; fi
+		fi
+		[ "$cfmgr_health_cloud_input_kind" != origincert ] || cfmgr_health_cloud_input_detail="Management-only origin certificate: $cfmgr_health_cloud_input_detail"
+		cfmgr_health_cloud_file_row "yaml.input.$cfmgr_health_cloud_input_n" "$cfmgr_health_cloud_input_state" "$cfmgr_health_cloud_input_detail" || return $?
+	done <"$cfmgr_health_cloud_inputs"
+}
+
+cfmgr_health_cloud_certificate_check() {
+	cfmgr_health_cloud_saved_digest=$cfmgr_health_selected_digest
+	cfmgr_health_cloud_hex "$cfmgr_health_cloud_snapshot" "$cfmgr_health_cloud_extent" || return $?
+	cfmgr_health_run health-cloud-pem /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_cloud_hex_file" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 0
+	cfmgr_health_cloud_base64=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_cloud_base64" 65536 || return $?
+	cfmgr_health_run health-cloud-decode "$cfmgr_health_openssl" "$cfmgr_health_cloud_base64" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 0
+	cfmgr_health_cloud_decoded=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_cloud_decoded" 65536 || return $?
+	if cfmgr_health_cloud_json certificate-json "$cfmgr_health_cloud_decoded" "$cfmgr_health_size" "$cfmgr_health_cloud_account"; then
+		if [ "$cfmgr_health_cloud_match_state" != matched ]; then
+			cfmgr_health_cloud_state=FAIL cfmgr_health_cloud_detail='Complete decoded certificate JSON conflicts with the selected certificate account.'
+			return 0
+		fi
+		cfmgr_health_cloud_certificate_parsed=1 cfmgr_health_cloud_certificate_digest=$cfmgr_health_cloud_saved_digest
+		cfmgr_health_cloud_state=PASS cfmgr_health_cloud_detail='Protected PEM framing and decoded certificate JSON match the selected certificate account; management authority remains distinct from runtime token readiness.'
+	else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_cloud_state=UNKNOWN cfmgr_health_cloud_detail='A complete bounded certificate identity receipt was unavailable.'
+	fi
+}
+
+cfmgr_status_awk_health_compare() {
+	# CFMGR-AWK-BEGIN health_compare
+	cfmgr_awk_program='
+# One pass over at most 7 owned receipts, 250 canonical values and 2 current samples.
+# No provider identifier, configured name, secret, address or path becomes output.
+BEGIN {
+    manifest=ARGV[1];context=ARGV[2];ARGC=1
+    raw=hw_read(manifest,1024,0);n=split(raw,lines,"\n")
+    if(n<3 || n>10 || lines[1]!="CFMGR-HEALTH-COMPARISON 1" || lines[n-1]!="END " (n-3))exit 1
+    for(i=2;i<n-1;i++) {
+        if(split(lines[i],a," ")!=4 || lines[i]!=a[1] " " a[2] " " a[3] " " a[4] || a[1]!~/^(DNS|ITEMS|TRACE)$/ || a[2]!~/^[1-3]$/ || a[4]!~/^health-(response|trace)\.[1-9][0-9]*\.out$/ || length(a[4])>32 || seen[a[1],a[2]]++ || names[a[4]]++)exit 1
+        role[i]=a[1];ordinal[i]=a[2];family[i]=a[3];file[i]=context "/" a[4]
+        if(a[1]=="DNS") {if(a[3]!~/^[46]$/ || ++dns>3 || a[4]!~/^health-response\./)exit 1}
+        else if(a[1]=="ITEMS") {if(a[2]>2 || a[3]!~/^(4|6|46)$/ || ++items>2 || a[4]!~/^health-response\./)exit 1}
+        else {if(a[2]>2 || a[3]!~/^[46]$/ || ++samples>2 || tracefamily[a[3]]++ || a[4]!~/^health-trace\./)exit 1}
+    }
+    for(i=2;i<n-1;i++) {
+        if(role[i]=="TRACE") {
+            raw=hw_read(file[i],256,0);sub(/\n$/,"",raw)
+            if(split(raw,a," ")!=6 || a[1]!="CFMGR-HEALTH-RESPONSE" || a[2]!="1" || a[3]!="observed" || a[4]!="1" || a[6]!="END" || substr(a[5],1,5)!="ipv" family[i] ":" || raw!="CFMGR-HEALTH-RESPONSE 1 observed 1 " a[5] " END")exit 1
+            address=substr(a[5],6)
+            if(family[i]=="4" ? !hw_public4(address) : !hw_ipv6(address))exit 1
+            current[family[i]]=hw_canonical(address,family[i]);continue
+        }
+        hw_values(file[i],(role[i]=="DNS" ? "dns" : "items"),(role[i]=="DNS" ? family[i] : "mixed"))
+        state[i]=hw_value_state;count[i]=hw_value_count;total+=hw_value_count
+        if(total>250)exit 1
+        for(j=1;j<=hw_value_count;j++) {value[i,j]=hw_value_address[j];prefix[i,j]=hw_value_prefix[j];valuefamily[i,j]=hw_value_address_family[j]}
+    }
+    for(i=2;i<n-1;i++) {
+        if(role[i]=="TRACE")continue
+        if(role[i]=="DNS") {
+            f=family[i];id="ddns.record." ordinal[i]
+            if(current[f]=="") hc_row(id,"UNKNOWN","current-family-unavailable")
+            else if(state[i]!="verified")hc_row(id,"UNKNOWN","dns-partial")
+            else if(count[i]==0)hc_row(id,"WARN","dns-absent")
+            else if(count[i]>1)hc_row(id,"WARN","dns-multiple")
+            else if(value[i,1]==current[f])hc_row(id,"PASS","dns-equal")
+            else hc_row(id,"WARN","dns-different")
+        } else {
+            for(k=1;k<=length(family[i]);k++) {
+                f=substr(family[i],k,1);id="ip_sync." (ordinal[i]==1 ? "primary" : "secondary") ".ipv" f
+                if(listfamily[f]++)exit 1
+                if(current[f]=="") {hc_row(id,"UNKNOWN","current-family-unavailable");continue}
+                hit=0
+                for(j=1;j<=count[i];j++)if(valuefamily[i,j]==f && hw_bits_match(current[f],value[i,j],prefix[i,j]))hit=1
+                if(hit)hc_row(id,"PASS",(state[i]=="verified" ? "list-member" : "list-member-partial"))
+                else if(state[i]!="verified")hc_row(id,"UNKNOWN","list-partial-no-match")
+                else hc_row(id,"WARN","list-no-match")
+            }
+        }
+    }
+    output="CFMGR-HEALTH-COMPARE 1\n" rows "END " rowcount "\n"
+    if(length(output)>4096)exit 1
+    printf "%s",output;exit
+}
+function hc_row(id,state,reason) {
+    if(++rowcount>5)exit 1
+    rows=rows "ROW " id " " state " " reason "\n"
+}
+'
+	# CFMGR-AWK-END health_compare
+}
+
+cfmgr_health_comparison_keep() {
+	# KIND ORDINAL CONFIGURED_FAMILY OWNED_RECEIPT. No provider values are read.
+	[ "$cfmgr_health_compare_count" -lt 7 ] || return 1
+	case $4 in "$cfmgr_status_context"/health-response.*.out | "$cfmgr_status_context"/health-trace.*.out) ;; *) return 1 ;; esac
+	cfmgr_health_compare_base=${4##*/}
+	case $cfmgr_health_compare_base in *[!A-Za-z0-9.-]* | *..*) return 1 ;; esac
+	[ "${#cfmgr_health_compare_base}" -le 32 ] && [ -f "$4" ] && [ ! -L "$4" ] || return 1
+	case "$cfmgr_health_owned
+" in *"
+$cfmgr_health_compare_base
+"*) ;; *) return 1 ;; esac
+	cfmgr_health_compare_pending="$cfmgr_health_compare_pending
+$1 $2 $3 $cfmgr_health_compare_base"
+	cfmgr_health_compare_count=$((cfmgr_health_compare_count + 1))
+}
+
+cfmgr_health_comparison_manifest() {
+	cfmgr_health_compare_text='CFMGR-HEALTH-COMPARISON 1
+'
+	cfmgr_health_compare_entries=0
+	while IFS=' ' read -r cfmgr_health_compare_role cfmgr_health_compare_ordinal cfmgr_health_compare_family cfmgr_health_compare_base; do
+		case $cfmgr_health_compare_role in DNS | ITEMS | TRACE) ;; *) continue ;; esac
+		cfmgr_status_attachment_ok || return 1
+		[ -f "$cfmgr_status_context/$cfmgr_health_compare_base" ] && [ ! -L "$cfmgr_status_context/$cfmgr_health_compare_base" ] || return 1
+		case "$cfmgr_health_owned
+" in *"
+$cfmgr_health_compare_base
+"*) ;; *) return 1 ;; esac
+		if [ "$cfmgr_health_compare_role" = ITEMS ]; then
+			cfmgr_health_compare_family=''
+			case $cfmgr_health_compare_ordinal in
+			1)
+				[ "$cfmgr_health_compare_primary4" = 0 ] || cfmgr_health_compare_family=4
+				[ "$cfmgr_health_compare_primary6" = 0 ] || cfmgr_health_compare_family=${cfmgr_health_compare_family}6
+				;;
+			2)
+				[ "$cfmgr_health_compare_secondary4" = 0 ] || cfmgr_health_compare_family=4
+				[ "$cfmgr_health_compare_secondary6" = 0 ] || cfmgr_health_compare_family=${cfmgr_health_compare_family}6
+				;;
+			esac
+			[ -n "$cfmgr_health_compare_family" ] || continue
+		fi
+		cfmgr_health_compare_text="$cfmgr_health_compare_text$cfmgr_health_compare_role $cfmgr_health_compare_ordinal $cfmgr_health_compare_family $cfmgr_health_compare_base
+"
+		cfmgr_health_compare_entries=$((cfmgr_health_compare_entries + 1))
+	done <<EOF_HEALTH_COMPARISON
+$cfmgr_health_compare_pending
+EOF_HEALTH_COMPARISON
+	cfmgr_health_compare_text="${cfmgr_health_compare_text}END $cfmgr_health_compare_entries
+"
+	[ "$cfmgr_health_compare_entries" -gt 0 ] && [ "${#cfmgr_health_compare_text}" -le 1024 ] || return 1
+	cfmgr_health_stage_reserve comparison 2048 || return $?
+	# Two blocks are 1024B on native ash, 2048B on the host. The complete finite
+	# text is checked before this fixed native write and never contains authority.
+	(
+		umask 077
+		set -C
+		ulimit -f 2 && /usr/bin/printf '%s' "$cfmgr_health_compare_text" >"$cfmgr_status_context/comparison"
+	)
+}
+
+cfmgr_health_comparison_read() {
+	# Validate complete safe output before presenting any row. At most 8 lines;
+	# no raw address or externally selected string is admitted to public output.
+	cfmgr_health_compare_safe='' cfmgr_health_compare_seen='' cfmgr_health_compare_rows=0 cfmgr_health_compare_line_number=0 cfmgr_health_compare_ended=0
+	while :; do
+		cfmgr_health_compare_line=''
+		if IFS= read -r cfmgr_health_compare_line; then :; else
+			[ -z "$cfmgr_health_compare_line" ] && [ "$cfmgr_health_compare_ended" = 1 ]
+			return $?
+		fi
+		cfmgr_health_compare_line_number=$((cfmgr_health_compare_line_number + 1))
+		[ "$cfmgr_health_compare_line_number" -le 8 ] && [ "${#cfmgr_health_compare_line}" -le 256 ] && [ "$cfmgr_health_compare_ended" = 0 ] || return 1
+		if [ "$cfmgr_health_compare_line_number" = 1 ]; then
+			[ "$cfmgr_health_compare_line" = 'CFMGR-HEALTH-COMPARE 1' ] || return 1
+			continue
+		fi
+		IFS=' ' read -r cfmgr_health_compare_tag cfmgr_health_compare_id cfmgr_health_compare_state cfmgr_health_compare_reason cfmgr_health_compare_extra <<EOF_HEALTH_COMPARE_ROW
+$cfmgr_health_compare_line
+EOF_HEALTH_COMPARE_ROW
+		if [ "$cfmgr_health_compare_tag" = END ]; then
+			[ "$cfmgr_health_compare_line" = "END $cfmgr_health_compare_rows" ] || return 1
+			cfmgr_health_compare_ended=1
+			continue
+		fi
+		[ "$cfmgr_health_compare_tag" = ROW ] && [ -z "$cfmgr_health_compare_extra" ] &&
+			[ "$cfmgr_health_compare_line" = "ROW $cfmgr_health_compare_id $cfmgr_health_compare_state $cfmgr_health_compare_reason" ] || return 1
+		case $cfmgr_health_compare_id in ddns.record.[1-3] | ip_sync.primary.ipv[46] | ip_sync.secondary.ipv[46]) ;; *) return 1 ;; esac
+		case $cfmgr_health_compare_state:$cfmgr_health_compare_reason in
+		PASS:dns-equal | PASS:list-member | PASS:list-member-partial | WARN:dns-absent | WARN:dns-multiple | WARN:dns-different | WARN:list-no-match | UNKNOWN:current-family-unavailable | UNKNOWN:dns-partial | UNKNOWN:list-partial-no-match) ;;
+		*) return 1 ;;
+		esac
+		case "$cfmgr_health_compare_seen
+" in *"
+$cfmgr_health_compare_id
+"*) return 1 ;; esac
+		cfmgr_health_compare_seen="$cfmgr_health_compare_seen
+$cfmgr_health_compare_id"
+		cfmgr_health_compare_rows=$((cfmgr_health_compare_rows + 1))
+		[ "$cfmgr_health_compare_rows" -le 5 ] || return 1
+		cfmgr_health_compare_safe="$cfmgr_health_compare_safe
+$cfmgr_health_compare_id $cfmgr_health_compare_state $cfmgr_health_compare_reason"
+	done
+}
+
+cfmgr_health_comparison_row() {
+	case $3 in
+	dns-equal) cfmgr_health_compare_detail='One exact DNS record in a complete page matches the public family sample observed during this report; publication and write permission remain unproved.' ;;
+	dns-absent) cfmgr_health_compare_detail='The complete bounded DNS page contained no exact configured record.' ;;
+	dns-multiple) cfmgr_health_compare_detail='The complete bounded DNS page contained multiple exact configured records; duplicates require review.' ;;
+	dns-different) cfmgr_health_compare_detail='The single exact DNS value differs from the public family sample observed during this report.' ;;
+	dns-partial) cfmgr_health_compare_detail='DNS pagination is incomplete; current-address equality and absence remain unproved.' ;;
+	list-member) cfmgr_health_compare_detail='The complete observed list contains the public family sample observed during this report; write permission remains unproved.' ;;
+	list-member-partial) cfmgr_health_compare_detail='The partial observed list contains the public family sample observed during this report; remaining pages are unverified.' ;;
+	list-no-match) cfmgr_health_compare_detail='The complete observed list does not contain the public family sample observed during this report.' ;;
+	list-partial-no-match) cfmgr_health_compare_detail='The partial observed list has no matching current value; absence remains unproved.' ;;
+	current-family-unavailable) cfmgr_health_compare_detail='A current public sample for this configured family was unavailable; retained provider values were not compared with history.' ;;
+	*) cfmgr_health_compare_detail='The current-address comparison was unavailable or could not finish within its report budget.' ;;
+	esac
+	cfmgr_health_row "$1" "$2" "$cfmgr_health_compare_detail" current 'Review current family discovery and configured target observations; no write was attempted.' network
+}
+
+cfmgr_health_comparison_finish() {
+	cfmgr_health_compare_done=''
+	if [ "$cfmgr_health_compare_count" -gt 0 ]; then
+		if cfmgr_health_comparison_manifest && cfmgr_health_run health-compare /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_status_context/comparison" &&
+			[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] && cfmgr_health_comparison_read <"$cfmgr_probe_stdout"; then
+			cfmgr_health_compare_done=$cfmgr_health_compare_seen
+			while IFS=' ' read -r cfmgr_health_compare_id cfmgr_health_compare_state cfmgr_health_compare_reason; do
+				[ -n "$cfmgr_health_compare_id" ] || continue
+				cfmgr_health_comparison_row "$cfmgr_health_compare_id" "$cfmgr_health_compare_state" "$cfmgr_health_compare_reason" || return $?
+			done <<EOF_HEALTH_COMPARE_SAFE
+$cfmgr_health_compare_safe
+EOF_HEALTH_COMPARE_SAFE
+		else [ "$?" != 3 ] || return 3; fi
+	fi
+	# Missing receipts/current samples/worker capacity remain explicit. Earlier
+	# admitted observations survive a later auth hold but are never history data.
+	while IFS=' ' read -r cfmgr_health_compare_role cfmgr_health_compare_ordinal cfmgr_health_compare_family cfmgr_health_compare_base; do
+		[ "$cfmgr_health_compare_role" = DNS ] || continue
+		cfmgr_health_compare_id=ddns.record.$cfmgr_health_compare_ordinal
+		case "$cfmgr_health_compare_done
+" in *"
+$cfmgr_health_compare_id
+"*) continue ;; esac
+		cfmgr_health_comparison_row "$cfmgr_health_compare_id" UNKNOWN unavailable || return $?
+	done <<EOF_HEALTH_COMPARE_PENDING
+$cfmgr_health_compare_pending
+EOF_HEALTH_COMPARE_PENDING
+	for cfmgr_health_compare_role in primary secondary; do
+		for cfmgr_health_compare_family in 4 6; do
+			case $cfmgr_health_compare_role:$cfmgr_health_compare_family in
+			primary:4) cfmgr_health_compare_present=$cfmgr_health_compare_primary4 ;; primary:6) cfmgr_health_compare_present=$cfmgr_health_compare_primary6 ;;
+			secondary:4) cfmgr_health_compare_present=$cfmgr_health_compare_secondary4 ;; secondary:6) cfmgr_health_compare_present=$cfmgr_health_compare_secondary6 ;;
+			esac
+			[ "$cfmgr_health_compare_present" = 1 ] || continue
+			cfmgr_health_compare_id=ip_sync.$cfmgr_health_compare_role.ipv$cfmgr_health_compare_family
+			case "$cfmgr_health_compare_done
+" in *"
+$cfmgr_health_compare_id
+"*) continue ;; esac
+			cfmgr_health_comparison_row "$cfmgr_health_compare_id" UNKNOWN unavailable || return $?
+		done
+	done
 }

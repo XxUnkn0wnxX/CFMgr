@@ -832,3 +832,80 @@ def test_payload_index_upgrades_selected_certificate_for_non_origincert_input(
             timeout=5,
         )
         assert_refused(match)
+
+
+def test_certificate_json_health_private_account_file_preserves_archive_api(
+    commands, tmp_path
+):
+    account = tmp_path / "private account"
+    account.write_text(f"CFMGR-CERT-ACCOUNT 1 {ACCOUNT.encode().hex()} END\n")
+    document = serialize({"zoneID": "zone", "accountID": ACCOUNT, "apiToken": SECRET})
+    result = invoke_payload(
+        commands,
+        tmp_path,
+        document,
+        "certificate-json",
+        {"CFMGR_PAYLOAD_ACCOUNT_FILE": str(account)},
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"CFMGR-PAYLOAD 1 certificate-json matched END\n",
+        b"",
+    )
+    account.write_text(account.read_text() + "extra\n")
+    assert_refused(
+        invoke_payload(
+            commands,
+            tmp_path,
+            document,
+            "certificate-json",
+            {
+                "CFMGR_PAYLOAD_ACCOUNT_FILE": str(account),
+                "CFMGR_PAYLOAD_ACCOUNT_HEX": ACCOUNT.encode().hex(),
+            },
+        )
+    )
+
+
+def test_health_pem_adapter_outputs_private_base64_without_changing_archive_receipt(
+    commands, tmp_path
+):
+    import base64
+
+    body = base64.b64encode(
+        serialize({"zoneID": "zone", "accountID": ACCOUNT, "apiToken": SECRET})
+    )
+    pem = (
+        b"-----BEGIN ARGO TUNNEL TOKEN-----\n"
+        + body
+        + b"\n-----END ARGO TUNNEL TOKEN-----\n"
+    )
+    # The existing parser admits at most128 bytes per PEM body line.
+    pem = pem.replace(
+        body, b"\n".join(body[i : i + 64] for i in range(0, len(body), 64))
+    )
+    source = tmp_path / "private hex"
+    source.write_bytes(b"".join(f"{byte:02x}\n".encode() for byte in pem))
+    results = []
+    for mode in ("", "health-base64"):
+        results.append(
+            subprocess.run(
+                awk_arguments(
+                    [*commands[1], "-f", "cfmgr-parser:backup_pem", str(source)]
+                ),
+                env={**os.environ, "CFMGR_PEM_MODE": mode},
+                capture_output=True,
+                check=False,
+                timeout=3,
+            )
+        )
+    assert (results[0].returncode, results[0].stdout, results[0].stderr) == (
+        0,
+        b"CFMGR-PEM 1 " + body + b" END\n",
+        b"",
+    )
+    assert (results[1].returncode, results[1].stdout, results[1].stderr) == (
+        0,
+        body + b"\n",
+        b"",
+    )

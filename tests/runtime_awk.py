@@ -15,10 +15,13 @@ OWNERS = {
     "backup_pem": "modules/backup.sh",
     "status": "modules/status.sh",
     "health": "modules/status.sh",
+    "health_cloud": "modules/status.sh",
+    "health_selected": "modules/status.sh",
     "health_local": "modules/status.sh",
     "health_metadata": "modules/status.sh",
     "health_wire": "modules/status.sh",
     "health_response": "modules/status.sh",
+    "health_compare": "modules/status.sh",
     "health_render": "modules/status.sh",
     "config_observation": "modules/lib/config.sh",
     "backup_archive_control": "modules/backup.sh",
@@ -26,6 +29,7 @@ OWNERS = {
     "mountinfo": "modules/lib/storage.sh",
     "backup_payload_match": "modules/backup.sh",
     "backup_history": "modules/backup.sh",
+    "backup_uuid": "modules/backup.sh",
     "backup_inventory": "modules/backup.sh",
 }
 

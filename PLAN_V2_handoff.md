@@ -40,6 +40,15 @@ the scoped Route B health/terminal package below, including its proposed light
 Mac/remote validation approach. Resume only this package through review, required
 focused checks, develop publication, exact complete core CI and justified closing
 receipt, then pause. No later package or live router/provider mutation is released.
+The user additionally instructed on 2026-10-21: **"since this is a large
+checkpoint this will be the only checkpoint for the day ensure at the end you
+pause at the finished checkpoint with new scope scoped out"**. Finish the same
+S03.09/S03.10 checkpoint and its required gates/receipt. Then review and propose
+the next smallest dependency-ready block, including IDs, concrete outcome,
+prerequisites, validation and an uncertainty-bounded effort estimate in this
+handoff, and end the turn for the day. This explicitly permits that next-scope
+assessment after closure; it does not release its implementation or change the
+current checkpoint scope. Leave no required worker/CI job active at the pause.
 Initial `develop`, `origin/develop` and actual remote all match
 `43a81f1f4e4a37d4e4a17270cebc37afee82d9e3`; the working tree was clean.
 Accepted product progress remains **23/157 (14.6%)**, **0/16 main goals (0%)**;
@@ -279,6 +288,218 @@ files. The two-operation finalizer adds four files/790,528 bytes, totaling
 **222 operations / 477 files / 6,922,240 bytes**. These counts describe the
 current receipt formats before advanced collectors; a real complete CI journey
 must still verify combined accounting. All numerical caps remain unchanged.
+
+The owner has released all files; parent reviewed the changes, regenerated and
+checked the manifest, and passed planning/whitespace gates. The candidate is
+published as **`adc59bad3a8d23ecf55812badb4b34192d0072db`**, verified against
+actual remote `develop`. Premature [Checks 39554426775](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39554426775)
+is confirmed cancelled, with no dispatched children.
+[Dev 39554450182](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39554450182)
+passed all **226 cases in 53.86s** (54.09s wall, 24.00s user, 16.63s system)
+at the exact candidate, including both native quota cases and the actual
+health-realpath dispatch case. Parent independently verified the result/log.
+Exact complete [Checks 39554674361](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39554674361)
+and all six required jobs in Backup 39554712964, Manager 39554715010 and Status
+39554717226 **passed** at that exact SHA. Parent independently verified every
+required job/step and retained the logs. Host/native receipts respectively:
+Backup **404 passed/1 platform skip in 110.88s; 405 passed in 320.04s**;
+Manager **600 passed/29 platform skips/4 optional deselections in 99.93s;
+628 passed/1 host-only skip/4 optional deselections in 551.95s**;
+Status **153 passed in 17.72s; 153 passed in 26.64s**. Including setup, the
+longest module was Manager native at **9m27s**, within the unchanged ten-minute
+budget. Its test wall/user/system times were **552.38/295.73/251.04 seconds**,
+comparable to the preceding exact gate; no extra timing run is warranted.
+The awaiter is finished. These are interim representative Ubuntu/vendor BusyBox
+results; neither unfinished health ID gains acceptance.
+
+The selected Cloudflared-file package is now released to `health_foundation` as
+the sole runtime writer. Exclusive ownership is `modules/status.sh`,
+`modules/lib/execution.sh`, `modules/helpers/worker.sh`, `modules/backup.sh`,
+`tests/test_status.py`, `tests/runtime_awk.py` and narrowly affected existing
+Backup parser tests. Implement the accepted Astra path/policy and private
+authority projections, shared protected selected-file snapshots, pure YAML/JSON/
+certificate adapters, owned binary evidence and honest independent local rows.
+Preserve existing archive callers, all quotas/deadlines, no-secret launch/output
+rules and per-member failures. Small serial low-priority local tests/statics only;
+native, complete-module and combined journey proof stays in CI. Parent owns
+manifest/records/review/publication. A read-only explorer maps remaining shared
+hook/job, recovery and backup observations without edits or tests.
+
+The current 220-operation maximum provider journey leaves 28 collection stages;
+the Cloud design needs at least 34 before additional ancestry/references. Keep
+budget-incomplete results explicit during construction. This is neither a fit
+claim nor a reason to weaken admission; reconcile the actual complete ledger
+before acceptance. Continue the same authorized two-ID package after this
+interim gate, not a later product block.
+
+One independent bounded draft owner, `health_compare`, may write only beneath
+ignored `.tmp/health-compare/`: pure POSIX-AWK canonical address/CIDR comparison
+functions and focused draft tests for the approved retained-response design.
+The production files remain exclusively owned by `health_foundation`; the draft
+owner must not edit them, dispatch/publish, or add provider requests. Parent will
+review and integrate the draft only after that owner releases the production
+interfaces. This parallel work earns no runtime or acceptance credit by itself.
+The address draft is released after parent review corrected differing-content
+DNS duplicates and malformed-list completeness; its 32 focused cases passed in
+1.11s (2.07s command wall). Integration and native proof remain pending. The next
+independent draft owner is `health_presentation`, writing only ignored
+`.tmp/health-logging/` for the accepted byte/LF raw bundle and include adapters
+plus focused compatibility tests. Production Backup/Status ownership remains
+with `health_foundation`; parent integrates after release. At most these two
+implementation workstreams are active, and only small local checks are permitted.
+Both ignored drafts are now released. Parent caught and corrected the logging
+draft's extra output field by requiring a real round-trip through existing
+`base`/`assess` consumers; four focused cases passed in 0.91s. The draft remains
+unintegrated and has no native proof. Cloud is the sole active runtime writer.
+`health_foundation_review` is read-only reviewing its fixed worker/execution and
+pure Backup adapters while parent reviews Status. Pending corrections include
+complete private plan admission before file reads and typed semantic mismatch
+receipts, preserving UNKNOWN for budget/worker/framing failures. Unselected
+optional certificate roles must remain SKIP; they are not token/runtime gates.
+
+The configured selected-file consumer now passes with actual worker dispatch and
+pure private parsers: one focused case in **14.26s** (16.13s command wall),
+covering advanced YAML/JSON, an owned input, equal live/recovery certificate
+parse-once, nonexecuted binary hashing, an owned-input mismatch and token mode
+without a certificate. Host metadata/FD/supervisor adapters are explicit; this
+is not native process or platform proof. Its normal advanced route uses **72
+operations and 144 output files**. Added to the earlier 220-operation provider
+route, it exceeds the unchanged collection cap before the remaining groups.
+No fit or acceptance claim is made. The owner is finishing narrow statics and
+the reserved-byte ledger before release. The read-only Astra planner is assessing
+small shared-observation consolidations and the complete bounded envelope; no
+budget, requirement or deadline change is yet authorized by that assessment.
+
+After release, parent will review complete Cloud framing/semantic mismatch
+binding, then assign retained-address integration to the same coherent Status/
+worker/execution owner. A separate bounded owner may integrate only the released
+pure raw-history adapters and their existing Backup tests. These disjoint files
+will be named explicitly before either writer starts. Remaining actual logging,
+hook/job, recovery, backup and flat-package consumers follow those interfaces;
+the complete report and resource ledger must be verified before final core CI.
+
+Cloud files are released. Final narrow Ruff/format/compile, plain shfmt, four
+individual shell syntax checks and owned-path whitespace checks passed in 3.04s.
+The measured normal Cloud reservation is **4,810,752 bytes of physical maxima**,
+not actual retained bytes: combined with the preceding core estimate, collection
+is **292 operations / 617 files / 10,942,464 bytes** before logging and remaining
+groups. Two final source-only guards reject selected symlink/relative aliases and
+prevent an unchecked expected digest from becoming a semantic PASS; CI must cover
+these later edits. No numerical cap changed.
+
+Current exclusive write ownership is now split into two independent packages:
+`health_foundation` owns retained-address comparison integration in
+`modules/status.sh`, `modules/helpers/worker.sh`, `modules/lib/execution.sh`,
+`tests/test_status.py` and `tests/runtime_awk.py`; `health_presentation` owns only
+the pure raw-history modes in `modules/backup.sh` and their focused tests in
+`tests/test_archive_history.py`. Preserve each other's files. Neither owner may
+change budgets, records, manifests, workflows, authority, provider schedule or
+acceptance. Parent reviews and integrates both before releasing the dependent
+logging collector. Local tests remain short, serial and low priority; complete
+affected modules and native proof stay in CI. The analyst reviews only the
+settled Cloud frame/mismatch delta while the planner reviews aggregate cost.
+The analyst's narrow follow-up is **PASS**: full plan/join admission precedes
+selected reads, all semantic fields precede typed mismatch, and incomplete child
+results remain UNKNOWN. No further fix was requested by that review.
+The planner identified a cost qualification: the Cloud fixture's host paths do
+not exercise `/opt` attachment checks. Production currently adds three mount
+observations per selected `/opt` member, so five such members add **15 operations**
+before deeper ancestry. The 72-operation receipt is a measured adapted fixture,
+not a complete production ledger; the earlier summed numbers remain lower bounds.
+Final fit must include attachment probes and all later groups.
+
+The pure raw-history adapter is integrated and released after **three focused
+host cases in 0.53s**, including unchanged base/assess consumers and empty archive
+packing. Ruff format/check, compile, plain shfmt, shell syntax and whitespace
+checks passed; native proof remains pending. Its worker/controller consumer is
+not yet connected. The same bounded owner next extracts the existing Backup UUID
+AWK literal into a source-inert getter, preserving its wrapper and filesystem
+policy, for the forthcoming read-only backup-volume observer. Ownership is only
+`modules/backup.sh` and narrowly affected existing `tests/test_backup_storage.py`;
+the Status owner retains all its files. No new parser policy or execution path is
+authorized beyond that mechanical reuse interface.
+The UUID extraction is released after exact prior-body comparison and ten
+existing filesystem-policy cases passing in 1.10s. Its first focused attempt
+exposed a missing AWK closing brace; the repair is included in that passing rerun.
+No Backup policy changed.
+
+The Status implementation owner then stopped with a model-capacity error while
+integrating comparisons. Preserve its uncommitted code; no comparison acceptance
+or test pass is claimed. Parent now owns production Status/worker/execution
+review and completion. `health_compare` may own only `tests/test_status.py` and
+the narrow `tests/runtime_awk.py` registry update to validate the current retained
+receipt/manifest/consumer interfaces. No other runtime writer is active. Heavy
+proof remains in CI; no required CI job is currently running.
+
+The aggregate Astra review returned **REVISE** for the old final-fit assumption.
+Parent accepts the bounded implementation direction: source-sized selected LS/
+YAML writer quotas, branch-specific lookahead, one HTTP/body/header native count
+stage, and shared logging observations. Keep 45 seconds, twelve GETs, 96 rows and
+12 MiB enforced. The reviewed **416 total operations / 896 files** is a candidate
+envelope, not frozen limits or proved completion; eight operations/sixteen files/
+one MiB remain reserved for finalization. Current code limits remain unchanged.
+Implement the small quota/count repairs first; decide whether shared before/after
+primary-file phases are needed from the actual integrated ledger rather than
+adding that larger refactor speculatively. No required check may be removed to
+fit a count. Production-shaped `/opt` and actual-supervisor combined host/native
+journeys belong in CI, with all normal groups reached and no budget placeholders.
+
+The comparison test owner stopped before completing its edits; parent preserved
+and finished the focused cases. The first comparison/projection/scheduling
+selection passed **23 cases in 1.89s**. The source-sized Cloud metadata/YAML/join
+quotas and branch-specific snapshot reservation are now implemented without
+changing aggregate caps. The actual-worker configured Cloud journey passed again
+in **6.69s** (6.57s call), covering normal advanced configuration, changed owned
+input and token mode without a certificate. These are adapted host results;
+production `/opt` attachment and native supervision proof remain pending.
+An editor-created Backup predecessor was preserved under ignored
+`.tmp/health-integration/backup-before-raw-history-and-uuid.sh.orig`; no product
+source was removed. Parent owns all files until the next bounded assignment.
+
+Next exclusive implementation ownership: the HTTP count worker owns only
+`modules/status.sh`, `modules/helpers/worker.sh`, `modules/lib/execution.sh`
+and `tests/test_status.py` for one native count of HTTP status/body/headers,
+preserving auth/throttle hold ordering, and the missing actual comparison
+controller test. It may run short serial focused tests, never complete local
+modules. No counters, deadlines, provider schedule, records or publication change
+is delegated. Parent reviews/integrates before CI. The logging planner has
+returned PASS WITH NOTES for a Status-owned collector, preserving source hashes,
+all three cron boundaries and private process receipts. Its 136-stage normal
+logging estimate supersedes the earlier 74-stage assumption; actual integrated
+measurement still decides the final finite cap. In parallel, the released Backup
+adapter owner exclusively owns `modules/backup.sh` and
+`tests/test_archive_history.py` for a pure policy-root reuse helper and an exact
+private policy-file assessment interface. Existing archive semantics remain
+unchanged. These two write sets are disjoint; the dependent Status logging
+collector starts only after both owners release and parent review finishes.
+The Backup policy adapter has released its files. Its three focused legacy and
+private-file assessment cases passed in **0.24s**, and narrow Ruff/format/compile,
+plain shfmt, shell syntax and whitespace checks passed. The health-only policy
+file interface requires a native-counted complete canonical line, while the
+legacy archive caller retains its existing interface. Parent reviewed the pure
+delta; actual health dispatch/collector and native integration are still pending.
+
+The HTTP owner has released all four files after 17 focused passes in 1.54s
+(2.34s wall, 1.14s user, 0.81s system). Parent review removed the remaining HTTP
+AWK stage, retained count-first auth/throttle ordering, rejected unterminated
+trailing count data, and classified malformed transport receipts as unverified.
+The final focused selection `pytest -q tests/test_status.py -k 'count_get or
+get_counts_status or provider_comparison_controller or tiny_allowlist'
+--durations=3` passed **18 cases in 1.17s**. The new controller case uses the real
+comparison worker with retained typed provider receipts; GET responses themselves
+are fixture boundaries, not network proof. All changed Python lint/format/compile,
+four shell syntax/plain-shfmt checks, planning/link/privacy checks, package
+regeneration/verification and whitespace checks passed. No runtime writer remains.
+
+Publish this coherent Cloud/comparison/raw-history/count candidate and run Dev
+on eight complete affected modules: `test_status`, `test_archive_payload`,
+`test_archive_yaml`, `test_archive_payload_semantics`, `test_archive_history`,
+`test_backup_storage`, `test_native` and `test_entry_package`. Cancel its premature
+automatic core run while this diagnosis is pending. Wait for prescribed exact
+Dev proof before the dependent logging collector. Full core remains the final
+checkpoint gate after all current S03.09/S03.10 implementation is complete;
+earlier exact core evidence at `adc59ba` remains historical, not proof of this
+delta. These interim gates add no acceptance credit or daily checkpoint pause.
 
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).

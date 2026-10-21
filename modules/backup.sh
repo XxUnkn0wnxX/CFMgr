@@ -4726,11 +4726,9 @@ EOF_BACKUP_MOUNT
 		"$cfmgr_backup_mount" "$cfmgr_backup_filesystem" "$cfmgr_backup_device_path" "$cfmgr_backup_options" "$cfmgr_backup_super")
 }
 
-cfmgr_backup_uuid_parse() {
-	# Parse one bounded blkid record, preserving filesystem-specific UUID syntax.
-	# LABEL is optional display data; it can never become a pathname or command.
-	# shellcheck disable=SC2016
-	cfmgr_backup_identity=$("$cfmgr_store_awk" '
+cfmgr_backup_awk_backup_uuid() {
+	# CFMGR-AWK-BEGIN backup_uuid
+	cfmgr_awk_program='
 		BEGIN {source=ARGV[1]; fs=ARGV[2]; ARGV[1]=ARGV[2]=""}
 		NR!=1 || length($0)>4096 || $0~/[[:cntrl:]]/ {bad=1; next}
 		{
@@ -4755,7 +4753,17 @@ cfmgr_backup_uuid_parse() {
 			if(type=="ntfs" && (length(value["UUID"])!=16 || value["UUID"]!~/^[0-9A-Fa-f]+$/))exit 1
 			uuid=value["UUID"];if(uuid~/^[0-9A-Fa-f-]+$/)uuid=tolower(uuid)
 			print uuid;print (value["LABEL"]==""?"-":value["LABEL"])
-		}' "$cfmgr_backup_device_path" "$cfmgr_backup_filesystem" "$1") || return 1
+		}
+'
+	# CFMGR-AWK-END backup_uuid
+}
+
+cfmgr_backup_uuid_parse() {
+	# Parse one bounded blkid record, preserving filesystem-specific UUID syntax.
+	# LABEL is optional display data; it can never become a pathname or command.
+	cfmgr_backup_awk_backup_uuid
+	cfmgr_backup_identity=$("$cfmgr_store_awk" "$cfmgr_awk_program" \
+		"$cfmgr_backup_device_path" "$cfmgr_backup_filesystem" "$1") || return 1
 	{
 		IFS= read -r cfmgr_backup_uuid && IFS= read -r cfmgr_backup_label
 	} <<EOF_BACKUP_IDENTITY
@@ -5695,15 +5703,28 @@ function bp_runtime_json(    account,tunnel,secret,path,line,extra,a,count,saved
     count=split(line,a," ")
     if(count!=7 || line!="CFMGR-AUTH 1 " a[3] " " a[4] " " a[5] " " a[6] " END" || a[1]!="CFMGR-AUTH" || a[2]!="1" || a[7]!="END") reject()
     if(a[3]!~/^[0-9a-f]+$/ || length(a[3])%2 || a[6]!~/^[0-9a-f]+$/ || length(a[6])%2) reject()
-    if("s" account!="s" a[4] || "s" tunnel!="s" a[5] || "s" secret!="s" a[6]) reject()
+    if("s" account!="s" a[4] || "s" tunnel!="s" a[5] || "s" secret!="s" a[6]) {
+        if(ENVIRON["CFMGR_PAYLOAD_HEALTH"]=="1") { bp_emit("CFMGR-PAYLOAD 1 runtime-json mismatch END");return }
+        reject()
+    }
     bp_emit("CFMGR-PAYLOAD 1 runtime-json matched END")
 }
-function bp_certificate_json(    account) {
+function bp_certificate_json(    account,path,line,extra,a,saved_rs) {
     bp_type(1,"object"); bp_unique_keys("zoneID accountID apiToken endpoint")
     bp_string_hex(1,"zoneID",0); bp_string_hex(1,"apiToken",0)
     account=bp_string_hex(1,"accountID",0)
-    if("s" account!="s" ENVIRON["CFMGR_PAYLOAD_ACCOUNT_HEX"]) reject()
     if(bp_id(1,"endpoint")) bp_type(bp_id(1,"endpoint"),"string")
+    path=ENVIRON["CFMGR_PAYLOAD_ACCOUNT_FILE"]
+    if(path!="") {
+        saved_rs=RS;RS="\n"
+        if((getline line <path)!=1 || length(line)>131072 || (getline extra <path)!=0)reject()
+        close(path);RS=saved_rs
+        if(split(line,a," ")!=4 || line!="CFMGR-CERT-ACCOUNT 1 " a[3] " END" || a[3]!~/^[0-9a-f]+$/ || length(a[3])%2)reject()
+        if("s" account!="s" a[3]) {
+            if(ENVIRON["CFMGR_PAYLOAD_HEALTH"]=="1") {bp_emit("CFMGR-PAYLOAD 1 certificate-json mismatch END");return}
+            reject()
+        }
+    } else if("s" account!="s" ENVIRON["CFMGR_PAYLOAD_ACCOUNT_HEX"]) reject()
     bp_emit("CFMGR-PAYLOAD 1 certificate-json matched END")
 }
 function bp_drafts(    drafts,generation,i,name,item,stage) {
@@ -5778,7 +5799,9 @@ END {
     if(pc_bad)exit 1
     if(length(pc_buffer))pc_line(pc_buffer)
     if(pc_bad || pc_block!="" || pc_tokens!=1)exit 1
-    print "CFMGR-PEM 1 " pc_token " END"
+    if(ENVIRON["CFMGR_PEM_MODE"]=="health-base64")print pc_token
+    else if(ENVIRON["CFMGR_PEM_MODE"]=="")print "CFMGR-PEM 1 " pc_token " END"
+    else exit 1
 }
 '
 	# CFMGR-AWK-END backup_pem
@@ -6363,22 +6386,25 @@ function hh_json_number(parent,key,max,nullable,    id,value) {
 	if(cfmgr_json_tree_kind[id]!="number" || !hh_uint(value,max)) hh_fail("policy")
 	return value
 }
-function hh_policy(    feature,mode,size,unit,value,total,age,id,i) {
-	if(!cfmgr_json_tree_ready || cfmgr_json_tree_kind[1]!="object") hh_fail("policy")
-	feature=ENVIRON["CFMGR_HISTORY_FEATURE"]
+function hh_policy_value(root,feature,    mode,size,unit,value,total,age,id,i) {
+	if(!cfmgr_json_tree_ready || cfmgr_json_tree_kind[root]!="object") hh_fail("policy")
 	if(feature=="ddns" || feature=="ip_sync") {
-		if(hh_json_number(1,"version","1",0)!="1") hh_fail("policy")
-		print "POLICY native - - - END"; return
+		if(hh_json_number(root,"version","1",0)!="1") hh_fail("policy")
+		return "POLICY native - - - END"
 	}
 	if(feature!="cloudflared") hh_fail("policy")
-	mode=hh_json_text(1,"mode"); if(mode!~/^(size|daily|weekly|monthly)$/) hh_fail("policy")
-	id=hh_child(1,"size"); if(cfmgr_json_tree_kind[id]!="object") hh_fail("policy")
+	mode=hh_json_text(root,"mode"); if(mode!~/^(size|daily|weekly|monthly)$/) hh_fail("policy")
+	id=hh_child(root,"size"); if(cfmgr_json_tree_kind[id]!="object") hh_fail("policy")
 	value=hh_json_number(id,"value","9223372036854775807",0); if(value=="0") hh_fail("policy")
 	unit=hh_json_text(id,"unit"); if(unit!~/^(B|KiB|MiB|GiB)$/) hh_fail("policy")
 	size=hh_mul(value,(unit=="B"?0:(unit=="KiB"?10:(unit=="MiB"?20:30))))
-	total=hh_json_number(1,"total_files","2147483648",0); if(total=="0") hh_fail("policy")
-	age=hh_json_number(1,"max_age_days","30",1)
-	print "POLICY " mode " " size " " sprintf("%.0f",total-1) " " age " END"
+	total=hh_json_number(root,"total_files","2147483648",0); if(total=="0") hh_fail("policy")
+	age=hh_json_number(root,"max_age_days","30",1)
+	return "POLICY " mode " " size " " sprintf("%.0f",total-1) " " age " END"
+}
+function hh_policy(    value) {
+	value=hh_policy_value(1,ENVIRON["CFMGR_HISTORY_FEATURE"])
+	print value
 }
 function hh_include_scan(text,    a,n,i,line,p,count) {
 	n=hh_lines(text,a)
@@ -6527,8 +6553,28 @@ function hh_foreign(text,base,    lines,n,i,line,header,a,k,j,pat,stanza,script,
 	}
 	if(stanza || script) hh_fail("unsupported-foreign-rule")
 }
+function hh_health_policy_file(feature,    path,bytes,line,extra,status,a,n,mode) {
+	path=ENVIRON["CFMGR_HISTORY_POLICY_FILE"]; bytes=ENVIRON["CFMGR_HISTORY_POLICY_BYTES"]
+	if(!hh_health_context_ok(path) || length(path)>1024 || !hh_uint(bytes,"256") || bytes=="0") hh_fail("policy-file")
+	status=(getline line < path)
+	if(status!=1) { close(path); hh_fail("policy-file") }
+	status=(getline extra < path)
+	if(status!=0 || close(path)!=0 || length(line)>255 || bytes+0!=length(line)+1) hh_fail("policy-file")
+	n=split(line,a," ")
+	if(n!=6 || line!="POLICY " a[2] " " a[3] " " a[4] " " a[5] " END") hh_fail("policy-file")
+	mode=a[2]
+	if(feature=="ddns" || feature=="ip_sync") {
+		if(mode!="native" || a[3]!="-" || a[4]!="-" || a[5]!="-") hh_fail("policy")
+	} else if(feature=="cloudflared") {
+		if(mode!~/^(size|daily|weekly|monthly)$/ || !hh_uint(a[3],"9223372036854775807") || a[3]=="0" ||
+			!hh_uint(a[4],"2147483647") || !hh_uint(a[5],"30")) hh_fail("policy")
+	} else hh_fail("feature")
+	return line
+}
 function hh_assess(    f,base,owned,i,p,policy,a,n,mode,size,rotate,age) {
 	f=ENVIRON["CFMGR_HISTORY_FEATURE"]; if(f!~/^(ddns|ip_sync|cloudflared)$/) hh_fail("feature")
+	if(hh_mode=="health-assess") policy=hh_health_policy_file(f)
+	else policy=ENVIRON["CFMGR_HISTORY_POLICY"]
 	base="/opt/var/log/" (f=="ip_sync"?"ip-sync":f) ".log"; owned="/opt/etc/logrotate.d/cfmgr-" (f=="ip_sync"?"ip-sync":f)
 	hh_include_scan(hh_data["rotate-debug"])
 	if(!hh_includes[owned] || !(owned in hh_fragment)) hh_fail("owned-rule-not-included")
@@ -6539,7 +6585,7 @@ function hh_assess(    f,base,owned,i,p,policy,a,n,mode,size,rotate,age) {
 	}
 	hh_required["nocompress"]=hh_required["nodelaycompress"]=hh_required["nodateext"]=hh_required["missingok"]=hh_required["notifempty"]=hh_required["copytruncate"]="1"
 	hh_rule(hh_fragment[owned],base)
-	policy=ENVIRON["CFMGR_HISTORY_POLICY"]; n=split(policy,a," ")
+	n=split(policy,a," ")
 	if(n!=6 || a[1]!="POLICY" || a[6]!="END") hh_fail("policy")
 	if(f=="cloudflared") {
 		if(a[2]!=hh_observed_mode || "n" a[3]!="n" hh_observed_size || "n" a[4]!="n" hh_effect["rotate"] || (a[4]!="0" && "n" a[5]!="n" hh_effect["maxage"])) hh_fail("saved-policy-mismatch")
@@ -6582,6 +6628,87 @@ function hh_targets(text,    f,base,lines,n,i,line,scope,path,count,own_seen,j) 
 	if(own_seen!=1) hh_fail("debug-target-scope")
 	for(i=1;i<=count;i++) print "TARGET " hh_hex(hh_target_path[i]) " " hh_target_scope[i] " " (hh_target_absent[i]?"absent":"present") " END"
 }
+function hh_health_decimal_le(a,b) {
+	return length(a)<length(b) || (length(a)==length(b) && ("n" a)<=("n" b))
+}
+function hh_health_context_ok(path) {
+	return path~/^\/[A-Za-z0-9_.\/-]+$/ && path!~/\/\// && path!~/(^|\/)\.\.?($|\/)/ && path!~/\/$/
+}
+function hh_health_basename_ok(name,    serial) {
+	if(name!~/^health-selected-copy\.[1-9][0-9]*[.]out$/ &&
+		name!~/^health-log-version\.[1-9][0-9]*[.]out$/ &&
+		name!~/^health-log-syntax\.[1-9][0-9]*[.](out|err)$/ &&
+		name!~/^health-log-debug\.[1-9][0-9]*[.](out|err)$/ &&
+		name!~/^health-log-process\.[1-9][0-9]*[.]out$/ &&
+		name!~/^health-log-cron\.[1-9][0-9]*[.]out$/) return 0
+	serial=name; sub(/^health-[a-z-]+\./,"",serial); sub(/[.](out|err)$/,"",serial)
+	return length(serial)<=6 && hh_uint(serial,"999999")
+}
+function hh_health_raw_read(path,expected_bytes,expected_lf,    got,status,line,i,ch,value,records,actual_bytes) {
+	if(!hh_health_context_ok(ENVIRON["CFMGR_HISTORY_CONTEXT"]) ||
+		!hh_health_basename_ok(path) || !hh_uint(expected_bytes,hh_limit) ||
+		!hh_uint(expected_lf,hh_limit) || !hh_health_decimal_le(expected_lf,expected_bytes)) hh_fail("raw-admission")
+	if(path in hh_health_names) hh_fail("raw-alias")
+	hh_health_names[path]=1
+	path=ENVIRON["CFMGR_HISTORY_CONTEXT"] "/" path
+	value=""; records=0; actual_bytes="0"
+	while((status=(getline line < path))==1) {
+		records++
+		if(records+0 > expected_lf+1) hh_fail("raw-record-count")
+		for(i=1;i<=length(line);i++) {
+			ch=substr(line,i,1)
+			if(!("b" ch in hh_health_ord)) hh_fail("raw-byte")
+			got=hh_health_ord["b" ch]
+			if(got==0 || got==127 || (got<32 && got!=9 && got!=13)) hh_fail("raw-control")
+		}
+		actual_bytes=hh_add(actual_bytes,sprintf("%.0f",length(line)+(records<=expected_lf?1:0)))
+		if(!hh_health_decimal_le(actual_bytes,expected_bytes)) hh_fail("raw-byte-count")
+		value=value line (records<=expected_lf?"\n":"")
+	}
+	if(status<0 || close(path)!=0) hh_fail("raw-read")
+	if(!(records==expected_lf || records==expected_lf+1) || actual_bytes!=expected_bytes) hh_fail("raw-count-disagreement")
+	hh_health_raw_value=value
+	return value
+}
+function hh_health_bundle_line(line,    f,n,role,outputrole,pathhex,path,name,b,l,raw,packed,payload_bytes,line_bytes,serialized) {
+	if(hh_health_footer) hh_fail("bundle-trailing-data")
+	hh_health_line_count++
+	if(hh_health_line_count==1) {
+		if(line!="CFMGR-HEALTH-HISTORY 1") hh_fail("bundle-header")
+		hh_health_header=1; return
+	}
+	if(line~/  / || line~/\t/ || line=="") hh_fail("bundle-framing")
+	n=split(line,f," ")
+	if(f[1]=="END") {
+		if(n!=4 || f[4]!="END" || !hh_uint(f[2],hh_limit) || !hh_uint(f[3],hh_limit) || f[2]+0!=hh_health_record_count) hh_fail("bundle-footer")
+		if(hh_health_data_count!=9) hh_fail("bundle-roles")
+		if(f[3]!=hh_health_serialized_bytes || !hh_health_decimal_le(f[3],hh_health_output_limit)) hh_fail("bundle-byte-budget")
+		hh_health_footer=1; return
+	}
+	if(f[1]=="DATA") {
+		if(n!=5 || f[2]!~/^(script|scribe-config|cron|process|syslog-config|rotate-config|debug|syslog-version|logrotate-version)$/ || f[2] in hh_health_role) hh_fail("bundle-data")
+		role=f[2]; outputrole=(role=="debug"?"rotate-debug":role)
+		name=f[3]; b=f[4]; l=f[5]; hh_health_role[role]=1; hh_health_data_count++
+		pathhex=""
+	} else if(f[1]=="FRAGMENT") {
+		if(n!=5 || f[2]!~/^([0-9a-f][0-9a-f])*$/) hh_fail("bundle-fragment")
+		path=hh_decode(f[2]); if(!hh_path(path) || path in hh_health_path) hh_fail("bundle-fragment-path")
+		hh_health_path[path]=1; pathhex=f[2]; name=f[3]; b=f[4]; l=f[5]
+	} else hh_fail("bundle-record")
+	if(!hh_health_basename_ok(name) || name in hh_health_names) hh_fail("bundle-basename")
+	if(!hh_uint(b,hh_limit) || !hh_uint(l,hh_limit) || !hh_health_decimal_le(l,b)) hh_fail("bundle-count-fields")
+	payload_bytes=(b=="0"?"1":hh_add(b,b))
+		line_bytes=sprintf("%.0f",(f[1]=="DATA"?7:11)+length(f[1]=="DATA"?outputrole:pathhex))
+	line_bytes=hh_add(line_bytes,payload_bytes)
+	if(!hh_health_decimal_le(hh_add(hh_health_serialized_bytes,line_bytes),hh_health_output_limit)) hh_fail("bundle-byte-budget")
+	raw=hh_health_raw_read(name,b,l); packed=(length(raw)?hh_hex(raw):"-")
+	if(f[1]=="DATA") serialized="DATA " outputrole " " packed "\n"
+	else serialized="FRAGMENT " pathhex " " packed "\n"
+	hh_health_record_count++
+	hh_health_serialized_bytes=hh_add(hh_health_serialized_bytes,line_bytes)
+	hh_health_rows[hh_health_record_count]=serialized
+}
+
 function hh_audit(line,    a,n,key) {
 	n=split(line,a," ")
 	if(a[1]=="OWN") {
@@ -6607,19 +6734,40 @@ function hh_audit(line,    a,n,key) {
 BEGIN {
 	hh_mode=ENVIRON["CFMGR_HISTORY_MODE"]; hh_limit=ENVIRON["CFMGR_HISTORY_LIMIT"]
 	if(!hh_uint(hh_limit,"9007199254740991") || hh_limit=="0") hh_fail("budget")
-	for(hh_i=1;hh_i<256;hh_i++) hh_ord[sprintf("%c",hh_i)]=hh_i
+	if(hh_mode=="health-bundle" || hh_mode=="includes-raw") {
+		if(ENVIRON["LC_ALL"]!="C") hh_fail("locale")
+		RS="\n"
+		for(hh_i=1;hh_i<256;hh_i++) {
+			hh_ord[sprintf("%c",hh_i)]=hh_i
+			hh_health_key="b" sprintf("%c",hh_i); hh_health_ord[hh_health_key]=hh_i
+		}
+	} else {
+		if(hh_mode=="health-assess" && ENVIRON["LC_ALL"]!="C") hh_fail("locale")
+		for(hh_i=1;hh_i<256;hh_i++) hh_ord[sprintf("%c",hh_i)]=hh_i
+	}
 	if(hh_mode=="policy") { hh_policy(); exit 0 }
+	if(hh_mode=="includes-raw") {
+		hh_health_raw_read(ENVIRON["CFMGR_HISTORY_RAW_NAME"],ENVIRON["CFMGR_HISTORY_RAW_BYTES"],ENVIRON["CFMGR_HISTORY_RAW_LF"])
+		hh_include_scan(hh_health_raw_value); exit 0
+	}
+	if(hh_mode=="health-bundle") {
+		if(!hh_health_context_ok(ENVIRON["CFMGR_HISTORY_CONTEXT"])) hh_fail("raw-context")
+		hh_health_output_limit=ENVIRON["CFMGR_HISTORY_BUNDLE_LIMIT"]
+		if(!hh_uint(hh_health_output_limit,hh_limit) || hh_health_output_limit=="0") hh_fail("bundle-budget")
+		hh_health_serialized_bytes="0"
+	}
 	if(hh_mode=="path" || hh_mode=="target-path") {
 		hh_pathname=hh_decode(ENVIRON["CFMGR_HISTORY_LABEL"])
 		if(hh_mode=="target-path") { if(hh_pathname!~/^\// || hh_pathname~/[^ -~]/ || length(hh_pathname)>1024) hh_fail("path") }
 		else if(!hh_path(hh_pathname) && hh_pathname!~/^\/opt\/var\/log\/(ddns|ip-sync|cloudflared)[.]log([.][1-9][0-9]*)?$/) hh_fail("path")
 		print hh_pathname; exit 0
 	}
-	if(hh_mode!~/^(plan|pack|includes|base|assess|family|compare|targets|audit)$/) hh_fail("mode")
+	if(hh_mode!~/^(plan|pack|includes|includes-raw|health-bundle|health-assess|base|assess|family|compare|targets|audit)$/) hh_fail("mode")
 }
 {
 	hh_bytes+=length($0)+1; if(hh_bytes>hh_limit) hh_fail("metadata-limit")
-	if(hh_mode=="compare") {
+	if(hh_mode=="health-bundle") hh_health_bundle_line($0)
+	else if(hh_mode=="compare") {
 		if((getline hh_compare_line < ENVIRON["CFMGR_HISTORY_LABEL"])!=1 || "x" hh_compare_line!="x" $0) hh_fail("observation-changed")
 	} else if(hh_mode=="plan") hh_plan($0)
 	else if(hh_mode=="audit") hh_audit($0)
@@ -6628,9 +6776,9 @@ BEGIN {
 		hh_packed=hh_packed $0
 	} else {
 		hh_n=split($0,hh_fields," ")
-		if(hh_n!=3 || hh_fields[1]!~/^(DATA|FRAGMENT)$/ || hh_fields[3]~/[^0-9a-f]/) hh_fail("framing")
-		if(hh_fields[1]=="DATA") { if(hh_fields[2] in hh_data) hh_fail("framing"); hh_data[hh_fields[2]]=hh_decode(hh_fields[3]) }
-		else { hh_pathname=hh_decode(hh_fields[2]); if(!hh_path(hh_pathname) || hh_pathname in hh_fragment) hh_fail("framing"); hh_fragment[hh_pathname]=hh_decode(hh_fields[3]) }
+		if(hh_n!=3 || hh_fields[1]!~/^(DATA|FRAGMENT)$/ || (hh_fields[3]!="-" && hh_fields[3]~/[^0-9a-f]/)) hh_fail("framing")
+		if(hh_fields[1]=="DATA") { if(hh_fields[2] in hh_data) hh_fail("framing"); hh_data[hh_fields[2]]=(hh_fields[3]=="-"?"":hh_decode(hh_fields[3])) }
+		else { hh_pathname=hh_decode(hh_fields[2]); if(!hh_path(hh_pathname) || hh_pathname in hh_fragment) hh_fail("framing"); hh_fragment[hh_pathname]=(hh_fields[3]=="-"?"":hh_decode(hh_fields[3])) }
 	}
 }
 END {
@@ -6641,6 +6789,11 @@ END {
 	} else if(hh_mode=="audit") {
 		if(hh_own_live!="" && hh_audit_live_seen!=hh_own_live) hh_fail("observation-changed")
 		print "COVERAGE ready END"
+	} else if(hh_mode=="health-bundle") {
+		if(!hh_health_header || !hh_health_footer) hh_fail("bundle-incomplete")
+		for(hh_i=1;hh_i<=hh_health_record_count;hh_i++) printf "%s",hh_health_rows[hh_i]
+	} else if(hh_mode=="includes-raw") {
+		for(hh_i=1;hh_i<=hh_include_count;hh_i++) print "INCLUDE " hh_hex(hh_include_order[hh_i]) " END"
 	} else if(hh_mode=="targets") hh_targets(hh_decode(hh_packed))
 	else if(hh_mode=="plan") hh_plan_end()
 	else if(hh_mode=="pack") {
@@ -6651,7 +6804,7 @@ END {
 		hh_include_scan(hh_decode(hh_packed))
 		for(hh_i=1;hh_i<=hh_include_count;hh_i++) print "INCLUDE " hh_hex(hh_include_order[hh_i]) " END"
 	} else if(hh_mode=="base") hh_base()
-	else if(hh_mode=="assess") hh_assess()
+	else if(hh_mode=="assess" || hh_mode=="health-assess") hh_assess()
 	else if(hh_mode=="family") hh_family(hh_decode(hh_packed))
 }
 '

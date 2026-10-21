@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,36 @@ rotating pattern: /opt/var/log/messages  4194304 bytes (4 rotations)
 considering log /opt/var/log/messages
   log /opt/var/log/messages does not exist -- skipping
 """
+HEALTH_HISTORY_ROLES = (
+    "script",
+    "scribe-config",
+    "cron",
+    "process",
+    "syslog-config",
+    "rotate-config",
+    "debug",
+    "syslog-version",
+    "logrotate-version",
+)
+HEALTH_HISTORY_FRAGMENTS = (
+    "/opt/etc/logrotate.d/A01global",
+    "/opt/etc/logrotate.d/cfmgr-ddns",
+    "/opt/etc/logrotate.d/messages",
+)
+HEALTH_HISTORY_BASENAMES = (
+    "health-selected-copy.1.out",
+    "health-log-version.2.out",
+    "health-log-cron.3.out",
+    "health-log-process.4.out",
+    "health-selected-copy.5.out",
+    "health-log-syntax.6.err",
+    "health-log-debug.7.err",
+    "health-log-version.8.out",
+    "health-log-syntax.9.out",
+    "health-selected-copy.10.out",
+    "health-selected-copy.11.out",
+    "health-selected-copy.12.out",
+)
 
 
 @pytest.fixture(scope="module")
@@ -132,6 +163,62 @@ def bundle(**changes):
     return output
 
 
+def health_history_index(context: Path, records):
+    index_rows = []
+    bundle_rows = []
+    for serial, (kind, label, value) in enumerate(records, start=1):
+        basename = HEALTH_HISTORY_BASENAMES[serial - 1]
+        (context / basename).write_bytes(value)
+        if kind == "DATA":
+            index_label = label
+            output_label = "rotate-debug" if label == "debug" else label
+            index_rows.append(
+                f"DATA {index_label} {basename} {len(value)} {value.count(bytes([10]))}"
+            )
+            bundle_rows.append(f"DATA {output_label} {value.hex() or '-'}\n".encode())
+        else:
+            path_hex = label.encode().hex()
+            index_rows.append(
+                f"FRAGMENT {path_hex} {basename} {len(value)} {value.count(bytes([10]))}"
+            )
+            bundle_rows.append(f"FRAGMENT {path_hex} {value.hex() or '-'}\n".encode())
+    expected_bundle = b"".join(bundle_rows)
+    index = "\n".join(
+        (
+            "CFMGR-HEALTH-HISTORY 1",
+            *index_rows,
+            f"END {len(index_rows)} {len(expected_bundle)} END",
+            "",
+        )
+    ).encode()
+    return index, expected_bundle
+
+
+def health_history_records(raw_data=None):
+    raw_data = raw_data or {
+        "script": b"script\n",
+        "scribe-config": b"",
+        "cron": b"cron\r\twith-tab",
+        "process": b"\x80\n",
+        "syslog-config": b"syslog\r\n",
+        "rotate-config": b"rotate\n",
+        "debug": DEBUG.encode(),
+        "syslog-version": b"",
+        "logrotate-version": b"version-no-final-lf",
+    }
+    return [
+        *(("DATA", role, raw_data[role]) for role in HEALTH_HISTORY_ROLES),
+        *(
+            (
+                "FRAGMENT",
+                path,
+                ("include " + path + "\n").encode(),
+            )
+            for path in HEALTH_HISTORY_FRAGMENTS
+        ),
+    ]
+
+
 def test_ready_profile_accepts_realistic_daemonized_process_and_observed_native_policy(
     awk_programs,
 ):
@@ -153,6 +240,258 @@ def test_ready_profile_accepts_realistic_daemonized_process_and_observed_native_
             0,
             b"EFFECTIVE ddns size 7340032 2 0 END\n",
             b"",
+        )
+
+
+def test_health_assess_reads_bounded_canonical_policy_file(awk_programs):
+    good = b"POLICY native - - - END\n"
+    malformed = (
+        (b"POLICY native - - - END", "policy-file", "ddns"),
+        (good + b"extra\n", "policy-file", "ddns"),
+        (b"POLICY  native - - - END\n", "policy-file", "ddns"),
+        (b"POLICY size 0 0 0 END\n", "policy", "ddns"),
+        (b"POLICY weekly 1 2147483648 31 END\n", "policy", "cloudflared"),
+        (b"x" * 257 + b"\n", "policy-file", "ddns"),
+    )
+    for awk in awk_programs:
+        with tempfile.TemporaryDirectory(prefix="cfmgr-policy-", dir="/tmp") as name:
+            policy_path = Path(name) / "policy"
+            policy_path.write_bytes(good)
+            legacy = parse(
+                awk,
+                "assess",
+                bundle(),
+                CFMGR_HISTORY_FEATURE="ddns",
+                CFMGR_HISTORY_POLICY=good.decode().strip(),
+            )
+            from_file = parse(
+                awk,
+                "health-assess",
+                bundle(),
+                CFMGR_HISTORY_FEATURE="ddns",
+                CFMGR_HISTORY_POLICY_FILE=str(policy_path),
+                CFMGR_HISTORY_POLICY_BYTES=str(len(good)),
+            )
+            assert (legacy.returncode, legacy.stdout, legacy.stderr) == (
+                0,
+                b"EFFECTIVE ddns size 7340032 2 0 END\n",
+                b"",
+            )
+            assert (from_file.returncode, from_file.stdout, from_file.stderr) == (
+                legacy.returncode,
+                legacy.stdout,
+                legacy.stderr,
+            )
+
+            for content, reason, feature in malformed:
+                policy_path.write_bytes(content)
+                result = parse(
+                    awk,
+                    "health-assess",
+                    bundle(),
+                    CFMGR_HISTORY_FEATURE=feature,
+                    CFMGR_HISTORY_POLICY_FILE=str(policy_path),
+                    CFMGR_HISTORY_POLICY_BYTES=str(len(content)),
+                )
+                assert result.returncode != 0, content[:32]
+                assert result.stdout == f"CFMGR-HISTORY-ERROR 1 {reason} END\n".encode()
+                assert b"EFFECTIVE " not in result.stdout
+
+
+def test_health_raw_bundle_roundtrips_existing_base_and_assess_consumers(awk_programs):
+    original = bundle().encode()
+    records = []
+    for line in original.splitlines():
+        fields = line.split()
+        if fields[0] == b"DATA":
+            label = fields[1].decode()
+            role = "debug" if label == "rotate-debug" else label
+            records.append(("DATA", role, bytes.fromhex(fields[2].decode())))
+        else:
+            path = bytes.fromhex(fields[1].decode()).decode()
+            records.append(("FRAGMENT", path, bytes.fromhex(fields[2].decode())))
+
+    for awk in awk_programs:
+        with tempfile.TemporaryDirectory(prefix="cfmgr-history-", dir="/tmp") as name:
+            context = Path(name)
+            index, expected = health_history_index(context, records)
+            generated = parse(
+                awk,
+                "health-bundle",
+                index,
+                CFMGR_HISTORY_CONTEXT=str(context),
+                CFMGR_HISTORY_BUNDLE_LIMIT=str(len(expected)),
+            )
+            assert (generated.returncode, generated.stdout, generated.stderr) == (
+                0,
+                original,
+                b"",
+            )
+            base_result = parse(awk, "base", generated.stdout)
+            assert (base_result.returncode, base_result.stdout, base_result.stderr) == (
+                0,
+                b"BASE ready 3 123 4000 END\n",
+                b"",
+            )
+            assessed = parse(
+                awk,
+                "assess",
+                generated.stdout,
+                CFMGR_HISTORY_FEATURE="ddns",
+                CFMGR_HISTORY_POLICY="POLICY native - - - END",
+            )
+            assert (assessed.returncode, assessed.stdout, assessed.stderr) == (
+                0,
+                b"EFFECTIVE ddns size 7340032 2 0 END\n",
+                b"",
+            )
+
+
+def test_health_raw_bundle_preserves_bytes_and_rejects_untrusted_receipts(awk_programs):
+    normal_records = health_history_records()
+    controls = (b"bad\x01byte", b"bad\x00byte", b"bad\x7fbyte")
+    for awk in awk_programs:
+        with tempfile.TemporaryDirectory(prefix="cfmgr-history-", dir="/tmp") as name:
+            context = Path(name)
+            index, expected = health_history_index(context, normal_records)
+            result = parse(
+                awk,
+                "health-bundle",
+                index,
+                CFMGR_HISTORY_CONTEXT=str(context),
+                CFMGR_HISTORY_BUNDLE_LIMIT=str(len(expected)),
+            )
+            assert (result.returncode, result.stdout, result.stderr) == (
+                0,
+                expected,
+                b"",
+            )
+            assert b"DATA scribe-config -\n" in result.stdout
+            assert b"DATA cron " in result.stdout and b"DATA process " in result.stdout
+
+        malformed = [
+            ("control-01", {"script": controls[0]}, None),
+            ("nul", {"script": controls[1]}, None),
+            ("control-del", {"script": controls[2]}, None),
+            ("bad-basename", {}, "basename"),
+            ("duplicate-role", {}, "duplicate"),
+            ("footer-count", {}, "count"),
+            ("footer-bytes", {}, "bytes"),
+            ("output-limit", {}, "limit"),
+        ]
+        for case, replacement, mutation in malformed:
+            with tempfile.TemporaryDirectory(
+                prefix="cfmgr-history-", dir="/tmp"
+            ) as name:
+                context = Path(name)
+                index, expected = health_history_index(
+                    context,
+                    health_history_records(
+                        {
+                            **{r: v for _, r, v in normal_records if _ == "DATA"},
+                            **replacement,
+                        }
+                    ),
+                )
+                limit = len(expected)
+                lines = index.splitlines()
+                if mutation == "basename":
+                    lines[1] = lines[1].replace(
+                        b"health-selected-copy.1.out", b"health-copy.1.out"
+                    )
+                elif mutation == "duplicate":
+                    lines.insert(2, lines[1])
+                elif mutation == "count":
+                    footer = lines[-1].split()
+                    footer[1] = b"11"
+                    lines[-1] = b" ".join(footer)
+                elif mutation == "bytes":
+                    footer = lines[-1].split()
+                    footer[2] = b"1"
+                    lines[-1] = b" ".join(footer)
+                elif mutation == "limit":
+                    limit = 1
+                bad_index = b"\n".join(lines) + b"\n"
+                result = parse(
+                    awk,
+                    "health-bundle",
+                    bad_index,
+                    CFMGR_HISTORY_CONTEXT=str(context),
+                    CFMGR_HISTORY_BUNDLE_LIMIT=str(limit),
+                )
+                assert result.returncode != 0 and result.stdout.startswith(
+                    b"CFMGR-HISTORY-ERROR 1 "
+                ), case
+                assert (
+                    b"DATA " not in result.stdout and b"FRAGMENT " not in result.stdout
+                )
+
+        # Native WC receipt disagreements are rejected against the immutable copy.
+        for field, delta in ((3, 1), (4, 1)):
+            with tempfile.TemporaryDirectory(
+                prefix="cfmgr-history-", dir="/tmp"
+            ) as name:
+                context = Path(name)
+                index, expected = health_history_index(context, normal_records)
+                lines = index.splitlines()
+                row = lines[1].split()
+                row[field] = str(int(row[field]) + delta).encode()
+                lines[1] = b" ".join(row)
+                result = parse(
+                    awk,
+                    "health-bundle",
+                    b"\n".join(lines) + b"\n",
+                    CFMGR_HISTORY_CONTEXT=str(context),
+                    CFMGR_HISTORY_BUNDLE_LIMIT=str(len(expected)),
+                )
+                assert result.returncode != 0 and b"DATA " not in result.stdout
+
+
+def test_health_raw_includes_reuses_scanner_and_empty_pack_is_unchanged(awk_programs):
+    debug = DEBUG.encode()
+    packed = b"".join(f"{byte:02x}\n".encode() for byte in debug)
+    for awk in awk_programs:
+        with tempfile.TemporaryDirectory(prefix="cfmgr-history-", dir="/tmp") as name:
+            context = Path(name)
+            raw_name = "health-selected-copy.1.out"
+            (context / raw_name).write_bytes(debug)
+            old = parse(awk, "includes", packed)
+            new = parse(
+                awk,
+                "includes-raw",
+                b"",
+                CFMGR_HISTORY_CONTEXT=str(context),
+                CFMGR_HISTORY_RAW_NAME=raw_name,
+                CFMGR_HISTORY_RAW_BYTES=str(len(debug)),
+                CFMGR_HISTORY_RAW_LF=str(debug.count(b"\n")),
+            )
+            assert (new.returncode, new.stdout, new.stderr) == (
+                old.returncode,
+                old.stdout,
+                old.stderr,
+            )
+            wrong_locale = parse(
+                awk,
+                "includes-raw",
+                b"",
+                LC_ALL="POSIX",
+                CFMGR_HISTORY_CONTEXT=str(context),
+                CFMGR_HISTORY_RAW_NAME=raw_name,
+                CFMGR_HISTORY_RAW_BYTES=str(len(debug)),
+                CFMGR_HISTORY_RAW_LF=str(debug.count(b"\n")),
+            )
+            assert wrong_locale.returncode != 0 and b"locale" in wrong_locale.stdout
+
+        packed_empty = parse(awk, "pack", b"", CFMGR_HISTORY_LABEL="rotate-debug")
+        assert (packed_empty.returncode, packed_empty.stdout, packed_empty.stderr) == (
+            0,
+            b"DATA rotate-debug 0a\n",
+            b"",
+        )
+        empty_ingestion = parse(awk, "base", b"DATA rotate-debug -\n")
+        assert (
+            empty_ingestion.returncode != 0
+            and b"base-evidence" in empty_ingestion.stdout
         )
 
 

@@ -327,7 +327,7 @@ cfmgr_worker_program() {
 	install-config-check)
 		. "$2/modules/lib/config.sh" || exit 2
 		;;
-	status-config | health-inventory | health-scope | health-request | health-response | status-render | health-render)
+	status-config | health-inventory | health-scope | health-request | health-response | health-cloud-plan | health-cloud-authority | status-render | health-render)
 		. "$1" || exit 2
 		case $mode in status-render | health-render) ;; *) . "$2" || exit 2 ;; esac
 		;;
@@ -336,7 +336,7 @@ cfmgr_worker_program() {
 		;;
 	esac
 	case $mode in
-	health-inventory | health-scope | health-request)
+	health-inventory | health-scope | health-request | health-cloud-plan | health-cloud-authority)
 		cfmgr_config_awk_json
 		cfmgr_worker_json=$cfmgr_awk_program
 		cfmgr_config_awk_config_schema
@@ -345,7 +345,7 @@ $cfmgr_awk_program"
 		cfmgr_config_awk_config_observation
 		cfmgr_worker_json="$cfmgr_worker_json
 $cfmgr_awk_program"
-		cfmgr_status_awk_health
+		case $mode in health-cloud-plan | health-cloud-authority) cfmgr_status_awk_health_cloud ;; *) cfmgr_status_awk_health ;; esac
 		cfmgr_awk_program="$cfmgr_worker_json
 $cfmgr_awk_program"
 		;;
@@ -469,6 +469,109 @@ health-metadata-check)
 	cfmgr_status_awk_health_metadata
 	exec "$tool" "$cfmgr_awk_program" "$2" "$3" "$4"
 	;;
+health-compare)
+	[ "$#" -eq 2 ] && [ "$2" = "$context/comparison" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	. "$1" || exit 2
+	cfmgr_status_awk_health_wire
+	comparison_wire=$cfmgr_awk_program
+	cfmgr_status_awk_health_compare
+	cfmgr_awk_program="$comparison_wire
+$cfmgr_awk_program"
+	[ "${#cfmgr_awk_program}" -le 98304 ] || exit 2
+	export CFMGR_HEALTH_MODE=health-compare
+	exec "$tool" "$cfmgr_awk_program" "$2" "$context"
+	;;
+health-cloud-frame)
+	[ "$#" -eq 3 ] || exit 2
+	case $3 in plan | join) ;; *) exit 2 ;; esac
+	. "$1" || exit 2
+	cfmgr_status_awk_health_selected
+	exec "$tool" "$cfmgr_awk_program" "frame-$3" "$2" - - -
+	;;
+health-cloud-plan | health-cloud-authority)
+	[ "$#" -eq 5 ] || exit 2
+	case $5 in plan | runtime-authority | certificate-account) ;; *) exit 2 ;; esac
+	case $mode:$5 in health-cloud-plan:plan | health-cloud-authority:runtime-authority | health-cloud-authority:certificate-account) ;; *) exit 2 ;; esac
+	[ -f "$3" ] && [ ! -L "$3" ] || exit 2
+	case $4 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$4" -le 65536 ] || exit 2
+	export CFMGR_HEALTH_CLOUD="$5"
+	exec 8<"$3" || exit 1
+	[ -f /proc/self/fd/8 ] && [ "$3" -ef /proc/self/fd/8 ] && [ ! -L "$3" ] || exit 1
+	cfmgr_worker_program "$@"
+	exec "$tool" -v cfmgr_json_mode=tree -v cfmgr_json_size="$4" -v cfmgr_config_mode=archive-data "$cfmgr_awk_program" <&8
+	;;
+health-selected-check | health-cloud-join)
+	[ "$#" -eq 5 ] || exit 2
+	. "$1" || exit 2
+	cfmgr_status_awk_health_selected
+	case $mode in health-selected-check)
+		export CFMGR_HEALTH_SELECTED_PATH="$5"
+		set -- metadata "$2" "$3" "$4"
+		;;
+	*) set -- yaml-join "$2" "$3" "$4" "$5" ;; esac
+	exec "$tool" "$cfmgr_awk_program" "$@"
+	;;
+health-selected-metadata)
+	[ "$#" -ge 1 ] && [ "$#" -le 13 ] || exit 2
+	for selected_path; do
+		case $selected_path in /*) ;; *) exit 2 ;; esac
+		case $selected_path in *[!\ -~]* | *\\*) exit 2 ;; esac
+		[ "${#selected_path}" -le 1024 ] || exit 2
+	done
+	exec "$tool" -ildn "$@"
+	;;
+health-selected-copy | health-selected-hex | health-selected-hash)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in '' | *[!0-9]* | 0?*) exit 2 ;; esac
+	[ "${#2}" -le 10 ] || exit 2
+	exec 8<"$1" || exit 1
+	[ -f /proc/self/fd/8 ] && [ "$1" -ef /proc/self/fd/8 ] && [ ! -L "$1" ] || exit 1
+	case $mode in
+	health-selected-copy) exec "$tool" bs=4096 count="$((($2 + 4095) / 4096 + 1))" <&8 2>/dev/null ;;
+	health-selected-hex) exec "$tool" -v -n "$2" -e '1/1 "%02x\n"' <&8 ;;
+	health-selected-hash) exec "$tool" dgst -sha256 -r <&8 ;;
+	esac
+	;;
+health-cloud-yaml | health-cloud-pem)
+	[ "$#" -eq 2 ] || exit 2
+	. "$1" || exit 2
+	case $mode in
+	health-cloud-yaml)
+		export CFMGR_YAML_METADATA_LIMIT=262144
+		cfmgr_backup_awk_backup_yaml
+		;;
+	health-cloud-pem)
+		export CFMGR_PEM_MODE=health-base64
+		cfmgr_backup_awk_backup_pem
+		;;
+	esac
+	exec "$tool" "$cfmgr_awk_program" "$2"
+	;;
+health-cloud-decode)
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	exec "$tool" base64 -d -A -in "$1"
+	;;
+health-cloud-json)
+	[ "$#" -eq 5 ] || exit 2
+	case $2 in runtime-json | certificate-json) ;; *) exit 2 ;; esac
+	case $4 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$4" -le 65536 ] && [ -f "$3" ] && [ ! -L "$3" ] && [ -f "$5" ] && [ ! -L "$5" ] || exit 2
+	# Only an owned authority file path crosses the environment boundary.
+	case $2 in runtime-json) export CFMGR_PAYLOAD_AUTHORITY="$5" ;; certificate-json) export CFMGR_PAYLOAD_ACCOUNT_FILE="$5" ;; esac
+	export CFMGR_PAYLOAD_MODE="$2" CFMGR_PAYLOAD_HEALTH=1
+	. "$1/config.sh" || exit 2
+	. "${1%/lib}/backup.sh" || exit 2
+	cfmgr_config_awk_json
+	cloud_json=$cfmgr_awk_program
+	cfmgr_backup_awk_backup_payload
+	cfmgr_awk_program="$cloud_json
+$cfmgr_awk_program"
+	[ "${#cfmgr_awk_program}" -le 98304 ] || exit 2
+	exec 8<"$3" || exit 1
+	[ -f /proc/self/fd/8 ] && [ "$3" -ef /proc/self/fd/8 ] && [ ! -L "$3" ] || exit 1
+	exec "$tool" -v cfmgr_json_mode=tree -v cfmgr_json_size="$4" "$cfmgr_awk_program" <&8
+	;;
 health-uname)
 	[ "$#" -eq 0 ] || exit 2
 	exec "$tool" -m
@@ -488,9 +591,16 @@ health-wc-jq | health-wc-sha)
 	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
 	exec "$tool" -c <"$1"
 	;;
-health-count-pair)
-	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
-	exec "$tool" -c "$1" "$2"
+health-count-get)
+	[ "$#" -eq 3 ] || exit 2
+	case $1 in "$context"/health-get.*.out) ;; *) exit 2 ;; esac
+	health_count_get_base=${1##*/}
+	health_count_get_serial=${health_count_get_base#health-get.}
+	health_count_get_serial=${health_count_get_serial%.out}
+	case $health_count_get_serial in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$2" = "$context/health-get.$health_count_get_serial.body" ] && [ "$3" = "$context/health-get.$health_count_get_serial.headers" ] || exit 2
+	[ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] && [ -f "$3" ] && [ ! -L "$3" ] || exit 2
+	exec "$tool" -c "$1" "$2" "$3"
 	;;
 health-inventory | health-scope | health-request)
 	[ "$#" -eq 10 ] || exit 2

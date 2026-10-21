@@ -6,6 +6,7 @@ case retains the actual bounded supervisor and fixed executable probe body.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import shlex
@@ -300,6 +301,89 @@ def health_wire(commands, tmp_path, kind, contents, *, mode="health-frame", size
     )
 
 
+def health_response_run(commands, scope_file, request_file, payload):
+    return subprocess.run(
+        [
+            *commands[1],
+            "-v",
+            "cfmgr_json_mode=tree",
+            "-v",
+            f"cfmgr_json_size={len(payload)}",
+            awk_program("json", "health_wire", "health_response"),
+        ],
+        input=payload,
+        capture_output=True,
+        check=False,
+        timeout=3,
+        env={
+            **os.environ,
+            "LC_ALL": "C",
+            "CFMGR_HEALTH_MODE": "health-response",
+            "CFMGR_HEALTH_SCOPE": str(scope_file),
+            "CFMGR_HEALTH_INPUT": str(request_file),
+            "CFMGR_HEALTH_BYTES": str(request_file.stat().st_size),
+        },
+    )
+
+
+def health_v2_value(raw):
+    address, slash, prefix = raw.partition("/")
+    packed = ipaddress.ip_address(address).packed.hex()
+    family = "4" if len(packed) == 8 else "6"
+    width = 32 if family == "4" else 128
+    return f"VALUE {family} {packed} {prefix if slash else width}"
+
+
+def health_v2_receipt(kind, state, family, values):
+    lines = [f"CFMGR-HEALTH-RESPONSE 2 {state} {len(values)} {kind} {family}"]
+    lines.extend(health_v2_value(value) for value in values)
+    lines.append(f"END {len(values)}")
+    return ("\n".join(lines) + "\n").encode()
+
+
+def health_compare_run(commands, context, entries, *, worker=False, shell=None):
+    context.mkdir(parents=True, exist_ok=True)
+    manifest_lines = ["CFMGR-HEALTH-COMPARISON 1"]
+    for index, (role, ordinal, family, contents) in enumerate(entries, start=1):
+        prefix = "health-trace" if role == "TRACE" else "health-response"
+        basename = f"{prefix}.{index}.out"
+        (context / basename).write_bytes(contents)
+        manifest_lines.append(f"{role} {ordinal} {family} {basename}")
+    manifest_lines.append(f"END {len(entries)}")
+    manifest = context / "comparison"
+    manifest.write_text("\n".join(manifest_lines) + "\n")
+    if worker:
+        status_source = context / "status.sh"
+        status_source.write_text((ROOT / "modules/status.sh").read_text())
+        return subprocess.run(
+            [
+                *shell,
+                str(ROOT / "modules/helpers/worker.sh"),
+                "health-compare",
+                commands[1][0],
+                str(context),
+                str(status_source),
+                str(manifest),
+            ],
+            capture_output=True,
+            check=False,
+            timeout=3,
+            env={**os.environ, "LC_ALL": "C"},
+        )
+    return subprocess.run(
+        [
+            *commands[1],
+            awk_program("health_wire", "health_compare"),
+            str(manifest),
+            str(context),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+        env={**os.environ, "LC_ALL": "C", "CFMGR_HEALTH_MODE": "health-compare"},
+    )
+
+
 @pytest.mark.parametrize(
     "damage",
     [
@@ -403,40 +487,282 @@ def test_health_response_is_typed_exact_and_never_claims_partial_absence(
     payload = json.dumps(body).encode()
     if case == "nul":
         payload += b"\0"
-    result = subprocess.run(
-        [
-            *commands[1],
-            "-v",
-            "cfmgr_json_mode=tree",
-            "-v",
-            f"cfmgr_json_size={len(payload)}",
-            awk_program("json", "health_wire", "health_response"),
-        ],
-        input=payload,
-        capture_output=True,
-        check=False,
-        timeout=3,
-        env={
-            **os.environ,
-            "LC_ALL": "C",
-            "CFMGR_HEALTH_MODE": "health-response",
-            "CFMGR_HEALTH_SCOPE": str(scope_file),
-            "CFMGR_HEALTH_INPUT": str(request_file),
-            "CFMGR_HEALTH_BYTES": str(len(request.stdout)),
-        },
-    )
+    result = health_response_run(commands, scope_file, request_file, payload)
     assert result.stderr == b""
     assert HEALTH_SECRET.encode() not in result.stdout
     if case in {"valid", "partial", "unknown-pagination", "empty"}:
         assert result.returncode == 0
         state = "partial" if case in {"partial", "unknown-pagination"} else "verified"
         count = 0 if case == "empty" else 1
+        value = "" if count == 0 else health_v2_value(record["content"]) + "\n"
         assert (
             result.stdout
-            == f"CFMGR-HEALTH-RESPONSE 1 {state} {count} api-read END\n".encode()
+            == (
+                f"CFMGR-HEALTH-RESPONSE 2 {state} {count} dns 4\n{value}END {count}\n"
+            ).encode()
         )
     else:
         assert result.returncode != 0 and result.stdout == b""
+
+
+@pytest.mark.parametrize(
+    "content",
+    ["2606:4700::ABCD", "::ffff:192.0.2.1"],
+    ids=["compressed-ipv6", "dotted-ipv4-tail"],
+)
+def test_health_dns_receipt_canonicalizes_ipv6_and_dotted_tail(
+    commands, health_config, tmp_path, content
+):
+    scope = health_projection(
+        commands, health_config, kind="dns", selector="local-record-6", family="6"
+    )
+    request = health_projection(
+        commands,
+        health_config,
+        "health-request",
+        kind="dns",
+        selector="local-record-6",
+        family="6",
+    )
+    scope_file, request_file = tmp_path / "scope", tmp_path / "request"
+    scope_file.write_bytes(scope.stdout)
+    request_file.write_bytes(request.stdout)
+    body = {
+        "success": True,
+        "errors": [],
+        "result": [
+            {
+                "id": "d" * 32,
+                "name": "*.example.test",
+                "type": "AAAA",
+                "content": content,
+                "proxied": True,
+                "ttl": 1,
+            }
+        ],
+        "result_info": {"page": 1, "total_pages": 1, "total_count": 1, "count": 1},
+    }
+    result = health_response_run(
+        commands, scope_file, request_file, json.dumps(body).encode()
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert result.stdout == health_v2_receipt("dns", "verified", "6", [content])
+
+
+@pytest.mark.parametrize("kind", ["dns", "items"])
+@pytest.mark.parametrize("count,accepted", [(50, True), (51, False)])
+def test_health_v2_receipts_bound_values_and_round_trip_complete_frames(
+    commands, health_config, tmp_path, kind, count, accepted
+):
+    selected = {
+        "feature": "ddns" if kind == "dns" else "ip_sync",
+        "kind": kind,
+        "selector": "local-record-4" if kind == "dns" else "primary",
+        "family": "4",
+    }
+    scope = health_projection(commands, health_config, **selected)
+    request = health_projection(commands, health_config, "health-request", **selected)
+    scope_file, request_file = tmp_path / "scope", tmp_path / "request"
+    scope_file.write_bytes(scope.stdout)
+    request_file.write_bytes(request.stdout)
+    if kind == "dns":
+        records = [
+            {
+                "id": f"{index:032x}",
+                "name": "example.test",
+                "type": "A",
+                "content": f"8.8.8.{index + 1}",
+                "proxied": True,
+                "ttl": 1,
+            }
+            for index in range(count)
+        ]
+        info = {"page": 1, "total_pages": 1, "total_count": count, "count": count}
+    else:
+        records = [
+            {"id": f"{index:032x}", "ip": f"10.0.0.{index + 1}"}
+            for index in range(count)
+        ]
+        info = {"cursors": {}}
+    body = {"success": True, "errors": [], "result": records, "result_info": info}
+    result = health_response_run(
+        commands, scope_file, request_file, json.dumps(body).encode()
+    )
+    assert result.stderr == b""
+    if not accepted:
+        assert result.returncode != 0 and result.stdout == b""
+        return
+    assert result.returncode == 0 and len(result.stdout) <= 4096
+    assert (
+        result.stdout.splitlines()[0]
+        == (
+            f"CFMGR-HEALTH-RESPONSE 2 verified {count} {kind} "
+            f"{'4' if kind == 'dns' else 'mixed'}"
+        ).encode()
+    )
+    assert result.stdout.splitlines()[-1] == f"END {count}".encode()
+    assert len(result.stdout.splitlines()) == count + 2
+    framed = health_wire(commands, tmp_path, "response", result.stdout)
+    assert framed.returncode == 0 and framed.stdout == framed.stderr == b""
+
+
+def test_health_v2_frame_rejects_receipts_over_4096_bytes(commands, tmp_path):
+    oversized = (
+        b"CFMGR-HEALTH-RESPONSE 2 verified 0 dns 4\n" + b"x" * 4097 + b"\nEND 0\n"
+    )
+    result = health_wire(commands, tmp_path, "response", oversized)
+    assert result.returncode != 0 and result.stdout == result.stderr == b""
+
+
+def test_health_compare_worker_caps_seven_inputs_and_emits_at_most_five_safe_rows(
+    commands, shell, tmp_path
+):
+    trace4 = b"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv4:8.8.8.8 END\n"
+    trace6 = b"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv6:2606:4700::1111 END\n"
+    entries = [
+        ("DNS", "1", "4", health_v2_receipt("dns", "verified", "4", ["8.8.8.8"])),
+        ("DNS", "2", "4", health_v2_receipt("dns", "verified", "4", ["1.1.1.1"])),
+        (
+            "DNS",
+            "3",
+            "6",
+            health_v2_receipt("dns", "verified", "6", ["2606:4700::1111"]),
+        ),
+        (
+            "ITEMS",
+            "1",
+            "4",
+            health_v2_receipt("items", "verified", "mixed", ["8.0.0.0/8"]),
+        ),
+        (
+            "ITEMS",
+            "2",
+            "6",
+            health_v2_receipt("items", "verified", "mixed", ["2606:4700::/32"]),
+        ),
+        ("TRACE", "1", "4", trace4),
+        ("TRACE", "2", "6", trace6),
+    ]
+    result = health_compare_run(
+        commands, tmp_path / "compare-worker", entries, worker=True, shell=shell
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert result.stdout == (
+        b"CFMGR-HEALTH-COMPARE 1\n"
+        b"ROW ddns.record.1 PASS dns-equal\n"
+        b"ROW ddns.record.2 WARN dns-different\n"
+        b"ROW ddns.record.3 PASS dns-equal\n"
+        b"ROW ip_sync.primary.ipv4 PASS list-member\n"
+        b"ROW ip_sync.secondary.ipv6 PASS list-member\n"
+        b"END 5\n"
+    )
+
+
+def test_health_compare_missing_family_and_partial_list_are_explicit(
+    commands, tmp_path
+):
+    entries = [
+        (
+            "DNS",
+            "1",
+            "6",
+            health_v2_receipt("dns", "verified", "6", ["2606:4700::1111"]),
+        ),
+        (
+            "ITEMS",
+            "1",
+            "46",
+            health_v2_receipt("items", "partial", "mixed", ["8.0.0.0/8"]),
+        ),
+        ("TRACE", "1", "4", b"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv4:8.8.8.8 END\n"),
+    ]
+    result = health_compare_run(commands, tmp_path / "partial-compare", entries)
+    assert result.returncode == 0 and result.stderr == b""
+    assert result.stdout == (
+        b"CFMGR-HEALTH-COMPARE 1\n"
+        b"ROW ddns.record.1 UNKNOWN current-family-unavailable\n"
+        b"ROW ip_sync.primary.ipv4 PASS list-member-partial\n"
+        b"ROW ip_sync.primary.ipv6 UNKNOWN current-family-unavailable\n"
+        b"END 3\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "receipt",
+    [
+        (
+            b"CFMGR-HEALTH-RESPONSE 2 verified 2 items mixed\n"
+            b"VALUE 4 08000000 8\nVALUE 4 invalid 8\nEND 2\n"
+        ),
+        (
+            b"CFMGR-HEALTH-RESPONSE 2 verified 1 items mixed\n"
+            b"VALUE 4 08000000 8\nEND 0\n"
+        ),
+    ],
+    ids=["malformed-value-after-hit", "malformed-footer"],
+)
+def test_health_compare_rejects_malformed_full_receipt_before_positive(
+    commands, tmp_path, receipt
+):
+    entries = [
+        ("ITEMS", "1", "4", receipt),
+        ("TRACE", "1", "4", b"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv4:8.8.8.8 END\n"),
+    ]
+    result = health_compare_run(commands, tmp_path / "malformed-compare", entries)
+    assert result.returncode != 0 and result.stdout == b""
+
+
+@pytest.mark.parametrize(
+    "kind,state,values,current,expected",
+    [
+        ("dns", "verified", [], "8.8.8.8", "WARN dns-absent"),
+        ("dns", "verified", ["8.8.8.8", "1.1.1.1"], "8.8.8.8", "WARN dns-multiple"),
+        ("dns", "partial", ["8.8.8.8"], "8.8.8.8", "UNKNOWN dns-partial"),
+        ("items", "partial", ["9.0.0.0/8"], "8.8.8.8", "UNKNOWN list-partial-no-match"),
+        ("items", "verified", ["8.0.0.0/10"], "8.63.255.254", "PASS list-member"),
+        ("items", "verified", ["8.0.0.0/11"], "8.32.0.1", "WARN list-no-match"),
+        (
+            "items",
+            "verified",
+            ["2606:4700::1110/126"],
+            "2606:4700::1113",
+            "PASS list-member",
+        ),
+        (
+            "items",
+            "verified",
+            ["2606:4700::1110/127"],
+            "2606:4700::1112",
+            "WARN list-no-match",
+        ),
+    ],
+)
+def test_health_compare_complete_dns_and_cidr_boundaries(
+    commands, tmp_path, kind, state, values, current, expected
+):
+    family = str(ipaddress.ip_address(current).version)
+    entries = [
+        (
+            "DNS" if kind == "dns" else "ITEMS",
+            "1",
+            family,
+            health_v2_receipt(
+                kind, state, family if kind == "dns" else "mixed", values
+            ),
+        ),
+        (
+            "TRACE",
+            "1",
+            family,
+            f"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv{family}:{current} END\n".encode(),
+        ),
+    ]
+    result = health_compare_run(commands, tmp_path / "comparison", entries)
+    check_id = "ddns.record.1" if kind == "dns" else f"ip_sync.primary.ipv{family}"
+    assert (result.returncode, result.stderr) == (0, b"")
+    assert result.stdout == (
+        f"CFMGR-HEALTH-COMPARE 1\nROW {check_id} {expected}\nEND 1\n".encode()
+    )
 
 
 @pytest.mark.parametrize(
@@ -571,37 +897,21 @@ def test_health_list_items_use_typed_cursor_pagination_and_provider_ip_semantics
         "result_info": {"cursors": cursors},
     }
     payload = json.dumps(body).encode()
-    result = subprocess.run(
-        [
-            *commands[1],
-            "-v",
-            "cfmgr_json_mode=tree",
-            "-v",
-            f"cfmgr_json_size={len(payload)}",
-            awk_program("json", "health_wire", "health_response"),
-        ],
-        input=payload,
-        capture_output=True,
-        check=False,
-        timeout=3,
-        env={
-            **os.environ,
-            "LC_ALL": "C",
-            "CFMGR_HEALTH_MODE": "health-response",
-            "CFMGR_HEALTH_SCOPE": str(scope_file),
-            "CFMGR_HEALTH_INPUT": str(request_file),
-            "CFMGR_HEALTH_BYTES": str(len(request.stdout)),
-        },
-    )
+    result = health_response_run(commands, scope_file, request_file, payload)
     assert result.stderr == b""
     if expected is None:
         assert result.returncode != 0 and result.stdout == b""
     else:
-        assert (
-            result.returncode == 0
-            and result.stdout
-            == f"CFMGR-HEALTH-RESPONSE 1 {expected} 1 api-read END\n".encode()
+        state = "partial" if expected == "partial" else "verified"
+        receipt = (
+            f"CFMGR-HEALTH-RESPONSE 2 {state} 1 items mixed\n"
+            f"{health_v2_value(ip)}\nEND 1\n"
         )
+        assert result.returncode == 0 and result.stdout == receipt.encode()
+        framed = health_wire(
+            commands, tmp_path, "response", result.stdout, mode="health-frame"
+        )
+        assert framed.returncode == 0 and framed.stdout == framed.stderr == b""
 
 
 def test_health_limits_and_explicit_clock_gate_fail_before_collection(shell, tmp_path):
@@ -1602,6 +1912,98 @@ cfmgr_health_row invalid PASS 'bad	detail' current action report
     assert any(line.startswith("ip_sync.secondary.ipv6\tUNKNOWN\t") for line in rows)
 
 
+def test_health_provider_comparison_controller_keeps_prior_receipt_on_scope_hold(
+    shell, tools, commands, tmp_path
+):
+    (tmp_path / "inventory").write_text(
+        "CFMGR-HEALTH-INVENTORY 1\nfeature ddns 1 1 eligible\n"
+        "target ddns dns first 4\ntarget ddns dns held 4\ntarget ddns dns later 4\n"
+        "feature ip_sync 1 1 eligible\ntarget ip_sync list primary 4\n"
+        "family ip_sync primary ipv6\nfeature cloudflared 0 0 unconfigured\nEND\n"
+    )
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_source=$1 cfmgr_status_context=$2 cfmgr_health_inventory=$2/inventory
+test_shell=$3 test_awk=$4
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_files=0 cfmgr_health_bytes=0
+cfmgr_health_collect_deadline=40 cfmgr_health_rows=0 cfmgr_health_staging=1 cfmgr_health_ipv6_ready=0 cfmgr_health_scope_holds=''
+cfmgr_health_owned='' cfmgr_health_compare_count=0 cfmgr_health_compare_pending=''
+cfmgr_status_attachment_ok() { return 0; }
+cfmgr_prerequisites_now() { cfmgr_probe_now=0; }
+exec 3>"$2/rows"
+cfmgr_health_get_serial=0
+cfmgr_health_get() {
+    cfmgr_health_scope=$1.scope cfmgr_health_scope_eligible=1 cfmgr_health_result=observed-read
+    if [ "$2:$3" = dns:later ]; then cfmgr_health_result=scope-auth-hold; return 1; fi
+    /usr/bin/printf '%s %s %s %s\n' "$@" >>"$cfmgr_status_context/requests"
+    cfmgr_health_get_serial=$((cfmgr_health_get_serial + 1))
+    if [ "$2:$3" = dns:held ]; then
+        cfmgr_health_scope_holds="$cfmgr_health_scope_holds
+$cfmgr_health_scope"
+        cfmgr_health_result=auth-rejected-read
+        return 1
+    fi
+    case $2 in
+    dns)
+        cfmgr_health_result_file=$cfmgr_status_context/health-response.$cfmgr_health_get_serial.out
+        /usr/bin/printf 'CFMGR-HEALTH-RESPONSE 2 verified 1 dns 4\nVALUE 4 08080808 32\nEND 1\n' >"$cfmgr_health_result_file"
+        ;;
+    items)
+        cfmgr_health_result_file=$cfmgr_status_context/health-response.$cfmgr_health_get_serial.out
+        /usr/bin/printf 'CFMGR-HEALTH-RESPONSE 2 verified 1 items mixed\nVALUE 4 08000000 8\nEND 1\n' >"$cfmgr_health_result_file"
+        ;;
+    trace)
+        cfmgr_health_result_file=$cfmgr_status_context/health-trace.$cfmgr_health_get_serial.out
+        /usr/bin/printf 'CFMGR-HEALTH-RESPONSE 1 observed 1 ipv4:8.8.8.8 END\n' >"$cfmgr_health_result_file"
+        ;;
+    *)
+        cfmgr_health_result_file=$cfmgr_status_context/health-response.$cfmgr_health_get_serial.out
+        /usr/bin/printf 'CFMGR-HEALTH-RESPONSE 1 verified 1 api-read END\n' >"$cfmgr_health_result_file"
+        ;;
+    esac
+    cfmgr_health_owned="$cfmgr_health_owned
+${cfmgr_health_result_file##*/}"
+}
+cfmgr_health_run() {
+    [ "$1" = health-compare ] || return 2
+    if "$test_shell" "$cfmgr_source/modules/helpers/worker.sh" health-compare "$test_awk" "$cfmgr_status_context" "$3" "$4" >"$cfmgr_status_context/compare.out" 2>"$cfmgr_status_context/compare.err"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
+    cfmgr_probe_stdout=$cfmgr_status_context/compare.out cfmgr_probe_stderr=$cfmgr_status_context/compare.err
+    return 0
+}
+cfmgr_health_provider_collect
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "compare-controller",
+            str(ROOT),
+            str(tmp_path),
+            tools["sh"],
+            commands[1][0],
+        ],
+        capture_output=True,
+        timeout=5,
+        check=False,
+    )
+    assert (result.returncode, result.stderr) == (0, b""), result.stdout
+    requests = (tmp_path / "requests").read_text().splitlines()
+    assert requests == [
+        "ddns zone - 4",
+        "ddns dns first 4",
+        "ddns dns held 4",
+        "ip_sync list primary 4",
+        "ip_sync items primary 4",
+        "ip_sync trace - 4",
+    ]
+    rows = (tmp_path / "rows").read_text().splitlines()
+    assert any(line.startswith("ddns.record.1\tPASS\t") for line in rows)
+    assert any(line.startswith("ddns.record.2\tUNKNOWN\t") for line in rows)
+    assert any(line.startswith("ip_sync.primary.ipv6\tUNKNOWN\t") for line in rows)
+    assert any(line.startswith("ddns.record.3\tSKIP\t") for line in rows)
+
+
 @pytest.mark.parametrize(
     "case,traces", [("late-auth", 0), ("transient", 1), ("independent", 1)]
 )
@@ -2047,11 +2449,11 @@ def test_health_entware_batch_handles_spaces_and_missing_tools_independently(
 def test_health_tiny_allowlist_reserves_native_and_host_units(shell):
     script = r"""
 . "$1/modules/status.sh"
-for mode in health-scope health-frame health-request-check health-response health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-pair health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
+for mode in health-scope health-frame health-request-check health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-get health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
     cfmgr_health_mode "$mode" || exit 10
     [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes:$cfmgr_health_mode_files" = 2:4096:2 ] || exit 11
 done
-for mode in health-request health-metadata health-native-metadata health-metadata-check health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-fields health-config health-nvram health-space health-protected health-uname health-blkid; do
+for mode in health-request health-response health-compare health-metadata health-native-metadata health-metadata-check health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-fields health-config health-nvram health-space health-protected health-uname health-blkid; do
     cfmgr_health_mode "$mode" || exit 12
     [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes" = 8:16384 ] || exit 13
 done
@@ -2063,6 +2465,220 @@ cfmgr_health_mode health-entware-metadata || exit 14
         capture_output=True,
         check=False,
         timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+@pytest.mark.parametrize("damage", ["valid", "outside", "symlink", "wrong-role"])
+def test_health_count_get_worker_counts_only_owned_get_files(shell, tmp_path, damage):
+    context = tmp_path / "private context"
+    context.mkdir()
+    http = context / "health-get.1.out"
+    body = context / "health-get.1.body"
+    headers = context / "health-get.1.headers"
+    http.write_bytes(b"200\n")
+    body.write_bytes(b"body")
+    headers.write_bytes(b"head")
+    if damage == "symlink":
+        headers.unlink()
+        headers.symlink_to(body)
+    elif damage == "wrong-role":
+        body.rename(context / "health-get.1.headers")
+    outside = tmp_path / "outside.body"
+    outside.write_bytes(b"outside")
+    operands = [str(http), str(body), str(headers)]
+    if damage == "outside":
+        operands[1] = str(outside)
+    if damage == "wrong-role":
+        operands[2] = str(context / "health-get.1.body")
+    result = subprocess.run(
+        [
+            *shell,
+            str(ROOT / "modules/helpers/worker.sh"),
+            "health-count-get",
+            shutil.which("wc") or "/usr/bin/wc",
+            str(context),
+            *operands,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode == 0) == (damage == "valid")
+    assert result.stderr == b""
+    if damage == "valid":
+        assert len(result.stdout.splitlines()) == 4
+        assert result.stdout.splitlines()[-1].rstrip().endswith(b"total")
+
+
+@pytest.mark.parametrize(
+    "damage,accepted,size_valid",
+    [
+        ("valid", True, 1),
+        ("extra-line", False, 0),
+        ("partial-trailing", False, 0),
+        ("wrong-label", False, 0),
+        ("bad-sum", False, 0),
+        ("wrong-http-size", False, 0),
+        ("oversize-body", False, 1),
+    ],
+)
+def test_health_count_get_controller_validates_native_wc_frame(
+    shell, tmp_path, damage, accepted, size_valid
+):
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_status_context=$2 cfmgr_health_http_file=$2/health-get.1.out
+cfmgr_health_body=$2/health-get.1.body cfmgr_health_headers=$2/health-get.1.headers
+: >"$2/count.err"
+cfmgr_probe_stderr=$2/count.err cfmgr_probe_exit=0
+cfmgr_health_run() {
+    cfmgr_probe_stdout=$cfmgr_status_context/count.out
+    case $test_case in
+    oversize-body) /usr/bin/printf '4 %s\n32769 %s\n4 %s\n32777 total\n' "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    wrong-http-size) /usr/bin/printf '3 %s\n4 %s\n4 %s\n11 total\n' "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    wrong-label) /usr/bin/printf '4 wrong\n4 %s\n4 %s\n12 total\n' "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    bad-sum) /usr/bin/printf '4 %s\n4 %s\n4 %s\n13 total\n' "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    extra-line) /usr/bin/printf '4 %s\n4 %s\n4 %s\n12 total\nextra\n' "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    partial-trailing) /usr/bin/printf '4 %s\n4 %s\n4 %s\n12 total\nextra' "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    *) /usr/bin/printf '4 %s\n4 %s\n4 %s\n12 total\n' "$cfmgr_health_http_file" "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout" ;;
+    esac
+}
+test_case=$3
+expected=$4 wanted_valid=$5
+if cfmgr_health_sizes; then code=0; else code=$?; fi
+[ "$code:$cfmgr_health_size_valid" = "$expected:$wanted_valid" ] || {
+    /usr/bin/printf '%s %s %s %s %s %s\n' "$code" "$cfmgr_health_size_valid" "${cfmgr_health_http_bytes:-missing}" "${cfmgr_health_body_bytes:-missing}" "${cfmgr_health_header_bytes:-missing}" "${cfmgr_health_count_total:-missing}"
+    exit 10
+}
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "count-frame",
+            str(ROOT),
+            str(tmp_path),
+            damage,
+            str(0 if accepted else 1),
+            str(size_valid),
+        ],
+        capture_output=True,
+        timeout=3,
+        check=False,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+@pytest.mark.parametrize(
+    "case,expected,held,stopped",
+    [
+        ("success", 0, 0, 0),
+        ("auth-large", 1, 1, 0),
+        ("throttle-large", 1, 0, 1),
+        ("malformed-count", 1, 0, 0),
+        ("malformed-status", 1, 0, 0),
+    ],
+)
+def test_health_get_counts_status_before_http_hold_and_size_rejection(
+    shell, tools, tmp_path, case, expected, held, stopped
+):
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_source=$1 cfmgr_status_context=$2 cfmgr_health_transport=ready cfmgr_health_clock_ready=1
+cfmgr_health_scope_holds='' cfmgr_health_provider_stop=0 cfmgr_probe_serial=4 modes=''
+: >"$2/empty"
+cfmgr_health_project() {
+    case $1 in
+    health-scope)
+        cfmgr_probe_stdout=$cfmgr_status_context/scope
+        /usr/bin/printf 'CFMGR-HEALTH-SCOPE 1 eligible ddns ddns.zone dns resource name A 96 END\n' >"$cfmgr_probe_stdout"
+        ;;
+    health-request)
+        cfmgr_probe_stdout=$cfmgr_status_context/request
+        /usr/bin/printf 'url = "https://api.cloudflare.com/client/v4/zones/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\nheader = "Authorization: Bearer fixture-token"\n' >"$cfmgr_probe_stdout"
+        ;;
+    esac
+    cfmgr_probe_exit=0 cfmgr_probe_stderr=$cfmgr_status_context/empty
+}
+cfmgr_health_count() { cfmgr_health_size=96; }
+cfmgr_health_frame() {
+    case $2 in scope | response) return 0 ;; *) exit 19 ;; esac
+}
+cfmgr_health_run() {
+    modes="$modes $1"
+    cfmgr_probe_stderr=$cfmgr_status_context/empty cfmgr_probe_exit=0
+    case $1 in
+    health-request-check) cfmgr_probe_stdout=$cfmgr_status_context/empty ;;
+    health-get)
+        cfmgr_probe_stdout=$cfmgr_status_context/health-get.5.out cfmgr_probe_exit=0
+        cfmgr_health_body=$cfmgr_status_context/health-get.5.body
+        cfmgr_health_headers=$cfmgr_status_context/health-get.5.headers
+        case $test_case in
+        auth-large) code=403 size=32769 ;;
+        throttle-large) code=429 size=32769 ;;
+        malformed-status) code=abc size=4 ;;
+        *) code=200 size=4 ;;
+        esac
+        /usr/bin/printf '%s\n' "$code" >"$cfmgr_probe_stdout"
+        "$test_dd" if=/dev/zero of="$cfmgr_health_body" bs=1 count="$size" 2>/dev/null
+        /usr/bin/printf 'head' >"$cfmgr_health_headers"
+        ;;
+    health-count-get)
+        cfmgr_probe_stdout=$cfmgr_status_context/count.out
+        if [ "$test_case" = malformed-count ]; then
+            /usr/bin/printf '4 wrong\n4 %s\n4 %s\n12 total\n' "$cfmgr_health_body" "$cfmgr_health_headers" >"$cfmgr_probe_stdout"
+        else
+            /usr/bin/printf '4 %s\n%s %s\n4 %s\n%s total\n' "$cfmgr_health_http_file" "$size" "$cfmgr_health_body" "$cfmgr_health_headers" "$((size + 8))" >"$cfmgr_probe_stdout"
+        fi
+        ;;
+    health-response)
+        cfmgr_probe_stdout=$cfmgr_status_context/response
+        /usr/bin/printf 'CFMGR-HEALTH-RESPONSE 1 verified 1 api-read END\n' >"$cfmgr_probe_stdout"
+        ;;
+    *) return 2 ;;
+    esac
+}
+test_case=$3
+test_dd=$6 test_wc=$7
+if _cfmgr_health_get ddns zone - 4; then code=0; else code=$?; fi
+[ "$code" = "$4" ] || exit 10
+observed_hold=0
+[ -z "$cfmgr_health_scope_holds" ] || observed_hold=1
+[ "$observed_hold:$cfmgr_health_provider_stop" = "$8:$9" ] || exit 18
+case $test_case in
+auth-large) case "$cfmgr_health_result:$cfmgr_health_scope_holds" in auth-rejected-read:*ddns.zone*) ;; *) exit 11 ;; esac ;;
+throttle-large) [ "$cfmgr_health_result:$cfmgr_health_provider_stop" = provider-throttle:1 ] || exit 12 ;;
+success) [ "$cfmgr_health_result" = observed-read ] || exit 13 ;;
+malformed-count) [ "$cfmgr_health_size_valid:$cfmgr_health_result" = 0:transport-unverified ] || exit 14 ;;
+malformed-status) [ "$cfmgr_health_result" = transport-unverified ] || exit 17 ;;
+esac
+case $test_case in auth-large | throttle-large)
+    case $modes in *health-get*health-count-get*) ;; *) exit 15 ;; esac
+    case $modes in *health-response*) exit 16 ;; esac
+    ;;
+esac
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "get-controller",
+            str(ROOT),
+            str(tmp_path),
+            case,
+            str(expected),
+            tools["sh"],
+            shutil.which("dd"),
+            tools["wc"],
+            str(held),
+            str(stopped),
+        ],
+        capture_output=True,
+        timeout=5,
+        check=False,
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
 
@@ -2404,3 +3020,525 @@ if cfmgr_health_admit_native /usr/sbin/curl executable; then exit 12; fi
         timeout=3,
     )
     assert basic.returncode == 2 and basic.stdout == basic.stderr == b""
+
+
+def cloud_projection(commands, data, mode):
+    return subprocess.run(
+        [
+            *commands[1],
+            "-v",
+            f"cfmgr_json_size={len(data)}",
+            "-v",
+            "cfmgr_json_mode=tree",
+            "-v",
+            "cfmgr_config_mode=archive-data",
+            awk_program("json", "config_schema", "config_observation", "health_cloud"),
+        ],
+        input=data,
+        env={**os.environ, "LC_ALL": "C", "CFMGR_HEALTH_CLOUD": mode},
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+
+
+def test_health_cloud_projections_keep_authority_out_of_path_policy_plan(
+    commands, schema2_config
+):
+    from test_archive_payload import ACCOUNT, SECRET, TUNNEL, advanced_config, serialize
+
+    value = advanced_config(schema2_config)
+    data = serialize(value)
+    plan = cloud_projection(commands, data, "plan")
+    assert (plan.returncode, plan.stderr) == (0, b"")
+    assert plan.stdout.startswith(b"CFMGR-CLOUD-PLAN\t1\nSTATE\t1\t0\t1\t1\tadvanced\n")
+    assert all(
+        secret.encode() not in plan.stdout
+        for secret in (ACCOUNT, SECRET, TUNNEL, "advanced" + "-ref")
+    )
+    assert (
+        b"FILE\tyaml\tsupported\t/opt/etc/cloudflared/config.yml\tmatched\t1\t-\n"
+        in plan.stdout
+    )
+    assert plan.stdout.endswith(f"END\t{len(plan.stdout.splitlines()) - 1}\n".encode())
+    authority = cloud_projection(commands, data, "runtime-authority")
+    assert (authority.returncode, authority.stderr) == (0, b"")
+    assert (
+        authority.stdout
+        == f"CFMGR-AUTH 1 {b'advanced'.hex()} {ACCOUNT.encode().hex()} {TUNNEL} {SECRET.encode().hex()} END\n".encode()
+    )
+    account = cloud_projection(commands, data, "certificate-account")
+    assert (
+        account.stdout
+        == f"CFMGR-CERT-ACCOUNT 1 {ACCOUNT.encode().hex()} END\n".encode()
+    )
+    value["cloudflared"]["method"] = "token"
+    value["credentials"]["runtime-token"] = {
+        "schema": 1,
+        "kind": "cloudflared_token",
+        "value": SECRET,
+    }
+    value["cloudflared"]["credential_refs"]["runtime"] = "runtime-token"
+    token = serialize(value)
+    assert cloud_projection(commands, token, "runtime-authority").returncode == 1
+    assert (
+        cloud_projection(commands, token, "certificate-account").stdout
+        == account.stdout
+    )
+    value["cloudflared"]["paths"]["yaml"] = "/opt/" + "x" * 1500
+    unsupported = cloud_projection(commands, serialize(value), "plan")
+    assert unsupported.returncode == 0
+    assert b"FILE\tyaml\tunsupported\t-\tconflict\t" in unsupported.stdout
+    value["history"]["cloudflared"] = {"extension": True}
+    assert cloud_projection(commands, serialize(value), "plan").returncode == 0
+    value["history"]["cloudflared"] = {"status": {"schema": 2}}
+    invalid = cloud_projection(commands, serialize(value), "plan")
+    assert (invalid.returncode, invalid.stdout, invalid.stderr) == (1, b"", b"")
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["none", "duplicate", "symlink", "private-mode", "missing", "writable-ancestor"],
+)
+def test_health_selected_metadata_requires_every_exact_ancestor(
+    commands, tmp_path, mutation
+):
+    target = "/protected volume/selected credential.json"
+    paths = [target, "/protected volume", "/"]
+    lines = [
+        f"12 -rw------- 1 0 0 32 Jan 1 00:00 {target}",
+        "11 drwxr-xr-x 2 0 0 64 Jan 1 00:00 /protected volume",
+        "2 drwxr-xr-x 2 0 0 64 Jan 1 00:00 /",
+    ]
+    if mutation == "duplicate":
+        lines[1] = lines[0]
+    elif mutation == "symlink":
+        lines[0] = lines[0].replace("-rw-------", "lrwxrwxrwx") + " -> /other"
+    elif mutation == "private-mode":
+        lines[0] = lines[0].replace("-rw-------", "-rw-r--r--")
+    elif mutation == "missing":
+        lines.pop()
+    elif mutation == "writable-ancestor":
+        lines[1] = lines[1].replace("drwxr-xr-x", "drwxrwxr-x")
+    receipt = tmp_path / "ls receipt"
+    receipt.write_text("\n".join(reversed(lines)) + "\n")
+    result = subprocess.run(
+        [
+            *commands[1],
+            awk_program("health_selected"),
+            "metadata",
+            str(receipt),
+            "private",
+            "\n".join(paths),
+        ],
+        env={**os.environ, "LC_ALL": "C", "CFMGR_HEALTH_SELECTED_PATH": target},
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.stderr == b""
+    assert (result.returncode, result.stdout) == (
+        (0, b"CFMGR-SELECTED 1 12 32 END\n") if mutation == "none" else (1, b"")
+    )
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_health_cloud_private_yaml_join_keeps_identity_private(
+    commands, tmp_path, conflict
+):
+    from test_archive_payload import ACCOUNT, SECRET, TUNNEL, yaml_receipt
+
+    authority = tmp_path / "private auth"
+    authority.write_text(
+        f"CFMGR-AUTH 1 {b'runtime'.hex()} {ACCOUNT.encode().hex()} {TUNNEL} {SECRET.encode().hex()} END\n"
+    )
+    selected = "/opt/etc/cloudflared/selected.json"
+    receipt = tmp_path / "yaml receipt"
+    receipt.write_bytes(
+        yaml_receipt(
+            selected,
+            TUNNEL if not conflict else "different",
+            inputs=["/opt/etc/cloudflared/cert.pem"],
+            controls=[("logfile", "/opt/var/log/cloud.log")],
+        )
+    )
+    result = subprocess.run(
+        [
+            *commands[1],
+            awk_program("health_selected"),
+            "yaml-join",
+            str(receipt),
+            str(authority),
+            selected,
+            "-",
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.stderr == b""
+    if conflict:
+        assert (result.returncode, result.stdout) == (
+            0,
+            b"CFMGR-CLOUD-YAML-MISMATCH 1 END\n",
+        )
+    else:
+        assert (result.returncode, result.stdout) == (
+            0,
+            b"CFMGR-CLOUD-YAML\t1\t1\t1\nINPUT\t1\torigincert\t/opt/etc/cloudflared/cert.pem\texternal\t-\t-\nEND\t1\n",
+        )
+    assert all(
+        value.encode() not in result.stdout for value in (ACCOUNT, SECRET, TUNNEL)
+    )
+
+
+def test_health_selected_worker_pins_hash_and_never_executes_binary(
+    shell, tools, tmp_path
+):
+    import hashlib
+
+    candidate = tmp_path / "binary with spaces"
+    candidate.write_bytes(b"#!/bin/sh\necho MUST_NOT_EXECUTE\n")
+    candidate.chmod(0o700)
+    original = (ROOT / "modules/helpers/worker.sh").read_text()
+    adapted = original
+    if sys.platform == "darwin":
+        adapted = adapted.replace("/proc/self/fd/8", "/dev/fd/8").replace(
+            '"$1" -ef /dev/fd/8', "-f /dev/fd/8"
+        )
+    worker = tmp_path / "worker"
+    worker.write_text(adapted)
+    result = subprocess.run(
+        [
+            *shell,
+            str(worker),
+            "health-selected-hash",
+            shutil.which("openssl"),
+            str(tmp_path),
+            str(candidate),
+            str(candidate.stat().st_size),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert (
+        result.stdout.split()[0]
+        == hashlib.sha256(candidate.read_bytes()).hexdigest().encode()
+    )
+    assert b"MUST_NOT_EXECUTE" not in result.stdout
+    linked = tmp_path / "link"
+    linked.symlink_to(candidate)
+    refused = subprocess.run(
+        [
+            *shell,
+            str(worker),
+            "health-selected-hash",
+            shutil.which("openssl"),
+            str(tmp_path),
+            str(linked),
+            "32",
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (refused.returncode, refused.stdout, refused.stderr) == (2, b"", b"")
+    copied = subprocess.run(
+        [
+            *shell,
+            str(worker),
+            "health-selected-copy",
+            shutil.which("dd"),
+            str(tmp_path),
+            str(candidate),
+            str(candidate.stat().st_size),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (copied.returncode, copied.stdout, copied.stderr) == (
+        0,
+        candidate.read_bytes(),
+        b"",
+    )
+
+
+def test_health_cloud_collector_uses_real_private_parsers_and_owned_input_digest(
+    shell, tools, schema2_config, tmp_path
+):
+    """Real fixed workers; host ownership/metadata and supervision are adapters."""
+    import base64
+    import hashlib
+
+    from test_archive_payload import ACCOUNT, SECRET, TUNNEL, advanced_config, serialize
+
+    source = tmp_path / "source"
+    (source / "modules/lib").mkdir(parents=True)
+    (source / "modules/helpers").mkdir()
+    context = tmp_path / "private context"
+    context.mkdir(mode=0o700)
+    selected = tmp_path / "selected files"
+    selected.mkdir(mode=0o700)
+    binary = selected / "cloudflared"
+    binary.write_bytes(b"#!/bin/sh\necho MUST_NOT_EXECUTE\n")
+    binary.chmod(0o700)
+    credential = selected / "credentials.json"
+    credential.write_bytes(
+        serialize({"AccountTag": ACCOUNT, "TunnelID": TUNNEL, "TunnelSecret": SECRET})
+    )
+    certificate_json = serialize(
+        {
+            "zoneID": "fixture-zone",
+            "accountID": ACCOUNT,
+            "apiToken": "certificate-CANARY",
+        }
+    )
+    body = base64.b64encode(certificate_json)
+    pem = (
+        b"-----BEGIN ARGO TUNNEL TOKEN-----\n"
+        + b"\n".join(body[i : i + 64] for i in range(0, len(body), 64))
+        + b"\n-----END ARGO TUNNEL TOKEN-----\n"
+    )
+    certificate = selected / "cert.pem"
+    recovery = selected / "recovery.pem"
+    certificate.write_bytes(pem)
+    recovery.write_bytes(pem)
+    dependency = selected / "ca.pem"
+    dependency.write_bytes(b"fixture protected dependency\n")
+    yaml = selected / "config.yml"
+    yaml.write_text(
+        f"tunnel: {TUNNEL}\ncredentials-file: '{credential}'\ncacert: '{dependency}'\n"
+    )
+    files = {
+        "yaml": yaml,
+        "json": credential,
+        "certificate": certificate,
+        "certificate-recovery": recovery,
+        "binary": binary,
+        "input.ca_bundle": dependency,
+    }
+    for role, path in files.items():
+        if role != "binary":
+            path.chmod(0o600)
+    value = advanced_config(schema2_config)
+    value["cloudflared"]["paths"] = {
+        "yaml": str(yaml),
+        "json": str(credential),
+        "certificate": str(certificate),
+    }
+    value["credentials"]["cert"].update(
+        path=str(certificate),
+        recovery_path=str(recovery),
+        sha256=hashlib.sha256(pem).hexdigest(),
+    )
+    value["ownership"]["components"] = [
+        {
+            "schema": 1,
+            "component": "cloudflared"
+            if role == "binary"
+            else f"data.cloudflared.{role}",
+            "path": str(path),
+            "generation": 1,
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        for role, path in files.items()
+    ]
+    config_file = source / "retained config"
+    config_file.write_bytes(serialize(value))
+    config_file.chmod(0o600)
+    for relative in (
+        "modules/status.sh",
+        "modules/backup.sh",
+        "modules/lib/config.sh",
+        "modules/helpers/worker.sh",
+    ):
+        text = (ROOT / relative).read_text()
+        if relative == "modules/status.sh":
+            assert text.count('hc_file("binary","/opt/bin/cloudflared"') == 1
+            text = text.replace(
+                'hc_file("binary","/opt/bin/cloudflared"',
+                f'hc_file("binary","{binary}"',
+            )
+        if relative == "modules/helpers/worker.sh" and sys.platform == "darwin":
+            text = (
+                text.replace("/proc/self/fd/8", "/dev/fd/8")
+                .replace('"$1" -ef /dev/fd/8', "-f /dev/fd/8")
+                .replace('"$3" -ef /dev/fd/8', "-f /dev/fd/8")
+            )
+        (source / relative).write_text(text)
+    ls = tmp_path / "owned-ls-adapter"
+    ls.write_text(
+        f"#!{Path(sys.executable).resolve()}\nimport os,stat,sys\nfor path in sys.argv[2:]:\n s=os.lstat(path); mode=stat.filemode(s.st_mode)\n if stat.S_ISDIR(s.st_mode): mode='drwxr-xr-x'\n print(f'{{s.st_ino}} {{mode}} {{s.st_nlink}} 0 0 {{s.st_size}} Jan 1 00:00 {{path}}')\n"
+    )
+    ls.chmod(0o700)
+    openssl = tmp_path / "owned-openssl-adapter"
+    openssl.write_text(
+        f'#!{tools["sh"]}\n{shlex.quote(tools["env"])} >{shlex.quote(str(tmp_path / "child environment"))}\nexec {shlex.quote(shutil.which("openssl"))} "$@"\n'
+    )
+    openssl.chmod(0o700)
+    script = r"""
+source=$1 base=$2 selected_sh=$3 selected_awk=$4 selected_dd=$5 selected_hex=$6 selected_wc=$7 selected_readlink=$8 selected_env=${10}
+LC_ALL=C; export LC_ALL
+. "$source/modules/status.sh"
+cfmgr_status_context="$base/private context" cfmgr_source=$source
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_requests=0 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_health_owned='' cfmgr_probe_serial=0
+cfmgr_health_collect_deadline=40 cfmgr_health_final_deadline='' cfmgr_health_incomplete=0
+cfmgr_health_config="$source/retained config" cfmgr_health_config_bytes=$9 cfmgr_health_inventory=validated
+cfmgr_health_backup=verified cfmgr_health_native_openssl_ok=1 cfmgr_health_openssl="$base/owned-openssl-adapter"
+cfmgr_status_attachment_ok() { return 0; }
+cfmgr_prerequisites_now() { cfmgr_probe_now=0; }
+cfmgr_health_row() { printf '%s\t%s\t%s\n' "$1" "$2" "$3"; }
+cfmgr_health_run() {
+    cfmgr_health_reserve "$1" || return $?
+    mode=$1 tool=$2; shift 2
+    printf '%s\n' "$mode" >>"$base/routes"
+    printf '%s\n' "$tool" "$@" >>"$base/launch arguments"
+    case $tool in /usr/bin/awk) tool=$selected_awk ;; /bin/ls) tool="$base/owned-ls-adapter" ;; /bin/dd) tool=$selected_dd ;; /usr/bin/hexdump) tool=$selected_hex ;; /usr/bin/wc) tool=$selected_wc ;; /usr/bin/readlink) tool=$selected_readlink ;; esac
+    cfmgr_probe_serial=$((cfmgr_probe_serial + 1))
+    cfmgr_probe_stdout="$cfmgr_status_context/$cfmgr_health_label.out" cfmgr_probe_stderr="$cfmgr_status_context/$cfmgr_health_label.err"
+    if (ulimit -f "$cfmgr_health_mode_limit" && exec "$selected_env" -i LC_ALL=C "$selected_sh" "$source/modules/helpers/worker.sh" "$mode" "$tool" "$cfmgr_status_context" "$@") >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
+    return 0
+}
+cfmgr_health_cloud_collect || exit $?
+printf 'LEDGER %s %s %s\n' "$cfmgr_health_operations" "$cfmgr_health_files" "$cfmgr_health_bytes"
+"""
+    args = [
+        *shell,
+        "-c",
+        script,
+        "health-cloud",
+        str(source),
+        str(tmp_path),
+        tools["sh"],
+        tools["awk"],
+        shutil.which("dd"),
+        shutil.which("hexdump"),
+        tools["wc"],
+        tools["readlink"],
+        str(config_file.stat().st_size),
+        tools["env"],
+    ]
+    normal = subprocess.run(args, capture_output=True, check=False, timeout=12)
+    assert (normal.returncode, normal.stderr) == (0, b""), normal.stdout
+    for row in (
+        "yaml.identity",
+        "runtime.local",
+        "certificate.live",
+        "certificate-recovery",
+        "binary",
+        "yaml.input.1",
+    ):
+        assert f"cloudflared.{row}\tPASS\t".encode() in normal.stdout, normal.stdout
+    assert b"MUST_NOT_EXECUTE" not in normal.stdout
+    modes = (tmp_path / "routes").read_text().splitlines()
+    assert modes.count("health-cloud-pem") == modes.count("health-cloud-decode") == 1
+    assert modes.count("health-cloud-plan") == 1
+    assert all(
+        secret.encode() not in normal.stdout
+        for secret in (ACCOUNT, SECRET, TUNNEL, "certificate-CANARY", str(selected))
+    )
+    assert all(
+        secret
+        not in (tmp_path / "launch arguments").read_text()
+        + (tmp_path / "child environment").read_text()
+        for secret in (ACCOUNT, SECRET, TUNNEL, "certificate-CANARY")
+    )
+    # A matching owned input is hashed, rather than silently becoming an
+    # external availability-only pass after its bytes change.
+    dependency.write_bytes(b"changed protected dependency\n")
+    changed = subprocess.run(args, capture_output=True, check=False, timeout=12)
+    assert changed.returncode == 0 and changed.stderr == b""
+    assert b"cloudflared.yaml.input.1\tFAIL\t" in changed.stdout
+
+    value["cloudflared"]["method"] = "token"
+    value["credentials"]["runtime-token"] = {
+        "schema": 1,
+        "kind": "cloudflared_token",
+        "value": SECRET,
+    }
+    value["cloudflared"]["credential_refs"].update(
+        runtime="runtime-token", certificate=None
+    )
+    value["cloudflared"]["paths"]["certificate"] = None
+    value["ownership"]["components"] = [
+        item
+        for item in value["ownership"]["components"]
+        if ".certificate" not in item["component"]
+    ]
+    config_file.write_bytes(serialize(value))
+    token_args = args.copy()
+    token_args[-2] = str(config_file.stat().st_size)
+    token = subprocess.run(token_args, capture_output=True, check=False, timeout=8)
+    assert token.returncode == 0 and token.stderr == b""
+    assert b"cloudflared.certificate.live\tSKIP\t" in token.stdout
+    assert b"cloudflared.certificate-recovery\tSKIP\t" in token.stdout
+
+
+def test_health_cloud_rejects_partial_plan_before_any_file_open_and_keeps_budget_unknown(
+    shell, commands, tmp_path
+):
+    partial = tmp_path / "partial plan"
+    partial.write_text("CFMGR-CLOUD-PLAN\t1\nSTATE\t1\t0\t1\t1\tadvanced\n")
+    empty = tmp_path / "empty"
+    empty.write_text("")
+    yaml = tmp_path / "yaml receipt"
+    yaml.write_text("CFMGR-YAML 1\nIDENTITY ignored ignored\nEND 0 0\n")
+    script = r"""
+. "$1/modules/status.sh"
+root=$1 base=$2 awk=$3
+cfmgr_source=$root cfmgr_health_inventory=validated cfmgr_health_config=unused cfmgr_health_config_bytes=1
+cfmgr_health_row() { printf '%s %s\n' "$1" "$2"; }
+cfmgr_health_run() {
+    printf '%s\n' "$1" >>"$base/routes"
+    cfmgr_probe_exit=0 cfmgr_probe_stderr="$base/empty" cfmgr_probe_stdout="$base/partial plan"
+    case $1 in
+    health-cloud-plan) ;;
+    health-count) "$4" >/dev/null 2>&1; return 2 ;;
+    health-cloud-frame)
+        cfmgr_probe_stdout="$base/frame"
+        if "$awk" "$program" frame-plan "$base/partial plan" - - - >"$cfmgr_probe_stdout"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi ;;
+    *) exit 20 ;;
+    esac
+}
+cfmgr_health_count() { cfmgr_health_size=51; }
+program=$4
+cfmgr_health_cloud_collect || exit 10
+cfmgr_health_cloud_role=json cfmgr_health_cloud_authority=private cfmgr_health_cloud_snapshot=private cfmgr_health_cloud_extent=1 cfmgr_health_backup=verified cfmgr_health_cloud_owner=matched cfmgr_health_cloud_state=UNKNOWN
+cfmgr_health_run() { cfmgr_health_incomplete=1; return 1; }
+cfmgr_health_cloud_semantics || exit 11
+[ "$cfmgr_health_cloud_state" = UNKNOWN ] || exit 12
+cfmgr_health_cloud_role=yaml cfmgr_health_cloud_json_support=supported cfmgr_health_cloud_state=UNKNOWN
+cfmgr_health_cloud_hex() { cfmgr_health_cloud_hex_file=private; }
+cfmgr_health_run() {
+    case $1 in health-cloud-yaml) cfmgr_probe_exit=0 cfmgr_probe_stderr="$base/empty" cfmgr_probe_stdout="$base/yaml receipt" ;; health-cloud-join) cfmgr_health_incomplete=1; return 1 ;; *) exit 21 ;; esac
+}
+if cfmgr_health_cloud_semantics; then :; else [ "$?" = 1 ] || exit 13; fi
+[ "$cfmgr_health_cloud_state" = UNKNOWN ] || exit 14
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "health-incomplete",
+            str(ROOT),
+            str(tmp_path),
+            commands[1][0],
+            awk_program("health_selected"),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"cloudflared.local UNKNOWN\n",
+        b"",
+    )
+    assert (tmp_path / "routes").read_text().splitlines() == [
+        "health-cloud-plan",
+        "health-cloud-frame",
+    ]

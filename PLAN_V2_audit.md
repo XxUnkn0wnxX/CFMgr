@@ -293,6 +293,18 @@ single semantic parse when live/recovery certificates both match the saved hash.
 Local evidence depends on its own prerequisites, not NTP/curl/provider gates.
 JFFS recovery metadata can remain useful when Entware is unavailable.
 
+Binary integrity uses the approved binary-specific pinned native SHA-256 read,
+not a retained binary snapshot: ordinary binaries can exceed the whole report's
+RAM payload allowance. The child verifies a regular nonsymlink source matches
+its pinned descriptor, then directly executes the fixed native digest tool under
+the remaining supervisor deadline. Controller before/after metadata compares
+exact inode/extent/protection and canonical attachment; a complete fixed receipt
+must match the saved digest. This avoids an unsupervised extra stat subprocess.
+Metadata-only referenced inputs need no copy; any recorded content comparison
+can use the same bounded pinned read. Files actually parsed retain their finite
+snapshot contract. None of these observations guarantees atomicity against a
+privileged replacement or same-inode rewrite, and no binary is executed.
+
 The borrowed YAML parser proves supported identity/dependency structure, not full
 ingress/private-network runtime semantics. Its smaller supported pathname subset
 must not redefine the schema's 4,096-byte paths. Missing ownership is unproved;
@@ -302,6 +314,148 @@ The illustrative Cloud ledger is 34 stages before additional canonicalization,
 ancestry and referenced inputs; every real producer and output tier still needs
 counting in the combined report. No Cloud collector implementation or acceptance
 is claimed by this design review.
+
+The selected-file implementation's adapted real-worker fixture subsequently
+passed: **one case in 14.26s**, covering selected advanced YAML/runtime JSON,
+owned referenced-input hashing, live/recovery certificate parse-once, nonexecuted
+binary integrity, a changed owned input and token mode without certificates.
+Parent review required complete plan/join frames before reads, health-only typed
+semantic mismatches after all fields validate, independent certificate SKIPs and
+UNKNOWN for failed/budget-incomplete workers. The read-only analyst reviewed the
+settled repairs and returned **PASS**. Exact authority byte counts and private
+AWK/file transport preserve the secret boundary. Final source-only guards reject
+selected aliases/symlinks and withhold semantic PASS when an expected digest
+cannot be checked; native/complete-module proof remains pending for this delta.
+
+The fixture measured **72 operations / 144 output files / 4,810,752 reserved
+physical bytes**, not actual retained bytes. Its host paths omit production
+`/opt` attachment calls: the planner identified three extra mount observations
+per such member, or fifteen additional operations for the representative five
+members. These are bounded implementation observations, not a complete report
+fit claim. Before/after ancestry and attachment must be retained when reducing
+duplicated work. The earlier 34-stage illustration and 352-operation conditional
+candidate cannot substitute for the actual combined ledger.
+
+The follow-up aggregate audit returned **REVISE** for the old fit assumption.
+Its current conditional estimate is 403–418 collection operations before useful
+consolidation, including production attachment calls. It recommends retaining
+45 seconds, twelve GETs, 96 rows and 12 MiB while reconciling count/file limits
+against actual consumers; 416 total operations/896 files is an implementation
+candidate, not measured acceptance. The parent agrees that final proof requires
+all normal groups with production-shaped attachments and real supervision in CI.
+
+Concrete source-bounded reductions preserve admission: selected LS output can
+reserve `sum(path bytes + 256)` for its at-most-thirteen fixed operands; serialized
+YAML output can use `min(262144, 4 * source bytes + 256)` while retaining the
+parser's 262144-byte internal metadata budget; the YAML join can use
+`min(262144, 8 * counted receipt bytes + 1024)`. Native byte counts and complete
+frames still gate every consumer. Lookahead currently overcharges runtime JSON
+for a nonexistent hex stage and retains fixed oversized metadata reservations;
+derive it from the same mode quotas as actual work. Combining native counts of
+the HTTP receipt/body/headers can remove one fixed-frame process per successful
+GET, while preserving auth/throttle classification before payload-size rejection.
+Sharing primary-file before/after phases can save additional stages but is a
+larger sequencing change; the parent will assess its necessity after the small
+repairs and actual remaining collectors, without weakening independent members.
+
+The source-sized Cloud quotas and branch-specific lookahead are now implemented;
+the adapted actual-worker journey passed in 6.69s (6.57s call), retaining advanced
+identity/input checks, changed-owned-input failure and token mode without a
+certificate. This is host proof at the dirty candidate, not a production `/opt`
+ledger. The retained-address comparison now has 31 focused passing cases across
+two selections (1.89s and 0.71s), including complete/partial DNS, duplicate exact
+records, IPv4/IPv6 CIDR residual-bit boundaries, malformed full receipts and
+missing current families. Completed reads remain report-local evidence after a
+later scope hold; they do not authorize another request or claim current auth.
+
+The logging design review returned **PASS WITH NOTES** for a Status-owned thin
+collector and rejected the earlier approximately 74-operation estimate. The
+parent agrees with its source-backed boundaries: reuse pure `backup_history`
+policy/base/assess and raw bundle modes, but do not call the archive controller
+or its process-text environment handoff. Preserve before/after content digests
+as well as metadata for logging files, all three cron boundaries and two reads,
+and process executable/inode/start-time rechecks. A shared private process index
+must carry receipt names and safe identity only; raw argv stays inside private
+files. Share those cron/process observations with hooks rather than re-observe.
+
+For four base inputs, five fragments, three requested policies and two relevant
+processes, the reviewed conditional design estimates 136 logging stages: 2
+authority, 8 native/tool/link admission, 62 selected-file/shared-metadata, 5
+grouped digest, 12 version/syntax/debug, 2 include admission, 20 cron, 18 process,
+and 7 bundle/assessment. Extra path batches, candidates or fragments consume the
+same finite budget. This estimate supersedes the earlier fit assumption and does
+not validate the 416-operation candidate. Exact native grouped-count/hash output
+framing and a combined normal supervised CI journey remain required before
+freezing final implementation limits. The 45-second, 12-GET, 96-row and 12-MiB
+boundaries remain unchanged; no acceptance or product requirement is relaxed.
+
+The HTTP consolidation now counts the status/body/header files in one fixed
+native worker. Exact owned names, three measurements plus total, complete EOF,
+numeric bounds and a four-byte status receipt precede the shell's three-digit
+HTTP check. Body/header limits remain separate so valid authentication rejection
+and throttling still establish their holds when payload limits fail. The prior
+HTTP AWK subprocess is removed; response grammar checks remain. Malformed count
+or HTTP evidence is unverified, never a new auth claim. Parent's final focused
+selection passed 18 cases in 1.17s, including actual comparison-worker consumption
+and an unterminated trailing count refusal. Native full-module proof remains the
+next gate; no broader transport/platform claim follows from the host adapters.
+
+The policy reuse adapter now returns a canonical receipt from an explicit JSON
+tree root, preserving the existing archive wrapper. Health-only assessment reads
+that receipt through an absolute private path with an independent native byte
+count, one complete LF-terminated line and EOF, canonical fields and existing
+feature-specific numeric limits. Legacy assessment retains its environment
+interface. Three focused host cases passed in 0.24s, including legacy parity and
+malformed private frames; parent reviewed the delta. This provides a pure
+interface only and does not establish the missing logging collector or native
+dispatch proof.
+
+The logging bundle can avoid per-file hex subprocesses with an explicitly
+validated raw reader: `LC_ALL=C`, LF record separator, independent native byte/LF
+counts, exact EOF, retained CR/tabs, a prefixed byte lookup, and immediate failure
+on excess records/bytes or unsupported controls. Reconstruct only the counted
+LFs, preserving an unterminated final line; require exactly L or L+1 records.
+Parent accepts a private `-` sentinel for an empty DATA/FRAGMENT value, decoded
+only at that ingestion boundary, so new health bundles need no silent empty-to-
+newline normalization. Existing archive pack defaults remain unchanged. Count
+the complete produced bundle independently before any consumer, since producer
+success alone does not prove AWK output completion. A narrow `includes-raw`
+adapter may reuse this admitted text and the existing include scanner, avoiding
+the separate debug-hex stage without changing warning or coverage semantics.
+This source-reviewed design still requires host/vendor implementation proof.
+
+The raw-history adapters are now integrated. Three focused host cases passed in
+**0.53s**, including exact serialization into the unchanged `base`/`assess`
+consumers, byte/count/control admission and unchanged empty archive packing.
+The new modes alone require `LC_ALL=C`, accept a fixed owned-basename allowlist,
+and preserve the legacy three-field bundle. Ruff/compile, shell syntax, plain
+shfmt and whitespace checks passed. Controller-owned file admission, independent
+native counts, the full logging consumer and vendor BusyBox proof remain separate
+pending evidence; a pure-parser pass does not prove Scribe/logrotate readiness.
+
+The remaining local-observation review distinguishes approved integration names
+from absent operational producers. Section 12 names `CFMgrWatchdog` and
+`CFMgrCloudflaredUpdate`, but current ownership records do not establish a
+canonical installed command/hook-block contract. Reuse admitted cron/process
+evidence and compare recorded fixed-hook digests; report named schedule, count
+and integrity evidence without claiming firmware invocation or command ownership.
+Never execute or modify inspected hooks. Parent reconfirmed the official
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts),
+[Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API) and
+[Custom config files](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-config-files)
+guidance on 2026-10-21: hook paths/enabling, addon storage and generated-service
+overrides are separate contracts. Current documentation does not qualify older
+firmware or prove an observed file is operational.
+
+Known recovery observations cover `entry.stage`, `.setup.complete`,
+`.storage-observation` and the three `.config-save` guards; metadata failure is
+not absence. Reuse retained setup evidence and bounded fixed metadata without
+calling recovery/cleanup controllers. Backup observations may compare the saved
+mountpoint/root/filesystem and broad supported UUID with current mounted-volume
+evidence, then recheck attachment. No folder creation, archive scan or write/
+flush test is needed for that claim. Last-backup data remains a historical record,
+not evidence that its archive still exists or verifies. Keep this local work
+independent of provider readiness and preserve Entware descriptor ownership.
 
 Consolidation inspection exposed a pre-existing real consumer defect:
 `health-realpath` aliased the basic worker's `status-realpath`, which only
@@ -359,6 +513,22 @@ added for timing. These receipts validate the current foundation/consumer only:
 advanced health groups and the combined resource envelope remain unfinished, so
 neither S03.09 nor S03.10 earns acceptance. Ubuntu/native BusyBox remains
 representative development evidence, not real-router qualification.
+
+The consolidation/actual-worker repair candidate
+`adc59bad3a8d23ecf55812badb4b34192d0072db` passed
+[Dev 39554450182](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39554450182)
+with 226 cases, including native file-quota/signal rejection and the actual fixed
+health-realpath dispatcher. Its exact complete
+[Checks 39554674361](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39554674361)
+and all six module jobs passed. Parent verified the required job/step results
+and logs; the existing non-Linux and optional exclusions remain explicit.
+Status rose to 153 passing cases per platform while native test wall time stayed
+26.94s (11.08s user/6.61s system). Manager native took 9m27s including setup,
+552.38s test wall and 546.77s user+system CPU, comparable to the preceding gate.
+Its largest costs remain real installer/retained-launch connections already
+reviewed below; no safe new small shortcut or reason for a timing-only run was
+found. This closes the interim consolidation proof without accepting the still
+unfinished health/terminal package.
 
 ## S14.03 archive selection and actions review
 
