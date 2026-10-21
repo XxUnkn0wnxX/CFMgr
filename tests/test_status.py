@@ -137,7 +137,7 @@ def test_health_backup_worker_reuses_broad_uuid_policy(
     )
     assert (result.returncode, result.stdout, result.stderr) == (
         0,
-        identity.lower().encode() + b"\n\n",
+        identity.lower().encode() + b"\n-\n",
         b"",
     )
 
@@ -4527,7 +4527,9 @@ def test_health_hooks_cron_duplicate_mismatch_and_unverified_default_are_distinc
     assert b"JOB cloud-update 1 mismatch unknown END\n" in result.stdout
 
 
-def test_health_hooks_cron_reuses_snapshot_without_scribe_evidence(commands, tmp_path):
+def test_health_hooks_cron_reuses_snapshot_without_scribe_evidence(
+    commands, tools, tmp_path
+):
     # Exercise the actual observer shell function with only its shared
     # cron/process inputs. No Scribe file, binary, getter or recollection exists.
     cron = (
@@ -4558,7 +4560,8 @@ cfmgr_health_count() {
 }
 cfmgr_health_run() {
     mode=$1; shift 3
-    cfmgr_probe_stdout=$cfmgr_status_context/out cfmgr_probe_stderr=$cfmgr_status_context/err
+    serial=$((${serial:-0} + 1))
+    cfmgr_probe_stdout=$cfmgr_status_context/out.$serial cfmgr_probe_stderr=$cfmgr_status_context/err.$serial
     : >"$cfmgr_probe_stderr"
     case $mode in
         health-hooks-cron)
@@ -4589,7 +4592,7 @@ cat "$cfmgr_health_hooks_jobs"
             str(cron_file),
             str(process_file),
             str(len(cron)),
-            commands[1][0],
+            adapt_native("/usr/bin/awk", tmp_path / "jffs", tools, commands[0]),
         ],
         capture_output=True,
         check=False,

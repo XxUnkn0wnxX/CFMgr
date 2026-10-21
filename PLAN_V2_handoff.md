@@ -4818,3 +4818,11 @@ construction at unresolved relative `busybox` (0.93s); no runtime ledger exists.
 Both are terminal failures, not product gates. Parent fixes native applet binding
 using the existing adapter and PATH resolution; the same selections will rerun.
 Automatic core 39573177859 is cancelled with no dispatched children.
+At 2cc4756, Dev 39573513975 proved native UUID parsing but exposed the test's
+wrong empty-label expectation: the existing canonical receipt uses `-` (1 pass /
+1 fail, 0.73s). Dev 39573517927 reached native entry admission and rejected the
+fixture mountinfo's zero parent ID (1.08s). Parent corrected both fixture contracts
+against their actual parsers. The shared-cron fixture also now uses an absolute
+selected applet and distinct receipt output paths, avoiding self-truncation.
+These are fixture repairs; no runtime assertion or safety gate is relaxed.
+Automatic core 39573484891 is cancelled; both Dev runs are terminal.

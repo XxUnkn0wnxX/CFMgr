@@ -286,7 +286,7 @@ def full_health_package(
         0o755,
     )
     (firmware / "mountinfo").write_text(
-        f"1 0 0:1 / / rw - rootfs rootfs rw\n"
+        f"1 99 0:1 / / rw - rootfs rootfs rw\n"
         f"2 1 0:2 / {ram} rw - tmpfs tmpfs rw\n"
         f"3 1 0:3 / {jffs} rw - jffs2 jffs rw\n"
         f"4 1 8:1 / {mount} rw - ext4 /dev/cfmgr-fixture rw\n"
