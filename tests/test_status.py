@@ -3880,6 +3880,7 @@ def test_health_logging_metadata_missing_member_and_count_hash_frames(
 def test_health_logging_native_argv_receipt_matches_process_contract(
     shell, tools, tmp_path, kind
 ):
+    selected_awk = adapt_native("/usr/bin/awk", tmp_path / "jffs", tools, shell)
     argv = (
         ["/opt/sbin/syslog-ng", "--foreground"]
         if kind == "syslog"
@@ -3893,7 +3894,7 @@ def test_health_logging_native_argv_receipt_matches_process_contract(
             *shell,
             str(ROOT / "modules/helpers/worker.sh"),
             "health-log-argv",
-            tools["awk"],
+            selected_awk,
             str(tmp_path),
             str(raw),
             kind,
@@ -3953,6 +3954,7 @@ def test_health_logging_actual_workers_share_nine_roles_and_three_policies(
     shell, tools, health_config, tmp_path, damage
 ):
     """Real collector/parser workers; host identity and supervision are adapters."""
+    selected_awk = adapt_native("/usr/bin/awk", tmp_path / "jffs", tools, shell)
     import hashlib
 
     from test_archive_history import DEBUG, GLOBAL, RULE
@@ -4143,7 +4145,7 @@ fi
             str(source),
             str(tmp_path),
             tools["sh"],
-            tools["awk"],
+            selected_awk,
             tools["env"],
             tools["wc"],
             shutil.which("dd"),
@@ -4867,6 +4869,7 @@ def test_linux_full_health_entry_normal_journey(
         for expected in (
             "config.authority",
             "storage.entware",
+            "prerequisite.dns",
             "cloudflared.runtime.local",
             "cloudflared.yaml.identity",
             "cloudflared.certificate.live",

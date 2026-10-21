@@ -4871,3 +4871,19 @@ writing beyond its reserved extent. Parsed repeated-ancestry output retains its
 separate bound. Exact append and two-batch count cases supplement existing source
 integrity tests. Fixture-only process stage codes and DNS stream-presence flags
 will identify the remaining readiness mismatch without exposing private values.
+At fac646d, Dev 39576653618 passed reservation/batch/append checks. Dev
+39576657928 reached all 12 GETs with no budget refusal: 408 operations/879 files/
+11,247,845 collection bytes, 34 seconds through finalization, 37.86s wall. It
+still fails readiness acceptance: private diagnostic code6 isolates the second
+(cron) receipt's fixed hex field, and DNS records empty stdout/nonempty stderr.
+The earlier argv case selected native ash but host AWK, so its pass does not
+prove vendor encoding; the corresponding claim above is superseded. Parent now
+selects the vendor AWK explicitly in argv and actual logging worker cases and
+replaces the leading-NUL ordinal table with the existing portable ordinal-map
+pattern. No macOS execution occurs. The DNS behavior is confirmed against ISC
+BIND v9.18.30 bin/dig/dig.c version(), which writes its successful banner to
+stderr; the fixed -v worker normalizes that banner without a live query or claim
+of DNS resolution. The interrupted Status host failure was the full fixture's
+late /bin/ls replacement corrupting /usr/bin/ls; adaptation now occurs before
+native-path substitution, matching module construction. Core 39576628958 is
+cancelled without children. Full healthy-logging capacity remains unproved.

@@ -664,8 +664,10 @@ cfmgr_prerequisites_run() {
             f"{relative} {hashlib.sha256(original.encode()).hexdigest()} {hashlib.sha256(text.encode()).hexdigest()}"
         )
     selected_entry.write_text(
-        native(translate((ROOT / "cfmgr.sh").read_text())).replace(
-            "/bin/ls", str(firmware / "ls")
+        native(
+            translate((ROOT / "cfmgr.sh").read_text()).replace(
+                "/bin/ls", str(firmware / "ls")
+            )
         )
     )
     (audit / "transformations").write_text("\n".join(inventory) + "\n")

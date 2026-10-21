@@ -1037,7 +1037,7 @@ history-argv)
 	[ "$#" -eq 4 ] && [ -f "$1" ] || exit 2
 	case $2 in syslog | cron) ;; *) exit 2 ;; esac
 	export CFMGR_H_KIND="$2" CFMGR_H_PID="$3" CFMGR_H_START="$4"
-	exec "$tool" 'function fail(){bad=1;exit 1} function hex(s, z,i){for(i=1;i<=length(s);i++)z=z sprintf("%02x",index(chars,substr(s,i,1))-1);return z} BEGIN{for(i=1;i<128;i++)chars=chars sprintf("%c",i);chars="\000" chars;k=ENVIRON["CFMGR_H_KIND"];p=ENVIRON["CFMGR_H_PID"];t=ENVIRON["CFMGR_H_START"]} {if($0!~/^[0-9a-f][0-9a-f]$/)fail();if($0=="00"){if(++n>64||arg=="")fail();a[n]=arg;arg="";next}v=(index("0123456789abcdef",substr($0,1,1))-1)*16+index("0123456789abcdef",substr($0,2,1))-1;if(v<32||v>126)fail();arg=arg sprintf("%c",v)} END{if(bad||arg!=""||!n)exit 1;if(k=="syslog"){s="PROC " p " " t " 2f6f70742f7362696e2f7379736c6f672d6e67 " n;for(i=1;i<=n;i++)s=s " " hex(a[i]);print s " END";exit}i=2;if(a[1]=="/bin/busybox"||a[1]=="busybox"){if(a[2]!="crond")exit 4;i=3}else if(a[1]!="crond"&&a[1]!="/usr/sbin/crond")exit 4;cfg="/var/spool/cron/crontabs";for(;i<=n;i++){if(a[i]=="-l"){if(++i>n||a[i]!~/^[0-9]+$/)exit 1}else if(a[i]~/^-l[0-9]+$/){}else if(a[i]=="-c"){if(++i>n||a[i]!=cfg)exit 1}else if(a[i]=="-f"||a[i]=="-b"||a[i]=="-S"){}else exit 1}print "CROND " p " " t " " hex(cfg) " END"}' "$1"
+	exec "$tool" 'function fail(){bad=1;exit 1} function hex(s, z,i){for(i=1;i<=length(s);i++)z=z sprintf("%02x",ord[substr(s,i,1)]);return z} BEGIN{for(i=1;i<128;i++)ord[sprintf("%c",i)]=i;k=ENVIRON["CFMGR_H_KIND"];p=ENVIRON["CFMGR_H_PID"];t=ENVIRON["CFMGR_H_START"]} {if($0!~/^[0-9a-f][0-9a-f]$/)fail();if($0=="00"){if(++n>64||arg=="")fail();a[n]=arg;arg="";next}v=(index("0123456789abcdef",substr($0,1,1))-1)*16+index("0123456789abcdef",substr($0,2,1))-1;if(v<32||v>126)fail();arg=arg sprintf("%c",v)} END{if(bad||arg!=""||!n)exit 1;if(k=="syslog"){s="PROC " p " " t " 2f6f70742f7362696e2f7379736c6f672d6e67 " n;for(i=1;i<=n;i++)s=s " " hex(a[i]);print s " END";exit}i=2;if(a[1]=="/bin/busybox"||a[1]=="busybox"){if(a[2]!="crond")exit 4;i=3}else if(a[1]!="crond"&&a[1]!="/usr/sbin/crond")exit 4;cfg="/var/spool/cron/crontabs";for(;i<=n;i++){if(a[i]=="-l"){if(++i>n||a[i]!~/^[0-9]+$/)exit 1}else if(a[i]~/^-l[0-9]+$/){}else if(a[i]=="-c"){if(++i>n||a[i]!=cfg)exit 1}else if(a[i]=="-f"||a[i]=="-b"||a[i]=="-S"){}else exit 1}print "CROND " p " " t " " hex(cfg) " END"}' "$1"
 	;;
 history-frame)
 	[ "$#" -eq 5 ] || exit 2
@@ -2164,7 +2164,9 @@ flock-finish | flock-entware-finish)
 	;;
 dig-version)
 	[ "$#" -eq 0 ] || exit 2
-	exec "$tool" -v
+	# ISC BIND prints its successful -v banner on stderr. This probe only
+	# establishes executability; normalize that fixed version invocation.
+	exec "$tool" -v 2>&1
 	;;
 blkid)
 	[ "$#" -eq 1 ] || exit 2
