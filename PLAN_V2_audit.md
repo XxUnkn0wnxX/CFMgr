@@ -59,6 +59,37 @@ responses remain explicit fixtures; Linux supervision, FDs, private parsers,
 admission and reservations are actual execution. Complete affected-module/core
 proof remains a separate acceptance gate; no Merlin/ARM/live-provider claim follows.
 
+Complete-batch validation then exposed insufficient timing margin: the same
+candidate reached its collection deadline after ten reads. A lean fresh-stat
+Python metadata fixture retained the contract but did not establish a speedup;
+its subsequent run stopped after seven reads. Both failures finalized safely and
+remain failed normal-completion evidence. Parent and independent Astra review
+reassessed the repeated work rather than extending the deadline or relaxing the
+twelve-read assertion.
+
+The pinned vendor configuration disables builtin test, standalone and no-fork
+applet execution. The ordinary reservation path therefore launched approximately
+nine external comparisons per probe. The narrow `f47b051` repair replaces only
+internal value predicates with equivalent POSIX case/arithmetic checks, removing
+about 4,800 launches for a 537-operation collection plus repeated interruption-
+flag comparisons. This is a source-derived work reduction, not a measured timing
+claim. The review is **PASS WITH NOTES**: exact inactive/unresolved return codes,
+the final-phase guard, attachment-before-clock ordering, all five numeric limits,
+and both actual filesystem attachment checks remain intact. Shared supervision,
+polling cadence, process identity, clock, signals/reap and finalization limits are
+unchanged. Complete native/host integration proof remains required.
+
+At `f47b051`, the focused real-supervisor/resource selection passed six cases;
+the complete eight-module native selection then passed 445 cases in 183.29s.
+The full journey used the same 537-operation/all-twelve-read ledger in both, with
+31s and 37s report times respectively. Exact core Status passed both platforms.
+Manager's existing byte-for-byte embedded-getter test exposed a test-helper
+composition mismatch: the Python extractor omitted the explicit LF inserted by
+the production shared-policy/history getter. Parent adds that LF to the test
+extractor and preserves the strict equality assertion. Runtime parser bytes and
+semantics are unchanged; the failed core family supplies no acceptance. Complete
+acquisition/parity and affected-module checks precede the repaired final core.
+
 ### Preserved source, design and interim evidence
 
 Initial source review at `43a81f1` confirms that normal entry admission verifies

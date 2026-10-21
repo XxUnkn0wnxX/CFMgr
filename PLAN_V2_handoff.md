@@ -37,6 +37,34 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ### Current candidate and remaining gates
 
+Final-core disposition: `f47b051` passed the complete eight-module Dev selection
+[39580604259](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39580604259):
+445 passed, no skips, 183.29s pytest/183.71s wall/99.03s user/68.22s system;
+normal journey 537 operations/1,160 files/11,338,428 bytes/all twelve reads,
+37s report/41.42s wall. Focused [39580367697](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39580367697)
+passed six cases, with 31s report/33.98s journey wall. These are distinct runs.
+
+[Core 39581115011](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39581115011)
+failed because Manager 39581174006 failed the exact getter-byte parity case on
+both platforms. `tests/runtime_awk.py` omitted the explicit separating LF that
+the production backup-history getter inserts between its shared policy and body.
+The test helper now preserves that LF; runtime bytes/behavior are unchanged.
+Complete Status 39581176955 passed both platforms, Backup host passed, and
+remaining Backup native 39581171490 was cancelled after failure capture to avoid
+a superseded full run. No acceptance follows from this incomplete core family.
+Run complete acquisition tests (including the getter parity case), all eight
+previously affected modules at the repaired SHA, then final core again. Local
+Ruff/format/compile pass; no shell/getter/AWK behavior ran on macOS.
+
+Latest runtime candidate is `f47b051f643cb7b210e4224a296572f2a55da452`.
+[Dev 39580367697](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39580367697)
+is running existing budget/ownership/finalization/basic-supervisor cases and the
+complete journey after the reviewed process-cost repair described below.
+Automatic core 39580327833 is confirmed cancelled without children. No worker
+owns edits; parent owns integration and records. This paragraph supersedes the
+earlier candidate/job status below; none of the failed complete selections earns
+acceptance. Complete affected modules and final exact core remain outstanding.
+
 Candidate `b4ea1a5f2d597794c7f701dadca99d2ab9133c3a` is published on
 `develop`. [Dev 39578486584](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39578486584)
 passed all five quota/deadline/complete-native-journey cases in 39.71s

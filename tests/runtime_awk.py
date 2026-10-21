@@ -49,7 +49,8 @@ def awk_program(*fragments: str) -> str:
     programs = []
     for fragment in fragments:
         if fragment == "backup_history":
-            programs.append(awk_program("backup_history_policy"))
+            # Match the getter's explicit newline between its two literals.
+            programs.append(awk_program("backup_history_policy") + "\n")
         source = (ROOT / OWNERS[fragment]).read_text()
         begin = "\t# CFMGR-AWK-BEGIN " + fragment + "\n\tcfmgr_awk_program='\n"
         end = "'\n\t# CFMGR-AWK-END " + fragment + "\n"
