@@ -126,6 +126,24 @@ alphabet and adding a direct malformed-request case. Both affected parametrized
 nodes passed locally: fourteen cases in 1.29s (2.18s wall). This is one focused
 repair attempt; native proof remains pending on the next exact candidate.
 
+The repaired runtime is published at **`956d9ed9b7c33624ba7031a9396a7901138608e3`**.
+[Dev 39548442646](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39548442646)
+passed all nineteen token/request/real-curl cases in 5.77s under vendor BusyBox.
+Its premature automatic Checks 39548404961 is confirmed cancelled. The complete
+three-module [Dev 39548819449](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39548819449)
+then stopped after 58 passes on a stale five-field diagnostic-row test call;
+the runtime correctly requires six fields after renderer integration. The
+presentation worker owns only `tests/test_status.py` for that fixture repair and
+adjacent interface review. No runtime writer is active. Lint 39548041751 reached
+its five-minute limit and was cancelled; it is not passing lint evidence. A
+read-only reviewer is diagnosing that measured cost without local ShellCheck.
+Repeat affected complete Dev modules after the repair, then the exact complete
+core gate before continuing consolidation. No acceptance has changed.
+The two stale calls now supply their required dependency field, retaining the
+existing row-cap assertions. The focused case passed in 0.52s; narrow Python
+lint/format/compile, planning, manifest and whitespace checks passed. The worker
+released the test file; this repair changes no runtime behavior.
+
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
 Independent Astra design review identified disabled ash test/printf/echo builtins

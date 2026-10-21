@@ -632,8 +632,8 @@ cfmgr_health_reserve health-date
 [ "$?" = 1 ] && [ "$cfmgr_health_bytes" = 11534336 ] || exit 20
 cfmgr_health_rows=95 shown=0
 cfmgr_status_row() { shown=$((shown+1)); }
-cfmgr_health_row system.example UNKNOWN details unknown None || exit 21
-cfmgr_health_row system.example UNKNOWN details unknown None
+cfmgr_health_row system.example UNKNOWN details unknown None system.time || exit 21
+cfmgr_health_row system.example UNKNOWN details unknown None system.time
 [ "$?" = 1 ] && [ "$shown:$cfmgr_health_rows" = 1:96 ] || exit 22
 """
     result = subprocess.run(
