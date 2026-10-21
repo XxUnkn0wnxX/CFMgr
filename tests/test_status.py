@@ -341,7 +341,9 @@ def health_v2_receipt(kind, state, family, values):
     return ("\n".join(lines) + "\n").encode()
 
 
-def health_compare_run(commands, context, entries, *, worker=False, shell=None):
+def health_compare_run(
+    commands, context, entries, *, worker=False, shell=None, awk_tool=None
+):
     context.mkdir(parents=True, exist_ok=True)
     manifest_lines = ["CFMGR-HEALTH-COMPARISON 1"]
     for index, (role, ordinal, family, contents) in enumerate(entries, start=1):
@@ -353,6 +355,7 @@ def health_compare_run(commands, context, entries, *, worker=False, shell=None):
     manifest = context / "comparison"
     manifest.write_text("\n".join(manifest_lines) + "\n")
     if worker:
+        assert awk_tool and Path(awk_tool).is_absolute()
         status_source = context / "status.sh"
         status_source.write_text((ROOT / "modules/status.sh").read_text())
         return subprocess.run(
@@ -360,7 +363,7 @@ def health_compare_run(commands, context, entries, *, worker=False, shell=None):
                 *shell,
                 str(ROOT / "modules/helpers/worker.sh"),
                 "health-compare",
-                commands[1][0],
+                awk_tool,
                 str(context),
                 str(status_source),
                 str(manifest),
@@ -615,7 +618,7 @@ def test_health_v2_frame_rejects_receipts_over_4096_bytes(commands, tmp_path):
 
 
 def test_health_compare_worker_caps_seven_inputs_and_emits_at_most_five_safe_rows(
-    commands, shell, tmp_path
+    commands, shell, tools, tmp_path
 ):
     trace4 = b"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv4:8.8.8.8 END\n"
     trace6 = b"CFMGR-HEALTH-RESPONSE 1 observed 1 ipv6:2606:4700::1111 END\n"
@@ -644,7 +647,12 @@ def test_health_compare_worker_caps_seven_inputs_and_emits_at_most_five_safe_row
         ("TRACE", "2", "6", trace6),
     ]
     result = health_compare_run(
-        commands, tmp_path / "compare-worker", entries, worker=True, shell=shell
+        commands,
+        tmp_path / "compare-worker",
+        entries,
+        worker=True,
+        shell=shell,
+        awk_tool=tools["awk"],
     )
     assert result.returncode == 0 and result.stderr == b""
     assert result.stdout == (
@@ -1913,7 +1921,7 @@ cfmgr_health_row invalid PASS 'bad	detail' current action report
 
 
 def test_health_provider_comparison_controller_keeps_prior_receipt_on_scope_hold(
-    shell, tools, commands, tmp_path
+    shell, tools, tmp_path
 ):
     (tmp_path / "inventory").write_text(
         "CFMGR-HEALTH-INVENTORY 1\nfeature ddns 1 1 eligible\n"
@@ -1981,7 +1989,7 @@ cfmgr_health_provider_collect
             str(ROOT),
             str(tmp_path),
             tools["sh"],
-            commands[1][0],
+            tools["awk"],
         ],
         capture_output=True,
         timeout=5,
@@ -3478,7 +3486,7 @@ printf 'LEDGER %s %s %s\n' "$cfmgr_health_operations" "$cfmgr_health_files" "$cf
 
 
 def test_health_cloud_rejects_partial_plan_before_any_file_open_and_keeps_budget_unknown(
-    shell, commands, tmp_path
+    shell, tools, tmp_path
 ):
     partial = tmp_path / "partial plan"
     partial.write_text("CFMGR-CLOUD-PLAN\t1\nSTATE\t1\t0\t1\t1\tadvanced\n")
@@ -3526,7 +3534,7 @@ if cfmgr_health_cloud_semantics; then :; else [ "$?" = 1 ] || exit 13; fi
             "health-incomplete",
             str(ROOT),
             str(tmp_path),
-            commands[1][0],
+            tools["awk"],
             awk_program("health_selected"),
         ],
         capture_output=True,

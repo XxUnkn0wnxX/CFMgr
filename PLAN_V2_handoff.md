@@ -500,6 +500,22 @@ Dev proof before the dependent logging collector. Full core remains the final
 checkpoint gate after all current S03.09/S03.10 implementation is complete;
 earlier exact core evidence at `adc59ba` remains historical, not proof of this
 delta. These interim gates add no acceptance credit or daily checkpoint pause.
+The candidate is now **`62d0553340e7dce3f0993e08691d4922b8dbdae8`**, committed,
+pushed and verified against actual remote `develop`. Complete-module
+[Dev 39563524877](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39563524877)
+is running. Cancellation was requested for premature Checks 39563442981 and
+its already-dispatched Backup 39563489671, Manager 39563492735 and Status
+39563495849 children; terminal cancellation still needs verification. The awaiter
+only polls these jobs. Parent retains all runtime files while the exact Dev gate
+is pending; no further implementation is released yet.
+Dev 39563524877 failed after **50 passes in 3.47s**: the new comparison-worker
+test passed bare `busybox` as its AWK executable instead of the required absolute
+applet path. Production dispatch correctly rejected that fixture argument. Parent
+changed all three new single-executable AWK handoffs in `test_status.py` to the
+existing resolved native-tool fixture; the three affected nodes passed locally
+in **0.55s**, with Ruff checks passed. This is the first native fixture repair;
+its exact native confirmation and all eight complete modules remain pending.
+The premature core and all three module children are now terminal cancelled.
 
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
