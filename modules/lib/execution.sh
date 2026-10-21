@@ -24,7 +24,7 @@ cfmgr_prerequisites_identity() {
 	# shellcheck disable=SC2086
 	set -- $cfmgr_identity_tail
 	IFS=$cfmgr_identity_ifs
-	[ "$#" -ge 20 ] || return 1
+	case $(($# >= 20)) in 1) ;; *) return 1 ;; esac
 	cfmgr_identity_state=$1
 	cfmgr_identity_parent=$2
 	shift 19
@@ -147,50 +147,50 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_child_start='' cfmgr_probe_child_parent='' cfmgr_probe_child_boot=''
 	cfmgr_probe_stdout='' cfmgr_probe_stderr=''
 	cfmgr_probe_reason=arguments
-	[ "$#" -ge 9 ] || return 2
+	case $(($# >= 9)) in 1) ;; *) return 2 ;; esac
 	case $1 in
 	repair-remove) ;; # Its existing exact finite operand gate remains below.
-	store-archive-config) [ "$#" -eq 23 ] || return 2 ;;
-	*) [ "$#" -le 22 ] || return 2 ;;
+	store-archive-config) case $# in 23) ;; *) return 2 ;; esac ;;
+	*) case $(($# <= 22)) in 1) ;; *) return 2 ;; esac ;;
 	esac
 	cfmgr_probe_mode=$1 cfmgr_probe_context=$2 cfmgr_probe_shell=$3
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
-	health-flat-list) [ "$#" -eq 10 ] || return 2 ;;
-	health-flat-check) [ "$#" -eq 14 ] || return 2 ;;
-	health-package-check) [ "$#" -eq 12 ] || return 2 ;;
-	health-hooks-authority | health-hooks-frame) [ "$#" -eq 13 ] || return 2 ;;
-	health-hooks-cron) [ "$#" -eq 15 ] || return 2 ;;
-	health-backup-plan) [ "$#" -eq 15 ] || return 2 ;;
-	health-backup-observe) [ "$#" -eq 14 ] || return 2 ;;
-	health-backup-uuid) [ "$#" -eq 13 ] || return 2 ;;
-	health-log-authority | health-log-inspect | health-log-process | health-log-assess) [ "$#" -eq 14 ] || return 2 ;;
-	health-log-includes) [ "$#" -eq 13 ] || return 2 ;;
-	health-log-bundle) [ "$#" -eq 12 ] || return 2 ;;
-	health-log-base | health-log-path | health-log-script | health-log-cron) [ "$#" -eq 11 ] || return 2 ;;
-	health-log-argv) [ "$#" -eq 13 ] || return 2 ;;
-	health-log-metadata | health-log-hash | health-log-count) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
-	health-log-pids | health-log-link | health-log-proc-meta | health-log-hex) [ "$#" -eq 10 ] || return 2 ;;
-	health-log-version | health-log-syntax | health-log-debug | health-log-account) [ "$#" -eq 9 ] || return 2 ;;
-	health-compare) [ "$#" -eq 11 ] || return 2 ;;
-	health-cloud-frame) [ "$#" -eq 12 ] || return 2 ;;
-	health-selected-metadata) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
-	health-cloud-plan | health-cloud-authority | health-selected-check | health-cloud-join | health-cloud-json) [ "$#" -eq 14 ] || return 2 ;;
-	health-selected-copy | health-selected-hex | health-selected-hash | health-cloud-yaml | health-cloud-pem) [ "$#" -eq 11 ] || return 2 ;;
-	health-cloud-decode) [ "$#" -eq 10 ] || return 2 ;;
-	health-entware-metadata) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
-	health-inventory | health-scope | health-request) [ "$#" -eq 19 ] || return 2 ;;
-	health-get) [ "$#" -eq 15 ] || return 2 ;;
-	health-response) [ "$#" -eq 16 ] || return 2 ;;
-	health-metadata-check | health-protected | health-current | health-storage | health-uuid | health-request-check | health-trace | health-frame | health-render) [ "$#" -eq 13 ] || return 2 ;;
-	health-config) [ "$#" -eq 20 ] || return 2 ;;
-	health-native-metadata | health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) [ "$#" -eq 10 ] || return 2 ;;
-	health-fields) [ "$#" -eq 13 ] || return 2 ;;
-	health-native | health-mount | health-curl-offline) [ "$#" -eq 11 ] || return 2 ;;
-	health-count-get) [ "$#" -eq 12 ] || return 2 ;;
-	health-blkid) [ "$#" -eq 10 ] || return 2 ;;
-	health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | health-wc-jq | health-wc-sha | health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | health-dig-version | health-uname | health-date | health-curl-version) [ "$#" -eq 9 ] || return 2 ;;
+	health-flat-list) case $# in 10) ;; *) return 2 ;; esac ;;
+	health-flat-check) case $# in 14) ;; *) return 2 ;; esac ;;
+	health-package-check) case $# in 12) ;; *) return 2 ;; esac ;;
+	health-hooks-authority | health-hooks-frame) case $# in 13) ;; *) return 2 ;; esac ;;
+	health-hooks-cron) case $# in 15) ;; *) return 2 ;; esac ;;
+	health-backup-plan) case $# in 15) ;; *) return 2 ;; esac ;;
+	health-backup-observe) case $# in 14) ;; *) return 2 ;; esac ;;
+	health-backup-uuid) case $# in 13) ;; *) return 2 ;; esac ;;
+	health-log-authority | health-log-inspect | health-log-process | health-log-assess) case $# in 14) ;; *) return 2 ;; esac ;;
+	health-log-includes) case $# in 13) ;; *) return 2 ;; esac ;;
+	health-log-bundle) case $# in 12) ;; *) return 2 ;; esac ;;
+	health-log-base | health-log-path | health-log-script | health-log-cron) case $# in 11) ;; *) return 2 ;; esac ;;
+	health-log-argv) case $# in 13) ;; *) return 2 ;; esac ;;
+	health-log-metadata | health-log-hash | health-log-count) case $(($# >= 10 && $# <= 22)) in 1) ;; *) return 2 ;; esac ;;
+	health-log-pids | health-log-link | health-log-proc-meta | health-log-hex) case $# in 10) ;; *) return 2 ;; esac ;;
+	health-log-version | health-log-syntax | health-log-debug | health-log-account) case $# in 9) ;; *) return 2 ;; esac ;;
+	health-compare) case $# in 11) ;; *) return 2 ;; esac ;;
+	health-cloud-frame) case $# in 12) ;; *) return 2 ;; esac ;;
+	health-selected-metadata) case $(($# >= 10 && $# <= 22)) in 1) ;; *) return 2 ;; esac ;;
+	health-cloud-plan | health-cloud-authority | health-selected-check | health-cloud-join | health-cloud-json) case $# in 14) ;; *) return 2 ;; esac ;;
+	health-selected-copy | health-selected-hex | health-selected-hash | health-cloud-yaml | health-cloud-pem) case $# in 11) ;; *) return 2 ;; esac ;;
+	health-cloud-decode) case $# in 10) ;; *) return 2 ;; esac ;;
+	health-entware-metadata) case $(($# >= 10 && $# <= 22)) in 1) ;; *) return 2 ;; esac ;;
+	health-inventory | health-scope | health-request) case $# in 19) ;; *) return 2 ;; esac ;;
+	health-get) case $# in 15) ;; *) return 2 ;; esac ;;
+	health-response) case $# in 16) ;; *) return 2 ;; esac ;;
+	health-metadata-check | health-protected | health-current | health-storage | health-uuid | health-request-check | health-trace | health-frame | health-render) case $# in 13) ;; *) return 2 ;; esac ;;
+	health-config) case $# in 20) ;; *) return 2 ;; esac ;;
+	health-native-metadata | health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) case $# in 10) ;; *) return 2 ;; esac ;;
+	health-fields) case $# in 13) ;; *) return 2 ;; esac ;;
+	health-native | health-mount | health-curl-offline) case $# in 11) ;; *) return 2 ;; esac ;;
+	health-count-get) case $# in 12) ;; *) return 2 ;; esac ;;
+	health-blkid) case $# in 10) ;; *) return 2 ;; esac ;;
+	health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | health-wc-jq | health-wc-sha | health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | health-dig-version | health-uname | health-date | health-curl-version) case $# in 9) ;; *) return 2 ;; esac ;;
 	history-meta | history-proc-meta | history-inode | history-count | history-digest | history-realpath | history-readlink | history-hexdump | history-script-prefix | history-blkid | history-proc-list | history-proc-pids | history-policy-decode) [ "$#" -eq 10 ] || return 2 ;;
 	history-directory | history-mount | history-cron-read | history-writer-fd-list) [ "$#" -eq 11 ] || return 2 ;;
 	history-volume | history-argv | history-writer-parse) [ "$#" -eq 13 ] || return 2 ;;
@@ -357,7 +357,7 @@ cfmgr_prerequisites_run() {
 	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
-		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
+		case $((${#cfmgr_probe_serial} <= 6)) in 1) ;; *) return 2 ;; esac
 		cfmgr_probe_serial=$((cfmgr_probe_serial + 1))
 		cfmgr_probe_label=$cfmgr_probe_mode.$cfmgr_probe_serial
 		;;
@@ -402,7 +402,7 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_first_pause=1
 	while :; do
 		_cfmgr_prerequisites_observe || return 3
-		[ "$cfmgr_probe_observation" -eq 1 ] && break
+		case $cfmgr_probe_observation in 1) break ;; esac
 		case $cfmgr_identity_state in Z) break ;; esac
 		if ! _cfmgr_prerequisites_attachment; then cfmgr_probe_reason=attachment; fi
 		cfmgr_prerequisites_now || cfmgr_probe_reason=clock
@@ -429,9 +429,11 @@ cfmgr_prerequisites_run() {
 				;;
 			esac
 			_cfmgr_prerequisites_observe || return 3
-			if [ "$cfmgr_probe_observation" -eq 0 ]; then
+			case $cfmgr_probe_observation in
+			0)
 				case $cfmgr_identity_state in Z) ;; *) kill -TERM "$cfmgr_probe_pid" || : ;; esac
-			fi
+				;;
+			esac
 			break
 			;;
 		esac
@@ -454,7 +456,7 @@ cfmgr_prerequisites_run() {
 		cfmgr_probe_attempt=0
 		while [ "$cfmgr_probe_attempt" -lt 10 ]; do
 			_cfmgr_prerequisites_observe || return 3
-			[ "$cfmgr_probe_observation" -eq 1 ] && break
+			case $cfmgr_probe_observation in 1) break ;; esac
 			case $cfmgr_identity_state in Z) break ;; esac
 			cfmgr_prerequisites_pause || {
 				cfmgr_probe_status=unresolved
@@ -463,7 +465,8 @@ cfmgr_prerequisites_run() {
 			cfmgr_probe_attempt=$((cfmgr_probe_attempt + 1))
 		done
 		_cfmgr_prerequisites_observe || return 3
-		if [ "$cfmgr_probe_observation" -eq 0 ]; then
+		case $cfmgr_probe_observation in
+		0)
 			case $cfmgr_identity_state in
 			Z) ;;
 			*)
@@ -483,7 +486,8 @@ cfmgr_prerequisites_run() {
 					;;
 				esac
 				_cfmgr_prerequisites_observe || return 3
-				if [ "$cfmgr_probe_observation" -eq 0 ]; then
+				case $cfmgr_probe_observation in
+				0)
 					case $cfmgr_identity_state in
 					Z) ;;
 					*)
@@ -491,14 +495,17 @@ cfmgr_prerequisites_run() {
 						cfmgr_prerequisites_pause || :
 						;;
 					esac
-				fi
+					;;
+				esac
 				;;
 			esac
-		fi
+			;;
+		esac
 		;;
 	esac
 	_cfmgr_prerequisites_observe || return 3
-	if [ "$cfmgr_probe_observation" -eq 0 ]; then
+	case $cfmgr_probe_observation in
+	0)
 		case $cfmgr_identity_state in
 		Z) ;;
 		*)
@@ -506,7 +513,8 @@ cfmgr_prerequisites_run() {
 			return 3
 			;;
 		esac
-	fi
+		;;
+	esac
 	if wait "$cfmgr_probe_pid"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
 	case $cfmgr_probe_mode in
 	timeout-expiry | health-timeout-expiry)
@@ -519,7 +527,7 @@ cfmgr_prerequisites_run() {
 	_cfmgr_prerequisites_attachment || cfmgr_probe_reason=attachment
 	cfmgr_probe_status=reaped
 	case $cfmgr_probe_mode in health-*)
-		[ "$cfmgr_probe_exit" -lt 128 ] || cfmgr_probe_reason=child-signal
+		case $((cfmgr_probe_exit < 128)) in 1) ;; *) cfmgr_probe_reason=child-signal ;; esac
 		;;
 	esac
 	case $cfmgr_probe_reason in '') ;; *) return 1 ;; esac

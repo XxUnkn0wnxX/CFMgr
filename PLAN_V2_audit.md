@@ -90,6 +90,22 @@ extractor and preserves the strict equality assertion. Runtime parser bytes and
 semantics are unchanged; the failed core family supplies no acceptance. Complete
 acquisition/parity and affected-module checks precede the repaired final core.
 
+The same runtime later hit the collection deadline again after ten reads in
+Dev 39581959904 at test-only revision `3403a0c`; acquisition/getter parity passed
+all five cases in Dev 39581793489. Parent and independent Astra reassessed the
+margin again. The second bounded reduction replaces external test calls for
+shell-derived argument counts/lengths and assigned supervisor observations with
+POSIX case/arithmetic. Common admission retains repair-remove and 23-argument
+archive exceptions; mode-specific rejection codes remain exact. Observation
+branches keep their complete controlled bodies, preserving signal/wait guards.
+Filesystem/proc/clock observations, polling, owned cleanup, resource limits and
+all-twelve-read normal completion remain unchanged. No further host behavior or
+AWK execution is used after the macOS diagnostic incident. This change needs
+focused native safety/journey proof, complete affected groups and final core;
+the source-derived reduction alone is not acceptance or a timing claim. Independent
+Astra reviewed both settled diffs and returned PASS; parent verified and removed
+unrelated worker-draft changes before integration.
+
 ### Preserved source, design and interim evidence
 
 Initial source review at `43a81f1` confirms that normal entry admission verifies

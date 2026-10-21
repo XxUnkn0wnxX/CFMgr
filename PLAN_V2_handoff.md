@@ -37,6 +37,34 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ### Current candidate and remaining gates
 
+Dev 39581959904 at `3403a0c3980790c837a0f925c85396e9b2a14696` failed
+normal completion at 519 operations/1,119 files/10,709,744 bytes/ten GETs,
+40s report/44.55s wall. Complete acquisition Dev 39581793489 passed all five
+cases in 3.06s pytest/3.26s wall. Neither replaces the unfinished final core gate.
+Parent reassessed the repeated timing failure with independent Astra review:
+reduce external test processes only for shell-derived argument counts, lengths
+and assigned supervisor observations. Preserve every filesystem/identity/clock
+read, signal, pause, wait, exit code and resource ceiling.
+
+Ownership: worker edits to `worker.sh` are released and integrated; parent owns
+`execution.sh`, manifest, V2 records and final integration. Independent Astra
+review passed both settled supervisor and worker diffs. No active
+writer owns runtime files. Parent removed unrelated draft-only history formatting
+and duplicate predicates before publication. All behavior/AWK execution remains CI-only. Validate existing ownership,
+short-pause, output-bound and health-arity cases plus the full twelve-read journey,
+then complete affected modules and exact core. No next block is started.
+
+Focused CI selection: real short-pause/final-wait cases, real flock supervision,
+output bounds/detached launch, unknown identity, borrowed timeout ownership,
+health extra-argument rejection and full normal journey. After passing, complete
+Dev selections cover the original eight affected modules plus `test_acquire.py`
+and `test_prerequisites.py`. Each dispatch stays at most eight modules; tests are
+not split into new product groups. Then exact final Backup/Manager/Status core
+on both host and vendor BusyBox is mandatory. Full local is not due: no main
+goal reaches completion. Accepted totals remain 23/157 and 0/16.
+
+### Preserved earlier candidate and CI evidence
+
 Final-core disposition: `f47b051` passed the complete eight-module Dev selection
 [39580604259](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39580604259):
 445 passed, no skips, 183.29s pytest/183.71s wall/99.03s user/68.22s system;
