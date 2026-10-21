@@ -160,6 +160,28 @@ host case passed in 0.80s, with narrow Ruff/format/compile checks passed. The ow
 released the file. This is a test-only portability correction; native rerun is
 still required.
 
+Current published candidate is **`7a0f1e050ee4599bfb3530f72c2dad5e2345330b`**;
+actual remote `develop` matches. Its premature automatic Checks 39549466315 is
+confirmed cancelled. [Dev 39549483839](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39549483839)
+passed all **200 cases in 47.35s** across the three complete affected modules
+(47.53s wall, 22.12s user, 12.03s system). Exact complete
+[Checks 39549602960](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39549602960)
+is now running at that candidate. All writers have released files; the awaiter
+only watches this already-running core gate and its module runs. A read-only
+source explorer is reconciling the exact core operation subtotals with the
+proposed forty-operation savings before consolidation is released. No further
+runtime implementation starts until all six required module jobs pass.
+
+The first complete core attempt at `7a0f1e0` passed both Status jobs and Backup
+host. Manager host failed after 356 passes/one platform skip because Dash's
+bracket builtin bypassed the fixture's PATH trap. Parent captured the failure
+and cancelled the superseded core/remaining module runs. The fixture now declares
+a POSIX alias before parsing the original entry functions, with an explicit
+93-result preflight; this intercepts the command in both Dash and Bash while
+preserving all renderer assertions. Focused host runs passed under Dash (0.17s)
+and Bash (0.33s); narrow statics passed. No runtime behavior changed. Native
+focused confirmation and all final exact-candidate core jobs still remain.
+
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
 Independent Astra design review identified disabled ash test/printf/echo builtins

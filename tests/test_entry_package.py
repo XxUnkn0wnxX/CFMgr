@@ -171,19 +171,18 @@ def test_native_rows_wrap_without_builtin_output_or_test_and_reject_controls(
 ):
     entry = native_health_entry(tmp_path, {})
     prefix = entry.read_text().split("\ncase ${1-} in", 1)[0]
-    poison_bin = tmp_path / "poison-bin"
-    poison_bin.mkdir()
-    bracket = poison_bin / "["
-    bracket.write_text("#!/bin/sh\nexit 93\n")
-    bracket.chmod(0o755)
+    alias_setup = (
+        "shopt -s expand_aliases\n"
+        if Path(shell[0]).name.lower().endswith("bash")
+        else ""
+    )
     script = (
-        prefix
-        + f"""
-printf() {{ return 91; }}
-test() {{ return 92; }}
-case ${{BASH_VERSION-}} in '') ;; *) enable -n '[' || exit 94 ;; esac
-PATH={shlex.quote(str(poison_bin))}:$PATH
-export PATH
+        alias_setup
+        + "cfmgr_test_disabled_bracket() { return 93; }\nalias '['=cfmgr_test_disabled_bracket\n"
+        + prefix
+        + r"""
+printf() { return 91; }
+test() { return 92; }
 [ probe ]
 cfmgr_bracket_probe=$?
 case $cfmgr_bracket_probe in 93) ;; *) exit 95 ;; esac

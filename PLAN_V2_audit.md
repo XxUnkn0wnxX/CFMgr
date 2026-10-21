@@ -160,6 +160,19 @@ reducing the corrected core estimate to 215. Exact path matching, spaces,
 reordered listings, partial missing members and before/after snapshot identity
 remain mandatory. No config, credential or provider parsing moves into shell.
 
+A second source-count check confirms the forty-operation saving with corrected
+disjoint labels: **52 dashboard + 30 combined native admission + 7 TLS +
+46 remaining Entware + 120 GET = 255**. Native admission includes the later
+flock path: four canonical reads plus 26 metadata/parser operations become the
+same four canonical reads and one metadata/validator pair, saving 24. Entware's
+fourteen separate metadata/parser operations become one pair, saving twelve;
+the two snapshots save four receipt-parser operations. The resulting healthy
+twelve-request path is **48 + 6 + 7 + 34 + 120 = 215**. Thirteen native operands
+cover the verified BusyBox-flock branch; a regular flock needs its corresponding
+endpoint or independent union handling. Missing flock must not invalidate TLS.
+Extra ancestry and failed-native-to-Entware flock fallback have separate costs;
+215 is a normal maximum-target path estimate, not a universal worst-case bound.
+
 The remaining diagnostic groups are provisionally 80–120 additional operations.
 Parent accepts **352 total operations / 768 files / 12 MiB** as a conditional
 implementation design candidate, not a changed product requirement or proof.
