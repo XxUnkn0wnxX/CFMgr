@@ -160,7 +160,7 @@ host case passed in 0.80s, with narrow Ruff/format/compile checks passed. The ow
 released the file. This is a test-only portability correction; native rerun is
 still required.
 
-Current published candidate is **`7a0f1e050ee4599bfb3530f72c2dad5e2345330b`**;
+The complete three-module Dev candidate is **`7a0f1e050ee4599bfb3530f72c2dad5e2345330b`**;
 actual remote `develop` matches. Its premature automatic Checks 39549466315 is
 confirmed cancelled. [Dev 39549483839](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39549483839)
 passed all **200 cases in 47.35s** across the three complete affected modules
@@ -181,6 +181,17 @@ a POSIX alias before parsing the original entry functions, with an explicit
 preserving all renderer assertions. Focused host runs passed under Dash (0.17s)
 and Bash (0.33s); narrow statics passed. No runtime behavior changed. Native
 focused confirmation and all final exact-candidate core jobs still remain.
+
+The alias-only test repair at **`5cc7810af416326fbb71a96addf321a13ebd6b06`**
+passed host Dash/Bash but failed [Dev 39550143239](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39550143239)
+because pinned vendor ash also omits aliases. After two failed fixture approaches,
+parent reassessed the exact platform evidence: the earlier PATH trap passed
+vendor ash, and the alias trap passed both host shells. The combined fixture now
+retains both mechanisms and the mandatory status-93 preflight; unsupported alias
+handling cannot silently pass. The affected case passed under Bash (0.29s) and
+Dash (0.19s), with narrow statics passed. No runtime code changed. Automatic
+Checks 39550117294 and all previous superseded core/module runs are confirmed
+cancelled. Repeat the complete entry module in native Dev before exact core.
 
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
