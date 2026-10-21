@@ -108,6 +108,24 @@ Broad lint belongs in the manual CI Lint workflow. Cancel the premature owned
 automatic core run while Dev diagnosis is pending. Do not begin consolidation or
 advanced implementation until this published candidate's prescribed gates finish.
 
+Interim candidate **`2a50fc5e441b99e3cd6edd349138bb52064cb3dc`** is committed,
+pushed and verified against the actual remote `develop`. Final light planning,
+package, changed-Python Ruff/format/compile, changed-shell syntax/shfmt and
+whitespace checks passed. Automatic [Checks 39548002636](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39548002636)
+is confirmed cancelled before final core. [Dev 39548033815](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39548033815)
+is running the three complete selected modules; [Lint 39548041751](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39548041751)
+is running broad ShellCheck remotely. An awaiter may only poll these already
+running jobs; parent owns failure diagnosis, repairs and exact complete core
+dispatch. No implementation writer is active while these gates are pending.
+
+Dev 39548033815 failed after twelve passes on the token-backslash refusal case.
+BusyBox accepted a backslash through the escaped-slash bracket expression that
+the Mac AWK rejected. Parent added explicit byte-92 refusal before both token
+projection and complete private request admission, preserving the common token
+alphabet and adding a direct malformed-request case. Both affected parametrized
+nodes passed locally: fourteen cases in 1.29s (2.18s wall). This is one focused
+repair attempt; native proof remains pending on the next exact candidate.
+
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
 Independent Astra design review identified disabled ash test/printf/echo builtins

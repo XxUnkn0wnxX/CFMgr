@@ -1583,7 +1583,9 @@ function hp_resource_request(    ref,credential,account,resource,records,item,i,
     credential=cs_credentials[ref]
     if(!credential || cs_kinds[ref]!="cloudflare_api_token" || length(ref)>64) { hp_state="credential-local-only"; return }
     hp_token=cs_string(credential,"value",0)
-    if(length(hp_token)>2048 || hp_token!~/^[A-Za-z0-9._~+\/-]+=*$/) { hp_token=""; hp_state="credential-local-only" }
+    # BusyBox may retain the slash escape inside a regex bracket expression.
+    # Reject backslash explicitly before the common Bearer alphabet check.
+    if(length(hp_token)>2048 || index(hp_token,sprintf("%c",92)) || hp_token!~/^[A-Za-z0-9._~+\/-]+=*$/) { hp_token=""; hp_state="credential-local-only" }
 }
 '
 	# CFMGR-AWK-END health
@@ -1615,6 +1617,7 @@ function hw_uuid(value,    a,n,i) {
 function hw_request(path,bytes,    raw,a,n,url,header,p,count,q) {
     if(bytes!~/^[1-9][0-9]*$/ || bytes>4352) exit 1
     raw=hw_read(path,4352,bytes)
+    if(index(raw,sprintf("%c",92))) exit 1
     n=split(raw,a,"\n"); if(n<2 || n>3 || a[n]!="" || a[1]!~/^url = "https:\/\/[A-Za-z0-9._?&=%*\/-]+"$/) exit 1
     url=substr(a[1],8,length(a[1])-8); if(length(url)>2048) exit 1
     if(url=="https://cloudflare.com/cdn-cgi/trace") { if(n!=2) exit 1; hw_kind="trace"; hw_url=url; return }

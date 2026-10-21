@@ -307,6 +307,7 @@ def health_wire(commands, tmp_path, kind, contents, *, mode="health-frame", size
         "extra-option",
         "missing-lf",
         "duplicate-header",
+        "backslash",
         "lookalike-host",
         "wrong-kind",
     ],
@@ -321,6 +322,8 @@ def test_health_wire_admits_exact_generated_curl_grammar(
         request = request.rstrip(b"\n")
     elif damage == "duplicate-header":
         request += request.splitlines(keepends=True)[1]
+    elif damage == "backslash":
+        request = request.replace(b"Bearer ", b"Bearer bad\\")
     elif damage == "lookalike-host":
         request = request.replace(
             b"api.cloudflare.com", b"api.cloudflare.com.evil.test"

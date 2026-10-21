@@ -200,6 +200,13 @@ ledger are required before adopting the conditional capacity revision. The
 existing 8-KiB Scribe-prefix policy is retained; public protected files do not
 inherit the private configuration's `0600` policy.
 
+The first native Dev run at `2a50fc5` found a real portability defect: its token
+backslash case was admitted by BusyBox's escaped-slash bracket expression, while
+host AWK rejected it. No product acceptance was awarded. Parent added explicit
+backslash-byte rejection to token projection and the entire private request
+grammar, with direct request-damage coverage. Fourteen focused host cases passed
+in 1.29s. Exact native rerun and complete core proof remain required.
+
 ## S14.03 archive selection and actions review
 
 The authorized standalone package extends the existing Backup owner with source
