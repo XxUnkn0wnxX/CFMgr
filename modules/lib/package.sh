@@ -30,27 +30,123 @@ $cfmgr_package_relative
 	done
 }
 
+cfmgr_package_awk_package_records() {
+	# CFMGR-AWK-BEGIN package_records
+	cfmgr_awk_program='
+function pk_clear_manifest(    key) {
+	for (key in pk_paths) delete pk_paths[key]
+	for (key in pk_mode) delete pk_mode[key]
+	for (key in pk_bytes) delete pk_bytes[key]
+	for (key in pk_sha) delete pk_sha[key]
+	for (key in pk_seen) delete pk_seen[key]
+	pk_count=0
+	pk_total=0
+}
+
+function pk_clear_catalog(    key) {
+	for (key in pk_catalog_seen) delete pk_catalog_seen[key]
+}
+
+function pk_manifest(path, version,    line, result, header, fields, row, item, depth, total, count, previous, status, required, names, n, i) {
+	pk_clear_manifest()
+	result=1
+	header=0
+	count=0
+	total=0
+	previous=""
+	while ((status=getline line < path) > 0) {
+		if (++header > 513) { result=0; break }
+		if (length(line)>512) { result=0; continue }
+		if (header==1) {
+			if (line!="CFMGR-MANIFEST 1 " version && line!="CFMGR-MANIFEST 2 " version " 1 2") result=0
+			continue
+		}
+		fields=split(line,row,"\t")
+		if (fields!=4 || row[1]!~/^0(644|755)$/ || row[2]!~/^(0|[1-9][0-9]*)$/ || row[2]>1048576 ||
+			length(row[3])!=64 || row[3]~/[^0-9a-f]/ || length(row[4])>256 || row[4]!~/^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
+			row[4]~/(^|\/)(\.|\.\.)(\/|$)/ || pk_seen[row[4]] || (previous!="" && row[4]<=previous)) {
+			result=0
+			continue
+		}
+		item=row[4]
+		if ((item!="cfmgr.sh" && item!="catalog.txt" && item!~/^modules\//) ||
+			(item=="cfmgr.sh" && row[1]!="0755") || (item=="catalog.txt" && row[1]!="0644")) result=0
+		depth=0
+		while (sub(/\/[^\/]+$/, "", item)) {
+			if (pk_seen[item] || ++depth>16) result=0
+		}
+		item=row[4]
+		pk_seen[item]=1
+		pk_paths[++count]=item
+		pk_mode[item]=row[1]
+		pk_bytes[item]=row[2]
+		pk_sha[item]=row[3]
+		previous=item
+		total+=row[2]
+		if (count>512 || total>16777216) result=0
+	}
+	close(path)
+	if (status<0 || header==0 || count<2) result=0
+	required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
+	n=split(required,names," ")
+	for (i=1;i<=n;i++) if (!pk_seen[names[i]]) result=0
+	if (!result) {
+		pk_clear_manifest()
+		return 0
+	}
+	pk_count=count
+	pk_total=total
+	return 1
+}
+
+function pk_catalog(path, version,    line, result, status, rows, fields, row, item, kind, expected_count, i, expected, pk_catalog_previous) {
+	pk_clear_catalog()
+	result=(pk_count>=2)
+	rows=0
+	expected_count=0
+	pk_catalog_previous=""
+	for (i=1;i<=pk_count;i++) if (pk_paths[i]~/^modules\//) expected_count++
+	while ((status=getline line < path) > 0) {
+		if (++rows>512 || length(line)>512) { result=0; break }
+		if (rows==1) {
+			if (line!="CFMGR-CATALOG 1 " version) result=0
+			continue
+		}
+		fields=split(line,row,"\t")
+		item=row[1]
+		kind=(item~/^modules\/lib\//?"library":(item~/^modules\/helpers\//?"helper":"data"))
+		if (fields!=2 || !pk_seen[item] || item!~/^modules\// || pk_catalog_seen[item] || row[2]!=kind ||
+			(rows>2 && item<=pk_catalog_previous)) result=0
+		pk_catalog_seen[item]=1
+		pk_catalog_previous=item
+	}
+	close(path)
+	if (status<0 || rows!=expected_count+1) result=0
+	for (i=1;i<=pk_count;i++) {
+		expected=pk_paths[i]
+		if (expected~/^modules\// && !pk_catalog_seen[expected]) result=0
+	}
+	if (!result) pk_clear_catalog()
+	return result
+}
+'
+	# CFMGR-AWK-END package_records
+}
+
 cfmgr_package_verify() {
 	# Native grammar only: no payload parser or shell is used as a verifier.
+	cfmgr_package_awk_package_records || return 1
+	cfmgr_package_awk_program=$cfmgr_awk_program
 	# shellcheck disable=SC2016
-	cfmgr_package_records=$(/usr/bin/awk -v version="$CFMGR_VERSION" '
-		BEGIN {FS="\t"}
-		NR==1 {if($0!="CFMGR-MANIFEST 1 " version && $0!="CFMGR-MANIFEST 2 " version " 1 2")bad=1;next}
-		{
-			if(NF!=4 || length($0)>512 || $1!~/^0(644|755)$/ || $2!~/^(0|[1-9][0-9]*)$/ || $2>1048576 ||
-			length($3)!=64 || $3~/[^0-9a-f]/ || length($4)>256 || $4!~/^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/ ||
-			$4~/(^|\/)(\.|\.\.)(\/|$)/ || seen[$4]++ || (prev!="" && $4<=prev)){bad=1;next}
-			if($4!="cfmgr.sh" && $4!="catalog.txt" && $4!~/^modules\//)bad=1
-			if(($4=="cfmgr.sh" && $1!="0755") || ($4=="catalog.txt" && $1!="0644"))bad=1
-			path=$4;depth=0;while(sub(/\/[^\/]+$/,"",path)){if(seen[path] || ++depth>16)bad=1}
-			prev=$4;total+=$2;count++;if(count>512 || total>16777216)bad=1
-			print
-		}
-		END {
-			required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
-			n=split(required,names," ");for(i=1;i<=n;i++)if(!seen[names[i]])bad=1
-			if(bad || count<2)exit 1
-		}' "$cfmgr_source/manifest.txt") || return 1
+	cfmgr_package_records=$(/usr/bin/awk -v version="$CFMGR_VERSION" "$cfmgr_package_awk_program
+BEGIN {
+	if (!pk_manifest(ARGV[1], version)) exit 1
+	for (i=1;i<=pk_count;i++) {
+		path=pk_paths[i]
+		print pk_mode[path] \"\\t\" pk_bytes[path] \"\\t\" pk_sha[path] \"\\t\" path
+	}
+	exit
+}" "$cfmgr_source/manifest.txt") || return 1
 	cfmgr_package_paths="
 $(printf '%s\n' "$cfmgr_package_records" | /usr/bin/awk 'BEGIN{FS="\t"}{print $4}')
 "
@@ -64,11 +160,9 @@ $cfmgr_package_records
 EOF_RECORDS
 	cfmgr_entry_framing "$cfmgr_source/catalog.txt" || return 1
 	# shellcheck disable=SC2016
-	/usr/bin/awk -v version="$CFMGR_VERSION" 'BEGIN {FS="\t"}
-		NR==FNR {if($4~/^modules\//)expected[$4]=1;next}
-		FNR==1 {if($0!="CFMGR-CATALOG 1 " version)bad=1;next}
-		{kind=($1~/^modules\/lib\//?"library":($1~/^modules\/helpers\//?"helper":"data"));if(NF!=2 || !expected[$1] || seen[$1]++ || $2!=kind || (prev!="" && $1<=prev))bad=1;prev=$1}
-		END {for(path in expected)if(!seen[path])bad=1;if(bad)exit 1}' "$cfmgr_source/manifest.txt" "$cfmgr_source/catalog.txt"
+	/usr/bin/awk -v version="$CFMGR_VERSION" "$cfmgr_package_awk_program
+BEGIN {if (!pk_manifest(ARGV[1], version) || !pk_catalog(ARGV[2], version)) exit 1; exit}" \
+		"$cfmgr_source/manifest.txt" "$cfmgr_source/catalog.txt"
 }
 
 # ---- acquire ----

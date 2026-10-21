@@ -2563,3 +2563,28 @@ Source pins and evidence for that decision:
   supplemental recipes `entware-packages/b6a6f2962f62882b76dfe45f9f9e1238cd9b74fd`
   and `rtndev/05d2b0f695b8bc1973a9c88a8f08764c8fcb8271` do not prove installed IPKs.
   Selected recipe simplicity does not constrain all existing unpacked scripts.
+
+The final package/recovery observer draft received an independent Astra **PASS
+WITH NOTES** on 2026-10-21, followed by parent integration into the existing
+Status/worker/execution owners. The review corrected printable unlisted names
+(e.g. a space-containing basename) to FAIL after a complete inventory, and kept
+listed passive extension ancestors UNKNOWN without recursive loading. Fourteen
+fixed files, original eleven entry tuples, all optional-admission flags, complete
+shared manifest/catalog grammar, installed-entry/catalog hashes and repeated
+protected metadata are required for the narrow package agreement claim. It is
+explicitly a sequence of observations, not a fresh atomic rehash of all code.
+Recovery now independently observes all six launch guards through a pinned,
+bounded flat listing; it cannot infer absence from missing metadata. Positive
+guard evidence survives a later ordinary metadata failure; unresolved ownership
+still stops the report. Native behavior and the combined resource ledger remain
+pending CI. Source-estimated cost is 29 operations / 73 reserved files combined;
+this estimate grants no capacity change or acceptance.
+
+Parent hooks review corrected hash/metadata ordering and preserved the private
+jobs receipt across its independent byte-count operation. Schedule observations
+use the two specification-defined labels and fixed schedules; command ownership
+and producer dispatch remain explicitly unverified. The full normal Linux entry
+journey now belongs to the Status consumer group, retaining actual supervision,
+clock, descriptors, quotas, positive reaping and cleanup with labelled firmware
+and provider adapters. No feature execution, live router/provider state or
+firmware qualification is implied.

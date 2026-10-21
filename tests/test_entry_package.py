@@ -13,6 +13,7 @@ import pytest
 from entry_package_fixture import adapt_native, finish_package
 from test_config_observation import commands as _commands
 from test_config_observation import config as _config
+from test_config_observation import schema2_config as _schema2_config
 from test_dependency_reinstall import entry_run as _entry_run
 from test_install import package as _package
 from test_install import shell as _shell
@@ -23,9 +24,127 @@ package = _package
 shell = _shell
 tools = _tools
 config = _config
+schema2_config = _schema2_config
 commands = _commands
 entry_run = _entry_run
 __all__ = ["commands", "config", "entry_run", "package", "shell", "tools"]
+
+
+@pytest.fixture(scope="module")
+def package_parser(
+    commands: tuple[list[str], list[str]],
+) -> tuple[str, list[str]]:
+    shell, native_awk = commands
+    native_printf = shutil.which("printf")
+    assert native_printf, "The resolved native printf is required"
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            '. "$1"; cfmgr_package_awk_package_records; "$2" "%s" "$cfmgr_awk_program"',
+            "package-parser",
+            str(ROOT / "modules/lib/package.sh"),
+            native_printf,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    return result.stdout.decode(), native_awk
+
+
+def run_package_parser(
+    package_parser: tuple[str, list[str]],
+    manifest: Path,
+    catalog: Path,
+    expression: str,
+) -> subprocess.CompletedProcess[bytes]:
+    parser, native_awk = package_parser
+    program = parser + "\nBEGIN { " + expression + " }"
+    return subprocess.run(
+        [*native_awk, "-v", "version=0.1.0", program, str(manifest), str(catalog)],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+
+
+def test_shared_package_parser_accepts_manifest_versions(
+    package_parser: tuple[str, list[str]], package: Path, tmp_path: Path
+) -> None:
+    source = (package / "manifest.txt").read_text().splitlines()
+    catalog = package / "catalog.txt"
+    for header in ("CFMGR-MANIFEST 1 0.1.0", "CFMGR-MANIFEST 2 0.1.0 1 2"):
+        manifest = tmp_path / "manifest.txt"
+        manifest.write_text("\n".join([header, *source[1:]]) + "\n")
+        result = run_package_parser(
+            package_parser,
+            manifest,
+            catalog,
+            "if (!pk_manifest(ARGV[1], version) || !pk_catalog(ARGV[2], version)) exit 1; print pk_count; exit",
+        )
+        assert result.returncode == 0 and result.stderr == b""
+        assert result.stdout == f"{len(source) - 1}\n".encode()
+
+
+@pytest.mark.parametrize(
+    "damage", ["unordered", "duplicate", "required-missing", "ancestor-file"]
+)
+def test_shared_package_parser_rejects_invalid_manifests(
+    package_parser: tuple[str, list[str]], package: Path, tmp_path: Path, damage: str
+) -> None:
+    rows = (package / "manifest.txt").read_text().splitlines()
+    if damage == "unordered":
+        rows[1], rows[2] = rows[2], rows[1]
+    elif damage == "duplicate":
+        rows.append(rows[-1])
+    elif damage == "required-missing":
+        rows = [row for row in rows if not row.endswith("\tmodules/lib/package.sh")]
+    else:
+        fields = rows[-1].split("\t")
+        rows.extend(
+            (
+                "\t".join([*fields[:3], "modules/x"]),
+                "\t".join([*fields[:3], "modules/x/y"]),
+            )
+        )
+        rows[1:] = sorted(rows[1:], key=lambda row: row.split("\t")[3])
+    manifest = tmp_path / f"{damage}.txt"
+    manifest.write_text("\n".join(rows) + "\n")
+    result = run_package_parser(
+        package_parser,
+        manifest,
+        package / "catalog.txt",
+        'if (pk_manifest(ARGV[1], version)) print "partial output"; exit 0',
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert result.stdout == b""
+
+
+@pytest.mark.parametrize("damage", ["extra", "missing", "wrong-kind", "unordered"])
+def test_shared_package_parser_rejects_invalid_catalogs(
+    package_parser: tuple[str, list[str]], package: Path, tmp_path: Path, damage: str
+) -> None:
+    rows = (package / "catalog.txt").read_text().splitlines()
+    if damage == "extra":
+        rows.append("modules/not-in-manifest.sh\tdata")
+    elif damage == "missing":
+        rows.pop()
+    elif damage == "wrong-kind":
+        rows[1] = rows[1].rsplit("\t", 1)[0] + "\twrong"
+    else:
+        rows[1], rows[2] = rows[2], rows[1]
+    catalog = tmp_path / f"{damage}.txt"
+    catalog.write_text("\n".join(rows) + "\n")
+    result = run_package_parser(
+        package_parser,
+        package / "manifest.txt",
+        catalog,
+        'if (!pk_manifest(ARGV[1], version)) exit 2; if (pk_catalog(ARGV[2], version)) print "accepted"; exit 0',
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert result.stdout == b""
 
 
 def native_health_entry(tmp_path: Path, files: dict[str, bytes]) -> Path:

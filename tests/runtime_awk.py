@@ -28,6 +28,17 @@ OWNERS = {
     "backup_tar": "modules/backup.sh",
     "mountinfo": "modules/lib/storage.sh",
     "backup_payload_match": "modules/backup.sh",
+    "backup_history_policy": "modules/backup.sh",
+    "health_backup_plan": "modules/status.sh",
+    "health_backup_observation": "modules/status.sh",
+    "health_flat": "modules/status.sh",
+    "health_package": "modules/status.sh",
+    "package_records": "modules/lib/package.sh",
+    "health_logging": "modules/status.sh",
+    "health_logging_authority": "modules/status.sh",
+    "health_hooks_authority": "modules/status.sh",
+    "health_hooks_cron": "modules/status.sh",
+    "health_hooks_frame": "modules/status.sh",
     "backup_history": "modules/backup.sh",
     "backup_uuid": "modules/backup.sh",
     "backup_inventory": "modules/backup.sh",
@@ -37,9 +48,11 @@ OWNERS = {
 def awk_program(*fragments: str) -> str:
     programs = []
     for fragment in fragments:
+        if fragment == "backup_history":
+            programs.append(awk_program("backup_history_policy"))
         source = (ROOT / OWNERS[fragment]).read_text()
         begin = "\t# CFMGR-AWK-BEGIN " + fragment + "\n\tcfmgr_awk_program='\n"
-        end = "'\n\t# CFMGR-AWK-END " + fragment + "\n}"
+        end = "'\n\t# CFMGR-AWK-END " + fragment + "\n"
         assert source.count(begin) == 1 and source.count(end) == 1
         program = source.split(begin, 1)[1].split(end, 1)[0]
         assert "'" not in program

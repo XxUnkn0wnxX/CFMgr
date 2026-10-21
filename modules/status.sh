@@ -39,22 +39,30 @@ cfmgr_health_mode() {
 	health-snapshot | health-entware-metadata | health-cloud-pem | health-cloud-decode) cfmgr_health_mode_limit=128 ;;
 	health-get) cfmgr_health_mode_limit=64 cfmgr_health_mode_files=4 cfmgr_health_mode_get=1 ;;
 	health-render) cfmgr_health_mode_limit=384 ;;
+	health-flat-list) cfmgr_health_mode_limit=64 ;;
+	health-log-debug | health-log-hex | health-log-pids) cfmgr_health_mode_limit=128 ;;
+	health-log-process | health-log-argv) cfmgr_health_mode_limit=64 ;;
+	health-log-inspect)
+		case ${cfmgr_health_log_inspect_limit:-2} in '' | *[!0-9]* | 0*) return 2 ;; esac
+		[ "${cfmgr_health_log_inspect_limit:-2}" -le 22528 ] || return 2
+		cfmgr_health_mode_limit=${cfmgr_health_log_inspect_limit:-2}
+		;;
 	health-cloud-plan) cfmgr_health_mode_limit=64 ;;
-	health-cloud-authority | health-selected-copy | health-selected-hex | health-selected-metadata | health-cloud-yaml | health-cloud-join)
+	health-cloud-authority | health-selected-copy | health-selected-hex | health-selected-metadata | health-cloud-yaml | health-cloud-join | health-log-metadata | health-log-hash | health-log-count | health-log-script | health-log-cron | health-log-bundle)
 		case ${cfmgr_health_selected_limit:-} in '' | *[!0-9]* | 0*) return 2 ;; esac
 		[ "${#cfmgr_health_selected_limit}" -le 5 ] && [ "$cfmgr_health_selected_limit" -le 22528 ] || return 2
 		cfmgr_health_mode_limit=$cfmgr_health_selected_limit
 		;;
 	# Only finite typed receipts/empty successful probes use the tiny tier.
 	# Native ash:1024 bytes/file; supported host reservation:2048 bytes/file.
-	health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
+	health-flat-check | health-package-check | health-hooks-cron | health-hooks-frame | health-backup-observe | health-backup-uuid | health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
 		health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
 		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | \
 		health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | \
 		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | \
-		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline) cfmgr_health_mode_limit=2 ;;
+		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline | health-log-account | health-log-link | health-log-proc-meta | health-log-base | health-log-assess | health-log-path) cfmgr_health_mode_limit=2 ;;
 	health-inventory | health-protected | health-storage | health-uname | health-blkid | health-native-metadata | health-metadata-check | \
-		health-dig-version | health-request | health-config | health-fields | health-mount | health-metadata | \
+		health-hooks-authority | health-backup-plan | health-log-authority | health-log-version | health-log-syntax | health-log-includes | health-dig-version | health-request | health-config | health-fields | health-mount | health-metadata | \
 		health-nvram | health-space | health-realpath | health-curl-version | health-response | health-compare) ;;
 	*) return 2 ;;
 	esac
@@ -156,7 +164,12 @@ cfmgr_health_stage_reserve() {
 	[ "${cfmgr_health_active:-0}" = 1 ] || return 2
 	[ -z "${cfmgr_probe_pid:-}" ] || [ "${cfmgr_probe_status:-}" = reaped ] || return 3
 	[ -z "${cfmgr_health_final_deadline:-}" ] || return 1
-	case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac
+	case $1 in log.spec.* | log.metadata.* | log.process-index.* | log.bundle-index.*)
+		case $1 in *[!A-Za-z0-9.-]* | *..*) return 2 ;; esac
+		case ${1##*.}:$2 in *[!0-9:]* | :* | *:) return 2 ;; esac
+		case $2 in 32768 | 65536) ;; *) return 2 ;; esac
+		;;
+	*) case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
 		[ "$cfmgr_health_files" -ge 560 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
@@ -792,11 +805,7 @@ cfmgr_health_collect() {
 	else
 		cfmgr_health_row system.setup FAIL 'Retained setup completion was not verified.' current 'Use explicit package recovery.' system
 	fi || return $?
-	if [ "${cfmgr_status_storage_observation:-0}:${cfmgr_status_save_pending:-0}" = 0:0 ]; then
-		cfmgr_health_row recovery.guards PASS 'No retained storage-observation or configuration-save guard was observed.' current 'None.' recovery
-	else
-		cfmgr_health_row recovery.guards WARN 'A retained observation or configuration-save guard requires explicit recovery.' current 'Use explicit recovery before operational changes.' recovery
-	fi || return $?
+	cfmgr_health_recovery_collect || return $?
 	for cfmgr_health_member in backup manager package catalog; do
 		case $cfmgr_health_member in
 		backup) cfmgr_health_member_state=${cfmgr_health_backup:-missing} ;;
@@ -809,7 +818,6 @@ cfmgr_health_collect() {
 		*) cfmgr_health_row "package.$cfmgr_health_member" FAIL 'This fixed normal-launch component is missing or untrusted.' current 'Recover the complete trusted package.' package ;;
 		esac || return $?
 	done
-	cfmgr_health_row package.complete UNKNOWN 'The diagnostic closure and fixed components do not prove complete catalog grammar or package inventory.' current 'Complete package verification remains required.' package || return $?
 	cfmgr_health_clock_ready=$cfmgr_status_clock
 	if [ "$cfmgr_status_clock" = 1 ]; then
 		cfmgr_health_row system.clock PASS 'Current native NTP readiness is set.' current 'None.' system
@@ -852,6 +860,7 @@ cfmgr_health_collect() {
 			cfmgr_health_row "native.$cfmgr_health_native_member" FAIL 'Fixed native path or protected ancestry could not be admitted.' current 'Recover native firmware prerequisites.' native
 		fi || return $?
 	done
+	cfmgr_health_package_collect || return $?
 	if [ "$cfmgr_health_native_admitted" = 1 ] && cfmgr_health_tls_check; then
 		cfmgr_health_row transport.tls PASS 'Read-only native TLS, CA parsing, and fixed curl policy probes passed offline.' current 'None.' native
 	else
@@ -879,6 +888,9 @@ cfmgr_health_collect() {
 		cfmgr_health_row prerequisite.entware SKIP 'Entware capability checks depend on protected mounted identity.' current 'Resolve storage evidence first.' storage || return $?
 	fi
 	cfmgr_health_cloud_collect || return $?
+	cfmgr_health_logging_collect || return $?
+	cfmgr_health_hooks_collect || return $?
+	cfmgr_health_backup_collect || return $?
 	# Storage observation descriptors must never alias the private curl request.
 	exec 6<&- 7<&-
 	cfmgr_health_ipv6_ready=0
@@ -889,9 +901,6 @@ cfmgr_health_collect() {
 	else
 		cfmgr_health_row provider.reads SKIP 'Provider reads depend on valid schema-2 scope, current NTP and admitted native TLS.' current 'Resolve shared prerequisites first.' transport || return $?
 	fi
-	for cfmgr_health_pending in logging hooks recovery backup; do
-		cfmgr_health_row "$cfmgr_health_pending.integration" UNKNOWN 'This required diagnostic group is not connected to the full collector yet.' current 'Pending the subsequent integration package.' report || return $?
-	done
 	if [ "$cfmgr_health_incomplete" = 1 ]; then
 		cfmgr_health_row report.budget UNKNOWN 'The collection resource or time budget was exhausted; remaining observations are incomplete.' current 'Review earlier prerequisite failures and retry.' report || return $?
 	fi
@@ -2466,7 +2475,7 @@ cfmgr_health_cloud_project() {
 
 cfmgr_health_selected_attached() {
 	cfmgr_status_attachment_ok || return 1
-	case $cfmgr_health_selected_logical in /opt/*) cfmgr_health_entware_attachment || return $? ;; esac
+	case $cfmgr_health_selected_logical in /opt/* | "${cfmgr_health_opt:-/opt}"/*) cfmgr_health_entware_attachment || return $? ;; esac
 }
 
 cfmgr_health_selected_resolve() {
@@ -3104,4 +3113,1690 @@ $cfmgr_health_compare_id
 			cfmgr_health_comparison_row "$cfmgr_health_compare_id" UNKNOWN unavailable || return $?
 		done
 	done
+}
+
+# Private logging projections reuse schema admission and Backup policy math.
+cfmgr_status_awk_health_logging_authority() {
+	# CFMGR-AWK-BEGIN health_logging_authority
+	cfmgr_awk_program='
+BEGIN {
+    if(!co_observation_ready || co_version!="n2")reject()
+    for(i=1;i<256;i++)hh_ord[sprintf("%c",i)]=i
+    owners=cs_id(cs_id(1,"ownership"),"components");generation=cs_generation(1,"generation")
+    for(i=1;i<=3;i++) {
+        f=(i==1?"ddns":(i==2?"ip_sync":"cloudflared"));base=(f=="ip_sync"?"ip-sync":f)
+        feature=cs_id(1,f);lognode=cs_id(cs_id(1,"logging"),f);policy=cs_policy(lognode,"policy")
+        lg=rg=lh=rh="-";own=0
+        for(j=0;(item=co_child[owners,"i" j]);j++) {
+            c=cs_string(item,"component",0);p=cs_string(item,"path",0);g=cs_generation(item,"generation");h=cs_string(item,"sha256",1)
+            if(c=="history." f && p=="/opt/var/log/" base ".log" && cs_le(g,generation)) {lg=g;lh=(h==""?"-":h)}
+            if(c=="history-rule." f && p=="/opt/etc/logrotate.d/cfmgr-" base && cs_le(g,generation)) {rg=g;rh=(h==""?"-":h)}
+        }
+        requested=(cs_bool(feature,"configured") && cs_bool(lognode,"configured") && !cs_bool(lognode,"opt_out"))
+        eligible=(requested && lg!="-" && rg!="-" && rh!="-" && policy)
+        out=out "FEATURE " f " " cs_bool(feature,"configured") " " cs_bool(feature,"enabled") " " cs_bool(lognode,"configured") " " cs_bool(lognode,"enabled") " " cs_bool(lognode,"opt_out") " " requested " " (eligible?1:0) " " lg " " lh " " rg " " rh " END\n"
+        out=out "SAVED " f " " (policy?hh_policy_value(policy,f):"NONE") "\n"
+    }
+    if(length(out)>4096)reject()
+    printf "CFMGR-LOGGING 1\n%sEND 6 END\n",out;exit
+}
+'
+	# CFMGR-AWK-END health_logging_authority
+}
+
+cfmgr_status_awk_health_logging() {
+	# CFMGR-AWK-BEGIN health_logging
+	cfmgr_awk_program='
+function hl_fail() { exit 1 }
+function hl_read(p,max,    save,s,x,n) {
+    save=RS;RS=sprintf("%c",28);n=(getline s <p)
+    if(n<0 || (getline x <p)>0 || length(s)>max || s~/[^ -~\n\t]/ || (s!="" && substr(s,length(s),1)!="\n"))hl_fail()
+    close(p);RS=save;return s
+}
+function hl_uint(s,max) {return s~/^(0|[1-9][0-9]*)$/ && (length(s)<length(max) || length(s)==length(max) && "n" s<="n" max)}
+function hl_path(p,    a,n,i) {
+    if(p=="/")return 1
+    if(p!~/^\// || length(p)>1024 || p~/[^ -~]/ || index(p,"\\") || p~/\/$/)return 0
+    n=split(p,a,"/");for(i=2;i<=n;i++)if(a[i]==""||a[i]=="."||a[i]=="..")return 0;return 1
+}
+function hl_specs(p,    raw,lines,n,i,a,c,q) {
+    raw=hl_read(p,32768);n=split(raw,lines,"\n")
+    for(i=1;i<n;i++) {
+        c=split(lines[i],a,"\t");if(c<2 || c>4 || a[1]!~/^[A-Za-z0-9_-]+$/ || !hl_path(a[2]) || a[1] in path || spec_paths[a[2]]++)hl_fail()
+        if(mode=="metadata" || mode=="spec") {if(c!=4 || a[3]!~/^(public|executable|directory)$/ || a[4]!~/^(whole|prefix|metadata)$/)hl_fail()}
+        order[++members]=a[1];if(members>256)hl_fail();path[a[1]]=a[2];profile[a[1]]=a[3];operation[a[1]]=a[4]
+        q=a[2];while(1){expected[q]=1;if(q=="/")break;sub(/\/[^\/]*$/,"",q);if(q=="")q="/"}
+    }
+    if(!members)hl_fail()
+}
+function hl_meta(s,    rest,f,j,p) {
+    rest=s
+    for(j=1;j<=9;j++) {sub(/^ +/,"",rest);if(!match(rest,/^[^ ]+/))hl_fail();f[j]=substr(rest,1,RLENGTH);rest=substr(rest,RLENGTH+1)}
+    sub(/^ +/,"",rest);p=rest;if(!hl_path(p)||!(p in expected)||meta_seen[p]++)hl_fail()
+    if(f[1]!~/^[1-9][0-9]*$/ || length(f[1])>20 || length(f[2])!=10 || f[3]!~/^[1-9][0-9]*$/ || f[4]!="0" || f[5]!~/^[0-9]+$/ || !hl_uint(f[6],"11534336"))return
+    modes[p]=f[2];links[p]=f[3];inode[p]=f[1];bytes[p]=f[6];meta[p]=s
+}
+BEGIN {
+    mode=ARGV[1];input=ARGV[2];spec=ARGV[3];arg=ARGV[4];ARGC=1
+    if(mode=="authority-frame" || mode=="policy") {
+        raw=hl_read(input,4096);n=split(raw,lines,"\n");if(n!=9 || lines[1]!="CFMGR-LOGGING 1" || lines[8]!="END 6 END")hl_fail()
+        for(i=1;i<=3;i++) {
+            f=(i==1?"ddns":(i==2?"ip_sync":"cloudflared"));c=split(lines[i*2],a," ")
+            if(c!=14 || a[1]!="FEATURE" || a[2]!=f || a[14]!="END")hl_fail()
+            for(j=3;j<=9;j++)if(a[j]!~/^[01]$/)hl_fail()
+            for(j=10;j<=12;j+=2)if(a[j]!="-" && (a[j]!~/^[1-9][0-9]*$/ || length(a[j])>20))hl_fail()
+            for(j=11;j<=13;j+=2)if(a[j]!="-" && (length(a[j])!=64 || a[j]~/[^0-9a-f]/))hl_fail()
+            saved=lines[i*2+1];if(index(saved,"SAVED " f " ")!=1)hl_fail()
+            p=substr(saved,length(f)+8);if(p!="NONE" && p!~/^POLICY (native|size|daily|weekly|monthly) [-0-9]+ [-0-9]+ [-0-9]+ END$/)hl_fail()
+            if(mode=="policy" && f==spec) {if(p=="NONE")hl_fail();chosen=p}
+        }
+        if(mode=="policy") {if(chosen=="")hl_fail();print chosen};exit
+    }
+    if(mode=="debug-check") {
+        raw=hl_read(input,65536);n=split(raw,lines,"\n")
+        # logrotate 3.22.0 logrotate.c and log.c: one expected -d advisory.
+        notice="warning: logrotate in debug mode does nothing except printing debug messages!  Consider using verbose mode (-v) instead if this is not what you want."
+        for(i=1;i<n;i++) {
+            if(lines[i]==notice) {if(notices++)hl_fail();continue}
+            if(tolower(lines[i])~/(^|[ \t])(warning|error):/)hl_fail()
+        };exit
+    }
+    if(mode=="process") {
+        raw=hl_read(input,32768);n=split(raw,lines,"\n")
+        for(i=1;i<n;i++) {
+            c=split(lines[i],a,"\t");if(c!=7 || a[1]!="CANDIDATE" || a[2]!~/^(syslog|cron)$/ || !hl_uint(a[3],"2147483647") || a[3]=="0" || !hl_uint(a[4],"18446744073709551615") || a[5]!~/^health-log-argv\.[1-9][0-9]*[.]out$/ || !hl_path(a[6]) || !hl_uint(a[7],"18446744073709551615") || seen[a[3]]++ || names[a[5]]++)hl_fail()
+            receipt=hl_read(spec "/" a[5],32768);sub(/\n$/,"",receipt);k=split(receipt,b," ")
+            if(index(receipt,"\n") || b[2]!=a[3] || b[3]!=a[4] || b[k]!="END")hl_fail()
+            if(a[2]=="syslog") {if(b[1]!="PROC" || b[4]!="2f6f70742f7362696e2f7379736c6f672d6e67" || !hl_uint(b[5],"64") || b[5]=="0" || k!=b[5]+6)hl_fail();for(j=6;j<k;j++)if(b[j]!~/^([0-9a-f][0-9a-f])+$/)hl_fail()}
+            else if(k!=5 || b[1]!="CROND" || b[4]!="2f7661722f73706f6f6c2f63726f6e2f63726f6e74616273")hl_fail()
+            out=out receipt "\n"
+        }
+        printf "%s",out;exit
+    }
+    hl_specs(spec);if(mode=="spec")exit;raw=hl_read(input,262144);n=split(raw,lines,"\n")
+    if(mode=="metadata") {
+        parts=split(arg,bounds,"\t");if(parts!=1 && parts!=3)hl_fail();arg=bounds[1];anchor=optroot="-"
+        if(arg!~/^(normal|cron)$/)hl_fail()
+        if(parts==3) {optroot=bounds[2];anchor=bounds[3];if(optroot!="-" && (!hl_path(optroot) || !hl_path(anchor) || !(optroot==anchor || index(optroot,anchor "/")==1)))hl_fail()}
+        for(i=1;i<n;i++)hl_meta(lines[i])
+        for(i=1;i<=members;i++) {
+            role=order[i];p=path[role];okay=1;chain="";boundary="/"
+            if(anchor!="-" && (p==optroot || index(p,optroot "/")==1))boundary=anchor
+            while(1) {
+                m=modes[p];if(!(p in meta) || substr(m,6,1)=="w" || substr(m,9,1)=="w")okay=0
+                if(p==path[role]) {
+                    if(profile[role]=="directory") {if(substr(m,1,1)!="d")okay=0}
+                    else if(substr(m,1,1)!="-" || (profile[role]=="executable" && substr(m,4,1)!="x"))okay=0
+                } else if(substr(m,1,1)!="d")okay=0
+                chain=chain "|" meta[p]
+                if(p==boundary)break;sub(/\/[^\/]*$/,"",p);if(p=="")p="/"
+            }
+            # Cron accepts only root protected /var or the native sticky directory.
+            if(arg=="cron" && modes["/var"]=="drwxrwxrwt") {
+                okay=1;p=path[role];while(1) {m=modes[p];if(!(p in meta) || p!="/var" && (substr(m,6,1)=="w" || substr(m,9,1)=="w") || (p==path[role]?substr(m,1,1)!="-":substr(m,1,1)!="d"))okay=0;if(p=="/")break;sub(/\/[^\/]*$/,"",p);if(p=="")p="/"}
+            }
+            if(arg=="cron" && (links[path[role]]!=1 || bytes[path[role]]+0<1))okay=0
+            print "MEMBER\t" role "\t" okay "\t" (okay?inode[path[role]]:"-") "\t" (okay?bytes[path[role]]:"-") "\t" (okay?modes[path[role]]:"-") "\t" chain
+        };exit
+    }
+    for(i=1;i<=members;i++)reverse[path[order[i]]]=order[i]
+    if(mode=="hashes") {
+        for(i=1;i<n;i++) {h=substr(lines[i],1,64);p=substr(lines[i],67);if(length(h)!=64 || h~/[^0-9a-f]/ || substr(lines[i],65,2)!=" *" || !(p in reverse) || seen[p]++)hl_fail();digest[p]=h}
+        if(n!=members+1)hl_fail();for(i=1;i<=members;i++)print "HASH\t" order[i] "\t" digest[path[order[i]]];exit
+    }
+    if(mode=="counts") {
+        total_b=total_l=0
+        for(i=1;i<n;i++) {
+            rest=lines[i];sub(/^ +/,"",rest);if(!match(rest,/^[0-9]+/))hl_fail();l=substr(rest,1,RLENGTH);rest=substr(rest,RLENGTH+1);sub(/^ +/,"",rest);if(!match(rest,/^[0-9]+/))hl_fail();bytecount=substr(rest,1,RLENGTH);rest=substr(rest,RLENGTH+1);sub(/^ +/,"",rest);p=rest
+            if(!hl_uint(l,"11534336") || !hl_uint(bytecount,"11534336") || l+0>bytecount+0)hl_fail()
+            if(i==members+1 && members>1) {if(p!="total" || bytecount+0!=total_b || l+0!=total_l)hl_fail();continue}
+            if(!(p in reverse) || seen[p]++)hl_fail();count_b[p]=bytecount;count_l[p]=l;total_b+=bytecount;total_l+=l
+        }
+        if(n!=members+1+(members>1))hl_fail();for(i=1;i<=members;i++)print "COUNT\t" order[i] "\t" count_b[path[order[i]]] "\t" count_l[path[order[i]]];exit
+    }
+    hl_fail()
+}
+'
+	# CFMGR-AWK-END health_logging
+}
+
+cfmgr_health_log_stage() {
+	cfmgr_health_log_direct=$((${cfmgr_health_log_direct:-0} + 1))
+	cfmgr_health_log_stage_name=log.$1.$cfmgr_health_log_direct
+	cfmgr_health_stage_reserve "$cfmgr_health_log_stage_name" "$2" || return $?
+	cfmgr_health_log_stage_file=$cfmgr_status_context/$cfmgr_health_log_stage_name
+	(
+		set -C
+		: >"$cfmgr_health_log_stage_file"
+	)
+}
+
+cfmgr_health_log_spec_write() {
+	[ "${#1}" -le 32768 ] || {
+		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+		return 1
+	}
+	cfmgr_health_log_stage spec 32768 || return $?
+	printf '%s' "$1" >"$cfmgr_health_log_stage_file"
+	cfmgr_health_log_spec_file=$cfmgr_health_log_stage_file
+}
+
+cfmgr_health_log_parse() {
+	case $1 in
+	process) cfmgr_health_log_parse_mode=health-log-process ;;
+	*)
+		cfmgr_health_log_parse_mode=health-log-inspect
+		case $1 in metadata) cfmgr_health_log_inspect_limit=$(((cfmgr_health_log_meta_result_bytes + 511) / 512)) ;;
+		hashes | counts) cfmgr_health_log_inspect_limit=4 ;;
+		*) cfmgr_health_log_inspect_limit=2 ;;
+		esac
+		;;
+	esac
+	cfmgr_health_run "$cfmgr_health_log_parse_mode" /usr/bin/awk "$cfmgr_source/modules/status.sh" "$1" "$2" "$3" "${4:--}" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]
+}
+
+# SPEC is a bounded private role/path/profile/operation table. Metadata is
+# observed for every unique ancestor; missing members retain independent rows.
+cfmgr_health_log_metadata() {
+	cfmgr_health_log_meta_spec=$1 cfmgr_health_log_meta_kind=$2
+	cfmgr_health_log_parse spec - "$cfmgr_health_log_meta_spec" || return $?
+	cfmgr_health_log_meta_arg="$cfmgr_health_log_meta_kind	${cfmgr_health_opt:--}	${cfmgr_health_opt_mount:--}"
+	cfmgr_health_log_stage metadata 65536 || return $?
+	cfmgr_health_log_meta_raw=$cfmgr_health_log_stage_file cfmgr_health_log_append_bytes=0
+	cfmgr_health_log_meta_paths='' cfmgr_health_log_meta_result_bytes=0
+	set --
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_profile cfmgr_health_log_op; do
+		cfmgr_health_log_meta_boundary=/
+		cfmgr_health_log_meta_result_bytes=$((cfmgr_health_log_meta_result_bytes + ${#cfmgr_health_log_role} + 256))
+		case $cfmgr_health_log_path in "${cfmgr_health_opt:-/opt}" | "${cfmgr_health_opt:-/opt}"/*) cfmgr_health_log_meta_boundary=${cfmgr_health_opt_mount:-/} ;; esac
+		while :; do
+			cfmgr_health_log_meta_result_bytes=$((cfmgr_health_log_meta_result_bytes + ${#cfmgr_health_log_path} + 256))
+			case "$cfmgr_health_log_meta_paths
+" in *"
+$cfmgr_health_log_path
+"*) ;;
+			*)
+				cfmgr_health_log_meta_paths="$cfmgr_health_log_meta_paths
+$cfmgr_health_log_path"
+				set -- "$@" "$cfmgr_health_log_path"
+				if [ "$#" = 13 ]; then
+					cfmgr_health_log_meta_batch "$@" || return $?
+					set --
+				fi
+				;;
+			esac
+			[ "$cfmgr_health_log_path" != "$cfmgr_health_log_meta_boundary" ] || break
+			cfmgr_health_log_path=${cfmgr_health_log_path%/*}
+			[ -n "$cfmgr_health_log_path" ] || cfmgr_health_log_path=/
+		done
+	done <"$cfmgr_health_log_meta_spec"
+	case $# in 0) ;; *) cfmgr_health_log_meta_batch "$@" || return $? ;; esac
+	cfmgr_health_log_parse metadata "$cfmgr_health_log_meta_raw" "$cfmgr_health_log_meta_spec" "$cfmgr_health_log_meta_arg" || return $?
+	cfmgr_health_log_metadata_file=$cfmgr_probe_stdout
+}
+
+cfmgr_health_log_meta_batch() {
+	cfmgr_health_log_batch_bytes=0
+	for cfmgr_health_log_operand; do cfmgr_health_log_batch_bytes=$((cfmgr_health_log_batch_bytes + ${#cfmgr_health_log_operand} + 256)); done
+	cfmgr_health_selected_limit=$(((cfmgr_health_log_batch_bytes + 511) / 512))
+	cfmgr_health_run health-log-metadata /bin/ls "$@" || return $?
+	case $cfmgr_probe_exit in 0 | 1 | 2) ;; *) return 1 ;; esac
+	cfmgr_health_log_append "$cfmgr_probe_stdout" "$cfmgr_health_log_meta_raw" || return $?
+}
+
+# Preserve native LF/EOF exactly; never discard or complete a truncated tail.
+cfmgr_health_log_append() {
+	while :; do
+		cfmgr_health_log_append_line=''
+		if IFS= read -r cfmgr_health_log_append_line; then
+			cfmgr_health_log_append_bytes=$((cfmgr_health_log_append_bytes + ${#cfmgr_health_log_append_line} + 1))
+			[ "$cfmgr_health_log_append_bytes" -le 65536 ] || {
+				cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+				return 1
+			}
+			printf '%s\n' "$cfmgr_health_log_append_line" >>"$2" || return 1
+		else
+			[ -z "$cfmgr_health_log_append_line" ]
+			return $?
+		fi
+	done <"$1"
+}
+
+cfmgr_health_log_member() {
+	cfmgr_health_log_member_ok=0
+	while IFS='	' read -r cfmgr_health_log_mtag cfmgr_health_log_mrole cfmgr_health_log_mok cfmgr_health_log_minode cfmgr_health_log_mbytes cfmgr_health_log_mmode cfmgr_health_log_mchain; do
+		[ "$cfmgr_health_log_mtag:$cfmgr_health_log_mrole" = "MEMBER:$2" ] || continue
+		cfmgr_health_log_member_ok=$cfmgr_health_log_mok
+		cfmgr_health_log_member_identity="$cfmgr_health_log_minode $cfmgr_health_log_mbytes $cfmgr_health_log_mmode $cfmgr_health_log_mchain"
+		cfmgr_health_log_member_inode=$cfmgr_health_log_minode cfmgr_health_log_member_bytes=$cfmgr_health_log_mbytes
+		return 0
+	done <"$1"
+	return 1
+}
+
+cfmgr_health_log_group() {
+	# Native output is parsed against exact private operands and total/EOF.
+	cfmgr_health_log_group_kind=$1 cfmgr_health_log_group_spec=$2
+	cfmgr_health_log_stage metadata 65536 || return $?
+	cfmgr_health_log_group_raw=$cfmgr_health_log_stage_file cfmgr_health_log_group_batch_spec='' cfmgr_health_log_append_bytes=0
+	set --
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_rest; do
+		set -- "$@" "$cfmgr_health_log_path"
+		cfmgr_health_log_group_batch_spec="$cfmgr_health_log_group_batch_spec$cfmgr_health_log_role	$cfmgr_health_log_path
+"
+		if [ "$#" = 13 ]; then
+			cfmgr_health_log_group_batch "$@" || return $?
+			set --
+			cfmgr_health_log_group_batch_spec=''
+		fi
+	done <"$cfmgr_health_log_group_spec"
+	# Each count batch validates its own exact native total and membership.
+	case $# in 0) ;; *) cfmgr_health_log_group_batch "$@" || return $? ;; esac
+	if [ "$cfmgr_health_log_group_kind" = counts ]; then
+		cfmgr_health_log_group_file=$cfmgr_health_log_group_raw
+		return 0
+	fi
+	cfmgr_health_log_parse "$cfmgr_health_log_group_kind" "$cfmgr_health_log_group_raw" "$cfmgr_health_log_group_spec" || return $?
+	cfmgr_health_log_group_file=$cfmgr_probe_stdout
+}
+
+cfmgr_health_log_group_batch() {
+	case $cfmgr_health_log_group_kind in hashes) cfmgr_health_log_group_mode=health-log-hash cfmgr_health_log_group_tool=$cfmgr_health_openssl ;; counts) cfmgr_health_log_group_mode=health-log-count cfmgr_health_log_group_tool=/usr/bin/wc ;; *) return 2 ;; esac
+	cfmgr_health_log_batch_bytes=128
+	for cfmgr_health_log_operand; do cfmgr_health_log_batch_bytes=$((cfmgr_health_log_batch_bytes + ${#cfmgr_health_log_operand} + 128)); done
+	cfmgr_health_selected_limit=$(((cfmgr_health_log_batch_bytes + 511) / 512))
+	cfmgr_health_run "$cfmgr_health_log_group_mode" "$cfmgr_health_log_group_tool" "$@" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	if [ "$cfmgr_health_log_group_kind" = counts ]; then
+		cfmgr_health_log_count_raw=$cfmgr_probe_stdout
+		cfmgr_health_log_spec_write "$cfmgr_health_log_group_batch_spec" || return $?
+		cfmgr_health_log_parse counts "$cfmgr_health_log_count_raw" "$cfmgr_health_log_spec_file" || return $?
+	fi
+	cfmgr_health_log_append "$cfmgr_probe_stdout" "$cfmgr_health_log_group_raw"
+}
+
+cfmgr_health_log_hash_value() {
+	cfmgr_health_log_hash=''
+	while IFS='	' read -r cfmgr_health_log_htag cfmgr_health_log_hrole cfmgr_health_log_hvalue; do
+		[ "$cfmgr_health_log_htag:$cfmgr_health_log_hrole" != "HASH:$2" ] || {
+			cfmgr_health_log_hash=$cfmgr_health_log_hvalue
+			return 0
+		}
+	done <"$1"
+	return 1
+}
+
+# Before/copy/after observations preserve independent members and content hashes.
+# Valid snapshots append safe names/digests only, never source content, to the map.
+cfmgr_health_log_snapshots() {
+	cfmgr_health_log_sources=$1
+	cfmgr_health_log_metadata "$cfmgr_health_log_sources" normal || return $?
+	cfmgr_health_log_before_meta=$cfmgr_health_log_metadata_file
+	cfmgr_health_log_good=''
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_profile cfmgr_health_log_op; do
+		cfmgr_health_log_member "$cfmgr_health_log_before_meta" "$cfmgr_health_log_role" || continue
+		[ "$cfmgr_health_log_member_ok" = 1 ] || continue
+		cfmgr_health_log_good="$cfmgr_health_log_good$cfmgr_health_log_role	$cfmgr_health_log_path	$cfmgr_health_log_profile	$cfmgr_health_log_op
+"
+	done <"$cfmgr_health_log_sources"
+	[ -n "$cfmgr_health_log_good" ] || return 1
+	cfmgr_health_log_spec_write "$cfmgr_health_log_good" || return $?
+	cfmgr_health_log_good_spec=$cfmgr_health_log_spec_file
+	cfmgr_health_log_group hashes "$cfmgr_health_log_good_spec" || return $?
+	cfmgr_health_log_before_hash=$cfmgr_health_log_group_file cfmgr_health_log_copied=''
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_profile cfmgr_health_log_op; do
+		cfmgr_health_log_member "$cfmgr_health_log_before_meta" "$cfmgr_health_log_role" || continue
+		cfmgr_health_selected_logical=$cfmgr_health_log_path
+		cfmgr_health_selected_attached && cfmgr_health_canonical "$cfmgr_health_log_path" || {
+			[ "$?" != 3 ] || return 3
+			continue
+		}
+		[ "$cfmgr_health_resolved" = "$cfmgr_health_log_path" ] || continue
+		cfmgr_health_log_extent=$cfmgr_health_log_member_bytes
+		if [ "$cfmgr_health_log_extent" -gt 11534336 ]; then
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			continue
+		fi
+		cfmgr_health_selected_limit=$(((cfmgr_health_log_extent + 4095) / 4096 * 8 + 8))
+		case $cfmgr_health_log_op in prefix) cfmgr_health_log_copy_mode=health-log-script cfmgr_health_selected_limit=16 ;; *) cfmgr_health_log_copy_mode=health-selected-copy ;; esac
+		cfmgr_health_run "$cfmgr_health_log_copy_mode" /bin/dd "$cfmgr_health_log_path" "$cfmgr_health_log_extent" || {
+			[ "$?" != 3 ] || return 3
+			continue
+		}
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || continue
+		cfmgr_health_log_copied="$cfmgr_health_log_copied$cfmgr_health_log_role	$cfmgr_probe_stdout	$cfmgr_health_log_extent	$cfmgr_health_log_path
+"
+	done <"$cfmgr_health_log_good_spec"
+	cfmgr_health_log_metadata "$cfmgr_health_log_sources" normal || return $?
+	cfmgr_health_log_after_meta=$cfmgr_health_log_metadata_file
+	cfmgr_health_log_group hashes "$cfmgr_health_log_good_spec" || return $?
+	cfmgr_health_log_after_hash=$cfmgr_health_log_group_file
+	cfmgr_health_log_complete=1
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_profile cfmgr_health_log_op; do
+		cfmgr_health_log_member "$cfmgr_health_log_before_meta" "$cfmgr_health_log_role" || {
+			cfmgr_health_log_complete=0
+			continue
+		}
+		cfmgr_health_log_saved_identity=$cfmgr_health_log_member_identity
+		[ "$cfmgr_health_log_member_ok" = 1 ] || {
+			cfmgr_health_log_complete=0
+			continue
+		}
+		cfmgr_health_log_member "$cfmgr_health_log_after_meta" "$cfmgr_health_log_role" || return 1
+		if [ "$cfmgr_health_log_member_ok" != 1 ] || [ "$cfmgr_health_log_saved_identity" != "$cfmgr_health_log_member_identity" ]; then
+			cfmgr_health_log_complete=0
+			continue
+		fi
+		cfmgr_health_log_hash_value "$cfmgr_health_log_before_hash" "$cfmgr_health_log_role" || return 1
+		cfmgr_health_log_saved_hash=$cfmgr_health_log_hash
+		cfmgr_health_log_hash_value "$cfmgr_health_log_after_hash" "$cfmgr_health_log_role" || return 1
+		[ "$cfmgr_health_log_saved_hash" = "$cfmgr_health_log_hash" ] || {
+			cfmgr_health_log_complete=0
+			continue
+		}
+		cfmgr_health_selected_logical=$cfmgr_health_log_path
+		cfmgr_health_selected_attached && cfmgr_health_canonical "$cfmgr_health_log_path" || {
+			[ "$?" != 3 ] || return 3
+			cfmgr_health_log_complete=0
+			continue
+		}
+		[ "$cfmgr_health_resolved" = "$cfmgr_health_log_path" ] || {
+			cfmgr_health_log_complete=0
+			continue
+		}
+		cfmgr_health_log_found=0
+		while IFS='	' read -r cfmgr_health_log_crole cfmgr_health_log_cfile cfmgr_health_log_cbytes cfmgr_health_log_csource; do
+			[ "$cfmgr_health_log_crole" = "$cfmgr_health_log_role" ] || continue
+			case $cfmgr_health_log_op in prefix) [ "$cfmgr_health_log_cbytes" -le 8192 ] || cfmgr_health_log_cbytes=8192 ;; esac
+			cfmgr_health_log_raw="$cfmgr_health_log_raw$cfmgr_health_log_role	$cfmgr_health_log_cfile	$cfmgr_health_log_cbytes	$cfmgr_health_log_saved_hash
+"
+			cfmgr_health_log_found=1
+		done <<EOF_LOG_COPIES
+$cfmgr_health_log_copied
+EOF_LOG_COPIES
+		[ "$cfmgr_health_log_found" = 1 ] || cfmgr_health_log_complete=0
+	done <"$cfmgr_health_log_sources"
+	[ "$cfmgr_health_log_complete" = 1 ]
+}
+
+cfmgr_health_log_stat() {
+	IFS= read -r cfmgr_health_log_stat_line 2>/dev/null <"/proc/$1/stat" || return 1
+	cfmgr_health_log_stat_pid=${cfmgr_health_log_stat_line%% *}
+	case $cfmgr_health_log_stat_pid in "$1") ;; *) return 1 ;; esac
+	cfmgr_health_log_stat_comm=${cfmgr_health_log_stat_line#*(}
+	cfmgr_health_log_stat_comm=${cfmgr_health_log_stat_comm%)*}
+	cfmgr_health_log_stat_tail=${cfmgr_health_log_stat_line##*) }
+	case $- in *f*) cfmgr_health_log_stat_noglob=1 ;; *) cfmgr_health_log_stat_noglob=0 ;; esac
+	set -f
+	# shellcheck disable=SC2086 # Fixed numeric stat fields, never shell code.
+	set -- $cfmgr_health_log_stat_tail
+	case $cfmgr_health_log_stat_noglob in 0) set +f ;; esac
+	case $(($# >= 20)) in 1) ;; *) return 1 ;; esac
+	shift 19
+	cfmgr_health_log_stat_start=$1
+	case $cfmgr_health_log_stat_pid:$cfmgr_health_log_stat_start in *[!0-9:]* | :* | *:) return 1 ;; esac
+}
+
+cfmgr_health_log_processes() {
+	cfmgr_health_process_ready=0 cfmgr_health_process_scan_complete=0 cfmgr_health_process_file='' cfmgr_health_process_identity_file=''
+	cfmgr_health_admit_native /bin/busybox executable && cfmgr_health_admit_native /usr/bin/hexdump executable || return $?
+	cfmgr_health_run health-log-pids /usr/bin/awk 65536 || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_pids=$cfmgr_probe_stdout
+	# The completed enumerator necessarily sees itself. Its recorded owned PID
+	# is already reaped and cannot be an unclassified daemon observation.
+	cfmgr_health_log_enumerator_pid=''
+	case ${cfmgr_probe_status:-} in reaped) cfmgr_health_log_enumerator_pid=${cfmgr_probe_pid:-} ;; esac
+	cfmgr_health_log_stage process-index 32768 || return $?
+	cfmgr_health_process_identity_file=$cfmgr_health_log_stage_file cfmgr_health_log_pid_count=0 cfmgr_health_log_process_index_bytes=0 cfmgr_health_log_scan_uncertain=0 cfmgr_health_log_pid_header=0 cfmgr_health_log_pid_end=0
+	while :; do
+		cfmgr_health_log_pid=''
+		if IFS= read -r cfmgr_health_log_pid; then :; else
+			[ -z "$cfmgr_health_log_pid" ] && [ "$cfmgr_health_log_pid_end" = 1 ] || return 1
+			break
+		fi
+		[ "$cfmgr_health_log_pid_end" = 0 ] || return 1
+		if [ "$cfmgr_health_log_pid_header" = 0 ]; then
+			IFS=' ' read -r cfmgr_health_log_pid_tag cfmgr_health_log_pid_version cfmgr_health_log_pid_expected cfmgr_health_log_pid_extra <<EOF_LOG_PID_HEADER
+$cfmgr_health_log_pid
+EOF_LOG_PID_HEADER
+			[ "$cfmgr_health_log_pid" = "CFMGR-HEALTH-PIDS 1 $cfmgr_health_log_pid_expected" ] || return 1
+			case $cfmgr_health_log_pid_expected in '' | *[!0-9]* | 0*) return 1 ;; esac
+			[ "${#cfmgr_health_log_pid_expected}" -le 4 ] && [ "$cfmgr_health_log_pid_expected" -le 4096 ] || return 1
+			cfmgr_health_log_pid_header=1
+			continue
+		fi
+		if [ "$cfmgr_health_log_pid" = "END $cfmgr_health_log_pid_expected" ]; then
+			[ "$cfmgr_health_log_pid_count" = "$cfmgr_health_log_pid_expected" ] || return 1
+			cfmgr_health_log_pid_end=1
+			continue
+		fi
+		cfmgr_health_log_pid_count=$((cfmgr_health_log_pid_count + 1))
+		case $((cfmgr_health_log_pid_count <= 4096)):$cfmgr_health_log_pid in 1:*[!0-9]* | 1: | 0:*) return 1 ;; esac
+		case $cfmgr_health_log_pid in "$cfmgr_health_log_enumerator_pid") continue ;; esac
+		cfmgr_prerequisites_now || return 1
+		case $((cfmgr_probe_now < cfmgr_health_collect_deadline)) in 1) ;; *)
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+			;;
+		esac
+		cfmgr_health_log_stat "$cfmgr_health_log_pid" || {
+			cfmgr_health_log_scan_uncertain=1
+			continue
+		}
+		case $cfmgr_health_log_stat_comm in syslog-ng) cfmgr_health_log_kind=syslog ;; crond | busybox) cfmgr_health_log_kind=cron ;; *) continue ;; esac
+		cfmgr_health_log_start=$cfmgr_health_log_stat_start
+		cfmgr_health_canonical "/proc/$cfmgr_health_log_pid/exe" || {
+			[ "$?" != 3 ] || return 3
+			return 1
+		}
+		cfmgr_health_log_exe=$cfmgr_health_resolved
+		case $cfmgr_health_log_kind:$cfmgr_health_log_exe in "syslog:${cfmgr_health_opt:-}/sbin/syslog-ng" | cron:/bin/busybox) ;; *) continue ;; esac
+		cfmgr_health_run health-log-proc-meta /bin/ls "/proc/$cfmgr_health_log_pid/exe" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		IFS=' ' read -r cfmgr_health_log_inode cfmgr_health_log_unused <"$cfmgr_probe_stdout" || return 1
+		case $cfmgr_health_log_inode in '' | *[!0-9]*) return 1 ;; esac
+		[ "/proc/$cfmgr_health_log_pid/exe" -ef "$cfmgr_health_log_exe" ] || return 1
+		cfmgr_health_run health-log-hex /usr/bin/hexdump "/proc/$cfmgr_health_log_pid/cmdline" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_health_run health-log-argv /usr/bin/awk "$cfmgr_probe_stdout" "$cfmgr_health_log_kind" "$cfmgr_health_log_pid" "$cfmgr_health_log_start" || return $?
+		cfmgr_health_log_skip=0
+		if [ "$cfmgr_health_log_kind" = cron ] && [ "$cfmgr_probe_exit" = 4 ] && [ "${cfmgr_probe_status:-reaped}" = reaped ] && [ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+			cfmgr_health_log_skip=1
+		else [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1; fi
+		cfmgr_health_log_argv_file=$cfmgr_probe_stdout
+		cfmgr_health_canonical "/proc/$cfmgr_health_log_pid/exe" || return $?
+		[ "$cfmgr_health_resolved" = "$cfmgr_health_log_exe" ] || return 1
+		cfmgr_health_run health-log-proc-meta /bin/ls "/proc/$cfmgr_health_log_pid/exe" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		IFS=' ' read -r cfmgr_health_log_after_inode cfmgr_health_log_unused <"$cfmgr_probe_stdout" || return 1
+		[ "$cfmgr_health_log_inode" = "$cfmgr_health_log_after_inode" ] || return 1
+		cfmgr_health_log_stat "$cfmgr_health_log_pid" && [ "$cfmgr_health_log_stat_start" = "$cfmgr_health_log_start" ] || return 1
+		[ "$cfmgr_health_log_skip" = 0 ] || continue
+		cfmgr_health_log_process_index_bytes=$((cfmgr_health_log_process_index_bytes + ${#cfmgr_health_log_kind} + ${#cfmgr_health_log_pid} + ${#cfmgr_health_log_start} + ${#cfmgr_health_log_argv_file} + ${#cfmgr_health_log_exe} + ${#cfmgr_health_log_inode} + 32))
+		[ "$cfmgr_health_log_process_index_bytes" -le 32768 ] || {
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		}
+		printf 'CANDIDATE\t%s\t%s\t%s\t%s\t%s\t%s\n' "$cfmgr_health_log_kind" "$cfmgr_health_log_pid" "$cfmgr_health_log_start" "${cfmgr_health_log_argv_file##*/}" "$cfmgr_health_log_exe" "$cfmgr_health_log_inode" >>"$cfmgr_health_process_identity_file" || return 1
+	done <"$cfmgr_health_log_pids"
+	cfmgr_health_log_parse process "$cfmgr_health_process_identity_file" "$cfmgr_status_context" || return $?
+	cfmgr_health_process_file=$cfmgr_probe_stdout
+	# Fixed assembler mode uses the raw-bundle-approved output basename.
+	[ "$cfmgr_health_log_scan_uncertain" = 0 ] || return 1
+	cfmgr_health_process_ready=1 cfmgr_health_process_scan_complete=1
+}
+
+cfmgr_health_log_cron_boundary() {
+	cfmgr_health_canonical "$cfmgr_health_cron_path" || return $?
+	[ "$cfmgr_health_resolved" = "$cfmgr_health_cron_path" ] || return 1
+	cfmgr_health_log_metadata "$cfmgr_health_log_cron_spec" cron || return $?
+	cfmgr_health_log_cron_meta=$cfmgr_health_log_metadata_file
+	cfmgr_health_log_member "$cfmgr_health_log_cron_meta" cron || return $?
+	[ "$cfmgr_health_log_member_ok" = 1 ] || return 1
+	cfmgr_health_log_cron_identity=$cfmgr_health_log_member_identity cfmgr_health_log_cron_bytes=$cfmgr_health_log_member_bytes
+	cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_cron_path" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_one_line "$cfmgr_probe_stdout" || return 1
+	cfmgr_health_log_cron_mount=$cfmgr_health_log_line
+	cfmgr_health_log_cron_identity="$cfmgr_health_log_cron_identity $cfmgr_health_log_cron_mount"
+}
+
+cfmgr_health_log_cron() {
+	cfmgr_health_cron_ready=0 cfmgr_health_cron_file='' cfmgr_health_cron_identity=''
+	cfmgr_health_admit_native /bin/nvram executable || return $?
+	cfmgr_health_run health-log-account /bin/nvram || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_one_line "$cfmgr_probe_stdout" || return 1
+	cfmgr_health_cron_account=$cfmgr_health_log_line
+	case $cfmgr_health_cron_account in '' | . | .. | *[!A-Za-z0-9_-]*) return 1 ;; esac
+	[ "${#cfmgr_health_cron_account}" -le 64 ] || return 1
+	cfmgr_health_cron_path=/var/spool/cron/crontabs/$cfmgr_health_cron_account
+	cfmgr_health_log_spec_write "cron	$cfmgr_health_cron_path	public	whole
+" || return $?
+	cfmgr_health_log_cron_spec=$cfmgr_health_log_spec_file
+	cfmgr_health_log_cron_boundary || return $?
+	cfmgr_health_cron_identity=$cfmgr_health_log_cron_identity cfmgr_health_cron_bytes=$cfmgr_health_log_cron_bytes
+	[ "$cfmgr_health_cron_bytes" -gt 0 ] || return 1
+	cfmgr_health_log_cron_copies=''
+	for cfmgr_health_log_cron_pass in first second; do
+		cfmgr_health_selected_limit=$(((cfmgr_health_cron_bytes + 511) / 512))
+		cfmgr_health_run health-log-cron /bin/dd "$cfmgr_health_cron_path" "$cfmgr_health_cron_bytes" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_health_log_cron_copies="$cfmgr_health_log_cron_copies$cfmgr_health_log_cron_pass	$cfmgr_probe_stdout
+"
+		cfmgr_health_log_cron_boundary || return $?
+		[ "$cfmgr_health_cron_identity" = "$cfmgr_health_log_cron_identity" ] || return 1
+	done
+	cfmgr_health_log_spec_write "$cfmgr_health_log_cron_copies" || return $?
+	cfmgr_health_log_cron_copy_spec=$cfmgr_health_log_spec_file
+	cfmgr_health_log_group counts "$cfmgr_health_log_cron_copy_spec" || return $?
+	while IFS='	' read -r cfmgr_health_log_tag cfmgr_health_log_role cfmgr_health_log_bytes cfmgr_health_log_lf; do [ "$cfmgr_health_log_bytes" = "$cfmgr_health_cron_bytes" ] || return 1; done <"$cfmgr_health_log_group_file"
+	[ "${cfmgr_health_native_openssl_ok:-0}" = 1 ] || return 1
+	cfmgr_health_log_group hashes "$cfmgr_health_log_cron_copy_spec" || return $?
+	cfmgr_health_log_hash_value "$cfmgr_health_log_group_file" first || return 1
+	cfmgr_health_log_cron_sha=$cfmgr_health_log_hash
+	cfmgr_health_log_hash_value "$cfmgr_health_log_group_file" second || return 1
+	[ "$cfmgr_health_log_cron_sha" = "$cfmgr_health_log_hash" ] || return 1
+	cfmgr_health_run health-log-account /bin/nvram || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_one_line "$cfmgr_probe_stdout" && [ "$cfmgr_health_log_line" = "$cfmgr_health_cron_account" ] || return 1
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path; do [ "$cfmgr_health_log_role" != first ] || cfmgr_health_cron_file=$cfmgr_health_log_path; done <"$cfmgr_health_log_cron_copy_spec"
+	cfmgr_health_cron_ready=1
+}
+
+cfmgr_health_log_one_line() {
+	{
+		IFS= read -r cfmgr_health_log_line || return 1
+		cfmgr_health_log_extra=''
+		if IFS= read -r cfmgr_health_log_extra || [ -n "$cfmgr_health_log_extra" ]; then return 1; fi
+	} <"$1"
+}
+
+cfmgr_health_logging_collect() {
+	if _cfmgr_health_logging_collect; then return 0; else cfmgr_health_logging_code=$?; fi
+	[ "$cfmgr_health_logging_code" != 3 ] || return 3
+	cfmgr_health_row logging.observation UNKNOWN 'A logging observation could not complete; later independent diagnostic groups remain available.' current 'Review logging prerequisites and report capacity.' logging || :
+	return 0
+}
+
+_cfmgr_health_logging_collect() {
+	# Native observers remain useful to hooks when no logger is requested.
+	if cfmgr_health_log_cron; then
+		cfmgr_health_row system.cron PASS 'The native scheduler account, protected identity and two content snapshots agreed across three boundaries.' current 'None.' system || return $?
+	else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_row system.cron UNKNOWN 'The native scheduler snapshot could not be completed consistently.' current 'Review native scheduler prerequisites and report capacity.' system || return $?
+	fi
+	if cfmgr_health_log_processes; then
+		cfmgr_health_row system.processes PASS 'The bounded process scan completed with executable and start-time checks for relevant candidates.' current 'None.' system || return $?
+	else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_row system.processes UNKNOWN 'The bounded process scan or a relevant process identity was incomplete.' current 'Review process evidence and report capacity.' system || return $?
+	fi
+	cfmgr_health_log_authority='' cfmgr_health_log_raw='' cfmgr_health_log_fragments='' cfmgr_health_log_owners=''
+	if [ -n "${cfmgr_health_inventory:-}" ] && [ "${cfmgr_health_backup:-missing}" = verified ]; then
+		cfmgr_health_run health-log-authority /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/backup.sh" "$cfmgr_health_config" "$cfmgr_health_config_bytes" || return $?
+		if [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+			cfmgr_health_log_authority=$cfmgr_probe_stdout
+			cfmgr_health_log_parse authority-frame "$cfmgr_health_log_authority" - || {
+				[ "$?" != 3 ] || return 3
+				cfmgr_health_log_authority=''
+			}
+		fi
+	fi
+	if [ -z "$cfmgr_health_log_authority" ]; then
+		cfmgr_health_row logging.authority UNKNOWN 'Strict retained logging ownership and policy authority was unavailable.' current 'Review retained settings or report capacity.' logging
+		return $?
+	fi
+	cfmgr_health_log_requested=0
+	while IFS=' ' read -r cfmgr_health_log_tag cfmgr_health_log_feature cfmgr_health_log_fc cfmgr_health_log_fe cfmgr_health_log_lc cfmgr_health_log_le cfmgr_health_log_opt cfmgr_health_log_request cfmgr_health_log_eligible cfmgr_health_log_lgen cfmgr_health_log_lhash cfmgr_health_log_rgen cfmgr_health_log_rhash cfmgr_health_log_end; do
+		[ "$cfmgr_health_log_tag" = FEATURE ] || continue
+		cfmgr_health_log_owners="$cfmgr_health_log_owners$cfmgr_health_log_feature	$cfmgr_health_log_request	$cfmgr_health_log_eligible	$cfmgr_health_log_rhash
+"
+		case $cfmgr_health_log_request:$cfmgr_health_log_eligible in
+		0:*) cfmgr_health_row "logging.$cfmgr_health_log_feature.state" SKIP "Retained feature configured=$cfmgr_health_log_fc enabled=$cfmgr_health_log_fe; logging configured=$cfmgr_health_log_lc enabled=$cfmgr_health_log_le opt-out=$cfmgr_health_log_opt; history was not requested." retained 'None.' logging ;;
+		1:0) cfmgr_health_row "logging.$cfmgr_health_log_feature.state" UNKNOWN 'Logging history was requested, but owned generation/digest or saved policy was not proved.' retained 'Review retained logging ownership and policy.' logging ;;
+		1:1)
+			cfmgr_health_log_requested=1
+			cfmgr_health_row "logging.$cfmgr_health_log_feature.state" PASS "Retained feature configured=$cfmgr_health_log_fc enabled=$cfmgr_health_log_fe; logging configured=$cfmgr_health_log_lc enabled=$cfmgr_health_log_le opt-out=$cfmgr_health_log_opt; history ownership is eligible." retained 'Observed readiness is assessed separately.' logging
+			;;
+		esac || return $?
+	done <"$cfmgr_health_log_authority"
+	[ "$cfmgr_health_log_requested" = 1 ] || return 0
+	if [ "${cfmgr_health_entware_ready:-0}" != 1 ] || [ "${cfmgr_health_native_openssl_ok:-0}" != 1 ]; then
+		cfmgr_health_row logging.base UNKNOWN 'Logging observations depend on protected Entware identity and native hashing.' current 'Review storage and native prerequisites.' logging
+		return $?
+	fi
+	if _cfmgr_health_logging_base; then cfmgr_health_log_base_state=PASS; else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_row logging.base UNKNOWN 'Scribe profile, tools, include inventory or consistent snapshots could not establish readiness.' current 'Review Scribe, native observers and report capacity; no repair was attempted.' logging
+		return $?
+	fi
+	cfmgr_health_row logging.base PASS 'Scribe profile, actual read-only tool probes, complete includes, scheduler and process evidence agree.' current 'Delivery and rotation were not exercised.' logging || return $?
+	while IFS='	' read -r cfmgr_health_log_feature cfmgr_health_log_request cfmgr_health_log_eligible cfmgr_health_log_expected; do
+		[ "$cfmgr_health_log_eligible" = 1 ] || continue
+		cfmgr_health_log_match=0
+		while IFS='	' read -r cfmgr_health_log_fragrole cfmgr_health_log_fraghex cfmgr_health_log_fragpath; do
+			case $cfmgr_health_log_feature:$cfmgr_health_log_fragpath in ddns:/opt/etc/logrotate.d/cfmgr-ddns | ip_sync:/opt/etc/logrotate.d/cfmgr-ip-sync | cloudflared:/opt/etc/logrotate.d/cfmgr-cloudflared)
+				while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_file cfmgr_health_log_bytes cfmgr_health_log_digest; do
+					[ "$cfmgr_health_log_role:$cfmgr_health_log_digest" != "$cfmgr_health_log_fragrole:$cfmgr_health_log_expected" ] || cfmgr_health_log_match=1
+				done <<EOF_LOG_OWNED_RAW
+$cfmgr_health_log_raw
+EOF_LOG_OWNED_RAW
+				;;
+			esac
+		done <<EOF_LOG_FRAGMENTS
+$cfmgr_health_log_fragments
+EOF_LOG_FRAGMENTS
+		if [ "$cfmgr_health_log_match" != 1 ]; then
+			cfmgr_health_row "logging.$cfmgr_health_log_feature.policy" FAIL 'The included rule does not match the retained owned digest.' current 'Review explicit logging recovery.' logging || return $?
+			continue
+		fi
+		cfmgr_health_log_parse policy "$cfmgr_health_log_authority" "$cfmgr_health_log_feature" || return $?
+		cfmgr_health_log_policy_file=$cfmgr_probe_stdout
+		cfmgr_health_count "$cfmgr_health_log_policy_file" 256 || return $?
+		cfmgr_health_run health-log-assess /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_log_bundle" "$cfmgr_health_log_policy_file" "$cfmgr_health_size" "$cfmgr_health_log_feature" || return $?
+		if [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+			cfmgr_health_row "logging.$cfmgr_health_log_feature.policy" PASS 'The complete observed rule and include chain match the saved canonical policy and owned digest.' current 'Delivery and rotation were not exercised.' logging
+		else
+			cfmgr_health_row "logging.$cfmgr_health_log_feature.policy" WARN 'Observed logging policy did not establish agreement with the saved policy.' current 'Review Scribe policy and supported include configuration.' logging
+		fi || return $?
+	done <<EOF_LOG_OWNERS
+$cfmgr_health_log_owners
+EOF_LOG_OWNERS
+}
+
+_cfmgr_health_logging_base() {
+	[ "$cfmgr_health_cron_ready:$cfmgr_health_process_ready" = 1:1 ] || return 1
+	# The optional link and executables are admitted only on the pinned mount.
+	cfmgr_health_entware_attachment || return $?
+	cfmgr_health_run health-log-link /usr/bin/readlink /opt/bin/scribe || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_one_line "$cfmgr_probe_stdout" && [ "$cfmgr_health_log_line" = /jffs/scripts/scribe ] || return 1
+	for cfmgr_health_log_tool in /opt/sbin/syslog-ng /opt/sbin/logrotate; do
+		cfmgr_health_selected_logical=$cfmgr_health_log_tool
+		cfmgr_health_selected_resolve || return $?
+		cfmgr_health_selected_path=$cfmgr_health_resolved cfmgr_health_selected_profile=executable
+		cfmgr_health_selected_metadata || return $?
+	done
+	cfmgr_health_log_sources_text=''
+	for cfmgr_health_log_role in script scribe-config syslog-config rotate-config; do
+		case $cfmgr_health_log_role in script) cfmgr_health_log_path=/jffs/scripts/scribe cfmgr_health_log_op=prefix ;; scribe-config) cfmgr_health_log_path=/jffs/addons/scribe.d/config cfmgr_health_log_op=whole ;; syslog-config) cfmgr_health_log_path=/opt/etc/syslog-ng.conf cfmgr_health_log_op=whole ;; rotate-config) cfmgr_health_log_path=/opt/etc/logrotate.conf cfmgr_health_log_op=whole ;; esac
+		cfmgr_health_selected_logical=$cfmgr_health_log_path
+		cfmgr_health_selected_resolve || return $?
+		cfmgr_health_log_sources_text="$cfmgr_health_log_sources_text$cfmgr_health_log_role	$cfmgr_health_resolved	public	$cfmgr_health_log_op
+"
+	done
+	cfmgr_health_log_spec_write "$cfmgr_health_log_sources_text" || return $?
+	cfmgr_health_log_snapshots "$cfmgr_health_log_spec_file" || return $?
+	for cfmgr_health_log_kind in syslog rotate; do
+		case $cfmgr_health_log_kind in syslog) cfmgr_health_log_tool=/opt/sbin/syslog-ng cfmgr_health_log_version_role=syslog-version ;; *) cfmgr_health_log_tool=/opt/sbin/logrotate cfmgr_health_log_version_role=logrotate-version ;; esac
+		cfmgr_health_entware_attachment || return $?
+		cfmgr_health_run health-log-version "$cfmgr_health_log_tool" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_health_log_raw="$cfmgr_health_log_raw$cfmgr_health_log_version_role	$cfmgr_probe_stdout	-	-
+"
+	done
+	cfmgr_health_entware_attachment || return $?
+	cfmgr_health_run health-log-syntax /opt/sbin/syslog-ng || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_entware_attachment || return $?
+	cfmgr_health_run health-log-debug /opt/sbin/logrotate || return $?
+	# Debug normally uses stderr; stdout must be empty, never concealed.
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stdout" ] || return 1
+	cfmgr_health_log_debug=$cfmgr_probe_stderr
+	cfmgr_health_log_parse debug-check "$cfmgr_health_log_debug" - || return $?
+	cfmgr_health_log_raw="$cfmgr_health_log_raw"'cron	'"$cfmgr_health_cron_file	$cfmgr_health_cron_bytes	-
+process	$cfmgr_health_process_file	-	-
+debug	$cfmgr_health_log_debug	-	-
+"
+	cfmgr_health_log_spec_write "debug	$cfmgr_health_log_debug
+" || return $?
+	cfmgr_health_log_group counts "$cfmgr_health_log_spec_file" || return $?
+	IFS='	' read -r cfmgr_health_log_tag cfmgr_health_log_role cfmgr_health_log_debug_bytes cfmgr_health_log_debug_lf <"$cfmgr_health_log_group_file" || return 1
+	cfmgr_health_run health-log-includes /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_log_debug" "$cfmgr_health_log_debug_bytes" "$cfmgr_health_log_debug_lf" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_include_file=$cfmgr_probe_stdout cfmgr_health_log_fragment_count=0 cfmgr_health_log_sources_text=''
+	while IFS=' ' read -r cfmgr_health_log_tag cfmgr_health_log_pathhex cfmgr_health_log_end cfmgr_health_log_extra; do
+		[ "$cfmgr_health_log_tag:$cfmgr_health_log_end:$cfmgr_health_log_extra" = INCLUDE:END: ] || return 1
+		cfmgr_health_run health-log-path /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_log_pathhex" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_health_log_one_line "$cfmgr_probe_stdout" || return 1
+		cfmgr_health_log_path=$cfmgr_health_log_line
+		[ "$cfmgr_health_log_path" != /opt/etc/logrotate.conf ] || continue
+		cfmgr_health_log_fragment_count=$((cfmgr_health_log_fragment_count + 1))
+		cfmgr_health_log_role=f$cfmgr_health_log_fragment_count
+		cfmgr_health_log_fragments="$cfmgr_health_log_fragments$cfmgr_health_log_role	$cfmgr_health_log_pathhex	$cfmgr_health_log_path
+"
+		cfmgr_health_selected_logical=$cfmgr_health_log_path
+		cfmgr_health_selected_resolve || return $?
+		cfmgr_health_log_sources_text="$cfmgr_health_log_sources_text$cfmgr_health_log_role	$cfmgr_health_resolved	public	whole
+"
+		[ "${#cfmgr_health_log_sources_text}" -le 32768 ] || {
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		}
+	done <"$cfmgr_health_log_include_file"
+	[ -n "$cfmgr_health_log_sources_text" ] || return 1
+	cfmgr_health_log_spec_write "$cfmgr_health_log_sources_text" || return $?
+	cfmgr_health_log_snapshots "$cfmgr_health_log_spec_file" || return $?
+	cfmgr_health_log_sources_text=''
+	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_file cfmgr_health_log_bytes cfmgr_health_log_sha; do
+		[ -n "$cfmgr_health_log_role" ] || continue
+		cfmgr_health_log_sources_text="$cfmgr_health_log_sources_text$cfmgr_health_log_role	$cfmgr_health_log_file
+"
+	done <<EOF_LOG_RAW_SPEC
+$cfmgr_health_log_raw
+EOF_LOG_RAW_SPEC
+	cfmgr_health_log_spec_write "$cfmgr_health_log_sources_text" || return $?
+	cfmgr_health_log_group counts "$cfmgr_health_log_spec_file" || return $?
+	cfmgr_health_log_counts=$cfmgr_health_log_group_file
+	cfmgr_health_log_stage bundle-index 32768 || return $?
+	cfmgr_health_log_index=$cfmgr_health_log_stage_file cfmgr_health_log_bundle_bytes=0 cfmgr_health_log_records=0
+	printf 'CFMGR-HEALTH-HISTORY 1\n' >"$cfmgr_health_log_index" || return 1
+	while IFS='	' read -r cfmgr_health_log_tag cfmgr_health_log_role cfmgr_health_log_bytes cfmgr_health_log_lf; do
+		cfmgr_health_log_file='' cfmgr_health_log_expected=-
+		while IFS='	' read -r cfmgr_health_log_rrole cfmgr_health_log_rfile cfmgr_health_log_rbytes cfmgr_health_log_rhash; do
+			[ "$cfmgr_health_log_rrole" != "$cfmgr_health_log_role" ] || {
+				cfmgr_health_log_file=$cfmgr_health_log_rfile
+				cfmgr_health_log_expected=$cfmgr_health_log_rbytes
+			}
+		done <<EOF_LOG_RAW
+$cfmgr_health_log_raw
+EOF_LOG_RAW
+		[ -n "$cfmgr_health_log_file" ] || return 1
+		[ "$cfmgr_health_log_expected" = - ] || [ "$cfmgr_health_log_expected" = "$cfmgr_health_log_bytes" ] || return 1
+		cfmgr_health_log_label=$cfmgr_health_log_role cfmgr_health_log_record=DATA
+		case $cfmgr_health_log_role in f[0-9]*)
+			cfmgr_health_log_record=FRAGMENT
+			while IFS='	' read -r cfmgr_health_log_frole cfmgr_health_log_fhex cfmgr_health_log_fpath; do [ "$cfmgr_health_log_frole" != "$cfmgr_health_log_role" ] || cfmgr_health_log_label=$cfmgr_health_log_fhex; done <<EOF_LOG_FRAGMENT_LABELS
+$cfmgr_health_log_fragments
+EOF_LOG_FRAGMENT_LABELS
+			;;
+		esac
+		printf '%s %s %s %s %s\n' "$cfmgr_health_log_record" "$cfmgr_health_log_label" "${cfmgr_health_log_file##*/}" "$cfmgr_health_log_bytes" "$cfmgr_health_log_lf" >>"$cfmgr_health_log_index" || return 1
+		cfmgr_health_log_serialized_label=$cfmgr_health_log_label
+		[ "$cfmgr_health_log_role" != debug ] || cfmgr_health_log_serialized_label=rotate-debug
+		case $cfmgr_health_log_record in DATA) cfmgr_health_log_overhead=7 ;; *) cfmgr_health_log_overhead=11 ;; esac
+		cfmgr_health_log_payload=$((cfmgr_health_log_bytes * 2))
+		[ "$cfmgr_health_log_payload" != 0 ] || cfmgr_health_log_payload=1
+		cfmgr_health_log_bundle_bytes=$((cfmgr_health_log_bundle_bytes + cfmgr_health_log_overhead + ${#cfmgr_health_log_serialized_label} + cfmgr_health_log_payload))
+		cfmgr_health_log_records=$((cfmgr_health_log_records + 1))
+	done <"$cfmgr_health_log_counts"
+	printf 'END %s %s END\n' "$cfmgr_health_log_records" "$cfmgr_health_log_bundle_bytes" >>"$cfmgr_health_log_index" || return 1
+	cfmgr_health_selected_limit=$(((cfmgr_health_log_bundle_bytes + 511) / 512))
+	[ "$cfmgr_health_selected_limit" -gt 0 ] || return 1
+	cfmgr_health_run health-log-bundle /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_log_index" "$cfmgr_health_log_bundle_bytes" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_bundle=$cfmgr_probe_stdout
+	cfmgr_health_run health-log-base /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_health_log_bundle" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_log_one_line "$cfmgr_probe_stdout" || return 1
+	case $cfmgr_health_log_line in 'BASE ready '*' END') ;; *) return 1 ;; esac
+	cfmgr_health_entware_attachment
+}
+
+cfmgr_status_awk_health_backup_plan() {
+	# CFMGR-AWK-BEGIN health_backup_plan
+	cfmgr_awk_program='
+BEGIN {
+    if(!co_observation_ready || co_version!="n2")reject()
+    now=ENVIRON["CFMGR_HEALTH_BACKUP_NOW"]; clock=ENVIRON["CFMGR_HEALTH_BACKUP_CLOCK"]
+    if(clock!~/^[01]$/ || now!~/^(0|[1-9][0-9]*)$/ || length(now)>10)reject()
+    print "CFMGR-HEALTH-BACKUP\t1"
+    print "DESTINATION\t" co_backup_present "\t" (co_backup_present ? co_backup_saved[1] : "-")
+    print "IDENTITY\t" (co_backup_present ? co_backup_saved[2] "\t" co_backup_saved[3] "\t" co_backup_saved[4] : "-\t-\t-")
+    last=cs_policy(co_backup,"last_backup"); state="never"; age="unknown"; association="unknown"
+    if(last) {
+        state="recorded"; stamp=cs_epoch(last,"at")
+        if(clock==1 && stamp+0>0 && stamp+0<=now+0)age=sprintf("%.0f",now-stamp)
+        saved=cs_optional_uuid(co_backup,"set_id"); prior=cs_string(last,"set_id",0); archive=cs_string(last,"archive_id",0)
+        if(saved!="" && saved==prior && hb_uuid(archive) && cs_le(cs_generation(last,"generation"),cs_generation(1,"generation")))association="same-set"
+    }
+    print "HISTORY\t" state "\t" age "\t" association
+    print "END\t4";exit
+}
+function hb_uuid(s,    a,n,i) {
+    n=split(s,a,"-");if(n!=5 || length(a[1])!=8 || length(a[2])!=4 || length(a[3])!=4 || length(a[4])!=4 || length(a[5])!=12)return 0
+    for(i=1;i<=5;i++)if(a[i]~/[^0-9a-f]/)return 0;return 1
+}
+'
+	# CFMGR-AWK-END health_backup_plan
+}
+
+cfmgr_status_awk_health_backup_observation() {
+	# CFMGR-AWK-BEGIN health_backup_observation
+	cfmgr_awk_program='
+function hb_fail() { exit 1 }
+function hb_read(path,max,    saved,raw,extra,n) {
+    saved=RS;RS=sprintf("%c",28);n=getline raw <path
+    if(n!=1 || (getline extra <path)>0 || length(raw)>max || raw~/[^ -~\t\n]/ || substr(raw,length(raw),1)!="\n")hb_fail()
+    close(path);RS=saved;return raw
+}
+function hb_path(s,    a,n,i) {
+    if(s=="/")return 1
+    if(length(s)>1024 || s!~/^\// || s~/[^ -~]/ || index(s,"\\"))return 0
+    n=split(s,a,"/");for(i=2;i<=n;i++)if(a[i]=="" || a[i]=="." || a[i]=="..")return 0;return 1
+}
+function hb_plan(path,    raw,n,a,i,c) {
+    raw=hb_read(path,4096);n=split(raw,lines,"\n")
+    if(n!=6 || lines[1]!="CFMGR-HEALTH-BACKUP\t1" || lines[5]!="END\t4")hb_fail()
+    if(split(lines[2],a,"\t")!=3 || a[1]!="DESTINATION" || a[2]!~/^[01]$/)hb_fail()
+    selected=a[2];point=a[3]
+    if(selected ? !hb_path(point) : point!="-")hb_fail()
+    if(split(lines[3],a,"\t")!=4 || a[1]!="IDENTITY")hb_fail()
+    uuid=a[2];fs=a[3];root=a[4]
+    if(selected) {
+        if(length(uuid)>128 || uuid!~/^[A-Za-z0-9][A-Za-z0-9._:-]*$/ || length(fs)>32 || fs!~/^[A-Za-z0-9][A-Za-z0-9_+.-]*$/ || !hb_path(root))hb_fail()
+    } else if(uuid!="-" || fs!="-" || root!="-")hb_fail()
+    if(split(lines[4],a,"\t")!=4 || a[1]!="HISTORY" || a[2]!~/^(never|recorded)$/ || (a[3]!="unknown" && (a[3]!~/^(0|[1-9][0-9]*)$/ || length(a[3])>10)) || a[4]!~/^(unknown|same-set)$/ || (a[2]=="never" && (a[3]!="unknown" || a[4]!="unknown")))hb_fail()
+}
+BEGIN {
+    mode=ARGV[1];plan=ARGV[2];input=ARGV[3];identity=ARGV[4];ARGC=1
+    hb_plan(plan)
+    if(mode=="frame")exit
+    if(!selected || mode!~/^(mount|identity|folder)$/)hb_fail()
+    if(mode=="folder") {
+        raw=hb_read(input,4096);if(split(raw,lines,"\n")!=2)hb_fail()
+        rest=lines[1]
+        for(i=1;i<=9;i++) {sub(/^ +/,"",rest);if(!match(rest,/^[^ ]+/))hb_fail();a[i]=substr(rest,1,RLENGTH);rest=substr(rest,RLENGTH+1)}
+        sub(/^ +/,"",rest)
+        if(rest!=point "/CFBackup" || a[1]!~/^[1-9][0-9]*$/ || length(a[2])!=10 || substr(a[2],1,1)!="d" || a[3]!~/^[1-9][0-9]*$/ || a[4]!~/^[0-9]+$/ || a[5]!~/^[0-9]+$/ || a[6]!~/^(0|[1-9][0-9]*)$/)hb_fail()
+        print "CFMGR-BACKUP-FOLDER 1 observed END";exit
+    }
+    raw=hb_read(input,8192);if(split(raw,lines,"\n")!=2 || split(lines[1],a,"\t")!=9)hb_fail()
+    if(a[1]!~/^[1-9][0-9]*$/ || a[2]!~/^[0-9]+$/ || a[3]!~/^[0-9]+:[0-9]+$/ || !hb_path(a[4]) || !hb_path(a[5]) || a[6]!~/^[A-Za-z0-9][A-Za-z0-9_+.-]*$/ || a[7]!~/^\/dev\/[A-Za-z0-9._\/-]+$/ || a[7]~/\/(\.|\.\.)(\/|$)/ || a[8]~/[^A-Za-z0-9,._=:-]/ || a[9]~/[^A-Za-z0-9,._=:-]/)hb_fail()
+    if(a[5]!=point || a[4]!=root || a[6]!=fs) {print "CFMGR-BACKUP-MOUNT 1 mismatch END";exit}
+    if(mode=="mount") {print "CFMGR-BACKUP-MOUNT\t1\tmatched\t" a[7] "\t" a[6];exit}
+    mount_rw=(index("," a[8] ",",",rw,") && index("," a[9] ",",",rw,"));noexec=(index("," a[8] ",",",noexec,")>0)
+    raw=hb_read(identity,512);if(split(raw,lines,"\n")!=3 || lines[1]=="" || length(lines[1])>128 || length(lines[2])>256)hb_fail()
+    print "CFMGR-BACKUP-IDENTITY 1 " (lines[1]==uuid ? "matched" : "mismatch") " " (mount_rw ? "rw" : "ro") " " (noexec ? "noexec" : "exec") " END";exit
+}
+'
+	# CFMGR-AWK-END health_backup_observation
+}
+
+cfmgr_health_backup_frame() {
+	cfmgr_health_run health-backup-observe /usr/bin/awk "$cfmgr_source/modules/status.sh" frame "$cfmgr_health_backup_plan" - - || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] && [ ! -s "$cfmgr_probe_stdout" ]
+}
+
+cfmgr_health_backup_recheck() {
+	cfmgr_health_canonical "$cfmgr_health_backup_point" || return $?
+	[ "$cfmgr_health_resolved" = "$cfmgr_health_backup_point" ] || return 1
+	cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_backup_point" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	{
+		IFS= read -r cfmgr_health_backup_current || return 1
+		cfmgr_health_backup_extra=''
+		if IFS= read -r cfmgr_health_backup_extra || [ -n "$cfmgr_health_backup_extra" ]; then return 1; fi
+	} <"$cfmgr_probe_stdout"
+	[ "$cfmgr_health_backup_current" = "$cfmgr_health_backup_mount_record" ]
+}
+
+cfmgr_health_backup_collect() {
+	if [ -z "$cfmgr_health_inventory" ]; then
+		cfmgr_health_row backup.destination SKIP 'Backup observation requires a complete retained schema-2 snapshot.' current 'Review configuration evidence first.' config
+		return $?
+	fi
+	if cfmgr_health_run health-backup-plan /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_health_config" "$cfmgr_health_config_bytes" "${cfmgr_status_now:-0}" "${cfmgr_status_clock:-0}" && [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then :; else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_row backup.destination UNKNOWN 'A complete private Backup projection was unavailable.' current 'Review retained Backup settings and report limits.' backup
+		return $?
+	fi
+	cfmgr_health_backup_plan=$cfmgr_probe_stdout
+	if cfmgr_health_backup_frame; then :; else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_row backup.destination UNKNOWN 'Backup projection framing could not be verified.' current 'Review retained Backup settings and report limits.' backup
+		return $?
+	fi
+	cfmgr_health_backup_selected=0 cfmgr_health_backup_point='' cfmgr_health_backup_history=never cfmgr_health_backup_age=unknown cfmgr_health_backup_association=unknown
+	while IFS='	' read -r cfmgr_health_backup_tag cfmgr_health_backup_a cfmgr_health_backup_b cfmgr_health_backup_c; do
+		case $cfmgr_health_backup_tag in
+		DESTINATION) cfmgr_health_backup_selected=$cfmgr_health_backup_a cfmgr_health_backup_point=$cfmgr_health_backup_b ;;
+		HISTORY) cfmgr_health_backup_history=$cfmgr_health_backup_a cfmgr_health_backup_age=$cfmgr_health_backup_b cfmgr_health_backup_association=$cfmgr_health_backup_c ;;
+		esac
+	done <"$cfmgr_health_backup_plan"
+	if [ "$cfmgr_health_backup_history" = never ]; then
+		cfmgr_health_row backup.history SKIP 'No completed Backup history is recorded.' never 'Create a Backup explicitly when needed.' backup || return $?
+	else
+		cfmgr_health_backup_history_detail='Recorded Backup history does not prove a current archive exists or is usable.'
+		[ "$cfmgr_health_backup_association" != same-set ] || cfmgr_health_backup_history_detail='Recorded Backup history matches the retained set and a nonfuture generation; current archive existence and validity are unproved.'
+		[ "$cfmgr_health_backup_age" = unknown ] || cfmgr_health_backup_age="$cfmgr_health_backup_age seconds ago"
+		cfmgr_health_row backup.history UNKNOWN "$cfmgr_health_backup_history_detail" "$cfmgr_health_backup_age" 'Use the explicit archive browser for current archive verification.' backup || return $?
+	fi
+	if [ "$cfmgr_health_backup_selected" = 0 ]; then
+		cfmgr_health_row backup.destination SKIP 'No Backup destination is selected.' current 'Select a destination in the Backup menu.' backup
+		return $?
+	fi
+	cfmgr_health_backup_state=UNKNOWN cfmgr_health_backup_detail='The selected Backup destination could not be independently identified; no directory or archive was created.'
+	if cfmgr_health_backup_observe; then :; else [ "$?" != 3 ] || return 3; fi
+	cfmgr_health_row backup.destination "$cfmgr_health_backup_state" "$cfmgr_health_backup_detail" current 'Review the selected mounted drive; no write test or repair was performed.' backup || return $?
+	[ "$cfmgr_health_backup_state" = PASS ] || return 0
+	if [ "$cfmgr_health_backup_access" = ro ]; then
+		cfmgr_health_row backup.access WARN 'The identified destination is mounted read-only; archive creation cannot write there.' current 'Review the drive mount state before creating an archive.' backup
+	else
+		cfmgr_health_row backup.access UNKNOWN "The identified mount allows writes and CFBackup=$cfmgr_health_backup_folder; actual write access, free space and archive contents were not tested." current 'Use the explicit Backup workflow when needed.' backup
+	fi
+}
+
+cfmgr_health_backup_observe() {
+	cfmgr_health_canonical "$cfmgr_health_backup_point" || return $?
+	[ "$cfmgr_health_resolved" = "$cfmgr_health_backup_point" ] && [ -d "$cfmgr_health_backup_point" ] && [ ! -L "$cfmgr_health_backup_point" ] || return 1
+	cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_backup_point" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_backup_mount_file=$cfmgr_probe_stdout
+	IFS= read -r cfmgr_health_backup_mount_record <"$cfmgr_health_backup_mount_file" || return 1
+	cfmgr_health_run health-backup-observe /usr/bin/awk "$cfmgr_source/modules/status.sh" mount "$cfmgr_health_backup_plan" "$cfmgr_health_backup_mount_file" - || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	IFS='	' read -r cfmgr_health_backup_tag cfmgr_health_backup_version cfmgr_health_backup_match cfmgr_health_backup_device cfmgr_health_backup_fs <"$cfmgr_probe_stdout" || return 1
+	if [ "$cfmgr_health_backup_tag" = 'CFMGR-BACKUP-MOUNT 1 mismatch END' ]; then
+		cfmgr_health_backup_state=WARN cfmgr_health_backup_detail='Current mountpoint, filesystem or filesystem root differs from the retained selection.'
+		return 0
+	fi
+	[ "$cfmgr_health_backup_tag:$cfmgr_health_backup_version:$cfmgr_health_backup_match" = CFMGR-BACKUP-MOUNT:1:matched ] || return 1
+	[ "${cfmgr_health_backup:-missing}" = verified ] || return 1
+	cfmgr_health_run health-blkid /sbin/blkid "$cfmgr_health_backup_device" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_run health-backup-uuid /usr/bin/awk "$cfmgr_source/modules/backup.sh" "$cfmgr_probe_stdout" "$cfmgr_health_backup_device" "$cfmgr_health_backup_fs" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_backup_uuid_file=$cfmgr_probe_stdout
+	cfmgr_health_run health-backup-observe /usr/bin/awk "$cfmgr_source/modules/status.sh" identity "$cfmgr_health_backup_plan" "$cfmgr_health_backup_mount_file" "$cfmgr_health_backup_uuid_file" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	IFS=' ' read -r cfmgr_health_backup_tag cfmgr_health_backup_version cfmgr_health_backup_match cfmgr_health_backup_access cfmgr_health_backup_execution cfmgr_health_backup_end <"$cfmgr_probe_stdout" || return 1
+	[ "$cfmgr_health_backup_tag:$cfmgr_health_backup_version:$cfmgr_health_backup_end" = CFMGR-BACKUP-IDENTITY:1:END ] || return 1
+	cfmgr_health_backup_recheck || return $?
+	if [ "$cfmgr_health_backup_match" = mismatch ]; then
+		cfmgr_health_backup_state=WARN cfmgr_health_backup_detail='Current volume UUID differs from the retained Backup selection.'
+		return 0
+	fi
+	[ "$cfmgr_health_backup_match" = matched ] || return 1
+	cfmgr_health_backup_folder=unverified
+	if cfmgr_health_run health-metadata /bin/ls "$cfmgr_health_backup_point/CFBackup" && [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+		cfmgr_health_backup_folder_meta=$cfmgr_probe_stdout
+		if cfmgr_health_run health-backup-observe /usr/bin/awk "$cfmgr_source/modules/status.sh" folder "$cfmgr_health_backup_plan" "$cfmgr_health_backup_folder_meta" - && [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+			cfmgr_health_backup_folder=observed
+		else [ "$?" != 3 ] || return 3; fi
+	else [ "$?" != 3 ] || return 3; fi
+	cfmgr_health_backup_recheck || return $?
+	cfmgr_health_backup_state=PASS
+	cfmgr_health_backup_detail="Selected mountpoint, volume UUID, filesystem and root matched across repeated identity observations; mount flags=$cfmgr_health_backup_access/$cfmgr_health_backup_execution, CFBackup=$cfmgr_health_backup_folder. Writability and archive validity were not tested."
+}
+
+cfmgr_status_awk_health_hooks_authority() {
+	# CFMGR-AWK-BEGIN health_hooks_authority
+	cfmgr_awk_program='
+function hk_id(path) {
+    if(path=="/jffs/scripts/services-start") return "services-start"
+    if(path=="/jffs/scripts/wan-event") return "wan-event"
+    if(path=="/jffs/scripts/dhcpc-event") return "dhcpc-event"
+    if(path=="/jffs/scripts/ddns-start") return "ddns-start"
+    if(path=="/jffs/scripts/post-mount") return "post-mount"
+    if(path=="/jffs/scripts/unmount") return "unmount"
+    if(path=="/jffs/scripts/services-stop") return "services-stop"
+    return ""
+}
+BEGIN {
+    if(!co_observation_ready || co_version!="n2" || cfmgr_config_mode!="archive-data") reject()
+    for(i=1;i<=7;i++) {
+        if(i==1) path="/jffs/scripts/services-start"
+        else if(i==2) path="/jffs/scripts/wan-event"
+        else if(i==3) path="/jffs/scripts/dhcpc-event"
+        else if(i==4) path="/jffs/scripts/ddns-start"
+        else if(i==5) path="/jffs/scripts/post-mount"
+        else if(i==6) path="/jffs/scripts/unmount"
+        else path="/jffs/scripts/services-stop"
+        order[i]=hk_id(path); fixed[path]=order[i]
+    }
+    owners=cs_id(cs_id(1,"ownership"),"components")
+    root_generation=cs_generation(1,"generation")
+    for(i=0;(item=co_child[owners,"i" i]);i++) {
+        # Full schema admission already validates every record. Re-read the
+        # typed fields here; arbitrary owner components/paths never escape.
+        component=cs_string(item,"component",0)
+        path=cs_path(item,"path",0)
+        gen=cs_generation(item,"generation")
+        sha=cs_hash(item,"sha256",1)
+        id=hk_id(path)
+        if(id!="" && cs_le(gen,root_generation)) {
+            owner_count[id]++
+            owner_gen[id]=gen
+            owner_sha[id]=(sha==""?"-":sha)
+        }
+    }
+    output="CFMGR-HOOKS 1 " root_generation "\n"
+    for(i=1;i<=7;i++) {
+        id=order[i]
+        if(owner_count[id]==1) output=output "HOOK " id " " owner_gen[id] " " owner_sha[id] " END\n"
+        else output=output "HOOK " id " - - END\n"
+    }
+    if(length(output)>2048) reject()
+    printf "%sEND 7 END\n",output
+    exit
+}
+'
+	# CFMGR-AWK-END health_hooks_authority
+}
+
+cfmgr_status_awk_health_hooks_cron() {
+	# CFMGR-AWK-BEGIN health_hooks_cron
+	cfmgr_awk_program='
+function hj_fail() { bad=1; exit 1 }
+function hj_read(path, limit,    line,total,n,extra,rc) {
+    total=n=0
+    while((rc=getline line < path)>0) {
+        n++; total+=length(line)+1
+        if(length(line)>4096 || total>limit || line~/[^ -~\t]/) hj_fail()
+        lines[n]=line
+    }
+    if(rc<0 || close(path)!=0 || n==0) hj_fail()
+    # The caller supplies an independent wc byte count; the LF count plus
+    # every line length proves exact final-LF framing and complete EOF.
+    if(total!=expected_bytes || n!=expected_lf) hj_fail()
+    return n
+}
+function hj_uint(value,max) {
+    return value~/^(0|[1-9][0-9]*)$/ && (length(value)<length(max) || (length(value)==length(max) && "n" value<="n" max))
+}
+function hj_trim(value) { sub(/^[ \t]+/,"",value); sub(/[ \t]+$/,"",value); return value }
+function hj_schedule(line, label,    fields,n,last,tag,schedule,shell) {
+    line=hj_trim(line)
+    if(line=="" || line~/^#/) return
+    if(line~/^SHELL[ \t]*=/) {
+        sub(/^SHELL[ \t]*=[ \t]*/,"",line)
+        current_shell=(line=="/bin/sh"?"admitted":"unknown")
+        return
+    }
+    n=split(line,fields,/[ \t]+/)
+    if(n<6) return
+    last=fields[n]
+    if(last!="#CFMgrWatchdog#" && last!="#CFMgrCloudflaredUpdate#") return
+    # The exact suffix is a separate final token. Never search the command for
+    # an ID substring or emit/execute any command bytes.
+    if(n<7) hj_fail()
+    label=(last=="#CFMgrWatchdog#"?"watchdog":"cloud-update")
+    schedule=fields[1] " " fields[2] " " fields[3] " " fields[4] " " fields[5]
+    if(label=="watchdog") expected=(schedule=="* * * * *"?"exact":"mismatch")
+    else expected=(schedule=="37 3 * * *"?"exact":"mismatch")
+    if(++job_count[label]==1) {
+        job_schedule[label]=expected
+        job_shell[label]=(current_shell=="admitted"?"admitted":"unknown")
+    }
+}
+BEGIN {
+    cron=ARGV[1]; process=ARGV[2]; expected_bytes=ARGV[3]; expected_lf=ARGV[4]; process_bytes=ARGV[5]
+    ARGC=1
+    if(cron!~/^\// || process!~/^\// || !hj_uint(expected_bytes,"131072") || !hj_uint(expected_lf,"131072") || expected_bytes=="0" || !hj_uint(process_bytes,"32768") || process_bytes=="0") hj_fail()
+    current_shell="default-unverified"
+    n=hj_read(cron,131072)
+    for(i=1;i<=n;i++) hj_schedule(lines[i])
+    proc_count=0; proc_total=0
+    while((rc=getline line < process)>0) {
+        proc_total+=length(line)+1
+        if(length(line)>32768 || proc_total>32768 || line~/[^ -~\t]/) hj_fail()
+        if(line~/^CROND /) {
+            c=split(line,p,/ +/)
+            if(c!=5 || p[1]!="CROND" || !hj_uint(p[2],"2147483647") || p[2]=="0" || !hj_uint(p[3],"18446744073709551615") || p[4]!="2f7661722f73706f6f6c2f63726f6e2f63726f6e74616273" || p[5]!="END") hj_fail()
+            proc_count++
+        }
+    }
+    if(rc<0 || close(process)!=0 || proc_count!=1 || proc_total!=process_bytes || proc_total==0) hj_fail()
+    print "CFMGR-JOBS 1"
+    for(i=1;i<=2;i++) {
+        id=(i==1?"watchdog":"cloud-update")
+        count=job_count[id]+0
+        if(count==1) {sched=job_schedule[id]; shell=job_shell[id]}
+        else {sched=(count==0?"absent":"ambiguous");shell="unknown"}
+        print "JOB " id " " count " " sched " " shell " END"
+    }
+    print "END 2 END"
+}
+'
+	# CFMGR-AWK-END health_hooks_cron
+}
+
+cfmgr_status_awk_health_hooks_frame() {
+	# CFMGR-AWK-BEGIN health_hooks_frame
+	cfmgr_awk_program='
+function hf_fail() { exit 1 }
+function hf_uint(value,max) { return value~/^(0|[1-9][0-9]*)$/ && (length(value)<length(max) || (length(value)==length(max) && "n" value<="n" max)) }
+BEGIN {
+    mode=ARGV[1]; input=ARGV[2]; expected_bytes=ARGV[3]; ARGC=1
+    if((mode!="authority" && mode!="jobs") || !hf_uint(expected_bytes,"32768") || expected_bytes=="0") hf_fail()
+    total=n=0
+    while((rc=getline line < input)>0) {
+        n++; total+=length(line)+1
+        if(length(line)>4096 || total>expected_bytes || line~/[^ -~\t]/ || n>16) hf_fail()
+        lines[n]=line
+    }
+    if(rc<0 || close(input)!=0 || total!=expected_bytes) hf_fail()
+    # Validate every field before producing any normalized bytes.
+    if(mode=="authority") {
+        if(n!=9 || split(lines[1],a," ")!=3 || a[1]!="CFMGR-HOOKS" || a[2]!="1" || !hf_uint(a[3],"99999999999999999999")) hf_fail()
+        ids[1]="services-start"; ids[2]="wan-event"; ids[3]="dhcpc-event"; ids[4]="ddns-start"; ids[5]="post-mount"; ids[6]="unmount"; ids[7]="services-stop"
+        if(lines[1]!="CFMGR-HOOKS 1 " a[3] || lines[9]!="END 7 END") hf_fail()
+        for(i=1;i<=7;i++) {
+            if(split(lines[i+1],b," ")!=5 || b[1]!="HOOK" || b[2]!=ids[i] || b[5]!="END") hf_fail()
+            if(b[3]=="-") { if(b[4]!="-") hf_fail() }
+            else if(!hf_uint(b[3],"99999999999999999999") || b[3]=="0" || (b[4]!="-" && (length(b[4])!=64 || b[4]~/[^0-9a-f]/))) hf_fail()
+            gen[i]=b[3]; sha[i]=b[4]
+        }
+        for(i=1;i<=7;i++) print "HOOK " ids[i] " " gen[i] " " sha[i] " END"
+        print "ROOT " a[3] " END"; exit
+    }
+    if(n!=4 || lines[1]!="CFMGR-JOBS 1" || lines[4]!="END 2 END") hf_fail()
+    ids[1]="watchdog"; ids[2]="cloud-update"
+    for(i=1;i<=2;i++) {
+        if(split(lines[i+1],b," ")!=6 || b[1]!="JOB" || b[2]!=ids[i] || b[6]!="END" || !hf_uint(b[3],"131072")) hf_fail()
+        if(b[3]=="0") { if(b[4]!="absent" || b[5]!="unknown") hf_fail() }
+        else if(b[3]=="1") { if(b[4]!="exact" && b[4]!="mismatch") hf_fail(); if(b[5]!="admitted" && b[5]!="unknown") hf_fail() }
+        else if(b[4]!="ambiguous" || b[5]!="unknown") hf_fail()
+        count[i]=b[3]; sched[i]=b[4]; shell[i]=b[5]
+    }
+    for(i=1;i<=2;i++) print "JOB " ids[i] " " count[i] " " sched[i] " " shell[i] " END"
+    exit
+}
+'
+	# CFMGR-AWK-END health_hooks_frame
+}
+
+cfmgr_health_hooks_authority_validate() {
+	# Count private worker output first; AWK requires exact bytes and final LF.
+	cfmgr_health_count "$1" 32768 || return $?
+	cfmgr_health_hooks_frame_bytes=$cfmgr_health_size
+	cfmgr_health_run health-hooks-frame /usr/bin/awk "$cfmgr_source/modules/status.sh" authority "$1" "$cfmgr_health_hooks_frame_bytes" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_hooks_authority_file=$cfmgr_probe_stdout
+}
+
+cfmgr_health_hooks_cron_observe() {
+	cfmgr_health_hooks_jobs=''
+	[ "${cfmgr_health_cron_ready:-0}" = 1 ] &&
+		[ "${cfmgr_health_process_ready:-0}" = 1 ] &&
+		[ "${cfmgr_health_process_scan_complete:-0}" = 1 ] || return 1
+	[ -f "$cfmgr_health_cron_file" ] && [ ! -L "$cfmgr_health_cron_file" ] &&
+		[ -f "$cfmgr_health_process_file" ] && [ ! -L "$cfmgr_health_process_file" ] || return 1
+	cfmgr_health_hooks_tab=$(printf '\t')
+	cfmgr_health_log_spec_write "cron-observer${cfmgr_health_hooks_tab}${cfmgr_health_cron_file}${cfmgr_health_hooks_tab}public${cfmgr_health_hooks_tab}whole
+" || return $?
+	cfmgr_health_hooks_spec_file=$cfmgr_health_log_spec_file
+	cfmgr_health_log_group counts "$cfmgr_health_hooks_spec_file" || return $?
+	cfmgr_health_hooks_tab=$(printf '\t')
+	IFS="$cfmgr_health_hooks_tab" read -r cfmgr_health_hooks_tag cfmgr_health_hooks_role cfmgr_health_hooks_bytes cfmgr_health_hooks_lf <"$cfmgr_health_log_group_file" || return 1
+	[ "$cfmgr_health_hooks_tag:$cfmgr_health_hooks_role" = COUNT:cron-observer ] &&
+		[ "$cfmgr_health_hooks_bytes" = "$cfmgr_health_cron_bytes" ] &&
+		[ "$cfmgr_health_hooks_bytes" -le 131072 ] &&
+		[ "$cfmgr_health_hooks_lf" -gt 0 ] || return 1
+	cfmgr_health_count "$cfmgr_health_process_file" 32768 || return $?
+	cfmgr_health_hooks_process_bytes=$cfmgr_health_size
+	cfmgr_health_run health-hooks-cron /usr/bin/awk "$cfmgr_source/modules/status.sh" \
+		"$cfmgr_health_cron_file" "$cfmgr_health_process_file" \
+		"$cfmgr_health_hooks_bytes" "$cfmgr_health_hooks_lf" "$cfmgr_health_hooks_process_bytes" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_hooks_jobs_raw=$cfmgr_probe_stdout
+	cfmgr_health_count "$cfmgr_health_hooks_jobs_raw" 32768 || return $?
+	cfmgr_health_hooks_frame_bytes=$cfmgr_health_size
+	cfmgr_health_run health-hooks-frame /usr/bin/awk "$cfmgr_source/modules/status.sh" jobs "$cfmgr_health_hooks_jobs_raw" "$cfmgr_health_hooks_frame_bytes" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_hooks_jobs=$cfmgr_probe_stdout
+}
+
+cfmgr_health_hooks_member_result() {
+	cfmgr_health_hooks_member_state=UNKNOWN
+	cfmgr_health_log_member "$1" "$2" || return $?
+	[ "$cfmgr_health_log_member_ok" = 1 ] || return 0
+	case $cfmgr_health_log_member_bytes in '' | *[!0-9]*) return 1 ;; esac
+	[ "$cfmgr_health_log_member_bytes" -le 65536 ] || return 0
+	cfmgr_health_hooks_total_bytes=$((cfmgr_health_hooks_total_bytes + cfmgr_health_log_member_bytes))
+	[ "$cfmgr_health_hooks_total_bytes" -le 262144 ] || return 0
+	cfmgr_health_hooks_member_state=PASS
+}
+
+cfmgr_health_hooks_files_observe() {
+	cfmgr_health_hooks_tab=$(printf '\t') cfmgr_health_hooks_spec=''
+	for cfmgr_health_hooks_id in services-start wan-event dhcpc-event ddns-start post-mount unmount services-stop; do
+		case $cfmgr_health_hooks_id in
+		services-start) cfmgr_health_hooks_path=/jffs/scripts/services-start ;;
+		wan-event) cfmgr_health_hooks_path=/jffs/scripts/wan-event ;;
+		dhcpc-event) cfmgr_health_hooks_path=/jffs/scripts/dhcpc-event ;;
+		ddns-start) cfmgr_health_hooks_path=/jffs/scripts/ddns-start ;;
+		post-mount) cfmgr_health_hooks_path=/jffs/scripts/post-mount ;;
+		unmount) cfmgr_health_hooks_path=/jffs/scripts/unmount ;;
+		services-stop) cfmgr_health_hooks_path=/jffs/scripts/services-stop ;;
+		esac
+		cfmgr_health_hooks_spec="$cfmgr_health_hooks_spec$cfmgr_health_hooks_id$cfmgr_health_hooks_tab$cfmgr_health_hooks_path$cfmgr_health_hooks_tab""public""$cfmgr_health_hooks_tab""whole
+"
+	done
+	cfmgr_health_log_spec_write "$cfmgr_health_hooks_spec" || return $?
+	cfmgr_health_hooks_spec_file=$cfmgr_health_log_spec_file
+	cfmgr_health_hooks_metadata_before=''
+	if cfmgr_health_log_metadata "$cfmgr_health_hooks_spec_file" normal; then
+		cfmgr_health_hooks_metadata_before=$cfmgr_health_log_metadata_file
+	else
+		cfmgr_health_hooks_rc=$?
+		return "$cfmgr_health_hooks_rc"
+	fi
+	cfmgr_health_hooks_all_metadata=1 cfmgr_health_hooks_total_bytes=0 cfmgr_health_hooks_hash_spec=''
+	for cfmgr_health_hooks_id in services-start wan-event dhcpc-event ddns-start post-mount unmount services-stop; do
+		if cfmgr_health_hooks_member_result "$cfmgr_health_hooks_metadata_before" "$cfmgr_health_hooks_id"; then
+			[ "$cfmgr_health_hooks_member_state" = PASS ] || cfmgr_health_hooks_all_metadata=0
+		else
+			cfmgr_health_hooks_rc=$?
+			[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+			cfmgr_health_hooks_all_metadata=0
+		fi
+		[ "$cfmgr_health_hooks_member_state" = PASS ] || continue
+		case $cfmgr_health_hooks_id in
+		services-start) cfmgr_health_hooks_path=/jffs/scripts/services-start ;;
+		wan-event) cfmgr_health_hooks_path=/jffs/scripts/wan-event ;;
+		dhcpc-event) cfmgr_health_hooks_path=/jffs/scripts/dhcpc-event ;;
+		ddns-start) cfmgr_health_hooks_path=/jffs/scripts/ddns-start ;;
+		post-mount) cfmgr_health_hooks_path=/jffs/scripts/post-mount ;;
+		unmount) cfmgr_health_hooks_path=/jffs/scripts/unmount ;;
+		services-stop) cfmgr_health_hooks_path=/jffs/scripts/services-stop ;;
+		esac
+		cfmgr_health_hooks_hash_spec="$cfmgr_health_hooks_hash_spec$cfmgr_health_hooks_id$cfmgr_health_hooks_tab$cfmgr_health_hooks_path
+"
+	done
+	cfmgr_health_hooks_hashes=''
+	if [ -n "$cfmgr_health_hooks_hash_spec" ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ]; then
+		cfmgr_health_log_spec_write "$cfmgr_health_hooks_hash_spec" || return $?
+		cfmgr_health_hooks_hash_input=$cfmgr_health_log_spec_file
+		if cfmgr_health_log_group hashes "$cfmgr_health_hooks_hash_input"; then
+			cfmgr_health_hooks_hashes=$cfmgr_health_log_group_file
+		else
+			cfmgr_health_hooks_rc=$?
+			[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+		fi
+	fi
+	cfmgr_health_hooks_metadata_after=''
+	if cfmgr_health_log_metadata "$cfmgr_health_hooks_spec_file" normal; then
+		cfmgr_health_hooks_metadata_after=$cfmgr_health_log_metadata_file
+	else
+		cfmgr_health_hooks_rc=$?
+		[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+	fi
+	cfmgr_health_hooks_after_complete=1
+	if [ -n "$cfmgr_health_hooks_metadata_after" ]; then
+		for cfmgr_health_hooks_id in services-start wan-event dhcpc-event ddns-start post-mount unmount services-stop; do
+			cfmgr_health_log_member "$cfmgr_health_hooks_metadata_before" "$cfmgr_health_hooks_id"
+			cfmgr_health_hooks_rc=$?
+			[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+			cfmgr_health_hooks_before_rc=$cfmgr_health_hooks_rc
+			cfmgr_health_hooks_before_ok=$cfmgr_health_log_member_ok cfmgr_health_hooks_before_identity=$cfmgr_health_log_member_identity
+			cfmgr_health_log_member "$cfmgr_health_hooks_metadata_after" "$cfmgr_health_hooks_id"
+			cfmgr_health_hooks_rc=$?
+			[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+			[ "$cfmgr_health_hooks_before_rc:$cfmgr_health_hooks_before_ok:$cfmgr_health_log_member_ok:$cfmgr_health_hooks_before_identity" = "0:1:1:$cfmgr_health_log_member_identity" ] || cfmgr_health_hooks_after_complete=0
+		done
+	else cfmgr_health_hooks_after_complete=0; fi
+	cfmgr_health_hooks_all_match=1 cfmgr_health_hooks_match_count=0
+	if [ -n "$cfmgr_health_hooks_metadata_after" ] && [ -n "$cfmgr_health_hooks_hashes" ] &&
+		[ -n "$cfmgr_health_hooks_authority_file" ] && [ "$cfmgr_health_hooks_all_metadata" = 1 ] && [ "$cfmgr_health_hooks_after_complete" = 1 ]; then
+		for cfmgr_health_hooks_id in services-start wan-event dhcpc-event ddns-start post-mount unmount services-stop; do
+			cfmgr_health_hooks_owner_sha=''
+			while IFS=' ' read -r cfmgr_health_hooks_tag cfmgr_health_hooks_owner_id cfmgr_health_hooks_owner_gen cfmgr_health_hooks_owner_value cfmgr_health_hooks_end; do
+				[ "$cfmgr_health_hooks_tag:$cfmgr_health_hooks_owner_id:$cfmgr_health_hooks_end" != "HOOK:$cfmgr_health_hooks_id:END" ] || cfmgr_health_hooks_owner_sha=$cfmgr_health_hooks_owner_value
+			done <"$cfmgr_health_hooks_authority_file"
+			cfmgr_health_log_hash_value "$cfmgr_health_hooks_hashes" "$cfmgr_health_hooks_id"
+			cfmgr_health_hooks_observed_sha=$cfmgr_health_log_hash
+			if [ -z "$cfmgr_health_hooks_owner_sha" ] || [ "$cfmgr_health_hooks_owner_sha" = - ] ||
+				[ -z "$cfmgr_health_hooks_observed_sha" ] || [ "$cfmgr_health_hooks_owner_sha" != "$cfmgr_health_hooks_observed_sha" ]; then
+				cfmgr_health_hooks_all_match=0
+			else cfmgr_health_hooks_match_count=$((cfmgr_health_hooks_match_count + 1)); fi
+		done
+	fi
+	if [ "$cfmgr_health_hooks_all_metadata" = 1 ] && [ "$cfmgr_health_hooks_after_complete" = 1 ]; then
+		cfmgr_health_hooks_files_state=PASS
+		cfmgr_health_hooks_files_detail='All seven fixed hook files had protected metadata before and after observation.'
+	fi
+	if [ "$cfmgr_health_hooks_all_match" = 1 ] && [ "$cfmgr_health_hooks_match_count" = 7 ]; then
+		cfmgr_health_hooks_integrity_state=PASS
+		cfmgr_health_hooks_integrity_detail='All seven fixed hook files matched eligible retained whole-file digests across stable protected metadata.'
+	fi
+}
+
+cfmgr_health_hooks_jobs_observe() {
+	if cfmgr_health_hooks_cron_observe; then
+		while IFS=' ' read -r cfmgr_health_hooks_tag cfmgr_health_hooks_job cfmgr_health_hooks_count cfmgr_health_hooks_sched cfmgr_health_hooks_shell cfmgr_health_hooks_end; do
+			[ "$cfmgr_health_hooks_tag:$cfmgr_health_hooks_end" = JOB:END ] || continue
+			case $cfmgr_health_hooks_count:$cfmgr_health_hooks_sched:$cfmgr_health_hooks_shell in
+			1:exact:admitted) cfmgr_health_hooks_job_state=PASS ;;
+			1:mismatch:*) cfmgr_health_hooks_job_state=WARN ;;
+			*:ambiguous:*) cfmgr_health_hooks_job_state=WARN ;;
+			*) cfmgr_health_hooks_job_state=UNKNOWN ;;
+			esac
+			case $cfmgr_health_hooks_job in watchdog) cfmgr_health_hooks_cron_state=$cfmgr_health_hooks_job_state ;; cloud-update) cfmgr_health_hooks_update_state=$cfmgr_health_hooks_job_state ;; esac
+		done <"$cfmgr_health_hooks_jobs"
+	else
+		cfmgr_health_hooks_rc=$?
+		[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+	fi
+	case $cfmgr_health_hooks_cron_state in
+	PASS) cfmgr_health_hooks_watchdog_detail='One watchdog label had the expected fixed schedule and explicit /bin/sh setting.' ;;
+	WARN) cfmgr_health_hooks_watchdog_detail='The observed watchdog label was duplicated or had a mismatched schedule.' ;;
+	*) cfmgr_health_hooks_watchdog_detail='The watchdog label, schedule, shell, or CROND receipt could not be established.' ;;
+	esac
+	case $cfmgr_health_hooks_update_state in
+	PASS) cfmgr_health_hooks_update_detail='One update label had the expected fixed schedule and explicit /bin/sh setting.' ;;
+	WARN) cfmgr_health_hooks_update_detail='The observed update label was duplicated or had a mismatched schedule.' ;;
+	*) cfmgr_health_hooks_update_detail='The update label, schedule, shell, or CROND receipt could not be established.' ;;
+	esac
+}
+
+cfmgr_health_hooks_collect() {
+	# Ordinary observation failure is contained to its group; status 3 means the
+	# shared supervisor became unresolved and must abort the enclosing report.
+	cfmgr_health_hooks_cron_state=UNKNOWN cfmgr_health_hooks_update_state=UNKNOWN
+	cfmgr_health_hooks_files_state=UNKNOWN cfmgr_health_hooks_integrity_state=UNKNOWN
+	cfmgr_health_hooks_dispatch_state=UNKNOWN
+	cfmgr_health_hooks_files_detail='The seven fixed hook files were not all observed under protected metadata.'
+	cfmgr_health_hooks_integrity_detail='Whole-file hash comparisons were unavailable or inconclusive.'
+	cfmgr_health_hooks_watchdog_detail='The watchdog label, schedule, shell, or CROND receipt could not be established.'
+	cfmgr_health_hooks_update_detail='The update label, schedule, shell, or CROND receipt could not be established.'
+	cfmgr_health_hooks_authority_file=''
+	if [ "${cfmgr_health_config:-unavailable}" != unavailable ]; then
+		if cfmgr_health_run health-hooks-authority /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" \
+			"$cfmgr_source/modules/status.sh" "$cfmgr_health_config" "$cfmgr_health_config_bytes"; then
+			if [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
+				cfmgr_health_hooks_authority_raw=$cfmgr_probe_stdout
+				if cfmgr_health_hooks_authority_validate "$cfmgr_health_hooks_authority_raw"; then
+					:
+				else
+					cfmgr_health_hooks_rc=$?
+					[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+				fi
+			fi
+		else
+			cfmgr_health_hooks_rc=$?
+			[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+		fi
+	fi
+	if cfmgr_health_hooks_files_observe; then
+		:
+	else
+		cfmgr_health_hooks_rc=$?
+		[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+	fi
+	if cfmgr_health_hooks_jobs_observe; then
+		:
+	else
+		cfmgr_health_hooks_rc=$?
+		[ "$cfmgr_health_hooks_rc" != 3 ] || return 3
+	fi
+	cfmgr_health_row hooks.files "$cfmgr_health_hooks_files_state" "$cfmgr_health_hooks_files_detail" current 'No hook was executed.' hooks || return $?
+	cfmgr_health_row hooks.integrity "$cfmgr_health_hooks_integrity_state" "$cfmgr_health_hooks_integrity_detail" retained 'Whole-file digest comparison does not prove managed-block integrity.' hooks || return $?
+	cfmgr_health_row hooks.watchdog "$cfmgr_health_hooks_cron_state" "$cfmgr_health_hooks_watchdog_detail" current 'Schedule evidence does not prove dispatch or lifecycle authority.' hooks || return $?
+	cfmgr_health_row hooks.cloud-update "$cfmgr_health_hooks_update_state" "$cfmgr_health_hooks_update_detail" current 'Schedule evidence does not prove dispatch or lifecycle authority.' hooks || return $?
+	cfmgr_health_row hooks.dispatch UNKNOWN 'Fixed hook producers have not been implemented or verified.' current 'Review producer integration separately; no hook was sourced or executed.' hooks
+}
+
+cfmgr_status_awk_health_flat() {
+	# CFMGR-AWK-BEGIN health_flat
+	cfmgr_awk_program='
+function hf_bad() {bad=1}
+BEGIN {
+    input=ARGV[1];bytes=ARGV[2];lf=ARGV[3];complete=ARGV[4];ARGC=1
+    if(bytes!~/^(0|[1-9][0-9]*)$/ || bytes>32768 || lf!~/^(0|[1-9][0-9]*)$/ || lf>1024 || complete!~/^[01]$/)exit 1
+    guards["entry.stage"]=1;guards[".setup.complete"]=1;guards[".storage-observation"]=1
+    guards[".config-save.preparing"]=1;guards[".config-save"]=1;guards[".config-save.retired"]=1
+    total=rows=0
+    while((rc=getline line < input)>0) {
+        total+=length(line)+1;rows++
+        if(total>32768 || rows>1024) {hf_bad();break}
+        if(line in guards)present=1
+        if(line=="" || line~/[^ -~]/ || index(line,"/") || line=="." || line==".." || seen[line]++)hf_bad()
+    }
+    if(rc<0 || close(input)!=0 || total!=bytes || rows!=lf || !complete)hf_bad()
+    print "CFMGR-GUARDS 1 " (present?"WARN":(bad?"UNKNOWN":"PASS")) " END"
+    exit
+}
+'
+	# CFMGR-AWK-END health_flat
+}
+
+cfmgr_status_awk_health_package() {
+	# CFMGR-AWK-BEGIN health_package
+	cfmgr_awk_program='
+function pi_fail() {exit 1}
+function pi_read(path,limit,    saved,raw,extra,rc) {
+    saved=RS;RS="\034";rc=getline raw < path
+    if(rc<0 || length(raw)>limit || raw~/[^ -~\t\n]/ || (raw!="" && substr(raw,length(raw),1)!="\n") || (getline extra < path)!=0)pi_fail()
+    if(close(path)!=0)pi_fail();RS=saved;return raw
+}
+function pi_private(name) {
+    if(name=="" || length(name)>128 || name~/[^A-Za-z0-9._-]/ || index(name,".."))pi_fail()
+    return context "/" name
+}
+function pi_fixed(    ids,paths,n,i) {
+    n=split("entry catalog backup manager status helpers-empty worker hooks-empty lib-empty config execution network package storage",ids," ")
+    split("cfmgr.sh catalog.txt modules/backup.sh modules/manager.sh modules/status.sh modules/helpers/.gitkeep modules/helpers/worker.sh modules/hooks/.gitkeep modules/lib/.gitkeep modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh",paths," ")
+    for(i=1;i<=n;i++) {fixed[paths[i]]=ids[i];byrole[ids[i]]=paths[i];order[i]=ids[i]}
+    dirs["modules"]="d0";dirs["modules/lib"]="d1";dirs["modules/helpers"]="d2";dirs["modules/hooks"]="d3"
+}
+function pi_metadata(path,side,    raw,lines,n,i,f,c,r) {
+    raw=pi_read(path,65536);n=split(raw,lines,"\n")
+    if(n!=20)pi_fail()
+    for(i=1;i<n;i++) {
+        c=split(lines[i],f,"\t");r=f[2]
+        if(c!=7 || f[1]!="MEMBER" || (!(r in byrole) && r!="manifest" && r!~/^d[0-3]$/) || metaseen[side,r]++ || f[3]!~/^[01]$/)pi_fail()
+        meta[side,r]=lines[i];okay[side,r]=f[3];size[side,r]=f[5];mode[side,r]=f[6]
+    }
+}
+function pi_descendant(path,    j) {
+    for(j=1;j<=pk_count;j++)if(index(pk_paths[j],path "/")==1)return 1
+    return 0
+}
+function pi_checked(role,limit,    raw,n) {
+    if(!(role in sources) || !(role in countbytes))pi_fail()
+    raw=pi_read(sources[role],limit);n=split(raw,pi_lines,"\n")-1
+    if(length(raw)!=countbytes[role] || n!=countlf[role])pi_fail()
+    return raw
+}
+BEGIN {
+    context=ARGV[1];input=ARGV[2];ARGC=1
+    pi_fixed();raw=pi_read(input,8192);n=split(raw,lines,"\n")
+    if(n>40 || n<20 || lines[n-1]!="END")pi_fail()
+    if(split(lines[1],a,"\t")!=4 || a[1]!="CFMGR-PACKAGE" || a[2]!="1" || a[3]!~/^[0-9A-Za-z._-]+$/ || a[4]!="verified:verified:verified:verified")pi_fail()
+    version=a[3]
+    for(i=2;i<n-1;i++) {
+        c=split(lines[i],a,"\t")
+        if(a[1]=="ORIGINAL") {
+            if(c!=5 || !(a[5] in fixed) || a[5]~/[.]gitkeep$/ || original[a[5]]++)pi_fail()
+            omode[a[5]]=a[2];obytes[a[5]]=a[3];osha[a[5]]=a[4];original_count++
+        } else if(a[1]=="SOURCE") {
+            if(c!=3 || a[2]!~/^(manifest|catalog|d0|d1|d2|d3)$/ || a[2] in sources)pi_fail()
+            sources[a[2]]=pi_private(a[3]);source_count++
+        } else {
+            if(c!=2 || a[1]!~/^(COUNTS|BEFORE|AFTER|HASHES)$/ || a[1] in receipt)pi_fail()
+            receipt[a[1]]=pi_private(a[2]);receipt_count++
+        }
+    }
+    if(original_count!=11 || source_count!=6 || receipt_count!=4)pi_fail()
+    raw=pi_read(receipt["COUNTS"],8192);n=split(raw,lines,"\n")
+    if(n!=7)pi_fail()
+    for(i=1;i<n;i++) {
+        if(split(lines[i],a,"\t")!=4 || a[1]!="COUNT" || !(a[2] in sources) || a[2] in countbytes || a[3]!~/^(0|[1-9][0-9]*)$/ || a[4]!~/^(0|[1-9][0-9]*)$/ || a[3]>131072 || a[4]>1024)pi_fail()
+        countbytes[a[2]]=a[3];countlf[a[2]]=a[4]
+    }
+    raw=pi_checked("manifest",131072)
+    if(!pk_manifest(sources["manifest"],version))pi_fail()
+    raw=pi_checked("catalog",131072)
+    if(!pk_catalog(sources["catalog"],version))pi_fail()
+    for(p in original)if(pk_mode[p]!=omode[p] || pk_bytes[p]!=obytes[p] || pk_sha[p]!=osha[p])pi_fail()
+    # New manifest records remain passive: do not import, recurse or claim their
+    # content validated. Fixed empty placeholders are required and separately checked.
+    extension=0
+    for(i=1;i<=pk_count;i++) {
+        p=pk_paths[i]
+        if(!(p in fixed))extension=1
+    }
+    pi_metadata(receipt["BEFORE"],"before");pi_metadata(receipt["AFTER"],"after")
+    for(r in byrole) {
+        p=byrole[r]
+        if(!pk_seen[p] || okay["before",r]!=1 || okay["after",r]!=1 || meta["before",r]!=meta["after",r])pi_fail()
+        expected=(r=="entry" || r=="worker"?"-rwxr-xr-x":"-rw-r--r--")
+        if(mode["after",r]!=expected || size["after",r]!=pk_bytes[p] || pk_mode[p]!=(expected=="-rwxr-xr-x"?"0755":"0644"))pi_fail()
+        if(r~/empty$/ && (pk_bytes[p]!="0" || pk_sha[p]!="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"))pi_fail()
+    }
+    if(okay["before","manifest"]!=1 || meta["before","manifest"]!=meta["after","manifest"] || size["after","manifest"]!=countbytes["manifest"] || size["after","catalog"]!=countbytes["catalog"])pi_fail()
+    for(d in dirs) {
+        r=dirs[d]
+        if(okay["before",r]!=1 || meta["before",r]!=meta["after",r])pi_fail()
+        raw=pi_checked(r,32768);n=split(raw,lines,"\n")
+        for(i=1;i<n;i++) {
+            name=lines[i];p=d "/" name
+            if(name=="" || index(name,"/") || name=="." || name==".." || observed[p]++)pi_fail()
+            if(name~/[^A-Za-z0-9_.-]/)unexpected=1
+            if(!(p in pk_seen) && !(p in dirs) && !pi_descendant(p))unexpected=1
+        }
+    }
+    for(p in fixed)if(p~/^modules\// && !(p in observed))pi_fail()
+    for(d in dirs)if(d!="modules" && !(d in observed))pi_fail()
+    raw=pi_read(receipt["HASHES"],1024);n=split(raw,lines,"\n")
+    if(n!=3)pi_fail()
+    for(i=1;i<n;i++) {
+        if(split(lines[i],a,"\t")!=3 || a[1]!="HASH" || a[2]!~/^(entry|catalog)$/ || hashes[a[2]]++ || a[3]!=pk_sha[byrole[a[2]]])pi_fail()
+    }
+    print "CFMGR-PACKAGE 1 " (unexpected?"FAIL":(extension?"UNKNOWN":"PASS")) " END"
+    exit
+}
+'
+	# CFMGR-AWK-END health_package
+}
+
+# A fixed flat native listing is supervised and output/memory bounded. The child
+# pins its directory before exec; callers compare protected attachment afterwards.
+cfmgr_health_flat_list() {
+	cfmgr_health_flat_path=$1 cfmgr_health_flat_complete=0
+	cfmgr_health_run health-flat-list /bin/ls "$1" || return $?
+	cfmgr_health_flat_file=$cfmgr_probe_stdout
+	if [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then cfmgr_health_flat_complete=1; fi
+}
+
+cfmgr_health_recovery_collect() {
+	cfmgr_health_recovery_state=UNKNOWN
+	# Preserve positive basic observations even when a later directory read fails.
+	case ${cfmgr_status_storage_observation:-0}:${cfmgr_status_save_pending:-0} in 0:0) ;; *) cfmgr_health_recovery_state=WARN ;; esac
+	if _cfmgr_health_recovery_collect; then :; else [ "$?" != 3 ] || return 3; fi
+	case $cfmgr_health_recovery_state in
+	PASS) cfmgr_health_recovery_detail='A complete bounded listing of the unchanged protected support root contained none of the six known launch guards.' ;;
+	WARN) cfmgr_health_recovery_detail='A known retained launch guard was observed; its contents and recovery action were not evaluated.' ;;
+	*) cfmgr_health_recovery_detail='The bounded support-root observation could not establish absence of retained launch guards.' ;;
+	esac
+	cfmgr_health_row recovery.guards "$cfmgr_health_recovery_state" "$cfmgr_health_recovery_detail" current 'Use explicit recovery when required; health makes no recovery changes.' recovery
+}
+
+_cfmgr_health_recovery_collect() {
+	cfmgr_health_log_spec_write "root	$cfmgr_source	directory	metadata
+" || return $?
+	cfmgr_health_recovery_spec=$cfmgr_health_log_spec_file
+	cfmgr_health_log_metadata "$cfmgr_health_recovery_spec" normal || return $?
+	cfmgr_health_log_member "$cfmgr_health_log_metadata_file" root || return $?
+	[ "$cfmgr_health_log_member_ok" = 1 ] || return 1
+	cfmgr_health_recovery_before=$cfmgr_health_log_member_identity
+	cfmgr_health_flat_list "$cfmgr_source" || return $?
+	cfmgr_health_recovery_file=$cfmgr_health_flat_file cfmgr_health_recovery_complete=$cfmgr_health_flat_complete
+	cfmgr_health_log_spec_write "root	$cfmgr_health_recovery_file
+" || return $?
+	cfmgr_health_log_group counts "$cfmgr_health_log_spec_file" || return $?
+	IFS='	' read -r cfmgr_health_flat_tag cfmgr_health_flat_role cfmgr_health_flat_bytes cfmgr_health_flat_lf <"$cfmgr_health_log_group_file" || return 1
+	[ "$cfmgr_health_flat_tag:$cfmgr_health_flat_role" = COUNT:root ] || return 1
+	cfmgr_health_run health-flat-check /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_health_recovery_file" "$cfmgr_health_flat_bytes" "$cfmgr_health_flat_lf" "$cfmgr_health_recovery_complete" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	IFS=' ' read -r cfmgr_health_flat_tag cfmgr_health_flat_version cfmgr_health_flat_state cfmgr_health_flat_end cfmgr_health_flat_extra <"$cfmgr_probe_stdout" || return 1
+	[ "$cfmgr_health_flat_tag:$cfmgr_health_flat_version:$cfmgr_health_flat_end:$cfmgr_health_flat_extra" = CFMGR-GUARDS:1:END: ] || return 1
+	case $cfmgr_health_flat_state in WARN) cfmgr_health_recovery_state=WARN ;; PASS | UNKNOWN) ;; *) return 1 ;; esac
+	cfmgr_health_log_metadata "$cfmgr_health_recovery_spec" normal || return $?
+	cfmgr_health_log_member "$cfmgr_health_log_metadata_file" root || return $?
+	[ "$cfmgr_health_log_member_ok:$cfmgr_health_log_member_identity" = "1:$cfmgr_health_recovery_before" ] || return 1
+	[ "$cfmgr_health_recovery_state" = WARN ] || cfmgr_health_recovery_state=$cfmgr_health_flat_state
+}
+
+cfmgr_health_package_collect() {
+	cfmgr_health_package_state=UNKNOWN
+	if _cfmgr_health_package_collect; then :; else [ "$?" != 3 ] || return 3; fi
+	case $cfmgr_health_package_state in
+	PASS) cfmgr_health_package_detail='Complete grammar and fixed flat inventory match the earlier entry-verified generation, with current installed-entry/catalog hashes and stable protected metadata. This is a sequence of observations, not an atomic rehash of all code.' ;;
+	FAIL) cfmgr_health_package_detail='The completed inspected module-directory inventory contained an object absent from the manifest.' ;;
+	*) cfmgr_health_package_detail='Complete package agreement was not established; missing prerequisites, changed metadata or uninspected passive extensions remain possible.' ;;
+	esac
+	cfmgr_health_row package.inventory "$cfmgr_health_package_state" "$cfmgr_health_package_detail" current 'Use explicit complete-package verification or recovery; health imports no extra files.' package
+}
+
+_cfmgr_health_package_collect() {
+	[ "${cfmgr_health_package:-missing}:${cfmgr_health_catalog:-missing}:${cfmgr_health_backup:-missing}:${cfmgr_health_manager:-missing}" = verified:verified:verified:verified ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ] || return 1
+	cfmgr_health_package_spec='' cfmgr_health_package_index="CFMGR-PACKAGE	1	$CFMGR_VERSION	verified:verified:verified:verified
+"
+	while IFS='	' read -r cfmgr_health_package_mode cfmgr_health_package_bytes cfmgr_health_package_sha cfmgr_health_package_path; do
+		cfmgr_health_package_index="$cfmgr_health_package_index""ORIGINAL	$cfmgr_health_package_mode	$cfmgr_health_package_bytes	$cfmgr_health_package_sha	$cfmgr_health_package_path
+"
+	done <<EOF_PACKAGE_ORIGINAL
+$cfmgr_health_records
+EOF_PACKAGE_ORIGINAL
+	while IFS=' ' read -r cfmgr_health_package_role cfmgr_health_package_relative; do
+		cfmgr_health_package_profile=public
+		case $cfmgr_health_package_role in
+		entry) cfmgr_health_package_path=/jffs/scripts/cfmgr.sh ;;
+		d0 | d1 | d2 | d3) cfmgr_health_package_path=$cfmgr_source/$cfmgr_health_package_relative cfmgr_health_package_profile=directory ;;
+		*) cfmgr_health_package_path=$cfmgr_source/$cfmgr_health_package_relative ;;
+		esac
+		cfmgr_health_package_spec="$cfmgr_health_package_spec$cfmgr_health_package_role	$cfmgr_health_package_path	$cfmgr_health_package_profile	metadata
+"
+	done <<'EOF_PACKAGE_FIXED'
+entry cfmgr.sh
+catalog catalog.txt
+backup modules/backup.sh
+manager modules/manager.sh
+status modules/status.sh
+helpers-empty modules/helpers/.gitkeep
+worker modules/helpers/worker.sh
+hooks-empty modules/hooks/.gitkeep
+lib-empty modules/lib/.gitkeep
+config modules/lib/config.sh
+execution modules/lib/execution.sh
+network modules/lib/network.sh
+package modules/lib/package.sh
+storage modules/lib/storage.sh
+manifest manifest.txt
+d0 modules
+d1 modules/lib
+d2 modules/helpers
+d3 modules/hooks
+EOF_PACKAGE_FIXED
+	cfmgr_health_log_spec_write "$cfmgr_health_package_spec" || return $?
+	cfmgr_health_package_spec_file=$cfmgr_health_log_spec_file
+	cfmgr_health_log_metadata "$cfmgr_health_package_spec_file" normal || return $?
+	cfmgr_health_package_before=$cfmgr_health_log_metadata_file
+	# Never open an unprotected or nonregular input. Metadata also bounds copying.
+	cfmgr_health_package_counts=''
+	for cfmgr_health_package_role in manifest catalog; do
+		cfmgr_health_log_member "$cfmgr_health_package_before" "$cfmgr_health_package_role" || return $?
+		[ "$cfmgr_health_log_member_ok" = 1 ] && [ "$cfmgr_health_log_member_bytes" -gt 0 ] && [ "$cfmgr_health_log_member_bytes" -le 131072 ] || return 1
+		cfmgr_health_selected_limit=$(((cfmgr_health_log_member_bytes + 4095) / 4096 * 8 + 8))
+		cfmgr_health_run health-selected-copy /bin/dd "$cfmgr_source/$cfmgr_health_package_role.txt" "$cfmgr_health_log_member_bytes" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		cfmgr_health_package_index="$cfmgr_health_package_index""SOURCE	$cfmgr_health_package_role	${cfmgr_probe_stdout##*/}
+"
+		cfmgr_health_package_counts="$cfmgr_health_package_counts$cfmgr_health_package_role	$cfmgr_probe_stdout
+"
+	done
+	for cfmgr_health_package_role in d0 d1 d2 d3; do
+		cfmgr_health_log_member "$cfmgr_health_package_before" "$cfmgr_health_package_role" || return $?
+		[ "$cfmgr_health_log_member_ok" = 1 ] || return 1
+		case $cfmgr_health_package_role in d0) cfmgr_health_package_dir=modules ;; d1) cfmgr_health_package_dir=modules/lib ;; d2) cfmgr_health_package_dir=modules/helpers ;; d3) cfmgr_health_package_dir=modules/hooks ;; esac
+		cfmgr_health_flat_list "$cfmgr_source/$cfmgr_health_package_dir" || return $?
+		[ "$cfmgr_health_flat_complete" = 1 ] || return 1
+		cfmgr_health_package_index="$cfmgr_health_package_index""SOURCE	$cfmgr_health_package_role	${cfmgr_health_flat_file##*/}
+"
+		cfmgr_health_package_counts="$cfmgr_health_package_counts$cfmgr_health_package_role	$cfmgr_health_flat_file
+"
+	done
+	cfmgr_health_log_spec_write "$cfmgr_health_package_counts" || return $?
+	cfmgr_health_log_group counts "$cfmgr_health_log_spec_file" || return $?
+	cfmgr_health_package_index="$cfmgr_health_package_index""COUNTS	${cfmgr_health_log_group_file##*/}
+BEFORE	${cfmgr_health_package_before##*/}
+"
+	# Installed entry is independent of a trusted standalone entry copy.
+	cfmgr_health_log_member "$cfmgr_health_package_before" entry || return $?
+	[ "$cfmgr_health_log_member_ok" = 1 ] && [ "$cfmgr_health_log_member_bytes" -le 1048576 ] || return 1
+	cfmgr_health_log_spec_write "entry	/jffs/scripts/cfmgr.sh
+catalog	$cfmgr_source/catalog.txt
+" || return $?
+	cfmgr_health_log_group hashes "$cfmgr_health_log_spec_file" || return $?
+	cfmgr_health_package_index="$cfmgr_health_package_index""HASHES	${cfmgr_health_log_group_file##*/}
+"
+	cfmgr_health_log_metadata "$cfmgr_health_package_spec_file" normal || return $?
+	cfmgr_health_package_index="$cfmgr_health_package_index""AFTER	${cfmgr_health_log_metadata_file##*/}
+END
+"
+	[ "${#cfmgr_health_package_index}" -le 8192 ] || return 1
+	cfmgr_health_log_spec_write "$cfmgr_health_package_index" || return $?
+	cfmgr_health_run health-package-check /usr/bin/awk "$cfmgr_source/modules/lib/package.sh" "$cfmgr_source/modules/status.sh" "$cfmgr_health_log_spec_file" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	IFS=' ' read -r cfmgr_health_package_tag cfmgr_health_package_version cfmgr_health_package_result cfmgr_health_package_end cfmgr_health_package_extra <"$cfmgr_probe_stdout" || return 1
+	[ "$cfmgr_health_package_tag:$cfmgr_health_package_version:$cfmgr_health_package_end:$cfmgr_health_package_extra" = CFMGR-PACKAGE:1:END: ] || return 1
+	case $cfmgr_health_package_result in PASS | FAIL | UNKNOWN) cfmgr_health_package_state=$cfmgr_health_package_result ;; *) return 1 ;; esac
 }

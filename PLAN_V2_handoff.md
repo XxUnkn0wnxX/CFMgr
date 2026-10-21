@@ -545,6 +545,114 @@ perform read-only preparation against the reviewed contracts while this runs;
 it has no write release until parent verifies the required result. Parent retains
 runtime/test ownership meanwhile. `health_logging` is assigned only that read-only
 preparation; the earlier awaiter has completed and no required CI job is active.
+The arithmetic repair is published and remote-verified at
+**`48b7ddca6415d9e546c5b6002c24c01ff2fc4bbc`**. Its premature Checks
+39565203926 is terminal cancelled without children. Native focused
+[Dev 39565215826](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39565215826)
+passed all nine cases in **0.45s** (0.60s wall, 0.55s user, 0.04s system).
+Complete eight-module [Dev 39565294746](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39565294746)
+is running at that exact candidate; `health_ci_wait` polls only that run.
+`health_logging` finished its read-only preparation with no blocker and remains
+without write release until parent verifies this complete affected gate.
+Dev 39565294746 is now verified **successful at the exact `48b7ddc` candidate**:
+all **388 tests passed in 140.02s** (140.23s wall, 75.04s user, 55.40s system),
+with no test skips. Total job time including setup was about 2m36s. The slowest
+existing archive verification case took 29.12s; the new Cloud real-worker journey
+took 4.21s. This cost is acceptable for the eight-module gate and needs no
+additional timing run. The awaiter is finished.
+
+Parent now releases `health_logging` to implement the reviewed logging and shared
+cron/process observer package, with exclusive ownership of `modules/status.sh`,
+`modules/helpers/worker.sh`, `modules/lib/execution.sh`, necessary narrow pure
+interfaces in `modules/backup.sh`, `tests/test_status.py`, `tests/runtime_awk.py`
+and necessary logging adapter cases in `tests/test_archive_history.py`.
+No caps, requirements, manifest, V2 records or publication belong to that worker.
+The independent `health_journey` owner receives `tests/entry_package_fixture.py`
+and `tests/test_entry_package.py` for the final production-shaped Linux integration
+fixture, retaining real supervision/clock/FDs and explicitly adapted firmware
+facts. That owner may build the fixture now but must wait for logging and the
+remaining collectors before final normal-group assertions and CI execution.
+These write sets are disjoint. Parent integrates/reviews the logging
+package before touching its files or advancing dependent package/backup/hooks
+observers. Heavy execution remains CI-only; small local checks stay serial.
+While these two owners work, parent prepares the already-reviewed Backup
+observation implementation only in ignored `.tmp/health-integrations/`.
+Its inputs are the stable retained config snapshot, existing native mount/blkid
+workers and extracted Backup UUID parser; it has no logging dependency and
+does not touch any worker-owned file. Integration into existing owners and
+written-test validation remain serial after their release. This is a bounded
+draft within the active checkpoint, with no runtime or acceptance credit.
+That Backup draft is written and received a read-only **PASS WITH NOTES**;
+fixed dispatcher/owned-input gates, quotas and lean consumer tests remain before
+integration. Its exact integration contract is beside the ignored draft. The
+final combined full-health test is being drafted in the entry owner's file to
+preserve exclusive writes; after both owners release, parent will place that one
+test in `tests/test_status.py`, its consuming module, and retain the shared
+fixture builder in `tests/entry_package_fixture.py`. No new test/core group is
+introduced. Manager's existing entry-admission proof remains intact.
+`health_journey` has released both fixture files after Python compile/Ruff
+lint/format checks; no journey or pytest execution occurred. Parent owns them
+again. The next independent bounded owner, `health_package_parser`, receives
+only `modules/lib/package.sh` and `tests/test_entry_package.py` to expose the
+existing native manifest/catalog grammar as reusable pure AWK functions and
+retain normal-launch verification semantics. The new full-health controller
+will bind those parsed records to original entry tuples; no separate relaxed
+manifest grammar is permitted. This owner preserves the existing new journey
+draft and does not touch Status/worker/execution or any V2 record. Focused parser
+checks are small and serial; complete affected proof remains CI.
+
+Logging has released its files. Its actual-worker fixture reserves 2,553,856 bytes
+at 89 operations and 198 files after proportionate output allowances (previously
+5,851,136 bytes). Cron/process inputs remain adapted in that small host case;
+full native consumer proof remains pending. The focused logging/legacy/quota set
+passed 16 cases in 15.44s (16.08s wall, 8.55s user, 3.63s system). Subsequent exact
+tab-index/owned-PID fixes passed six cases in 1.02s and three in 1.66s; final
+PID-frame consumers passed two in 0.91s and a truncated-frame case in 0.48s.
+An inappropriate broad local ShellCheck attempt was cancelled after 79 seconds
+during Backup and is not a pass; no further broad local analyzer is authorized.
+The package parser is also released: its conventional pure getter and selected
+platform AWK passed nine direct cases in 0.37s, plus scoped statics. Parent review
+confirmed the original manifest/catalog semantics and no source-time subprocess.
+Parent now releases `health_observers` to own Status/worker/execution and their
+Status/parser tests for package inventory, recovery guards and the reviewed
+Backup draft. Both predecessor interfaces are released. Parent retains the shared
+Linux fixture/test-entry file, Backup source, all V2 records, manifest, integration
+and publication. No overlapping writes or heavy local tests are permitted. These
+observers retain all current caps until the complete ledger is reviewed.
+The prepared strong observer owner and independent Sol reviewer subsequently
+failed with model-capacity errors. Filesystem reconciliation found the observer
+had integrated the Backup draft/dispatch before the error; no Backup tests were
+written or run. Parent preserves and reviews those edits. The owner is confirmed
+inactive and neither failed agent owns files now. Parent resumes shared-file
+ownership and completes the already-reviewed Backup integration. A normal worker
+`health_package_observer` receives only ignored package/recovery implementation
+and test drafts, using the settled pure-parser/metadata contracts. The hooks
+worker remains confined to its separate ignored drafts. This temporary third
+package is safe because all interfaces are settled and parent alone integrates
+tracked files; no competing shared-file writer exists. Parent performs the
+logging review directly; failed reviewer routing is not an audit result.
+Parent rejected the normal worker's package/recovery draft for incomplete
+interfaces and incorrect metadata/mode assumptions. It is preserved as private
+reference only, not integrated; that worker is stopped. Parent owns the complete
+package/recovery implementation. On the user's report of AWK crash dialogs,
+parent stopped local behavior testing and inspected macOS DiagnosticReports.
+Three Apple `/usr/bin/awk` 27.40.1 SIGSEGV reports at 19:36:12, 19:36:21 and
+19:36:26 match the draft worker's failed local smoke invocations (returned -11;
+individual PID-to-command mapping was not retained). Its draft reused one
+variable as both a split array and a loop index. These failed checks were not
+passing validation and the draft is not shipping code. Process inspection found
+no remaining AWK/pytest/ShellCheck processes. **All further AWK/behavior execution
+for this checkpoint goes to CI**, including focused parser checks; only light
+nonexecuting statics remain local. Raw crash reports stay private and untouched.
+The hooks draft's last local run had five passes and one observer-adapter failure;
+it is not a passing package. That worker may finish code/static corrections only,
+then parent integrates and obtains native CI proof.
+`health_hooks` receives only ignored `.tmp/health-integrations/hooks-observer.sh`
+and `.tmp/health-integrations/hooks-tests.txt` to draft fixed hook metadata and
+safe labelled scheduler observations against the shared logging receipts. It
+owns no tracked file; parent reviews/integrates its draft after the shared owner
+releases. No lifecycle, arbitrary hook execution, raw command output or new
+ownership contract is introduced.
 
 The independent remaining-observer audit is PASS WITH NOTES, accepted by parent.
 It preserves the same S03.09/S03.10 scope. Bind package inventory to original
@@ -4674,3 +4782,32 @@ checkout without resetting current work. Keep the bundle, `.old/PLAN.md`, ignore
 references and unrelated detached-worktree metadata. Historical reset/main receipts:
 `.tmp/salvage-history-receipt.txt`, `.tmp/main-removal-receipt.txt`. Those permissions
 are spent; no new reset/deletion is authorized by this record.
+
+Current integration ownership (supersedes released drafts above): parent owns
+all runtime files and the package/recovery implementation. `health_test_integration`
+receives only the four existing test files (`test_status.py`, `test_entry_package.py`,
+`entry_package_fixture.py`, `runtime_awk.py`) to integrate released hook cases,
+review the new Backup fixtures against schema and move the full normal journey to
+Status. Only source edits and nonexecuting statics are allowed locally; every
+behavior/AWK check waits for CI. Parent will add package cases after that owner
+releases. Hooks draft ownership is released, with its previously failed observer
+case still awaiting CI proof.
+Parent package/recovery draft is now concrete in ignored
+`.tmp/health-integrations/package-parent.sh`. It reuses complete package grammar,
+original private tuples, grouped native metadata/count/hash receipts and four
+bounded flat module listings. Recovery has an independent protected support-root
+listing and retains positive guard evidence on later failure. A read-only Astra
+audit reviews this exact draft before runtime integration; tests remain CI-only.
+
+The independent package/recovery audit completed **PASS WITH NOTES**; parent
+resolved its printable-name classification finding, added nested passive-prefix
+and guard-retention cases, and integrated the exact reviewed bodies/dispatch.
+All remaining observer placeholders are replaced. Local source-only checks passed:
+Ruff lint/format, Python compile, shell syntax, shfmt, deterministic package
+regeneration/check, planning/privacy/link consistency and whitespace. No further
+AWK, test harness or shell behavior has executed on macOS. All new observers and
+the full normal journey remain unverified until native CI. The first diagnostic
+push keeps current 248/560 collection caps unchanged to expose measured limits;
+complete normal resource proof is still required before choosing final caps.
+Next: two disjoint same-SHA Dev selections (focused observer cases and full normal
+journey), repair measured failures, then complete affected modules and final core.

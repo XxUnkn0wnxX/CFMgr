@@ -157,6 +157,22 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	health-flat-list) [ "$#" -eq 10 ] || return 2 ;;
+	health-flat-check) [ "$#" -eq 14 ] || return 2 ;;
+	health-package-check) [ "$#" -eq 12 ] || return 2 ;;
+	health-hooks-authority | health-hooks-frame) [ "$#" -eq 13 ] || return 2 ;;
+	health-hooks-cron) [ "$#" -eq 15 ] || return 2 ;;
+	health-backup-plan) [ "$#" -eq 15 ] || return 2 ;;
+	health-backup-observe) [ "$#" -eq 14 ] || return 2 ;;
+	health-backup-uuid) [ "$#" -eq 13 ] || return 2 ;;
+	health-log-authority | health-log-inspect | health-log-process | health-log-assess) [ "$#" -eq 14 ] || return 2 ;;
+	health-log-includes) [ "$#" -eq 13 ] || return 2 ;;
+	health-log-bundle) [ "$#" -eq 12 ] || return 2 ;;
+	health-log-base | health-log-path | health-log-script | health-log-cron) [ "$#" -eq 11 ] || return 2 ;;
+	health-log-argv) [ "$#" -eq 13 ] || return 2 ;;
+	health-log-metadata | health-log-hash | health-log-count) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
+	health-log-pids | health-log-link | health-log-proc-meta | health-log-hex) [ "$#" -eq 10 ] || return 2 ;;
+	health-log-version | health-log-syntax | health-log-debug | health-log-account) [ "$#" -eq 9 ] || return 2 ;;
 	health-compare) [ "$#" -eq 11 ] || return 2 ;;
 	health-cloud-frame) [ "$#" -eq 12 ] || return 2 ;;
 	health-selected-metadata) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;

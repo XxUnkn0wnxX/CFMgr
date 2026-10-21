@@ -6285,22 +6285,18 @@ BEGIN {
 	# CFMGR-AWK-END backup_payload_match
 }
 
-cfmgr_backup_awk_backup_history() {
-	# CFMGR-AWK-BEGIN backup_history
+cfmgr_backup_awk_backup_history_policy() {
+	# CFMGR-AWK-BEGIN backup_history_policy
 	cfmgr_awk_program='
-# Read-only archive history supported-profile parser. Fixed modes are selected
-# by CFMGR_HISTORY_MODE; data never supplies AWK code or output paths. Policy
-# mode follows config JSON getter tree admission; other modes consume bounded snapshots.
-
 function hh_fail(reason) {
 	if (!hh_bad) print "CFMGR-HISTORY-ERROR 1 " reason " END"
 	hh_bad=1; exit 1
 }
-function hh_trim(s) { sub(/^[ \t]+/,"",s); sub(/[ \t]+$/,"",s); return s }
 function hh_hex(s,    i,out) {
 	out=""; for(i=1;i<=length(s);i++) out=out sprintf("%02x",hh_ord[substr(s,i,1)])
 	return out
 }
+
 function hh_decode(s,    i,n,out) {
 	if(length(s)%2 || s~/[^0-9a-f]/) hh_fail("framing")
 	out=""
@@ -6322,6 +6318,54 @@ function hh_add(a,b,    i,v,carry,out) {
 	return out
 }
 function hh_mul(s,times,    i) { for(i=1;i<=times;i++) s=hh_add(s,s); return s }
+function hh_child(parent,key,    i,want) {
+	want="k" hh_hex(key)
+	for(i=2;i<=cfmgr_json_tree_count;i++) if(cfmgr_json_tree_parent[i]==parent && cfmgr_json_tree_location[i]==want) return i
+	hh_fail("policy")
+}
+function hh_json_text(parent,key,    id) {
+	id=hh_child(parent,key)
+	if(cfmgr_json_tree_kind[id]!="string") hh_fail("policy")
+	return hh_decode(substr(cfmgr_json_tree_payload[id],2))
+}
+function hh_json_number(parent,key,max,nullable,    id,value) {
+	id=hh_child(parent,key)
+	if(nullable && cfmgr_json_tree_kind[id]=="null") return "0"
+	value=substr(cfmgr_json_tree_payload[id],2)
+	if(cfmgr_json_tree_kind[id]!="number" || !hh_uint(value,max)) hh_fail("policy")
+	return value
+}
+function hh_policy_value(root,feature,    mode,size,unit,value,total,age,id,i) {
+	if(!cfmgr_json_tree_ready || cfmgr_json_tree_kind[root]!="object") hh_fail("policy")
+	if(feature=="ddns" || feature=="ip_sync") {
+		if(hh_json_number(root,"version","1",0)!="1") hh_fail("policy")
+		return "POLICY native - - - END"
+	}
+	if(feature!="cloudflared") hh_fail("policy")
+	mode=hh_json_text(root,"mode"); if(mode!~/^(size|daily|weekly|monthly)$/) hh_fail("policy")
+	id=hh_child(root,"size"); if(cfmgr_json_tree_kind[id]!="object") hh_fail("policy")
+	value=hh_json_number(id,"value","9223372036854775807",0); if(value=="0") hh_fail("policy")
+	unit=hh_json_text(id,"unit"); if(unit!~/^(B|KiB|MiB|GiB)$/) hh_fail("policy")
+	size=hh_mul(value,(unit=="B"?0:(unit=="KiB"?10:(unit=="MiB"?20:30))))
+	total=hh_json_number(root,"total_files","2147483648",0); if(total=="0") hh_fail("policy")
+	age=hh_json_number(root,"max_age_days","30",1)
+	return "POLICY " mode " " size " " sprintf("%.0f",total-1) " " age " END"
+}
+'
+	# CFMGR-AWK-END backup_history_policy
+}
+
+cfmgr_backup_awk_backup_history() {
+	cfmgr_backup_awk_backup_history_policy
+	cfmgr_history_policy_program=$cfmgr_awk_program
+	# CFMGR-AWK-BEGIN backup_history
+	cfmgr_awk_program='
+# Read-only archive history supported-profile parser. Fixed modes are selected
+# by CFMGR_HISTORY_MODE; data never supplies AWK code or output paths. Policy
+# mode follows config JSON getter tree admission; other modes consume bounded snapshots.
+
+function hh_trim(s) { sub(/^[ \t]+/,"",s); sub(/[ \t]+$/,"",s); return s }
+
 function hh_size(s,    unit,n) {
 	unit=substr(s,length(s),1); n=s
 	if(unit~/[kKMG]/) n=substr(s,1,length(s)-1)
@@ -6369,39 +6413,7 @@ function hh_plan_end(    i,f,status,reason,gen,sha) {
 	}
 	for(i=1;i<=3;i++) print hh_requests[i]
 }
-function hh_child(parent,key,    i,want) {
-	want="k" hh_hex(key)
-	for(i=2;i<=cfmgr_json_tree_count;i++) if(cfmgr_json_tree_parent[i]==parent && cfmgr_json_tree_location[i]==want) return i
-	hh_fail("policy")
-}
-function hh_json_text(parent,key,    id) {
-	id=hh_child(parent,key)
-	if(cfmgr_json_tree_kind[id]!="string") hh_fail("policy")
-	return hh_decode(substr(cfmgr_json_tree_payload[id],2))
-}
-function hh_json_number(parent,key,max,nullable,    id,value) {
-	id=hh_child(parent,key)
-	if(nullable && cfmgr_json_tree_kind[id]=="null") return "0"
-	value=substr(cfmgr_json_tree_payload[id],2)
-	if(cfmgr_json_tree_kind[id]!="number" || !hh_uint(value,max)) hh_fail("policy")
-	return value
-}
-function hh_policy_value(root,feature,    mode,size,unit,value,total,age,id,i) {
-	if(!cfmgr_json_tree_ready || cfmgr_json_tree_kind[root]!="object") hh_fail("policy")
-	if(feature=="ddns" || feature=="ip_sync") {
-		if(hh_json_number(root,"version","1",0)!="1") hh_fail("policy")
-		return "POLICY native - - - END"
-	}
-	if(feature!="cloudflared") hh_fail("policy")
-	mode=hh_json_text(root,"mode"); if(mode!~/^(size|daily|weekly|monthly)$/) hh_fail("policy")
-	id=hh_child(root,"size"); if(cfmgr_json_tree_kind[id]!="object") hh_fail("policy")
-	value=hh_json_number(id,"value","9223372036854775807",0); if(value=="0") hh_fail("policy")
-	unit=hh_json_text(id,"unit"); if(unit!~/^(B|KiB|MiB|GiB)$/) hh_fail("policy")
-	size=hh_mul(value,(unit=="B"?0:(unit=="KiB"?10:(unit=="MiB"?20:30))))
-	total=hh_json_number(root,"total_files","2147483648",0); if(total=="0") hh_fail("policy")
-	age=hh_json_number(root,"max_age_days","30",1)
-	return "POLICY " mode " " size " " sprintf("%.0f",total-1) " " age " END"
-}
+
 function hh_policy(    value) {
 	value=hh_policy_value(1,ENVIRON["CFMGR_HISTORY_FEATURE"])
 	print value
@@ -6635,7 +6647,8 @@ function hh_health_context_ok(path) {
 	return path~/^\/[A-Za-z0-9_.\/-]+$/ && path!~/\/\// && path!~/(^|\/)\.\.?($|\/)/ && path!~/\/$/
 }
 function hh_health_basename_ok(name,    serial) {
-	if(name!~/^health-selected-copy\.[1-9][0-9]*[.]out$/ &&
+	if(name!~/^health-log-script\.[1-9][0-9]*[.]out$/ &&
+		name!~/^health-selected-copy\.[1-9][0-9]*[.]out$/ &&
 		name!~/^health-log-version\.[1-9][0-9]*[.]out$/ &&
 		name!~/^health-log-syntax\.[1-9][0-9]*[.](out|err)$/ &&
 		name!~/^health-log-debug\.[1-9][0-9]*[.](out|err)$/ &&
@@ -6809,6 +6822,8 @@ END {
 }
 '
 	# CFMGR-AWK-END backup_history
+	cfmgr_awk_program="$cfmgr_history_policy_program
+$cfmgr_awk_program"
 }
 
 cfmgr_backup_awk_backup_inventory() {

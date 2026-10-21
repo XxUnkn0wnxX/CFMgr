@@ -6,22 +6,31 @@ case retains the actual bounded supervisor and fixed executable probe body.
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import json
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 import pytest
-from entry_package_fixture import adapt_native, finish_package
+from entry_package_fixture import adapt_native, finish_package, full_health_package
 from runtime_awk import awk_arguments, awk_program
 from test_config_observation import commands, config, schema2_config
 from test_dependency_reinstall import entry_run, installed_entry
+from test_entry_package import installed_package as _installed_package_fixture
+from test_install import package as _package_fixture
 from test_install import shell, tools
 from test_prerequisites import pause_definition
+
+package = _package_fixture
+installed_package = _installed_package_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 BOOT = "12345678-1234-1234-1234-123456789abc"
@@ -33,6 +42,185 @@ HEALTH_SECRET = "cfut_fixture-secret_CANARY-123"
 ZONE = "a" * 32
 ACCOUNT = "b" * 32
 LIST = "c" * 32
+
+
+def test_health_backup_projection_keeps_history_private(commands, schema2_config):
+    value = json.loads(schema2_config)
+    value["backup"]["destination"] = {
+        "schema": 1,
+        "mountpoint": "/tmp/mnt/private-drive",
+        "uuid": "abcd-1234",
+        "filesystem": "vfat",
+        "root": "/",
+    }
+    value["backup"]["set_id"] = BOOT
+    value["backup"]["last_backup"] = {
+        "schema": 1,
+        "at": NOW - 30,
+        "set_id": BOOT,
+        "archive_id": BOOT,
+        "generation": value["generation"],
+        "date_format": "YMD",
+        "local_date": "private-date-CANARY",
+        "local_time": "private-time-CANARY",
+        "timezone": "UTC",
+    }
+    for clock, at, expected_age in (
+        ("1", NOW - 30, "30"),
+        ("0", NOW - 30, "unknown"),
+        ("1", NOW + 1, "unknown"),
+    ):
+        value["backup"]["last_backup"]["at"] = at
+        data = json.dumps(value).encode()
+        result = subprocess.run(
+            [
+                *commands[1],
+                "-v",
+                f"cfmgr_json_size={len(data)}",
+                "-v",
+                "cfmgr_json_mode=tree",
+                "-v",
+                "cfmgr_config_mode=archive-data",
+                awk_program(
+                    "json", "config_schema", "config_observation", "health_backup_plan"
+                ),
+            ],
+            input=data,
+            capture_output=True,
+            check=False,
+            timeout=3,
+            env={
+                **os.environ,
+                "LC_ALL": "C",
+                "CFMGR_HEALTH_BACKUP_NOW": str(NOW),
+                "CFMGR_HEALTH_BACKUP_CLOCK": clock,
+            },
+        )
+        assert (result.returncode, result.stderr) == (0, b"")
+        assert (
+            f"HISTORY\trecorded\t{expected_age}\tsame-set\n".encode() in result.stdout
+        )
+        assert (
+            b"private-date-CANARY" not in result.stdout
+            and b"private-time-CANARY" not in result.stdout
+        )
+        assert BOOT.encode() not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "filesystem,kind,identity",
+    [("tfat", "vfat", "ABCD-1234"), ("ufsd", "ntfs", "0123456789ABCDEF")],
+)
+def test_health_backup_worker_reuses_broad_uuid_policy(
+    shell, commands, tmp_path, filesystem, kind, identity
+):
+    private = tmp_path / "private"
+    private.mkdir()
+    observed = private / "health-blkid.1.out"
+    observed.write_text(f'/dev/fixture: UUID="{identity}" TYPE="{kind}"\n')
+    result = subprocess.run(
+        [
+            *shell,
+            ROOT / "modules/helpers/worker.sh",
+            "health-backup-uuid",
+            commands[1][0],
+            private,
+            ROOT / "modules/backup.sh",
+            observed,
+            "/dev/fixture",
+            filesystem,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        identity.lower().encode() + b"\n\n",
+        b"",
+    )
+
+
+@pytest.mark.parametrize(
+    "damage", ["none", "missing-folder", "mount-replaced", "unresolved"]
+)
+def test_health_backup_actual_worker_identity_and_readonly_limits(
+    shell, tools, tmp_path, damage
+):
+    """Actual private worker/parsers; mount, device and canonical facts are fixtures.
+
+    The full Linux entry journey separately exercises real supervision and caps.
+    This small case proves refusal after replacement and unresolved propagation.
+    """
+    private = tmp_path / "private"
+    private.mkdir()
+    point = tmp_path / "selected-drive"
+    point.mkdir()
+    if damage != "missing-folder":
+        (point / "CFBackup").mkdir()
+    plan = private / "health-backup-plan.1.out"
+    plan.write_text(
+        f"CFMGR-HEALTH-BACKUP\t1\nDESTINATION\t1\t{point}\nIDENTITY\tabcd-1234\ttfat\t/\nHISTORY\tnever\tunknown\tunknown\nEND\t4\n"
+    )
+    script = r"""
+root=$1 base=$2 selected_sh=$3 selected_awk=$4 selected_ls=$5 damage=$6
+. "$root/modules/status.sh"
+cfmgr_source=$root cfmgr_status_context=$base/private cfmgr_health_backup=verified
+cfmgr_health_backup_plan=$base/private/health-backup-plan.1.out
+cfmgr_health_backup_point=$base/selected-drive cfmgr_health_backup_state=UNKNOWN
+serial=1 mounts=0
+cfmgr_health_canonical() { cfmgr_health_resolved=$1; }
+cfmgr_health_run() {
+    mode=$1; shift 2
+    serial=$((serial + 1))
+    cfmgr_probe_stdout=$cfmgr_status_context/$mode.$serial.out
+    cfmgr_probe_stderr=$cfmgr_status_context/$mode.$serial.err
+    cfmgr_probe_exit=0
+    : >"$cfmgr_probe_stdout"; : >"$cfmgr_probe_stderr"
+    case $mode in
+    health-mount)
+        mounts=$((mounts + 1))
+        [ "$damage" != unresolved ] || return 3
+        mount_id=8
+        [ "$damage:$mounts" != mount-replaced:2 ] || mount_id=9
+        printf '%s\t1\t8:1\t/\t%s\ttfat\t/dev/fixture\tro,noexec\tro\n' "$mount_id" "$cfmgr_health_backup_point" >"$cfmgr_probe_stdout"
+        ;;
+    health-blkid) printf '%s\n' '/dev/fixture: UUID="ABCD-1234" TYPE="vfat"' >"$cfmgr_probe_stdout" ;;
+    health-metadata) "$selected_ls" -ildn "$1" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" || cfmgr_probe_exit=$? ;;
+    *) "$selected_sh" "$root/modules/helpers/worker.sh" "$mode" "$selected_awk" "$cfmgr_status_context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" || cfmgr_probe_exit=$? ;;
+    esac
+    return 0
+}
+if cfmgr_health_backup_observe; then result=0; else result=$?; fi
+printf '%s %s %s %s %s\n' "$result" "$cfmgr_health_backup_state" "${cfmgr_health_backup_access:-unknown}" "${cfmgr_health_backup_folder:-unverified}" "$mounts"
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "backup-health",
+            ROOT,
+            tmp_path,
+            tools["sh"],
+            tools["awk"],
+            tools["ls"],
+            damage,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=5,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    assert (result.returncode, result.stderr) == (0, b"")
+    expected = {
+        "none": b"0 PASS ro observed 3\n",
+        "missing-folder": b"0 PASS ro unverified 3\n",
+        "mount-replaced": b"1 UNKNOWN ro unverified 2\n",
+        "unresolved": b"3 UNKNOWN unknown unverified 1\n",
+    }
+    assert result.stdout == expected[damage]
 
 
 @pytest.fixture(scope="module")
@@ -3551,3 +3739,1303 @@ if cfmgr_health_cloud_semantics; then :; else [ "$?" = 1 ] || exit 13; fi
         "health-cloud-plan",
         "health-cloud-frame",
     ]
+
+
+def logging_parser(commands, mode, input_path, spec, argument="normal"):
+    return subprocess.run(
+        [
+            *commands[1],
+            awk_program("health_logging"),
+            mode,
+            str(input_path),
+            str(spec),
+            argument,
+        ],
+        capture_output=True,
+        check=False,
+        env={**os.environ, "LC_ALL": "C"},
+        timeout=3,
+    )
+
+
+def test_health_logging_authority_separates_requested_from_enabled(
+    commands, schema2_config
+):
+    # The saved policy getter is shared by both consumers; no secret is emitted.
+    value = json.loads(schema2_config)
+    value["credentials"]["canary"] = {
+        "schema": 1,
+        "kind": "cloudflare_api_token",
+        "value": HEALTH_SECRET,
+    }
+    value["logging"]["cloudflared"].update(
+        configured=True,
+        enabled=False,
+        policy={
+            "schema": 1,
+            "mode": "weekly",
+            "size": {"value": 7, "unit": "MiB"},
+            "total_files": 3,
+            "max_age_days": None,
+        },
+    )
+    data = json.dumps(value, separators=(",", ":")).encode()
+    result = subprocess.run(
+        [
+            *commands[1],
+            "-v",
+            "cfmgr_json_mode=tree",
+            "-v",
+            f"cfmgr_json_size={len(data)}",
+            "-v",
+            "cfmgr_config_mode=archive-data",
+            awk_program(
+                "json",
+                "config_schema",
+                "config_observation",
+                "backup_history_policy",
+                "health_logging_authority",
+            ),
+        ],
+        input=data,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "LC_ALL": "C"},
+        timeout=3,
+    )
+    assert (result.returncode, result.stderr) == (0, b""), result.stdout
+    assert b"FEATURE cloudflared 0 0 1 0 0 0 0 - - - - END\n" in result.stdout
+    assert b"SAVED cloudflared POLICY weekly 7340032 2 0 END\n" in result.stdout
+    assert HEALTH_SECRET.encode() not in result.stdout
+    value["logging"]["cloudflared"]["policy"]["mode"] = "invalid"
+    data = json.dumps(value, separators=(",", ":")).encode()
+    invalid = subprocess.run(
+        [
+            *commands[1],
+            "-v",
+            "cfmgr_json_mode=tree",
+            "-v",
+            f"cfmgr_json_size={len(data)}",
+            "-v",
+            "cfmgr_config_mode=archive-data",
+            awk_program(
+                "json",
+                "config_schema",
+                "config_observation",
+                "backup_history_policy",
+                "health_logging_authority",
+            ),
+        ],
+        input=data,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "LC_ALL": "C"},
+        timeout=3,
+    )
+    assert invalid.returncode != 0 and invalid.stdout == b""
+
+
+def test_health_logging_metadata_missing_member_and_count_hash_frames(
+    commands, tmp_path
+):
+    spec = tmp_path / "spec"
+    spec.write_text(
+        "good\t/opt/etc/good\tpublic\twhole\nmissing\t/opt/etc/missing\tpublic\twhole\n"
+    )
+    raw = tmp_path / "raw"
+    raw.write_text(
+        "1 drwxr-xr-x 1 0 0 0 Jan 1 00:00 /\n2 drwxr-xr-x 1 0 0 0 Jan 1 00:00 /opt\n3 drwxr-xr-x 1 0 0 0 Jan 1 00:00 /opt/etc\n4 -rw-r--r-- 1 0 0 12 Jan 1 00:00 /opt/etc/good\n"
+    )
+    result = logging_parser(commands, "metadata", raw, spec)
+    assert (result.returncode, result.stderr) == (0, b"")
+    assert b"MEMBER\tgood\t1\t4\t12\t-rw-r--r--\t" in result.stdout
+    assert b"MEMBER\tmissing\t0\t-\t-\t-\t" in result.stdout
+    raw.write_text(raw.read_text() + "5 -rw-r--r-- 1 0 0 1 Jan 1 00:00 /extra\n")
+    assert logging_parser(commands, "metadata", raw, spec).returncode != 0
+    spec.write_text("one\t/private/one\ntwo\t/private/two\n")
+    raw.write_text("1 3 /private/one\n2 5 /private/two\n3 8 total\n")
+    assert (
+        logging_parser(commands, "counts", raw, spec).stdout
+        == b"COUNT\tone\t3\t1\nCOUNT\ttwo\t5\t2\n"
+    )
+    for damage in (
+        "1 3 /private/one\n2 5 /private/two\n4 8 total\n",
+        "1 3 /private/one\n2 5 /private/two\n3 8 total",
+        "1 3 /private/one\n2 5 /private/one\n3 8 total\n",
+    ):
+        raw.write_text(damage)
+        assert logging_parser(commands, "counts", raw, spec).returncode != 0
+    raw.write_text("a" * 64 + " */private/one\n" + "b" * 64 + " */private/two\n")
+    assert (
+        logging_parser(commands, "hashes", raw, spec).stdout
+        == b"HASH\tone\t" + b"a" * 64 + b"\nHASH\ttwo\t" + b"b" * 64 + b"\n"
+    )
+
+
+def test_health_logging_process_assembler_keeps_argv_in_private_files(
+    commands, tmp_path
+):
+    receipt = tmp_path / "health-log-argv.1.out"
+    canary = b"private-argv-CANARY"
+    receipt.write_bytes(
+        b"PROC 123 456 2f6f70742f7362696e2f7379736c6f672d6e67 2 "
+        + b"/opt/sbin/syslog-ng".hex().encode()
+        + b" "
+        + canary.hex().encode()
+        + b" END\n"
+    )
+    index = tmp_path / "index"
+    index.write_text(
+        "CANDIDATE\tsyslog\t123\t456\thealth-log-argv.1.out\t/mounted/opt/sbin/syslog-ng\t99\n"
+    )
+    result = logging_parser(commands, "process", index, tmp_path)
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        receipt.read_bytes(),
+        b"",
+    )
+    assert canary not in result.stdout
+    index.write_text(index.read_text().replace("123\t456", "123\t457"))
+    assert logging_parser(commands, "process", index, tmp_path).returncode != 0
+
+
+@pytest.mark.parametrize("damage", ["none", "same-size", "warning"])
+def test_health_logging_actual_workers_share_nine_roles_and_three_policies(
+    shell, tools, health_config, tmp_path, damage
+):
+    """Real collector/parser workers; host identity and supervision are adapters."""
+    import hashlib
+
+    from test_archive_history import DEBUG, GLOBAL, RULE
+
+    health_config = json.loads(json.dumps(health_config))
+    source = tmp_path / "source"
+    context = tmp_path / "private"
+    opt = tmp_path / "mounted" / "entware"
+    jffs = tmp_path / "jffs"
+    context.mkdir(mode=0o700)
+    for directory in (
+        source / "modules/helpers",
+        source / "modules/lib",
+        opt / "etc/logrotate.d",
+        opt / "etc/syslog-ng.d",
+        opt / "sbin",
+        opt / "bin",
+        jffs / "scripts",
+        jffs / "addons/scribe.d",
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
+    for relative in (
+        "modules/status.sh",
+        "modules/backup.sh",
+        "modules/helpers/worker.sh",
+        "modules/lib/config.sh",
+    ):
+        text = (ROOT / relative).read_text()
+        if relative == "modules/helpers/worker.sh" and sys.platform == "darwin":
+            text = (
+                text.replace("/proc/self/fd/8", "/dev/fd/8")
+                .replace('"$1" -ef /dev/fd/8', "-f /dev/fd/8")
+                .replace('"$4" -ef /dev/fd/8', "-f /dev/fd/8")
+            )
+        (source / relative).write_text(text)
+    (jffs / "scripts/scribe").write_text(
+        'readonly scribe_ver="v3.2.12"\nreadonly scriptVer_TAG="26041123"\n'
+        + "#prefix-only padding\n" * 800
+    )
+    (jffs / "addons/scribe.d/config").write_text(
+        "SYSLOG_LOC=/tmp/syslog.log\nLR_CRONJOB_HOUR=3\n"
+    )
+    (opt / "etc/syslog-ng.conf").write_text(
+        '@version: 4.7\n@include "/opt/etc/syslog-ng.d/"\n'
+    )
+    (opt / "etc/logrotate.conf").write_text("include /opt/etc/logrotate.d\n")
+    (opt / "bin/scribe").symlink_to("/jffs/scripts/scribe")
+    advisory = "warning: logrotate in debug mode does nothing except printing debug messages!  Consider using verbose mode (-v) instead if this is not what you want.\n\n"
+    debug = advisory + DEBUG.replace(
+        "reading config file cfmgr-ddns\n",
+        "reading config file cfmgr-ddns\nreading config file cfmgr-ip-sync\nreading config file cfmgr-cloudflared\n",
+    )
+    if damage == "warning":
+        debug += "warning: real configuration warning\n"
+    (opt / "etc/logrotate.d/A01global").write_text(GLOBAL)
+    (opt / "etc/logrotate.d/messages").write_text(
+        "/opt/var/log/messages {\n size 4M\n}\n"
+    )
+    for feature in ("ddns", "ip_sync", "cloudflared"):
+        base = feature.replace("_", "-")
+        rule = RULE.replace("ddns", base)
+        (opt / f"etc/logrotate.d/cfmgr-{base}").write_text(rule)
+        health_config["logging"][feature].update(
+            configured=True,
+            enabled=False,
+            policy={"schema": 1, "version": 1}
+            if feature != "cloudflared"
+            else {
+                "schema": 1,
+                "mode": "size",
+                "size": {"value": 7, "unit": "MiB"},
+                "total_files": 3,
+                "max_age_days": None,
+            },
+        )
+        health_config["ownership"]["components"].extend(
+            [
+                {
+                    "schema": 1,
+                    "component": f"history.{feature}",
+                    "path": f"/opt/var/log/{base}.log",
+                    "generation": 1,
+                    "sha256": None,
+                },
+                {
+                    "schema": 1,
+                    "component": f"history-rule.{feature}",
+                    "path": f"/opt/etc/logrotate.d/cfmgr-{base}",
+                    "generation": 1,
+                    "sha256": hashlib.sha256(rule.encode()).hexdigest(),
+                },
+            ]
+        )
+    if damage == "same-size":
+        (tmp_path / "changed-rule").write_text(RULE.replace("size 7M", "size 8M"))
+    config_file = source / "retained"
+    config_file.write_text(json.dumps(health_config, separators=(",", ":")))
+    for name, version in (
+        ("syslog-ng", "syslog-ng 4.7.1"),
+        ("logrotate", "logrotate 3.22.0"),
+    ):
+        tool = opt / "sbin" / name
+        tool.write_text(
+            f"#!{tools['sh']}\ncase $1 in --version) printf '%s\\n' {shlex.quote(version)} ;; --syntax-only) [ \"$2:$3\" = '-f:/opt/etc/syslog-ng.conf' ] ;; -d) [ \"$2\" = /opt/etc/logrotate.conf ] || exit 9; printf '%s' {shlex.quote(debug)} >&2 ;; *) exit 9 ;; esac\n"
+        )
+        tool.chmod(0o700)
+    ls = tmp_path / "ls-adapter"
+    ls.write_text(
+        f"#!{Path(sys.executable).resolve()}\nimport os,stat,sys\nfor path in sys.argv[2:]:\n try:s=os.lstat(path)\n except OSError:continue\n mode='drwxr-xr-x' if stat.S_ISDIR(s.st_mode) else stat.filemode(s.st_mode)\n print(f'{{s.st_ino}} {{mode}} {{s.st_nlink}} 0 0 {{s.st_size}} Jan 1 00:00 {{path}}')\n"
+    )
+    ls.chmod(0o700)
+    cron = context / "health-log-cron.900.out"
+    cron.write_text("5 */3 * * * /jffs/scripts/scribe LogRotate #scribeLogRotate#\n")
+    proc = context / "health-log-process.901.out"
+    proc.write_text(
+        "PROC 123 4000 "
+        + b"/opt/sbin/syslog-ng".hex()
+        + " 1 "
+        + b"/opt/sbin/syslog-ng".hex()
+        + " END\nCROND 124 4001 "
+        + b"/var/spool/cron/crontabs".hex()
+        + " END\n"
+    )
+    script = r"""
+source=$1 base=$2 selected_sh=$3 selected_awk=$4 selected_env=$5 selected_wc=$6 selected_dd=$7 selected_readlink=$8 selected_ssl=$9
+LC_ALL=C; export LC_ALL
+. "$source/modules/status.sh"
+cfmgr_source=$source cfmgr_status_context=$base/private
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_requests=0 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_health_owned='' cfmgr_probe_serial=0
+cfmgr_health_collect_deadline=40 cfmgr_health_final_deadline='' cfmgr_health_incomplete=0 cfmgr_health_protected_cache=''
+cfmgr_health_config=$source/retained cfmgr_health_config_bytes=${10} cfmgr_health_inventory=validated
+cfmgr_health_backup=verified cfmgr_health_native_openssl_ok=1 cfmgr_health_openssl=$selected_ssl cfmgr_health_entware_ready=1
+cfmgr_health_opt=$base/mounted/entware cfmgr_health_opt_mount=$base/mounted
+cfmgr_status_attachment_ok() { return 0; }
+cfmgr_prerequisites_now() { cfmgr_probe_now=0; }
+cfmgr_health_entware_attachment() { return 0; }
+cfmgr_health_selected_attached() { return 0; }
+cfmgr_health_selected_resolve() {
+    case $cfmgr_health_selected_logical in /opt/*) cfmgr_health_resolved=$cfmgr_health_opt/${cfmgr_health_selected_logical#/opt/} ;; /jffs/*) cfmgr_health_resolved=$base/jffs/${cfmgr_health_selected_logical#/jffs/} ;; *) cfmgr_health_resolved=$cfmgr_health_selected_logical ;; esac
+    [ -f "$cfmgr_health_resolved" ] && [ ! -L "$cfmgr_health_resolved" ]
+}
+cfmgr_health_log_cron() { cfmgr_health_cron_ready=1 cfmgr_health_cron_file=$base/private/health-log-cron.900.out; cfmgr_health_cron_bytes=$("$selected_wc" -c <"$cfmgr_health_cron_file"); }
+cfmgr_health_log_processes() { cfmgr_health_process_ready=1 cfmgr_health_process_file=$base/private/health-log-process.901.out; }
+cfmgr_health_row() { printf '%s\t%s\t%s\n' "$1" "$2" "$3"; }
+cfmgr_health_run() {
+    cfmgr_health_reserve "$1" || return $?
+    mode=$1 tool=$2; shift 2
+    printf '%s\n' "$mode" "$tool" "$@" >>"$base/arguments"
+    case $tool in /usr/bin/awk) tool=$selected_awk ;; /bin/ls) tool=$base/ls-adapter ;; /bin/dd) tool=$selected_dd ;; /usr/bin/wc) tool=$selected_wc ;; /usr/bin/readlink) tool=$selected_readlink ;; /opt/sbin/*) tool=$cfmgr_health_opt/sbin/${tool##*/} ;; esac
+    if [ "$mode" = health-log-link ]; then set -- "$cfmgr_health_opt/bin/scribe"; fi
+    cfmgr_probe_serial=$((cfmgr_probe_serial + 1))
+    cfmgr_probe_stdout=$cfmgr_status_context/$cfmgr_health_label.out cfmgr_probe_stderr=$cfmgr_status_context/$cfmgr_health_label.err
+    if (ulimit -f "$cfmgr_health_mode_limit"; exec "$selected_env" -i LC_ALL=C "$selected_sh" "$source/modules/helpers/worker.sh" "$mode" "$tool" "$cfmgr_status_context" "$@") >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
+    if [ "$mode" = health-selected-copy ] && [ -f "$base/changed-rule" ]; then
+        case $1 in */cfmgr-ddns) "$selected_dd" if="$base/changed-rule" of="$1" bs=4096 count=1 conv=notrunc 2>/dev/null ;; esac
+    fi
+    printf '%s %s\n' "$mode" "$cfmgr_probe_exit" >>"$base/routes"
+    return 0
+}
+cfmgr_health_logging_collect || exit $?
+printf 'LEDGER %s %s %s\n' "$cfmgr_health_operations" "$cfmgr_health_files" "$cfmgr_health_bytes"
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "health-logging",
+            str(source),
+            str(tmp_path),
+            tools["sh"],
+            tools["awk"],
+            tools["env"],
+            tools["wc"],
+            shutil.which("dd"),
+            tools["readlink"],
+            shutil.which("openssl"),
+            str(config_file.stat().st_size),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
+    assert (result.returncode, result.stderr) == (0, b""), result.stdout
+    if damage in ("same-size", "warning"):
+        assert b"logging.base\tUNKNOWN\t" in result.stdout, result.stdout
+        assert b".policy\tPASS\t" not in result.stdout
+        return
+    assert b"logging.base\tPASS\t" in result.stdout, (
+        result.stdout,
+        (tmp_path / "routes").read_text(),
+    )
+    for feature in ("ddns", "ip_sync", "cloudflared"):
+        assert f"logging.{feature}.policy\tPASS\t".encode() in result.stdout, (
+            result.stdout
+        )
+    assert (
+        HEALTH_SECRET.encode()
+        not in result.stdout + (tmp_path / "arguments").read_bytes()
+    )
+    assert b"weekly" not in (tmp_path / "arguments").read_bytes()
+    print(result.stdout.decode())
+
+
+def test_health_logging_cron_requires_three_boundaries_both_accounts_and_equal_content(
+    shell, tmp_path
+):
+    script = r"""
+. "$1/modules/status.sh"
+base=$2 damage=$3
+cfmgr_status_context=$base
+cfmgr_health_native_openssl_ok=1
+cfmgr_health_admit_native() { return 0; }
+cfmgr_health_log_spec_write() { serial=$((${serial:-0}+1));cfmgr_health_log_spec_file=$base/spec.$serial;printf '%s' "$1" >"$cfmgr_health_log_spec_file"; }
+cfmgr_health_log_cron_boundary() {
+    boundaries=$((${boundaries:-0}+1));cfmgr_health_log_cron_identity=owned cfmgr_health_log_cron_bytes=3
+    if [ "$damage:$boundaries" = identity:2 ]; then cfmgr_health_log_cron_identity=changed; fi
+}
+cfmgr_health_run() {
+    mode=$1;shift 2
+    serial=$((${serial:-0}+1));cfmgr_probe_stdout=$base/out.$serial;cfmgr_probe_stderr=$base/err.$serial;: >"$cfmgr_probe_stderr";cfmgr_probe_exit=0
+    case $mode in
+    health-log-account) accounts=$((${accounts:-0}+1));if [ "$damage:$accounts" = account:2 ];then printf 'changed\n';else printf 'root\n';fi >"$cfmgr_probe_stdout" ;;
+    health-log-cron) printf 'ok\n' >"$cfmgr_probe_stdout" ;;
+    *) return 9 ;;
+    esac
+}
+cfmgr_health_log_group() {
+    serial=$((${serial:-0}+1));cfmgr_health_log_group_file=$base/group.$serial
+    case $1 in
+    counts) printf 'COUNT\tfirst\t3\t1\nCOUNT\tsecond\t3\t1\n' >"$cfmgr_health_log_group_file" ;;
+    hashes) if [ "$damage" = content ]; then second=changed;else second=same;fi;printf 'HASH\tfirst\tsame\nHASH\tsecond\t%s\n' "$second" >"$cfmgr_health_log_group_file" ;;
+    esac
+}
+if cfmgr_health_log_cron;then code=0;else code=$?;fi
+printf '%s %s %s %s\n' "$code" "$cfmgr_health_cron_ready" "${boundaries:-0}" "${accounts:-0}"
+"""
+    for damage, expected in (
+        ("none", b"0 1 3 2\n"),
+        ("identity", b"1 0 2 1\n"),
+        ("account", b"1 0 3 2\n"),
+        ("content", b"1 0 3 1\n"),
+    ):
+        result = subprocess.run(
+            [*shell, "-c", script, "cron-test", str(ROOT), str(tmp_path), damage],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            expected,
+            b"",
+        ), damage
+
+
+def test_health_logging_process_uncertain_scan_never_claims_complete(shell, tmp_path):
+    script = r"""
+. "$1/modules/status.sh"
+base=$2 damage=$3
+cfmgr_status_context=$base cfmgr_source=$1 cfmgr_health_collect_deadline=100 cfmgr_health_opt=$base/opt
+cfmgr_health_admit_native() { return 0; }
+cfmgr_prerequisites_now() { cfmgr_probe_now=0; }
+cfmgr_health_run() { cfmgr_probe_stdout=$base/pids;cfmgr_probe_stderr=$base/err;printf 'CFMGR-HEALTH-PIDS 1 1\n101\nEND 1\n' >"$cfmgr_probe_stdout";cfmgr_probe_status=reaped;cfmgr_probe_pid=102;if [ "$damage" = owned ];then cfmgr_probe_pid=101;fi;: >"$cfmgr_probe_stderr";cfmgr_probe_exit=0;if [ "$damage" = truncated ];then printf 'CFMGR-HEALTH-PIDS 1 1\n101\n' >"$cfmgr_probe_stdout";fi; }
+cfmgr_health_log_stage() { cfmgr_health_log_stage_file=$base/index;: >"$cfmgr_health_log_stage_file"; }
+cfmgr_health_log_stat() { [ "$damage" != incomplete ] || return 1;cfmgr_health_log_stat_comm=unrelated; }
+cfmgr_health_log_parse() { cfmgr_probe_stdout=$base/process;: >"$cfmgr_probe_stdout"; }
+if cfmgr_health_log_processes;then code=0;else code=$?;fi
+printf '%s %s %s\n' "$code" "$cfmgr_health_process_ready" "$cfmgr_health_process_scan_complete"
+"""
+    for damage, expected in (
+        ("normal", b"0 1 1\n"),
+        ("incomplete", b"1 0 0\n"),
+        ("owned", b"0 1 1\n"),
+        ("truncated", b"1 0 0\n"),
+    ):
+        result = subprocess.run(
+            [*shell, "-c", script, "process-test", str(ROOT), str(tmp_path), damage],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
+
+
+def test_health_logging_process_identity_and_noncrond_are_rechecked_privately(
+    shell, tools, tmp_path
+):
+    source = tmp_path / "source"
+    (source / "modules/helpers").mkdir(parents=True)
+    (source / "modules/helpers/worker.sh").write_text(
+        (ROOT / "modules/helpers/worker.sh").read_text()
+    )
+    context = tmp_path / "private"
+    context.mkdir()
+    opt = tmp_path / "opt"
+    (opt / "sbin").mkdir(parents=True)
+    (opt / "sbin/syslog-ng").write_text("fixture executable identity\n")
+    proc = tmp_path / "proc/101"
+    proc.mkdir(parents=True)
+    (tmp_path / "busybox").write_text("native identity fixture\n")
+    (proc / "exe").symlink_to(opt / "sbin/syslog-ng")
+    text = (ROOT / "modules/status.sh").read_text()
+    start = text.index("cfmgr_health_log_stat()")
+    end = text.index("cfmgr_health_log_cron_boundary()", start)
+    text = (
+        text[:start]
+        + text[start:end]
+        .replace('"/proc/', f'"{tmp_path}/proc/')
+        .replace("/bin/busybox", str(tmp_path / "busybox"))
+        + text[end:]
+    )
+    (source / "modules/status.sh").write_text(text)
+    # Raw argv lives solely in a private byte/receipt file throughout collection.
+    canary = "private-process-CANARY"
+    raw = b"/opt/sbin/syslog-ng\0--debug\0" + canary.encode() + b"\0"
+    hexdump = context / "hex"
+    hexdump.write_text("".join(f"{b:02x}\n" for b in raw))
+    script = r"""
+base=$1 source=$2 selected_sh=$3 selected_awk=$4 damage=$5
+. "$source/modules/status.sh"
+cfmgr_source=$source cfmgr_status_context=$base/private cfmgr_health_opt=$base/opt cfmgr_health_collect_deadline=100
+cfmgr_health_admit_native() { return 0; }
+cfmgr_prerequisites_now() { cfmgr_probe_now=0; }
+cfmgr_health_log_stage() { cfmgr_health_log_stage_file=$base/private/index;: >"$cfmgr_health_log_stage_file"; }
+cfmgr_health_canonical() { if [ "$damage" = noncrond ];then cfmgr_health_resolved=$base/busybox;else cfmgr_health_resolved=$base/opt/sbin/syslog-ng;fi; }
+cfmgr_health_run() {
+    mode=$1;shift 2
+    serial=$((${serial:-0}+1));cfmgr_probe_stdout=$base/private/$mode.$serial.out cfmgr_probe_stderr=$base/private/$mode.$serial.err
+    cfmgr_probe_exit=0 cfmgr_probe_status=reaped;: >"$cfmgr_probe_stderr"
+    printf '%s\n' "$mode" "$@" >>"$base/arguments"
+    case $mode in
+    health-log-pids) printf 'CFMGR-HEALTH-PIDS 1 1\n101\nEND 1\n' >"$cfmgr_probe_stdout" ;;
+    health-log-proc-meta)
+        metacalls=$((${metacalls:-0}+1));inode=99
+        [ "$damage:$metacalls" != inode:2 ] || inode=100
+        printf '%s -rwxr-xr-x 1 0 0 100 Jan 1 00:00 executable\n' "$inode" >"$cfmgr_probe_stdout"
+        if [ "$damage:$metacalls" = start:2 ];then printf '101 (syslog-ng) S 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 999 0\n' >"$base/proc/101/stat";fi
+        ;;
+    health-log-hex) cfmgr_probe_stdout=$base/private/hex ;;
+    health-log-argv)
+        "$selected_sh" "$source/modules/helpers/worker.sh" health-log-argv "$selected_awk" "$cfmgr_status_context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" || cfmgr_probe_exit=$?
+        ;;
+    *) return 9 ;;
+    esac
+}
+cfmgr_health_log_parse() {
+    "$selected_sh" "$source/modules/helpers/worker.sh" health-log-process "$selected_awk" "$cfmgr_status_context" "$source/modules/status.sh" "$1" "$2" "$3" - >"$base/private/process" || return $?
+    cfmgr_probe_stdout=$base/private/process
+}
+if cfmgr_health_log_processes;then code=0;else code=$?;fi
+printf '%s %s %s %s\n' "$code" "$cfmgr_health_process_ready" "$cfmgr_health_process_scan_complete" "${metacalls:-0}"
+"""
+    for damage, expected in (
+        ("none", b"0 1 1 2\n"),
+        ("inode", b"1 0 0 2\n"),
+        ("start", b"1 0 0 2\n"),
+        ("noncrond", b"0 1 1 2\n"),
+    ):
+        comm = "busybox" if damage == "noncrond" else "syslog-ng"
+        (proc / "exe").unlink()
+        (proc / "exe").symlink_to(
+            tmp_path / "busybox" if damage == "noncrond" else opt / "sbin/syslog-ng"
+        )
+        candidate_raw = b"/bin/busybox\0httpd\0" if damage == "noncrond" else raw
+        hexdump.write_text("".join(f"{b:02x}\n" for b in candidate_raw))
+        (proc / "stat").write_text(f"101 ({comm}) S " + "0 " * 18 + "456 0\n")
+        result = subprocess.run(
+            [
+                *shell,
+                "-c",
+                script,
+                "identity-test",
+                str(tmp_path),
+                str(source),
+                tools["sh"],
+                tools["awk"],
+                damage,
+            ],
+            capture_output=True,
+            check=False,
+            env={**os.environ, "LC_ALL": "C"},
+            timeout=4,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            expected,
+            b"",
+        ), damage
+        assert canary not in (tmp_path / "arguments").read_text()
+        assert canary.encode() not in result.stdout + result.stderr
+
+
+def test_health_logging_mount_anchor_and_native_append_eof(commands, shell, tmp_path):
+    spec = tmp_path / "spec"
+    spec.write_text("rule\t/tmp/mnt/volume/entware/etc/rule\tpublic\twhole\n")
+    raw = tmp_path / "raw"
+    paths = (
+        "/",
+        "/tmp",
+        "/tmp/mnt",
+        "/tmp/mnt/volume",
+        "/tmp/mnt/volume/entware",
+        "/tmp/mnt/volume/entware/etc",
+    )
+    raw.write_text(
+        "".join(
+            f"{i} {'drwxrwxrwt' if path == '/tmp' else 'drwxr-xr-x'} 1 0 0 0 Jan 1 00:00 {path}\n"
+            for i, path in enumerate(paths, 1)
+        )
+        + "8 -rw-r--r-- 1 0 0 3 Jan 1 00:00 /tmp/mnt/volume/entware/etc/rule\n"
+    )
+    result = logging_parser(
+        commands,
+        "metadata",
+        raw,
+        spec,
+        "normal\t/tmp/mnt/volume/entware\t/tmp/mnt/volume",
+    )
+    assert (
+        result.returncode == 0
+        and b"MEMBER\trule\t1\t8\t3\t-rw-r--r--\t" in result.stdout
+    )
+    assert (
+        b"MEMBER\trule\t0\t" in logging_parser(commands, "metadata", raw, spec).stdout
+    )
+    raw.write_bytes(b"complete\nunterminated")
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            '. "$1/modules/status.sh"; cfmgr_health_log_append_bytes=0; cfmgr_health_log_append "$2/raw" "$2/output"',
+            "append-test",
+            str(ROOT),
+            str(tmp_path),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 1 and result.stderr == b""
+    assert (tmp_path / "output").read_bytes() == b"complete\n"
+
+
+def test_health_logging_ordinary_failure_keeps_later_groups_available(shell):
+    for failure, expected in ((1, b"logging.observation UNKNOWN\nlater\n"), (3, b"")):
+        script = r"""
+. "$1/modules/status.sh"
+_cfmgr_health_logging_collect() { return "$2"; }
+cfmgr_health_row() { printf '%s %s\n' "$1" "$2"; }
+cfmgr_health_logging_collect "$1" "$2" || exit $?
+printf 'later\n'
+"""
+        # The injected failure is immutable test code; no product data selects it.
+        script = script.replace('return "$2"', f"return {failure}")
+        result = subprocess.run(
+            [*shell, "-c", script, "logging-fallback", str(ROOT), str(failure)],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0 if failure == 1 else 3,
+            expected,
+            b"",
+        )
+
+
+CROND_SPOOL_HEX = b"2f7661722f73706f6f6c2f63726f6e2f63726f6e74616273"
+
+
+def run_health_hooks_getter(commands, tmp_path, value):
+    data = json.dumps(value, separators=(",", ":")).encode()
+    program = awk_program("json", "config_schema", "config_observation")
+    program += awk_program("health_hooks_authority")
+    result = subprocess.run(
+        [
+            *commands[1],
+            "-v",
+            "cfmgr_json_mode=tree",
+            "-v",
+            f"cfmgr_json_size={len(data)}",
+            "-v",
+            "cfmgr_config_mode=archive-data",
+            program,
+        ],
+        input=data,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "LC_ALL": "C"},
+        timeout=5,
+    )
+    return result
+
+
+def test_health_hooks_private_getter_projects_only_fixed_current_owners(
+    commands, schema2_config, tmp_path
+):
+    value = json.loads(schema2_config)
+    generation = int(value["generation"])
+    digest = "a" * 64
+    value["ownership"]["components"] = [
+        {
+            "schema": 1,
+            "component": "private-canary-component",
+            "path": "/jffs/scripts/wan-event",
+            "generation": generation,
+            "sha256": digest,
+        },
+        {
+            "schema": 1,
+            "component": "private-canary-arbitrary-owner",
+            "path": "/tmp/private-canary-path",
+            "generation": generation,
+            "sha256": "b" * 64,
+        },
+        {
+            "schema": 1,
+            "component": "future-owner",
+            "path": "/jffs/scripts/ddns-start",
+            "generation": generation + 1,
+            "sha256": "c" * 64,
+        },
+    ]
+    result = run_health_hooks_getter(commands, tmp_path, value)
+    assert (result.returncode, result.stderr) == (0, b""), (
+        result.stdout,
+        result.stderr,
+    )
+    assert result.stdout.startswith(f"CFMGR-HOOKS 1 {generation}\n".encode())
+    assert f"HOOK wan-event {generation} {digest} END\n".encode() in result.stdout
+    assert b"HOOK ddns-start - - END\n" in result.stdout
+    assert b"/tmp/private-canary-path" not in result.stdout
+    assert b"private-canary-component" not in result.stdout
+    assert b"private-canary-arbitrary-owner" not in result.stdout
+    assert b"future-owner" not in result.stdout
+    assert result.stdout.endswith(b"END 7 END\n")
+
+
+def test_health_hooks_private_getter_rejects_duplicate_fixed_path(
+    commands, schema2_config, tmp_path
+):
+    value = json.loads(schema2_config)
+    generation = int(value["generation"])
+    value["ownership"]["components"] = [
+        {
+            "schema": 1,
+            "component": f"owner-{index}",
+            "path": "/jffs/scripts/wan-event",
+            "generation": generation,
+            "sha256": "d" * 64,
+        }
+        for index in (1, 2)
+    ]
+    result = run_health_hooks_getter(commands, tmp_path, value)
+    assert result.returncode != 0
+    assert result.stdout == b""
+
+
+def run_health_hooks_cron(commands, tmp_path, cron: bytes, process: bytes):
+    cron_file = tmp_path / "cron.snapshot"
+    process_file = tmp_path / "process.receipt"
+    cron_file.write_bytes(cron)
+    process_file.write_bytes(process)
+    program = awk_program("health_hooks_cron")
+    result = subprocess.run(
+        [
+            *commands[1],
+            program,
+            str(cron_file),
+            str(process_file),
+            str(len(cron)),
+            str(cron.count(b"\n")),
+            str(len(process)),
+        ],
+        capture_output=True,
+        check=False,
+        env={**os.environ, "LC_ALL": "C"},
+        timeout=5,
+    )
+    return result
+
+
+def valid_crond_receipt():
+    return b"CROND 123 4001 " + CROND_SPOOL_HEX + b" END\n"
+
+
+def test_health_hooks_cron_exact_labels_schedule_and_shell_are_counted_privately(
+    commands, tmp_path
+):
+    cron = (
+        b"SHELL=/bin/sh\n"
+        b"# comment containing #CFMgrWatchdog#\n"
+        b"* * * * * /jffs/addons/CFMgr.d/cfmgr watchdog #CFMgrWatchdog#\n"
+        b"37 3 * * * /jffs/addons/CFMgr.d/cfmgr update #CFMgrCloudflaredUpdate#\n"
+        b"* * * * * /tmp/foreign fooCFMgrWatchdog #near-label\n"
+    )
+    result = run_health_hooks_cron(commands, tmp_path, cron, valid_crond_receipt())
+    assert (result.returncode, result.stderr) == (0, b""), (
+        result.stdout,
+        result.stderr,
+    )
+    assert b"JOB watchdog 1 exact admitted END\n" in result.stdout
+    assert b"JOB cloud-update 1 exact admitted END\n" in result.stdout
+    assert b"CFMgr.d/cfmgr" not in result.stdout
+    assert b"/tmp/foreign" not in result.stdout
+    assert result.stdout.endswith(b"END 2 END\n")
+
+
+def test_health_hooks_cron_duplicate_mismatch_and_unverified_default_are_distinct(
+    commands, tmp_path
+):
+    cron = (
+        b"* * * * * /jffs/addons/CFMgr.d/cfmgr watchdog #CFMgrWatchdog#\n"
+        b"* * * * * /jffs/addons/CFMgr.d/cfmgr watchdog #CFMgrWatchdog#\n"
+        b"37 4 * * * /jffs/addons/CFMgr.d/cfmgr update #CFMgrCloudflaredUpdate#\n"
+    )
+    result = run_health_hooks_cron(commands, tmp_path, cron, valid_crond_receipt())
+    assert result.returncode == 0
+    assert b"JOB watchdog 2 ambiguous unknown END\n" in result.stdout
+    assert b"JOB cloud-update 1 mismatch unknown END\n" in result.stdout
+
+
+def test_health_hooks_cron_reuses_snapshot_without_scribe_evidence(commands, tmp_path):
+    # Exercise the actual observer shell function with only its shared
+    # cron/process inputs. No Scribe file, binary, getter or recollection exists.
+    cron = (
+        b"SHELL=/bin/sh\n"
+        b"* * * * * /jffs/addons/CFMgr.d/cfmgr watchdog #CFMgrWatchdog#\n"
+        b"37 3 * * * /jffs/addons/CFMgr.d/cfmgr update #CFMgrCloudflaredUpdate#\n"
+    )
+    cron_file = tmp_path / "cron.snapshot"
+    process_file = tmp_path / "process.receipt"
+    cron_file.write_bytes(cron)
+    process_file.write_bytes(valid_crond_receipt())
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_source=$1
+cfmgr_status_context=$2
+test_awk=$6
+cfmgr_health_cron_ready=1 cfmgr_health_process_ready=1 cfmgr_health_process_scan_complete=1
+cfmgr_health_cron_file=$3 cfmgr_health_process_file=$4 cfmgr_health_cron_bytes=$5
+cfmgr_health_log_spec_write() { cfmgr_health_log_spec_file=$cfmgr_status_context/spec; : >"$cfmgr_health_log_spec_file"; }
+cfmgr_health_log_group() {
+    cfmgr_health_log_group_file=$cfmgr_status_context/counts
+    lf=$(wc -l <"$cfmgr_health_cron_file") || return 1
+    printf 'COUNT\tcron-observer\t%s\t%s\n' "$cfmgr_health_cron_bytes" "$lf" >"$cfmgr_health_log_group_file"
+}
+cfmgr_health_count() {
+    cfmgr_health_size=$(wc -c <"$1") || return 1
+    [ "$cfmgr_health_size" -le "$2" ]
+}
+cfmgr_health_run() {
+    mode=$1; shift 3
+    cfmgr_probe_stdout=$cfmgr_status_context/out cfmgr_probe_stderr=$cfmgr_status_context/err
+    : >"$cfmgr_probe_stderr"
+    case $mode in
+        health-hooks-cron)
+            cfmgr_status_awk_health_hooks_cron
+            "$test_awk" "$cfmgr_awk_program" "$1" "$2" "$3" "$4" "$5" >"$cfmgr_probe_stdout"
+            cfmgr_probe_exit=$?
+            ;;
+        health-hooks-frame)
+            cfmgr_status_awk_health_hooks_frame
+            "$test_awk" "$cfmgr_awk_program" "$1" "$2" "$3" >"$cfmgr_probe_stdout"
+            cfmgr_probe_exit=$?
+            ;;
+        *) return 2 ;;
+    esac
+    return 0
+}
+    if cfmgr_health_hooks_cron_observe; then printf 'OBSERVER_OK\n'; else printf 'OBSERVER_FAIL %s\n' "$?"; fi
+cat "$cfmgr_health_hooks_jobs"
+"""
+    result = subprocess.run(
+        [
+            *commands[0],
+            "-c",
+            script,
+            "hook-cron-test",
+            str(ROOT),
+            str(tmp_path),
+            str(cron_file),
+            str(process_file),
+            str(len(cron)),
+            commands[1][0],
+        ],
+        capture_output=True,
+        check=False,
+        timeout=5,
+    )
+    assert (result.returncode, result.stderr) == (0, b""), (
+        result.stdout,
+        result.stderr.decode().splitlines()[-100:],
+    )
+    assert b"JOB watchdog 1 exact admitted END\n" in result.stdout
+    assert b"JOB cloud-update 1 exact admitted END\n" in result.stdout
+
+
+def test_health_hooks_cron_rejects_bad_frames_and_process_identity(commands, tmp_path):
+    valid = b"SHELL=/bin/sh\n* * * * * /x #CFMgrWatchdog#\n"
+    malformed = (
+        valid[:-1],
+        valid.replace(b"SHELL=/bin/sh", b"SHELL=/bin/sh\x00"),
+        valid + b"#" * 4097 + b"\n",
+    )
+    for index, cron in enumerate(malformed):
+        case = tmp_path / str(index)
+        case.mkdir()
+        result = run_health_hooks_cron(commands, case, cron, valid_crond_receipt())
+        assert result.returncode != 0
+        assert result.stdout == b""
+    wrong_process = b"CROND 123 4001 2f746d70 END\n"
+    result = run_health_hooks_cron(commands, tmp_path, valid, wrong_process)
+    assert result.returncode != 0
+    assert result.stdout == b""
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="actual health supervision requires Linux proc and FDs",
+)
+def test_linux_full_health_entry_normal_journey(
+    shell, tools, installed_package, schema2_config
+):
+    """One normal integrated run per selected host/native shell, CI execution only.
+
+    Real: entry admission, health and prerequisite dispatch, private parsers,
+    numeric reservations, Linux clock/identity/signals/reap, directory and private
+    file FDs, cleanup. Explicit firmware boundaries: mountinfo/block-device facts,
+    NVRAM/account ownership, syslog/logrotate executable observations, immutable
+    daemon facts, and HTTP response executable. No mounts or external requests.
+    Existing stall tests independently cover supervisor failures and real TLS.
+    """
+    entry, support, _, _ = installed_package
+    # The shallow owned root keeps the real bounded metadata ancestor inventory
+    # representative instead of spending it on pytest's host directory nesting.
+    with tempfile.TemporaryDirectory(prefix="cfh-", dir="/tmp") as directory:
+        base = Path(directory)
+        package = full_health_package(
+            entry, support, base, tools, shell, schema2_config
+        )
+        selected = package["entry"]
+        audit = base / "audit"
+
+        def immutable_inventory():
+            return {
+                str(path.relative_to(base)): (
+                    path.lstat().st_ino,
+                    path.lstat().st_mode,
+                    os.readlink(path)
+                    if path.is_symlink()
+                    else hashlib.sha256(path.read_bytes()).hexdigest(),
+                )
+                for path in base.rglob("*")
+                if (path.is_file() or path.is_symlink())
+                and path.parts[len(base.parts)] not in {"audit", "ram"}
+            }
+
+        before = immutable_inventory()
+        started = time.monotonic()
+        process = subprocess.Popen(
+            [*shell, str(selected), "--health"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+            env={
+                "PATH": os.environ["PATH"],
+                "LC_ALL": "C",
+                "TERM": "dumb",
+                "COLUMNS": "100",
+            },
+        )
+        try:
+            stdout, stderr = process.communicate(timeout=55)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+            pytest.fail(
+                "full health entry exceeded its 45-second report envelope and cleanup margin"
+            )
+        elapsed = time.monotonic() - started
+        ledger_path = audit / "ledger"
+        assert ledger_path.is_file(), (process.returncode, stdout, stderr)
+        ledger = ledger_path.read_text().split()
+        assert len(ledger) == 10, ledger
+        (
+            operations,
+            files,
+            reserved,
+            requests,
+            rows,
+            final_ops,
+            final_files,
+            final_bytes,
+            seconds,
+        ) = map(int, ledger[:9])
+        # Keep the measured partial ledger in any failed CI assertion. Count caps
+        # remain production-owned; the fixture never raises/bypasses a limit.
+        measured = {
+            "operations": operations,
+            "files": files,
+            "bytes": reserved,
+            "requests": requests,
+            "rows": rows,
+            "final_operations": final_ops,
+            "final_files": final_files,
+            "final_bytes": final_bytes,
+            "collection_seconds": seconds,
+            "wall_seconds": elapsed,
+            "reason": ledger[9],
+        }
+        print("full-health normal ledger:", measured)
+        assert process.returncode == 0 and stderr == b"", (measured, stdout, stderr)
+        assert ledger[9] == "normal", measured
+        assert requests == 12 and 0 < rows <= 96 and 0 < seconds < 45, measured
+        assert reserved + final_bytes <= 12 * 1024 * 1024, measured
+        assert final_ops <= 8 and final_files <= 16 and elapsed < 50, measured
+        assert immutable_inventory() == before, (
+            "health changed a retained fixture source"
+        )
+        assert not Path((audit / "context").read_text().strip()).exists()
+        assert list((base / "ram").iterdir()) == [], (
+            "owned health context survived cleanup"
+        )
+        route_rows = [
+            row.split() for row in (audit / "routes").read_text().splitlines()
+        ]
+        modes = [row[0] for row in route_rows]
+        for mode in (
+            "health-config",
+            "health-inventory",
+            "health-native-metadata",
+            "health-entware-metadata",
+            "health-cloud-yaml",
+            "health-cloud-json",
+            "health-cloud-pem",
+            "health-get",
+            "health-render",
+        ):
+            assert mode in modes, (mode, measured, modes)
+        for row in route_rows:
+            if row[3].isdigit():
+                assert not Path("/proc", row[3]).exists(), (
+                    "owned supervised child survived the report"
+                )
+        request_kinds = (audit / "requests").read_text().splitlines()
+        assert {kind: request_kinds.count(kind) for kind in set(request_kinds)} == {
+            "zone": 1,
+            "dns": 3,
+            "list": 2,
+            "items": 2,
+            "tunnel": 1,
+            "connections": 1,
+            "trace4": 1,
+            "trace6": 1,
+        }, (measured, request_kinds)
+        raw_rows = (audit / "rows").read_text()
+        assert len(raw_rows.splitlines()) == rows
+        assert ".integration\t" not in raw_rows and "report.budget\t" not in raw_rows, (
+            measured,
+            raw_rows,
+        )
+        for expected in (
+            "config.authority",
+            "storage.entware",
+            "cloudflared.runtime.local",
+            "cloudflared.yaml.identity",
+            "cloudflared.certificate.live",
+            "cloudflared.binary",
+        ):
+            assert expected + "\tPASS\t" in raw_rows, (expected, measured, raw_rows)
+        for expected in (
+            "backup.destination\tPASS\t",
+            "backup.access\tUNKNOWN\t",
+            "backup.history\tSKIP\t",
+            "hooks.files\tPASS\t",
+            "hooks.integrity\tPASS\t",
+            "hooks.watchdog\tPASS\t",
+            "hooks.cloud-update\tPASS\t",
+            "hooks.dispatch\tUNKNOWN\t",
+            "logging.base\tPASS\t",
+            "logging.ddns.policy\tPASS\t",
+            "logging.ip_sync.policy\tPASS\t",
+            "logging.cloudflared.policy\tPASS\t",
+            "package.inventory\tPASS\t",
+            "recovery.guards\tPASS\t",
+        ):
+            assert expected in raw_rows, (expected, measured, raw_rows)
+        for canary in package["canaries"]:
+            assert canary.encode() not in stdout + stderr
+            assert canary not in (audit / "network-environment").read_text()
+        assert b"MUST_NOT_EXECUTE" not in stdout + stderr
+        assert (
+            "cfmgr_fixture_actual_run"
+            in (base / "jffs/addons/CFMgr.d/modules/lib/execution.sh").read_text()
+        )
+        assert len((audit / "transformations").read_text().splitlines()) == sum(
+            path.is_file() and path.name != ".DS_Store"
+            for path in (ROOT / "modules").rglob("*")
+        )
+
+
+@pytest.mark.parametrize(
+    "damage,expected",
+    [
+        ("none", "PASS"),
+        ("unlisted", "FAIL"),
+        ("unlisted-space", "FAIL"),
+        ("passive", "UNKNOWN"),
+        ("passive-nested", "UNKNOWN"),
+        ("placeholder", None),
+        ("worker-mode", None),
+        ("original", None),
+        ("installed-entry", None),
+        ("changed-metadata", None),
+        ("catalog-tail", None),
+    ],
+)
+def test_health_package_complete_binding(commands, tmp_path, damage, expected):
+    """Private receipt fixtures exercise the shared full grammar and binding.
+
+    Native metadata, actual installed entry and supervisor are separately covered
+    by the full Linux journey. These mutations must never manufacture a PASS.
+    """
+    fixed = {
+        "entry": "cfmgr.sh",
+        "catalog": "catalog.txt",
+        "backup": "modules/backup.sh",
+        "manager": "modules/manager.sh",
+        "status": "modules/status.sh",
+        "helpers-empty": "modules/helpers/.gitkeep",
+        "worker": "modules/helpers/worker.sh",
+        "hooks-empty": "modules/hooks/.gitkeep",
+        "lib-empty": "modules/lib/.gitkeep",
+        "config": "modules/lib/config.sh",
+        "execution": "modules/lib/execution.sh",
+        "network": "modules/lib/network.sh",
+        "package": "modules/lib/package.sh",
+        "storage": "modules/lib/storage.sh",
+    }
+    paths = sorted(fixed.values())
+    if damage in {"passive", "passive-nested"}:
+        paths.append(
+            "modules/passive-dir/data"
+            if damage == "passive-nested"
+            else "modules/passive.dat"
+        )
+        paths.sort()
+    catalog = "CFMGR-CATALOG 1 0.1.0\n" + "".join(
+        f"{p}\t{'library' if '/lib/' in p else 'helper' if '/helpers/' in p else 'data'}\n"
+        for p in paths
+        if p.startswith("modules/")
+    )
+    payloads = {p: b"" if p.endswith(".gitkeep") else b"fixture\n" for p in paths}
+    payloads["catalog.txt"] = catalog.encode()
+    if damage == "placeholder":
+        payloads["modules/lib/.gitkeep"] = b"not empty\n"
+    records = {
+        p: (
+            "0755" if p in {"cfmgr.sh", "modules/helpers/worker.sh"} else "0644",
+            str(len(payloads[p])),
+            hashlib.sha256(payloads[p]).hexdigest(),
+            p,
+        )
+        for p in paths
+    }
+    manifest = "CFMGR-MANIFEST 2 0.1.0 1 2\n" + "".join(
+        "\t".join(records[p]) + "\n" for p in paths
+    )
+    sources = {"manifest": manifest, "catalog": catalog}
+    dirs = {
+        "d0": "modules",
+        "d1": "modules/lib",
+        "d2": "modules/helpers",
+        "d3": "modules/hooks",
+    }
+    for role, directory in dirs.items():
+        names = {
+            p.removeprefix(directory + "/").split("/")[0]
+            for p in paths
+            if p.startswith(directory + "/")
+        }
+        if damage in {"unlisted", "unlisted-space"} and role == "d0":
+            names.add("extra file.sh" if damage == "unlisted-space" else "unexpected")
+        sources[role] = "".join(n + "\n" for n in sorted(names))
+    metadata = []
+    for index, (role, p) in enumerate(fixed.items(), start=1):
+        permission = "-rwxr-xr-x" if records[p][0] == "0755" else "-rw-r--r--"
+        if damage == "worker-mode" and role == "worker":
+            permission = "-rw-r--r--"
+        metadata.append(
+            f"MEMBER\t{role}\t1\t{index}\t{records[p][1]}\t{permission}\tprotected-chain\n"
+        )
+    metadata.append(
+        f"MEMBER\tmanifest\t1\t20\t{len(manifest)}\t-rw-r--r--\tprotected-chain\n"
+    )
+    metadata.extend(
+        f"MEMBER\t{r}\t1\t{21 + i}\t128\tdrwxr-xr-x\tprotected-chain\n"
+        for i, r in enumerate(dirs)
+    )
+    before = "".join(metadata)
+    after = (
+        before.replace("MEMBER\tentry\t1\t1\t", "MEMBER\tentry\t1\t999\t")
+        if damage == "changed-metadata"
+        else before
+    )
+    hashes = "".join(
+        f"HASH\t{r}\t{('f' * 64 if damage == 'installed-entry' and r == 'entry' else records[fixed[r]][2])}\n"
+        for r in ("entry", "catalog")
+    )
+    index = "CFMGR-PACKAGE\t1\t0.1.0\tverified:verified:verified:verified\n"
+    for role, p in fixed.items():
+        if role.endswith("empty"):
+            continue
+        record = records[p]
+        if damage == "original" and role == "status":
+            record = (record[0], record[1], "0" * 64, record[3])
+        index += "ORIGINAL\t" + "\t".join(record) + "\n"
+    counts = ""
+    for role, content in sources.items():
+        if damage == "catalog-tail" and role == "catalog":
+            content = content.rstrip("\n")
+        (tmp_path / role).write_text(content)
+        index += f"SOURCE\t{role}\t{role}\n"
+        counts += f"COUNT\t{role}\t{len(content)}\t{content.count(chr(10))}\n"
+    for role, content in {
+        "COUNTS": counts,
+        "BEFORE": before,
+        "AFTER": after,
+        "HASHES": hashes,
+    }.items():
+        (tmp_path / role).write_text(content)
+        index += f"{role}\t{role}\n"
+    (tmp_path / "index").write_text(index + "END\n")
+    result = subprocess.run(
+        [
+            *commands[1],
+            awk_program("package_records", "health_package"),
+            tmp_path,
+            tmp_path / "index",
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    if expected is None:
+        assert result.returncode != 0 and not result.stdout
+    else:
+        assert (result.returncode, result.stdout, result.stderr) == (
+            0,
+            f"CFMGR-PACKAGE 1 {expected} END\n".encode(),
+            b"",
+        )
+
+
+@pytest.mark.parametrize(
+    "listing,complete,expected",
+    [
+        (b"config\nsetup.complete\n", "1", "PASS"),
+        (b"config\n.config-save.retired\n", "1", "WARN"),
+        (b"entry.stage\nbad\x01name\n", "0", "WARN"),
+        (b"config\n", "0", "UNKNOWN"),
+        (b"config", "1", "UNKNOWN"),
+        (b"config\nconfig\n", "1", "UNKNOWN"),
+    ],
+)
+def test_health_recovery_complete_listing_required(
+    commands, tmp_path, listing, complete, expected
+):
+    snapshot = tmp_path / "listing"
+    snapshot.write_bytes(listing)
+    result = subprocess.run(
+        [
+            *commands[1],
+            awk_program("health_flat"),
+            snapshot,
+            str(len(listing)),
+            str(listing.count(b"\n")),
+            complete,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        f"CFMGR-GUARDS 1 {expected} END\n".encode(),
+        b"",
+    )
+
+
+@pytest.mark.parametrize("late_result", [1, 3])
+def test_health_recovery_observed_guard_survives_metadata_failure(
+    shell, tmp_path, late_result
+):
+    """State containment only: native flat listing is covered by the full journey."""
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_source=$2 cfmgr_health_config=unavailable cfmgr_health_package=missing
+metadata_calls=0
+cfmgr_health_log_spec_write() { cfmgr_health_log_spec_file=$cfmgr_source/spec; }
+late=$3
+cfmgr_health_log_metadata() {
+    metadata_calls=$((metadata_calls + 1))
+    [ "$metadata_calls" = 1 ] || return "$late"
+    cfmgr_health_log_metadata_file=$cfmgr_source/metadata
+}
+cfmgr_health_log_member() { cfmgr_health_log_member_ok=1 cfmgr_health_log_member_identity=protected; }
+cfmgr_health_flat_list() { cfmgr_health_flat_file=$cfmgr_source/listing cfmgr_health_flat_complete=1; }
+cfmgr_health_log_group() {
+    cfmgr_health_log_group_file=$cfmgr_source/counts
+    printf 'COUNT\troot\t12\t1\n' >"$cfmgr_health_log_group_file"
+}
+cfmgr_health_run() {
+    cfmgr_probe_stdout=$cfmgr_source/receipt cfmgr_probe_stderr=$cfmgr_source/error cfmgr_probe_exit=0
+    printf 'CFMGR-GUARDS 1 WARN END\n' >"$cfmgr_probe_stdout"
+    : >"$cfmgr_probe_stderr"
+}
+cfmgr_health_row() { printf '%s %s\n' "$1" "$2"; }
+if cfmgr_health_recovery_collect; then rc=0; else rc=$?; fi
+printf 'RESULT %s\n' "$rc"
+"""
+    result = subprocess.run(
+        [*shell, "-c", script, "recovery-state", ROOT, tmp_path, str(late_result)],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    expected = (
+        b"recovery.guards WARN\nRESULT 0\n" if late_result == 1 else b"RESULT 3\n"
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
