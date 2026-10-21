@@ -81,24 +81,32 @@ cfmgr_health_mode() {
 }
 
 cfmgr_health_reserve() {
-	[ "${cfmgr_health_active:-0}" = 1 ] || return 2
-	[ -z "${cfmgr_probe_pid:-}" ] || [ "${cfmgr_probe_status:-}" = reaped ] || return 3
+	case ${cfmgr_health_active:-0} in 1) ;; *) return 2 ;; esac
+	case ${cfmgr_probe_pid:-} in
+	'') ;;
+	*) case ${cfmgr_probe_status:-} in reaped) ;; *) return 3 ;; esac ;;
+	esac
 	cfmgr_health_mode "$1" || return 2
 	case $1 in health-render | health-render-count)
 		cfmgr_health_final_reserve "$1"
 		return $?
 		;;
 	esac
-	[ -z "${cfmgr_health_final_deadline:-}" ] || return 1
+	case ${cfmgr_health_final_deadline:-} in '') ;; *) return 1 ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
-	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
-		[ "$cfmgr_health_operations" -ge 568 ] ||
-		[ "$((cfmgr_health_requests + cfmgr_health_mode_get))" -gt 12 ] ||
-		[ "$((cfmgr_health_files + cfmgr_health_mode_files))" -gt 1264 ] ||
-		[ "$((cfmgr_health_bytes + cfmgr_health_mode_bytes))" -gt 11534336 ]; then
+	# These counters are initialized/incremented here and mode sizes are admitted
+	# above. Native ash has no test builtin: evaluate this numeric-only guard in
+	# shell arithmetic rather than launching five separate comparison processes.
+	case $((cfmgr_probe_now >= cfmgr_health_collect_deadline || \
+	cfmgr_health_operations >= 568 || \
+	cfmgr_health_requests + cfmgr_health_mode_get > 12 || \
+	cfmgr_health_files + cfmgr_health_mode_files > 1264 || \
+	cfmgr_health_bytes + cfmgr_health_mode_bytes > 11534336)) in
+	1)
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
-	fi
+		;;
+	esac
 	cfmgr_health_operations=$((cfmgr_health_operations + 1))
 	cfmgr_health_requests=$((cfmgr_health_requests + cfmgr_health_mode_get))
 	cfmgr_health_files=$((cfmgr_health_files + cfmgr_health_mode_files))
@@ -995,8 +1003,8 @@ cfmgr_status_health_native() (
 )
 
 cfmgr_status_attachment_ok() {
-	[ "${cfmgr_status_interrupted:-0}" = 0 ] && [ ! -L "$cfmgr_status_context" ] &&
-		[ "$cfmgr_status_context" -ef /proc/self/fd/9 ]
+	case ${cfmgr_status_interrupted:-0} in 0) ;; *) return 1 ;; esac
+	[ ! -L "$cfmgr_status_context" ] && [ "$cfmgr_status_context" -ef /proc/self/fd/9 ]
 }
 
 cfmgr_status_run() {

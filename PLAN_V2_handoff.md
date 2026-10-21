@@ -71,6 +71,24 @@ requested next-scope assessment and end-of-day pause after this checkpoint close
 
 ### Retained implementation and diagnostic record
 
+Timing reassessment: fixture-only candidate
+`86de48d702bae1f2fa31c7828cdbe38ab4b97e39` failed
+[Dev 39579644866](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39579644866)
+at the unchanged collection deadline after 493 operations/1,061 files/
+9,755,272 bytes/seven GETs (40s report, 44.02s wall; test process 45.18s wall,
+20.56s user/21.44s system). Its automatic core 39579626318 is cancelled without
+children. The lean adapter preserves fresh observations but has no proved overall
+speedup. Parent reassessed before another repair: vendor ash has test/standalone/
+nofork builtins disabled, so pure reservation comparisons launch repeated external
+processes. The next narrow Status change replaces only active/owned/final-phase
+value checks with equivalent case branches and combines the five internal numeric
+budget predicates in POSIX arithmetic. The attachment interruption flag also uses
+case; both filesystem checks remain. No clock, identity, pause cadence, file
+observation, limit, test assertion or shared supervisor logic changes. Existing
+boundary/ownership/finalization/basic-supervisor cases and the normal journey
+must pass in CI, then complete affected modules and final core. No acceptance is
+awarded for either failed timing run.
+
 On 2026-10-21 the user instructed **"read the handoff & continue"**, releasing
 the scoped Route B health/terminal package below, including its proposed light
 Mac/remote validation approach. Resume only this package through review, required
