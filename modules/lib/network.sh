@@ -86,3 +86,34 @@ cfmgr_native_acquire_check() {
 	cfmgr_native_offline || return $?
 	cfmgr_native_ready=1 cfmgr_native_reason=''
 }
+
+# Full-health read-only admission. The caller admits the native executables and
+# protected native CA before setting this flag; no installation checks are used.
+# This controller runs only in the private health subshell and owns its callback.
+cfmgr_health_tls_check() {
+	cfmgr_health_transport=unavailable
+	[ "${cfmgr_health_active:-0}" = 1 ] && [ "${cfmgr_health_native_admitted:-0}" = 1 ] || return 2
+	cfmgr_native_action() { cfmgr_health_native_action "$@"; }
+	if cfmgr_native_acquire_check "$cfmgr_status_context" "$cfmgr_health_curl" "$cfmgr_health_openssl" "$cfmgr_health_ca"; then
+		cfmgr_health_transport=ready
+		return 0
+	else
+		cfmgr_health_tls_code=$?
+		[ "$cfmgr_health_tls_code" != 3 ] || return 3
+		cfmgr_health_reason=transport-prerequisite
+		return "$cfmgr_health_tls_code"
+	fi
+}
+
+cfmgr_health_native_action() {
+	case $1 in
+	install-wc) cfmgr_health_run health-count /usr/bin/wc "$2" ;;
+	native-curl-version) cfmgr_health_run health-curl-version "$cfmgr_health_curl" ;;
+	native-curl-features) cfmgr_health_run health-curl-features /usr/bin/awk "$2" ;;
+	native-ca-pem) cfmgr_health_run health-ca-pem /usr/bin/awk "$2" ;;
+	native-ca-decode) cfmgr_health_run health-ca-decode "$cfmgr_health_openssl" "$2" ;;
+	native-curl-offline) cfmgr_health_run health-curl-offline "$cfmgr_health_curl" "$2" "$3" ;;
+	*) return 2 ;;
+	esac || return $?
+	cfmgr_native_output=$cfmgr_probe_stdout cfmgr_native_error=$cfmgr_probe_stderr cfmgr_native_exit=$cfmgr_probe_exit
+}

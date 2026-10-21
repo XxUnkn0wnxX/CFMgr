@@ -59,7 +59,7 @@ _cfmgr_prerequisites_observe() {
 }
 
 cfmgr_prerequisites_child() {
-	case $cfmgr_probe_mode in timeout-expiry) ;; *) return 0 ;; esac
+	case $cfmgr_probe_mode in timeout-expiry | health-timeout-expiry) ;; *) return 0 ;; esac
 	[ -f "$cfmgr_probe_context/timeout.child" ] || return 1
 	IFS=' ' read -r cfmgr_probe_child_pid cfmgr_probe_child_parent cfmgr_probe_child_start cfmgr_probe_child_boot cfmgr_probe_child_extra <"$cfmgr_probe_context/timeout.child" || return 1
 	case $cfmgr_probe_child_extra in '') ;; *) return 1 ;; esac
@@ -79,6 +79,14 @@ cfmgr_prerequisites_now() {
 	IFS=' ' read -r cfmgr_probe_uptime cfmgr_probe_idle </proc/uptime || return 1
 	cfmgr_probe_now=${cfmgr_probe_uptime%%.*}
 	case "$cfmgr_probe_now" in '' | *[!0-9]*) return 1 ;; esac
+}
+
+# Final report probes use the existing two-second supervision slice, clamped
+# to the immutable phase deadline. Check again after supervisor clock admission.
+cfmgr_prerequisites_report_deadline() {
+	case $1 in '' | *[!0-9]*) return 2 ;; esac
+	[ "$cfmgr_probe_now" -lt "$1" ] || return 1
+	[ "$cfmgr_probe_deadline" -le "$1" ] || cfmgr_probe_deadline=$1
 }
 
 # Check the native supervision substrate even when every required tool is absent.
@@ -105,7 +113,7 @@ _cfmgr_prerequisites_attachment() {
 	acquire-*) cfmgr_acquire_attached ;;
 	install-report | install-report-ls) cfmgr_bootstrap_native_attached ;;
 	launch-*) cfmgr_launch_attachment_ok ;;
-	status-*) cfmgr_status_attachment_ok ;;
+	status-* | health-*) cfmgr_status_attachment_ok ;;
 	store-*) cfmgr_store_attachment_ok ;;
 	archive-*) cfmgr_archive_attachment_ok ;;
 	history-*) cfmgr_backup_history_attached ;;
@@ -120,6 +128,17 @@ cfmgr_prerequisites_run() {
 	# MODE CONTEXT SH PROBE ENV AWK SLEEP WC TOOL [FIXED_OPERANDS...]
 	# Fresh private RAM context and tool admission belong to the controller.
 	# Output files are retained; return 3 also retains child identities/guards.
+	# Health reservations precede every file creation/spawn, and an unresolved
+	# owned child must never be erased by another attempted health operation.
+	case ${cfmgr_health_active:-0}:$1 in
+	1:jq-* | 1:sha-* | 1:wc-jq | 1:wc-sha | 1:timeout-* | 1:flock-* | 1:dig-version)
+		cfmgr_health_borrowed=$1
+		shift
+		set -- "health-$cfmgr_health_borrowed" "$@"
+		;;
+	esac
+	case ${1:-} in health-*) cfmgr_health_reserve "$1" || return $? ;; esac
+	case ${1:-} in status-render | status-render-count) cfmgr_status_final_reserve || return $? ;; esac
 	cfmgr_probe_status=invalid
 	cfmgr_probe_exit=
 	cfmgr_probe_pid=
@@ -138,6 +157,16 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	health-inventory | health-scope | health-request) [ "$#" -eq 19 ] || return 2 ;;
+	health-get) [ "$#" -eq 15 ] || return 2 ;;
+	health-response) [ "$#" -eq 16 ] || return 2 ;;
+	health-protected | health-current | health-storage | health-uuid | health-request-check | health-trace | health-frame | health-render) [ "$#" -eq 13 ] || return 2 ;;
+	health-config) [ "$#" -eq 20 ] || return 2 ;;
+	health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) [ "$#" -eq 10 ] || return 2 ;;
+	health-fields) [ "$#" -eq 13 ] || return 2 ;;
+	health-native | health-mount | health-curl-offline | health-count-pair) [ "$#" -eq 11 ] || return 2 ;;
+	health-blkid) [ "$#" -eq 10 ] || return 2 ;;
+	health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | health-wc-jq | health-wc-sha | health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | health-dig-version | health-uname | health-date | health-curl-version) [ "$#" -eq 9 ] || return 2 ;;
 	history-meta | history-proc-meta | history-inode | history-count | history-digest | history-realpath | history-readlink | history-hexdump | history-script-prefix | history-blkid | history-proc-list | history-proc-pids | history-policy-decode) [ "$#" -eq 10 ] || return 2 ;;
 	history-directory | history-mount | history-cron-read | history-writer-fd-list) [ "$#" -eq 11 ] || return 2 ;;
 	history-volume | history-argv | history-writer-parse) [ "$#" -eq 13 ] || return 2 ;;
@@ -185,9 +214,10 @@ cfmgr_prerequisites_run() {
 	store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;
 	store-count | store-meta | store-meta-frame | store-snapshot | store-digest | store-digest-frame | store-lock-create | store-lock-test | store-mkdir | store-remove | store-rmdir | store-space) [ "$#" -eq 10 ] || return 2 ;;
 	status-config) [ "$#" -eq 20 ] || return 2 ;;
-	status-snapshot | status-nvram | status-space | status-realpath | status-metadata | status-count) [ "$#" -eq 10 ] || return 2 ;;
+	status-snapshot | status-nvram | status-space | status-realpath | status-metadata | status-count | status-render-count) [ "$#" -eq 10 ] || return 2 ;;
 	status-fields) [ "$#" -eq 13 ] || return 2 ;;
 	status-native | status-mount) [ "$#" -eq 11 ] || return 2 ;;
+	status-render) [ "$#" -eq 13 ] || return 2 ;;
 	status-date) [ "$#" -eq 9 ] || return 2 ;;
 	launch-config-check | launch-config-scope) [ "$#" -eq 13 ] || return 2 ;;
 	launch-config-observe | launch-config-patch) [ "$#" -eq 17 ] || return 2 ;;
@@ -228,6 +258,17 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_reason=native-supervisor
 	cfmgr_prerequisites_supervisor || return 2
 	cfmgr_probe_deadline=$((cfmgr_probe_now + 2))
+	case $cfmgr_probe_mode in health-*)
+		case $cfmgr_probe_mode in
+		health-get) cfmgr_probe_deadline=$((cfmgr_probe_now + 4)) ;;
+		health-render | health-render-count) cfmgr_prerequisites_report_deadline "${cfmgr_health_final_deadline:-}" || return $? ;;
+		esac
+		case $cfmgr_probe_mode in health-render | health-render-count) ;; *)
+			[ "$cfmgr_health_collect_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_health_collect_deadline
+			;;
+		esac
+		;;
+	esac
 	case $cfmgr_probe_mode in history-*)
 		cfmgr_archive_uint "${cfmgr_history_deadline:-}" && [ "$cfmgr_history_deadline" -gt "$cfmgr_probe_now" ] || return 1
 		cfmgr_probe_deadline=$cfmgr_history_deadline
@@ -258,8 +299,13 @@ cfmgr_prerequisites_run() {
 		;;
 	esac
 	case $cfmgr_probe_mode in status-*)
-		case ${cfmgr_status_deadline:-} in
-		[0-9]*) [ "$cfmgr_status_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_status_deadline ;;
+		case $cfmgr_probe_mode in
+		status-render | status-render-count) cfmgr_prerequisites_report_deadline "${cfmgr_status_final_deadline:-}" || return $? ;;
+		*)
+			case ${cfmgr_status_deadline:-} in
+			[0-9]*) [ "$cfmgr_status_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_status_deadline ;;
+			esac
+			;;
 		esac
 		;;
 	esac
@@ -280,7 +326,11 @@ cfmgr_prerequisites_run() {
 	}
 	cfmgr_probe_label=$cfmgr_probe_mode
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-* | archive-* | history-*)
+	health-timeout-exit) set -- "$@" "$cfmgr_probe_shell" "$cfmgr_probe_helper" ;;
+	health-timeout-expiry) set -- "$@" "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_sleep" ;;
+	esac
+	case "$cfmgr_probe_mode" in
+	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
 		[ "${#cfmgr_probe_serial}" -le 6 ] || return 2
@@ -435,7 +485,7 @@ cfmgr_prerequisites_run() {
 	fi
 	if wait "$cfmgr_probe_pid"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
 	case $cfmgr_probe_mode in
-	timeout-expiry)
+	timeout-expiry | health-timeout-expiry)
 		if ! cfmgr_prerequisites_child || [ -d "/proc/$cfmgr_probe_child_pid" ]; then
 			cfmgr_probe_status=unresolved
 			return 3
@@ -523,6 +573,13 @@ cfmgr_prerequisites_capability() {
 
 # Exports cfmgr_prereq_* capability results for the admitted controller.
 # shellcheck disable=SC2034
+cfmgr_prerequisites_admit_selected() {
+	case ${cfmgr_health_active:-0} in
+	1) cfmgr_health_admit_entware "$1" ;;
+	*) cfmgr_prerequisites_admit_tool "$1" ;;
+	esac
+}
+
 cfmgr_prerequisites_check() {
 	# SCOPE CONTEXT SH PROBE ENV AWK SLEEP WC NATIVE_FLOCK JQ TIMEOUT SHA
 	# ENTWARE_FLOCK DIG NATIVE_DNS_PROOF; optional absent paths use '-'.
@@ -544,8 +601,17 @@ cfmgr_prerequisites_check() {
 	case "$cfmgr_prereq_native_dns" in unknown | srv-a-verified) ;; *) return 2 ;; esac
 	case "$cfmgr_prereq_context" in /*) ;; *) return 2 ;; esac
 	[ -d "$cfmgr_prereq_context" ] || return 2
-	cfmgr_prerequisites_attachment_ok || return 2
+	case ${cfmgr_health_active:-0} in
+	1) cfmgr_status_attachment_ok && cfmgr_health_entware_attachment || return $? ;;
+	*) cfmgr_prerequisites_attachment_ok || return 2 ;;
+	esac
 	cfmgr_prerequisites_supervisor || return 2
+	case ${cfmgr_health_active:-0} in 1)
+		for cfmgr_health_scratch in json.good json.bad bytes checksum.good checksum.bad lock timeout.child; do
+			cfmgr_health_stage_reserve "$cfmgr_health_scratch" 8192 || return $?
+		done
+		;;
+	esac
 	(
 		umask 077
 		set -C
@@ -564,7 +630,7 @@ cfmgr_prerequisites_check() {
 		esac
 		if [ "$cfmgr_prereq_tool" = - ]; then
 			cfmgr_prereq_code=1
-		elif cfmgr_prerequisites_admit_tool "$cfmgr_prereq_tool"; then
+		elif cfmgr_prerequisites_admit_selected "$cfmgr_prereq_tool"; then
 			if cfmgr_prerequisites_capability "$cfmgr_prereq_capability" "$cfmgr_prereq_tool"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
 		else
 			cfmgr_prereq_code=$?
@@ -587,7 +653,7 @@ cfmgr_prerequisites_check() {
 		case "$cfmgr_prereq_candidate" in native) cfmgr_prereq_tool=$cfmgr_prereq_native_flock ;; entware) cfmgr_prereq_tool=$cfmgr_prereq_entware_flock ;; esac
 		[ "$cfmgr_prereq_tool" != - ] || continue
 		if [ "$cfmgr_prereq_candidate" = entware ]; then
-			if cfmgr_prerequisites_admit_tool "$cfmgr_prereq_tool"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
+			if cfmgr_prerequisites_admit_selected "$cfmgr_prereq_tool"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
 			case "$cfmgr_prereq_code" in
 			0) ;;
 			1) continue ;;
@@ -642,7 +708,7 @@ cfmgr_prerequisites_check() {
 			cfmgr_prereq_dns=unusable
 			if [ "$cfmgr_prereq_dig" = - ]; then
 				cfmgr_prereq_code=1
-			elif cfmgr_prerequisites_admit_tool "$cfmgr_prereq_dig"; then
+			elif cfmgr_prerequisites_admit_selected "$cfmgr_prereq_dig"; then
 				if cfmgr_prerequisites_run dig-version "$cfmgr_prereq_context" "$cfmgr_prereq_shell" "$cfmgr_prereq_helper" "$cfmgr_prereq_env" "$cfmgr_prereq_awk" "$cfmgr_prereq_sleep" "$cfmgr_prereq_wc" "$cfmgr_prereq_dig"; then cfmgr_prereq_code=0; else cfmgr_prereq_code=$?; fi
 				if cfmgr_prerequisites_probe_code "$cfmgr_prereq_code"; then
 					if [ "$cfmgr_probe_exit" -eq 0 ] && [ -s "$cfmgr_probe_stdout" ] && [ ! -s "$cfmgr_probe_stderr" ]; then cfmgr_prereq_code=0; else cfmgr_prereq_code=1; fi
@@ -682,6 +748,14 @@ _cfmgr_prerequisites_exec() {
 		DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 		OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
 	case "$cfmgr_probe_mode" in
+	health-*)
+		set +x
+		set +v
+		ulimit -c 0 || exit 2
+		exec 3>&-
+		cfmgr_health_mode "$cfmgr_probe_mode" || exit 2
+		ulimit -f "$cfmgr_health_mode_limit" || exit 2
+		;;
 	history-*)
 		cfmgr_archive_uint "${cfmgr_history_probe_limit:-}" || exit 2
 		cfmgr_history_child_limit=$cfmgr_history_probe_limit
@@ -710,11 +784,12 @@ _cfmgr_prerequisites_exec() {
 	acquire-manifest) ulimit -f 512 || exit 2 ;;
 	status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-archive-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;;
 	install-copy | launch-copy) ulimit -f 2048 || exit 2 ;;
+	status-render) ulimit -f 64 || exit 2 ;;
 	launch-config-patch) ulimit -f 128 || exit 2 ;;
 	*) ulimit -f 8 || exit 2 ;;
 	esac
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-* | store-* | acquire-* | archive-* | history-*)
+	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-*)
 		shift 9
 		exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
 		;;

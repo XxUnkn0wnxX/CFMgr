@@ -34,6 +34,7 @@ def adapt_native(text: str, jffs: Path, tools: dict[str, str], shell: list[str])
         "/bin/dd": "dd",
         "/usr/bin/wc": "wc",
         "/usr/bin/env": "env",
+        "/usr/bin/printf": "printf",
         "/usr/sbin/openssl": "openssl",
     }
     paths = {name: tools.get(name) or shutil.which(name) for name in names.values()}

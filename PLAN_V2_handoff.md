@@ -26,11 +26,364 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a151ca-9b8c-7d21-a424-11c9013c54fd
 Ninth ID verified 2026-10-19 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a15c84-5da2-7eb2-b960-72ad3e59dd86
+Tenth ID verified 2026-10-21 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Paused checkpoint — S14.03 accepted
+## Active checkpoint — S03.09 and S03.10
+
+On 2026-10-21 the user instructed **"read the handoff & continue"**, releasing
+the scoped Route B health/terminal package below, including its proposed light
+Mac/remote validation approach. Resume only this package through review, required
+focused checks, develop publication, exact complete core CI and justified closing
+receipt, then pause. No later package or live router/provider mutation is released.
+Initial `develop`, `origin/develop` and actual remote all match
+`43a81f1f4e4a37d4e4a17270cebc37afee82d9e3`; the working tree was clean.
+Accepted product progress remains **23/157 (14.6%)**, **0/16 main goals (0%)**;
+Goal 3 is **3/10 (30%)**. Neither new ID has implementation or acceptance credit.
+
+Use brief serial low-priority Mac statics/focused tests, complete affected remote
+modules and exact final core Checks. Preserve the preceding Mac failure/one-time
+exception as historical evidence. No heavy local module run or new full-local
+suite is planned. Existing pinned dependencies and ignored `.tmp/` are reused.
+The user explicitly reinforced this on 2026-10-21: **"also try to keep the heavy
+testing off my computer i dont mind small focused ones but anything heavy use
+CI"**. Heavy tests/analyzers belong in CI; small local checks remain serial and
+low priority. This is current authorization for the scoped remote validation
+approach, not permission to weaken assertions or omit affected consumers.
+
+Parent owns architecture/trust decisions, integration, all five V2 records,
+manifest regeneration, publication and acceptance. Initial read-only delegation:
+an explorer maps actual early-entry/status/native/network/config consumers and
+focused tests; a second explorer verifies supported primary-source read-only
+provider endpoints and prerequisite/privacy limits. Neither may edit, test live
+providers/router state, run heavy local tests, publish or spawn agents. A single
+coherent implementation owner will be assigned after the entry/collector/probe
+contracts are frozen and independently reviewed. Dependent consumers remain
+serial; no overlapping write ownership is authorized.
+
+Current work: connect the reviewed entry and private transport foundation to the
+complete health collector and shared grouped presentation. The core collector,
+formatter draft and small optional-component admission have disjoint ownership
+below. Then integrate advanced selected-file, logging, owned integration and backup
+observations; validate the representative complete journey in CI. Pending proof
+includes actual standalone extended entry, Linux curl/supervisor behavior, full
+normal/degraded consumers, no persistent mutation or credential leakage, and
+narrow/plain basic/full output. Status, Manager and Backup complete core groups
+are all required because the shared execution/worker paths changed.
+
+The core collector owner has released its six files after 27 focused passes,
+one Linux-only skip and a parent-owned Package fixture quoting failure. Parent
+has quoted the fixed `/jffs` operands without changing production semantics; its
+single failing entry node then passed all three cases in 9.95s. The formatter integration owner now
+exclusively owns `modules/status.sh`, `modules/lib/execution.sh`,
+`modules/helpers/worker.sh`, `tests/test_status.py` and `tests/runtime_awk.py` for
+the shared basic/full one-pass formatter, reserved finalization and focused tests.
+The prior formatter draft remains in ignored `.tmp/health-presentation/`. The
+independent planner is read-only, resolving source-counted collection headroom
+before advanced groups are implemented. No other runtime writer is active.
+Heavy module/transport validation remains CI-only; these are unchecked WIP.
+The formatter owner has released its edits after seven focused passes. Parent
+review found that basic status still uses its exhausted collection deadline for
+rendering, and its direct dashboard stage lacks a physical file quota. The strong
+foundation owner now exclusively owns the same five runtime/test files for those
+bounded integration repairs, finalization timing and maximum-input verification.
+No local heavy analyzer or full group is authorized; CI remains the next gate.
+The repair owner has now released all files. Parent confirmed the direct-stage
+finalization guard and reviewed the deadline/reservation paths. Six actual
+consumer/entry cases passed in 11.37s (11.94s wall, 6.52s user, 4.47s system):
+`test_verified_health_extension_uses_local_consumer_and_preserves_owned_cleanup`
+and `test_installed_choice_zero_returns_without_operational_preparation`, both
+under `tests/test_status.py`. This covers normal/corrupt/unresolved full health,
+basic status, installed health and standalone health. The separate focused
+renderer/deadline/budget repairs also passed; Linux supervision remains pending.
+Current runtime and records are ready for the interim CI candidate after final
+light statics and manifest regeneration. No implementation owner remains active.
+Dispatch complete `test_status.py`, `test_native.py`, `test_entry_package.py`
+modules through Dev, inspect actual failures/cost, then exact complete core Checks.
+Broad lint belongs in the manual CI Lint workflow. Cancel the premature owned
+automatic core run while Dev diagnosis is pending. Do not begin consolidation or
+advanced implementation until this published candidate's prescribed gates finish.
+
+Initial source/API exploration is complete, with findings in the
+[health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
+Independent Astra design review identified disabled ash test/printf/echo builtins
+in both pinned release source configurations. Parent accepts the correction:
+minimal fallback requires the trusted native shell and fixed native output
+applet, uses finite fixed local reads, and imports no package/config/Entware code.
+Print useful fallback evidence before optional extension admission. Admission has
+finite byte/step limits; only the later verified supervisor supplies action
+deadlines. No whole-page hard wall deadline is claimed in degraded native state.
+The installed extension requires a fixed manifest-verified dependency closure;
+missing unrelated Backup/Manager modules must not disable independent checks.
+
+The first implementation package has one strong owner (`health_foundation`) for `cfmgr.sh`,
+`modules/status.sh`, necessary fixed dispatch in `modules/helpers/worker.sh` and
+`modules/lib/execution.sh`, and focused existing Status/entry tests. Its boundary
+is the early trusted entry/fallback, verified reporting closure, owned local
+collector and shared safe one-shot presentation. No provider transport is added
+until this foundation and its report interface pass focused review. Parent owns
+manifest regeneration and records; the owner must release files before any
+dependent package begins. No new script, module or permanent CI group is planned.
+The two read-only explorers and independent Astra review have completed. Astra
+returned **REVISE** for authenticated transport and allowed the corrected entry/
+closure foundation; parent agrees and released that foundation. Standalone
+extension admission requires the invoked trusted entry's bytes to match the
+protected manifest's entry record; version `0.1.0` alone proves no compatibility.
+Protected ancestry includes helpers, and all closure records come from one
+admitted manifest view. Full-report resource limits and strict private request
+eligibility remain the next parent design boundary; no provider code is released
+until those audit findings are resolved.
+The same owner also has the narrow existing `tests/entry_package_fixture.py`
+native adapter change for `/usr/bin/printf`, so vendor CI exercises the pinned
+output applet. No fixture behavior or wider ownership is delegated by that change.
+
+### Dependent health transport — reviewed implementation contract
+
+Parent freezes one full collection deadline of **45 seconds**, retaining basic
+Status's ten seconds; at most **256 supervised operations**, **12 GET requests**,
+**96 typed diagnostic rows**, and **576 owned context files**. Request connection/
+transfer limits are one/three seconds, with the supervisor clamped to remaining
+collection time. Admit at most **32,768 response-body bytes** and **8,192 header
+bytes** per request, with actual file-size limits and exact post-run byte checks;
+allow for the host shell's larger file-limit units in a conservative **12 MiB**
+maximum context derivation. Reserve bounded rendering/cleanup work; exhaustion
+reports incomplete checks and never resets the deadline. These implementation
+limits must be reconciled with the actual stage/file inventory before integration;
+they do not alter product requirements. Independent Astra review returned
+**PASS WITH NOTES**, accepted by the parent. Reserve operation/file/maximum
+writable bytes monotonically before creation or spawn, using an explicit
+allowlisted mode table. Request files count as their parser's stdout; transport
+reserves stdout/stderr plus body/header. The 12 MiB limit is retained file payloads,
+not total process memory or tmpfs overhead.
+
+The same private config snapshot supplies tolerant public diagnostics and a
+strict schema-2 selected-credential/request projection. Legacy or invalid schema
+keeps config-dependent requests local-only. Selected tokens have bounded safe
+Bearer syntax, accepting current prefixed and legacy forms without guessing
+user/account ownership. Only the admitted AWK parser sees secret values and
+serializes the exact allowlisted GET URL/header into private request input;
+shell/child argv and environment carry paths and nonsecret selectors only.
+Tracing/core dumps are disabled. Curl reads that private input, retains current
+TLS/CA/proxy/curlrc restrictions, writes to owned pinned descriptors, follows no
+redirects and performs no retries. Response parsing emits typed safe receipts.
+
+Recognized saved auth/throttle or unrecognized blocking evidence suppresses its
+affected scope without being relabelled current invalidity or a proved cooldown.
+Absent blocking evidence is described as absent, not as verified healthy.
+HTTP 401/403 stops further reads in the selected credential/resource scope for
+this report; no scopes are merged by equal secret bytes and unrelated scopes
+remain independent. No new persistent fault, cooldown, history or repair protocol
+is introduced. Resource reads cover eligible configured DNS/list/tunnel scopes;
+unsupported runtime-token authentication stays UNKNOWN. Target/page/request caps
+produce explicit partial observations, never false absence or write-permission
+claims. Public egress refresh is report-local and never called by basic Status.
+
+Freeze private request grammar as exactly a generated HTTPS URL and, for API
+requests, one Bearer header; no caller-controlled method/options. Token text is
+1–2,048 bytes from the safe Bearer alphabet (no control, quote or backslash), URL
+at most 2,048 bytes, complete request at most 4,352 bytes. URL globbing is disabled;
+hosts/path forms are fixed and query values are correctly encoded. Native parser
+success, empty private stderr, complete framing and pinned input precede curl.
+Strict schema authority uses the existing validated tree rather than a new parser.
+Only explicitly mapped typed feature-history fields inform historical holds;
+unknown ordinary config extensions remain inert. Latest auth/throttle evidence
+holds that feature with historical/unresolved wording, never a current-secret
+claim. If latest is absent, all typed events in the bounded validated config are considered
+without guessing associations to other credentials. On 429, defer further API
+reads for that provider for this report; proved shared transport failure skips
+its dependents. No retries, waiting or persisted cooldown follows. Public egress
+requires a locally validated configured feature and no relevant hold; IPv6 also
+requires current usable selected-interface evidence.
+
+### Foundation implementation evidence
+
+`health_foundation` released its files; no worker command remains active. Parent
+reviewed the early entry/closure diff and regenerated/checked `manifest.txt`.
+On dirty `43a81f1`, final focused native/alias/memory/renderer cases passed
+**12 in 4.55s**; closure/manifest/ancestry/reader-failure cases passed **13 in
+13.49s** (14.47s wall, 4.78s user, 3.74s sys); actual installed entry basic/health
+variants passed **2 in 8.27s** (8.71s wall, 2.92s user, 2.83s sys). An earlier
+local consumer/budget/unresolved selection passed **6 in 5.61s**, before the
+final wrapping/test refinements; it is not represented as an exact-final rerun.
+Focused Ruff/format, compilation, shell syntax, shfmt and whitespace passed.
+All local commands were serial at `nice -n 15`; no complete module/heavy test or
+ShellCheck run occurred. Receipts are worker tool output, not saved log files.
+Independent implementation review returned **PASS WITH NOTES**: no material
+trust/admission or ordinary-launch regression was found. Add one actual standalone
+health entry case with the installed entry absent before closure; current extracted
+admission and adapted installed-entry evidence do not by themselves prove it.
+Actual vendor execution,
+complete remote module/core proof and full-health integration remain pending;
+no product ID is complete.
+
+### Active ownership after foundation review
+
+`health_foundation` resumes as sole implementation owner for the private health
+projection, fixed GET transport, reservation/deadline integration and focused tests
+in existing Status/network/config/execution/worker owners. This package creates
+usable tested interfaces for the subsequent full collector; it awards no product
+credit and publishes nothing. Parent retains records, manifest and final assembly.
+The explicit historical hold map is `history.<feature>.status.schema`,
+`.latest.{result,reason,at}` and, only when latest is absent,
+`.events[*].{result,reason,at}` within the existing config parser bounds. Present malformed mapped structures yield an
+unresolved local hold; typed auth/throttle reasons yield a historical hold for
+that feature. Other ordinary extensions are inert. No current credential identity
+or cooldown duration is inferred from these records.
+The existing complete schema validator remains authoritative, including its
+history validation. Any validation failure keeps all config-dependent requests
+local-only; there is no health-specific bypass of `cs_history`. Tolerant local
+display remains independent. The explicit hold map operates only after valid
+schema-2 authority is established.
+A read-only explorer may map the remaining full-report groups and existing
+consumer owners without edits or tests; it does not duplicate transport work.
+That map is now complete: reuse Backup's pure YAML/payload/PEM/history parsers,
+not archive transaction or high-level history observation wrappers. Parent is
+releasing an independent small entry package to a second owner for `cfmgr.sh`
+and `tests/test_entry_package.py` only: preserve one optional Backup record from
+the same admitted manifest view and verify it independently. Missing/untrusted
+Backup disables only its parser-based checks. No additional module is sourced.
+The transport owner retains all other runtime/tests; files do not overlap.
+The optional-entry package is now released and parent-reviewed. It initializes
+`cfmgr_health_backup=missing`, projects at most one fixed Backup record after the
+seven required records, and marks present-record verification failures `untrusted`
+without suppressing the required closure. Only exact protected 0644 bytes become
+`verified`; no Backup code is sourced. Final focused Backup/manifest selection
+passed **6 in 4.51s** at `nice -n 15`, with narrow Ruff/format/compile/shell/shfmt/
+whitespace checks passed. An earlier 11/12 selection exposed and corrected a test
+expectation for listed-but-absent versus absent-record Backup, not a product failure.
+The manifest will be regenerated after the active transport writer releases files.
+
+### Full collector integration review in progress
+
+Actual transport staging now requires ten supervised operations and twenty-two files
+per successful API GET (private scope/request projection and validation, transfer,
+HTTP framing, independent request extent, joint body/header native byte count,
+body projection and receipt validation). Twelve GETs therefore reserve 120
+operations and 264 files. The 160-operation draft leaves only 32 collection operations for the existing basic
+dashboard, native TLS admission, selected-file integrity, owned integration,
+logging and recovery observations. Parent identified that as insufficient headroom
+for a normally populated full report, not justification to omit checks.
+Independent Astra review returned **PASS WITH NOTES**, accepted by parent:
+256 total operations, 576 files and 12 MiB retained payloads, preserving twelve
+requests, existing response caps and the 45-second collection envelope. Reserve
+eight operations, sixteen files and **1 MiB** for finalization; collection uses
+at most 248 operations, 560 files and 11 MiB. Formatter quota is 512 native blocks
+(256 KiB native, up to 512 KiB host per stdout/stderr file); charge row/dashboard
+staging separately. Bound the formatter's actual expansion and summarize causes
+without duplicating all detail. These are implementation bounds, not a product
+scope/acceptance change or measured completion guarantee. The worker is applying
+them; actual inventory and representative full-report proof remain pending.
+
+Every borrowed prerequisite/logging stage and directly created scratch input must
+use the same reservation/deadline/ownership accounting. Preserve timeout-expiry's
+special child supervision when adapting existing primitives. Logging readiness
+needs the complete shared evidence bundle, syslog syntax result, observed include
+inventory and owned rules; presence alone cannot earn READY. Collect shared
+snapshots/base once. Cleanup validates the complete owned inventory before the
+first deletion, then removes bounded batches with attachment/quiescence rechecks.
+The collection/action deadline is not an absolute terminal-output/cleanup wall-time
+guarantee. Heavy representative end-to-end proof runs in CI.
+
+Independent transport review found no additional material private-file/GET trust
+defect. Parent assigned functional repairs for list cursor pagination, typed IP/
+CIDR list values and DNS content/proxy/TTL fields, plus default-deny current NTP
+admission. Parent also corrected the first-five-events draft: five bounds display,
+not retained history; absent latest means inspect every validated bounded event
+for historical holds. A sixth retained auth event must not be silently ignored.
+Final repaired local selection passed **59 with five explicit Linux-only skips
+in 3.02s** (3.66s wall, 2.43s user, 1.10s system). After a final fail-closed TLS
+readiness reset, the callback and existing basic normal/budget/unresolved consumers
+passed **four in 1.77s**. Narrow Ruff/format/compile, individual POSIX shell syntax,
+shfmt and whitespace checks passed. The transport owner released all files; no
+command remains active. Actual Linux curl/supervisor proof remains pending.
+
+### Current integration ownership
+
+The next dependent implementation remains inside S03.09/S03.10. The existing
+strong owner receives the full collector orchestration, native/Entware admission,
+provider observations and typed config inventory in Status/execution/worker and
+their focused tests. Reuse the admitted basic snapshot and strict schema authority;
+do not duplicate configuration reads or weaken shared validators. Every borrowed
+probe and directly created staging file must enter the health budget before work.
+Advanced Cloudflared, logging and integration evidence are required subsequent
+integration work, not optional omissions. The owner must expose incomplete groups
+truthfully until those consumers are connected.
+
+An independent bounded worker may draft the shared plain grouped formatter and
+its small tests in ignored `.tmp/health-presentation/` only. It owns no tracked
+runtime/test file; parent integrates the draft after the collector owner releases
+those files. The interface is immutable safe dashboard input plus bounded typed
+rows, one admitted AWK pass, complete input validation before output, summary
+before detailed groups, and bounded expansion at width 10. Parent owns final mode
+dispatch/reservation integration and basic/full entry integration. No new runtime
+script or permanent test group is authorized.
+
+Parent independently reviews existing Linux curl fixtures and owns all records,
+manifest regeneration and publication. Heavy module, real transport, representative
+full-report and complete core proof run in CI. No acceptance is granted by these
+interim packages.
+The collector owner extends its actual installed-entry journey with a standalone
+copy and absent installed entry; this reuses the existing adapted runtime fixture.
+The optional-entry owner may extend the same fixed optional-record admission to
+Manager, package verification library and catalog in `cfmgr.sh` and
+`tests/test_entry_package.py` only. Its settled interface is separate
+missing/untrusted/verified flags; none becomes a required diagnostic dependency or
+is imported by admission. Known component integrity is not all-extension package
+verification. This independent small package does not overlap the collector or
+the ignored formatter draft.
+
+The optional-component extension is released and parent-reviewed: seven required
+records plus four independently verified optional records in one manifest view.
+Nine focused cases passed in 8.19s; narrow statics passed. Parent subsequently
+quoted fixed entry ancestry/source literals and existing Package JFFS operands
+so the path-adapted entry fixtures remain valid in checkouts containing spaces.
+The single entry node passed all three basic/health/standalone cases in 9.95s
+(10.70s wall, 5.40s user, 4.04s system); no wider rerun was needed.
+
+The formatter draft is complete in ignored `.tmp/health-presentation/` and is
+being integrated by its owner. It consumes raw safe dashboard text, groups
+known labels, orders FAIL/WARN/UNKNOWN summary entries, and validates all typed
+rows before bounded output. Four tiny scratch checks passed; a maximum-field
+96-row/16-KiB-dashboard/width-10 case produced 179,326 bytes, below the 192-KiB
+output bound. Required runtime/native integration remains pending.
+
+The core collector owner has released runtime files. Independent repair review
+returned PASS for the three findings and strict canonical-path framing. The
+focused core selection passed 27 cases with one Linux-only skip; its sole
+Package fixture failure is repaired and separately verified above. The added
+canonical-path case passed in 0.34s. No heavy local test ran. A second Astra
+planning review is active because the
+source inventory initially claimed 235 of 248 collection operations before advanced
+groups. Astra found its subtotals actually sum to **255** (52 + 30 + 53 + 120);
+the earlier claimed thirteen-operation headroom is withdrawn. This review must
+resolve useful batching/reuse and actual normal-case
+headroom; no required check may be omitted to fit the draft ceiling. Parent will
+integrate rendering, review and regenerate the manifest after file release,
+then obtain early Linux transport/core evidence in CI before further dependent
+implementation. These are interim gates within the same two-ID package, not an
+accepted or agreed final checkpoint.
+
+The capacity review has completed. After the current formatter/core CI checkpoint,
+the next dependent step within this same authorized package is a bounded
+forty-operation consolidation: fixed native/Entware metadata batches and trusted
+snapshot metadata receipt parsing, preserving canonical identity, mount pins,
+per-member failure and real capability proofs. Corrected core estimate becomes
+215 operations. Then freeze an actual advanced-stage and per-mode byte ledger;
+the reviewed candidate is 352 total operations, 768 files and the unchanged
+12 MiB payload/45-second supervision envelope. Parent accepts this conditional
+implementation design; it changes no specification or acceptance requirement.
+No numerical ceiling has changed yet. Advanced observations remain before the
+Entware descriptor transition and provider reads. Package completeness uses
+supervised fixed-member inspection, never the recursive normal package verifier.
+The [audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence)
+records the review, limits and pending evidence. Exact stage/byte accounting and
+one representative complete host/native journey remain required before closure.
+
+## Previous paused checkpoint — S14.03 accepted
 
 **Accepted/tested code:** reviewed implementation and all required exact-candidate CI
 passed at **`00b71feb70eac9d59138eb37310bfd42f95360d4`**. No required job or worker

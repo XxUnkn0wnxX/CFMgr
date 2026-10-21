@@ -8,6 +8,198 @@ The checklist remains authoritative for acceptance; the handoff owns current wor
 permissions, jobs, next actions and session lineage. Deferred risks remain in the
 review notes. This record creates no requirements, product credit or permissions.
 
+## S03.09 and S03.10 health entry and provider evidence
+
+Initial source review at `43a81f1` confirms that normal entry admission verifies
+the complete package before importing Status. Its required payload inventory
+includes Backup and Manager, so the existing path cannot meet degraded health
+reporting. The current Status controller also requires its worker/config/storage
+dependencies, private RAM, native process identity and working supervision; it
+is not a standalone fallback. Its tolerant configuration projection may display
+independent valid sections but cannot authorize authenticated reads.
+
+The parent and read-only source explorer agree that the existing Status owner,
+network library and fixed worker/execution dispatch are the appropriate surfaces.
+`cfmgr_native_check` includes installation mutation probes and is unsuitable for
+health admission. The existing TLS-only acquisition admission is reusable only
+with independent controller/tool admission. Expanded reporting must account for
+the current ten-second Status budget, two receipt files per operation and
+96-file cleanup ceiling; these are implementation constraints, not permission to
+discard required checks or unresolved ownership evidence.
+
+Primary Cloudflare API documentation was checked on 2026-10-21. Configured-resource
+GETs provide a supported narrow diagnostic surface:
+
+- [Zone details](https://developers.cloudflare.com/api/resources/zones/methods/get/)
+  and [DNS record listing](https://developers.cloudflare.com/api/resources/dns/subresources/records/methods/list/)
+  can establish matching resource/read evidence. Saved DDNS record labels are
+  local IDs, not proved provider record IDs; use exact name/type filtering and
+  admit pagination before claiming absence.
+- [List metadata](https://developers.cloudflare.com/api/resources/rules/subresources/lists/methods/get/)
+  and [list items](https://developers.cloudflare.com/api/resources/rules/subresources/lists/subresources/items/methods/list/)
+  have different documented accepted permissions. Item search is prefix-based,
+  so local exact comparison and complete pagination are necessary for absence.
+- [Tunnel details](https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/subresources/cloudflared/methods/get/)
+  establish management evidence only. The dedicated
+  [connections endpoint](https://developers.cloudflare.com/api/resources/zero_trust/subresources/tunnels/subresources/cloudflared/subresources/connections/methods/get/)
+  replaces reliance on deprecated embedded connections, but remote observations
+  alone cannot authenticate this router. Secret-returning tunnel-token GETs are
+  outside diagnostics.
+- [Token formats](https://developers.cloudflare.com/fundamentals/api/get-started/token-formats/)
+  include current user/account prefixes and legacy values. The existing registry
+  does not store token ownership type, so a generic user-token verification call
+  cannot safely classify every configured token. Resource reads avoid that guess.
+- [Rate limits](https://developers.cloudflare.com/fundamentals/api/reference/limits/)
+  require deferred handling of throttling. HTTP 403 can indicate missing resource
+  permission; it does not by itself prove a globally invalid secret. No raw
+  provider error, token, account ID or response body belongs in the report.
+
+Independent Astra design audit returned **REVISE** for the complete authenticated
+design, while allowing the corrected native fallback and fixed-closure foundation
+to proceed. Parent agrees with these findings and dispositions:
+
+- Both pinned release source configurations disable ash builtin test, printf and
+  echo. The reviewer verified config/source hashes against retained provenance.
+  The fallback uses the existing fixed native `/usr/bin/printf` substrate; it is
+  not described as shell-builtins-only. Native fallback/admission has finite
+  input/step bounds, while later verified supervision provides action deadlines.
+- Standalone-to-installed compatibility requires the invoked trusted entry's
+  bytes to match the protected manifest's entry record, even if the installed
+  entry is absent. The unchanged development version alone is insufficient.
+  Verify the fixed reporting closure and complete ancestry, including helpers,
+  from one admitted manifest view. Ordinary launch retains full-package checks.
+- Tolerant public diagnostics and strict private request descriptions are
+  separate products of the bounded config snapshot. Schema-1 visibility does not
+  confer typed credential authority. Historical auth/throttle observations are
+  not an implemented persistent fault/cooldown controller; conservative holds
+  must be described honestly without inventing or mutating operational state.
+- The full report needs explicit operation/body/context/file/row limits and one
+  aggregate deadline. Budget exhaustion preserves collected results and names
+  omitted checks. Unresolved ownership prevents further work and broad cleanup.
+- Since native printf is external, even writing a token with shell printf leaks
+  it through argv. An admitted parser must serialize credentials directly from
+  private input to owned private output. Disable tracing/core dumps, sanitize
+  child environments and never expose raw response/error data. Fixed GET/TLS
+  policy, no redirects and real response limits remain required.
+- Cloudflared selected-file semantics already have a Backup parser owner. Reuse
+  a verified optional dependency where appropriate; reference/schema checks alone
+  cannot establish selected file integrity or runtime authentication.
+
+The native entry/closure foundation is released with these corrections.
+Independent implementation review returned **PASS WITH NOTES**, finding no
+material trust/admission or ordinary-launch regression. The remaining foundation
+proof note is an actual standalone health invocation with the installed entry
+absent; extracted admission coverage is not equivalent.
+
+The revised private transport design received independent Astra **PASS WITH
+NOTES**. Parent accepted its strict parser reuse, direct private AWK request
+serialization, fixed request grammar, explicit historical hold fields and
+report-local provider/shared-transport stop rules. Pre-spawn monotonic reservations
+bound retained file payloads to 8 MiB and 384 files, alongside the operation,
+request, response, row and aggregate deadline limits recorded in the handoff.
+These were checked initial design limits, not measured implementation results.
+The actual ten-stage authenticated request path exposed insufficient operation
+headroom for the other required groups. Parent and a further Astra audit agree
+on 256 operations, 576 files and 12 MiB retained payloads, reserving eight
+operations/sixteen files/1 MiB for finalization. Twelve request paths consume
+120 operations, 264 files and 4,915,200 reserved bytes; the source-based example
+with remaining ordinary operations, eight snapshot exceptions and final rendering
+totals 9.6875 MiB. Actual representative collector completion remains unproved.
+
+Independent transport source review found no additional material private-request,
+fixed-GET, reservation-before-spawn or unresolved-child handling defect. Parent
+review identified response semantics requiring cursor pagination for list items,
+typed IP/CIDR values and DNS content/proxy/TTL validation. The five-event display
+limit cannot become an eligibility scan limit: absent latest, all events in the
+bounded validated configuration inform conservative historical holds. Parent
+accepted that correction to the implementation draft and explicit default-deny
+current NTP admission. These findings establish neither live-provider proof nor
+product acceptance.
+
+The first full-core integration review returned **REVISE** for three concrete
+consumer defects: initial prerequisite attachment still referenced a bootstrap
+callback not imported by health; a successful zone read could leave public-trace
+eligibility after a later same-scope authentication rejection; and strict native
+path equality rejected the normal BusyBox flock link. Parent agrees with these
+findings. Repairs dispatch the initial attachment to the health context and pinned
+Entware observation, retain and recheck bounded candidate scopes against current
+report-local holds, and admit only the known native flock link after protected
+parent/target checks. Provider DNS record family is separate from the transport
+family, and public rows must display the typed refreshed egress address without
+claiming selected-WAN routing proof. A read-only independent repair review returned
+**PASS** for all three corrections and the additional single-complete-line
+canonical-path gate. The focused core selection passed 27 cases with one
+Linux-only skip; its sole old basic-entry fixture failure was repaired by quoting
+fixed Package path operands. That entry node then passed all three basic,
+installed-health and standalone-health cases in 9.95s (10.70s wall). The new
+canonical-path case passed in 0.34s. These are dirty `43a81f1` host results;
+Linux integration and exact-candidate complete core validation remain pending.
+
+Cached representative coverage inventories for GT-AX11000, RT-AX88U_PRO and
+RT-BE96U all record `/usr/bin/flock` resolving to `/bin/busybox`; curl, OpenSSL
+and the fixed ROM CA path are regular files without link chains. Each coverage
+report hash was checked against its corresponding provenance receipt. This
+establishes cached-report integrity only, not a fresh image rehash or live-router
+qualification. Raw provenance remains in ignored local evidence.
+
+The independent budget review found an arithmetic error in the owner's initial
+235-operation total: its subtotals (52 dashboard/inventory, 30 native/TLS,
+53 Entware/prerequisites and 120 GET stages) sum to **255**, already seven above
+the 248-operation collection allowance before remaining groups. The earlier
+headroom example is therefore insufficient integration evidence. Parent
+has requested a concrete consolidation/batching review before advanced collectors
+are implemented. Required checks and the existing caps remain intact pending
+that review; no missing group is accepted through a placeholder or narrow pass.
+
+Astra's completed capacity review returned **REVISE** for the earlier capacity
+assumption and **PASS WITH NOTES** for a bounded consolidation: batch fixed native
+and Entware metadata receipts while retaining canonical paths, per-member results,
+attachment and actual capability checks; parse only trusted bounded `ls` snapshot
+metadata in the controller. The source-derived saving is forty operations,
+reducing the corrected core estimate to 215. Exact path matching, spaces,
+reordered listings, partial missing members and before/after snapshot identity
+remain mandatory. No config, credential or provider parsing moves into shell.
+
+The remaining diagnostic groups are provisionally 80–120 additional operations.
+Parent accepts **352 total operations / 768 files / 12 MiB** as a conditional
+implementation design candidate, not a changed product requirement or proof.
+The final ledger must account for every named snapshot, real process/cron stage,
+include fragment, digest and parser before freezing the revised limits. Preserve
+eight operations/sixteen files/one MiB for finalization and the 45-second overall
+supervision/40-second collection envelope. Slow remote requests may still yield
+an explicitly incomplete report. Perform Entware-dependent observations before
+releasing descriptor pins 6/7 for provider transport. Inspect package completeness
+after admission with fixed current members/directories; do not run the recursive
+unsupervised package verifier. None of these changes is implemented or accepted
+by this review; the current interim CI checkpoint precedes their implementation.
+
+The shared terminal integration required a separate basic finalization allowance:
+otherwise collection-budget exhaustion suppressed the entire staged page. Basic
+collection remains ten seconds, with three final probes within an immutable
+three-second allowance capped at collection start plus thirteen seconds. Health
+rendering retains its reserved envelope and uses an immutable deadline no later
+than `min(now + 5, original deadline)`, with two-second individual probe limits.
+Direct and supervised collection reservations both reject attempts after the
+finalization phase begins. Unresolved ownership retains staging/identity and
+does not launch the renderer. Basic staging has a physical soft file limit and
+core dumps disabled. Invalid rendering input returns failure; the controller
+prints only a fixed safe fallback. The maximum case now uses 96 unique 64-byte
+group names at width ten. Parent consumer/entry integration passed six focused
+host cases in 11.37s; all exact-candidate Linux/core proof is still pending.
+
+Additional source mapping narrows the advanced estimate to roughly 100–114
+operations, **plus** 7–10 for package completeness; these are conditional design
+counts, not measurements. Current per-file snapshots/hex packing would cost
+roughly 188 operations before additional admission. Achieving the smaller count
+requires fixed before/after metadata and byte-count batches, separately bounded
+reads, and one private logging bundle packer. Preserve three cron boundary
+observations, repeated account/read/hash evidence and actual process identity;
+nine logging input names are not nine operations. Twelve generic snapshot pairs
+alone reserve 3 MiB, so smaller fixed writer tiers and an explicit combined byte
+ledger are required before adopting the conditional capacity revision. The
+existing 8-KiB Scribe-prefix policy is retained; public protected files do not
+inherit the private configuration's `0600` policy.
+
 ## S14.03 archive selection and actions review
 
 The authorized standalone package extends the existing Backup owner with source

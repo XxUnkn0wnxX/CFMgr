@@ -958,7 +958,7 @@ cfmgr_bootstrap_cleanup() {
 # shellcheck disable=SC2034,SC2154
 cfmgr_bootstrap_native_prepare() {
 	[ "$#" -eq 2 ] && { [ "$2" = install ] || [ "$2" = launch ] || [ "$2" = acquire ]; } && cfmgr_bootstrap_path "$1" || return 2
-	cfmgr_install_source=$1 cfmgr_install_jffs=/jffs cfmgr_install_opt=/opt cfmgr_install_owner=0
+	cfmgr_install_source=$1 cfmgr_install_jffs="/jffs" cfmgr_install_opt=/opt cfmgr_install_owner=0
 	cfmgr_install_sh=/bin/sh cfmgr_install_env=/usr/bin/env cfmgr_install_awk=/usr/bin/awk
 	cfmgr_install_readlink=/usr/bin/readlink cfmgr_install_sleep=/bin/sleep cfmgr_install_wc=/usr/bin/wc
 	cfmgr_install_ls=/bin/ls cfmgr_install_fsync=/bin/fsync cfmgr_install_mkdir=/bin/mkdir
@@ -972,16 +972,16 @@ cfmgr_bootstrap_native_prepare() {
 	# shellcheck disable=SC2016
 	/usr/bin/awk '$1=="Uid:" { n++; if (NF!=5 || $2!=0 || $3!=0 || $4!=0 || $5!=0) bad=1 }
 		END { if (n!=1 || bad) exit 1 }' /proc/self/status || return 1
-	[ -d /jffs ] && [ ! -L /jffs ] && [ -d "$cfmgr_install_source" ] && [ ! -L "$cfmgr_install_source" ] || return 1
+	[ -d "/jffs" ] && [ ! -L "/jffs" ] && [ -d "$cfmgr_install_source" ] && [ ! -L "$cfmgr_install_source" ] || return 1
 	cfmgr_install_source_fd=9
-	cfmgr_install_jffs_snapshot=$(cfmgr_storage_mountinfo /usr/bin/awk /jffs /proc/self/mountinfo) || return 1
+	cfmgr_install_jffs_snapshot=$(cfmgr_storage_mountinfo /usr/bin/awk "/jffs" /proc/self/mountinfo) || return 1
 	IFS='	' read -r cfmgr_install_jffs_id cfmgr_install_jffs_parent cfmgr_install_jffs_device cfmgr_install_jffs_root cfmgr_install_jffs_mount cfmgr_install_jffs_type cfmgr_install_jffs_device_path cfmgr_install_jffs_options cfmgr_install_jffs_superoptions <<EOF
 $cfmgr_install_jffs_snapshot
 EOF
-	[ "$cfmgr_install_jffs_mount" = /jffs ] && [ "$cfmgr_install_jffs_type" = jffs2 ] || return 1
+	[ "$cfmgr_install_jffs_mount" = "/jffs" ] && [ "$cfmgr_install_jffs_type" = jffs2 ] || return 1
 	case ,$cfmgr_install_jffs_options, in *,rw,*) ;; *) return 1 ;; esac
 	case ,$cfmgr_install_jffs_options, in *,noexec,* | *,ro,*) return 1 ;; esac
-	exec 8</jffs 9<"$cfmgr_install_source" || return 1
+	exec 8<"/jffs" 9<"$cfmgr_install_source" || return 1
 	# Prove RAM backing before creating any preflight object.
 	[ -d /tmp ] && [ ! -L /tmp ] && [ "$(/usr/bin/readlink -f /tmp)" = /tmp ] || return 1
 	cfmgr_install_tmp_snapshot=$(cfmgr_storage_mountinfo /usr/bin/awk /tmp /proc/self/mountinfo) || return 1
@@ -1473,7 +1473,7 @@ cfmgr_bootstrap_native_work() {
 	cfmgr_install_context_fd=5
 	# Prove native flush diagnostics on an owned RAM directory before JFFS mutation.
 	cfmgr_bootstrap_flush "$cfmgr_install_context" || return $?
-	cfmgr_bootstrap_transaction "$cfmgr_install_source" /jffs "$cfmgr_storage_opt" "$cfmgr_install_context" 0 \
+	cfmgr_bootstrap_transaction "$cfmgr_install_source" "/jffs" "$cfmgr_storage_opt" "$cfmgr_install_context" 0 \
 		/bin/sh /usr/bin/env /usr/bin/awk /usr/bin/readlink /bin/sleep /usr/bin/wc /bin/ls /bin/fsync \
 		/bin/mkdir /bin/cp /bin/chmod /bin/mv /opt/bin/sha256sum /opt/bin/jq \
 		"$cfmgr_storage_uuid_value" "$cfmgr_storage_filesystem" "$cfmgr_storage_fsroot" "$cfmgr_storage_relative" /bin/df
@@ -2194,7 +2194,7 @@ cfmgr_launch_work() {
 }
 
 cfmgr_launch_native() {
-	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && [ "$1" = /jffs/addons/CFMgr.d ] || return 2
+	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && [ "$1" = "/jffs/addons/CFMgr.d" ] || return 2
 	cfmgr_launch_requested_action=${2:-normal}
 	case $cfmgr_launch_requested_action in
 	normal) ;;

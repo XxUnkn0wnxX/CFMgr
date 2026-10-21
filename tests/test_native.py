@@ -10,6 +10,7 @@ import ssl
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,187 @@ base_tools = install_tools
 legacy_fsync = install_fsync
 package = install_package
 NATIVE = ROOT / "modules/lib/network.sh"
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="health GET TLS/limits/proc integration runs in Linux CI only",
+)
+@pytest.mark.parametrize(
+    "scenario", ["normal", "redirect", "body-limit", "header-limit", "stall"]
+)
+def test_health_get_actual_curl_config_is_private_bounded_and_read_only(
+    shell, native_tools, tls_material, tmp_path, scenario
+):
+    """Real curl config parsing against owned TLS; production host gate is tested separately."""
+    canary = "cfat_private-transport-CANARY"
+    seen, release = threading.Event(), threading.Event()
+    requests = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append(
+                (
+                    self.command,
+                    self.path,
+                    self.headers.get("Authorization"),
+                    self.headers.get("X-Unwanted"),
+                )
+            )
+            seen.set()
+            release.wait(timeout=2)
+            if scenario == "stall":
+                time.sleep(4)
+                return
+            body = b"x" * 100000 if scenario == "body-limit" else b"{}"
+            self.send_response(302 if scenario == "redirect" else 200)
+            if scenario == "redirect":
+                self.send_header("Location", "/must-not-follow")
+            if scenario == "header-limit":
+                self.send_header("X-Large", "x" * 16000)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError, ssl.SSLError):
+                pass
+
+        def log_message(self, *_arguments):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.minimum_version = ssl.TLSVersion.TLSv1_2
+    tls.load_cert_chain(tls_material / "server.pem", tls_material / "server.key")
+    server.socket = tls.wrap_socket(server.socket, server_side=True)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
+    )
+    thread.start()
+    context = tmp_path / "context"
+    context.mkdir(mode=0o700)
+    request = context / "private-request"
+    # Only this lower-level transport fixture substitutes the allowlisted host;
+    # separate native AWK tests reject such a URL before the production callback.
+    request.write_text(
+        f'url = "https://127.0.0.1:{server.server_port}/fixture[1-2]"\nheader = "Authorization: Bearer {canary}"\n'
+    )
+    request.chmod(0o600)
+    home = tmp_path / "curl-home"
+    home.mkdir()
+    (home / ".curlrc").write_text(
+        'header = "X-Unwanted: loaded"\nproxy = "http://127.0.0.1:9"\n'
+    )
+    script = (
+        r"""
+root=$1 cfmgr_status_context=$2 curl=$3 ca=$4 selected_sh=$5 selected_env=$6 selected_awk=$7 selected_sleep=$8 selected_wc=$9
+shift 9
+request=$1
+. "$root/modules/status.sh"
+. "$root/modules/lib/execution.sh"
+exec 9<"$cfmgr_status_context" 6<"$request"
+cfmgr_status_interrupted=0 cfmgr_probe_serial=0 cfmgr_probe_pid=''
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_requests=0 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_health_owned=''
+cfmgr_prerequisites_now || exit 10
+cfmgr_health_collect_deadline=$((cfmgr_probe_now+10))
+cfmgr_health_run() {
+    selected_mode=$1 selected_tool=$2; shift 2
+    cfmgr_prerequisites_run "$selected_mode" "$cfmgr_status_context" "$selected_sh" "$root/modules/helpers/worker.sh" "$selected_env" "$selected_awk" "$selected_sleep" "$selected_wc" "$selected_tool" "$@"
+}
+cfmgr_health_body=$cfmgr_status_context/health-get.1.body
+cfmgr_health_headers=$cfmgr_status_context/health-get.1.headers
+"""
+        + pause_definition(shell)
+        + r"""
+cfmgr_health_run health-get "$curl" "$request" "$ca" "$cfmgr_status_context" "$cfmgr_health_body" "$cfmgr_health_headers" 4 || exit 11
+printf 'curl-exit=%s\n' "$cfmgr_probe_exit"
+if cfmgr_health_sizes; then printf 'admitted\n'; else printf 'rejected\n'; fi
+"""
+    )
+    child = subprocess.Popen(
+        [
+            *shell,
+            "-c",
+            script,
+            "health-tls",
+            str(ROOT),
+            str(context),
+            native_tools["curl"],
+            str(tls_material / "trusted.pem"),
+            native_tools["sh"],
+            native_tools["env"],
+            native_tools["awk"],
+            native_tools["sleep"],
+            native_tools["wc"],
+            str(request),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={
+            **os.environ,
+            "LC_ALL": "C",
+            "HOME": str(home),
+            "CURL_HOME": str(home),
+            "https_proxy": "http://127.0.0.1:9",
+        },
+    )
+    started = time.monotonic()
+    try:
+        assert seen.wait(timeout=3), "Owned local TLS request was not observed"
+        descendants = (
+            Path(f"/proc/{child.pid}/task/{child.pid}/children").read_text().split()
+        )
+        clients = []
+        for pid in descendants:
+            proc = Path("/proc") / pid
+            try:
+                if (proc / "exe").resolve(strict=True) == Path(
+                    native_tools["curl"]
+                ).resolve(strict=True):
+                    clients.append(proc)
+            except (FileNotFoundError, ProcessLookupError):
+                continue
+        assert len(clients) == 1
+        client = clients[0]
+        assert canary.encode() not in (client / "cmdline").read_bytes()
+        assert canary.encode() not in (client / "environ").read_bytes()
+        limits = (client / "limits").read_text().splitlines()
+        file_limit = next(
+            line for line in limits if line.startswith("Max file size")
+        ).split()[3]
+        core_limit = next(
+            line for line in limits if line.startswith("Max core file size")
+        ).split()[4]
+        assert int(file_limit) <= 65536 and core_limit == "0"
+        release.set()
+        out, err = child.communicate(timeout=7)
+        assert child.returncode == 0, (out, err)
+        assert canary.encode() not in out + err
+        assert requests == [("GET", "/fixture[1-2]", f"Bearer {canary}", None)]
+        for name in (
+            "health-get.1.out",
+            "health-get.1.err",
+            "health-get.1.body",
+            "health-get.1.headers",
+        ):
+            assert (context / name).stat().st_size <= 65536
+        if scenario == "normal":
+            assert out == b"curl-exit=0\nadmitted\n"
+        elif scenario == "header-limit":
+            assert out == b"curl-exit=0\nrejected\n"
+        elif scenario in {"body-limit", "stall"}:
+            assert not out.startswith(b"curl-exit=0\n")
+        if scenario == "stall":
+            assert time.monotonic() - started < 6
+    finally:
+        release.set()
+        if child.poll() is None:
+            child.kill()
+            child.communicate(timeout=2)
+        server.shutdown()
+        thread.join(timeout=2)
+        server.server_close()
+        assert not thread.is_alive()
 
 
 def host_mv_adapter(actual: str, directory: Path) -> str:
@@ -936,3 +1118,58 @@ cfmgr_native_check "$cfmgr_install_context" "$test_curl" "$test_openssl" "$test_
     assert (good / "native.destination").read_bytes() == b"retained\n"
     assert (good / "native.published").read_bytes() == b"original\n"
     assert not (good / "native.source").exists()
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="health prerequisite child ownership requires Linux proc/FD semantics",
+)
+def test_health_borrowed_prerequisites_preserve_real_timeout_child_ownership(
+    shell, native_tools, tmp_path
+):
+    """Actual probes/supervisor; only router storage/tool-path admission is adapted."""
+    context = tmp_path / "health-prerequisites"
+    context.mkdir(mode=0o700)
+    selected = [shutil.which(name) for name in ("flock", "jq", "timeout", "sha256sum")]
+    assert all(selected), "Existing prerequisite tools are required by this CI proof"
+    script = (
+        r"""
+root=$1 cfmgr_status_context=$2 selected_sh=$3 selected_env=$4 selected_awk=$5 selected_sleep=$6 selected_wc=$7 native_flock=$8 jq=$9
+shift 9
+selected_timeout=$1 sha=$2
+. "$root/modules/status.sh"
+. "$root/modules/lib/execution.sh"
+exec 9<"$cfmgr_status_context"
+cfmgr_status_interrupted=0 cfmgr_probe_serial=0 cfmgr_probe_pid=''
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_requests=0 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_health_owned=''
+cfmgr_prerequisites_now || exit 10
+cfmgr_health_collect_deadline=$((cfmgr_probe_now+15))
+cfmgr_health_entware_attachment() { return 0; }
+cfmgr_health_admit_entware() { return 0; }
+"""
+        + pause_definition(shell)
+        + r"""
+cfmgr_prerequisites_check shared "$cfmgr_status_context" "$selected_sh" "$root/modules/helpers/worker.sh" "$selected_env" "$selected_awk" "$selected_sleep" "$selected_wc" "$native_flock" "$jq" "$selected_timeout" "$sha" - - unknown || exit 11
+[ "$cfmgr_prereq_jq:$cfmgr_prereq_timeout:$cfmgr_prereq_sha:$cfmgr_prereq_flock" = usable:usable:usable:usable ] || exit 12
+[ -s "$cfmgr_status_context/timeout.child" ] || exit 13
+for file in "$cfmgr_status_context"/*.out; do case ${file##*/} in health-*) ;; *) exit 14 ;; esac; done
+cfmgr_health_cleanup || exit 15
+"""
+    )
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "health-prerequisites",
+            str(ROOT),
+            str(context),
+            *(native_tools[key] for key in ("sh", "env", "awk", "sleep", "wc")),
+            *selected,
+        ],
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    assert not context.exists()

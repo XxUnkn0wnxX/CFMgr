@@ -279,6 +279,37 @@ shift 2
 case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
+case $mode in health-*)
+	set +x
+	set +v
+	ulimit -c 0 || exit 2
+	;;
+esac
+# Health owns distinct reservations/deadlines; these fixed bodies remain the
+# same native, read-only implementations. No installation mutation alias exists.
+case $mode in
+health-snapshot) mode=status-snapshot ;;
+health-config) mode=status-config ;;
+health-native) mode=status-native ;;
+health-fields) mode=status-fields ;;
+health-metadata) mode=status-metadata ;;
+health-count) mode=status-count ;;
+health-date) mode=status-date ;;
+health-nvram) mode=status-nvram ;;
+health-space) mode=status-space ;;
+health-realpath) mode=status-realpath ;;
+health-mount) mode=status-mount ;;
+health-render-count) mode=status-count ;;
+status-render-count) mode=status-count ;;
+health-curl-version) mode=native-curl-version ;;
+health-curl-features) mode=native-curl-features ;;
+health-ca-pem) mode=native-ca-pem ;;
+health-ca-decode) mode=native-ca-decode ;;
+health-curl-offline) mode=native-curl-offline ;;
+esac
+case $mode in
+health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | health-dig-version | health-blkid) mode=${mode#health-} ;;
+esac
 cfmgr_worker_program() {
 	# Import only the fixed category required by this admitted mode.
 	# shellcheck disable=SC1090 # Explicit package-admitted category operands.
@@ -297,15 +328,39 @@ cfmgr_worker_program() {
 	install-config-check)
 		. "$2/modules/lib/config.sh" || exit 2
 		;;
-	status-config)
+	status-config | health-inventory | health-scope | health-request | health-response | status-render | health-render)
 		. "$1" || exit 2
-		. "$2" || exit 2
+		case $mode in status-render | health-render) ;; *) . "$2" || exit 2 ;; esac
 		;;
-	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | status-native | status-fields | status-mount | repair-inventory)
+	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | status-native | status-fields | status-mount | repair-inventory | health-request-check | health-trace | health-frame)
 		. "$1" || exit 2
 		;;
 	esac
 	case $mode in
+	health-inventory | health-scope | health-request)
+		cfmgr_config_awk_json
+		cfmgr_worker_json=$cfmgr_awk_program
+		cfmgr_config_awk_config_schema
+		cfmgr_worker_json="$cfmgr_worker_json
+$cfmgr_awk_program"
+		cfmgr_config_awk_config_observation
+		cfmgr_worker_json="$cfmgr_worker_json
+$cfmgr_awk_program"
+		cfmgr_status_awk_health
+		cfmgr_awk_program="$cfmgr_worker_json
+$cfmgr_awk_program"
+		;;
+	health-response)
+		cfmgr_config_awk_json
+		cfmgr_worker_json=$cfmgr_awk_program
+		cfmgr_status_awk_health_wire
+		cfmgr_worker_json="$cfmgr_worker_json
+$cfmgr_awk_program"
+		cfmgr_status_awk_health_response
+		cfmgr_awk_program="$cfmgr_worker_json
+$cfmgr_awk_program"
+		;;
+	health-request-check | health-trace | health-frame) cfmgr_status_awk_health_wire ;;
 	store-archive-plan | archive-payload-json)
 		cfmgr_config_awk_json
 		cfmgr_worker_json=$cfmgr_awk_program
@@ -363,6 +418,7 @@ $cfmgr_awk_program"
 $cfmgr_awk_program"
 		;;
 	status-native | status-fields) cfmgr_status_awk_status_native ;;
+	status-render | health-render) cfmgr_status_awk_health_render ;;
 	esac
 	# Merlin MAX_ARG_STRLEN is 32 4K pages. Keep a conservative 96KiB program
 	# cap, leaving per-argument headroom and room for bounded argv/environment data.
@@ -380,6 +436,87 @@ acquire-wc) mode='install-wc' ;;
 acquire-ls) mode='install-ls' ;;
 esac
 case "$mode" in
+health-uname)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -m
+	;;
+health-protected | health-current | health-storage | health-uuid)
+	[ "$#" -eq 4 ] || exit 2
+	export CFMGR_HEALTH_LOCAL="$mode"
+	. "$1" || exit 2
+	cfmgr_status_awk_health_local
+	exec "$tool" "$cfmgr_awk_program" "$2" "$3" "$4"
+	;;
+health-wc-jq | health-wc-sha)
+	[ "$#" -eq 0 ] || exit 2
+	set +f
+	case $mode in health-wc-jq) set -- "$context"/health-jq-good.*.out ;; *) set -- "$context"/health-sha-bytes.*.out ;; esac
+	set -f
+	[ "$#" -eq 1 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 1
+	exec "$tool" -c <"$1"
+	;;
+health-count-pair)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	exec "$tool" -c "$1" "$2"
+	;;
+health-inventory | health-scope | health-request)
+	[ "$#" -eq 10 ] || exit 2
+	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 2; done
+	[ -f "$3" ] && [ ! -L "$3" ] || exit 1
+	case $4 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$4" -le 65536 ] || exit 2
+	case $5 in ddns | ip_sync | cloudflared) ;; *) exit 2 ;; esac
+	case $6 in zone | dns | list | items | tunnel | connections | trace) ;; *) exit 2 ;; esac
+	case $8:${9}:${10} in [46]:[01]:[01]) ;; *) exit 2 ;; esac
+	export CFMGR_HEALTH_MODE="$mode" CFMGR_HEALTH_FEATURE="$5" CFMGR_HEALTH_KIND="$6" CFMGR_HEALTH_SELECTOR="$7" CFMGR_HEALTH_FAMILY="$8" CFMGR_HEALTH_PUBLIC="${9}" CFMGR_HEALTH_IPV6="${10}"
+	exec 8<"$3" || exit 1
+	[ -f /proc/self/fd/8 ] && [ "$3" -ef /proc/self/fd/8 ] && [ ! -L "$3" ] || exit 1
+	cfmgr_worker_program "$@"
+	exec "$tool" -v cfmgr_json_mode=tree -v cfmgr_json_size="$4" -v cfmgr_config_mode=archive-data "$cfmgr_awk_program" <&8
+	;;
+health-request-check | health-frame | health-trace)
+	[ "$#" -eq 4 ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	case $3 in '' | *[!0-9]* | 0?*) exit 2 ;; esac
+	[ "$3" -le 32768 ] || exit 2
+	export CFMGR_HEALTH_MODE="$mode" CFMGR_HEALTH_INPUT="$2" CFMGR_HEALTH_BYTES="$3" CFMGR_HEALTH_KIND="$4"
+	if [ "$mode" = health-request-check ]; then
+		[ "$2" -ef /proc/self/fd/6 ] && [ -f /proc/self/fd/6 ] || exit 1
+	fi
+	cfmgr_worker_program "$@"
+	exec "$tool" "$cfmgr_awk_program"
+	;;
+health-response)
+	[ "$#" -eq 7 ] || exit 2
+	for input in "$3" "$5" "$6"; do
+		[ -f "$input" ] && [ ! -L "$input" ] || exit 2
+		case $input in "$context"/health-*.out | "$context"/health-get.*.body) ;; *) exit 2 ;; esac
+	done
+	case $4 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$4" -le 32768 ] || exit 2
+	export CFMGR_HEALTH_MODE=health-response CFMGR_HEALTH_SCOPE="$5" CFMGR_HEALTH_INPUT="$6" CFMGR_HEALTH_BYTES="$7"
+	# Controller passes only pinned private descriptor paths: no secret operands.
+	cfmgr_worker_program "$@"
+	exec 8<"$3" || exit 1
+	[ -f /proc/self/fd/8 ] && [ "$3" -ef /proc/self/fd/8 ] || exit 1
+	exec "$tool" -v cfmgr_json_mode=tree -v cfmgr_json_size="$4" "$cfmgr_awk_program" <&8
+	;;
+health-get)
+	[ "$#" -eq 6 ] || exit 2
+	case $6 in 4 | 6) ;; *) exit 2 ;; esac
+	[ -f "$1" ] && [ ! -L "$1" ] && [ "$1" -ef /proc/self/fd/6 ] && [ -f /proc/self/fd/6 ] || exit 1
+	[ -f "$2" ] && [ ! -L "$2" ] && [ "$3" = "$context" ] || exit 2
+	case $4:$5 in "$context"/health-get.*.body:"$context"/health-get.*.headers) ;; *) exit 2 ;; esac
+	[ ! -e "$4" ] && [ ! -L "$4" ] && [ ! -e "$5" ] && [ ! -L "$5" ] || exit 1
+	umask 077
+	set -C
+	exec 8>"$4" 7>"$5" || exit 1
+	exec "$tool" -q --silent --show-error --globoff --request GET \
+		"--ipv$6" \
+		--proto '=https' --proto-redir '=https' --tlsv1.2 --cacert "$2" --capath "$3" \
+		--proxy '' --noproxy '*' --max-redirs 0 --retry 0 --connect-timeout 1 --max-time 3 \
+		--max-filesize 32768 --output /proc/self/fd/8 --dump-header /proc/self/fd/7 \
+		--write-out '%{http_code}\n' --config /proc/self/fd/6
+	;;
 store-archive-plan)
 	[ "$#" -eq 3 ] && [ -d "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
 	case $3 in '' | *[!0-9]*) exit 2 ;; esac
@@ -518,7 +655,7 @@ history-policy-json)
 history-mount)
 	[ "$#" -eq 2 ] && [ -f "$1" ] || exit 2
 	cfmgr_worker_program "$@"
-	exec "$tool" "$cfmgr_awk_program" "$2" /proc/self/mountinfo
+	exec "$tool" "$cfmgr_awk_program" "$2" "/proc/self/mountinfo"
 	;;
 history-volume)
 	[ "$#" -eq 4 ] && [ -f "$1" ] || exit 2
@@ -795,7 +932,7 @@ archive-source-realpath)
 archive-source-mount)
 	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
 	cfmgr_worker_program "$@"
-	exec "$tool" "$cfmgr_awk_program" "$2" /proc/self/mountinfo
+	exec "$tool" "$cfmgr_awk_program" "$2" "/proc/self/mountinfo"
 	;;
 archive-source-blkid)
 	[ "$#" -eq 1 ] && [ -b "$1" ] || exit 2
@@ -1014,8 +1151,8 @@ store-backup-mounts | store-backup-mount)
 	case $2 in /tmp/mnt | /tmp/mnt/?*) ;; *) exit 2 ;; esac
 	cfmgr_worker_program "$@"
 	case $mode in
-	store-backup-mounts) exec "$tool" "$cfmgr_awk_program" subtree-v1 "$2" /proc/self/mountinfo ;;
-	*) exec "$tool" "$cfmgr_awk_program" "$2" /proc/self/mountinfo ;;
+	store-backup-mounts) exec "$tool" "$cfmgr_awk_program" subtree-v1 "$2" "/proc/self/mountinfo" ;;
+	*) exec "$tool" "$cfmgr_awk_program" "$2" "/proc/self/mountinfo" ;;
 	esac
 	;;
 store-backup-blkid)
@@ -1169,6 +1306,14 @@ status-config)
 	cfmgr_worker_program "$@"
 	exec "$tool" -v cfmgr_json_size="${11}" -v cfmgr_json_mode=tree "$cfmgr_awk_program" <"$3"
 	;;
+status-render | health-render)
+	[ "$#" -eq 4 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in "$context"/dashboard) [ -f "$2" ] && [ ! -L "$2" ] || exit 2 ;; *) exit 2 ;; esac
+	case $3 in -) ;; "$context"/rows) [ -f "$3" ] && [ ! -L "$3" ] || exit 2 ;; *) exit 2 ;; esac
+	case $4 in 10 | 1[0-9] | [2-9][0-9] | 100) ;; *) exit 2 ;; esac
+	cfmgr_worker_program "$@"
+	exec "$tool" "$cfmgr_awk_program" "$4" "$2" "$3"
+	;;
 status-nvram)
 	[ "$#" -eq 1 ] || exit 2
 	case $1 in productid | firmver | buildno | extendno | ntp_ready | wan0_primary | wan1_primary | wan0_proto | wan1_proto | wan0_ifname | wan1_ifname | wan0_pppoe_ifname | wan1_pppoe_ifname | wan0_ipaddr | wan1_ipaddr) ;; *) exit 2 ;; esac
@@ -1183,7 +1328,7 @@ status-mount)
 	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
 	case $2 in /*) ;; *) exit 2 ;; esac
 	cfmgr_worker_program "$@"
-	exec "$tool" "$cfmgr_awk_program" "$2" /proc/self/mountinfo
+	exec "$tool" "$cfmgr_awk_program" "$2" "/proc/self/mountinfo"
 	;;
 status-space)
 	[ "$#" -eq 1 ] || exit 2
@@ -1355,7 +1500,7 @@ launch-report)
 repair-inventory)
 	[ "$#" -eq 3 ] || exit 2
 	cfmgr_worker_program "$@"
-	exec "$tool" "$cfmgr_awk_program" inventory-v1 "$2" /proc/self/mountinfo >"$3"
+	exec "$tool" "$cfmgr_awk_program" inventory-v1 "$2" "/proc/self/mountinfo" >"$3"
 	;;
 repair-awk)
 	# shellcheck disable=SC2034 # Fixed imported library uses these explicit fields.
