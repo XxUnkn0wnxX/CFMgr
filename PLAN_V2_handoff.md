@@ -516,6 +516,16 @@ existing resolved native-tool fixture; the three affected nodes passed locally
 in **0.55s**, with Ruff checks passed. This is the first native fixture repair;
 its exact native confirmation and all eight complete modules remain pending.
 The premature core and all three module children are now terminal cancelled.
+The native applet fixture repair is published at
+**`7a007ab86137745dc2aa1ca86c5a3e3684564e54`**. Its premature automatic Checks
+39563950707 is confirmed cancelled without module children. Focused
+[Dev 39563995113](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39563995113)
+passed all three affected native cases. Parent also inspected the cancelled
+Manager run's complete logs: host/native each stopped at the actual-curl normal
+case because that lower-level fixture had not set `cfmgr_health_http_file` for
+the new three-file counter. Curl itself exited zero. Parent supplied the existing
+probe stdout path; lint/format/compile and whitespace passed. Its real TLS/curl
+behavior is Linux-only and remains CI-pending, with no claimed local pass.
 
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).

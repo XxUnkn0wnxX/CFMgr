@@ -120,6 +120,7 @@ cfmgr_health_headers=$cfmgr_status_context/health-get.1.headers
         + pause_definition(shell)
         + r"""
 cfmgr_health_run health-get "$curl" "$request" "$ca" "$cfmgr_status_context" "$cfmgr_health_body" "$cfmgr_health_headers" 4 || exit 11
+cfmgr_health_http_file=$cfmgr_probe_stdout
 printf 'curl-exit=%s\n' "$cfmgr_probe_exit"
 if cfmgr_health_sizes; then printf 'admitted\n'; else printf 'rejected\n'; fi
 """
