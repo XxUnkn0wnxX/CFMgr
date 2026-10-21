@@ -205,7 +205,22 @@ backslash case was admitted by BusyBox's escaped-slash bracket expression, while
 host AWK rejected it. No product acceptance was awarded. Parent added explicit
 backslash-byte rejection to token projection and the entire private request
 grammar, with direct request-damage coverage. Fourteen focused host cases passed
-in 1.29s. Exact native rerun and complete core proof remain required.
+in 1.29s. Exact native Dev at `956d9ed` then passed all nineteen token/request/
+real-curl cases in 5.77s, including redirects, body/header limits and stalled
+requests. Complete module/core proof remains required. The next complete Dev
+selection exposed a stale five-field test call after the six-field renderer
+integration; its two calls were corrected without changing the row-cap assertions
+or runtime behavior, and the focused case passed in 0.52s.
+
+Optional Lint at `2a50fc5` exceeded its five-minute job limit while running
+ShellCheck. GitHub's check annotation confirms the timeout; setup was negligible.
+A prior completed lint used 107.50s wall and approximately 5.3 GiB peak resident
+memory. Current logs contain warnings but do not isolate the slow source because
+the single invocation's output is buffered. Parent and read-only review agree
+that separating invocations could expose cost but can also reduce source-following
+context; no analysis option, timeout or runner behavior is changed without
+resolving that tradeoff. The cancelled run is not a passing lint result and adds
+no acceptance evidence. No heavy analyzer is rerun locally.
 
 ## S14.03 archive selection and actions review
 

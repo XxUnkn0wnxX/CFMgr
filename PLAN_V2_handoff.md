@@ -143,6 +143,22 @@ The two stale calls now supply their required dependency field, retaining the
 existing row-cap assertions. The focused case passed in 0.52s; narrow Python
 lint/format/compile, planning, manifest and whitespace checks passed. The worker
 released the test file; this repair changes no runtime behavior.
+That test-only repair is published at **`350b0164844e0194115965e571e04c279c35ff33`**.
+Automatic Checks 39549001489 is confirmed cancelled. Complete-module
+[Dev 39549029851](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39549029851)
+passed 168 cases, including all selected Status/native transport tests, before
+an entry fixture failed to parse its Bash-only `[` function name in vendor ash.
+The optional-entry worker owns only `tests/test_entry_package.py` to preserve
+the poisoned-command assertion using a portable fixture. No runtime writer or
+required CI job remains active during this repair. The run took 59.89s pytest
+(60.28s wall, 24.35s user, 23.21s system); incomplete modules are not accepted.
+The entry fixture now uses a private poison executable and a verified preflight
+instead of a Bash-only function name; Bash disables its own bracket builtin,
+while vendor ash must reach the poisoned external command. The existing printf/
+test traps and narrow-output/control rejection assertions remain. Its focused
+host case passed in 0.80s, with narrow Ruff/format/compile checks passed. The owner
+released the file. This is a test-only portability correction; native rerun is
+still required.
 
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
