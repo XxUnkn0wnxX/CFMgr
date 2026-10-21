@@ -106,6 +106,20 @@ the source-derived reduction alone is not acceptance or a timing claim. Independ
 Astra reviewed both settled diffs and returned PASS; parent verified and removed
 unrelated worker-draft changes before integration.
 
+Acquisition integration review exposed a fixed-extractor mismatch in the shared
+history refactor: its simple literal envelope could not accept the new composed
+getter, and its dependency list omitted the policy fragment. Repair keeps both
+literal bodies byte-identical, supplies a simple `backup_history_body` getter and
+retains the public policy/LF/body composition. Trusted extraction names all three
+fixed fragments and preserves every strict-envelope, owner, duplicate, missing
+and 96KiB output check. The existing byte-parity test now exercises actual history
+extraction and malformed-body rejection. Candidate shell remains unexecuted.
+Independent Astra design review PASS WITH NOTES; parent verifies the concrete
+diff. This validates matching current-layout bootstrap/package behavior, not
+cross-revision compatibility with earlier development snapshots; older-force and
+standalone bootstrap distribution remain unaccepted. The repeated installer
+exit-one/SSL EOF still needs stage evidence before claiming its exact cause.
+
 ### Preserved source, design and interim evidence
 
 Initial source review at `43a81f1` confirms that normal entry admission verifies

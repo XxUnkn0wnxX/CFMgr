@@ -37,6 +37,44 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ### Current candidate and remaining gates
 
+Published `687a0fbac83a171b6e22526b7745d28385855449` passed focused native
+safety/journey Dev [39583691202](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39583691202):
+21 passed, 45.41s pytest/45.66s wall; normal journey all twelve reads,
+36s report/41.38s wall. Complete eight affected modules
+[39584103209](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39584103209)
+passed 445 cases, 175.73s pytest/175.93s wall, 90.43s user/67.41s system;
+normal journey 537 operations/1,160 files/11,338,480 bytes, twelve reads,
+59 rows, 36s report/39.93s wall. No speedup claim follows from variable runners.
+
+Premature automatic core 39583625887 and children 39583684338/39583681648/
+39583679275 are terminal cancelled. Manager host exposed the real-acquisition
+normal test failure before cancellation. Complete prerequisite/acquisition Dev
+[39584103555](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39584103555)
+repeated it: 43 passed/one workstation skip/one failed in 31.23s. The empty
+exit-one receipt and TLS server EOF do not identify its failing acquisition stage.
+
+Independent review found a definite integration defect: trusted acquisition
+requires simple marked literal getters, while shared history policy composition
+had placed shell code around the history literal. Parent moves the unchanged
+body to a simple marked getter, keeps the public composition name/exact bytes,
+and maps extraction to fixed JSON/policy/body parts with the same LF separator.
+Strict envelopes, source owners, duplicate/missing rejection, size caps and inert
+candidate handling remain. Existing parity tests now exercise actual history
+extraction and reject a malformed body envelope. The existing installer fixture
+retains fixed stage/status fields and last fake routes only for failed assertions.
+Independent Astra design review PASS WITH NOTES; no prior-development-snapshot
+verifier compatibility is claimed. Current matching bootstrap/package must pass.
+
+All edits are parent-owned; no runtime worker or CI job remains active. Local
+checks are source-only after the AWK incident. Next: focused extraction plus
+normal acquisition in CI; resolve its actual stage if still failing; complete
+affected modules (original eight plus acquisition/prerequisites), then exact
+Backup/Manager/Status host and native core. No full local suite is due. Accepted
+totals remain 23/157 and 0/16. Finish S03.09/S03.10, assess but do not start the
+next scope, publish the receipt and pause for the day.
+
+### Preserved cost-repair ownership and evidence
+
 Dev 39581959904 at `3403a0c3980790c837a0f925c85396e9b2a14696` failed
 normal completion at 519 operations/1,119 files/10,709,744 bytes/ten GETs,
 40s report/44.55s wall. Complete acquisition Dev 39581793489 passed all five

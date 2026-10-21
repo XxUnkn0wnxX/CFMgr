@@ -6,6 +6,7 @@ import hashlib
 import http.server
 import os
 import shlex
+import shutil
 import ssl
 import subprocess
 import sys
@@ -488,6 +489,40 @@ def test_embedded_parser_getters_match_data_extraction_and_native_argv(
     ).encode()
     assert (largest.returncode, largest.stderr, largest.stdout) == (0, b"", expected)
     assert 65536 < len(expected) <= 98304
+    history = _probe(
+        shell,
+        native_tools,
+        context,
+        "acquire-extract",
+        package,
+        trusted,
+        "backup_history",
+    )
+    assert (history.returncode, history.stderr, history.stdout) == (
+        0,
+        b"",
+        awk_program("json", "backup_history").encode(),
+    )
+    malformed_root = tmp_path / "malformed-history"
+    shutil.copytree(package, malformed_root)
+    history_owner = malformed_root / "modules/backup.sh"
+    history_source = history_owner.read_text()
+    body_opening = "cfmgr_backup_awk_backup_history_body() {\n"
+    assert history_source.count(body_opening) == 1
+    history_owner.write_text(
+        history_source.replace(body_opening, body_opening + "\t:\n", 1)
+    )
+    malformed_history = _probe(
+        shell,
+        native_tools,
+        context,
+        "acquire-extract",
+        malformed_root,
+        trusted,
+        "backup_history",
+    )
+    assert malformed_history.returncode != 0 and malformed_history.stdout == b""
+
     # Native vendor AWK runs this same argv in required Linux CI. On the host
     # this establishes only host exec support and actual fixed parser behavior.
     parsed = subprocess.run(

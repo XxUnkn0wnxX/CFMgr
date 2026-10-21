@@ -172,11 +172,28 @@ def run_consumer(shell, tools, fsync, fixture, curl, ca):
         "CFMGR_FSYNC_FAULT": "clean",
     }
     environment.update({f"TEST_{key.upper()}": value for key, value in tools.items()})
+    # Retain only fixed stage/status fields before production cleanup removes its
+    # private receipts. All acquisition, supervision and cleanup code stays real.
+    package_source = (ROOT / "modules/lib/package.sh").read_text()
+    boundary = "if cfmgr_acquire_work; then cfmgr_acquire_status=0; else cfmgr_acquire_status=$?; fi"
+    assert package_source.count(boundary) == 1
+    diagnostic = fixture / "acquisition-observed.sh"
+    diagnostic.write_text(
+        package_source.replace(
+            boundary,
+            boundary
+            + '\nprintf \'%s\\n\' "${cfmgr_acquire_mode:-none}:${cfmgr_acquire_status:-none}:${cfmgr_probe_status:-none}:${cfmgr_probe_exit:-none}:${cfmgr_probe_reason:-none}" > "$fixture/acquisition-stage"',
+            1,
+        )
+    )
+    consumer = CONSUMER.replace(
+        '. "$root/modules/lib/package.sh"', '. "$fixture/acquisition-observed.sh"', 1
+    )
     return subprocess.run(
         [
             *shell,
             "-c",
-            CONSUMER.replace("# CFMGR_TEST_PAUSE", pause_definition(shell), 1),
+            consumer.replace("# CFMGR_TEST_PAUSE", pause_definition(shell), 1),
             "acquire-install",
             ROOT,
             fixture,
@@ -226,7 +243,15 @@ def test_pinned_https_snapshot_reaches_real_installer_then_retained_guard_blocks
     result = run_consumer(
         shell, native_tools, fsync, fixture, curl, tls_material / "trusted.pem"
     )
-    assert result.returncode == 0, (result.stdout, result.stderr[-6000:])
+    assert result.returncode == 0, (
+        result.stdout,
+        result.stderr[-6000:],
+        request_paths(state)[-2:],
+        (fixture / "acquisition-stage").read_text()
+        if (fixture / "acquisition-stage").exists()
+        else "stage unavailable",
+        (fixture / "installer-entered").exists(),
+    )
     assert result.stdout == result.stderr == b""
     support = fixture / "jffs/addons/CFMgr.d"
     assert (fixture / "jffs/scripts/cfmgr.sh").read_bytes() == (

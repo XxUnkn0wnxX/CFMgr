@@ -2341,7 +2341,7 @@ cfmgr_package_awk_extract_exec() {
 	config) cfmgr_candidate_parts="json config_schema config_observation" ;;
 	status) cfmgr_candidate_parts="json status" ;;
 	backup_payload) cfmgr_candidate_parts="json config_schema config_observation backup_payload" ;;
-	backup_history) cfmgr_candidate_parts="json backup_history" ;;
+	backup_history) cfmgr_candidate_parts="json backup_history_policy backup_history_body" ;;
 	backup_inventory) cfmgr_candidate_parts="backup_manifest backup_inventory" ;;
 	mountinfo | status_native | backup_archive_control | backup_cloud_writer | backup_manifest | backup_payload_index | backup_payload_match | backup_pem | backup_tar | backup_yaml) cfmgr_candidate_parts=$3 ;;
 	*) exit 2 ;;
@@ -2368,7 +2368,7 @@ cfmgr_package_awk_extract_exec() {
  state==4 {if($0!="}")bad=1;state=0;done[fragment]++;next}
  {previous=$0}
  END {
-  for(i=1;i<=count;i++){f=order[i];if(seen[f]!=1 || done[f]!=1)bad=1;output=output program[f]}
+  for(i=1;i<=count;i++){f=order[i];if(seen[f]!=1 || done[f]!=1)bad=1;if(f=="backup_history_body")output=output "\n";output=output program[f]}
   if(bad || state || length(output)>98304)exit 1
   printf "%s",output
  }

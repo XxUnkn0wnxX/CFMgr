@@ -40,6 +40,7 @@ OWNERS = {
     "health_hooks_cron": "modules/status.sh",
     "health_hooks_frame": "modules/status.sh",
     "backup_history": "modules/backup.sh",
+    "backup_history_body": "modules/backup.sh",
     "backup_uuid": "modules/backup.sh",
     "backup_inventory": "modules/backup.sh",
 }
@@ -50,7 +51,12 @@ def awk_program(*fragments: str) -> str:
     for fragment in fragments:
         if fragment == "backup_history":
             # Match the getter's explicit newline between its two literals.
-            programs.append(awk_program("backup_history_policy") + "\n")
+            programs.append(
+                awk_program("backup_history_policy")
+                + "\n"
+                + awk_program("backup_history_body")
+            )
+            continue
         source = (ROOT / OWNERS[fragment]).read_text()
         begin = "\t# CFMGR-AWK-BEGIN " + fragment + "\n\tcfmgr_awk_program='\n"
         end = "'\n\t# CFMGR-AWK-END " + fragment + "\n"

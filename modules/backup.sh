@@ -6355,10 +6355,8 @@ function hh_policy_value(root,feature,    mode,size,unit,value,total,age,id,i) {
 	# CFMGR-AWK-END backup_history_policy
 }
 
-cfmgr_backup_awk_backup_history() {
-	cfmgr_backup_awk_backup_history_policy
-	cfmgr_history_policy_program=$cfmgr_awk_program
-	# CFMGR-AWK-BEGIN backup_history
+cfmgr_backup_awk_backup_history_body() {
+	# CFMGR-AWK-BEGIN backup_history_body
 	cfmgr_awk_program='
 # Read-only archive history supported-profile parser. Fixed modes are selected
 # by CFMGR_HISTORY_MODE; data never supplies AWK code or output paths. Policy
@@ -6821,7 +6819,13 @@ END {
 	else if(hh_mode=="family") hh_family(hh_decode(hh_packed))
 }
 '
-	# CFMGR-AWK-END backup_history
+	# CFMGR-AWK-END backup_history_body
+}
+
+cfmgr_backup_awk_backup_history() {
+	cfmgr_backup_awk_backup_history_policy
+	cfmgr_history_policy_program=$cfmgr_awk_program
+	cfmgr_backup_awk_backup_history_body
 	cfmgr_awk_program="$cfmgr_history_policy_program
 $cfmgr_awk_program"
 }
