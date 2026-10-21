@@ -525,9 +525,10 @@ cfmgr_health_cleanup() {
     execution_tail = r"""
 cfmgr_prerequisites_run() {
     cfmgr_fixture_mode=$1
+    cfmgr_fixture_before_bytes=${cfmgr_health_bytes:-0}
     cfmgr_fixture_actual_run "$@"
     cfmgr_fixture_result=$?
-    printf '%s %s %s %s\n' "$cfmgr_fixture_mode" "$cfmgr_fixture_result" "${cfmgr_probe_exit:-none}" "${cfmgr_probe_pid:-none}" >>@AUDIT@/routes
+    printf '%s %s %s %s %s %s\n' "$cfmgr_fixture_mode" "$cfmgr_fixture_result" "${cfmgr_probe_exit:-none}" "${cfmgr_probe_pid:-none}" "$((${cfmgr_health_bytes:-0} - cfmgr_fixture_before_bytes))" "${cfmgr_health_bytes:-0}" >>@AUDIT@/routes
     return "$cfmgr_fixture_result"
 }
 """.replace("@AUDIT@", shlex.quote(str(audit)))

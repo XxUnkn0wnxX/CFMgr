@@ -4846,3 +4846,13 @@ boundaries, then stopped at an unchanged `40` file-count expectation in the
 finalization test (2 passed / 1 failed, 0.81s); its full-capacity setup now correctly
 preserves 1,136 files. Parent fixes that stale expected value. The full journey
 was not reached. Core 39574420386 is cancelled without children.
+Dev 39574661184 at e0fb780 reached 392 operations/839 files/11,493,376
+reserved collection bytes and eight GETs before byte admission stopped further
+requests. Finalization used 2/4/790,528 bytes; report elapsed was 33 seconds,
+wall 36.37 seconds. The incomplete journey is failed proof; subsequent boundary
+nodes were not reached. Core 39574645688 is cancelled without children. Parent
+adds numeric per-mode reservation diagnostics and a native argv receipt contract
+case. Logging's released owner is read-only, tracing the process-frame and DNS
+observations; parent retains exclusive edit ownership. No further local behavior,
+AWK or ShellCheck execution is authorized for this checkpoint. Time/byte limits
+remain unchanged; measured reservations and repeated work must be reconciled.

@@ -3876,6 +3876,51 @@ def test_health_logging_metadata_missing_member_and_count_hash_frames(
     )
 
 
+@pytest.mark.parametrize("kind", ["syslog", "cron"])
+def test_health_logging_native_argv_receipt_matches_process_contract(
+    shell, tools, tmp_path, kind
+):
+    argv = (
+        ["/opt/sbin/syslog-ng", "--foreground"]
+        if kind == "syslog"
+        else ["crond", "-c", "/var/spool/cron/crontabs"]
+    )
+    payload = b"\0".join(value.encode() for value in argv) + b"\0"
+    raw = tmp_path / "argv.hex"
+    raw.write_text("".join(f"{value:02x}\n" for value in payload))
+    result = subprocess.run(
+        [
+            *shell,
+            str(ROOT / "modules/helpers/worker.sh"),
+            "health-log-argv",
+            tools["awk"],
+            str(tmp_path),
+            str(raw),
+            kind,
+            "123",
+            "4000",
+        ],
+        env={"LC_ALL": "C"},
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    expected = (
+        "PROC 123 4000 "
+        + argv[0].encode().hex()
+        + " 2 "
+        + " ".join(value.encode().hex() for value in argv)
+        + " END\n"
+        if kind == "syslog"
+        else "CROND 123 4000 " + argv[2].encode().hex() + " END\n"
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        expected.encode(),
+        b"",
+    )
+
+
 def test_health_logging_process_assembler_keeps_argv_in_private_files(
     commands, tmp_path
 ):
