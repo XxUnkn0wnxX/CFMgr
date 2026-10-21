@@ -682,12 +682,7 @@ cfmgr_prerequisites_run() {
         .replace("@TUNNEL@", repr(TUNNEL))
     )
     write("/usr/sbin/curl", curl, 0o755)
-    metadata = (
-        "#!"
-        + str(Path(sys.executable).resolve())
-        + "\n"
-        + HEALTH_METADATA.replace("@BASE@", repr(str(base)))
-    )
+    metadata = "#!" + str(Path(sys.executable).resolve()) + " -S\n" + HEALTH_METADATA
     (firmware / "ls").write_text(metadata)
     (firmware / "ls").chmod(0o755)
     finish_package(selected_entry, selected_support, tools, shell)
@@ -796,9 +791,10 @@ print('200')
 
 
 HEALTH_METADATA = r"""
-import os, stat, subprocess, sys
-from pathlib import Path
-base = Path(@BASE@)
+# This frequently invoked adapter needs only built-in/stdlib metadata support.
+# Avoid site initialization and unrelated imports; each call still stats its
+# actual operands, so before/after observations never reuse cached metadata.
+import os, stat, sys
 args = sys.argv[1:]
 options = ''.join(value[1:] for value in args if value.startswith('-'))
 if 'l' not in options:
@@ -806,9 +802,8 @@ if 'l' not in options:
 failed = False
 for value in args:
     if value.startswith('-'): continue
-    path = Path(value)
     try:
-        info = path.stat() if 'L' in options else path.lstat()
+        info = os.stat(value) if 'L' in options else os.lstat(value)
     except OSError:
         print('fixture ls: metadata unavailable', file=sys.stderr)
         failed = True
@@ -816,10 +811,10 @@ for value in args:
     mode = stat.filemode(info.st_mode)
     # /tmp is the fixture's unavoidable writable host ancestor. No filesystem
     # permission is changed; all other mode/type/inode/size facts remain actual.
-    if path == Path('/tmp'): mode = 'drwxr-xr-x'
+    if value == '/tmp': mode = 'drwxr-xr-x'
     uid = 0 if info.st_uid in (0, os.geteuid()) else info.st_uid
     name = value
-    if stat.S_ISLNK(info.st_mode): name += ' -> ' + os.readlink(path)
+    if stat.S_ISLNK(info.st_mode): name += ' -> ' + os.readlink(value)
     inode = str(info.st_ino) + ' ' if 'i' in options else ''
     print(f'{inode}{mode} {info.st_nlink} {uid} {info.st_gid} {info.st_size} Jan 1 00:00 {name}')
 sys.exit(1 if failed else 0)

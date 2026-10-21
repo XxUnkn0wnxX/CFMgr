@@ -35,6 +35,42 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 ## Active checkpoint — S03.09 and S03.10
 
+### Current candidate and remaining gates
+
+Candidate `b4ea1a5f2d597794c7f701dadca99d2ab9133c3a` is published on
+`develop`. [Dev 39578486584](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39578486584)
+passed all five quota/deadline/complete-native-journey cases in 39.71s
+(39.89s process wall). The normal journey completed all twelve read requests and
+all required local observations: 537 collection operations, 1,160 files,
+11,338,428 reserved bytes, 59 rows; finalization used two operations/four files/
+790,528 bytes. Report elapsed was 35s, process wall 38.69s. The 45s/12MiB
+limits, retained-source integrity and owned cleanup assertions passed.
+
+The complete eight affected modules ran in
+[Dev 39578954333](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39578954333)
+at that same SHA. After 230 passes, the normal journey reached its 40-second
+collection deadline after ten reads: 519 operations/1,119 files/10,709,744 bytes,
+40s report/44.62s wall, reason budget. Finalization and safe stop worked, but the
+normal-completion assertion correctly failed. The selection took 94.47s pytest,
+94.73s wall, 47.27s user and 35.52s system; it is not a complete module pass.
+
+Parent found 53 supervised metadata stages using a fresh Python fixture adapter,
+plus further worker-internal metadata invocations. The narrow repair removes
+unused subprocess/pathlib imports and site initialization, using fresh os.stat/
+os.lstat for exactly the same operands. No metadata caching, production change,
+clock substitution, deadline extension or relaxed assertion is introduced. The
+fixture and embedded adapter compile, Ruff lint/format and planning checks pass
+without execution. Rerun the actual normal journey and then every affected module;
+final complete core still follows only after those gates pass.
+Automatic Checks 39578472107 is confirmed cancelled with no child module runs.
+Parent owns final review/records and the fixture repair; the independent planner
+is reviewing the measured cost. No worker or CI run is active. All further behavior/AWK execution remains
+CI-only after the macOS crash investigation; local checks are source-only.
+Accepted progress remains 23/157 and 0/16 until final gates pass. Preserve the
+requested next-scope assessment and end-of-day pause after this checkpoint closes.
+
+### Retained implementation and diagnostic record
+
 On 2026-10-21 the user instructed **"read the handoff & continue"**, releasing
 the scoped Route B health/terminal package below, including its proposed light
 Mac/remote validation approach. Resume only this package through review, required

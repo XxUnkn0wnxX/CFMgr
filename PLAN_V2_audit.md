@@ -10,6 +10,57 @@ review notes. This record creates no requirements, product credit or permissions
 
 ## S03.09 and S03.10 health entry and provider evidence
 
+### Integrated observation and resource review
+
+Parent review of `b4ea1a5f2d597794c7f701dadca99d2ab9133c3a` confirms that the
+complete collector uses the existing Status, execution/worker, Package and Backup
+owners. Package inventory binds the original admitted tuples and optional
+verification states; independent recovery absence requires a complete retained
+root listing. Backup uses its broader filesystem/UUID contract and before/after
+identity evidence. Fixed hook observations and shared cron/process receipts do
+not claim an unimplemented dispatch producer. Logging uses private bounded
+sources, native counts, repeated metadata/hash/identity checks and the existing
+policy parsers. No inspected hook, connector, repair or provider write is invoked.
+
+Native integration exposed two actual portability/contract defects. The argv
+encoder's leading-NUL lookup was replaced by the existing portable ordinal-map
+pattern; the repaired cases explicitly select vendor AWK, correcting an earlier
+native-shell test that had selected host AWK. The fixed `dig -v` probe now captures
+its successful stderr banner in the version receipt. ISC BIND's
+[version implementation](https://github.com/isc-projects/bind9/blob/v9.18.30/bin/dig/dig.c#L119-L123)
+confirms that stream contract. This is offline tool evidence, not DNS resolution.
+The complete fixture also repairs path adaptation ordering before native tool
+substitution; neither fixture correction bypasses entry admission or supervision.
+
+Measured complete-observer work supersedes the earlier provisional estimates.
+Independent Astra reviews and parent integration retain 45 seconds overall,
+40-second collection, twelve GETs, 96 rows and 12MiB reserved payloads. The final
+finite allowance is 568 collection operations/1,264 files plus eight operations/
+sixteen files/1MiB reserved for finalization. All admission, lookahead, direct
+staging, finalization and cleanup guards agree. Required observations were not
+removed to fit the limit.
+
+Reservation reductions follow known output bounds: exact compared canonical
+paths and saved complete mount receipts; unique metadata operands; normalized
+count/hash rows; and fixed tiny success receipts. Unknown canonical resolution
+retains its original four-KiB native allowance. Dynamic quotas reset after both
+success and failure, including unresolved-supervision return status 3. Direct
+aggregation checks the reserved extent before each append; unterminated, partial
+or changed receipts never become successful observations.
+
+[Dev 39578486584](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39578486584)
+proves the five focused quota/finalization/complete-journey cases at that exact
+candidate. The actual native entry consumed 537 collection operations/1,160
+files/11,338,428 reserved bytes and all twelve fixture GETs. Finalization consumed
+two operations/four files/790,528 bytes; report time was 35 seconds (38.69s process
+wall). Retained-source canaries, no secret output/environment, successful owned
+cleanup and child reaping passed. Mount/device/NVRAM/account/daemon facts and HTTP
+responses remain explicit fixtures; Linux supervision, FDs, private parsers,
+admission and reservations are actual execution. Complete affected-module/core
+proof remains a separate acceptance gate; no Merlin/ARM/live-provider claim follows.
+
+### Preserved source, design and interim evidence
+
 Initial source review at `43a81f1` confirms that normal entry admission verifies
 the complete package before importing Status. Its required payload inventory
 includes Backup and Manager, so the existing path cannot meet degraded health
