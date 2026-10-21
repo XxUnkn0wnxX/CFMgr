@@ -33,9 +33,176 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active checkpoint — S03.09 and S03.10
+## Finished checkpoint — S03.09 and S03.10; paused for the day
 
-### Current candidate and remaining gates
+This is the authoritative restart state. The user authorized completion of this
+single health checkpoint, scoping the next outcome, and then pausing. S03.09 and
+S03.10 are accepted; no later implementation is authorized. All required workers
+and CI jobs are terminal. Historical candidate, ownership, permission and pending
+gate statements below describe their earlier stage and do not reopen this work.
+
+Published runtime/test revision:
+`5a96d6730e8683a50cdb0861c33e2e8cfc5e32a1` on `develop`.
+The closing documentation receipt follows that revision and changes only the
+checklist, audit, review notes, this handoff and README. Its commit is not a newly
+runtime-tested candidate; runtime proof belongs to the revision above.
+
+Accepted totals are **25/157 product subgoals (15.9%)** and **0/16 main goals
+(0%)**. Goal 3 is **5/10 accepted**: S03.01, S03.02, S03.07, S03.09 and S03.10.
+There are 132 unaccepted product subgoals. This checkpoint awards only S03.09 and
+S03.10; no main-goal full-local gate was due or waived.
+
+### Completed validation and recovery boundary
+
+At the exact published runtime/test revision:
+
+- [Final Checks 39585638313](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585638313)
+  passed, including all required host and vendor BusyBox jobs in
+  [Backup 39585682321](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585682321),
+  [Manager 39585684642](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585684642)
+  and [Status 39585687240](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585687240).
+  Parent verified each run's SHA and terminal result. The conditional cancellation
+  cleanup job was skipped because this successful run did not need cancellation.
+- Complete affected Dev selections passed: [39585209229](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585209229)
+  had 445 passes in 177.68s; [39585210610](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585210610)
+  had 47 passes and one explicit workstation-without-proc skip in 71.10s.
+  Focused actual history extraction and acquisition-to-installer regression
+  [39585029249](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585029249)
+  passed both cases in 37.56s.
+- The final native normal health journey completed all twelve reads and 59 rows
+  in 30 reported seconds/33.96s wall. Collection used 537 operations, 1,160 files
+  and 11,338,428 reserved bytes; finalization used two operations, four files and
+  790,528 bytes. Required source-integrity, privacy, bounds and cleanup assertions
+  passed. Longest complete core module was Backup native at 6m28s including setup.
+- The [checklist receipt](PLAN_V2_checklist.md#3-configuration-menus-and-status)
+  owns full result counts, platform skips, exclusions and timing evidence.
+  [Audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence)
+  records the reviewed repairs. Ubuntu/vendor BusyBox with explicit firmware and
+  provider fixtures is representative development proof, not Merlin/ARM/live
+  provider qualification. Optional stress and extended ShellCheck are not claimed.
+
+After the Apple AWK crash investigation all further behavior/AWK execution was
+kept in CI. Local verification was source-only. The rejected scratch package
+observer reused one AWK variable as both an array and scalar iterator; its author
+confirmed return -11 from the smoke checks. This strongly correlates with the
+three inspected Apple AWK reports, but individual report PIDs were not mapped to
+commands. That draft was never integrated, no related process remains, and no
+system setting or diagnostic report was changed. Keep the checkpoint-specific
+validation placement in [review notes](PLAN_V2_review_notes.md#3-configuration-menus-and-status);
+do not turn it into a general acceptance waiver.
+
+Restart by reading this section, verifying `develop`/remote state and the closing
+documentation receipt, then obtaining the user's next start decision. Preserve
+all ignored evidence and the existing checkout. Do not rerun passing suites,
+start another block, deploy, release, create a worktree or mutate router state
+as a consequence of this completed checkpoint.
+
+### Next proposed scope — S13.14 developer diagnostic capture; not started
+
+The user requested a concrete next-scope proposal before this pause. Parent source
+review and independent Astra design review recommend **S13.14 only**, conditional
+on the explicit Health decision below. This section is a proposal, not a change
+to specification/checklist requirements or authorization to implement it.
+
+**Complete outcome:** manually configured developer capture records bounded,
+sanitized events from actual entry, Manager, Status, Backup and owned child
+operations, and preserves sanitized copies of eligible dedicated CFMgr Scribe
+logs. Developer Off performs no destination writes; feature On/Off does not gate
+capture. Unsafe/unavailable storage or source content yields honest incomplete
+capture without changing the underlying operation's result. Destination history
+has no CFMgr rotation, pruning, truncation or automatic cleanup.
+
+**Pre-start decision:** S13.14 requires main/all-module capture, while this accepted
+Health checkpoint preserves no persistent writes. The specification separately
+forbids operational/history changes but does not settle diagnostic-destination
+writes. The user must explicitly choose and authorize the matching requirements
+clarification before implementation:
+
+- **A — diagnostic-only Health writes:** when developer mode and a safe diagnostic
+  directory are explicitly configured, permit Health capture only to that admitted
+  directory. Operational/provider/configuration/history state remains read-only.
+- **B — Health remains entirely write-free:** explicitly exclude Health from
+  persistent developer capture and reconcile that exception with S13.14's
+  all-module requirement.
+
+Neither option is selected. Today's accepted Health behavior is unchanged. This
+future decision does not block closure of S03.09/S03.10.
+
+**Prerequisites and real consumers:** the existing private configuration already
+defines `manager.developer` and `manager.developer_log_directory`; accepted package
+trust, storage identity and process supervision supply foundations. Entry,
+Manager, Status, Backup and owned child operations are present consumers. Their
+shared-file integration is overlap, not a requirement to complete their whole
+main goals. S13.01–S13.12, complete S13.13, new setup wizards and the updater are
+not automatic prerequisites. Missing dedicated Scribe source logs are an expressly
+supported condition, not grounds to manufacture logs or build its policy engine.
+
+**Coherent work and ownership:** parent owns architecture, approval boundaries,
+records and integration. No worker owns this unstarted scope. Prefer one shared
+logging library for destination admission/lifecycle, safe records and copying,
+with necessary fixed modes in the existing worker owner. Do not split individual
+parsers/events/copy phases into scripts or introduce a main-module CI group for
+a library. Any packaged library requires coordinated manifest/admission and Health
+inventory updates. The minimum package comprises:
+
+1. Safely admit the configured mounted data destination and retain correctly owned
+   descriptors; stop on replacement/loss, unsafe paths, detected developer Off or
+   write failure. Existing `cfmgr_storage_pin` owns FD6/7 and imposes executable
+   `/opt` restrictions, so it cannot be reused unchanged for diagnostic data.
+2. Integrate explicit bounded event/trace records at existing success, error,
+   deferred and configured-Off operation boundaries. Preserve output contracts,
+   exit status, signals, reaping and deadlines. No unrestricted xtrace, global
+   output tee, raw argv/environment dump or generic secret-regex substitute.
+   Apply the approved type/purpose masking rules before every output sink.
+3. Admit only dedicated CFMgr-owned current/retained Scribe sources and copy
+   supported sanitized content with bounded work. Preserve captured history
+   through rotation/replacement; unsupported unsafe content means incomplete
+   capture, never raw fallback. Keep normal Scribe preferences/ownership unchanged.
+
+Shared masking implementation earns no S13.13 acceptance until that ID's complete
+syslog/feature-file/severity/duplicate-suppression outcome is implemented. Future
+feature owners must use the capture contract when added; present consumers must
+prove it now. No activation, provider writes or unrelated log capture is included.
+
+**Lean gates:** reuse the installed-entry and native storage/process fixtures for
+main/module/child events with features Off; developer Off with destination history
+unchanged; credential/unsafe child and copied-log content; mount loss/replacement,
+foreign objects, full/I/O-failed storage, signals and FD ownership; current/retained
+Scribe rotation and absent sources; bounded incomplete copying; and the approved
+Health boundary. Run complete affected module Dev gates followed by exact final
+core CI and review measured cost. Keep heavy execution in CI and use only small
+source/focused checks locally. No new stress or full-suite run solely for timing.
+
+**Effort estimate:** 16–30 focused engineering hours plus CI/review, with medium-to-high
+uncertainty around safe copying and process-supervision integration; this is a
+scope estimate, not a measured delivery promise. S04.06 remains deferred because
+its recorded acceptance requires a real masked credential/name-input consumer;
+menu/helper work alone cannot close it. S08.01 needs operational per-family source
+and route authority, and a usable S07 update outcome crosses transaction/recovery
+and runtime reconciliation. None is silently substituted as a smaller tick.
+
+## Historical health checkpoint execution record
+
+The following entries preserve earlier candidates, failures, permissions and
+ownership for recovery. Their pending actions are superseded by the finished
+checkpoint and next-scope proposal above.
+
+### Candidate and remaining gates before final acceptance
+
+Current final-gate candidate is `5a96d6730e8683a50cdb0861c33e2e8cfc5e32a1`.
+Focused extraction/real acquisition Dev 39585029249 passed both cases in 37.56s.
+Complete Dev 39585209229 (original eight modules) and 39585210610 (prerequisites,
+acquisition and installer integration) both passed; the latter has 47 passes and
+one explicit workstation-without-proc skip in 71.10s. Final core is now manually
+dispatched at this same SHA. No runtime edits are authorized while its prescribed
+gates run except required repairs after a failure. Parent owns final receipt.
+
+The user-requested next-scope assessment may now proceed read-only while final
+core runs: `health_source_map` owns evidence gathering for the smallest ready
+outcome across goals; parent owns its proposed handoff scope and final selection.
+No later implementation, tests or publication is released. Acceptance remains
+23/157 and 0/16 until all exact final core jobs pass. The following paragraphs
+preserve the preceding failures and repaired-source evidence.
 
 Published `687a0fbac83a171b6e22526b7745d28385855449` passed focused native
 safety/journey Dev [39583691202](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39583691202):

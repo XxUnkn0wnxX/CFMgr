@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**23 of 157 product subgoals accepted — 14.6% overall subgoal completion.**
+**25 of 157 product subgoals accepted — 15.9% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -188,8 +188,8 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | [ ] | [ ] | S03.06 | **Manager/diagnostic commands:** Update/force aliases, help/version and identical standalone health/doctor/diagnostic reports without implicit repair consent. |
 | [x] | [x] | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
 | [ ] | [ ] | S03.08 | **Bounded history and privacy:** Small recorded observations, accurate Unknown/Never/stale labels, no basic-status network calls or secret/raw-data dumps. |
-| [ ] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
-| [ ] | [ ] | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
+| [x] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
+| [x] | [ ] | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
 
 S03.02 native-setting boundary: represent saved DDNS choices and their mapping to
 Merlin's switch/provider/hostname/refresh fields separately from observed NVRAM
@@ -286,6 +286,47 @@ owned stalled-probe cancellation, aggregate deadline and cleanup passed. Costs
 reviewed; no full suite was due. Representative Ubuntu/vendor BusyBox evidence
 does not establish live Merlin/ARM qualification. Only S03.07 earns this tick;
 history writers, full diagnostics and final terminal presentation remain separate.
+
+S03.09/S03.10 accepted at `5a96d6730e8683a50cdb0861c33e2e8cfc5e32a1` after parent review,
+[independent design/source audits and integration repairs](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
+The actual early health/doctor/diagnostic entries retain native fallback, independent
+bounded local observations and eligible read-only provider checks. Private typed
+receipts, credential/resource holds, retained-source protection, owned child cleanup,
+package/recovery/backup/logging/hook observations and grouped plain/narrow output
+are implemented and tested. Missing operational producers remain explicitly unknown;
+no provider-write, connector, repair, setup or lifecycle acceptance is implied.
+
+Complete affected Dev gates at the same revision:
+[original eight modules](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585209229)
+**445 passed, 177.68s**;
+[acquisition and supervision](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585210610)
+**47 passed, one workstation-only skip, 71.10s**. The focused history extraction
+and real acquisition-to-installer regression also passed both cases in 37.56s.
+
+[Final aggregate Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585638313)
+and every required host/vendor BusyBox module job passed at that exact SHA:
+
+| Complete core module | Host pytest result | Vendor BusyBox pytest result | Whole-job elapsed, host / native |
+| --- | --- | --- | --- |
+| [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585682321) | 410 passed, one native-only skip; 129.45s | 411 passed; 372.68s | 2m28s / 6m28s |
+| [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585684642) | 609 passed, 29 platform skips, four optional diagnostics deselected; 91.18s | 637 passed, one workstation-only skip, four optional diagnostics deselected; 345.90s | 1m54s / 6m04s |
+| [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39585687240) | 250 passed; 30.01s | 250 passed; 74.46s | 44s / 1m31s |
+
+The full native health journey completed twelve GETs and 59 rows in 30 reported
+seconds/33.96s wall, with 537 operations/1,160 files/11,338,428 reserved bytes;
+finalization used two operations/four files/790,528 bytes. All retained canaries,
+privacy, resource bounds and owned cleanup assertions passed. Required preflight,
+planning/package, Python lint/format/compile and shell syntax/format gates passed.
+All modules are below the ten-minute cost target including setup. Optional stress
+and extended ShellCheck were not part of this required gate and are not claimed.
+
+The user-authorized light-Mac/CI route is documented in
+[Goal 3 review notes](PLAN_V2_review_notes.md#3-configuration-menus-and-status).
+Local behavior boxes remain unticked: after the AWK incident only source checks
+ran on macOS; subsequent complete behavior proof is CI. No main-goal full-local
+suite was due or waived. Representative Ubuntu/vendor BusyBox with explicit
+firmware/provider fixtures is not Merlin/ARM/live-provider qualification.
+Goal 3 is now 5/10 accepted; this checkpoint awards only S03.09 and S03.10.
 
 ### 4. Save, cancellation and recovery
 

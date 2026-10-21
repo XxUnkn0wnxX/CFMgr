@@ -120,6 +120,21 @@ cross-revision compatibility with earlier development snapshots; older-force and
 standalone bootstrap distribution remain unaccepted. The repeated installer
 exit-one/SSL EOF still needs stage evidence before claiming its exact cause.
 
+Final verified disposition: `5a96d6730e8683a50cdb0861c33e2e8cfc5e32a1` passed the actual history-extraction
+and real acquisition-to-installer regression, both complete affected Dev selections,
+and exact final aggregate Checks 39585638313 with Backup 39585682321, Manager
+39585684642 and Status 39585687240 on both required platforms. Parent independently
+checked every run head and terminal result. The [checklist receipt](PLAN_V2_checklist.md#3-configuration-menus-and-status)
+records counts, intentional platform skips, optional exclusions and measured costs.
+The native complete journey retained all twelve reads and completed at 30 reported
+seconds/33.96s wall with all safety/privacy/cleanup assertions. No ceiling or
+assertion was relaxed. Longest complete module elapsed was 6m28s including setup;
+no extra full run was added for timing. Parent accepts S03.09/S03.10 under the
+user-authorized local-source/remote-behavior route. No main-goal acceptance or
+real-router qualification follows. Earlier failed/cancelled runs remain failure
+history; the repaired successful acquisition does not retroactively identify the
+precise earlier SSL-disconnection stage.
+
 ### Preserved source, design and interim evidence
 
 Initial source review at `43a81f1` confirms that normal entry admission verifies

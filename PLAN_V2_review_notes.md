@@ -18,12 +18,20 @@ Use the existing goal/subgoal IDs; these notes do not award acceptance or change
 | Review note | ID | Subgoal and required result |
 | --- | --- | --- |
 | **Host fixture timing:** the complete installed status-menu journey uses a ten-second process timeout instead of the shared three-second navigation timeout. It completed in 4.87s during isolated macOS diagnosis; the earlier limit interrupted a report still in progress. Production deadlines, return/no-preparation assertions and shorter navigation-test limits remain unchanged. This is host test tolerance, not router latency qualification. | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
+| **Checkpoint validation placement:** the user released this health checkpoint with light Mac checks and heavy behavior testing in CI. Following the local Apple AWK crash investigation, all further behavior/AWK execution is CI-only; Mac evidence is source syntax/format/lint/compile/planning/package verification. Complete affected and exact core host/vendor BusyBox results remain required. The checklist local-behavior box stays unticked; this is specific to this checkpoint and grants no main-goal full-local waiver. Firmware storage, daemon facts and provider responses in the complete health journey are explicit fixtures; Linux process/FD supervision, parsers, budgets and cleanup execute for real. Merlin/ARM/live-provider qualification remains beta work. | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
+| **Checkpoint validation placement:** final presentation behavior is verified by the same user-authorized CI route as S03.09, with local source-only checks after the AWK incident. The local-behavior box remains unticked. No main-goal full-local gate or required runtime assertion is waived. | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
 
 ## 4. Save, cancellation and recovery
 
 | Review note | ID | Subgoal and required result |
 | --- | --- | --- |
 | **Existing firmware limit:** the approved contract checks all exposed write, rename, flush and verification results, but qualified JFFS2 firmware can hide internal flash-flush errors. Cached readback cannot certify restart persistence. The [durable-commit audit](PLAN_V2_audit.md#s0403-durable-staged-commit-review) records the rechecked source evidence and staging protections; actual flash/Merlin qualification remains deferred to beta. No raw-flash workaround or additional waiver is introduced. | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
+
+## 7. CFMgr updates, source selection and developer mode
+
+| Review note | ID | Subgoal and required result |
+| --- | --- | --- |
+| **Development bootstrap layout:** acquisition validates the fixed current JSON/history-policy/history-body composition with strict literal envelopes and no candidate shell execution. Earlier development bootstrap/candidate parser layouts are not cross-revision qualified; incompatible layouts fail closed, even when development ABI/schema declarations match. This does not establish the unfinished older-snapshot force/update behavior or standalone bootstrap distribution. | S07.08 | **Trusted complete package:** Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
 
 ## 14. Backup and restore
 
