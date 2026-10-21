@@ -193,6 +193,93 @@ Dash (0.19s), with narrow statics passed. No runtime code changed. Automatic
 Checks 39550117294 and all previous superseded core/module runs are confirmed
 cancelled. Repeat the complete entry module in native Dev before exact core.
 
+Current published candidate is **`4a0c6c063c9fbd779ba2b7e90770a409520f9a45`**,
+verified against actual remote `develop`. Complete entry
+[Dev 39550414237](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39550414237)
+passed **43 cases in 5.33s** (5.57s wall, 3.74s user, 2.64s system), confirming
+the combined fixture on vendor ash. Premature Checks 39550369823 is confirmed
+cancelled. Exact complete [Checks 39550567595](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39550567595)
+and all six required jobs in Backup 39550624642, Manager 39550626406 and Status
+39550628290 **passed** at that exact SHA. Parent independently verified the
+workflow/job results and retained logs. Host/native test receipts respectively:
+Backup **404 passed/1 platform skip in 108.91s; 405 passed in 351.38s**;
+Manager **600 passed/29 platform skips/4 optional deselections in 98.04s;
+628 passed/1 host-only skip/4 optional deselections in 551.56s**;
+Status **127 passed in 15.16s; 127 passed in 25.94s**. Every module stayed below
+ten minutes including setup; Manager native was longest at **9m31s**. Optional
+Diagnostics were not run or claimed passed; the separate Lint timeout remains
+visible. These are representative Ubuntu/vendor BusyBox results, not router
+qualification or acceptance of the unfinished health IDs.
+
+The interim gate is complete and releases continued work within this same
+authorized package. No writer is currently active. The independent planner is
+finishing review of smaller explicitly bounded receipt quotas and forty-operation
+metadata consolidation. Existing operation/file/byte/deadline ceilings remain
+unchanged until the actual combined collector ledger supports any revision.
+
+Astra's final resource audit returned **PASS WITH NOTES**, accepted by the
+parent. `health_foundation` now exclusively owns `modules/status.sh`,
+`modules/lib/execution.sh`, `modules/helpers/worker.sh`, `tests/test_status.py`
+and `tests/runtime_awk.py` for the forty-operation consolidation and explicit
+two-block receipt allowlist. The schema-valid long-reference case must clear
+unused identity fields from ineligible scope receipts before shrinking that
+mode. Keep 256 operations/576 files/12 MiB, 45 seconds, twelve requests and 96
+rows unchanged in this refinement. Preserve fixed metadata membership, canonical
+identity, mount pins, per-member failure, real capabilities and snapshot
+before/after identity. No new scripts or broad parsing framework. Validate only
+small focused local cases/statics; parent owns manifest, records and later CI.
+The explorer independently researches fixed package and logging evidence with
+no edits; Astra is designing the selected Cloudflared-file collector. No other
+runtime writer is active. Advanced collectors follow only
+after this owner releases and parent reviews the consolidated interfaces.
+
+Remaining integration order within this package: selected Cloudflared local
+authority/snapshots and pure-parser integrity checks; logging with shared bounded
+cron/process evidence; owned-integration/recovery/backup observations and fixed
+package completeness; provider address comparisons using retained responses;
+then combined real consumer/resource proof, complete affected CI and final core.
+No stage creates the missing operational lifecycle or treats UNKNOWN as proof of
+that lifecycle. Provider comparisons keep twelve GETs by retaining bounded private
+DNS/list projections and comparing only against this report's public-family
+observations. Flat package inspection preserves listed passive extension scope
+as unverified and distinguishes a trusted standalone entry from an installed one.
+
+Logging design must preserve two distinct authorities: Backup's `REQUEST` receipt
+admits archive-history ownership/policy and ignores enabled flags, while health
+separately reports feature/logging configured/enabled/opt-out plus actual observed
+readiness. Reuse pure `backup_history` plan/includes/base/policy/assess with one
+byte-exact private bundle; never call its archive/rotation controllers. Preserve
+cron's three boundary observations, two reads/counts/digests and repeated account,
+and process executable/argv/start identity. Complete include inventory and every
+fragment are required for effective-policy proof; delivery/rotation remain
+untested. The revised logging estimate is 74 operations before extra admission,
+with debug-to-hex conversion and private handoffs explicitly charged. Neither
+the earlier 114-stage advanced estimate nor twelve-MiB combined fit is proved.
+
+Consolidation review found a real pre-existing dispatch mismatch:
+`health-realpath` borrowed `status-realpath`, whose worker only admits `/jffs`
+and `/opt`, so actual native/tool candidates failed before readlink. Parent has
+authorized the ordinary repair: a separate health-only fixed readlink mode with
+one bounded absolute printable path, preserving all controller containment and
+canonical checks. The owner adds actual worker-dispatch coverage; the analyst
+audits remaining aliases against their real arguments. Current degraded consumer
+passes did not prove the fully admitted path, and no health acceptance was awarded.
+After this owner releases, review and regenerate the manifest, obtain complete
+Status/native/entry Dev proof and exact core at the repaired candidate before
+starting the selected-Cloudflared collector. Heavy validation stays in CI.
+
+The consolidation owner's focused selection passed **28 cases with two explicit
+native-quota skips in 5.32s** (6.14s wall, 3.71s user, 1.82s system). The later
+actual worker-dispatch repair plus normal health consumer passed **two cases in
+2.55s** (3.62s wall). These are dirty-tree host results, not native or acceptance
+proof. Source-derived healthy AUTO-WAN collection now totals **220 operations,
+473 files and 6,131,712 reserved bytes**: 123 tiny pairs, 82 ordinary pairs,
+two snapshots, twelve GETs, one long-path Entware metadata batch, and nine direct
+files. The two-operation finalizer adds four files/790,528 bytes, totaling
+**222 operations / 477 files / 6,922,240 bytes**. These counts describe the
+current receipt formats before advanced collectors; a real complete CI journey
+must still verify combined accounting. All numerical caps remain unchanged.
+
 Initial source/API exploration is complete, with findings in the
 [health audit](PLAN_V2_audit.md#s0309-and-s0310-health-entry-and-provider-evidence).
 Independent Astra design review identified disabled ash test/printf/echo builtins

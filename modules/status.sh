@@ -36,22 +36,23 @@ cfmgr_health_begin() {
 cfmgr_health_mode() {
 	cfmgr_health_mode_files=2 cfmgr_health_mode_limit=8 cfmgr_health_mode_get=0
 	case $1 in
-	health-snapshot) cfmgr_health_mode_limit=128 ;;
+	health-snapshot | health-entware-metadata) cfmgr_health_mode_limit=128 ;;
 	health-get) cfmgr_health_mode_limit=64 cfmgr_health_mode_files=4 cfmgr_health_mode_get=1 ;;
 	health-render) cfmgr_health_mode_limit=384 ;;
-	health-render-count) cfmgr_health_mode_limit=8 ;;
-	health-inventory | health-protected | health-current | health-storage | health-uuid | health-uname | health-blkid | \
-		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | health-wc-jq | health-wc-sha | \
+	# Only finite typed receipts/empty successful probes use the tiny tier.
+	# Native ash:1024 bytes/file; supported host reservation:2048 bytes/file.
+	health-scope | health-frame | health-request-check | health-response | health-trace | health-count | health-render-count | \
+		health-wc-jq | health-wc-sha | health-count-pair | health-current | health-uuid | health-date | health-native | \
+		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | \
 		health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | \
-		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | health-dig-version | \
-		health-scope | health-request | health-request-check | health-response | health-trace | health-frame | \
-		health-config | health-native | health-fields | health-mount | health-metadata | health-count | health-count-pair | \
-		health-date | health-nvram | health-space | health-realpath | health-curl-version | \
-		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline) ;;
+		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | \
+		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline) cfmgr_health_mode_limit=2 ;;
+	health-inventory | health-protected | health-storage | health-uname | health-blkid | health-native-metadata | health-metadata-check | \
+		health-dig-version | health-request | health-config | health-fields | health-mount | health-metadata | \
+		health-nvram | health-space | health-realpath | health-curl-version) ;;
 	*) return 2 ;;
 	esac
-	# Native ash units are 512 bytes; supported host bash units can be 1024.
-	# Reserve the larger physical payload for EACH writable file, including err.
+	# Reserve the larger host physical payload for EACH writable file.
 	cfmgr_health_mode_bytes=$((cfmgr_health_mode_files * cfmgr_health_mode_limit * 1024))
 }
 
@@ -457,13 +458,139 @@ cfmgr_health_entware_attachment() {
 }
 
 cfmgr_health_admit_entware() {
-	case $1 in /opt/bin/jq | /opt/bin/timeout | /opt/bin/sha256sum | /opt/bin/flock | /opt/bin/dig) ;; *) return 2 ;; esac
+	case $1 in
+	/opt/bin/jq) cfmgr_health_tool_saved=${cfmgr_health_entware_jq_path:-} cfmgr_health_tool_ok=${cfmgr_health_entware_jq_ok:-0} ;;
+	/opt/bin/timeout) cfmgr_health_tool_saved=${cfmgr_health_entware_timeout_path:-} cfmgr_health_tool_ok=${cfmgr_health_entware_timeout_ok:-0} ;;
+	/opt/bin/sha256sum) cfmgr_health_tool_saved=${cfmgr_health_entware_sha_path:-} cfmgr_health_tool_ok=${cfmgr_health_entware_sha_ok:-0} ;;
+	/opt/bin/flock) cfmgr_health_tool_saved=${cfmgr_health_entware_flock_path:-} cfmgr_health_tool_ok=${cfmgr_health_entware_flock_ok:-0} ;;
+	/opt/bin/dig) cfmgr_health_tool_saved=${cfmgr_health_entware_dig_path:-} cfmgr_health_tool_ok=${cfmgr_health_entware_dig_ok:-0} ;;
+	*) return 2 ;;
+	esac
 	[ "${cfmgr_health_entware_ready:-0}" = 1 ] || return 1
+	[ "$cfmgr_health_tool_ok" = 1 ] || return 1
 	cfmgr_health_entware_attachment || return $?
+	# Preserve the original logical argv[0], and recheck its canonical identity
+	# immediately before use rather than assuming the earlier alias is unchanged.
 	cfmgr_health_canonical "$1" || return $?
-	case $cfmgr_health_resolved in "$cfmgr_health_opt"/*) ;; *) return 1 ;; esac
-	[ -f "$cfmgr_health_resolved" ] && [ -x "$cfmgr_health_resolved" ] || return 1
-	cfmgr_health_protected "$cfmgr_health_resolved" "$cfmgr_health_opt_mount" file
+	[ "$cfmgr_health_resolved" = "$cfmgr_health_tool_saved" ] &&
+		[ -f "$cfmgr_health_resolved" ] && [ ! -L "$cfmgr_health_resolved" ] && [ -x "$cfmgr_health_resolved" ]
+}
+
+# Native membership is fixed in BOTH the native LS stage and its validator.
+# Missing/untrusted optional flock never holds independent TLS members.
+cfmgr_health_native_metadata() {
+	cfmgr_health_flock_kind=missing
+	cfmgr_health_native_curl_ok=0 cfmgr_health_native_openssl_ok=0 cfmgr_health_native_ca_ok=0 cfmgr_health_native_flock_ok=0
+	for cfmgr_health_native_member in curl openssl ca flock; do
+		case $cfmgr_health_native_member in curl) cfmgr_health_native_path=$cfmgr_health_curl ;; openssl) cfmgr_health_native_path=$cfmgr_health_openssl ;; ca) cfmgr_health_native_path=$cfmgr_health_ca ;; flock) cfmgr_health_native_path=/usr/bin/flock ;; esac
+		if cfmgr_health_canonical "$cfmgr_health_native_path"; then :; else
+			[ "$?" != 3 ] || return 3
+			continue
+		fi
+		cfmgr_health_native_ok=0
+		case $cfmgr_health_native_member:$cfmgr_health_resolved in
+		flock:/bin/busybox)
+			cfmgr_health_flock_kind=busybox
+			[ ! -L /bin/busybox ] && [ -f /bin/busybox ] && [ -x /bin/busybox ] && cfmgr_health_native_ok=1
+			;;
+		*)
+			[ "$cfmgr_health_resolved" = "$cfmgr_health_native_path" ] && [ -f "$cfmgr_health_native_path" ] && [ ! -L "$cfmgr_health_native_path" ] || continue
+			case $cfmgr_health_native_member in ca) cfmgr_health_native_ok=1 ;; *) [ -x "$cfmgr_health_native_path" ] && cfmgr_health_native_ok=1 ;; esac
+			[ "$cfmgr_health_native_member" != flock ] || cfmgr_health_flock_kind=regular
+			;;
+		esac
+		case $cfmgr_health_native_member in curl) cfmgr_health_native_curl_ok=$cfmgr_health_native_ok ;; openssl) cfmgr_health_native_openssl_ok=$cfmgr_health_native_ok ;; ca) cfmgr_health_native_ca_ok=$cfmgr_health_native_ok ;; flock) cfmgr_health_native_flock_ok=$cfmgr_health_native_ok ;; esac
+	done
+	cfmgr_health_native_spec="$cfmgr_health_flock_kind $cfmgr_health_native_curl_ok $cfmgr_health_native_openssl_ok $cfmgr_health_native_ca_ok $cfmgr_health_native_flock_ok"
+	cfmgr_health_run health-native-metadata /bin/ls "$cfmgr_health_flock_kind" || return $?
+	case $cfmgr_probe_exit in 0 | 1 | 2) ;; *) return 1 ;; esac
+	cfmgr_health_run health-metadata-check /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_probe_stdout" native "$cfmgr_health_native_spec" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_metadata_read native
+}
+
+cfmgr_health_metadata_read() {
+	while IFS=' ' read -r cfmgr_health_meta_tag cfmgr_health_meta_member cfmgr_health_meta_ok; do
+		case $1:$cfmgr_health_meta_tag:$cfmgr_health_meta_member in
+		native:member:curl) cfmgr_health_native_curl_ok=$cfmgr_health_meta_ok ;;
+		native:member:openssl) cfmgr_health_native_openssl_ok=$cfmgr_health_meta_ok ;;
+		native:member:ca) cfmgr_health_native_ca_ok=$cfmgr_health_meta_ok ;;
+		native:member:flock) cfmgr_health_native_flock_ok=$cfmgr_health_meta_ok ;;
+		entware:member:storage) cfmgr_health_entware_storage_ok=$cfmgr_health_meta_ok ;;
+		entware:member:jq) cfmgr_health_entware_jq_ok=$cfmgr_health_meta_ok ;;
+		entware:member:timeout) cfmgr_health_entware_timeout_ok=$cfmgr_health_meta_ok ;;
+		entware:member:sha) cfmgr_health_entware_sha_ok=$cfmgr_health_meta_ok ;;
+		entware:member:flock) cfmgr_health_entware_flock_ok=$cfmgr_health_meta_ok ;;
+		entware:member:dig) cfmgr_health_entware_dig_ok=$cfmgr_health_meta_ok ;;
+		esac
+	done <"$cfmgr_probe_stdout"
+}
+
+cfmgr_health_metadata_walk() {
+	cfmgr_health_walk_member=$1 cfmgr_health_walk_path=$2 cfmgr_health_walk_kind=$3
+	while :; do
+		[ ! -L "$cfmgr_health_walk_path" ] || return 1
+		cfmgr_health_metadata_spec="$cfmgr_health_metadata_spec
+$cfmgr_health_walk_member	$cfmgr_health_walk_kind	$cfmgr_health_walk_path"
+		if [ "${#cfmgr_health_metadata_spec}" -gt 32768 ]; then
+			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+			return 1
+		fi
+		case "$cfmgr_health_metadata_paths
+" in *"
+$cfmgr_health_walk_path
+"*) ;;
+		*)
+			cfmgr_health_metadata_members=$((cfmgr_health_metadata_members + 1))
+			if [ "$cfmgr_health_metadata_members" -gt 13 ]; then
+				cfmgr_health_incomplete=1 cfmgr_health_reason=budget
+				return 1
+			fi
+			cfmgr_health_metadata_paths="$cfmgr_health_metadata_paths
+$cfmgr_health_walk_path"
+			;;
+		esac
+		[ "$cfmgr_health_walk_path" != "$cfmgr_health_opt_mount" ] || return 0
+		[ "$cfmgr_health_walk_path" != / ] || return 1
+		cfmgr_health_walk_path=${cfmgr_health_walk_path%/*}
+		[ -n "$cfmgr_health_walk_path" ] || cfmgr_health_walk_path=/
+		cfmgr_health_walk_kind=directory
+	done
+}
+
+cfmgr_health_entware_metadata() {
+	cfmgr_health_metadata_spec='' cfmgr_health_metadata_paths='' cfmgr_health_metadata_members=0
+	cfmgr_health_entware_storage_ok=0 cfmgr_health_entware_jq_ok=0 cfmgr_health_entware_timeout_ok=0 cfmgr_health_entware_sha_ok=0 cfmgr_health_entware_flock_ok=0 cfmgr_health_entware_dig_ok=0
+	cfmgr_health_metadata_walk storage "$cfmgr_health_opt" directory || return $?
+	for cfmgr_health_tool_member in jq timeout sha flock dig; do
+		case $cfmgr_health_tool_member in sha) cfmgr_health_tool_logical=/opt/bin/sha256sum ;; *) cfmgr_health_tool_logical=/opt/bin/$cfmgr_health_tool_member ;; esac
+		cfmgr_health_resolved=''
+		if cfmgr_health_canonical "$cfmgr_health_tool_logical"; then
+			case $cfmgr_health_resolved in "$cfmgr_health_opt"/*)
+				if [ -f "$cfmgr_health_resolved" ] && [ -x "$cfmgr_health_resolved" ]; then
+					cfmgr_health_metadata_walk "$cfmgr_health_tool_member" "$cfmgr_health_resolved" file || return $?
+				else cfmgr_health_resolved=''; fi
+				;;
+			*) cfmgr_health_resolved='' ;;
+			esac
+		else
+			[ "$?" != 3 ] || return 3
+			cfmgr_health_resolved=''
+		fi
+		case $cfmgr_health_tool_member in jq) cfmgr_health_entware_jq_path=$cfmgr_health_resolved ;; timeout) cfmgr_health_entware_timeout_path=$cfmgr_health_resolved ;; sha) cfmgr_health_entware_sha_path=$cfmgr_health_resolved ;; flock) cfmgr_health_entware_flock_path=$cfmgr_health_resolved ;; dig) cfmgr_health_entware_dig_path=$cfmgr_health_resolved ;; esac
+	done
+	set --
+	while IFS= read -r cfmgr_health_meta_path; do
+		[ -z "$cfmgr_health_meta_path" ] || set -- "$@" "$cfmgr_health_meta_path"
+	done <<EOF_HEALTH_PATHS
+$cfmgr_health_metadata_paths
+EOF_HEALTH_PATHS
+	cfmgr_health_run health-entware-metadata /bin/ls "$@" || return $?
+	case $cfmgr_probe_exit in 0 | 1 | 2) ;; *) return 1 ;; esac
+	cfmgr_health_run health-metadata-check /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_probe_stdout" entware "$cfmgr_health_metadata_spec" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_metadata_read entware || return $?
+	[ "$cfmgr_health_entware_storage_ok" = 1 ]
 }
 
 cfmgr_health_entware() {
@@ -479,7 +606,6 @@ cfmgr_health_entware() {
 	IFS='	' read -r cfmgr_health_opt_uuid cfmgr_health_opt_fs cfmgr_health_opt_device cfmgr_health_opt_mount <"$cfmgr_probe_stdout" || return 1
 	cfmgr_health_canonical "$cfmgr_health_opt_mount" || return $?
 	[ "$cfmgr_health_resolved" = "$cfmgr_health_opt_mount" ] || return 1
-	cfmgr_health_protected "$cfmgr_health_opt" "$cfmgr_health_opt_mount" directory || return $?
 	exec 6<"$cfmgr_health_opt_mount" 7<"$cfmgr_health_opt" || return 1
 	cfmgr_health_run health-blkid /sbin/blkid "$cfmgr_health_opt_device" || return $?
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
@@ -488,6 +614,7 @@ cfmgr_health_entware() {
 	IFS= read -r cfmgr_health_current_uuid <"$cfmgr_probe_stdout" || return 1
 	[ "$cfmgr_health_current_uuid" = "$cfmgr_health_opt_uuid" ] || return 1
 	cfmgr_health_entware_attachment || return $?
+	cfmgr_health_entware_metadata || return $?
 	cfmgr_health_entware_ready=1
 }
 
@@ -652,12 +779,15 @@ cfmgr_health_collect() {
 	fi
 	cfmgr_health_native_admitted=1
 	cfmgr_health_curl=/usr/sbin/curl cfmgr_health_openssl=/usr/sbin/openssl cfmgr_health_ca=/rom/etc/ssl/certs/ca-certificates.crt
+	if cfmgr_health_native_metadata; then :; else
+		[ "$?" != 3 ] || return 3
+		cfmgr_health_native_curl_ok=0 cfmgr_health_native_openssl_ok=0 cfmgr_health_native_ca_ok=0 cfmgr_health_native_flock_ok=0
+	fi
 	for cfmgr_health_native_member in curl openssl ca; do
-		case $cfmgr_health_native_member in curl) cfmgr_health_native_path=$cfmgr_health_curl cfmgr_health_native_kind=executable ;; openssl) cfmgr_health_native_path=$cfmgr_health_openssl cfmgr_health_native_kind=executable ;; ca) cfmgr_health_native_path=$cfmgr_health_ca cfmgr_health_native_kind=data ;; esac
-		if cfmgr_health_admit_native "$cfmgr_health_native_path" "$cfmgr_health_native_kind"; then
+		case $cfmgr_health_native_member in curl) cfmgr_health_native_ok=$cfmgr_health_native_curl_ok ;; openssl) cfmgr_health_native_ok=$cfmgr_health_native_openssl_ok ;; ca) cfmgr_health_native_ok=$cfmgr_health_native_ca_ok ;; esac
+		if [ "$cfmgr_health_native_ok" = 1 ]; then
 			cfmgr_health_row "native.$cfmgr_health_native_member" PASS 'Fixed native path and ancestry are root-protected.' current 'None.' native
 		else
-			[ "$?" != 3 ] || return 3
 			cfmgr_health_native_admitted=0
 			cfmgr_health_row "native.$cfmgr_health_native_member" FAIL 'Fixed native path or protected ancestry could not be admitted.' current 'Recover native firmware prerequisites.' native
 		fi || return $?
@@ -672,7 +802,7 @@ cfmgr_health_collect() {
 	if [ -n "$cfmgr_health_inventory" ] && cfmgr_health_entware; then
 		cfmgr_health_row storage.entware PASS 'The mounted UUID, filesystem, filesystem root and relative Entware path match retained identity.' current 'None.' storage || return $?
 		cfmgr_health_native_flock=-
-		if cfmgr_health_admit_native /usr/bin/flock executable; then cfmgr_health_native_flock=/usr/bin/flock; else [ "$?" != 3 ] || return 3; fi
+		[ "$cfmgr_health_native_flock_ok" != 1 ] || cfmgr_health_native_flock=/usr/bin/flock
 		if cfmgr_prerequisites_check tunnel "$cfmgr_status_context" /bin/sh "$cfmgr_source/modules/helpers/worker.sh" /usr/bin/env /usr/bin/awk /bin/sleep /usr/bin/wc "$cfmgr_health_native_flock" /opt/bin/jq /opt/bin/timeout /opt/bin/sha256sum /opt/bin/flock /opt/bin/dig unknown; then :; else [ "$?" != 3 ] || return 3; fi
 		for cfmgr_health_capability in jq timeout sha flock dns; do
 			case $cfmgr_health_capability in jq) cfmgr_health_capability_result=$cfmgr_prereq_jq ;; timeout) cfmgr_health_capability_result=$cfmgr_prereq_timeout ;; sha) cfmgr_health_capability_result=$cfmgr_prereq_sha ;; flock) cfmgr_health_capability_result=$cfmgr_prereq_flock ;; dns) cfmgr_health_capability_result=$cfmgr_prereq_dns ;; esac
@@ -1076,20 +1206,42 @@ cfmgr_status_fields() {
 	cfmgr_status_run status-fields /usr/bin/awk "$cfmgr_source/modules/status.sh" "$1" "$2" "$3"
 }
 
+# Consume ONLY the successful bounded native LS receipt, never config data.
+cfmgr_status_snapshot_metadata() {
+	{
+		IFS= read -r cfmgr_status_meta_line || return 1
+		cfmgr_status_meta_extra=''
+		if IFS= read -r cfmgr_status_meta_extra || [ -n "$cfmgr_status_meta_extra" ]; then return 1; fi
+	} <"$cfmgr_probe_stdout"
+	case $cfmgr_status_meta_line in '' | *[!\ -~]*) return 1 ;; esac
+	[ "${#cfmgr_status_meta_line}" -le 8192 ] || return 1
+	IFS=' ' read -r cfmgr_status_meta_inode cfmgr_status_meta_mode cfmgr_status_meta_links cfmgr_status_meta_uid cfmgr_status_meta_gid \
+		cfmgr_status_meta_bytes cfmgr_status_meta_month cfmgr_status_meta_day cfmgr_status_meta_stamp cfmgr_status_meta_path <<EOF_STATUS_META
+$cfmgr_status_meta_line
+EOF_STATUS_META
+	case $cfmgr_status_meta_inode in '' | *[!0-9]* | 0*) return 1 ;; esac
+	case $cfmgr_status_meta_bytes in '' | *[!0-9]* | 0*) return 1 ;; esac
+	[ "${#cfmgr_status_meta_inode}" -le 20 ] && [ "${#cfmgr_status_meta_bytes}" -le 5 ] &&
+		[ "$cfmgr_status_meta_bytes" -le 65536 ] && [ "$cfmgr_status_meta_uid" = 0 ] &&
+		[ "$cfmgr_status_meta_mode" = -rw------- ] && [ "$cfmgr_status_meta_path" = "$1" ] || return 1
+	case $cfmgr_status_meta_links:$cfmgr_status_meta_gid in *[!0-9:]* | :* | *:) return 1 ;; esac
+	[ -n "$cfmgr_status_meta_month" ] && [ -n "$cfmgr_status_meta_day" ] && [ -n "$cfmgr_status_meta_stamp" ] || return 1
+	cfmgr_status_meta_receipt="$cfmgr_status_meta_inode $cfmgr_status_meta_bytes"
+}
+
 cfmgr_status_snapshot() {
 	cfmgr_status_run status-metadata /bin/ls "$1" || return $?
-	cfmgr_status_fields metadata "$cfmgr_probe_stdout" - || return $?
-	IFS=' ' read -r cfmgr_status_snapshot_inode cfmgr_status_snapshot_bytes <"$cfmgr_probe_stdout" || return 1
-	cfmgr_status_snapshot_metadata="$cfmgr_status_snapshot_inode $cfmgr_status_snapshot_bytes"
+	cfmgr_status_snapshot_metadata "$1" || return 1
+	cfmgr_status_snapshot_inode=$cfmgr_status_meta_inode cfmgr_status_snapshot_bytes=$cfmgr_status_meta_bytes
+	cfmgr_status_snapshot_before=$cfmgr_status_meta_receipt
 	cfmgr_status_run status-snapshot /bin/dd "$1" || return $?
 	cfmgr_status_snapshot_file=$cfmgr_probe_stdout
 	cfmgr_status_run status-count /usr/bin/wc "$cfmgr_status_snapshot_file" || return $?
 	IFS=' ' read -r cfmgr_status_snapshot_actual cfmgr_status_snapshot_extra <"$cfmgr_probe_stdout" || return 1
 	[ -z "$cfmgr_status_snapshot_extra" ] && [ "$cfmgr_status_snapshot_actual" = "$cfmgr_status_snapshot_bytes" ] || return 1
 	cfmgr_status_run status-metadata /bin/ls "$1" || return $?
-	cfmgr_status_fields metadata "$cfmgr_probe_stdout" - || return $?
-	IFS= read -r cfmgr_status_snapshot_after <"$cfmgr_probe_stdout" || return 1
-	[ "$cfmgr_status_snapshot_after" = "$cfmgr_status_snapshot_metadata" ]
+	cfmgr_status_snapshot_metadata "$1" || return 1
+	[ "$cfmgr_status_meta_receipt" = "$cfmgr_status_snapshot_before" ]
 }
 
 cfmgr_status_mount() {
@@ -1104,6 +1256,77 @@ cfmgr_status_mount() {
 cfmgr_status_space() {
 	cfmgr_status_run status-space /bin/df "$1" || return $?
 	cfmgr_status_fields space "$cfmgr_probe_stdout" -
+}
+
+cfmgr_status_awk_health_metadata() {
+	# CFMGR-AWK-BEGIN health_metadata
+	cfmgr_awk_program='
+# Exact immutable member inventory plus one successful-or-partial native LS.
+# A malformed/duplicate/missing known path invalidates its dependent members.
+BEGIN {
+    path=ARGV[1]; profile=ARGV[2]; spec=ARGV[3]; ARGC=1
+    if(profile=="native") {
+        if(split(spec,flags," ")!=5 || flags[1]!~/^(busybox|regular|missing)$/) exit 1
+        members[1]="curl"; members[2]="openssl"; members[3]="ca"; members[4]="flock"; count=4
+        for(i=1;i<=4;i++) { if(flags[i+1]!~/^[01]$/) exit 1; initial[members[i]]=flags[i+1]+0 }
+        hm_add("/","directory","curl openssl ca flock")
+        hm_add("/usr","directory","curl openssl flock"); hm_add("/usr/sbin","directory","curl openssl")
+        hm_add("/usr/sbin/curl","file","curl"); hm_add("/usr/sbin/openssl","file","openssl")
+        hm_add("/rom","directory","ca"); hm_add("/rom/etc","directory","ca")
+        hm_add("/rom/etc/ssl","directory","ca"); hm_add("/rom/etc/ssl/certs","directory","ca")
+        hm_add("/rom/etc/ssl/certs/ca-certificates.crt","file","ca")
+        if(flags[1]=="busybox") { hm_add("/usr/bin","directory","flock"); hm_add("/bin","directory","flock"); hm_add("/bin/busybox","file","flock") }
+        else if(flags[1]=="regular") { hm_add("/usr/bin","directory","flock"); hm_add("/usr/bin/flock","file","flock") }
+        else initial["flock"]=0
+    } else if(profile=="entware") {
+        members[1]="storage"; members[2]="jq"; members[3]="timeout"; members[4]="sha"; members[5]="flock"; members[6]="dig"; count=6
+        if(length(spec)>32768) exit 1
+        n=split(spec,lines,"\n"); if(n>97) exit 1
+        for(i=1;i<=n;i++) {
+            if(lines[i]=="") continue
+            if(split(lines[i],fields,"\t")!=3 || fields[1]!~/^(storage|jq|timeout|sha|flock|dig)$/ || fields[2]!~/^(file|directory)$/ ||
+                fields[3]!~/^\// || length(fields[3])>4096 || fields[3]~/[^ -~]/ || fields[3]~/\\/) exit 1
+            hm_add(fields[3],fields[2],fields[1]); initial[fields[1]]=1
+        }
+    } else exit 1
+    # Complete framing before interpreting any record; native LS always emits LF.
+    RS=sprintf("%c",28); got=getline raw < path; more=getline extra < path; close(path)
+    if(got<0 || more>0 || length(raw)>65536 || raw~/[^ -~\n]/ || (raw!="" && substr(raw,length(raw),1)!="\n")) exit 1
+    n=split(raw,lines,"\n"); if(n>97) exit 1
+    for(i=1;i<n;i++) hm_record(lines[i])
+    print "CFMGR-HEALTH-METADATA 1"
+    for(i=1;i<=count;i++) {
+        member=members[i]; ok=initial[member]
+        for(p in expected) if(required[p,member] && (!seen[p] || invalid[p])) ok=0
+        printf "member %s %d\n",member,(global_bad ? 0 : ok)
+    }
+    print "END"; exit
+}
+function hm_add(p,kind,names,    a,n,j) {
+    if((p in expected) && expected[p]!=kind) exit 1
+    if(!(p in expected) && ++paths>13) exit 1
+    expected[p]=kind; n=split(names,a," ")
+    for(j=1;j<=n;j++) { if(required[p,a[j]]++) exit 1 }
+}
+function hm_record(line,    rest,f,j,p,name,bad) {
+    rest=line
+    for(j=1;j<=9;j++) {
+        sub(/^ +/,"",rest)
+        if(!match(rest,/^[^ ]+/)) { global_bad=1; return }
+        f[j]=substr(rest,1,RLENGTH); rest=substr(rest,RLENGTH+1)
+    }
+    sub(/^ +/,"",rest); p=rest
+    if(!(p in expected) && substr(f[2],1,1)=="l") {
+        for(name in expected) if(substr(p,1,length(name)+4)==name " -> ") { p=name; break }
+    }
+    if(!(p in expected)) { global_bad=1; return }
+    if(seen[p]++) invalid[p]=1
+    if(f[1]!~/^[1-9][0-9]*$/ || f[3]!~/^[1-9][0-9]*$/ || f[4]!="0" || f[5]!~/^[0-9]+$/ || f[6]!~/^[0-9]+$/ ||
+        length(f[2])!=10 || f[2]!~/^[-d]/ || substr(f[2],6,1)=="w" || substr(f[2],9,1)=="w" ||
+        (expected[p]=="directory" ? substr(f[2],1,1)!="d" : substr(f[2],1,1)!="-")) invalid[p]=1
+}
+'
+	# CFMGR-AWK-END health_metadata
 }
 
 cfmgr_status_awk_health_local() {
@@ -1477,6 +1700,7 @@ BEGIN {
         if(ENVIRON["CFMGR_HEALTH_PUBLIC"]!="1" || (hp_family=="6" && ENVIRON["CFMGR_HEALTH_IPV6"]!="1")) hp_state="eligibility-unproved"
         else { hp_scope="public." hp_feature; hp_type=hp_family; hp_url="https://cloudflare.com/cdn-cgi/trace" }
     } else if(hp_state=="eligible") hp_resource_request()
+    if(hp_state!="eligible") hp_scope=hp_resource=hp_name=hp_type="-"
     hp_request=""
     if(hp_state=="eligible") {
         if(length(hp_url)>2048) reject()

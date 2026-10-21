@@ -213,6 +213,106 @@ ledger are required before adopting the conditional capacity revision. The
 existing 8-KiB Scribe-prefix policy is retained; public protected files do not
 inherit the private configuration's `0600` policy.
 
+The explicit physical ledger identifies another conditional boundary: the
+consolidated 215-operation core with twelve GETs reserves **7,315,456 bytes**
+for collection, leaving **4,218,880 bytes** below its eleven-MiB allowance.
+A 114-operation advanced small-file profile nearly fills that remainder before
+the required private PEM handoff and package checks; preserving larger legitimate
+selected files exceeds it. Small file examples are not new input-validity limits.
+Parent has requested independent review of smaller fixed quotas for genuinely
+tiny success receipts, preserving full private-data/parser output funding and
+explicit budget-incomplete behavior. Actual combined stage/byte measurement
+still precedes any revised resource ceiling or acceptance claim.
+
+Astra's final audit returned **PASS WITH NOTES** for consolidation plus an
+explicit two-block allowlist, accepted by the parent. Proven tiny outputs include
+fixed scope/response/trace receipts, silent validators, counts, date/native
+resources and fixed capability probes. Raw paths, metadata, inventory, tool
+versions and data-bearing parsers retain separately funded larger tiers. A
+schema-valid credential reference can exceed the health request's 64-character
+limit; the ineligible scope producer must clear its unused scope/resource/name/
+type fields, retaining eligibility reason/feature/kind, before its quota shrinks.
+This is a bounded-output repair, not a schema restriction or eligibility change.
+
+The eight tiny stages per successful GET alone save **1,179,648 bytes** across
+twelve reads. Applying this to the consolidated core estimate leaves
+**5,398,528 collection bytes** before other proven tiny-mode savings. This still
+does not prove advanced fit: a 262,144-byte YAML metadata budget needs its full
+1,048,576-byte physical output pair; 64-KiB hex input expands to 196,608 bytes;
+PEM extraction/decoding and logging bundles need their own enforced writer
+quotas. Parent retains all current caps while the actual collector is built and
+counted. Small-file tiers are performance choices, never new validity limits.
+Any later bounded capacity revision must follow a complete measured reservation
+ledger rather than removal of required diagnostics or a speculative RAM increase.
+
+Implementation review refines the forty-operation estimate: pre-admitting the
+Entware flock fallback plus re-canonicalizing selected logical tools immediately
+before execution can retain approximately **220** operations instead of 215.
+Parent explicitly preserves original argv[0], immediate canonical identity and
+attachment checks; the estimated saving is not a reason to weaken admission.
+Actual counters after integration supersede these source estimates.
+
+The fixed package-completeness design reuses the eleven entry-admitted records,
+then inspects the three empty placeholders, four known directories, manifest/
+catalog correspondence and bounded flat inventories. The catalog has thirteen
+physical lines: its header plus twelve module records. Bind new manifest data
+to the original admitted records; do not retrospectively authorize earlier
+verification from a later manifest. A standalone invocation additionally needs
+independent installed-entry presence/protection/digest evidence. Valid listed
+passive extension directories remain uninspected extension scope, not malformed
+or fully verified; unlisted objects fail inventory. Reused entry hashes plus
+later metadata are explicitly non-atomic observations. These are design findings,
+not completed runtime or acceptance evidence.
+
+The remaining per-family provider comparisons need no additional GETs. Retain
+bounded private canonical DNS/list values and compare them after the existing
+late-auth-hold check and same-report public-family observations. Exact DNS
+equality and CIDR membership require a small POSIX-AWK canonical comparison;
+the existing IPv6 validator does not normalize addresses. A partial list may
+prove observed presence, never absence; partial DNS enumeration remains
+incomplete. Missing current public evidence must not be replaced by historical
+addresses. The result describes observed egress during the report, never selected
+WAN routing, write permission, prior publication or tunnel runtime authentication.
+
+Astra's selected-Cloudflared design is **PASS WITH NOTES**, accepted by the
+parent. Reuse only pure Backup YAML/runtime-JSON/PEM readers beneath the Status
+consumer. Three projections come from the same fully validated retained config:
+a path/policy-only plan, the unchanged private `CFMGR-AUTH` runtime record and
+an independent `CFMGR-CERT-ACCOUNT 1 <account-hex> END` certificate record. The
+certificate authority is valid in token mode too; it never becomes a token-runtime
+prerequisite. Two narrow Backup adaptations are justified: a private account-file
+reader and a fixed health-only raw-base64 PEM output, retaining both archive
+defaults. This avoids the existing high-level decoder's secret-bearing shell
+variable and an unnecessary extraction stage.
+
+Selected-file collection uses protected before/after metadata, pinned bounded
+copies, native byte counts and independent per-member results. JSON/certificate
+parser boundaries remain 65,536 bytes; larger YAML inputs need checked physical
+reservations or diagnostic-budget UNKNOWN, not a new validity limit. Reuse a
+single semantic parse when live/recovery certificates both match the saved hash.
+Local evidence depends on its own prerequisites, not NTP/curl/provider gates.
+JFFS recovery metadata can remain useful when Entware is unavailable.
+
+The borrowed YAML parser proves supported identity/dependency structure, not full
+ingress/private-network runtime semantics. Its smaller supported pathname subset
+must not redefine the schema's 4,096-byte paths. Missing ownership is unproved;
+a matched owned digest is content evidence, not ABI/version/connectivity proof.
+Recorded maintenance/watchdog/readiness preferences do not prove running jobs.
+The illustrative Cloud ledger is 34 stages before additional canonicalization,
+ancestry and referenced inputs; every real producer and output tier still needs
+counting in the combined report. No Cloud collector implementation or acceptance
+is claimed by this design review.
+
+Consolidation inspection exposed a pre-existing real consumer defect:
+`health-realpath` aliased the basic worker's `status-realpath`, which only
+accepts `/jffs` or `/opt`. Native curl/OpenSSL/CA/flock and individual Entware
+tool candidates therefore failed argument admission before readlink. Existing
+degraded-path consumer tests did not expose the healthy-path failure; their
+earlier passing receipts remain valid only for the paths they exercised. Parent
+approved a separate bounded health readlink dispatcher plus actual dispatch
+coverage and an audit of the other aliases. No claim of complete health behavior
+or acceptance was made from the earlier interim core pass.
+
 The first native Dev run at `2a50fc5` found a real portability defect: its token
 backslash case was admitted by BusyBox's escaped-slash bracket expression, while
 host AWK rejected it. No product acceptance was awarded. Parent added explicit
@@ -234,6 +334,31 @@ that separating invocations could expose cost but can also reduce source-followi
 context; no analysis option, timeout or runner behavior is changed without
 resolving that tradeoff. The cancelled run is not a passing lint result and adds
 no acceptance evidence. No heavy analyzer is rerun locally.
+
+The complete interim candidate `4a0c6c063c9fbd779ba2b7e90770a409520f9a45`
+passed [Checks 39550567595](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39550567595),
+including all required host/native jobs in Backup 39550624642, Manager
+39550626406 and Status 39550628290. Parent independently verified exact SHAs,
+terminal conclusions and test logs. The sole skipped parent job is cancellation
+cleanup, which is conditional on cancellation and is not a product check.
+
+| Module/platform | Test result | Test wall / user / system seconds | Job elapsed including setup |
+| --- | --- | --- | --- |
+| Backup host | 404 passed; 1 native-only skip | 109.18 / 35.56 / 34.68 | 2m07s |
+| Backup BusyBox | 405 passed | 351.78 / 190.72 / 149.96 | 6m04s |
+| Manager host | 600 passed; 29 platform skips; 4 optional deselections | 99.12 / 40.86 / 41.17 | 1m50s |
+| Manager BusyBox | 628 passed; 1 host-only skip; 4 optional deselections | 551.98 / 308.96 / 235.87 | 9m31s |
+| Status host | 127 passed | 15.59 / 4.51 / 1.95 | 37s |
+| Status BusyBox | 127 passed | 26.24 / 10.76 / 6.60 | 57s |
+
+The native Manager skip is the explicit non-Linux workstation-without-proc
+boundary, skipped in both Ubuntu jobs and not newly proved by this CI. Required
+mount/process cases skipped on host run in the native job. All complete modules fit the ten-minute
+budget; Manager native remains the cost-sensitive group. No extra full run was
+added for timing. These receipts validate the current foundation/consumer only:
+advanced health groups and the combined resource envelope remain unfinished, so
+neither S03.09 nor S03.10 earns acceptance. Ubuntu/native BusyBox remains
+representative development evidence, not real-router qualification.
 
 ## S14.03 archive selection and actions review
 

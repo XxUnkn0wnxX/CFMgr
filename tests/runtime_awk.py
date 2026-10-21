@@ -16,6 +16,7 @@ OWNERS = {
     "status": "modules/status.sh",
     "health": "modules/status.sh",
     "health_local": "modules/status.sh",
+    "health_metadata": "modules/status.sh",
     "health_wire": "modules/status.sh",
     "health_response": "modules/status.sh",
     "health_render": "modules/status.sh",

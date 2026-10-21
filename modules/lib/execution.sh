@@ -157,12 +157,13 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	health-entware-metadata) [ "$#" -ge 10 ] && [ "$#" -le 22 ] || return 2 ;;
 	health-inventory | health-scope | health-request) [ "$#" -eq 19 ] || return 2 ;;
 	health-get) [ "$#" -eq 15 ] || return 2 ;;
 	health-response) [ "$#" -eq 16 ] || return 2 ;;
-	health-protected | health-current | health-storage | health-uuid | health-request-check | health-trace | health-frame | health-render) [ "$#" -eq 13 ] || return 2 ;;
+	health-metadata-check | health-protected | health-current | health-storage | health-uuid | health-request-check | health-trace | health-frame | health-render) [ "$#" -eq 13 ] || return 2 ;;
 	health-config) [ "$#" -eq 20 ] || return 2 ;;
-	health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) [ "$#" -eq 10 ] || return 2 ;;
+	health-native-metadata | health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) [ "$#" -eq 10 ] || return 2 ;;
 	health-fields) [ "$#" -eq 13 ] || return 2 ;;
 	health-native | health-mount | health-curl-offline | health-count-pair) [ "$#" -eq 11 ] || return 2 ;;
 	health-blkid) [ "$#" -eq 10 ] || return 2 ;;
@@ -494,6 +495,10 @@ cfmgr_prerequisites_run() {
 	esac
 	_cfmgr_prerequisites_attachment || cfmgr_probe_reason=attachment
 	cfmgr_probe_status=reaped
+	case $cfmgr_probe_mode in health-*)
+		[ "$cfmgr_probe_exit" -lt 128 ] || cfmgr_probe_reason=child-signal
+		;;
+	esac
 	case $cfmgr_probe_reason in '') ;; *) return 1 ;; esac
 	return 0
 }

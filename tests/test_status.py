@@ -1096,6 +1096,11 @@ def status_fixture(tmp_path, tools, shell):
             adapted = adapted.replace("$3!=0", f"$3!={os.getuid()}")
         if relative == "modules/status.sh":
             adapted = adapted.replace('a[4]!="0"', f'a[4]!="{os.getuid()}"')
+            adapted = adapted.replace('f[4]!="0"', f'f[4]!="{os.getuid()}"')
+            adapted = adapted.replace(
+                '[ "$cfmgr_status_meta_uid" = 0 ]',
+                f'[ "$cfmgr_status_meta_uid" = {os.getuid()} ]',
+            )
         if relative == "modules/helpers/worker.sh" and sys.platform == "darwin":
             adapted = adapted.replace("/proc/self/fd/8", "/dev/fd/8").replace(
                 '"$1" -ef /dev/fd/8', "-f /dev/fd/8"
@@ -1162,7 +1167,7 @@ cfmgr_prerequisites_run() {
     case ${mode#health-} in
     date | status-date) selected_tool=$base/native/date ;;
     native | status-native) selected_tool=$cfmgr_status_awk; set -- "$1" "$base/proc" ;;
-    render | status-render | protected | current | storage | uuid | inventory | fields | config | mount | status-fields | status-config | status-mount) selected_tool=$cfmgr_status_awk ;;
+    metadata-check | render | status-render | protected | current | storage | uuid | inventory | fields | config | mount | status-fields | status-config | status-mount) selected_tool=$cfmgr_status_awk ;;
     realpath | status-realpath) selected_tool=$base/native/readlink ;;
     space | status-space) selected_tool=$base/native/df ;;
     nvram | status-nvram)
@@ -1800,7 +1805,7 @@ cfmgr_health_final_begin || exit 28
 [ "$cfmgr_health_final_deadline" = 115 ] || exit 29
 cfmgr_health_reserve health-render || exit 30
 cfmgr_health_reserve health-render-count || exit 31
-[ "$cfmgr_health_final_operations:$cfmgr_health_final_files:$cfmgr_health_final_bytes" = 2:4:802816 ] || exit 32
+[ "$cfmgr_health_final_operations:$cfmgr_health_final_files:$cfmgr_health_final_bytes" = 2:4:790528 ] || exit 32
 [ "$cfmgr_health_operations:$cfmgr_health_files:$cfmgr_health_bytes" = 20:40:327680 ] || exit 33
 cfmgr_health_reserve health-date
 [ "$?" = 1 ] || exit 34
@@ -1860,3 +1865,542 @@ def test_basic_renderer_failure_uses_only_fixed_safe_fallback(
         == b"Report\nnot\navailable\nCheck\nlocal\nstatus\nstatus-code=1\n"
     )
     assert not (tmp_path / "ram").exists()
+
+
+def test_health_scope_tiny_bound_clears_long_ineligible_identity(
+    commands, health_config
+):
+    value = json.loads(json.dumps(health_config))
+    credential = value["credentials"].pop("api-a")
+    long_ref = "r" * 3000
+    value["credentials"][long_ref] = credential
+    value["ddns"]["credential_ref"] = long_ref
+    denied = health_projection(commands, value)
+    assert denied.returncode == 0, denied.stderr
+    fields = denied.stdout.decode().split()
+    assert fields[2] == "credential-local-only"
+    assert [fields[i] for i in (4, 6, 7, 8)] == ["-"] * 4
+    assert len(denied.stdout) < 1024 and long_ref.encode() not in denied.stdout
+    assert health_projection(commands, value, "health-request").returncode != 0
+    value["credentials"].pop(long_ref)
+    reference = "r" * 64
+    value["credentials"][reference] = {**credential, "value": "A" * 2048}
+    value["ddns"]["credential_ref"] = reference
+    name = "*." + ".".join(["a" * 63] * 3 + ["b" * 59])
+    assert len(name) == 253
+    value["ddns"]["records"][1]["name"] = name
+    scope = health_projection(commands, value, selector="local-record-6", kind="dns")
+    request = health_projection(
+        commands, value, "health-request", selector="local-record-6", kind="dns"
+    )
+    assert scope.returncode == request.returncode == 0
+    assert len(scope.stdout) <= 1024 and len(request.stdout) <= 4096
+    assert ("A" * 2048).encode() not in scope.stdout
+    assert b"%2A." in request.stdout and ("A" * 2048).encode() in request.stdout
+
+
+def metadata_batch(commands, tmp_path, profile, spec, records):
+    raw = tmp_path / "metadata-batch"
+    raw.write_text("".join(records))
+    return subprocess.run(
+        [*commands[1], awk_program("health_metadata"), str(raw), profile, spec],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+
+
+def native_metadata_records():
+    paths = [
+        "/",
+        "/usr",
+        "/usr/sbin",
+        "/usr/sbin/curl",
+        "/usr/sbin/openssl",
+        "/rom",
+        "/rom/etc",
+        "/rom/etc/ssl",
+        "/rom/etc/ssl/certs",
+        "/rom/etc/ssl/certs/ca-certificates.crt",
+        "/usr/bin",
+        "/bin",
+        "/bin/busybox",
+    ]
+    files = {
+        "/usr/sbin/curl",
+        "/usr/sbin/openssl",
+        "/rom/etc/ssl/certs/ca-certificates.crt",
+        "/bin/busybox",
+    }
+    return [
+        f"{i + 1} {'-rwxr-xr-x' if path in files else 'drwxr-xr-x'} 1 0 0 100 Oct 21 12:00 {path}\n"
+        for i, path in enumerate(paths)
+    ]
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("normal", (1, 1, 1, 1)),
+        ("missing-flock", (1, 1, 1, 0)),
+        ("duplicate-curl", (0, 1, 1, 1)),
+        ("missing-ca-parent", (1, 1, 0, 1)),
+        ("writable-shared", (0, 0, 1, 0)),
+        ("wrong-owner-openssl", (1, 0, 1, 1)),
+        ("symlink-curl", (0, 1, 1, 1)),
+        ("regular-flock", (1, 1, 1, 1)),
+    ],
+)
+def test_health_native_batch_preserves_independent_exact_members(
+    commands, tmp_path, case, expected
+):
+    records = native_metadata_records()
+    spec = "busybox 1 1 1 1"
+    if case == "missing-flock":
+        records = records[:10]
+        spec = "missing 1 1 1 0"
+    if case == "duplicate-curl":
+        records.append(records[3])
+    if case == "missing-ca-parent":
+        records.pop(7)
+    if case == "writable-shared":
+        records[1] = records[1].replace("drwxr-xr-x", "drwxrwxr-x")
+    if case == "wrong-owner-openssl":
+        records[4] = records[4].replace(" 1 0 0 ", " 1 7 0 ")
+    if case == "symlink-curl":
+        records[3] = (
+            records[3]
+            .replace("-rwxr-xr-x", "lrwxrwxrwx")
+            .replace("/usr/sbin/curl\n", "/usr/sbin/curl -> /untrusted/curl\n")
+        )
+    if case == "regular-flock":
+        records = records[:11] + [
+            "14 -rwxr-xr-x 1 0 0 100 Oct 21 12:00 /usr/bin/flock\n"
+        ]
+        spec = "regular 1 1 1 1"
+    result = metadata_batch(commands, tmp_path, "native", spec, list(reversed(records)))
+    assert result.returncode == 0 and result.stderr == b""
+    assert (
+        result.stdout
+        == (
+            "CFMGR-HEALTH-METADATA 1\n"
+            + "".join(
+                f"member {member} {state}\n"
+                for member, state in zip(
+                    ("curl", "openssl", "ca", "flock"), expected, strict=True
+                )
+            )
+            + "END\n"
+        ).encode()
+    )
+
+
+def test_health_entware_batch_handles_spaces_and_missing_tools_independently(
+    commands, tmp_path
+):
+    root = "/mnt/volume with spaces"
+    opt = root + "/entware"
+    spec = "\n".join(
+        f"{role}\t{kind}\t{path}"
+        for role, kind, path in [
+            ("storage", "directory", root),
+            ("storage", "directory", opt),
+            ("jq", "directory", root),
+            ("jq", "directory", opt),
+            ("jq", "directory", opt + "/bin"),
+            ("jq", "file", opt + "/bin/jq"),
+            ("timeout", "directory", root),
+            ("timeout", "directory", opt),
+            ("timeout", "directory", opt + "/bin"),
+            ("timeout", "file", opt + "/bin/timeout"),
+        ]
+    )
+    records = [
+        f"{i + 1} {'-rwxr-xr-x' if path.endswith('/jq') else 'drwxr-xr-x'} 1 0 0 100 Oct 21 12:00 {path}\n"
+        for i, path in enumerate((root, opt, opt + "/bin", opt + "/bin/jq"))
+    ]
+    result = metadata_batch(
+        commands, tmp_path, "entware", spec, list(reversed(records))
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert b"member storage 1\nmember jq 1\nmember timeout 0\n" in result.stdout
+    assert b"member sha 0\nmember flock 0\nmember dig 0\n" in result.stdout
+    duplicate = metadata_batch(
+        commands, tmp_path, "entware", spec, records + [records[-1]]
+    )
+    assert b"member storage 1\nmember jq 0\nmember timeout 0\n" in duplicate.stdout
+    unexpected = metadata_batch(
+        commands,
+        tmp_path,
+        "entware",
+        spec,
+        records + [records[-1].replace("/jq\n", "/jq-extra\n")],
+    )
+    assert unexpected.returncode == 0
+    assert all(
+        line.endswith(b" 0")
+        for line in unexpected.stdout.splitlines()
+        if line.startswith(b"member ")
+    )
+
+
+def test_health_tiny_allowlist_reserves_native_and_host_units(shell):
+    script = r"""
+. "$1/modules/status.sh"
+for mode in health-scope health-frame health-request-check health-response health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-pair health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
+    cfmgr_health_mode "$mode" || exit 10
+    [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes:$cfmgr_health_mode_files" = 2:4096:2 ] || exit 11
+done
+for mode in health-request health-metadata health-native-metadata health-metadata-check health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-fields health-config health-nvram health-space health-protected health-uname health-blkid; do
+    cfmgr_health_mode "$mode" || exit 12
+    [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes" = 8:16384 ] || exit 13
+done
+cfmgr_health_mode health-entware-metadata || exit 14
+[ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes" = 128:262144 ] || exit 15
+"""
+    result = subprocess.run(
+        [*shell, "-c", script, "quota-table", str(ROOT)],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+@pytest.mark.parametrize(
+    "variant,size", [("busybox", 13), ("regular", 12), ("missing", 10)]
+)
+def test_health_native_metadata_worker_has_fixed_members(
+    shell, tmp_path, variant, size
+):
+    tool = tmp_path / "ls"
+    tool.write_text('#!/bin/sh\nexec /usr/bin/printf "%s\\n" "$@"\n')
+    tool.chmod(0o700)
+    result = subprocess.run(
+        [
+            *shell,
+            str(ROOT / "modules/helpers/worker.sh"),
+            "health-native-metadata",
+            str(tool),
+            str(tmp_path),
+            variant,
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    operands = result.stdout.decode().splitlines()
+    assert operands[0] == "-ildn" and len(operands[1:]) == size
+    assert operands[1:11] == [
+        "/",
+        "/usr",
+        "/usr/sbin",
+        "/usr/sbin/curl",
+        "/usr/sbin/openssl",
+        "/rom",
+        "/rom/etc",
+        "/rom/etc/ssl",
+        "/rom/etc/ssl/certs",
+        "/rom/etc/ssl/certs/ca-certificates.crt",
+    ]
+    assert len(set(operands[1:])) == size
+
+
+def test_health_entware_metadata_worker_and_parser_preserve_spaced_paths(
+    commands, shell, tmp_path
+):
+    root = tmp_path / "volume with spaces"
+    toolroot = root / "entware"
+    bindir = toolroot / "bin"
+    bindir.mkdir(parents=True)
+    candidate = bindir / "jq"
+    candidate.write_text("fixture\n")
+    candidate.chmod(0o700)
+    paths = (root, toolroot, bindir, candidate)
+    result = subprocess.run(
+        [
+            *shell,
+            str(ROOT / "modules/helpers/worker.sh"),
+            "health-entware-metadata",
+            shutil.which("ls"),
+            str(tmp_path),
+            *map(str, paths),
+        ],
+        env={**os.environ, "LC_ALL": "C"},
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    raw = tmp_path / "metadata"
+    raw.write_bytes(result.stdout)
+    spec = "\n".join(
+        f"{member}\t{kind}\t{path}"
+        for member, kind, path in [
+            ("storage", "directory", root),
+            ("storage", "directory", toolroot),
+            ("jq", "directory", root),
+            ("jq", "directory", toolroot),
+            ("jq", "directory", bindir),
+            ("jq", "file", candidate),
+        ]
+    )
+    # Host UID forwarding only; production requires literal UID0. The real LS
+    # byte format/path handling and complete membership validator stay intact.
+    program = awk_program("health_metadata").replace(
+        'f[4]!="0"', f'f[4]!="{os.getuid()}"'
+    )
+    validated = subprocess.run(
+        [*commands[1], program, str(raw), "entware", spec],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert validated.returncode == 0 and validated.stderr == b""
+    assert b"member storage 1\nmember jq 1\n" in validated.stdout
+
+
+def test_status_snapshot_uses_four_stages_and_rechecks_inode_size(shell, tmp_path):
+    source = tmp_path / "private config"
+    source.write_bytes(b"abc")
+    snapshot = tmp_path / "snapshot"
+    snapshot.write_bytes(b"abc")
+    (tmp_path / "count").write_text("3\n")
+    for name, inode in [("before", 12), ("changed", 13)]:
+        (tmp_path / name).write_text(
+            f"{inode} -rw------- 1 0 0 3 Oct 21 12:00 {source}\n"
+        )
+    script = r"""
+. "$1/modules/status.sh"
+source_path=$2 stage_dir=$3 calls=0 changed=0
+cfmgr_status_run() {
+    calls=$((calls+1))
+    case $1 in
+    status-metadata) cfmgr_probe_stdout=$stage_dir/before; if [ "$calls:$changed" = 4:1 ]; then cfmgr_probe_stdout=$stage_dir/changed; fi ;;
+    status-snapshot) cfmgr_probe_stdout=$stage_dir/snapshot ;;
+    status-count) cfmgr_probe_stdout=$stage_dir/count ;;
+    *) exit 20 ;;
+    esac
+}
+cfmgr_status_snapshot "$source_path" || exit 10
+[ "$calls:$cfmgr_status_snapshot_inode:$cfmgr_status_snapshot_bytes" = 4:12:3 ] || exit 11
+calls=0 changed=1
+if cfmgr_status_snapshot "$source_path"; then exit 12; fi
+[ "$calls" = 4 ] || exit 13
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "snapshot-stages",
+            str(ROOT),
+            str(source),
+            str(tmp_path),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "extra-line",
+        "missing-lf",
+        "wrong-path",
+        "symlink",
+        "wrong-owner",
+        "size-overflow",
+    ],
+)
+def test_status_snapshot_metadata_rejects_ambiguous_native_receipt(
+    shell, tmp_path, case
+):
+    path = "/private/source with spaces/config"
+    line = f"12 -rw------- 1 0 0 65536 Oct 21 12:00 {path}\n"
+    if case == "extra-line":
+        line += "extra\n"
+    if case == "missing-lf":
+        line = line.rstrip("\n")
+    if case == "wrong-path":
+        line = line.replace("/config\n", "/config-extra\n")
+    if case == "symlink":
+        line = line.replace("-rw-------", "lrw-------")
+    if case == "wrong-owner":
+        line = line.replace(" 1 0 0 ", " 1 7 0 ")
+    if case == "size-overflow":
+        line = line.replace("65536", "65537")
+    receipt = tmp_path / "metadata"
+    receipt.write_text(line)
+    script = '. "$1/modules/status.sh"; cfmgr_probe_stdout=$2; if cfmgr_status_snapshot_metadata "$3"; then exit 9; fi'
+    result = subprocess.run(
+        [*shell, "-c", script, "snapshot-metadata", str(ROOT), str(receipt), path],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="actual tiny quota and owned supervisor exit proof requires Linux proc/FD semantics",
+)
+@pytest.mark.parametrize(
+    "overflow", [False, True], ids=["expected-rejection", "sigxfsz-prefix"]
+)
+def test_health_tiny_quota_rejects_signaled_jq_error_prefix(
+    shell, tools, tmp_path, overflow
+):
+    context = tmp_path / "private-context"
+    context.mkdir(mode=0o700)
+    tool = tmp_path / "jq-fixture"
+    program = (
+        'BEGIN { print "parse error: fixed fixture" > "/dev/stderr"; '
+        + ('for(i=0;i<4096;i++) printf "x" > "/dev/stderr"; ' if overflow else "")
+        + "exit 4 }"
+    )
+    tool.write_text(
+        "#!/bin/sh\nexec "
+        + shlex.quote(tools["awk"])
+        + " "
+        + shlex.quote(program)
+        + "\n"
+    )
+    tool.chmod(0o700)
+    script = (
+        r"""
+root=$1 cfmgr_status_context=$2 selected_tool=$3 selected_sh=$4 selected_env=$5 selected_awk=$6 selected_sleep=$7 selected_wc=$8 overflow=$9
+. "$root/modules/status.sh"
+. "$root/modules/lib/execution.sh"
+exec 9<"$cfmgr_status_context"
+cfmgr_status_interrupted=0 cfmgr_probe_serial=0 cfmgr_probe_pid=''
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_requests=0 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_health_owned=''
+cfmgr_prerequisites_now || exit 10
+cfmgr_health_collect_deadline=$((cfmgr_probe_now+10))
+cfmgr_health_stage_reserve json.bad 8192 || exit 11
+/usr/bin/printf '{broken\n' >"$cfmgr_status_context/json.bad"
+"""
+        + pause_definition(shell)
+        + r"""
+if cfmgr_prerequisites_run health-jq-bad "$cfmgr_status_context" "$selected_sh" "$root/modules/helpers/worker.sh" "$selected_env" "$selected_awk" "$selected_sleep" "$selected_wc" "$selected_tool"; then code=0; else code=$?; fi
+[ "$cfmgr_probe_status" = reaped ] || exit 12
+if [ "$overflow" = 1 ]; then
+    [ "$code" = 1 ] && [ "$cfmgr_probe_reason" = child-signal ] && [ "$cfmgr_probe_exit" -ge 128 ] || exit 13
+else
+    [ "$code:$cfmgr_probe_exit" = 0:4 ] || exit 14
+fi
+IFS= read -r prefix <"$cfmgr_probe_stderr" || exit 15
+[ "$prefix" = 'parse error: fixed fixture' ] || exit 16
+cfmgr_health_cleanup || exit 17
+"""
+    )
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "tiny-supervisor",
+            str(ROOT),
+            str(context),
+            str(tool),
+            *(tools[key] for key in ("sh", "env", "awk", "sleep", "wc")),
+            "1" if overflow else "0",
+        ],
+        capture_output=True,
+        check=False,
+        timeout=5,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == b"" and not context.exists()
+
+
+def test_health_metadata_capacity_is_explicit_report_incompleteness(shell):
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_health_opt_mount=/owned cfmgr_health_metadata_spec='' cfmgr_health_metadata_paths='' cfmgr_health_metadata_members=0 cfmgr_health_incomplete=0
+for i in 1 2 3 4 5 6 7 8 9 10 11 12; do cfmgr_health_metadata_walk jq "/owned/file$i" file || exit 10; done
+if cfmgr_health_metadata_walk jq /owned/overflow file; then exit 11; fi
+[ "$cfmgr_health_incomplete:$cfmgr_health_reason" = 1:budget ] || exit 12
+"""
+    result = subprocess.run(
+        [*shell, "-c", script, "metadata-capacity", str(ROOT)],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+def test_health_realpath_dispatch_reaches_worker_for_fixed_controller_candidates(
+    shell, tools, tmp_path
+):
+    target = tmp_path / "owned executable with spaces"
+    target.write_text("fixture\n")
+    target.chmod(0o700)
+    link = tmp_path / "logical-link"
+    link.symlink_to(target)
+    script = r"""
+. "$1/modules/status.sh"
+root=$1 base=$2 selected_sh=$3 selected_readlink=$4
+cfmgr_status_context=$base
+cfmgr_health_run() {
+    [ "$1:$2" = health-realpath:/usr/bin/readlink ] || exit 20
+    /usr/bin/printf '%s\n' "$3" >>"$base/candidates"
+    case $3 in /usr/sbin/curl | /usr/sbin/openssl | /rom/etc/ssl/certs/ca-certificates.crt | /usr/bin/flock | /opt/bin/jq) ;;
+    *) exit 21 ;;
+    esac
+    cfmgr_probe_stdout=$base/path cfmgr_probe_stderr=$base/error
+    if "$selected_sh" "$root/modules/helpers/worker.sh" health-realpath "$selected_readlink" "$base" "$base/logical-link" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
+    return 0
+}
+for candidate in /usr/sbin/curl /usr/sbin/openssl /rom/etc/ssl/certs/ca-certificates.crt /usr/bin/flock /opt/bin/jq; do
+    cfmgr_health_canonical "$candidate" || exit 10
+    [ "$cfmgr_health_resolved" = "$base/owned executable with spaces" ] || exit 11
+done
+# The path adapter exercises actual dispatch, not firmware trust: the native
+# identity gate must reject this owned path for the fixed production candidate.
+if cfmgr_health_admit_native /usr/sbin/curl executable; then exit 12; fi
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "health-realpath",
+            str(ROOT),
+            str(tmp_path),
+            tools["sh"],
+            tools["readlink"],
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    assert (tmp_path / "candidates").read_text().splitlines() == [
+        "/usr/sbin/curl",
+        "/usr/sbin/openssl",
+        "/rom/etc/ssl/certs/ca-certificates.crt",
+        "/usr/bin/flock",
+        "/opt/bin/jq",
+        "/usr/sbin/curl",
+    ]
+    basic = subprocess.run(
+        [
+            *shell,
+            str(ROOT / "modules/helpers/worker.sh"),
+            "status-realpath",
+            tools["readlink"],
+            str(tmp_path),
+            str(link),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert basic.returncode == 2 and basic.stdout == basic.stderr == b""

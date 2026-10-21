@@ -297,7 +297,6 @@ health-count) mode=status-count ;;
 health-date) mode=status-date ;;
 health-nvram) mode=status-nvram ;;
 health-space) mode=status-space ;;
-health-realpath) mode=status-realpath ;;
 health-mount) mode=status-mount ;;
 health-render-count) mode=status-count ;;
 status-render-count) mode=status-count ;;
@@ -436,6 +435,40 @@ acquire-wc) mode='install-wc' ;;
 acquire-ls) mode='install-ls' ;;
 esac
 case "$mode" in
+health-realpath)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	case $1 in *[!\ -~]* | *\\*) exit 2 ;; esac
+	[ "${#1}" -le 4096 ] || exit 2
+	exec "$tool" -f "$1"
+	;;
+health-native-metadata)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in
+	busybox) set -- /usr/bin /bin /bin/busybox ;;
+	regular) set -- /usr/bin /usr/bin/flock ;;
+	missing) set -- ;;
+	*) exit 2 ;;
+	esac
+	exec "$tool" -ildn / /usr /usr/sbin /usr/sbin/curl /usr/sbin/openssl /rom /rom/etc /rom/etc/ssl /rom/etc/ssl/certs /rom/etc/ssl/certs/ca-certificates.crt "$@"
+	;;
+health-entware-metadata)
+	[ "$#" -ge 1 ] && [ "$#" -le 13 ] || exit 2
+	for metadata_path; do
+		case $metadata_path in /*) ;; *) exit 2 ;; esac
+		case $metadata_path in *[!\ -~]* | *\\*) exit 2 ;; esac
+		[ "${#metadata_path}" -le 4096 ] || exit 2
+	done
+	exec "$tool" -ildn "$@"
+	;;
+health-metadata-check)
+	[ "$#" -eq 4 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	case $3 in native | entware) ;; *) exit 2 ;; esac
+	[ "${#4}" -le 32768 ] || exit 2
+	. "$1" || exit 2
+	cfmgr_status_awk_health_metadata
+	exec "$tool" "$cfmgr_awk_program" "$2" "$3" "$4"
+	;;
 health-uname)
 	[ "$#" -eq 0 ] || exit 2
 	exec "$tool" -m
