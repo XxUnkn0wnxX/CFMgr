@@ -26,6 +26,7 @@ cfmgr_health_begin() {
 	cfmgr_health_provider_stop=0 cfmgr_health_scope_holds='' cfmgr_health_transport=unknown
 	cfmgr_health_public_eligible=0 cfmgr_health_ipv6_ready=0 cfmgr_health_native_admitted=0
 	cfmgr_health_clock_ready=0
+	cfmgr_health_realpath_limit=8 cfmgr_health_mount_limit=8 cfmgr_health_entware_limit=128
 	cfmgr_health_reason='' cfmgr_health_incomplete=0
 	cfmgr_health_deadline=$((cfmgr_probe_now + 45))
 	# Five seconds plus eight operations/16 files/1MiB remain for final
@@ -36,7 +37,16 @@ cfmgr_health_begin() {
 cfmgr_health_mode() {
 	cfmgr_health_mode_files=2 cfmgr_health_mode_limit=8 cfmgr_health_mode_get=0
 	case $1 in
-	health-snapshot | health-entware-metadata | health-cloud-pem | health-cloud-decode) cfmgr_health_mode_limit=128 ;;
+	health-snapshot | health-cloud-pem | health-cloud-decode) cfmgr_health_mode_limit=128 ;;
+	health-entware-metadata)
+		cfmgr_health_mode_limit=${cfmgr_health_entware_limit:-128}
+		case $cfmgr_health_mode_limit in '' | *[!0-9]* | 0*) return 2 ;; esac
+		[ "${#cfmgr_health_mode_limit}" -le 3 ] && [ "$cfmgr_health_mode_limit" -le 128 ] || return 2
+		;;
+	health-realpath | health-mount)
+		case $1 in health-realpath) cfmgr_health_mode_limit=${cfmgr_health_realpath_limit:-8} ;; *) cfmgr_health_mode_limit=${cfmgr_health_mount_limit:-8} ;; esac
+		case $cfmgr_health_mode_limit in [1-8]) ;; *) return 2 ;; esac
+		;;
 	health-get) cfmgr_health_mode_limit=64 cfmgr_health_mode_files=4 cfmgr_health_mode_get=1 ;;
 	health-render) cfmgr_health_mode_limit=384 ;;
 	health-flat-list) cfmgr_health_mode_limit=64 ;;
@@ -55,15 +65,15 @@ cfmgr_health_mode() {
 		;;
 	# Only finite typed receipts/empty successful probes use the tiny tier.
 	# Native ash:1024 bytes/file; supported host reservation:2048 bytes/file.
-	health-flat-check | health-package-check | health-hooks-cron | health-hooks-frame | health-backup-observe | health-backup-uuid | health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
+	health-protected | health-metadata-check | health-flat-check | health-package-check | health-hooks-cron | health-hooks-frame | health-backup-observe | health-backup-uuid | health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
 		health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
 		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | \
 		health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | \
 		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | \
 		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline | health-log-account | health-log-link | health-log-proc-meta | health-log-base | health-log-assess | health-log-path) cfmgr_health_mode_limit=2 ;;
-	health-inventory | health-protected | health-storage | health-uname | health-blkid | health-native-metadata | health-metadata-check | \
-		health-hooks-authority | health-backup-plan | health-log-authority | health-log-version | health-log-syntax | health-log-includes | health-dig-version | health-request | health-config | health-fields | health-mount | health-metadata | \
-		health-nvram | health-space | health-realpath | health-curl-version | health-response | health-compare) ;;
+	health-inventory | health-storage | health-uname | health-blkid | health-native-metadata | \
+		health-hooks-authority | health-backup-plan | health-log-authority | health-log-version | health-log-syntax | health-log-includes | health-dig-version | health-request | health-config | health-fields | health-metadata | \
+		health-nvram | health-space | health-curl-version | health-response | health-compare) ;;
 	*) return 2 ;;
 	esac
 	# Reserve the larger host physical payload for EACH writable file.
@@ -82,9 +92,9 @@ cfmgr_health_reserve() {
 	[ -z "${cfmgr_health_final_deadline:-}" ] || return 1
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
-		[ "$cfmgr_health_operations" -ge 504 ] ||
+		[ "$cfmgr_health_operations" -ge 568 ] ||
 		[ "$((cfmgr_health_requests + cfmgr_health_mode_get))" -gt 12 ] ||
-		[ "$((cfmgr_health_files + cfmgr_health_mode_files))" -gt 1136 ] ||
+		[ "$((cfmgr_health_files + cfmgr_health_mode_files))" -gt 1264 ] ||
 		[ "$((cfmgr_health_bytes + cfmgr_health_mode_bytes))" -gt 11534336 ]; then
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
@@ -114,7 +124,7 @@ cfmgr_health_final_reserve() {
 	[ "$cfmgr_health_final_operations" -lt 8 ] &&
 		[ "$((cfmgr_health_final_files + cfmgr_health_mode_files))" -le 16 ] &&
 		[ "$((cfmgr_health_final_bytes + cfmgr_health_mode_bytes))" -le 1048576 ] || return 1
-	[ "$cfmgr_health_operations" -le 504 ] && [ "$cfmgr_health_files" -le 1136 ] &&
+	[ "$cfmgr_health_operations" -le 568 ] && [ "$cfmgr_health_files" -le 1264 ] &&
 		[ "$cfmgr_health_bytes" -le 11534336 ] || return 1
 	cfmgr_health_final_operations=$((cfmgr_health_final_operations + 1))
 	cfmgr_health_final_files=$((cfmgr_health_final_files + cfmgr_health_mode_files))
@@ -178,7 +188,7 @@ cfmgr_health_stage_reserve() {
 	*) case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
-		[ "$cfmgr_health_files" -ge 1136 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
+		[ "$cfmgr_health_files" -ge 1264 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
 	fi
@@ -228,7 +238,7 @@ cfmgr_health_cleanup() {
 ${cfmgr_health_file##*/}
 "*) ;; *) return 1 ;; esac
 		cfmgr_health_seen=$((cfmgr_health_seen + 1))
-		[ "$cfmgr_health_seen" -le 1152 ] || return 1
+		[ "$cfmgr_health_seen" -le 1280 ] || return 1
 	done
 	set --
 	for cfmgr_health_file in "$cfmgr_status_context"/*; do
@@ -479,7 +489,15 @@ $cfmgr_health_admit_path"
 }
 
 cfmgr_health_canonical() {
-	cfmgr_health_run health-realpath /usr/bin/readlink "$1" || return $?
+	# Unknown resolution keeps the original 4KiB native allowance. A caller
+	# comparing against an already-known exact path can reserve its finite size.
+	cfmgr_health_realpath_limit=8
+	if [ -n "${2:-}" ] && [ "${#2}" -lt 4096 ]; then
+		cfmgr_health_realpath_limit=$(((${#2} + 512) / 512))
+	fi
+	if cfmgr_health_run health-realpath /usr/bin/readlink "$1"; then cfmgr_health_resolve_status=0; else cfmgr_health_resolve_status=$?; fi
+	cfmgr_health_realpath_limit=8
+	[ "$cfmgr_health_resolve_status" = 0 ] || return "$cfmgr_health_resolve_status"
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
 	{
 		IFS= read -r cfmgr_health_resolved || return 1
@@ -491,7 +509,8 @@ cfmgr_health_canonical() {
 }
 
 cfmgr_health_admit_native() {
-	cfmgr_health_canonical "$1" || return $?
+	case $1 in /usr/bin/flock) cfmgr_health_native_expected='' ;; *) cfmgr_health_native_expected=$1 ;; esac
+	cfmgr_health_canonical "$1" "$cfmgr_health_native_expected" || return $?
 	case $1:$cfmgr_health_resolved:$2 in /usr/bin/flock:/bin/busybox:executable)
 		# Retained firmware images use this fixed native applet symlink. Admit
 		# both protected namespaces, then preserve argv[0] applet selection.
@@ -508,7 +527,11 @@ cfmgr_health_admit_native() {
 
 cfmgr_health_entware_attachment() {
 	[ "$cfmgr_health_opt" -ef /proc/self/fd/7 ] && [ "$cfmgr_health_opt_mount" -ef /proc/self/fd/6 ] || return 1
-	cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_opt" || return $?
+	cfmgr_health_mount_limit=$(((${#cfmgr_health_mount_snapshot} + 512) / 512))
+	[ "$cfmgr_health_mount_limit" -le 8 ] || cfmgr_health_mount_limit=8
+	if cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_opt"; then cfmgr_health_mount_status=0; else cfmgr_health_mount_status=$?; fi
+	cfmgr_health_mount_limit=8
+	[ "$cfmgr_health_mount_status" = 0 ] || return "$cfmgr_health_mount_status"
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
 	IFS= read -r cfmgr_health_mount_current <"$cfmgr_probe_stdout" || return 1
 	[ "$cfmgr_health_mount_current" = "$cfmgr_health_mount_snapshot" ]
@@ -528,7 +551,7 @@ cfmgr_health_admit_entware() {
 	cfmgr_health_entware_attachment || return $?
 	# Preserve the original logical argv[0], and recheck its canonical identity
 	# immediately before use rather than assuming the earlier alias is unchanged.
-	cfmgr_health_canonical "$1" || return $?
+	cfmgr_health_canonical "$1" "$cfmgr_health_tool_saved" || return $?
 	[ "$cfmgr_health_resolved" = "$cfmgr_health_tool_saved" ] &&
 		[ -f "$cfmgr_health_resolved" ] && [ ! -L "$cfmgr_health_resolved" ] && [ -x "$cfmgr_health_resolved" ]
 }
@@ -540,7 +563,8 @@ cfmgr_health_native_metadata() {
 	cfmgr_health_native_curl_ok=0 cfmgr_health_native_openssl_ok=0 cfmgr_health_native_ca_ok=0 cfmgr_health_native_flock_ok=0
 	for cfmgr_health_native_member in curl openssl ca flock; do
 		case $cfmgr_health_native_member in curl) cfmgr_health_native_path=$cfmgr_health_curl ;; openssl) cfmgr_health_native_path=$cfmgr_health_openssl ;; ca) cfmgr_health_native_path=$cfmgr_health_ca ;; flock) cfmgr_health_native_path=/usr/bin/flock ;; esac
-		if cfmgr_health_canonical "$cfmgr_health_native_path"; then :; else
+		case $cfmgr_health_native_member in flock) cfmgr_health_native_expected='' ;; *) cfmgr_health_native_expected=$cfmgr_health_native_path ;; esac
+		if cfmgr_health_canonical "$cfmgr_health_native_path" "$cfmgr_health_native_expected"; then :; else
 			[ "$?" != 3 ] || return 3
 			continue
 		fi
@@ -642,7 +666,13 @@ cfmgr_health_entware_metadata() {
 	done <<EOF_HEALTH_PATHS
 $cfmgr_health_metadata_paths
 EOF_HEALTH_PATHS
-	cfmgr_health_run health-entware-metadata /bin/ls "$@" || return $?
+	cfmgr_health_entware_bytes=0
+	for cfmgr_health_meta_path; do cfmgr_health_entware_bytes=$((cfmgr_health_entware_bytes + ${#cfmgr_health_meta_path} + 256)); done
+	cfmgr_health_entware_limit=$(((cfmgr_health_entware_bytes + 511) / 512))
+	[ "$cfmgr_health_entware_limit" -le 128 ] || cfmgr_health_entware_limit=128
+	if cfmgr_health_run health-entware-metadata /bin/ls "$@"; then cfmgr_health_entware_status=0; else cfmgr_health_entware_status=$?; fi
+	cfmgr_health_entware_limit=128
+	[ "$cfmgr_health_entware_status" = 0 ] || return "$cfmgr_health_entware_status"
 	case $cfmgr_probe_exit in 0 | 1 | 2) ;; *) return 1 ;; esac
 	cfmgr_health_run health-metadata-check /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_probe_stdout" entware "$cfmgr_health_metadata_spec" || return $?
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
@@ -661,7 +691,7 @@ cfmgr_health_entware() {
 	cfmgr_health_run health-storage /usr/bin/awk "$cfmgr_source/modules/status.sh" "$cfmgr_health_mount_file" "$cfmgr_health_inventory" "$cfmgr_health_opt" || return $?
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
 	IFS='	' read -r cfmgr_health_opt_uuid cfmgr_health_opt_fs cfmgr_health_opt_device cfmgr_health_opt_mount <"$cfmgr_probe_stdout" || return 1
-	cfmgr_health_canonical "$cfmgr_health_opt_mount" || return $?
+	cfmgr_health_canonical "$cfmgr_health_opt_mount" "$cfmgr_health_opt_mount" || return $?
 	[ "$cfmgr_health_resolved" = "$cfmgr_health_opt_mount" ] || return 1
 	exec 6<"$cfmgr_health_opt_mount" 7<"$cfmgr_health_opt" || return 1
 	cfmgr_health_run health-blkid /sbin/blkid "$cfmgr_health_opt_device" || return $?
@@ -2487,7 +2517,8 @@ cfmgr_health_selected_attached() {
 cfmgr_health_selected_resolve() {
 	cfmgr_health_selected_attached || return $?
 	[ -f "$cfmgr_health_selected_logical" ] && [ ! -L "$cfmgr_health_selected_logical" ] || return 1
-	cfmgr_health_canonical "$cfmgr_health_selected_logical" || return $?
+	case $cfmgr_health_selected_logical in /opt/*) cfmgr_health_selected_expected=$cfmgr_health_opt/${cfmgr_health_selected_logical#/opt/} ;; *) cfmgr_health_selected_expected=$cfmgr_health_selected_logical ;; esac
+	cfmgr_health_canonical "$cfmgr_health_selected_logical" "$cfmgr_health_selected_expected" || return $?
 	case $cfmgr_health_selected_logical in
 	/opt/*) [ "$cfmgr_health_resolved" = "$cfmgr_health_opt/${cfmgr_health_selected_logical#/opt/}" ] || return 1 ;;
 	*) [ "$cfmgr_health_resolved" = "$cfmgr_health_selected_logical" ] || return 1 ;;
@@ -2594,7 +2625,7 @@ cfmgr_health_selected_snapshot() {
 			cfmgr_health_selected_future_ops=$((cfmgr_health_selected_future_ops + 2))
 		fi
 		if [ "$((cfmgr_health_bytes + cfmgr_health_selected_future))" -gt 11534336 ] ||
-			[ "$((cfmgr_health_operations + cfmgr_health_selected_future_ops))" -gt 504 ] || [ "$((cfmgr_health_files + cfmgr_health_selected_future_ops * 2))" -gt 1136 ]; then
+			[ "$((cfmgr_health_operations + cfmgr_health_selected_future_ops))" -gt 568 ] || [ "$((cfmgr_health_files + cfmgr_health_selected_future_ops * 2))" -gt 1264 ]; then
 			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 			return 1
 		fi
@@ -3482,7 +3513,7 @@ cfmgr_health_log_snapshots() {
 	while IFS='	' read -r cfmgr_health_log_role cfmgr_health_log_path cfmgr_health_log_profile cfmgr_health_log_op; do
 		cfmgr_health_log_member "$cfmgr_health_log_before_meta" "$cfmgr_health_log_role" || continue
 		cfmgr_health_selected_logical=$cfmgr_health_log_path
-		cfmgr_health_selected_attached && cfmgr_health_canonical "$cfmgr_health_log_path" || {
+		cfmgr_health_selected_attached && cfmgr_health_canonical "$cfmgr_health_log_path" "$cfmgr_health_log_path" || {
 			[ "$?" != 3 ] || return 3
 			continue
 		}
@@ -3530,7 +3561,7 @@ cfmgr_health_log_snapshots() {
 			continue
 		}
 		cfmgr_health_selected_logical=$cfmgr_health_log_path
-		cfmgr_health_selected_attached && cfmgr_health_canonical "$cfmgr_health_log_path" || {
+		cfmgr_health_selected_attached && cfmgr_health_canonical "$cfmgr_health_log_path" "$cfmgr_health_log_path" || {
 			[ "$?" != 3 ] || return 3
 			cfmgr_health_log_complete=0
 			continue
@@ -3640,7 +3671,7 @@ EOF_LOG_PID_HEADER
 			cfmgr_health_log_skip=1
 		else [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1; fi
 		cfmgr_health_log_argv_file=$cfmgr_probe_stdout
-		cfmgr_health_canonical "/proc/$cfmgr_health_log_pid/exe" || return $?
+		cfmgr_health_canonical "/proc/$cfmgr_health_log_pid/exe" "$cfmgr_health_log_exe" || return $?
 		[ "$cfmgr_health_resolved" = "$cfmgr_health_log_exe" ] || return 1
 		cfmgr_health_run health-log-proc-meta /bin/ls "/proc/$cfmgr_health_log_pid/exe" || return $?
 		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
@@ -3663,7 +3694,7 @@ EOF_LOG_PID_HEADER
 }
 
 cfmgr_health_log_cron_boundary() {
-	cfmgr_health_canonical "$cfmgr_health_cron_path" || return $?
+	cfmgr_health_canonical "$cfmgr_health_cron_path" "$cfmgr_health_cron_path" || return $?
 	[ "$cfmgr_health_resolved" = "$cfmgr_health_cron_path" ] || return 1
 	cfmgr_health_log_metadata "$cfmgr_health_log_cron_spec" cron || return $?
 	cfmgr_health_log_cron_meta=$cfmgr_health_log_metadata_file
@@ -4038,7 +4069,7 @@ cfmgr_health_backup_frame() {
 }
 
 cfmgr_health_backup_recheck() {
-	cfmgr_health_canonical "$cfmgr_health_backup_point" || return $?
+	cfmgr_health_canonical "$cfmgr_health_backup_point" "$cfmgr_health_backup_point" || return $?
 	[ "$cfmgr_health_resolved" = "$cfmgr_health_backup_point" ] || return 1
 	cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_backup_point" || return $?
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
@@ -4097,7 +4128,7 @@ cfmgr_health_backup_collect() {
 }
 
 cfmgr_health_backup_observe() {
-	cfmgr_health_canonical "$cfmgr_health_backup_point" || return $?
+	cfmgr_health_canonical "$cfmgr_health_backup_point" "$cfmgr_health_backup_point" || return $?
 	[ "$cfmgr_health_resolved" = "$cfmgr_health_backup_point" ] && [ -d "$cfmgr_health_backup_point" ] && [ ! -L "$cfmgr_health_backup_point" ] || return 1
 	cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_backup_point" || return $?
 	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1

@@ -4887,3 +4887,21 @@ of DNS resolution. The interrupted Status host failure was the full fixture's
 late /bin/ls replacement corrupting /usr/bin/ls; adaptation now occurs before
 native-path substitution, matching module construction. Core 39576628958 is
 cancelled without children. Full healthy-logging capacity remains unproved.
+At cc64c0b, Dev 39577172807 passed with vendor AWK explicitly selected. The
+complete native journey (Dev 39577176058) now proves all logging base/policy,
+process, hook schedule and DNS readiness assertions at the row level, but stops
+at collection byte capacity after 501 operations/1,075 files/11,532,988 bytes and
+six GETs (32s report, 35.99s wall). This remains failed combined proof. Core
+39577145040 and children 39577191837/39577194813/39577197858 are cancelled.
+Astra's revised capacity audit is PASS WITH NOTES: six remaining successful GET
+pipelines plus comparison need about 55 operations/123 files. Collection is now
+568/1,264 plus unchanged final 8/16, total 576/1,280. Time/GET/rows/bytes stay
+45s/12/96/12MiB. Every old boundary/lookahead/cleanup guard is synchronized.
+Unknown/ambiguous canonical resolutions retain their eight-block allowance;
+callers already requiring an exact known path use its length plus LF for their
+quota. Entware mount rechecks use the saved complete receipt's bound, with the
+original comparisons retained. Each dynamic quota resets on success, ordinary
+failure and status3. Native Entware metadata uses the existing conservative
+unique-operand bound; two fixed tiny receipts use the established tiny tier.
+No observation, identity boundary or hash comparison is removed. Exact block
+boundary/default-restoration cases and the complete normal journey are next.

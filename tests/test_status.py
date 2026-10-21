@@ -1125,18 +1125,18 @@ cfmgr_health_get ddns zone - 4
 [ "$?" = 1 ] && [ "$cfmgr_health_operations" = 0 ] || exit 14
 cfmgr_status_attachment_ok() { return 0; }
 cfmgr_prerequisites_now() { cfmgr_probe_now=100; }
-cfmgr_health_operations=503 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_probe_serial=503
+cfmgr_health_operations=567 cfmgr_health_files=0 cfmgr_health_bytes=0 cfmgr_probe_serial=567
 cfmgr_health_reserve health-date || exit 15
 cfmgr_health_reserve health-date
-[ "$?" = 1 ] && [ "$cfmgr_health_operations" = 504 ] || exit 16
-cfmgr_health_operations=0 cfmgr_health_files=1134
+[ "$?" = 1 ] && [ "$cfmgr_health_operations" = 568 ] || exit 16
+cfmgr_health_operations=0 cfmgr_health_files=1262
 cfmgr_health_reserve health-date || exit 17
 cfmgr_health_reserve health-date
-[ "$?" = 1 ] && [ "$cfmgr_health_files" = 1136 ] || exit 18
-cfmgr_health_files=1135
+[ "$?" = 1 ] && [ "$cfmgr_health_files" = 1264 ] || exit 18
+cfmgr_health_files=1263
 cfmgr_health_stage_reserve comparison 2048 || exit 23
 cfmgr_health_stage_reserve dashboard 32768
-[ "$?" = 1 ] && [ "$cfmgr_health_files" = 1136 ] || exit 24
+[ "$?" = 1 ] && [ "$cfmgr_health_files" = 1264 ] || exit 24
 cfmgr_health_operations=0 cfmgr_health_files=0 cfmgr_health_bytes=11272192
 cfmgr_health_reserve health-snapshot || exit 19
 cfmgr_health_reserve health-date
@@ -2364,6 +2364,60 @@ if cfmgr_health_canonical /opt; then exit 12; fi
     assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="attachment uses actual proc FDs")
+def test_health_known_output_quotas_restore_defaults_after_failures(shell, tmp_path):
+    (tmp_path / "opt").mkdir()
+    script = r"""
+. "$1/modules/status.sh"
+base=$2 cfmgr_probe_stdout=$2/output cfmgr_probe_stderr=$2/error cfmgr_probe_exit=0
+: >"$cfmgr_probe_stderr"
+expected=/
+while [ "${#expected}" -lt 512 ]; do expected=${expected}x; done
+mode_limit=2 failure=0 response=$expected
+cfmgr_health_run() {
+    cfmgr_health_mode "$1" || exit 21
+    [ "$cfmgr_health_mode_limit" = "$mode_limit" ] || exit 22
+    printf '%s\n' "$response" >"$cfmgr_probe_stdout"
+    return "$failure"
+}
+cfmgr_health_canonical /logical "$expected" || exit 10
+[ "$cfmgr_health_realpath_limit" = 8 ] || exit 11
+mode_limit=8
+cfmgr_health_canonical /unknown || exit 12
+for failure in 1 3; do
+    mode_limit=2
+    cfmgr_health_canonical /logical "$expected"
+    [ "$?" = "$failure" ] && [ "$cfmgr_health_realpath_limit" = 8 ] || exit 13
+done
+cfmgr_health_opt_mount=$base cfmgr_health_opt=$base/opt
+exec 6<"$base" 7<"$base/opt"
+cfmgr_health_mount_snapshot=$expected
+for failure in 0 1 3; do
+    mode_limit=2 response=$expected
+    cfmgr_health_entware_attachment
+    [ "$?" = "$failure" ] && [ "$cfmgr_health_mount_limit" = 8 ] || exit 14
+done
+failure=0 response=changed
+cfmgr_health_entware_attachment
+[ "$?" = 1 ] && [ "$cfmgr_health_mount_limit" = 8 ] || exit 15
+mode_limit=8
+cfmgr_health_run health-mount || exit 16
+cfmgr_health_entware_limit=1
+cfmgr_health_mode health-entware-metadata || exit 17
+[ "$cfmgr_health_mode_bytes" = 2048 ] || exit 18
+cfmgr_health_entware_limit=129
+cfmgr_health_mode health-entware-metadata
+[ "$?" = 2 ] || exit 19
+"""
+    result = subprocess.run(
+        [*shell, "-c", script, "known-output-quota", str(ROOT), str(tmp_path)],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
 def test_report_finalization_deadlines_are_immutable_and_cannot_restart_collection(
     shell,
 ):
@@ -2400,7 +2454,7 @@ cfmgr_prerequisites_run status-render
 cfmgr_probe_pid=''
 cfmgr_health_active=1 cfmgr_health_deadline=145 cfmgr_health_collect_deadline=140 cfmgr_health_final_deadline='' clock=110
 cfmgr_health_final_operations=0 cfmgr_health_final_files=0 cfmgr_health_final_bytes=0
-cfmgr_health_operations=504 cfmgr_health_files=1136 cfmgr_health_bytes=327680 cfmgr_health_owned='' cfmgr_probe_serial=20
+cfmgr_health_operations=568 cfmgr_health_files=1264 cfmgr_health_bytes=327680 cfmgr_health_owned='' cfmgr_probe_serial=20
 cfmgr_health_final_begin || exit 26
 [ "$cfmgr_health_final_deadline" = 115 ] || exit 27
 clock=111
@@ -2409,11 +2463,11 @@ cfmgr_health_final_begin || exit 28
 cfmgr_health_reserve health-render || exit 30
 cfmgr_health_reserve health-render-count || exit 31
 [ "$cfmgr_health_final_operations:$cfmgr_health_final_files:$cfmgr_health_final_bytes" = 2:4:790528 ] || exit 32
-[ "$cfmgr_health_operations:$cfmgr_health_files:$cfmgr_health_bytes" = 504:1136:327680 ] || exit 33
+[ "$cfmgr_health_operations:$cfmgr_health_files:$cfmgr_health_bytes" = 568:1264:327680 ] || exit 33
 cfmgr_health_reserve health-date
 [ "$?" = 1 ] || exit 34
 cfmgr_health_stage_reserve dashboard 32768
-[ "$?" = 1 ] && [ "$cfmgr_health_files:$cfmgr_health_bytes" = 1136:327680 ] || exit 43
+[ "$?" = 1 ] && [ "$cfmgr_health_files:$cfmgr_health_bytes" = 1264:327680 ] || exit 43
 cfmgr_probe_now=110 cfmgr_probe_deadline=112
 cfmgr_prerequisites_report_deadline "$cfmgr_health_final_deadline" || exit 35
 [ "$cfmgr_probe_deadline" = 112 ] || exit 36
@@ -2650,11 +2704,11 @@ def test_health_entware_batch_handles_spaces_and_missing_tools_independently(
 def test_health_tiny_allowlist_reserves_native_and_host_units(shell):
     script = r"""
 . "$1/modules/status.sh"
-for mode in health-scope health-frame health-request-check health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-get health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
+for mode in health-protected health-metadata-check health-scope health-frame health-request-check health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-get health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
     cfmgr_health_mode "$mode" || exit 10
     [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes:$cfmgr_health_mode_files" = 2:4096:2 ] || exit 11
 done
-for mode in health-request health-response health-compare health-metadata health-native-metadata health-metadata-check health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-fields health-config health-nvram health-space health-protected health-uname health-blkid; do
+for mode in health-request health-response health-compare health-metadata health-native-metadata health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-fields health-config health-nvram health-space health-uname health-blkid; do
     cfmgr_health_mode "$mode" || exit 12
     [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes" = 8:16384 ] || exit 13
 done
@@ -4818,7 +4872,7 @@ def test_linux_full_health_entry_normal_journey(
         assert process.returncode == 0 and stderr == b"", (measured, stdout, stderr)
         assert ledger[9] == "normal", measured
         assert requests == 12 and 0 < rows <= 96 and 0 < seconds < 45, measured
-        assert operations <= 504 and files <= 1136, measured
+        assert operations <= 568 and files <= 1264, measured
         assert reserved + final_bytes <= 12 * 1024 * 1024, measured
         assert final_ops <= 8 and final_files <= 16 and elapsed < 50, measured
         assert immutable_inventory() == before, (
