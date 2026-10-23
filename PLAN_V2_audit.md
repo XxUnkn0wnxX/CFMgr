@@ -2715,3 +2715,47 @@ journey now belongs to the Status consumer group, retaining actual supervision,
 clock, descriptors, quotas, positive reaping and cleanup with labelled firmware
 and provider adapters. No feature execution, live router/provider state or
 firmware qualification is implied.
+
+## S14.02 shared drive directory layout review
+
+On 2026-10-23 the user changed the fixed backup directory from the development
+`<selected-mount>/CFBackup` layout to `<selected-mount>/CFMgr/backup`, sharing the
+drive-level parent with future diagnostics. The user authorized implementation,
+required exact CI closure and a pause before S13.14, and explicitly declined
+legacy-layout compatibility. This is a location-contract change, not a false
+historical pass: prior receipts remain evidence for the old layout, and S14.02
+is reopened until the revised layout passes. Other accepted IDs keep their
+unchanged behavior contracts with affected consumer regressions required here.
+
+Independent Astra design audit returned **PASS WITH NOTES** against starting
+revision `4a06c643d5eaf18b89c1e4e268393ae2a38caef4`. Parent agrees with the material
+finding: replacing one path string with a nested path would leave the new parent
+unadmitted in the fixed creation worker and old leaf-only attachment checks.
+The approved repair retains FD6 for the selected volume and reuses FD7 in parent
+preparation then final backup-leaf phases. Both components require plain-directory,
+canonical-path and same-mount checks; creation uses the pinned parent, and final
+archive I/O retains the admitted leaf descriptor and existing supervision gates.
+Backup operations preserve shared-parent permissions, sibling diagnostics and
+unrelated contents. There is no recursive parent cleanup, external-data movement,
+new configuration schema, automatic backup-drive selection or diagnostic capture.
+
+Actual consumers include destination Save/reopen, archive staging/publication,
+browsing/verification/deletion/retention, and Health's read-only backup metadata
+observation. Per-component archive payload exclusions require semantic review,
+not a slash-containing textual replacement. Existing `CFbackup-...tar.gz` names
+remain unchanged. Parent approved the narrow fixed leaf-creation worker mode and
+its supervision allowlist entry.
+
+The implemented four-file runtime change received an independent Sol source
+review **PASS WITH NOTES**, with no material defect, followed by parent review.
+Both agree that FD6/FD7 phase ownership, component/mount checks, leaf-only chmod,
+payload exclusions and read-only Health observations preserve the intended
+boundaries. Parent removed a redundant FD7 mount check without removing an
+invariant. The new Health path consumes four additional bounded read-only probes;
+the existing aggregate budget and normal-journey ceiling are unchanged and require
+complete native validation. Native fixtures now cover both directory components,
+replacement, interrupted preparation and sibling/permission preservation.
+Available local consumer checks and common statics passed as recorded in the
+handoff; five Linux-only cases remain pending, and limited optional ShellCheck
+retains 72 findings on unchanged source lines. Exact Dev/core disposition is
+pending; these reviews and local results alone grant no acceptance.

@@ -143,7 +143,17 @@ def test_health_backup_worker_reuses_broad_uuid_policy(
 
 
 @pytest.mark.parametrize(
-    "damage", ["none", "missing-folder", "mount-replaced", "unresolved"]
+    "damage",
+    [
+        "none",
+        "missing-folder",
+        "parent-symlink",
+        "leaf-symlink",
+        "parent-mount",
+        "leaf-mount",
+        "mount-replaced",
+        "unresolved",
+    ],
 )
 def test_health_backup_actual_worker_identity_and_readonly_limits(
     shell, tools, tmp_path, damage
@@ -158,7 +168,15 @@ def test_health_backup_actual_worker_identity_and_readonly_limits(
     point = tmp_path / "selected-drive"
     point.mkdir()
     if damage != "missing-folder":
-        (point / "CFBackup").mkdir()
+        (point / "CFMgr/backup").mkdir(parents=True)
+    if damage == "parent-symlink":
+        (point / "CFMgr").rename(point / "foreign")
+        (point / "CFMgr").symlink_to(point / "foreign", target_is_directory=True)
+    elif damage == "leaf-symlink":
+        (point / "CFMgr/backup").rename(point / "CFMgr/foreign")
+        (point / "CFMgr/backup").symlink_to(
+            point / "CFMgr/foreign", target_is_directory=True
+        )
     plan = private / "health-backup-plan.1.out"
     plan.write_text(
         f"CFMGR-HEALTH-BACKUP\t1\nDESTINATION\t1\t{point}\nIDENTITY\tabcd-1234\ttfat\t/\nHISTORY\tnever\tunknown\tunknown\nEND\t4\n"
@@ -184,6 +202,9 @@ cfmgr_health_run() {
         [ "$damage" != unresolved ] || return 3
         mount_id=8
         [ "$damage:$mounts" != mount-replaced:2 ] || mount_id=9
+        case $damage:$2 in
+        parent-mount:*/CFMgr | leaf-mount:*/CFMgr/backup) mount_id=9 ;;
+        esac
         printf '%s\t1\t8:1\t/\t%s\ttfat\t/dev/fixture\tro,noexec\tro\n' "$mount_id" "$cfmgr_health_backup_point" >"$cfmgr_probe_stdout"
         ;;
     health-blkid) printf '%s\n' '/dev/fixture: UUID="ABCD-1234" TYPE="vfat"' >"$cfmgr_probe_stdout" ;;
@@ -215,8 +236,12 @@ printf '%s %s %s %s %s\n' "$result" "$cfmgr_health_backup_state" "${cfmgr_health
     )
     assert (result.returncode, result.stderr) == (0, b"")
     expected = {
-        "none": b"0 PASS ro observed 3\n",
+        "none": b"0 PASS ro observed 5\n",
         "missing-folder": b"0 PASS ro unverified 3\n",
+        "parent-symlink": b"0 PASS ro unverified 3\n",
+        "leaf-symlink": b"0 PASS ro unverified 4\n",
+        "parent-mount": b"0 PASS ro unverified 4\n",
+        "leaf-mount": b"0 PASS ro unverified 5\n",
         "mount-replaced": b"1 UNKNOWN ro unverified 2\n",
         "unresolved": b"3 UNKNOWN unknown unverified 1\n",
     }

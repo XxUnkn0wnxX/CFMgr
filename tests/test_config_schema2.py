@@ -514,7 +514,7 @@ def test_populated_backup_menu_save(shell, installed_backup_entry, populated):
     assert changed["schema"] == 2 and changed["generation"] == 2
     assert changed["backup"]["destination"]["mountpoint"] == "/tmp/mnt/Drive one"
     assert changed["credentials"] == populated["credentials"]
-    assert (ram / "Drive one/CFBackup").is_dir()
+    assert (ram / "Drive one/CFMgr/backup").is_dir()
 
 
 @pytest.mark.parametrize(

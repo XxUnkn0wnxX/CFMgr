@@ -232,7 +232,7 @@ cfmgr_prerequisites_run() {
 	store-archive-config) [ "$#" -eq 23 ] || return 2 ;;
 	store-backup-mounts | store-backup-mount) [ "$#" -eq 11 ] || return 2 ;;
 	store-backup-blkid) [ "$#" -eq 10 ] || return 2 ;;
-	store-backup-mkdir | store-backup-chmod) [ "$#" -eq 9 ] || return 2 ;;
+	store-backup-mkdir | store-backup-leaf-mkdir | store-backup-chmod) [ "$#" -eq 9 ] || return 2 ;;
 	store-settings) [ "$#" -eq 17 ] || return 2 ;;
 	store-copy | store-move | store-intent | store-space-frame) [ "$#" -eq 11 ] || return 2 ;;
 	store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;

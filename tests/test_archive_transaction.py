@@ -21,8 +21,8 @@ def _quote_host_anchors(archive) -> None:
     if sys.platform == "darwin":
         source = source.replace("cd ${cfmgr_test_ram}", 'cd "${cfmgr_test_ram}"')
         source = source.replace(
-            ' ${cfmgr_test_backup} "$cfmgr_backup_mount/CFBackup"',
-            ' "${cfmgr_test_backup}" "$cfmgr_backup_mount/CFBackup"',
+            ' ${cfmgr_test_backup} "$cfmgr_backup_mount/CFMgr/backup"',
+            ' "${cfmgr_test_backup}" "$cfmgr_backup_mount/CFMgr/backup"',
         )
     # The marker proves old/new validation reached the injected unlink failure.
     source = source.replace(
@@ -40,7 +40,7 @@ def _quote_host_anchors(archive) -> None:
 
 def _old_archive(mount: Path, index: int, epoch: int) -> tuple[Path, str]:
     name = f"CFbackup-{epoch}.tar.gz"
-    path = mount / "CFBackup" / name
+    path = mount / "CFMgr/backup" / name
     data = f"verified prior archive {index}\n".encode()
     path.write_bytes(data)
     record = (
@@ -56,29 +56,29 @@ def _transaction_script(old_names: list[str], *, failures: bool) -> str:
     if failures:
         retention = f"""
 # Changed bytes keep the same inode and block every old deletion.
-printf changed >"$cfmgr_backup_mount/CFBackup/$cfmgr_create_name"
+printf changed >"$cfmgr_backup_mount/CFMgr/backup/$cfmgr_create_name"
 if cfmgr_archive_retention; then exit 74; else [ "$?" = 1 ] || exit 75; fi
-for old in {names}; do [ -f "$cfmgr_backup_mount/CFBackup/$old" ] || exit 76; done
-printf 'new verified archive' >"$cfmgr_backup_mount/CFBackup/$cfmgr_create_name"
+for old in {names}; do [ -f "$cfmgr_backup_mount/CFMgr/backup/$old" ] || exit 76; done
+printf 'new verified archive' >"$cfmgr_backup_mount/CFMgr/backup/$cfmgr_create_name"
 # A changed old candidate blocks pruning before any unlink.
-printf changed >"$cfmgr_backup_mount/CFBackup/{old_names[0]}"
+printf changed >"$cfmgr_backup_mount/CFMgr/backup/{old_names[0]}"
 if cfmgr_archive_retention; then exit 80; else [ "$?" = 1 ] || exit 81; fi
-for old in {names}; do [ -f "$cfmgr_backup_mount/CFBackup/$old" ] || exit 82; done
-printf 'verified prior archive 1\n' >"$cfmgr_backup_mount/CFBackup/{old_names[0]}"
+for old in {names}; do [ -f "$cfmgr_backup_mount/CFMgr/backup/$old" ] || exit 82; done
+printf 'verified prior archive 1\n' >"$cfmgr_backup_mount/CFMgr/backup/{old_names[0]}"
 
 # Inject the first unlink failure independently of host root permissions.
 TEST_PURGE_FAIL=1
 if cfmgr_archive_retention; then exit 83; else [ "$?" = 1 ] || exit 84; fi
 [ -f "$cfmgr_store_context/purge-attempt" ] || exit 85
-for old in {names}; do [ -f "$cfmgr_backup_mount/CFBackup/$old" ] || exit 86; done
+for old in {names}; do [ -f "$cfmgr_backup_mount/CFMgr/backup/$old" ] || exit 86; done
 TEST_PURGE_FAIL=0
 
 # Missing-new is last: recreation changes inode and must not conceal a later
 # old-file or unlink check behind the new-file identity check.
-rm "$cfmgr_backup_mount/CFBackup/$cfmgr_create_name"
+rm "$cfmgr_backup_mount/CFMgr/backup/$cfmgr_create_name"
 if cfmgr_archive_retention; then exit 77; else [ "$?" = 1 ] || exit 78; fi
-for old in {names}; do [ -f "$cfmgr_backup_mount/CFBackup/$old" ] || exit 79; done
-printf 'new verified archive' >"$cfmgr_backup_mount/CFBackup/$cfmgr_create_name"
+for old in {names}; do [ -f "$cfmgr_backup_mount/CFMgr/backup/$old" ] || exit 79; done
+printf 'new verified archive' >"$cfmgr_backup_mount/CFMgr/backup/$cfmgr_create_name"
 """
     else:
         retention = """
@@ -102,7 +102,7 @@ cfmgr_create_epoch=100 cfmgr_create_day=2026-10-17 cfmgr_create_id=00000000-0000
 cfmgr_create_published=0 cfmgr_create_result=
 cfmgr_archive_saved_keep=3 cfmgr_create_scan_complete=1
 cfmgr_archive_saved_set_id=00000000-0000-4000-8000-111111111111
-cfmgr_archive_stage_leaf=stage cfmgr_archive_stage=$cfmgr_backup_mount/CFBackup/stage
+cfmgr_archive_stage_leaf=stage cfmgr_archive_stage=$cfmgr_backup_mount/CFMgr/backup/stage
 cfmgr_archive_format_inode "$cfmgr_archive_stage/candidate.tar.gz" || exit 71
 cfmgr_format_owned=candidate.tar.gz:$cfmgr_format_inode
 cfmgr_archive_identity_check || exit 72
@@ -123,7 +123,10 @@ def test_publish_and_retention_preserve_new_archive_and_retention_limit(archive,
     _quote_host_anchors(archive)
     _support, ram, mount, stage, _environment = archive
     old = [_old_archive(mount, index, 200 + index) for index in range(1, 5)]
-    (mount / "CFBackup/notes.txt").write_text("leave me")
+    (mount / "CFMgr/backup/notes.txt").write_text("leave me")
+    diagnostics = mount / "CFMgr/diagnostics"
+    diagnostics.mkdir()
+    (diagnostics / "report").write_text("preserve diagnostics")
     candidate = stage / "candidate.tar.gz"
     data = b"new verified archive"
     candidate.write_bytes(data)
@@ -138,7 +141,7 @@ def test_publish_and_retention_preserve_new_archive_and_retention_limit(archive,
     )
     passed(result)
 
-    backup = mount / "CFBackup"
+    backup = mount / "CFMgr/backup"
     published = backup / "CFbackup-100.tar.gz"
     assert published.read_bytes() == data
     assert published.stat().st_ino == original_inode
@@ -148,6 +151,7 @@ def test_publish_and_retention_preserve_new_archive_and_retention_limit(archive,
         old[-2][0].name,
     }
     assert (backup / "notes.txt").read_text() == "leave me"
+    assert (diagnostics / "report").read_text() == "preserve diagnostics"
 
 
 def test_retention_blocks_old_deletion_on_changed_new_or_old_and_keeps_new_on_purge_failure(
@@ -169,7 +173,7 @@ def test_retention_blocks_old_deletion_on_changed_new_or_old_and_keeps_new_on_pu
     )
     passed(result)
 
-    published = mount / "CFBackup/CFbackup-100.tar.gz"
+    published = mount / "CFMgr/backup/CFbackup-100.tar.gz"
     assert published.read_bytes() == data
     assert all(path.exists() for path, _record in old)
     assert (ram / "purge-attempt").read_text() == "reached"
@@ -219,7 +223,7 @@ case $TEST_MOVE:$code in intact:1 | moved:3 | moved-detached:3) ;; *) exit 94 ;;
 """
     )
     passed(run(archive, shell, script, timeout=30))
-    assert (mount / "CFBackup/CFbackup-100.tar.gz").exists() == (move != "intact")
+    assert (mount / "CFMgr/backup/CFbackup-100.tar.gz").exists() == (move != "intact")
     assert (stage / "candidate.tar.gz").exists() == (move == "intact")
 
 
@@ -241,7 +245,7 @@ if cfmgr_archive_retention; then exit 81; else [ "$?" = 1 ] || exit 82; fi
 def test_unclassified_gunzip_failure_is_incomplete_not_excluded(archive, shell):
     _quote_host_anchors(archive)
     _support, _ram, mount, _stage, _environment = archive
-    container = mount / "CFBackup/CFbackup-bad.tar.gz"
+    container = mount / "CFMgr/backup/CFbackup-bad.tar.gz"
     container.write_bytes(b"unclassified decompression failure\n")
     container.chmod(0o777)
     passed(
@@ -314,7 +318,9 @@ def test_recognition_propagates_complete_candidate_inspection(
     _quote_host_anchors(archive)
     _support, _ram, mount, _stage, environment = archive
     for day in ("01", "02"):
-        (mount / f"CFBackup/CFbackup-2000-01-{day}.tar.gz").write_bytes(b"candidate")
+        (mount / f"CFMgr/backup/CFbackup-2000-01-{day}.tar.gz").write_bytes(
+            b"candidate"
+        )
     environment.update(TEST_STATUS=status, TEST_COMPLETE=complete)
     if sys.platform == "darwin":
         worker = archive[0] / "modules/helpers/worker.sh"

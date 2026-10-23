@@ -486,11 +486,18 @@ backup_folder | backup_replacement | archive_source)
 		printf '%s' "$cfmgr_awk_program"
 	)" "$mount_dir" /proc/self/mountinfo)
 	cfmgr_backup_pin_selected || fail 'real noexec backup drive was not admitted'
-	cfmgr_backup_prepare_folder || fail 'root backup folder was not created through the pinned mount'
-	[ -d "$mount_dir/CFBackup" ] || fail 'backup folder was not created at the drive root'
-	printf 'unrelated backup content\n' >"$mount_dir/CFBackup/keep"
-	cfmgr_backup_prepare_folder || fail 'existing root backup folder was not prepared'
-	[ "$(cat "$mount_dir/CFBackup/keep")" = 'unrelated backup content' ] || fail 'backup contents were changed'
+	cfmgr_backup_prepare_folder || fail 'backup leaf was not created through the pinned parent'
+	[ -d "$mount_dir/CFMgr/backup" ] || fail 'backup folder was not created beneath CFMgr'
+	mkdir "$mount_dir/CFMgr/diagnostics"
+	printf 'diagnostic sibling\n' >"$mount_dir/CFMgr/diagnostics/keep"
+	printf 'foreign sibling\n' >"$mount_dir/CFMgr/foreign"
+	chmod 755 "$mount_dir/CFMgr"
+	printf 'unrelated backup content\n' >"$mount_dir/CFMgr/backup/keep"
+	cfmgr_backup_prepare_folder || fail 'existing backup folder was not prepared'
+	[ "$(cat "$mount_dir/CFMgr/backup/keep")" = 'unrelated backup content' ] || fail 'backup contents were changed'
+	[ "$(stat -c %a "$mount_dir/CFMgr")" = 755 ] || fail 'shared parent permissions changed'
+	[ "$(cat "$mount_dir/CFMgr/diagnostics/keep")" = 'diagnostic sibling' ] || fail 'diagnostics sibling changed'
+	[ "$(cat "$mount_dir/CFMgr/foreign")" = 'foreign sibling' ] || fail 'foreign sibling changed'
 	if [ "$case_name" = archive_source ]; then
 		# The sole path adapter maps fixed /opt to this namespace's private alias.
 		# Real ext4/bind mountinfo, blkid, FD3/5/6/7, and supervisor stay intact.
@@ -530,32 +537,67 @@ backup_folder | backup_replacement | archive_source)
 		exec 5<&-
 		printf 'PASS: read-only/noexec source3 coexists with destination6/7; alias loss refuses fallback writes\n'
 	elif [ "$case_name" = backup_folder ]; then
+		# A different real parent/leaf must not replace the admitted archive FD.
+		mv "$mount_dir/CFMgr" "$mount_dir/CFMgr.saved"
+		mkdir -p "$mount_dir/CFMgr/backup"
+		if cfmgr_backup_attached; then fail 'substituted shared parent/leaf was accepted'; fi
+		if cfmgr_backup_prepare_folder; then fail 'substituted parent received preparation'; fi
+		rmdir "$mount_dir/CFMgr/backup" "$mount_dir/CFMgr"
+		mv "$mount_dir/CFMgr.saved" "$mount_dir/CFMgr"
+		cfmgr_backup_attached || fail 'restored parent/leaf lost original attachment'
+		mv "$mount_dir/CFMgr/backup" "$mount_dir/CFMgr/backup.saved"
+		mkdir "$mount_dir/CFMgr/backup"
+		if cfmgr_backup_attached; then fail 'substituted backup leaf was accepted'; fi
+		rmdir "$mount_dir/CFMgr/backup"
+		mv "$mount_dir/CFMgr/backup.saved" "$mount_dir/CFMgr/backup"
 		exec 7<&-
-		cfmgr_backup_folder_pinned=0
-		mv "$mount_dir/CFBackup" "$mount_dir/CFBackup.saved"
-		ln -s "$mount_dir/CFBackup.saved" "$mount_dir/CFBackup"
+		cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
+		mv "$mount_dir/CFMgr" "$mount_dir/CFMgr.saved"
+		ln -s "$mount_dir/CFMgr.saved" "$mount_dir/CFMgr"
+		if cfmgr_backup_folder_admit; then fail 'shared parent symlink was admitted'; fi
+		if cfmgr_backup_prepare_folder; then fail 'shared parent symlink was prepared'; fi
+		rm "$mount_dir/CFMgr"
+		mv "$mount_dir/CFMgr.saved" "$mount_dir/CFMgr"
+		mount -t tmpfs -o size=64k tmpfs "$mount_dir/CFMgr"
+		if cfmgr_backup_prepare_folder; then fail 'nested shared parent mount was prepared'; fi
+		[ ! -e "$mount_dir/CFMgr/backup" ] || fail 'nested parent mount received backup writes'
+		umount "$mount_dir/CFMgr"
+		mv "$mount_dir/CFMgr/backup" "$mount_dir/CFMgr/backup.saved"
+		ln -s "$mount_dir/CFMgr/backup.saved" "$mount_dir/CFMgr/backup"
 		if cfmgr_backup_folder_admit; then fail 'backup folder symlink was admitted'; fi
-		rm "$mount_dir/CFBackup"
-		mv "$mount_dir/CFBackup.saved" "$mount_dir/CFBackup"
-		mount -t tmpfs -o size=64k tmpfs "$mount_dir/CFBackup"
+		rm "$mount_dir/CFMgr/backup"
+		mv "$mount_dir/CFMgr/backup.saved" "$mount_dir/CFMgr/backup"
+		mount -t tmpfs -o size=64k tmpfs "$mount_dir/CFMgr/backup"
 		if cfmgr_backup_folder_admit; then fail 'nested backup mount was admitted'; fi
-		umount "$mount_dir/CFBackup"
+		umount "$mount_dir/CFMgr/backup"
+		# Lose the admitted parent between its pin and the leaf mkdir. The
+		# original and substituted trees must both remain untouched.
+		exec 7<&-
+		cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
+		cfmgr_backup_parent_admit || fail 'shared parent was not admitted'
+		mv "$mount_dir/CFMgr" "$mount_dir/CFMgr.saved"
+		mkdir "$mount_dir/CFMgr"
+		if cfmgr_backup_prepare_folder; then fail 'interrupted parent preparation accepted replacement'; fi
+		[ ! -e "$mount_dir/CFMgr/backup" ] || fail 'interrupted preparation wrote replacement leaf'
+		rmdir "$mount_dir/CFMgr"
+		mv "$mount_dir/CFMgr.saved" "$mount_dir/CFMgr"
+		[ "$(cat "$mount_dir/CFMgr/backup/keep")" = 'unrelated backup content' ] || fail 'interrupted preparation changed archives'
 		exec 6<&- 7<&-
-		cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+		cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
 		mount --bind "$mount_dir/entware" "$bind_dir"
 		if cfmgr_backup_observe_mount "$bind_dir"; then fail 'Entware subtree bind was admitted as a backup drive'; fi
-		printf 'PASS: noexec backup folder preserves contents; symlink, nested mount and Entware subtree bind refused\n'
+		printf 'PASS: noexec backup preserves shared parent, diagnostics and archives; parent/leaf substitution, symlink, nested mount and Entware subtree bind refused\n'
 	else
 		umount -l "$mount_dir" || fail 'backup lazy detach failed'
 		if cfmgr_backup_prepare_folder; then fail 'backup prepared folder on bare mountpoint'; fi
-		[ ! -e "$mount_dir/CFBackup" ] || fail 'bare mountpoint received backup writes'
+		[ ! -e "$mount_dir/CFMgr/backup" ] || fail 'bare mountpoint received backup writes'
 		mount -t ext4 "$replacement_device" "$mount_dir" || fail 'backup replacement mount failed'
 		if cfmgr_backup_attached; then fail 'backup attachment adopted replacement'; fi
 		if cfmgr_backup_prepare_folder; then fail 'backup prepared folder on replacement'; fi
-		[ ! -e "$mount_dir/CFBackup" ] || fail 'replacement received backup writes'
+		[ ! -e "$mount_dir/CFMgr/backup" ] || fail 'replacement received backup writes'
 		[ "$(cat /proc/self/fd/7/keep)" = 'unrelated backup content' ] || fail 'original pinned backup content changed'
 		exec 6<&- 7<&-
-		cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+		cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
 		if cfmgr_backup_pin_selected; then fail 'stale selected snapshot admitted replacement'; fi
 		printf 'PASS: backup lazy detach and replacement refuse writes and stale selection; original contents preserved\n'
 	fi

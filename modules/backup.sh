@@ -21,7 +21,7 @@
 # status1: unavailable/busy/recovery; status3: unresolved. Failures emit only a
 # header (generation0/count0/availability unavailable); pending is truthful.
 # Invalid API arguments return2 without a frame. A failed Save may have prepared
-# an inert CFBackup folder; contents are preserved, never rolled back/deleted.
+# an inert CFMgr/backup folder; contents are preserved, never rolled back/deleted.
 # The subshell owns FD0/3/4/5/8/9 via Store and reserves FD6/7 for backup only.
 # shellcheck disable=SC2030,SC2031,SC2034,SC2154,SC3013
 
@@ -74,7 +74,7 @@ cfmgr_backup_action() (
 	cfmgr_store_result=unavailable cfmgr_store_generation=0 cfmgr_store_check=0 cfmgr_store_auto=0 cfmgr_store_developer=0
 	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
 	cfmgr_store_pending=0 cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
-	cfmgr_store_scope=backup cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+	cfmgr_store_scope=backup cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
 	cfmgr_backup_result=unavailable cfmgr_backup_availability=unavailable cfmgr_backup_count=0 cfmgr_backup_saved_present=0
 	if cfmgr_store_prepare && cfmgr_backup_work; then cfmgr_backup_code=0; else cfmgr_backup_code=$?; fi
 	# No new probes or descriptor replacement if the supervisor lost ownership.
@@ -367,8 +367,8 @@ cfmgr_backup_ui_show_state() {
 	else
 		if [ "$cfmgr_backup_ui_dest" = 1 ]; then
 			case $cfmgr_backup_ui_availability in
-			available) printf 'Saved destination: %s/CFBackup (available)\n' "$cfmgr_backup_ui_dest_mount" ;;
-			*) printf 'Saved destination: %s/CFBackup (unavailable)\n' "$cfmgr_backup_ui_dest_mount" ;;
+			available) printf 'Saved destination: %s/CFMgr/backup (available)\n' "$cfmgr_backup_ui_dest_mount" ;;
+			*) printf 'Saved destination: %s/CFMgr/backup (unavailable)\n' "$cfmgr_backup_ui_dest_mount" ;;
 			esac
 		else printf '%s\n' 'Saved destination: unset'; fi
 		if [ "$cfmgr_backup_ui_count" = 0 ]; then
@@ -448,7 +448,7 @@ cfmgr_backup_ui_save() {
 		return 0
 	}
 	cfmgr_backup_ui_drive_fields "$cfmgr_backup_ui_staged_row" || return 1
-	cfmgr_backup_ui_save_path=$cfmgr_backup_ui_mount/CFBackup
+	cfmgr_backup_ui_save_path=$cfmgr_backup_ui_mount/CFMgr/backup
 	printf 'Prepare %s and save this destination? Existing contents are preserved. [y/N/e] ' "$cfmgr_backup_ui_save_path"
 	if IFS= read -r cfmgr_backup_ui_answer; then :; else
 		cfmgr_backup_ui_leave=1
@@ -462,9 +462,9 @@ cfmgr_backup_ui_save() {
 	if cfmgr_backup_ui_action save "$cfmgr_backup_ui_mount_hex" "$cfmgr_backup_ui_uuid_hex" \
 		"$cfmgr_backup_ui_filesystem_hex" "$cfmgr_backup_ui_root_hex" "$cfmgr_backup_ui_snapshot_hex"; then :; else return 2; fi
 	if [ "$cfmgr_backup_ui_exit" = 0 ]; then
-		printf 'Destination saved: %s/CFBackup\n' "$cfmgr_backup_ui_dest_mount"
+		printf 'Destination saved: %s/CFMgr/backup\n' "$cfmgr_backup_ui_dest_mount"
 	else
-		printf '%s\n' 'Save did not complete; CFBackup may have been prepared and existing contents were preserved.' >&2
+		printf '%s\n' 'Save did not complete; CFMgr/backup may have been prepared and existing contents were preserved.' >&2
 	fi
 	cfmgr_backup_ui_post_operation
 }
@@ -564,7 +564,7 @@ cfmgr_archive_action() (
 	cfmgr_store_result=unavailable cfmgr_store_generation=0 cfmgr_store_check=0 cfmgr_store_auto=0 cfmgr_store_developer=0
 	cfmgr_store_pending=0 cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
 	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
-	cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0 cfmgr_archive_source_pinned=0
+	cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0 cfmgr_archive_source_pinned=0
 	cfmgr_create_result=unavailable cfmgr_create_published=0 cfmgr_create_publish_attempted=0 cfmgr_create_name_hex=-
 	cfmgr_create_retention=none cfmgr_create_history=none cfmgr_create_ram_serial=0
 	cfmgr_archive_saved_format=- cfmgr_archive_saved_keep=0 cfmgr_archive_saved_set_id=- cfmgr_archive_saved_generation=0
@@ -611,7 +611,7 @@ cfmgr_archive_action() (
 			fi
 		fi
 		if [ "$cfmgr_create_code" != 3 ]; then
-			cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+			cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
 			exec 0<&- 3<&- 4<&- 6<&- 7<&-
 			cfmgr_config_lock_fd0=0
 			if [ -n "$cfmgr_store_context" ] && ! cfmgr_store_cleanup; then
@@ -684,7 +684,7 @@ cfmgr_archive_work() {
 	cfmgr_archive_deadline=$((cfmgr_probe_now + 600)) cfmgr_archive_format_tracking=1
 	cfmgr_archive_destination && cfmgr_archive_resources || return $?
 	# Read-only history tool admission uses Entware6/7 before source3/rotation4.
-	cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+	cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
 	exec 6<&- 7<&-
 	cfmgr_history_context=$cfmgr_store_context cfmgr_history_limit=$cfmgr_archive_inventory_limit
 	cfmgr_history_deadline=$cfmgr_archive_deadline cfmgr_history_memory_kib=$cfmgr_archive_directory_kib
@@ -774,7 +774,7 @@ cfmgr_archive_browser_action() (
 	cfmgr_store_result=unavailable cfmgr_store_pending=0 cfmgr_store_generation=0
 	cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
 	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
-	cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0 cfmgr_archive_source_pinned=0
+	cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0 cfmgr_archive_source_pinned=0
 	cfmgr_archive_stage='' cfmgr_archive_format_tracking=0 cfmgr_format_owned='' cfmgr_format_receipts=''
 	cfmgr_payload_ram_owned='' cfmgr_create_ram_serial=0
 	cfmgr_browser_result=unavailable cfmgr_browser_deleted=0 cfmgr_browser_count=0 cfmgr_browser_rows='' cfmgr_browser_effects='' cfmgr_browser_receipt=''
@@ -796,7 +796,7 @@ cfmgr_archive_browser_action() (
 			else cfmgr_browser_code=1 cfmgr_browser_result=recovery cfmgr_store_pending=1; fi
 		fi
 		if [ "$cfmgr_browser_code" != 3 ]; then
-			cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_folder_pinned=0
+			cfmgr_store_backup_gate=0 cfmgr_backup_pinned=0 cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=0
 			exec 0<&- 3<&- 4<&- 6<&- 7<&-
 			cfmgr_config_lock_fd0=0
 			if [ -n "$cfmgr_store_context" ] && ! cfmgr_store_cleanup; then
@@ -917,7 +917,7 @@ cfmgr_archive_browser_list() {
 	cfmgr_archive_ram_new || return 1
 	cfmgr_browser_ledger=$cfmgr_create_ram cfmgr_browser_ledger_bytes=0 cfmgr_browser_scanned=0
 	cfmgr_browser_scan_complete=1
-	cfmgr_archive_run archive-directory "$cfmgr_archive_inventory_limit" "$cfmgr_store_ls" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_directory_kib" || return $?
+	cfmgr_archive_run archive-directory "$cfmgr_archive_inventory_limit" "$cfmgr_store_ls" /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_archive_directory_kib" || return $?
 	cfmgr_browser_directory=$cfmgr_probe_stdout
 	cfmgr_archive_run archive-control "$cfmgr_archive_inventory_limit" "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" names "$cfmgr_browser_directory" 0 - || return $?
 	cfmgr_archive_ram_preserve "$cfmgr_probe_stdout" || return $?
@@ -1002,7 +1002,7 @@ cfmgr_archive_browser_selected() {
 		cfmgr_archive_browser_receipt_check || return $?
 		# Once unlink is attempted, uncertain completion cannot be retried as an
 		# ordinary refusal. Only its positive result plus postchecks proves done.
-		cfmgr_archive_run archive-archive-remove 4096 /bin/rm /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_browser_name" || return 3
+		cfmgr_archive_run archive-archive-remove 4096 /bin/rm /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_browser_name" || return 3
 		[ ! -e "/proc/self/fd/7/$cfmgr_browser_name" ] && [ ! -L "/proc/self/fd/7/$cfmgr_browser_name" ] && cfmgr_archive_identity_check || return 3
 		cfmgr_browser_result=deleted cfmgr_browser_deleted=1
 	else cfmgr_browser_result=verified; fi
@@ -1723,7 +1723,7 @@ cfmgr_archive_attachment_ok() {
 	case ${cfmgr_backup_folder_pinned:-0} in 1) ;; *) return 1 ;; esac
 	case ${cfmgr_archive_stage:-} in '') ;; *)
 		case ${cfmgr_archive_stage_leaf:-} in '' | . | .. | *[!A-Za-z0-9_.-]*) return 1 ;; esac
-		case $cfmgr_archive_stage in "$cfmgr_backup_mount/CFBackup/$cfmgr_archive_stage_leaf") ;; *) return 1 ;; esac
+		case $cfmgr_archive_stage in "$cfmgr_backup_mount/CFMgr/backup/$cfmgr_archive_stage_leaf") ;; *) return 1 ;; esac
 		[ -d "$cfmgr_archive_stage" ] && [ ! -L "$cfmgr_archive_stage" ] || return 1
 		# shellcheck disable=SC3013
 		[ "$cfmgr_archive_stage" -ef "/proc/self/fd/7/$cfmgr_archive_stage_leaf" ] || return 1
@@ -2679,13 +2679,13 @@ cfmgr_archive_stage_open() {
 	cfmgr_create_id=$cfmgr_archive_uuid
 	cfmgr_archive_stage_leaf=.create.$cfmgr_create_id
 	[ ! -e "/proc/self/fd/7/$cfmgr_archive_stage_leaf" ] && [ ! -L "/proc/self/fd/7/$cfmgr_archive_stage_leaf" ] || return 1
-	cfmgr_archive_run archive-stage-mkdir 4096 /bin/mkdir /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_stage_leaf" || return $?
-	cfmgr_archive_stage=$cfmgr_backup_mount/CFBackup/$cfmgr_archive_stage_leaf
+	cfmgr_archive_run archive-stage-mkdir 4096 /bin/mkdir /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_archive_stage_leaf" || return $?
+	cfmgr_archive_stage=$cfmgr_backup_mount/CFMgr/backup/$cfmgr_archive_stage_leaf
 	# Initial admission is the only stage operation without a saved inode.
 	cfmgr_archive_inode "/proc/self/fd/7/$cfmgr_archive_stage_leaf" || return $?
 	cfmgr_archive_stage_inode=$cfmgr_archive_inode
 	cfmgr_archive_identity_check || return $?
-	if cfmgr_archive_run archive-chmod 4096 /bin/chmod /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_stage_leaf" 700; then :; else
+	if cfmgr_archive_run archive-chmod 4096 /bin/chmod /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_archive_stage_leaf" 700; then :; else
 		[ "$?" != 3 ] || return 3
 	fi
 	cfmgr_archive_identity_check && cfmgr_archive_format_retire
@@ -2698,7 +2698,7 @@ cfmgr_archive_stage_close() {
 	# The directory intentionally disappears during this one supervised rmdir.
 	# Parent/root pins remain active; no stage file operation follows this phase.
 	cfmgr_archive_stage=''
-	if cfmgr_archive_run archive-stage-rmdir 4096 /bin/rmdir /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_stage_leaf"; then :; else
+	if cfmgr_archive_run archive-stage-rmdir 4096 /bin/rmdir /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_archive_stage_leaf"; then :; else
 		cfmgr_create_close_code=$? cfmgr_archive_stage=$cfmgr_create_closing_stage
 		return "$cfmgr_create_close_code"
 	fi
@@ -2770,7 +2770,7 @@ cfmgr_archive_recognize_existing() {
 	cfmgr_archive_ram_new || return 1
 	cfmgr_create_ledger=$cfmgr_create_ram cfmgr_create_ledger_bytes=0 cfmgr_create_scan_complete=0
 	cfmgr_archive_identity_check || return $?
-	cfmgr_archive_run archive-directory "$cfmgr_archive_inventory_limit" "$cfmgr_store_ls" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_archive_directory_kib" || return $?
+	cfmgr_archive_run archive-directory "$cfmgr_archive_inventory_limit" "$cfmgr_store_ls" /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_archive_directory_kib" || return $?
 	cfmgr_create_directory=$cfmgr_probe_stdout
 	cfmgr_archive_run archive-control "$cfmgr_archive_inventory_limit" "$cfmgr_store_awk" "$cfmgr_store_source/modules/backup.sh" names "$cfmgr_create_directory" 0 - || return $?
 	cfmgr_archive_ram_preserve "$cfmgr_probe_stdout" || return $?
@@ -2891,7 +2891,7 @@ cfmgr_archive_publish() {
 		return 1
 	fi
 	cfmgr_create_publish_attempted=1
-	if cfmgr_archive_run archive-publish 4096 "$cfmgr_store_mv" "/proc/self/fd/7/$cfmgr_archive_stage_leaf" "$cfmgr_archive_stage" /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" candidate.tar.gz "$cfmgr_create_name"; then :; else
+	if cfmgr_archive_run archive-publish 4096 "$cfmgr_store_mv" "/proc/self/fd/7/$cfmgr_archive_stage_leaf" "$cfmgr_archive_stage" /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" candidate.tar.gz "$cfmgr_create_name"; then :; else
 		cfmgr_create_publish_move_code=$?
 		[ "$cfmgr_create_publish_move_code" != 3 ] && [ "${cfmgr_probe_status:-}" = reaped ] || return 3
 		# A reaped failed move is ordinary nonpublication only when the pinned
@@ -2938,7 +2938,7 @@ cfmgr_archive_retention() {
 		cfmgr_archive_measure "/proc/self/fd/7/$cfmgr_create_old_name" && [ "$cfmgr_archive_bytes" = "$cfmgr_create_old_size" ] || return 1
 		cfmgr_archive_format_hash "/proc/self/fd/7/$cfmgr_create_old_name" && [ "$cfmgr_format_hash" = "$cfmgr_create_old_sha" ] || return 1
 		cfmgr_archive_identity_check || return $?
-		cfmgr_archive_run archive-archive-remove 4096 /bin/rm /proc/self/fd/7 "$cfmgr_backup_mount/CFBackup" "$cfmgr_create_old_name" || return $?
+		cfmgr_archive_run archive-archive-remove 4096 /bin/rm /proc/self/fd/7 "$cfmgr_backup_mount/CFMgr/backup" "$cfmgr_create_old_name" || return $?
 		cfmgr_archive_identity_check || return $?
 		[ ! -e "/proc/self/fd/7/$cfmgr_create_old_name" ] && [ ! -L "/proc/self/fd/7/$cfmgr_create_old_name" ] || return 1
 		cfmgr_archive_format_retire || return 1
@@ -4703,7 +4703,8 @@ $cfmgr_browser_drafts"; fi
 # ---- Backup destination and retained archive source policy ----
 # Backup destinations have their own policy/state. These helpers never select
 # Entware, execute a saved pathname, or mutate an unpinned destination.
-# FD6 pins the chosen mount and FD7, when present, pins its literal CFBackup.
+# FD6 pins the chosen mount. FD7 temporarily pins CFMgr during preparation,
+# then pins backup for the retained archive-I/O contract.
 # shellcheck disable=SC2034,SC2154,SC3013
 cfmgr_backup_mount_record() {
 	IFS='	' read -r cfmgr_backup_id cfmgr_backup_parent cfmgr_backup_device cfmgr_backup_root \
@@ -4790,9 +4791,19 @@ cfmgr_backup_attached() {
 	[ "$("$cfmgr_store_readlink" -f "$cfmgr_backup_mount")" = "$cfmgr_backup_mount" ] || return 1
 	[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
 	cfmgr_backup_fd_mount 6 || return 1
+	if [ "${cfmgr_backup_parent_pinned:-0}" = 1 ] || [ "${cfmgr_backup_folder_pinned:-0}" = 1 ]; then
+		cfmgr_backup_parent_valid || return 1
+		if [ "${cfmgr_backup_parent_pinned:-0}" = 1 ]; then
+			[ "$cfmgr_backup_mount/CFMgr" -ef /proc/self/fd/7 ] || return 1
+			cfmgr_backup_fd_mount 7 || return 1
+		else
+			[ "$cfmgr_backup_mount/CFMgr" -ef /proc/self/fd/7/.. ] || return 1
+		fi
+	fi
 	if [ "${cfmgr_backup_folder_pinned:-0}" = 1 ]; then
-		[ ! -L "$cfmgr_backup_mount/CFBackup" ] && [ "$cfmgr_backup_mount/CFBackup" -ef /proc/self/fd/7 ] || return 1
-		[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount/CFBackup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
+		[ -d "$cfmgr_backup_mount/CFMgr/backup" ] && [ ! -L "$cfmgr_backup_mount/CFMgr/backup" ] && [ "$cfmgr_backup_mount/CFMgr/backup" -ef /proc/self/fd/7 ] || return 1
+		[ "$("$cfmgr_store_readlink" -f "$cfmgr_backup_mount/CFMgr/backup")" = "$cfmgr_backup_mount/CFMgr/backup" ] || return 1
+		[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount/CFMgr/backup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
 		cfmgr_backup_fd_mount 7 || return 1
 	fi
 }
@@ -4816,10 +4827,19 @@ cfmgr_backup_pin_selected() {
 
 cfmgr_backup_prepare_folder() {
 	cfmgr_backup_attached || return 1
-	if [ ! -e "$cfmgr_backup_mount/CFBackup" ] && [ ! -L "$cfmgr_backup_mount/CFBackup" ]; then
-		cfmgr_store_run store-backup-mkdir /bin/mkdir || return $?
+	# Reuse an already admitted leaf without changing FD7's phase.
+	if [ "${cfmgr_backup_folder_pinned:-0}" != 1 ]; then
+		if [ ! -e "$cfmgr_backup_mount/CFMgr" ] && [ ! -L "$cfmgr_backup_mount/CFMgr" ]; then
+			cfmgr_store_run store-backup-mkdir /bin/mkdir || return $?
+		fi
+		cfmgr_backup_parent_admit || return $?
+		if [ ! -e /proc/self/fd/7/backup ] && [ ! -L /proc/self/fd/7/backup ]; then
+			cfmgr_store_run store-backup-leaf-mkdir /bin/mkdir || return $?
+		fi
 	fi
 	cfmgr_backup_folder_admit || return $?
+	# Only the backup leaf is private. Existing shared-parent permissions and
+	# diagnostics/foreign siblings are never changed by Backup preparation.
 	# Permission emulation failures on FAT/NTFS do not invalidate a real drive.
 	if cfmgr_store_run store-backup-chmod /bin/chmod; then :; else
 		cfmgr_backup_chmod_code=$?
@@ -4828,11 +4848,34 @@ cfmgr_backup_prepare_folder() {
 	cfmgr_backup_attached
 }
 
+cfmgr_backup_parent_valid() {
+	[ -d "$cfmgr_backup_mount/CFMgr" ] && [ ! -L "$cfmgr_backup_mount/CFMgr" ] || return 1
+	[ "$("$cfmgr_store_readlink" -f "$cfmgr_backup_mount/CFMgr")" = "$cfmgr_backup_mount/CFMgr" ] || return 1
+	[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount/CFMgr" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ]
+}
+
+cfmgr_backup_parent_admit() {
+	cfmgr_backup_attached && cfmgr_backup_parent_valid || return 1
+	{ exec 7<&3; } 3</proc/self/fd/6/CFMgr || return 1
+	cfmgr_backup_parent_pinned=1
+	cfmgr_backup_attached
+}
+
 cfmgr_backup_folder_admit() {
-	cfmgr_backup_attached && [ -d "$cfmgr_backup_mount/CFBackup" ] && [ ! -L "$cfmgr_backup_mount/CFBackup" ] || return 1
-	[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount/CFBackup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
-	{ exec 7<&3; } 3<"$cfmgr_backup_mount/CFBackup" || return 1
-	cfmgr_backup_folder_pinned=1
+	# Browsing may arrive without preparation; it admits the existing parent
+	# before opening its leaf and never creates either directory.
+	if [ "${cfmgr_backup_folder_pinned:-0}" = 1 ]; then
+		cfmgr_backup_attached
+		return $?
+	fi
+	if [ "${cfmgr_backup_parent_pinned:-0}" != 1 ]; then
+		cfmgr_backup_parent_admit || return $?
+	fi
+	cfmgr_backup_attached && [ -d /proc/self/fd/7/backup ] && [ ! -L /proc/self/fd/7/backup ] || return 1
+	[ "$("$cfmgr_store_readlink" -f "$cfmgr_backup_mount/CFMgr/backup")" = "$cfmgr_backup_mount/CFMgr/backup" ] || return 1
+	[ "$(cfmgr_storage_mountinfo "$cfmgr_store_awk" "$cfmgr_backup_mount/CFMgr/backup" /proc/self/mountinfo)" = "$cfmgr_backup_snapshot" ] || return 1
+	{ exec 7<&3; } 3</proc/self/fd/7/backup || return 1
+	cfmgr_backup_parent_pinned=0 cfmgr_backup_folder_pinned=1
 	cfmgr_backup_attached
 }
 
@@ -5578,7 +5621,7 @@ function bp_managed(value,    a,n,i) {
     bp_path(value)
     if(substr(value,1,21)!="/opt/etc/cloudflared/") reject()
     n=split(substr(value,22),a,"/")
-    for(i=1;i<=n;i++) if(a[i]~/^\./ || a[i]~/^(import|staging|CFBackup)$/) reject()
+    for(i=1;i<=n;i++) if(a[i]~/^\./ || a[i]~/^(import|staging)$/ || (a[i]=="CFMgr" && a[i+1]~/^(backup|diagnostics)$/)) reject()
     if(a[n]~/^(cloudflared|cfmgr|cfmgr.sh|catalog.txt|manifest.txt|setup-state|setup-in-progress|config.lock)$/ || a[n]~/\.(sh|so|bin|exe|py|lock|pid|old)$/) reject()
     return value
 }
@@ -5811,7 +5854,7 @@ cfmgr_backup_awk_backup_archive_control() {
 	# CFMGR-AWK-BEGIN backup_archive_control
 	cfmgr_awk_program='
 # Inert archive directory/retention control. Inputs are private bounded receipts;
-# no input selects code or a path outside the admitted CFBackup directory.
+# no input selects code or a path outside the admitted CFMgr/backup directory.
 function ac_fail() { ac_bad=1; exit 1 }
 function ac_uint(s) { return s ~ /^(0|[1-9][0-9]*)$/ && length(s)<=19 }
 function ac_generation(s) { return s~/^[1-9][0-9]*$/ && length(s)<=20 }
@@ -6848,7 +6891,7 @@ function ai_path(path, n,p,i) {
 function ai_data(path, n,p,i,b) {
     if(substr(path,1,16)!="etc/cloudflared/")return 0
     n=split(path,p,"/")
-    for(i=1;i<=n;i++)if(p[i]~/^\./ || p[i]~/^(import|staging|CFBackup)$/)return 0
+    for(i=1;i<=n;i++)if(p[i]~/^\./ || p[i]~/^(import|staging)$/ || (p[i]=="CFMgr" && p[i+1]~/^(backup|diagnostics)$/))return 0
     b=p[n]
     return b!~/^(cloudflared|cfmgr|cfmgr\.sh|catalog\.txt|manifest\.txt|setup-state|setup-in-progress|config\.lock)$/ && b!~/\.(sh|so|bin|exe|py|lock|pid|old)$/
 }

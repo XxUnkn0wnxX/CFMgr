@@ -100,7 +100,7 @@ def creation(base_archive, legacy_fsync, schema2_config):
     (support / "catalog.txt").write_text("informational fixture catalog\n")
     # Retained compressed archives are inert containers, including FAT's
     # executable mode emulation. The archived source files stay data-only.
-    prior = mount / "CFBackup/CFbackup-2023-11-14.tar.gz"
+    prior = mount / "CFMgr/backup/CFbackup-2023-11-14.tar.gz"
     prior.write_bytes(prior_archive(config))
     prior.chmod(0o777)
     for name in ("backup.sh", "lib/config.sh"):
@@ -189,7 +189,7 @@ def creation(base_archive, legacy_fsync, schema2_config):
 
 CREATE_SETUP = r"""
 support=$1 ram=$2 mount=$3 cfmgr_test_jffs=$4
-cfmgr_test_ram=$ram/context cfmgr_test_backup=$mount/CFBackup
+cfmgr_test_ram=$ram/context cfmgr_test_backup=$mount/CFMgr/backup
 printf 'imports\n' >"$ram/create-phase"
 . "$support/modules/lib/config.sh"
 . "$support/modules/lib/storage.sh"
@@ -236,9 +236,9 @@ cfmgr_store_native_tool() {
 }
 cfmgr_archive_destination() {
     cfmgr_backup_mount=$mount cfmgr_backup_pinned=1 cfmgr_backup_folder_pinned=1
-    exec 6<"$mount" 7<"$mount/CFBackup"
+    exec 6<"$mount" 7<"$mount/CFMgr/backup"
 }
-cfmgr_backup_attached() { [ -d "$mount/CFBackup" ] && [ ! -L "$mount/CFBackup" ]; }
+cfmgr_backup_attached() { [ -d "$mount/CFMgr/backup" ] && [ ! -L "$mount/CFMgr/backup" ]; }
 # The unconfigured baseline has no owned Entware payload or history. These two
 # missing-install admissions match that fixture and grant no read authority.
 cfmgr_storage_pin() { return 1; }
@@ -303,7 +303,7 @@ def create_failure_summary(creation):
     flags = {
         "context": (ram / "context").is_dir(),
         "lock": (ram / "lock").is_file(),
-        "backup": (mount / "CFBackup").is_dir(),
+        "backup": (mount / "CFMgr/backup").is_dir(),
         "preparing": (support / ".config-save.preparing").is_dir(),
         "save": (support / ".config-save").is_dir(),
         "retired": (support / ".config-save.retired").is_dir(),
@@ -418,6 +418,11 @@ cfmgr_archive_action create
 
 def test_manual_create_real_store_capture_verify_publish_and_history(creation, shell):
     support, ram, mount, _jffs, prior, _environment = creation
+    diagnostics = mount / "CFMgr/diagnostics"
+    diagnostics.mkdir()
+    (diagnostics / "report").write_bytes(b"diagnostic sibling\n")
+    (mount / "CFMgr/foreign").write_bytes(b"foreign sibling\n")
+    (mount / "CFMgr").chmod(0o755)
     before = json.loads((support / "config").read_bytes())
     result = create_run(creation, shell)
     assert result.returncode == 0, (
@@ -433,10 +438,12 @@ def test_manual_create_real_store_capture_verify_publish_and_history(creation, s
     name = bytes.fromhex(fields[8]).decode()
     assert (ram / "recognized").read_text() == f"{prior.name} verified\n"
     assert prior.exists()
-    archives = sorted((mount / "CFBackup").glob("CFbackup-*.tar.gz"))
-    assert len(archives) == 2 and (mount / "CFBackup" / name) in archives
+    archives = sorted((mount / "CFMgr/backup").glob("CFbackup-*.tar.gz"))
+    assert len(archives) == 2 and (mount / "CFMgr/backup" / name) in archives
     with tarfile.open(
-        fileobj=io.BytesIO(gzip.decompress((mount / "CFBackup" / name).read_bytes()))
+        fileobj=io.BytesIO(
+            gzip.decompress((mount / "CFMgr/backup" / name).read_bytes())
+        )
     ) as archive:
         assert archive.getnames() == ["manifest", "inventory", "p00000001", "p00000002"]
         captured_config = archive.extractfile("p00000001").read()
@@ -449,7 +456,10 @@ def test_manual_create_real_store_capture_verify_publish_and_history(creation, s
     assert after["generation"] == before["generation"] + 1
     assert after["backup"]["last_backup"]["archive_id"]
     assert not (ram / "context").exists()
-    assert not list((mount / "CFBackup").glob(".create.*"))
+    assert not list((mount / "CFMgr/backup").glob(".create.*"))
+    assert (diagnostics / "report").read_bytes() == b"diagnostic sibling\n"
+    assert (mount / "CFMgr/foreign").read_bytes() == b"foreign sibling\n"
+    assert (mount / "CFMgr").stat().st_mode & 0o777 == 0o755
     routes = (ram / "routes").read_text().splitlines()
     for mode in (
         "store-archive-plan",

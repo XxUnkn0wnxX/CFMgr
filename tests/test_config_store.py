@@ -691,7 +691,9 @@ cfmgr_config_store "$@"
     sys.platform != "linux",
     reason="actual Linux unresolved mutator retains inherited lock",
 )
-@pytest.mark.parametrize("mode", ["store-move", "store-backup-mkdir"])
+@pytest.mark.parametrize(
+    "mode", ["store-move", "store-backup-mkdir", "store-backup-leaf-mkdir"]
+)
 def test_linux_owned_mutator_keeps_lock_after_controller_closes(
     shell, tools, store_fixture, tmp_path, mode
 ):
@@ -721,7 +723,7 @@ cfmgr_store_fd_is() {{ [ "$1" -ef "/proc/self/fd/$2" ]; }}
 exec 0<>"$1"
 "$2" -n 0 || exit 90
 cfmgr_config_lock_fd0=1 cfmgr_store_lock=$1
-exec 6<"$3"
+exec 6<"$3" 7<"$3"
 cfmgr_prerequisites_now; cfmgr_store_deadline=$((cfmgr_probe_now+5))
 # Deliberate ownership uncertainty after initial real child identity capture;
 # no signal/reap is authorized. The real async exec must still hold FD0.

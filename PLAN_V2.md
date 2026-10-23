@@ -142,7 +142,8 @@ package; that stage does not establish remote acquisition or update-source trust
 | `/opt/var/tmp/cfmgr/` | Larger tunnel download/restore staging and recovery on verified Entware. |
 | `/opt/etc/logrotate.d/` | Separate owned feature fragments; never replace Scribe/global rules. |
 | `/tmp/cfmgr/` | Private bounded boot-local locks, queues, status, discovery cache, retry state, temporary credential handoff and failure evidence. No frequent JFFS cache writes. |
-| `<selected-mount>/CFBackup/` | Manual data-only archives at the chosen mounted drive's root, outside its Entware folder. |
+| `<selected-mount>/CFMgr/backup/` | Manual data-only archives below the drive's shared CFMgr data directory, outside its Entware folder. |
+| `<Entware-mount>/CFMgr/diagnostics/` | Automatically resolved diagnostic destination; an optional configured directory may override it. Capture remains separately gated. |
 
 Preserve shared parent permissions. Resolve aliases such as `/etc/cloudflared` only through verified canonical storage; a bare `/etc`, stale `/opt` directory, wrong replacement volume, JFFS or RAM filesystem is not a fallback for Entware data.
 
@@ -218,7 +219,8 @@ Detect retained setup and incomplete guards **before** generating defaults. Miss
 | Check for CFMgr updates | On. |
 | Auto-update CFMgr | Off; requires saved explicit opt-in. |
 | Developer mode | `developer=false`, manual config editing only. |
-| Developer diagnostics | `manager.developer_log_directory=null`; a manually configured mounted directory receives `developer.log` and CFMgr Scribe-log copies only while developer mode is On. Feature On/Off does not suppress capture; the user manages destination retention. |
+| Diagnostic destination | `manager.developer_log_directory=null` means Auto: resolve `<Entware-mount>/CFMgr/diagnostics` on verified mounted storage and display the effective path. A fully started CLI exposes an optional custom directory and return-to-Auto in Advanced options. Navigation alone creates no directory or logs. |
+| Diagnostic capture | Developer mode enables ongoing verbose main/module/child capture and dedicated Scribe-log copies independently of feature On/Off. Explicit health/doctor/diagnostic runs display their report and save sanitized run information when safe storage is available, independently of developer mode; the user manages destination retention. |
 | Manager source selection | One code-defined repository/branch pair supplies normal defaults (`develop` temporarily, `main` on the approved return); only developer mode honors configured repository/branch/full-commit overrides. |
 | External amtm update permission | Off if that optional supported integration is later selected. |
 
@@ -389,6 +391,13 @@ activation/settings, enqueue publication or replace operational success/history
 with a diagnostic result. No package install, update, service action, API write or
 automatic repair. Private synthetic probe files/children are bounded and cleaned
 only by proved ownership; no hard deadline claim without a working supervisor.
+
+An explicit health/doctor/diagnostic invocation also requests saving its sanitized
+report/run information under the diagnostic destination described in S13.14,
+independently of developer mode and full CLI startup. These diagnostic-destination
+writes grant no settings, provider, service, repair or operational-history change.
+Unavailable capture never prevents the terminal report; report the failed or
+incomplete save honestly. This is separate from ongoing developer capture.
 
 Presentation is a one-shot text page with a small htop-inspired resource/address
 header and diagnostic-table layout, not a continuously refreshing monitor. Use
@@ -1098,7 +1107,7 @@ Permanent invalid config, incompatible artifact or missing essential capability 
 
 | ID | Subgoal | Required result |
 | --- | --- | --- |
-| S13.01 | Three private logs/native notices | Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit developer diagnostics under S13.14. |
+| S13.01 | Three private logs/native notices | Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit diagnostic capture under S13.14. |
 | S13.02 | First setup versus saved preference | Only completed fresh ready setup initializes own logs; pending/maintenance-only/opt-out remain inactive. |
 | S13.03 | Readiness and independence | Verified mounted Entware /opt/var/log paths and actual Scribe/base/schedule/include readiness, graceful no-file operation and service-Off rotation retention. |
 | S13.04 | Cloudflared tuning | Per-file size/total-count including live file, shown Enter defaults and supported time/age options; uncompressed log history and no aggregate-byte quota. |
@@ -1111,7 +1120,7 @@ Permanent invalid config, incompatible artifact or missing essential capability 
 | S13.11 | Optional external viewing | Supported bounded owned-path registry only if selected; no fake routing/private patches or CFMgr WebUI requirement. |
 | S13.12 | Explicit all-service re-detect | Ready Scribe enables logging for every configured On service, overriding prior logging Off only for this explicit action; reuse policies or initialize defaults. |
 | S13.13 | Prominent concise event format | Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression; normal/developer credential references identify type/purpose and mask any displayed value. |
-| S13.14 | Developer diagnostic capture | Developer-mode-only main-process/all-module trace capture and dedicated Scribe-log copies in a global-config directory, independent of feature On/Off, with redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
+| S13.14 | Developer diagnostic capture | Developer-gated main-process/all-module tracing and dedicated Scribe-log copies, plus independently requested one-shot Health capture; automatic mounted-drive destination with optional CLI-configured override, redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
 
 ### Credential references in every logging mode
 
@@ -1134,15 +1143,41 @@ records bounded. Developer mode does not grant an unmasked-output exception.
 
 ### Developer diagnostic capture
 
-`manager.developer` is the sole enable gate for developer capture. The global
-private config's `manager.developer_log_directory` selects the destination; its
-fresh value is `null`. Use a user-selected absolute directory on verified mounted
-storage, never a hardcoded developer mount or an implicit JFFS/RAM fallback.
-Developer mode Off creates/appends/copies nothing in that destination. Feature
-On/Off does not suppress developer capture: `developer.log` covers the main CFMgr
+`manager.developer` enables ongoing developer capture. Independently, an explicit
+`--health`, `--doctor` or `--diagnostic` invocation requests its one-shot terminal
+report and sanitized saved report/run information without enabling developer mode.
+Developer Off with no explicit diagnostic invocation creates/appends/copies
+nothing in the diagnostic destination. Feature On/Off does not suppress ongoing
+developer capture: `developer.log` covers the main CFMgr
 process, all modules, child-operation results and applicable trace/verbose output,
 including Off/stop paths, errors and deferred work. Capture observes existing
-activity; it grants no authority to activate features or alter their saved state.
+activity; it grants no authority to activate features or alter their saved state,
+and does not periodically run Health or require a new background daemon.
+
+The global private config's `manager.developer_log_directory` has fresh value
+`null`, meaning Auto. Resolve the actual mounted data volume backing Entware and
+use its drive-level `CFMgr/diagnostics` directory, outside the Entware folder.
+Use `/tmp/mnt` or a verified equivalent `/mnt` namespace; never infer mounted
+storage from a leftover directory, a guessed drive name or an implicit JFFS/RAM
+fallback. Display the resolved effective destination when available. Retain Auto
+as the preference rather than saving a derived drive path during Health.
+
+After full CLI startup, Advanced options shows Auto/custom and the effective
+destination, permits saving a validated absolute custom directory, and permits
+returning to Auto. This is a destination setting, not a developer-mode toggle.
+Opening the menu/displaying the path creates no capture directory or log. Create
+or reuse admitted directories only when explicit diagnostics or enabled developer
+capture needs them. Preserve the shared `CFMgr` parent and sibling backup data;
+backup and diagnostic destinations need not use the same drive.
+
+Standalone Health may use a safely readable saved override without booting the
+full menu. With no readable override, attempt the automatic destination and state
+when configuration could not be read. A known selected custom path that is unsafe
+or unavailable does not silently fall back to another destination. If destination
+or trusted capture prerequisites are unavailable, still print the diagnostic
+report and explain that saving was unavailable or incomplete. Do not rewrite
+configuration, enable developer mode, repair storage or change operational state
+as a consequence of this diagnostic run.
 
 Also preserve copies of CFMgr's dedicated Scribe logs, including eligible current
 and retained log content, regardless of the corresponding feature's On/Off state.
@@ -1151,9 +1186,11 @@ capture has no Scribe dependency for its own `developer.log`; absent dedicated
 source logs are reported accurately, not manufactured. Preserve captured copies
 through source rotation/replacement without deleting destination history.
 
-The developer destination has **no CFMgr rotation, pruning, truncation or automatic
+The diagnostic destination has **no CFMgr rotation, pruning, truncation or automatic
 cleanup policy**. The user manages its contents and retention. Stop new diagnostic
-writes/copies when developer mode is turned Off, preserving existing files. Verify
+writes/copies from ordinary operations when developer mode is turned Off,
+preserving existing files; independently requested one-shot diagnostics remain
+available. Verify
 directory ownership/canonical paths and expected mounted storage before writes;
 on mount loss, unsafe paths, full storage or other I/O failure, report unavailable
 or incomplete capture without writing into a stale mountpoint or changing the
@@ -1163,7 +1200,7 @@ copy work bounded even though destination retention is user-managed.
 Apply the credential masking/type/purpose rules above to traces and log copies;
 redact all other sensitive payloads. Do not use unrestricted shell xtrace or copy
 unrelated router/system logs. Diagnostic events need timestamps, component/operation context and truthful
-results useful for prolonged beta investigation. This explicit developer channel
+results useful for prolonged beta investigation. This explicit diagnostic channel
 does not increase normal syslog/Scribe verbosity or change release/update guards.
 
 ### Independent output and preference
@@ -1370,7 +1407,7 @@ uiScribe is optional and outside required delivery unless a supported integratio
 | ID | Subgoal | Required result |
 | --- | --- | --- |
 | S14.01 | Manual CFMgr-only archives | Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
-| S14.02 | Mounted-drive picker | Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
+| S14.02 | Mounted-drive picker | Explicit numbered exact mount identity including one drive, CFMgr/backup directory, no stale/fallback destination. |
 | S14.03 | Archive selection/actions | Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
 | S14.04 | Local date naming | Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
 | S14.05 | Verified-new-first retention | Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
@@ -1387,7 +1424,7 @@ Backups cover **CFMgr's own data/setup only**, using native unencrypted `.tar.gz
 
 Manual create/list/inspect/verify/restore/delete only; no automatic user archive, backup cron or calendar tiers. Internal transaction recovery copies are separate, require no configured backup drive and are not pruned as archives.
 
-Enumerate actual usable mounted drives under `/tmp/mnt` (`/mnt` only if verified same namespace), not leftover directories. Show vertical numbered label/full-mountpoint choices and `e`; require explicit choice even for one drive. Safely handle spaces/duplicate labels. Save exact mount identity/path, recheck each use and require reselection when missing/changed; never fallback silently. Create/reuse root-level `CFBackup` only after selection/checks, preserving unrelated content.
+Enumerate actual usable mounted drives under `/tmp/mnt` (`/mnt` only if verified same namespace), not leftover directories. Show vertical numbered label/full-mountpoint choices and `e`; require explicit choice even for one drive. Safely handle spaces/duplicate labels. Save exact mount identity/path, recheck each use and require reselection when missing/changed; never fallback silently. Create/reuse `<selected-mount>/CFMgr/backup` only after selection/checks. Independently admit the shared `CFMgr` parent and `backup` child as real directories on that same mounted volume, reject substituted links/mounts, and preserve unrelated contents and sibling diagnostic data. Backup retention/deletion owns only its admitted backup content; it never removes or recursively changes the shared parent or its siblings. Backup selection remains independent of the Entware drive used for automatic diagnostics. The development-only former `CFBackup` layout has no compatibility, discovery or migration requirement; do not move or delete existing external data as part of the code change.
 
 Restore may choose another source drive without silently changing saved backup destination. List recognized archives newest first with short numbered local-date labels; show detailed manifest/feature/effect review after selection. Empty lists, invalid input, `e`/Ctrl+C and no usable drive return cleanly. Native menus need no `fzf` installation/detection.
 
@@ -1409,7 +1446,7 @@ Manifest records creation timestamp/UTC reference, local calendar date, timezone
 | Compact historical observations and advisory source fault/repair intent | History only, never current auth/health, queued work, process ownership or permission to reenable. |
 | Existing remote resource references and required owned allowlisted external YAML data | Preserve references; backup cannot resurrect deleted remote objects. Inventory other YAML dependencies and report foreign/missing files/remapping. |
 
-Exclude manager/modules/helpers/code, Cloudflared binaries/`.old`, executable hooks/jobs/generated rotation fragments, whole syslog, foreign data, live setup-state/transaction journals/recovery copies, active auth/runtime guards, PIDs/locks/queues/cooldowns/retry_due/current-success cache, downloads/staging and CFBackup itself. Explicit owned `.bak` and certificate recovery copies are durable user data, distinct from excluded live journals. Do not archive all of `/opt/etc/cloudflared/` indiscriminately.
+Exclude manager/modules/helpers/code, Cloudflared binaries/`.old`, executable hooks/jobs/generated rotation fragments, whole syslog, foreign data, live setup-state/transaction journals/recovery copies, active auth/runtime guards, PIDs/locks/queues/cooldowns/retry_due/current-success cache, downloads/staging and the shared drive-level `CFMgr` backup/diagnostics directory itself. Explicit owned `.bak` and certificate recovery copies are durable user data, distinct from excluded live journals. Do not archive all of `/opt/etc/cloudflared/` indiscriminately.
 
 No provider call is required merely to archive local data. Missing optional management certificate or intentionally uninstalled binary is not a configured UUID+JSON data-backup failure. Missing required trustworthy authority/full YAML/runtime payload without valid recovery is a real failure; no silent omission. Whole YAML inclusion alone does not prove every referenced external file is portable or backed up.
 
@@ -1417,7 +1454,7 @@ No provider call is required merely to archive local data. Missing optional mana
 
 Validate selected source scopes, backup mount, tools/space and coherent committed configuration. Refuse/defer a damaged, quarantined or active incomplete setup/update/restore transaction. Use documented non-deadlocking locks for config, writers and rotation; capture consistent data without unnecessary tunnel restart.
 
-Build a private temporary archive on the selected backup filesystem with relative allowlisted paths and a versioned manifest containing state, chronology, modes and hashes. Verify readability and all required payload hashes, recheck mount, then atomically name it in CFBackup. Only then report success and prune. Compression failure, mount loss or cancellation removes only this operation's safe owned temporary data and retains old archives/recovery.
+Build a private temporary archive on the selected backup filesystem with relative allowlisted paths and a versioned manifest containing state, chronology, modes and hashes. Verify readability and all required payload hashes, recheck mount, then atomically name it in `CFMgr/backup`. Only then report success and prune. Compression failure, mount loss or cancellation removes only this operation's safe owned temporary data and retains old archives/recovery.
 
 Native-only data needs no tunnel folder; backup destination need not be Entware. Actual tool prerequisites still apply. Required tunnel data/history separately needs its verified storage. No automatic manual archive during setup/update/migration/restore.
 

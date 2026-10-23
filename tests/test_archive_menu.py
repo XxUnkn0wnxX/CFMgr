@@ -149,7 +149,7 @@ def test_browser_uses_alternate_source_and_reuses_verified_details_effects(
     assert b"Deletion cancelled; archive preserved" in result.stdout
     assert [line.split()[0] for line in result.actions] == ["list", "inspect"]
     assert all(b"/tmp/mnt/Drive one".hex() in line for line in result.actions)
-    assert b"Saved destination: /tmp/mnt/Drive two/CFBackup" in result.stdout
+    assert b"Saved destination: /tmp/mnt/Drive two/CFMgr/backup" in result.stdout
 
 
 @pytest.mark.parametrize("scenario", ["changed", "pending", "unresolved"])

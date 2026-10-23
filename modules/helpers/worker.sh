@@ -1132,7 +1132,7 @@ archive-directory)
 	case $3 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$3" -ge 8192 ] && [ "$3" -le 65536 ] || exit 2
 	# Native ls allocates its entry list before output. The child-only address
-	# space limit bounds that allocation even when CFBackup has foreign files.
+	# space limit bounds that allocation even when CFMgr/backup has foreign files.
 	# shellcheck disable=SC3045 # Native BusyBox ash supports this fixed limit.
 	ulimit -v "$3" || exit 2
 	cd "$1" || exit 1
@@ -1532,8 +1532,13 @@ store-backup-blkid)
 	;;
 store-backup-mkdir)
 	[ "$#" -eq 0 ] && [ -d /proc/self/fd/6 ] || exit 2
-	[ ! -e /proc/self/fd/6/CFBackup ] && [ ! -L /proc/self/fd/6/CFBackup ] || exit 1
-	exec "$tool" /proc/self/fd/6/CFBackup
+	[ ! -e /proc/self/fd/6/CFMgr ] && [ ! -L /proc/self/fd/6/CFMgr ] || exit 1
+	exec "$tool" /proc/self/fd/6/CFMgr
+	;;
+store-backup-leaf-mkdir)
+	[ "$#" -eq 0 ] && [ -d /proc/self/fd/7 ] || exit 2
+	[ ! -e /proc/self/fd/7/backup ] && [ ! -L /proc/self/fd/7/backup ] || exit 1
+	exec "$tool" /proc/self/fd/7/backup
 	;;
 store-backup-chmod)
 	[ "$#" -eq 0 ] && [ -d /proc/self/fd/7 ] || exit 2

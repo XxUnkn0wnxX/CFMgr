@@ -4056,7 +4056,7 @@ BEGIN {
         rest=lines[1]
         for(i=1;i<=9;i++) {sub(/^ +/,"",rest);if(!match(rest,/^[^ ]+/))hb_fail();a[i]=substr(rest,1,RLENGTH);rest=substr(rest,RLENGTH+1)}
         sub(/^ +/,"",rest)
-        if(rest!=point "/CFBackup" || a[1]!~/^[1-9][0-9]*$/ || length(a[2])!=10 || substr(a[2],1,1)!="d" || a[3]!~/^[1-9][0-9]*$/ || a[4]!~/^[0-9]+$/ || a[5]!~/^[0-9]+$/ || a[6]!~/^(0|[1-9][0-9]*)$/)hb_fail()
+        if(rest!=point "/CFMgr/backup" || a[1]!~/^[1-9][0-9]*$/ || length(a[2])!=10 || substr(a[2],1,1)!="d" || a[3]!~/^[1-9][0-9]*$/ || a[4]!~/^[0-9]+$/ || a[5]!~/^[0-9]+$/ || a[6]!~/^(0|[1-9][0-9]*)$/)hb_fail()
         print "CFMGR-BACKUP-FOLDER 1 observed END";exit
     }
     raw=hb_read(input,8192);if(split(raw,lines,"\n")!=2 || split(lines[1],a,"\t")!=9)hb_fail()
@@ -4087,6 +4087,25 @@ cfmgr_health_backup_recheck() {
 		if IFS= read -r cfmgr_health_backup_extra || [ -n "$cfmgr_health_backup_extra" ]; then return 1; fi
 	} <"$cfmgr_probe_stdout"
 	[ "$cfmgr_health_backup_current" = "$cfmgr_health_backup_mount_record" ]
+}
+
+cfmgr_health_backup_folder_observe() {
+	# Observe both components without following a substituted shared parent or
+	# accepting a nested mount as the selected drive's backup folder.
+	for cfmgr_health_backup_component in "$cfmgr_health_backup_point/CFMgr" "$cfmgr_health_backup_point/CFMgr/backup"; do
+		[ -d "$cfmgr_health_backup_component" ] && [ ! -L "$cfmgr_health_backup_component" ] || return 1
+		cfmgr_health_canonical "$cfmgr_health_backup_component" "$cfmgr_health_backup_component" || return $?
+		[ "$cfmgr_health_resolved" = "$cfmgr_health_backup_component" ] || return 1
+		cfmgr_health_run health-mount /usr/bin/awk "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_health_backup_component" || return $?
+		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+		IFS= read -r cfmgr_health_backup_component_mount <"$cfmgr_probe_stdout" || return 1
+		[ "$cfmgr_health_backup_component_mount" = "$cfmgr_health_backup_mount_record" ] || return 1
+	done
+	cfmgr_health_run health-metadata /bin/ls "$cfmgr_health_backup_point/CFMgr/backup" || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ] || return 1
+	cfmgr_health_backup_folder_meta=$cfmgr_probe_stdout
+	cfmgr_health_run health-backup-observe /usr/bin/awk "$cfmgr_source/modules/status.sh" folder "$cfmgr_health_backup_plan" "$cfmgr_health_backup_folder_meta" - || return $?
+	[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]
 }
 
 cfmgr_health_backup_collect() {
@@ -4131,7 +4150,7 @@ cfmgr_health_backup_collect() {
 	if [ "$cfmgr_health_backup_access" = ro ]; then
 		cfmgr_health_row backup.access WARN 'The identified destination is mounted read-only; archive creation cannot write there.' current 'Review the drive mount state before creating an archive.' backup
 	else
-		cfmgr_health_row backup.access UNKNOWN "The identified mount allows writes and CFBackup=$cfmgr_health_backup_folder; actual write access, free space and archive contents were not tested." current 'Use the explicit Backup workflow when needed.' backup
+		cfmgr_health_row backup.access UNKNOWN "The identified mount allows writes and CFMgr/backup=$cfmgr_health_backup_folder; actual write access, free space and archive contents were not tested." current 'Use the explicit Backup workflow when needed.' backup
 	fi
 }
 
@@ -4167,15 +4186,12 @@ cfmgr_health_backup_observe() {
 	fi
 	[ "$cfmgr_health_backup_match" = matched ] || return 1
 	cfmgr_health_backup_folder=unverified
-	if cfmgr_health_run health-metadata /bin/ls "$cfmgr_health_backup_point/CFBackup" && [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
-		cfmgr_health_backup_folder_meta=$cfmgr_probe_stdout
-		if cfmgr_health_run health-backup-observe /usr/bin/awk "$cfmgr_source/modules/status.sh" folder "$cfmgr_health_backup_plan" "$cfmgr_health_backup_folder_meta" - && [ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then
-			cfmgr_health_backup_folder=observed
-		else [ "$?" != 3 ] || return 3; fi
+	if cfmgr_health_backup_folder_observe; then
+		cfmgr_health_backup_folder=observed
 	else [ "$?" != 3 ] || return 3; fi
 	cfmgr_health_backup_recheck || return $?
 	cfmgr_health_backup_state=PASS
-	cfmgr_health_backup_detail="Selected mountpoint, volume UUID, filesystem and root matched across repeated identity observations; mount flags=$cfmgr_health_backup_access/$cfmgr_health_backup_execution, CFBackup=$cfmgr_health_backup_folder. Writability and archive validity were not tested."
+	cfmgr_health_backup_detail="Selected mountpoint, volume UUID, filesystem and root matched across repeated identity observations; mount flags=$cfmgr_health_backup_access/$cfmgr_health_backup_execution, CFMgr/backup=$cfmgr_health_backup_folder. Writability and archive validity were not tested."
 }
 
 cfmgr_status_awk_health_hooks_authority() {

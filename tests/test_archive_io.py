@@ -32,7 +32,7 @@ def archive(tmp_path, shell):
     ram = tmp_path / "ram"
     ram.mkdir()
     mount = tmp_path / "drive"
-    stage = mount / "CFBackup" / "stage"
+    stage = mount / "CFMgr/backup" / "stage"
     stage.mkdir(parents=True)
     for name in ("../backup", "storage", "execution", "config"):
         body = (ROOT / f"modules/lib/{name}.sh").read_text()
@@ -169,7 +169,7 @@ def archive(tmp_path, shell):
 
 SETUP = r"""
 support=$1 ram=$2 mount=$3 stage=$4
-cfmgr_test_ram=$ram cfmgr_test_backup=$mount/CFBackup
+cfmgr_test_ram=$ram cfmgr_test_backup=$mount/CFMgr/backup
 shift 4
 . "$support/modules/lib/config.sh"
 . "$support/modules/lib/storage.sh"
@@ -194,9 +194,9 @@ EOF_STAGE_INODE
 cfmgr_probe_serial=0
 if [ "$TEST_LINUX" = 1 ]; then cfmgr_prerequisites_now || exit 80; else cfmgr_probe_now=100; fi
 cfmgr_archive_deadline=$((cfmgr_probe_now+10))
-exec 5<"$ram" 6<"$mount" 7<"$mount/CFBackup"
+exec 5<"$ram" 6<"$mount" 7<"$mount/CFMgr/backup"
 cfmgr_store_attachment_ok() { [ ! -e "$ram/cancel" ] && [ -d "$ram" ]; }
-cfmgr_backup_attached() { [ -d "$mount/CFBackup" ] && [ ! -L "$mount/CFBackup" ]; }
+cfmgr_backup_attached() { [ -d "$mount/CFMgr/backup" ] && [ ! -L "$mount/CFMgr/backup" ]; }
 cfmgr_store_native_tool() { return 0; }
 cfmgr_prerequisites_run() {
     mode=$1 context=$2 sh=$3 helper=$4 env=$5 awk=$6 sleep=$7 wc=$8 tool=$9
@@ -319,7 +319,7 @@ def run(archive, shell, script, *arguments, timeout=15, profile=False):
             "CFMGR_TEST_PROFILE_PATH": str(profile_path),
         }
     if sys.platform == "darwin":
-        script = script.replace("/proc/self/fd/7", str(mount / "CFBackup"))
+        script = script.replace("/proc/self/fd/7", str(mount / "CFMgr/backup"))
     command_script = SETUP + pause + script
     if profile:
         command_script = profile_prefix + instrumented_setup + pause + script
@@ -539,7 +539,7 @@ def test_browser_discovery_uses_bounded_prefix_and_keeps_verification_separate(
 
     raw, _payloads = make_archive(archive, compact=True)
     content = raw.read_bytes()
-    folder = archive[2] / "CFBackup"
+    folder = archive[2] / "CFMgr/backup"
     (folder / "CFbackup-001.tar.gz").write_bytes(gzip.compress(content[:1024], mtime=0))
     # Metadata can be recognized without walking a large or valid tail. Only
     # selecting and fully verifying an immutable snapshot can admit its data.
@@ -583,7 +583,7 @@ def test_browser_delete_refuses_changed_bytes_and_lost_attachment_before_snapsho
 ):
     import hashlib
 
-    source = archive[2] / "CFBackup/CFbackup-123.tar.gz"
+    source = archive[2] / "CFMgr/backup/CFbackup-123.tar.gz"
     original = b"selected archive bytes\n"
     source.write_bytes(original)
     script = r"""
@@ -591,11 +591,11 @@ cfmgr_archive_deadline=$((cfmgr_probe_now+60))
 cfmgr_browser_name=CFbackup-123.tar.gz cfmgr_browser_operation=delete
 cfmgr_browser_expected_inode=$1 cfmgr_browser_expected_bytes=$2 cfmgr_browser_expected_sha=$3
 if cfmgr_archive_browser_selected; then exit 81; fi
-[ -f "$mount/CFBackup/$cfmgr_browser_name" ] && [ ! -e "$stage/selected.gz" ] || exit 82
+[ -f "$mount/CFMgr/backup/$cfmgr_browser_name" ] && [ ! -e "$stage/selected.gz" ] || exit 82
 cfmgr_browser_expected_sha=$4
 cfmgr_backup_attached() { return 1; }
 if cfmgr_archive_browser_selected; then exit 83; fi
-[ -f "$mount/CFBackup/$cfmgr_browser_name" ] && [ ! -e "$stage/selected.gz" ] || exit 84
+[ -f "$mount/CFMgr/backup/$cfmgr_browser_name" ] && [ ! -e "$stage/selected.gz" ] || exit 84
 """
     passed(
         run(
@@ -861,9 +861,9 @@ def test_child_anchor_ignores_replaced_original_mount_path(archive, shell):
             shell,
             r"""
 mv "$mount" "$ram/old-drive"
-mkdir -p "$mount/CFBackup/stage"
+mkdir -p "$mount/CFMgr/backup/stage"
 "$TEST_SH" "$support/modules/helpers/worker.sh" archive-copy-blocks "$TEST_DD" "$ram" "$ram/input" /proc/self/fd/7/stage "$stage" copy 0 1 && exit 81
-[ ! -e "$stage/copy" ] && [ ! -e "$ram/old-drive/CFBackup/stage/copy" ]
+[ ! -e "$stage/copy" ] && [ ! -e "$ram/old-drive/CFMgr/backup/stage/copy" ]
 """,
         )
     )

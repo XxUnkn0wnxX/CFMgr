@@ -420,6 +420,8 @@ def test_manifest_and_inventory_decimal_math_never_rounds(tmp_path):
         "bad-date",
         "backslash",
         "unsafe-role",
+        "backup-tree",
+        "diagnostics-tree",
     ],
 )
 def test_metadata_rejections_use_bounded_decoder_and_exact_grammar(
@@ -464,6 +466,12 @@ def test_metadata_rejections_use_bounded_decoder_and_exact_grammar(
         )
     elif mutation == "unsafe-role":
         inventory = inventory.replace(b"data.cloudflared.json", b"data.executable")
+    elif mutation in ("backup-tree", "diagnostics-tree"):
+        component = "backup" if mutation == "backup-tree" else "diagnostics"
+        inventory = inventory.replace(
+            b"etc/cloudflared/profile.json".hex().encode(),
+            f"etc/cloudflared/CFMgr/{component}/profile.json".encode().hex().encode(),
+        )
     if mutation == "bad-date":
         manifest = (
             (archive[3] / "manifest").read_bytes().replace(b"2024-02-29", b"2023-02-29")
@@ -659,7 +667,7 @@ def test_inode_fallbacks_retain_ram_published_and_append_checks(
 ):
     archive = padded_inode_archive
     ram, mount, stage = archive[1:4]
-    paths = (ram / "receipt", mount / "CFBackup/published", stage / "owned")
+    paths = (ram / "receipt", mount / "CFMgr/backup/published", stage / "owned")
     for path in paths:
         path.write_bytes(b"retained content")
     result = run(

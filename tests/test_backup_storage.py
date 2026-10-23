@@ -139,7 +139,7 @@ cfmgr_backup_pin_selected() {
 cfmgr_backup_prepare_folder() {
     [ "$cfmgr_config_lock_fd0" = 1 ] || return 99
     cfmgr_backup_attached || return 1
-    if [ ! -d "$cfmgr_backup_mount/CFBackup" ]; then mkdir "$cfmgr_backup_mount/CFBackup"; fi
+    if [ ! -d "$cfmgr_backup_mount/CFMgr/backup" ]; then mkdir -p "$cfmgr_backup_mount/CFMgr/backup"; fi
 }
 cfmgr_backup_check_saved() {
     cfmgr_backup_availability=none
@@ -185,7 +185,7 @@ def test_backend_save_is_scoped_noop_and_saved_missing_is_readable(
         b'"destination":' + json.dumps(DESTINATION, separators=(",", ":")).encode(),
     )
     assert (source / "config").read_bytes() == expected
-    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    assert (ram / "Drive with spaces/CFMgr/backup").is_dir()
     noop = run_store(
         shell, tools, backup_fixture, "save", *selection(), script=BACKUP_ADAPTER
     )
@@ -212,7 +212,7 @@ def test_drive_loss_before_publication_preserves_inert_folder_and_jffs_recovery(
     assert stopped.returncode == 1, (stopped.stdout, stopped.stderr)
     assert stopped.stdout == b"CFMGR-BACKUP 1 recovery 0 1 unavailable 0 END\n"
     assert (source / "config").read_bytes() == before
-    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    assert (ram / "Drive with spaces/CFMgr/backup").is_dir()
     assert list(source.glob(".config-save*"))
     # Recovery is native/JFFS-only; it never calls backup_pin/preparation or
     # replays the candidate while the exact old generation remains live.
@@ -222,7 +222,7 @@ def test_drive_loss_before_publication_preserves_inert_folder_and_jffs_recovery(
     assert recovered.returncode == 0, (recovered.stdout, recovered.stderr)
     assert recovered.stdout == b"CFMGR-BACKUP 1 recovered 1 0 none 0 END\n"
     assert (source / "config").read_bytes() == before
-    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    assert (ram / "Drive with spaces/CFMgr/backup").is_dir()
     assert not list(source.glob(".config-save*"))
 
 
@@ -255,7 +255,7 @@ def test_drive_loss_after_publication_preserves_candidate_until_verified_recover
     guard = source / ".config-save"
     assert (guard / "old").read_bytes() == before
     intent = (guard / "intent").read_bytes()
-    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    assert (ram / "Drive with spaces/CFMgr/backup").is_dir()
     # An exposed recovery flush error cannot erase evidence or claim recovery.
     failed = run_store(
         shell,
@@ -280,7 +280,7 @@ def test_drive_loss_after_publication_preserves_candidate_until_verified_recover
     )
     assert b"CFMGR-BACKUP-DEST 1 " in recovered.stdout
     assert (source / "config").read_bytes() == candidate
-    assert (ram / "Drive with spaces/CFBackup").is_dir()
+    assert (ram / "Drive with spaces/CFMgr/backup").is_dir()
     assert not list(source.glob(".config-save*"))
 
 
@@ -298,14 +298,14 @@ def test_stale_selection_and_read_only_check_never_prepare_folder(
         script=BACKUP_ADAPTER,
     )
     assert result.returncode == 1 and b" unavailable " in result.stdout
-    assert not (ram / "Drive with spaces/CFBackup").exists()
+    assert not (ram / "Drive with spaces/CFMgr/backup").exists()
     checked = run_store(shell, tools, backup_fixture, "check", script=BACKUP_ADAPTER)
     assert (
         checked.returncode == 0
         and checked.stdout == b"CFMGR-BACKUP 1 checked 1 0 none 0 END\n"
     )
     assert (source / "config").read_bytes() == before
-    assert not (ram / "Drive with spaces/CFBackup").exists()
+    assert not (ram / "Drive with spaces/CFMgr/backup").exists()
 
 
 def test_busy_or_pending_save_never_prepares_folder(shell, tools, backup_fixture):
@@ -321,13 +321,13 @@ def test_busy_or_pending_save_never_prepares_folder(shell, tools, backup_fixture
             shell, tools, backup_fixture, "save", *selection(), script=BACKUP_ADAPTER
         )
         assert result.returncode == 1 and b"busy 0 0 unavailable" in result.stdout
-    assert not (ram / "Drive with spaces/CFBackup").exists()
+    assert not (ram / "Drive with spaces/CFMgr/backup").exists()
     (source / ".config-save").mkdir(mode=0o700)
     pending = run_store(
         shell, tools, backup_fixture, "save", *selection(), script=BACKUP_ADAPTER
     )
     assert pending.returncode == 1 and b"recovery 0 1 unavailable" in pending.stdout
-    assert not (ram / "Drive with spaces/CFBackup").exists()
+    assert not (ram / "Drive with spaces/CFMgr/backup").exists()
     assert (source / "config").read_bytes() == before
 
 
@@ -387,6 +387,6 @@ cfmgr_backup_action "$@"
             assert bytes.fromhex(fields[8]).decode() == records[index]
             assert fields[9:] == ["END"]
     assert result.stderr == b""
-    assert not (ram / "Drive with spaces/CFBackup").exists()
+    assert not (ram / "Drive with spaces/CFMgr/backup").exists()
     assert not (ram / "config.lock").exists()
     assert json.loads((source / "config").read_bytes())["backup"]["destination"] is None

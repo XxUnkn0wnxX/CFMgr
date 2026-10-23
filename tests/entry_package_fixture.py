@@ -500,8 +500,8 @@ def full_health_package(
         (facts / "cmdline").write_bytes(
             b"\0".join(item.encode() for item in argv) + b"\0"
         )
-    backup = mount / "CFBackup"
-    backup.mkdir()
+    backup = mount / "CFMgr/backup"
+    backup.mkdir(parents=True)
     value["backup"]["destination"] = {
         "schema": 1,
         "mountpoint": str(mount),

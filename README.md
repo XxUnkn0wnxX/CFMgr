@@ -10,7 +10,7 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 25 of 157 subgoals accepted (15.9%).**
+**0 of 16 main goals complete (0%); 24 of 157 subgoals accepted (15.3%).**
 The development code provides trusted-local fresh installation, private passive
 defaults, scoped checks for shared tools and tunnel DNS, normal dependency repair,
 confirmed selected dependency reinstall, Entware storage-loss handling and a
@@ -23,8 +23,8 @@ Typed configuration separates saved settings, credentials and observations while
 preserving legacy configurations and unrelated values during scoped Saves.
 CFMgr update preferences can be reviewed and saved through Advanced options,
 with coupled Check/Auto settings and saved/effective status. Backup storage can
-be explicitly selected and saved, with exact drive checks and safe root-level
-`CFBackup` creation or reuse. Manual unencrypted data-only archives capture CFMgr
+be explicitly selected and saved, with exact drive checks and safe
+`CFMgr/backup` creation or reuse beneath the selected drive. Manual unencrypted data-only archives capture CFMgr
 settings and eligible history, verify the complete archive before publication, and
 retain 3–5 verified archives from the same backup set. Archives can be browsed
 newest-first on the saved or another selected drive, fully verified, reviewed for
@@ -55,7 +55,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | [Credential recovery](PLAN_V2.md#11-provider-failures-and-credential-repair) | Scoped authorization failure handling and credential repair without unintended reactivation. | Planned |
 | [Hooks and schedules](PLAN_V2.md#12-hooks-schedules-and-boot-safety) | Identifiable owned hook blocks, safe repair, shared scheduling and bounded outage recovery. | Planned |
 | [Logging](PLAN_V2.md#13-logging-and-rotation) | System messages plus optional per-feature Scribe logs and owned logrotate rules. | Planned |
-| [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 8/11 accepted |
+| [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 7/11 accepted |
 | [Uninstall and reset](PLAN_V2.md#15-uninstall-retained-installation-and-reset) | Retained-config uninstall, full wipe and scoped resets that preserve unrelated data. | Planned |
 | [Compatibility and guidance](PLAN_V2.md#16-product-readiness-and-documentation) | Evidence-based support, usable operating guides and validated release readiness. | Planned |
 

@@ -104,8 +104,8 @@ cfmgr_backup_pin_selected() {
 cfmgr_backup_prepare_folder() {
     cfmgr_backup_attached || return 1
     case $cfmgr_backup_mount in
-        '/tmp/mnt/Drive one') backup_folder="$ram/Drive one/CFBackup" ;;
-        '/tmp/mnt/nested/Drive two') backup_folder="$ram/Drive two/CFBackup" ;;
+        '/tmp/mnt/Drive one') backup_folder="$ram/Drive one/CFMgr/backup" ;;
+        '/tmp/mnt/nested/Drive two') backup_folder="$ram/Drive two/CFMgr/backup" ;;
         *) return 1 ;;
     esac
     [ "$scenario" != folder-failure ] || return 1
@@ -126,8 +126,8 @@ def test_installed_archive_browser_uses_real_backend_without_saved_destination(
 ):
     entry, support, ram = installed_backup_entry
     source = ram / "Drive one"
-    folder = source / "CFBackup"
-    folder.mkdir()
+    folder = source / "CFMgr/backup"
+    folder.mkdir(parents=True)
     selected = folder / "CFbackup-2023-11-14.tar.gz"
     selected_bytes = prior_archive(configured(schema2_config))
     selected.write_bytes(selected_bytes)
@@ -187,7 +187,7 @@ def test_installed_archive_browser_uses_real_backend_without_saved_destination(
     adapter += r"""
 cfmgr_store_prepare() {
     cfmgr_browser_test_store_prepare || return $?
-    cfmgr_test_ram=$cfmgr_store_context cfmgr_test_backup="$ram/Drive one/CFBackup"
+    cfmgr_test_ram=$cfmgr_store_context cfmgr_test_backup="$ram/Drive one/CFMgr/backup"
     cfmgr_prerequisites_now || return 1
     cfmgr_store_deadline=$((cfmgr_probe_now+20))
 }
@@ -217,8 +217,8 @@ cfmgr_backup_pin_selected() {
     exec 6<"$cfmgr_backup_mount"
 }
 cfmgr_backup_folder_admit() {
-    [ -d "$ram/Drive one/CFBackup" ] && [ ! -L "$ram/Drive one/CFBackup" ] || return 1
-    exec 7<"$ram/Drive one/CFBackup"
+    [ -d "$ram/Drive one/CFMgr/backup" ] && [ ! -L "$ram/Drive one/CFMgr/backup" ] || return 1
+    exec 7<"$ram/Drive one/CFMgr/backup"
     cfmgr_backup_folder_pinned=1
 }
 """
@@ -280,6 +280,7 @@ cfmgr_prerequisites_now() { IFS=' ' read -r cfmgr_probe_uptime cfmgr_probe_idle 
         in {
             "store-lock",
             "store-backup-mkdir",
+            "store-backup-leaf-mkdir",
             "store-backup-chmod",
         }
         for route in routes
@@ -287,7 +288,7 @@ cfmgr_prerequisites_now() { IFS=' ' read -r cfmgr_probe_uptime cfmgr_probe_idle 
     assert selected.read_bytes() == selected_bytes
     assert sibling.read_bytes() == b"keep unrelated data\n"
     assert (support / "config").read_bytes() == config_before
-    assert not (ram / "Drive two/CFBackup").exists()
+    assert not (ram / "Drive two/CFMgr/backup").exists()
     assert not (ram / "context").exists()
     assert not list(folder.glob(".create.*"))
 
@@ -315,12 +316,12 @@ def test_backup_menu_scoped_save_preserves_edits_during_review_and_reopens(
         os.write(master, b"4\n")
         output.extend(wait_for_output(child, b"Backup drives: 1 available\n"))
         assert (support / "config").read_bytes() == before
-        assert not (ram / "Drive one/CFBackup").exists()
+        assert not (ram / "Drive one/CFMgr/backup").exists()
         os.write(master, b"1\n")
         output.extend(wait_for_output(child, b"Drive number (or e to cancel): "))
         assert b"1) Duplicate Drive | /tmp/mnt/Drive one" in output
         assert b"2) " not in output
-        assert not (ram / "Drive one/CFBackup").exists()
+        assert not (ram / "Drive one/CFMgr/backup").exists()
         os.write(master, b"1\n")
         output.extend(
             wait_for_output(
@@ -328,11 +329,13 @@ def test_backup_menu_scoped_save_preserves_edits_during_review_and_reopens(
             )
         )
         assert (support / "config").read_bytes() == before
-        assert not (ram / "Drive one/CFBackup").exists()
+        assert not (ram / "Drive one/CFMgr/backup").exists()
         os.write(master, b"s\n")
-        output.extend(wait_for_output(child, b"Prepare /tmp/mnt/Drive one/CFBackup"))
+        output.extend(
+            wait_for_output(child, b"Prepare /tmp/mnt/Drive one/CFMgr/backup")
+        )
         assert (support / "config").read_bytes() == before
-        assert not (ram / "Drive one/CFBackup").exists()
+        assert not (ram / "Drive one/CFMgr/backup").exists()
         # Review holds no writer lock. A concurrent editor selects another
         # destination and changes unrelated settings without a generation bump;
         # this reviewed Save may replace only the destination and generation.
@@ -365,7 +368,9 @@ def test_backup_menu_scoped_save_preserves_edits_during_review_and_reopens(
             fcntl.flock(owner, fcntl.LOCK_UN)
         os.write(master, b"y\n")
         output.extend(
-            wait_for_output(child, b"Destination saved: /tmp/mnt/Drive one/CFBackup\n")
+            wait_for_output(
+                child, b"Destination saved: /tmp/mnt/Drive one/CFMgr/backup\n"
+            )
         )
         os.write(master, b"e\ne\n")
         remaining, stderr = child.communicate(timeout=25)
@@ -378,20 +383,21 @@ def test_backup_menu_scoped_save_preserves_edits_during_review_and_reopens(
         os.close(slave)
     assert child.returncode == 0, (bytes(output), stderr)
     assert b"4 Backup / Restore" in output
-    assert b"Prepare /tmp/mnt/Drive one/CFBackup" in output
-    assert (ram / "Drive one/CFBackup").is_dir()
+    assert b"Prepare /tmp/mnt/Drive one/CFMgr/backup" in output
+    assert (ram / "Drive one/CFMgr/backup").is_dir()
     selected_destination = dict(other_destination, mountpoint="/tmp/mnt/Drive one")
     expected = fresh.replace(b'"generation":1', b'"generation":2').replace(
         prior_destination,
         json.dumps(selected_destination, separators=(",", ":")).encode(),
     )
     assert (support / "config").read_bytes() == expected
-    assert not (ram / "Drive two/CFBackup").exists()
+    assert not (ram / "Drive two/CFMgr/backup").exists()
 
     reopened = run_entry(shell, entry, b"4\ne\ne\n")
     assert reopened.returncode == 0, reopened.stderr
     assert (
-        b"Saved destination: /tmp/mnt/Drive one/CFBackup (available)" in reopened.stdout
+        b"Saved destination: /tmp/mnt/Drive one/CFMgr/backup (available)"
+        in reopened.stdout
     )
 
 
@@ -408,7 +414,7 @@ def test_backup_menu_disambiguates_duplicate_labels_and_invalid_choices_are_read
     assert b"2 Create archive" in result.stdout
     assert b"3 Archive preferences" in result.stdout
     assert (support / "config").read_bytes() == before
-    assert not list(ram.glob("Drive */CFBackup"))
+    assert not list(ram.glob("Drive */CFMgr/backup"))
 
 
 def test_backup_menu_default_no_does_not_prepare_or_save(shell, installed_backup_entry):
@@ -418,7 +424,7 @@ def test_backup_menu_default_no_does_not_prepare_or_save(shell, installed_backup
     assert result.returncode == 0, result.stderr
     assert b"Save cancelled; no changes were written." in result.stdout
     assert (support / "config").read_bytes() == before
-    assert not (ram / "Drive one/CFBackup").exists()
+    assert not (ram / "Drive one/CFMgr/backup").exists()
 
 
 def test_backup_menu_interrupt_during_selection_does_not_mutate(
@@ -449,7 +455,7 @@ def test_backup_menu_interrupt_during_selection_does_not_mutate(
         os.close(slave)
     assert child.returncode == -signal.SIGINT, (bytes(output), stderr)
     assert (support / "config").read_bytes() == before
-    assert not list(ram.glob("Drive */CFBackup"))
+    assert not list(ram.glob("Drive */CFMgr/backup"))
 
 
 def test_backup_menu_with_no_drives_keeps_destination_unset(
@@ -467,7 +473,7 @@ def test_backup_menu_with_no_drives_keeps_destination_unset(
     assert b"Backup drives: none available" in result.stdout
     assert b"No backup drives are available." in result.stdout
     assert (support / "config").read_bytes() == before
-    assert not list(ram.glob("Drive */CFBackup"))
+    assert not list(ram.glob("Drive */CFMgr/backup"))
 
 
 def test_backup_menu_reports_save_failure_without_claiming_rollback(
@@ -483,11 +489,11 @@ def test_backup_menu_reports_save_failure_without_claiming_rollback(
     result = run_entry(shell, entry, b"4\n1\n1\ns\ny\ne\ne\n")
     assert result.returncode == 0, result.stderr
     assert (
-        b"Save did not complete; CFBackup may have been prepared and existing contents were preserved."
+        b"Save did not complete; CFMgr/backup may have been prepared and existing contents were preserved."
         in result.stderr
     )
     assert (support / "config").read_bytes() == before
-    assert not (ram / "Drive one/CFBackup").exists()
+    assert not (ram / "Drive one/CFMgr/backup").exists()
 
 
 def test_backup_menu_recovers_interrupted_store_save_without_drive(
@@ -508,7 +514,7 @@ def test_backup_menu_recovers_interrupted_store_save_without_drive(
     assert b"Previous Save recovered; no settings were replayed." in result.stdout
     assert (support / "config").read_bytes() == before
     assert not list(support.glob(".config-save*"))
-    assert (ram / "Drive one/CFBackup").is_dir()
+    assert (ram / "Drive one/CFMgr/backup").is_dir()
 
 
 def test_backup_menu_rejects_malformed_backend_frame_before_selection(shell, tmp_path):

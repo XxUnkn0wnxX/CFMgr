@@ -29,13 +29,110 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a15c84-5da2-7eb2-b960-72ad3e59dd86
 Tenth ID verified 2026-10-21 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a16765-b366-7071-8c80-8f4770f6036c
+Eleventh ID verified 2026-10-23 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Finished checkpoint — S03.09 and S03.10; paused for the day
+## Active checkpoint — shared drive folder for backups; stop before diagnostics
 
-This is the authoritative restart state. The user authorized completion of this
+This is the authoritative restart state as of 2026-10-23. The user explicitly
+requested `<drive>/CFMgr/` with `backup/` and `diagnostics/` children, then directed
+"fix up that implamention then get the gate to pass then pause before we move into
+the main new checkpoint" and confirmed there is no need to keep the development
+`<drive>/CFBackup/` layout. This authorizes the backup implementation/test repair,
+required develop publication and exact CI checkpoint, plus the paired planning
+updates for the confirmed diagnostics design. It does not start S13.14 runtime
+implementation or authorize router/deployment actions or external-data deletion.
+
+Starting code/docs HEAD is `4a06c643d5eaf18b89c1e4e268393ae2a38caef4`, verified
+clean on `develop` and equal to the live remote before edits. Use this checkout;
+preserve ignored evidence and existing worktree registrations. S14.02 is reopened
+for the changed destination contract: **24/157 product subgoals (15.3%)**, **0/16
+main goals (0%)**; Goal 14 is **7/11 accepted**. Other historical accepted behavior
+and receipts remain, with affected consumers requiring regression proof here.
+
+**Package and dependency order:** preserve explicit Backup drive selection and
+saved mount identity; safely admit/create `<selected-mount>/CFMgr/backup`, update
+archive creation/browse/verification/deletion/retention and standalone Health's
+read-only destination observations, then verify the complete consumer scope. No
+legacy layout compatibility/discovery/migration is needed. The shared parent and
+future diagnostics siblings must survive backup operations. This is a single
+coherent S14.02 repair with S14.01/S14.03–S14.08 and S03.09 regression consumers;
+it requires no new product IDs, main goals or diagnostic implementation.
+
+**Ownership:** parent owns all V2 records, README, architecture/security decisions,
+integration, final review and publication. `storage_contract_audit` completed its
+read-only Astra audit with PASS WITH NOTES; its parent/leaf safety finding is
+adopted. `backup_layout` owns `modules/backup.sh`, fixed worker modes in
+`modules/helpers/worker.sh`, the matching fixed-mode allowlist in
+`modules/lib/execution.sh`, read-only backup observations in `modules/status.sh`,
+and their affected tests/fixtures. Parent owns generated package metadata after
+integration. There are no overlapping source writers. `layout_source_review`
+completed a bounded read-only source review with PASS WITH NOTES and no material
+defect; parent agrees. Existing
+FD6 mount and FD7 archive-directory contracts should be retained where practical;
+the intermediate `CFMgr` directory needs independent safe admission, not a blind
+string replacement or recursive mkdir/chmod/delete.
+
+**Gates and stop boundary:** focused available local tests/statics, complete
+affected native Dev selections, final parent review and exact final core Checks
+with all Backup/Manager/Status host/vendor BusyBox jobs. Reuse valid receipts;
+cancel premature owned core runs while Dev diagnosis is pending. Review measured
+test cost; no main-goal full local suite is due. After passing, restore justified
+S14.02 acceptance, update README/audit/checklist/handoff, publish the docs receipt
+and end the turn. Do not begin S13.14 until the user starts that next checkpoint.
+
+**Next actions:** finalize common statics and local receipts, commit/push the
+reviewed package, run the complete affected Dev groups below, then exact core.
+The source/test package is implemented and parent/source review passed. Local
+Backup/menu/configuration, Health and create/retention results are being recorded;
+Linux mount/lock proof remains pending. Confirmed diagnostics requirements are
+updated without implementation. No new CI has run yet. Parent approved FD7 phase reuse and canonical,
+no-symlink, same-mount checks for both components, including final parent relation
+to `/proc/self/fd/7/..`. Retain the admitted leaf's identity; do not add a new
+metadata framework solely for same-volume relocation of that same leaf.
+
+**Complete affected native Dev selections** (whole modules; no optional diagnostic
+cases changed; all runs must use the same final candidate):
+
+- A: `tests/test_backup_storage.py tests/test_backup_menu.py tests/test_archive_menu.py tests/test_archive_io.py tests/test_archive_create.py tests/test_archive_transaction.py tests/test_archive_verify.py tests/test_archive_payload_semantics.py`.
+- B: `tests/test_storage_mounts.py tests/test_config_store.py tests/test_config_schema2.py tests/test_status.py tests/test_archive_capture.py tests/test_archive_history_runtime.py tests/test_archive_payload.py tests/test_execution_tasks.py`.
+- C: `tests/test_prerequisites.py tests/test_storage.py`.
+
+A covers real backup consumers and the changed payload/IO paths. B covers native
+parent/leaf and inherited-lock safety, configuration, complete Health, and shared
+capture/planner/supervisor consumers. C covers the shared worker allowlist and
+native storage foundation. Final core still requires every complete
+Backup/Manager/Status host and vendor BusyBox group, not these selections alone.
+
+**Local receipt before publication:** reviewed dirty tree based on `4a06c643`;
+Homebrew Bash/Python on macOS, not Linux mount/router qualification. Each behavior
+command used `/usr/bin/time -l .venv/bin/python -m pytest -q` with the following
+selections and duration flag; output is retained in the parent/worker tool history.
+
+| Selection | Result | Pytest / wall / user / system seconds |
+| --- | --- | --- |
+| `tests/test_backup_storage.py tests/test_status.py::test_health_backup_actual_worker_identity_and_readonly_limits tests/test_archive_payload_semantics.py::test_payload_plan_excludes_operational_tree_without_banning_managed_names tests/test_archive_verify.py::test_metadata_rejections_use_bounded_decoder_and_exact_grammar --durations=8` | 37 passed, two new Health adapter failures; adapter incorrectly matched the parser operand rather than target path, repaired below. | 26.44 / 27.12 / 14.04 / 8.40 |
+| `tests/test_status.py::test_health_backup_actual_worker_identity_and_readonly_limits --durations=4` | All eight Health variants passed after adapter repair. | 2.75 / 3.47 / 1.93 / 0.90 |
+| `tests/test_backup_menu.py tests/test_archive_menu.py tests/test_config_schema2.py --durations=8` | 101 passed, no skips. | 75.90 / 76.50 / 36.69 / 28.54 |
+| `tests/test_archive_create.py::test_manual_create_real_store_capture_verify_publish_and_history tests/test_archive_transaction.py::test_publish_and_retention_preserve_new_archive_and_retention_limit tests/test_config_store.py::test_linux_owned_mutator_keeps_lock_after_controller_closes tests/test_storage_mounts.py::test_backup_destination_real_mount_safety --durations=6` | Two passed; five explicit Linux-only skips (three inherited-lock variants and two real-mount variants). Actual create 43.78s, retention 3.95s. | 48.12 / 48.67 / 23.64 / 14.61 |
+
+`/usr/bin/time -l .venv/bin/python tools/test.py --checks-only --skip-shellcheck`
+passed planning/links/privacy/whitespace, package consistency, Bash syntax,
+Ruff lint/format, Python compilation and shfmt in 1.35s wall / 0.76s user / 0.37s
+system. Limited `shellcheck --extended-analysis=false` remains **failed**, with
+72 diagnostics whose start lines all map byte-for-byte to unchanged HEAD source
+(zero on added/modified lines), 16.74s wall / 15.17s user / 0.45s system. Private
+JSON evidence is `.tmp/backup-layout-shellcheck.json`; this is not a baseline
+pass or extended-dataflow proof. No optional diagnostic-marked cases changed.
+Focused local cost is within the current budget; full local suite was not due.
+
+## Previous finished checkpoint — S03.09 and S03.10
+
+This records the preceding accepted checkpoint. The user authorized completion of this
 single health checkpoint, scoping the next outcome, and then pausing. S03.09 and
 S03.10 are accepted; no later implementation is authorized. All required workers
 and CI jobs are terminal. Historical candidate, ownership, permission and pending
@@ -97,41 +194,45 @@ all ignored evidence and the existing checkout. Do not rerun passing suites,
 start another block, deploy, release, create a worktree or mutate router state
 as a consequence of this completed checkpoint.
 
-### Next proposed scope — S13.14 developer diagnostic capture; not started
+### Confirmed later scope — S13.14 diagnostic capture; not started
 
-The user requested a concrete next-scope proposal before this pause. Parent source
-review and independent Astra design review recommend **S13.14 only**, conditional
-on the explicit Health decision below. This section is a proposal, not a change
-to specification/checklist requirements or authorization to implement it.
+The user clarified the diagnostics contract on 2026-10-23 and authorized its
+paired plan/checklist update while completing the preceding backup-layout fix.
+S13.14 runtime implementation remains deferred until a fresh start decision after
+that checkpoint. The earlier proposal's manual-directory/developer-only Health
+question is superseded by the confirmed behavior below.
 
-**Complete outcome:** manually configured developer capture records bounded,
-sanitized events from actual entry, Manager, Status, Backup and owned child
-operations, and preserves sanitized copies of eligible dedicated CFMgr Scribe
-logs. Developer Off performs no destination writes; feature On/Off does not gate
-capture. Unsafe/unavailable storage or source content yields honest incomplete
-capture without changing the underlying operation's result. Destination history
-has no CFMgr rotation, pruning, truncation or automatic cleanup.
+**Complete outcome:** developer On records bounded, sanitized verbose events from
+actual entry, Manager, Status, Backup and owned child operations, and preserves
+sanitized copies of eligible dedicated CFMgr Scribe logs. Feature On/Off does not
+gate this capture; developer Off stops ordinary ongoing capture. Independently,
+explicit `--health`, `--doctor` and `--diagnostic` runs print their full report and
+save sanitized report/run information when safe storage is available, without
+enabling developer mode or requiring full CLI startup. No repeated background
+Health runs or new capture daemon is required.
 
-**Pre-start decision:** S13.14 requires main/all-module capture, while this accepted
-Health checkpoint preserves no persistent writes. The specification separately
-forbids operational/history changes but does not settle diagnostic-destination
-writes. The user must explicitly choose and authorize the matching requirements
-clarification before implementation:
+**Confirmed destination and Health boundary:** Auto (`null`) resolves the mounted
+volume backing Entware and displays `<Entware-mount>/CFMgr/diagnostics`. After full
+startup, Advanced options can Save a custom absolute destination or return to
+Auto; the developer toggle remains manual-file-only. A safely readable saved
+override can be used by standalone Health; without a readable override, try Auto
+and identify unavailable configuration honestly. A known unsafe/unavailable
+custom destination does not silently redirect. No safe capture storage means
+terminal diagnostics still run and report the missing/incomplete save. Path
+display/navigation creates no folders; capture creates/reuses only admitted
+directories and preserves sibling backup data. Health never persists an inferred
+path or changes operational/provider/configuration/history state. Destination
+history has no CFMgr rotation, pruning, truncation or automatic cleanup.
 
-- **A — diagnostic-only Health writes:** when developer mode and a safe diagnostic
-  directory are explicitly configured, permit Health capture only to that admitted
-  directory. Operational/provider/configuration/history state remains read-only.
-- **B — Health remains entirely write-free:** explicitly exclude Health from
-  persistent developer capture and reconcile that exception with S13.14's
-  all-module requirement.
-
-Neither option is selected. Today's accepted Health behavior is unchanged. This
-future decision does not block closure of S03.09/S03.10.
+These are user-requested requirements, not implemented/accepted behavior. The
+existing S03.09/S03.10 receipts establish their original terminal report, not the
+new save path. Their capture extension is owned by unchecked S13.14.
 
 **Prerequisites and real consumers:** the existing private configuration already
 defines `manager.developer` and `manager.developer_log_directory`; accepted package
 trust, storage identity and process supervision supply foundations. Entry,
-Manager, Status, Backup and owned child operations are present consumers. Their
+Manager, Status, Backup, Advanced options and owned child operations are present
+consumers. Their
 shared-file integration is overlap, not a requirement to complete their whole
 main goals. S13.01–S13.12, complete S13.13, new setup wizards and the updater are
 not automatic prerequisites. Missing dedicated Scribe source logs are an expressly
@@ -140,14 +241,17 @@ supported condition, not grounds to manufacture logs or build its policy engine.
 **Coherent work and ownership:** parent owns architecture, approval boundaries,
 records and integration. No worker owns this unstarted scope. Prefer one shared
 logging library for destination admission/lifecycle, safe records and copying,
-with necessary fixed modes in the existing worker owner. Do not split individual
+with necessary fixed modes in the existing worker owner. Include the bounded
+Advanced-options override Save/reopen/Auto consumer and standalone Health capture.
+Do not split individual
 parsers/events/copy phases into scripts or introduce a main-module CI group for
 a library. Any packaged library requires coordinated manifest/admission and Health
 inventory updates. The minimum package comprises:
 
-1. Safely admit the configured mounted data destination and retain correctly owned
-   descriptors; stop on replacement/loss, unsafe paths, detected developer Off or
-   write failure. Existing `cfmgr_storage_pin` owns FD6/7 and imposes executable
+1. Safely resolve/admit the automatic or configured mounted data destination and
+   retain correctly owned descriptors; stop on replacement/loss, unsafe paths,
+   write failure or detected developer Off for ongoing capture. Explicit Health
+   remains independently gated. Existing `cfmgr_storage_pin` owns FD6/7 and imposes executable
    `/opt` restrictions, so it cannot be reused unchanged for diagnostic data.
 2. Integrate explicit bounded event/trace records at existing success, error,
    deferred and configured-Off operation boundaries. Preserve output contracts,
@@ -165,17 +269,20 @@ feature owners must use the capture contract when added; present consumers must
 prove it now. No activation, provider writes or unrelated log capture is included.
 
 **Lean gates:** reuse the installed-entry and native storage/process fixtures for
-main/module/child events with features Off; developer Off with destination history
-unchanged; credential/unsafe child and copied-log content; mount loss/replacement,
+main/module/child events with features Off; developer Off without ordinary capture
+and independent explicit Health saving; credential/unsafe child and copied-log
+content; Auto/custom Options Save/reopen and unavailable startup/storage;
+mount loss/replacement,
 foreign objects, full/I/O-failed storage, signals and FD ownership; current/retained
 Scribe rotation and absent sources; bounded incomplete copying; and the approved
 Health boundary. Run complete affected module Dev gates followed by exact final
 core CI and review measured cost. Keep heavy execution in CI and use only small
 source/focused checks locally. No new stress or full-suite run solely for timing.
 
-**Effort estimate:** 16–30 focused engineering hours plus CI/review, with medium-to-high
-uncertainty around safe copying and process-supervision integration; this is a
-scope estimate, not a measured delivery promise. S04.06 remains deferred because
+**Earlier scope estimate:** 16–30 focused engineering hours plus CI/review covered
+the former manual-directory scope. It is not a current delivery promise for the
+expanded Auto/Options/independent Health contract; refresh only when the next
+checkpoint is authorized. S04.06 remains deferred because
 its recorded acceptance requires a real masked credential/name-input consumer;
 menu/helper work alone cannot close it. S08.01 needs operational per-family source
 and route authority, and a usable S07 update outcome crosses transaction/recovery

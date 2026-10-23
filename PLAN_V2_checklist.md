@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**25 of 157 product subgoals accepted — 15.9% overall subgoal completion.**
+**24 of 157 product subgoals accepted — 15.3% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -607,7 +607,7 @@ auth guards and provider cooldowns still gate provider operations.
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S13.01 | **Three private logs/native notices:** Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit developer diagnostics under S13.14. |
+| [ ] | [ ] | S13.01 | **Three private logs/native notices:** Normal setup detail stays terminal-only; native notices reach system messages, eligible feature logs add a copy and daemon stream stays file-only; no global routes or routine manager logfile, with explicit diagnostic capture under S13.14. |
 | [ ] | [ ] | S13.02 | **First setup versus saved preference:** Only completed fresh ready setup initializes own logs; pending/maintenance-only/opt-out remain inactive. |
 | [ ] | [ ] | S13.03 | **Readiness and independence:** Verified mounted Entware /opt/var/log paths and actual Scribe/base/schedule/include readiness, graceful no-file operation and service-Off rotation retention. |
 | [ ] | [ ] | S13.04 | **Cloudflared tuning:** Per-file size/total-count including live file, shown Enter defaults and supported time/age options; uncompressed log history and no aggregate-byte quota. |
@@ -620,7 +620,7 @@ auth guards and provider cooldowns still gate provider operations.
 | [ ] | [ ] | S13.11 | **Optional external viewing:** Supported bounded owned-path registry only if selected; no fake routing/private patches or CFMgr WebUI requirement. |
 | [ ] | [ ] | S13.12 | **Explicit all-service re-detect:** Ready Scribe enables logging for every configured On service, overriding prior logging Off only for this explicit action; reuse policies or initialize defaults. |
 | [ ] | [ ] | S13.13 | **Prominent concise event format:** Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression; normal/developer credential references identify type/purpose and mask any displayed value. |
-| [ ] | [ ] | S13.14 | **Developer diagnostic capture:** Developer-mode-only main-process/all-module trace capture and dedicated Scribe-log copies in a global-config directory, independent of feature On/Off, with redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
+| [ ] | [ ] | S13.14 | **Developer diagnostic capture:** Developer-gated main-process/all-module tracing and dedicated Scribe-log copies, plus independently requested one-shot Health capture; automatic mounted-drive destination with optional CLI-configured override, redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
 
 Cloudflared tuning acceptance (S13.04): use conservative fresh defaults and allow
 positive user-selected file sizes and total-file counts without a fixed CFMgr
@@ -635,18 +635,33 @@ live logs and rotated history remain uncompressed, with explicit owned-rule
 logging compression/delay-compression option or saved policy field is provided;
 gzip remains reserved for the backup archive contract in S14.01.
 
-Developer diagnostics acceptance (S13.14): fresh destination is `null`; only
-`manager.developer` enables capture, with feature On/Off ignored as a logging gate.
-Verify main-process/all-module and child/error/Off paths reach `developer.log`,
-dedicated CFMgr Scribe content is copied without changing source policies, source
-rotation preserves captured history, and developer Off stops new capture while
-retaining files. Exercise configurable paths, missing Scribe/source logs, mount
-loss/replacement, unsafe paths and full/I/O-failed storage; no stale-mount writes
-or false captured/success claim. Credential references follow the shared masking
-rule below. The destination has no CFMgr rotation/pruning/truncation/automatic cleanup; retention is user-managed,
-while individual records, buffering and copy work remain bounded. Automated
-fixtures supply development acceptance; prolonged actual-router capture is beta
-evidence and is not claimed before it runs.
+Diagnostic capture acceptance (S13.14): fresh destination `null` means Auto,
+resolving the verified Entware drive's `CFMgr/diagnostics` directory and displaying
+the effective path. Test Advanced-options custom destination Save/reopen and
+return-to-Auto after full CLI startup; display/navigation alone creates no folder
+or logs and Health does not persist a derived automatic path. Test a safely read
+saved override without full CLI startup, automatic resolution when no override
+can be read, honest unavailable-configuration output, and no silent fallback from
+a known unsafe/unavailable custom destination. Preserve sibling backup data.
+
+Only `manager.developer` enables ongoing main-process/all-module and child/error/
+feature-Off capture into `developer.log` plus sanitized dedicated CFMgr Scribe
+copies. Source rotation preserves captured history; source logging policies and
+feature state remain unchanged. Developer Off stops ordinary new capture while
+retaining files, but explicit health/doctor/diagnostic runs independently display
+and save sanitized one-shot report/run information. Those commands neither enable
+developer mode nor change settings/services/providers/operational history. The
+terminal report survives unavailable/failed capture and incomplete installation;
+ongoing capture does not periodically invoke Health or require a new daemon.
+
+Exercise missing Scribe/source logs, mounted-volume loss/replacement, unsafe
+parent/leaf paths and full/I/O-failed storage; no stale-mount writes or false
+captured/success claim. Credential references follow the shared masking rule
+below. The destination has no CFMgr rotation/pruning/truncation/automatic cleanup;
+retention is user-managed, while records, buffering and copy work remain bounded.
+Automated fixtures supply development acceptance; prolonged actual-router capture
+is beta evidence and is not claimed before it runs. The accepted S03.09/S03.10
+report/presentation receipts do not establish this unimplemented saving extension.
 
 Credential logging acceptance (S13.13/S13.14): normal and developer terminal,
 syslog, feature-file, trace/child-output and Scribe-copy paths identify the real
@@ -662,7 +677,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [x] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
-| [x] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, root CFBackup, no stale/fallback destination. |
+| [ ] | [ ] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, CFMgr/backup directory, no stale/fallback destination. |
 | [x] | [x] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
 | [x] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
 | [x] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
@@ -673,7 +688,15 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | [ ] | [ ] | S14.10 | **State-aware reconstruction:** Never-configured/draft/maintenance/On/Off rules, independent logging preference and explicitly deferred optional history. |
 | [ ] | [ ] | S14.11 | **Guarded restore/recovery:** Fresh local ownership/generation, current auth/source admission, local rollback distinct from new auth-Off and no stale replay. |
 
-S14.02 accepted at `f762dd731a7284a7a6377ffebb738209b9fd49a8` after parent
+S14.02 reopened for the user-requested shared drive layout on 2026-10-23.
+The revised destination is `<selected-mount>/CFMgr/backup`; acceptance requires
+safe admission/creation of both directory components, preserved sibling data,
+complete Save/reopen/create/browse/verify/delete/retention and Health-observation
+regressions, relevant statics, parent review and exact-candidate complete core CI.
+No legacy `CFBackup` compatibility or automatic migration is required. Historical
+proof below establishes the earlier layout, not the revised destination.
+
+S14.02 previously accepted at `f762dd731a7284a7a6377ffebb738209b9fd49a8` after parent
 review, written focused local checks, common statics and exact-candidate
 [core Checks 38852845631](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/38852845631):
 588 host passes / 28 platform-specific skips and 615 vendor BusyBox passes /
@@ -900,7 +923,7 @@ IDs identify behavior, **not a required test count**. One meaningful test may co
 | [ ] | V64 | event storms, aggregate budgets, delayed work, unmount/watchdog races, missing TTY/EOF/signals and terminal echo remain bounded and safe. |
 | [ ] | V73 | all-feature boot/outage/fault injection proves early hook return, pipe closure, resource admission, no premature work, crash backoff/stability reset, teardown suppression and no reboot/global-restart recovery; hardware proof remains separate. |
 | [ ] | V74 | normal installed-opkg missing/unusable dependency repair and selected force reinstall preserve healthy tools/config/intent, coalesce attempts, recheck capabilities and remain bounded on mount/network/interruption failures; no custom IPK bootstrap or blanket upgrade. |
-| [ ] | V75 | health/doctor/diagnostic are identical full reports and survive partial installation/missing modules/tools/broken config with native fallback; include basic dashboard plus grouped causes/next actions; eligible locally valid, non-faulted credentials permit bounded read-only checks, otherwise local fallback; no mutations/auth-Off/cache-success writes or false live/write-permission proof; safe narrow/plain terminal output and no secrets. |
+| [ ] | V75 | health/doctor/diagnostic are identical full reports and survive partial installation/missing modules/tools/broken config with native fallback; include basic dashboard plus grouped causes/next actions; eligible locally valid, non-faulted credentials permit bounded read-only checks, otherwise local fallback; no operational mutations/auth-Off/cache-success writes or false live/write-permission proof; safe narrow/plain terminal output and no secrets. Explicit runs independently save sanitized diagnostic information when safe storage is available under S13.14; unavailable capture preserves the terminal report and grants no configuration/provider/service/history change. |
 
 ### Tunnel setup, credentials, maintenance and updates
 

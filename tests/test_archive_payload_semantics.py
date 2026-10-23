@@ -52,6 +52,34 @@ def pem_document(token: bytes, legacy: bool = True) -> bytes:
     return b"\n".join(blocks)
 
 
+@pytest.mark.parametrize(
+    "relative,accepted",
+    [
+        ("CFMgr/backup/profile.json", False),
+        ("nested/CFMgr/diagnostics/report.json", False),
+        ("CFMgr/profile.json", True),
+        ("backup/profile.json", True),
+    ],
+)
+def test_payload_plan_excludes_operational_tree_without_banning_managed_names(
+    commands, schema2_config, tmp_path, relative, accepted
+):
+    value = advanced_config(schema2_config)
+    owner = next(
+        item
+        for item in value["ownership"]["components"]
+        if item["component"] == "data.cloudflared.input.ca_bundle"
+    )
+    owner["path"] = "/opt/etc/cloudflared/" + relative
+    result = invoke_payload(commands, tmp_path, serialize(value), "plan")
+    assert result.stderr == b""
+    assert result.returncode == (0 if accepted else 1), result.stdout
+    if accepted:
+        assert owner["path"].encode().hex().encode() in result.stdout
+    else:
+        assert result.stdout == b""
+
+
 def test_draft_review_reports_only_feature_stage_after_same_strict_validation(
     commands, tmp_path
 ):
@@ -226,7 +254,7 @@ def archive(archive_io):
         body = (ROOT / "modules/lib" / name).read_text()
         if sys.platform == "darwin" and name.endswith(".sh"):
             body = body.replace("/proc/self/fd/5", str(ram)).replace(
-                "/proc/self/fd/7", str(mount / "CFBackup")
+                "/proc/self/fd/7", str(mount / "CFMgr/backup")
             )
         (support / "modules/lib" / name).write_text(body)
     return archive_io
@@ -335,11 +363,11 @@ def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
         native = shutil.which(os.environ["CFMGR_TEST_SHELL"].split()[0])
         command = [native, "tar", "-cf", str(raw), "-C", str(stage), *members]
     subprocess.run(awk_arguments(command), check=True, capture_output=True, timeout=5)
-    selected = mount / "CFBackup/CFbackup-2024-02-29.tar.gz"
+    selected = mount / "CFMgr/backup/CFbackup-2024-02-29.tar.gz"
     selected.write_bytes(gzip.compress(raw.read_bytes(), mtime=0))
     selected_digest = hashlib.sha256(selected.read_bytes()).hexdigest()
     selected_size = selected.stat().st_size
-    sibling = mount / "CFBackup/foreign.tar.gz"
+    sibling = mount / "CFMgr/backup/foreign.tar.gz"
     sibling.write_bytes(b"preserve unrelated data\n")
     script = """
 cfmgr_archive_inventory_limit=65536
@@ -361,7 +389,7 @@ cfmgr_archive_saved_set_id=12345678-1234-4abc-8abc-123456789abc
     fi
     [ "$cfmgr_browser_result:$cfmgr_browser_deleted:$cfmgr_browser_count" = deleted:1:1 ] || exit 2
     [ "$cfmgr_browser_set" = 01234567-89ab-cdef-0123-456789abcdef ] || exit 3
-    [ -f "$stage/candidate" ] && [ ! -e "$mount/CFBackup/$cfmgr_browser_name" ] || exit 4
+    [ -f "$stage/candidate" ] && [ ! -e "$mount/CFMgr/backup/$cfmgr_browser_name" ] || exit 4
 printf 'verified=%s callbacks=%s\\n' "$cfmgr_archive_verified" "$cfmgr_payload_schema"
 printf '%s\\n' "$cfmgr_browser_effects"
 """
