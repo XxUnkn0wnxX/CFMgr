@@ -2724,8 +2724,8 @@ drive-level parent with future diagnostics. The user authorized implementation,
 required exact CI closure and a pause before S13.14, and explicitly declined
 legacy-layout compatibility. This is a location-contract change, not a false
 historical pass: prior receipts remain evidence for the old layout, and S14.02
-is reopened until the revised layout passes. Other accepted IDs keep their
-unchanged behavior contracts with affected consumer regressions required here.
+was reopened until the revised layout passed. Other accepted IDs keep their
+unchanged behavior contracts with affected consumer regressions verified here.
 
 Independent Astra design audit returned **PASS WITH NOTES** against starting
 revision `4a06c643d5eaf18b89c1e4e268393ae2a38caef4`. Parent agrees with the material
@@ -2752,10 +2752,39 @@ Both agree that FD6/FD7 phase ownership, component/mount checks, leaf-only chmod
 payload exclusions and read-only Health observations preserve the intended
 boundaries. Parent removed a redundant FD7 mount check without removing an
 invariant. The new Health path consumes four additional bounded read-only probes;
-the existing aggregate budget and normal-journey ceiling are unchanged and require
+the existing aggregate budget and normal-journey ceiling are unchanged and passed
 complete native validation. Native fixtures now cover both directory components,
 replacement, interrupted preparation and sibling/permission preservation.
 Available local consumer checks and common statics passed as recorded in the
-handoff; five Linux-only cases remain pending, and limited optional ShellCheck
-retains 72 findings on unchanged source lines. Exact Dev/core disposition is
-pending; these reviews and local results alone grant no acceptance.
+handoff. The five locally skipped Linux-only cases passed in the affected native
+Dev and final core groups. Limited optional ShellCheck retains 72 findings whose
+start lines map to unchanged source; this is not a baseline pass or proof of full
+extended dataflow analysis.
+
+Final runtime/test revision is **`f3c473b96ef72c8a9fbeff530d5e6e17ddbd1520`**.
+Complete affected native Dev selections A/B/C
+([39914551212](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914551212),
+[39914573172](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914573172),
+[39914576217](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914576217)) passed,
+followed by exact-candidate [Checks 39915151343](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915151343).
+Parent independently verified common preflight, all six required host/vendor
+BusyBox jobs in [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915198274),
+[Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915199900) and
+[Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915201940), and strict
+aggregate collection at the same SHA. The conditional cancellation-cleanup skip
+does not omit a required product job. Full results, explicit platform skips and
+wall/CPU timings are in the [checklist receipt](PLAN_V2_checklist.md#14-backup-and-restore).
+
+Measured cost is within the existing complete-module budget: the longest job was
+Backup native at 6m15s including setup; Manager native took 6m13s and Status native
+1m45s. The final normal native Health journey retained all twelve reads and 59
+rows in 34 reported seconds/38.44s wall, using 541 operations, 1,168 files and
+11,375,344 reserved bytes, with two operations/four files/790,528 bytes for
+finalization. Existing source-integrity, privacy, cleanup and aggregate-limit
+assertions passed. No limit increase, reduced assertion, timing-only full run or
+new test framework was needed; no speedup claim is made from runner variation.
+
+Parent accepts the reviewed repair with these exact gates. Confirmed diagnostic
+storage/developer/standalone-Health requirements are recorded in the specification
+but diagnostic capture remains unimplemented. Ubuntu/vendor BusyBox is
+representative development evidence, not Merlin/ARM or live-router qualification.

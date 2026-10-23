@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**24 of 157 product subgoals accepted — 15.3% overall subgoal completion.**
+**25 of 157 product subgoals accepted — 15.9% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -677,7 +677,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [x] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
-| [ ] | [ ] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, CFMgr/backup directory, no stale/fallback destination. |
+| [x] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, CFMgr/backup directory, no stale/fallback destination. |
 | [x] | [x] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
 | [x] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
 | [x] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
@@ -688,13 +688,45 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | [ ] | [ ] | S14.10 | **State-aware reconstruction:** Never-configured/draft/maintenance/On/Off rules, independent logging preference and explicitly deferred optional history. |
 | [ ] | [ ] | S14.11 | **Guarded restore/recovery:** Fresh local ownership/generation, current auth/source admission, local rollback distinct from new auth-Off and no stale replay. |
 
-S14.02 reopened for the user-requested shared drive layout on 2026-10-23.
-The revised destination is `<selected-mount>/CFMgr/backup`; acceptance requires
-safe admission/creation of both directory components, preserved sibling data,
-complete Save/reopen/create/browse/verify/delete/retention and Health-observation
-regressions, relevant statics, parent review and exact-candidate complete core CI.
-No legacy `CFBackup` compatibility or automatic migration is required. Historical
-proof below establishes the earlier layout, not the revised destination.
+S14.02 reaccepted for the user-requested shared drive layout on 2026-10-23 at
+**`f3c473b96ef72c8a9fbeff530d5e6e17ddbd1520`**. The revised destination is
+`<selected-mount>/CFMgr/backup`; both directory components are safely admitted or
+created, preserving shared-parent permissions and sibling data. Complete
+Save/reopen/create/browse/verify/delete/retention and Health-observation consumers
+passed after focused local tests, relevant statics, independent design/source
+reviews and parent review. No legacy `CFBackup` compatibility or automatic
+migration is required. The [layout audit](PLAN_V2_audit.md#s1402-shared-drive-directory-layout-review)
+records the implementation and review dispositions; the [handoff](PLAN_V2_handoff.md#finished-re-work-checkpoint--shared-drive-layout-paused-before-diagnostics)
+retains exact local commands, corrections and platform limits.
+
+All required jobs passed in exact-candidate [Checks 39915151343](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915151343),
+including common preflight and strict collection of the three independent module
+runs below. Only the conditional cancellation-cleanup job was skipped because no
+cancellation was needed. Complete affected native Dev selections also passed:
+[A 39914551212](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914551212)
+(143 passes), [B 39914573172](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914573172)
+(453 passes) and [C 39914576217](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914576217)
+(74 passes, one workstation-without-proc skip). Dev is supporting evidence; final
+acceptance uses the complete core runs at the same SHA.
+
+| Complete core module | Result | Pytest / wall / user / system seconds | Job including setup |
+| --- | --- | --- | --- |
+| [Backup host](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915198274) | 416 passed, one native-only capability skip | 132.10 / 132.50 / 50.51 / 44.71 | 2m30s |
+| [Backup BusyBox](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915198274) | 417 passed, no skips | 352.43 / 352.83 / 212.11 / 125.57 | 6m15s |
+| [Manager host](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915199900) | 610 passed, 29 platform-specific skips | 104.87 / 105.26 / 44.87 / 41.58 | 2m08s |
+| [Manager BusyBox](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915199900) | 638 passed, one workstation-without-proc skip | 348.68 / 348.97 / 198.26 / 122.38 | 6m13s |
+| [Status host](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915201940) | 254 passed, no skips | 39.46 / 39.80 / 14.55 / 8.07 | 56s |
+| [Status BusyBox](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915201940) | 254 passed, no skips | 82.82 / 83.23 / 39.06 / 28.41 | 1m45s |
+
+Four unchanged optional diagnostic cases were deselected from each Manager phase.
+The host-only omissions cover the explicitly native mount/keeper/capability
+contracts and the workstation-without-proc case; required native safety cases ran.
+All module jobs stayed below the ten-minute budget. Limited optional ShellCheck
+remains failed with 72 diagnostics on unchanged source lines; extended analysis
+was not run. No optional stress or live-router qualification is claimed. This
+receipt restores S14.02; other accepted IDs retain their earlier acceptance with
+current regression proof. No new product ID or main-goal acceptance is awarded.
+Historical proof below establishes the earlier layout.
 
 S14.02 previously accepted at `f762dd731a7284a7a6377ffebb738209b9fd49a8` after parent
 review, written focused local checks, common statics and exact-candidate

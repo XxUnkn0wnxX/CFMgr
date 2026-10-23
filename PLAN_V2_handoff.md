@@ -36,7 +36,7 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Active checkpoint — shared drive folder for backups; stop before diagnostics
+## Finished re-work checkpoint — shared drive layout; paused before diagnostics
 
 This is the authoritative restart state as of 2026-10-23. The user explicitly
 requested `<drive>/CFMgr/` with `backup/` and `diagnostics/` children, then directed
@@ -44,20 +44,24 @@ requested `<drive>/CFMgr/` with `backup/` and `diagnostics/` children, then dire
 the main new checkpoint" and confirmed there is no need to keep the development
 `<drive>/CFBackup/` layout. This authorizes the backup implementation/test repair,
 required develop publication and exact CI checkpoint, plus the paired planning
-updates for the confirmed diagnostics design. It does not start S13.14 runtime
-implementation or authorize router/deployment actions or external-data deletion.
+updates for the confirmed diagnostics design. That checkpoint is complete and
+paused. It does not start S13.14 runtime implementation or authorize
+router/deployment actions or external-data deletion. Wait for a fresh user start;
+do not select, review or begin the next package from this handoff alone.
 
-Starting code/docs HEAD is `4a06c643d5eaf18b89c1e4e268393ae2a38caef4`, verified
+Starting code/docs HEAD was `4a06c643d5eaf18b89c1e4e268393ae2a38caef4`, verified
 clean on `develop` and equal to the live remote before edits. Use this checkout;
-preserve ignored evidence and existing worktree registrations. S14.02 is reopened
-for the changed destination contract: **24/157 product subgoals (15.3%)**, **0/16
-main goals (0%)**; Goal 14 is **7/11 accepted**. Other historical accepted behavior
-and receipts remain, with affected consumers requiring regression proof here.
+preserve ignored evidence and existing worktree registrations. S14.02 is
+reaccepted for the changed destination contract: **25/157 product subgoals
+(15.9%)**, **0/16 main goals (0%)**; Goal 14 is **8/11 accepted (72.7%)**.
+There are 132 unaccepted product subgoals. Other historical accepted behavior and
+receipts remain, with affected consumers covered by current regression proof.
+This restores the earlier accepted total; it adds no new accepted product ID.
 
-**Package and dependency order:** preserve explicit Backup drive selection and
-saved mount identity; safely admit/create `<selected-mount>/CFMgr/backup`, update
-archive creation/browse/verification/deletion/retention and standalone Health's
-read-only destination observations, then verify the complete consumer scope. No
+**Completed package:** explicit Backup drive selection and saved mount identity
+are preserved; `<selected-mount>/CFMgr/backup` is safely admitted/created. Archive
+creation/browse/verification/deletion/retention and standalone Health's read-only
+destination observations use the revised path, with complete consumer proof. No
 legacy layout compatibility/discovery/migration is needed. The shared parent and
 future diagnostics siblings must survive backup operations. This is a single
 coherent S14.02 repair with S14.01/S14.03–S14.08 and S03.09 regression consumers;
@@ -66,37 +70,78 @@ it requires no new product IDs, main goals or diagnostic implementation.
 **Ownership:** parent owns all V2 records, README, architecture/security decisions,
 integration, final review and publication. `storage_contract_audit` completed its
 read-only Astra audit with PASS WITH NOTES; its parent/leaf safety finding is
-adopted. `backup_layout` owns `modules/backup.sh`, fixed worker modes in
+adopted. `backup_layout` completed `modules/backup.sh`, fixed worker modes in
 `modules/helpers/worker.sh`, the matching fixed-mode allowlist in
 `modules/lib/execution.sh`, read-only backup observations in `modules/status.sh`,
-and their affected tests/fixtures. Parent owns generated package metadata after
-integration. There are no overlapping source writers. `layout_source_review`
+and their affected tests/fixtures. Parent regenerated and verified package
+metadata after integration. `layout_source_review`
 completed a bounded read-only source review with PASS WITH NOTES and no material
-defect; parent agrees. Existing
-FD6 mount and FD7 archive-directory contracts should be retained where practical;
-the intermediate `CFMgr` directory needs independent safe admission, not a blind
-string replacement or recursive mkdir/chmod/delete.
+defect; parent agrees. `dev_ci_wait` completed read-only monitoring of the final
+gate. All required workers and CI jobs are terminal; there are no active writers.
+The implementation preserves FD6 mount/FD7 archive-directory contracts, using FD7
+first for parent preparation and then the final leaf. Both components have
+independent safe admission; no recursive mkdir/chmod/delete is introduced.
 
-**Gates and stop boundary:** focused available local tests/statics, complete
-affected native Dev selections, final parent review and exact final core Checks
-with all Backup/Manager/Status host/vendor BusyBox jobs. Reuse valid receipts;
-cancel premature owned core runs while Dev diagnosis is pending. Review measured
-test cost; no main-goal full local suite is due. After passing, restore justified
-S14.02 acceptance, update README/audit/checklist/handoff, publish the docs receipt
-and end the turn. Do not begin S13.14 until the user starts that next checkpoint.
+**Completed gates and stop boundary:** focused available local tests/statics,
+complete affected native Dev selections, final parent review and exact final core
+Checks with all Backup/Manager/Status host/vendor BusyBox jobs passed. Measured
+cost is within budget; no main-goal full local suite was due or waived. The closing
+documentation receipt follows the runtime/test revision below and updates only
+README/checklist/audit/handoff. Its commit is not a newly runtime-tested candidate.
+S13.14 remains unchecked and unstarted; end the turn at this checkpoint.
 
-**Next actions:** finalize common statics and local receipts, commit/push the
-reviewed package, run the complete affected Dev groups below, then exact core.
-The source/test package is implemented and parent/source review passed. Local
-Backup/menu/configuration, Health and create/retention results are being recorded;
-Linux mount/lock proof remains pending. Confirmed diagnostics requirements are
-updated without implementation. No new CI has run yet. Parent approved FD7 phase reuse and canonical,
+**Published candidate:** `f3c473b96ef72c8a9fbeff530d5e6e17ddbd1520` on `develop`.
+Dev A [39914551212](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914551212),
+B [39914573172](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914573172) and
+C [39914576217](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39914576217) all
+passed at that exact SHA. Parent verified terminal status/SHA and downloaded logs
+to ignored `.tmp/backup-layout-dev-{a,b,c}.log`. Premature automatic core
+39914474470 and independent Backup/Manager/Status runs
+39914518964/39914520662/39914522472 are terminal cancelled.
+
+| Dev selection | Result | Pytest / wall / user / system seconds | Job including setup |
+| --- | --- | --- | --- |
+| A | 143 passed, no skips | 251.50 / 251.86 / 131.43 / 118.46 | 4m33s |
+| B | 453 passed, no skips | 236.69 / 236.89 / 127.77 / 90.96 | 4m20s |
+| C | 74 passed, one explicit workstation-without-proc skip | 4.65 / 4.86 / 1.61 / 1.01 | 26s |
+
+Dev B's complete native Health made all twelve reads and 59 rows in 27 reported seconds /
+30.23s wall, with 541 operations, 1,168 files and 11,375,396 reserved bytes;
+finalization retained two operations/four files/790,528 bytes. All existing
+source/privacy/cleanup/budget assertions passed. The four extra path-admission
+probes fit existing limits; no performance-speedup claim or limit change is made.
+Cost review found no new over-budget complete group or justification for more
+diagnostic splitting. Final manual [core 39915151343](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915151343)
+passed at the same SHA, including preflight and all six required jobs in
+[Backup 39915198274](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915198274),
+[Manager 39915199900](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915199900)
+and [Status 39915201940](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/39915201940).
+Parent independently verified every run's SHA, terminal status, required jobs and
+logs. Conditional cancellation cleanup was skipped because it was not needed.
+The [checklist receipt](PLAN_V2_checklist.md#14-backup-and-restore) retains exact
+counts, platform skips and wall/CPU timings; ignored logs are
+`.tmp/backup-layout-core-{aggregate,backup,manager,status}.log`. Longest complete
+module job was Backup native at 6m15s including setup, followed by Manager native
+at 6m13s; Status native took 1m45s. No module exceeded the ten-minute budget.
+
+Final core native Health retained twelve reads and 59 rows in 34 reported seconds /
+38.44s wall, with 541 operations, 1,168 files and 11,375,344 reserved bytes;
+finalization used two operations/four files/790,528 bytes. Existing source,
+privacy, cleanup and aggregate-bound assertions passed. Required Linux mount,
+parent/leaf, inherited-lock and actual menu/archive consumers ran in native CI.
+Ubuntu/vendor BusyBox is representative development proof, not Merlin/ARM/live
+router qualification; no deployment or router actions were performed.
+
+**Paused restart boundary:** no further implementation or target selection is
+authorized. Confirmed diagnostics requirements are recorded without implementation.
+Preserve the completed checkpoint and wait for the user's next instruction.
+Parent approved FD7 phase reuse and canonical,
 no-symlink, same-mount checks for both components, including final parent relation
 to `/proc/self/fd/7/..`. Retain the admitted leaf's identity; do not add a new
 metadata framework solely for same-volume relocation of that same leaf.
 
-**Complete affected native Dev selections** (whole modules; no optional diagnostic
-cases changed; all runs must use the same final candidate):
+**Completed affected native Dev selections** (whole modules; no optional diagnostic
+cases changed; all three runs used the final candidate):
 
 - A: `tests/test_backup_storage.py tests/test_backup_menu.py tests/test_archive_menu.py tests/test_archive_io.py tests/test_archive_create.py tests/test_archive_transaction.py tests/test_archive_verify.py tests/test_archive_payload_semantics.py`.
 - B: `tests/test_storage_mounts.py tests/test_config_store.py tests/test_config_schema2.py tests/test_status.py tests/test_archive_capture.py tests/test_archive_history_runtime.py tests/test_archive_payload.py tests/test_execution_tasks.py`.
@@ -105,8 +150,9 @@ cases changed; all runs must use the same final candidate):
 A covers real backup consumers and the changed payload/IO paths. B covers native
 parent/leaf and inherited-lock safety, configuration, complete Health, and shared
 capture/planner/supervisor consumers. C covers the shared worker allowlist and
-native storage foundation. Final core still requires every complete
-Backup/Manager/Status host and vendor BusyBox group, not these selections alone.
+native storage foundation. Final core subsequently passed every complete
+Backup/Manager/Status host and vendor BusyBox group; these selections alone did
+not award acceptance.
 
 **Local receipt before publication:** reviewed dirty tree based on `4a06c643`;
 Homebrew Bash/Python on macOS, not Linux mount/router qualification. Each behavior
