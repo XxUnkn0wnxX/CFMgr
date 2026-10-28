@@ -106,6 +106,54 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
             + '    printf "observed\\n" >>"$cfmgr_test_observation"\n',
             1,
         )
+        phases = (
+            "run",
+            "prepare",
+            "capture_work",
+            "read_config",
+            "select_destination",
+            "stage_events",
+            "stage_report",
+            "open_output",
+            "write_fd",
+            "health_open",
+            "lock",
+            "observe_mount",
+            "walk_destination",
+        )
+        wrappers = []
+        for phase in phases:
+            original = f"cfmgr_log_{phase}() {{"
+            assert source.count(original) == 1
+            source = source.replace(original, f"cfmgr_test_original_{phase}() {{", 1)
+            mode = '"${1:-unknown}"' if phase == "run" else '"-"'
+            wrappers.append(
+                f"cfmgr_log_{phase}() {{\n"
+                f'    if cfmgr_test_original_{phase} "$@"; then cfmgr_test_result=0; '
+                "else cfmgr_test_result=$?; fi\n"
+                f'    cfmgr_test_trace {phase} {mode} "$cfmgr_test_result"\n'
+                '    return "$cfmgr_test_result"\n}'
+            )
+        source += (
+            r"""
+cfmgr_test_trace() {
+    [ "${cfmgr_test_trace_count:-0}" -lt 512 ] || return 0
+    cfmgr_test_trace_count=$((${cfmgr_test_trace_count:-0} + 1))
+    case $2 in -) cfmgr_test_mode=- ;; diagnostic-*)
+        case $2 in *[!a-z0-9._-]*) cfmgr_test_mode=unknown ;; *) cfmgr_test_mode=$2 ;; esac ;;
+        *) cfmgr_test_mode=unknown ;;
+    esac
+    case ${cfmgr_probe_status:-} in invalid|reaped|unresolved) cfmgr_test_status=$cfmgr_probe_status ;; *) cfmgr_test_status=- ;; esac
+    case ${cfmgr_probe_reason:-} in arguments|native-supervisor|attachment|lock-inheritance|clock|deadline|child-signal) cfmgr_test_reason=$cfmgr_probe_reason ;; *) cfmgr_test_reason=- ;; esac
+    case ${cfmgr_probe_exit:-} in ''|*[!0-9]*) cfmgr_test_exit=- ;; *)
+        if [ "${#cfmgr_probe_exit}" -le 3 ]; then cfmgr_test_exit=$cfmgr_probe_exit; else cfmgr_test_exit=-; fi ;;
+    esac
+    printf '%s mode=%s code=%s probe=%s reason=%s exit=%s\n' "$1" "$cfmgr_test_mode" "$3" "$cfmgr_test_status" "$cfmgr_test_reason" "$cfmgr_test_exit" >>"$cfmgr_test_phase_trace" || :
+}
+"""
+            + "\n".join(wrappers)
+            + "\n"
+        )
     source = source.replace("/tmp/mnt/?* | /mnt/?*", "CFMGR_FIXTURE_MOUNT_MARKER")
     source = source.replace("/tmp", "CFMGR_FIXTURE_RAM_MARKER")
     source = source.replace("/opt", "CFMGR_FIXTURE_OPT_MARKER")
@@ -148,6 +196,24 @@ def build_fixture(test_shell, tmp_path):
         )
 
     fixture_text = storage.FIXTURE.read_text()
+    failure_entry = "fail() {\n"
+    assert fixture_text.count(failure_entry) == 1
+    fixture_text = fixture_text.replace(
+        failure_entry,
+        failure_entry
+        + """\tcase $case_name in diagnostic_health|diagnostic_scribe)
+        if [ -n "${cfmgr_test_transcript:-}" ] && [ -f "$cfmgr_test_transcript" ]; then
+            printf 'fixture Health transcript (bounded):\\n' >&2
+            head -c 16384 "$cfmgr_test_transcript" >&2 || :
+        fi
+        if [ -n "${cfmgr_test_phase_trace:-}" ] && [ -f "$cfmgr_test_phase_trace" ]; then
+            printf 'fixture capture phases (bounded):\\n' >&2
+            head -c 65536 "$cfmgr_test_phase_trace" >&2 || :
+        fi ;;
+    esac
+""",
+        1,
+    )
     original_allowlist = "valid | alias_substitution | lazy_replacement | bind_identity | ro_noexec | backup_folder"
     assert fixture_text.count(original_allowlist) == 1
     fixture_text = fixture_text.replace(
@@ -169,6 +235,8 @@ diagnostic_health)
     mkdir -m 700 "$fixture/ram" "$fixture/bin" "$fixture/source"
     mkdir -p "$fixture/source/modules/lib" "$fixture/source/modules/helpers"
     mount -t tmpfs -o size=8m,mode=700 tmpfs "$fixture/ram" || fail 'private RAM mount failed'
+    cfmgr_test_phase_trace=$fixture/ram/phase-trace
+    (umask 077; : >"$cfmgr_test_phase_trace") || fail 'phase trace setup failed'
     mount -o remount,noexec "$mount_dir" || fail 'noexec data remount failed'
     case $view_busybox in
     */busybox)
