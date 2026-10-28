@@ -94,10 +94,13 @@ def test_linux_owned_child_retains_capture_lock_and_descriptors(shell, tmp_path)
     ram.mkdir(mode=0o700)
     leaf.mkdir(parents=True, mode=0o700)
     script = r"""
+. "$6"
 exec 0<"$1" 5<"$2" 6<"$3" 7<"$4"
 "$5" -n 0 || exit 1
-(exec /bin/sleep 30) 0<&0 >/dev/null 2>&1 &
-printf '%s\n' "$!"
+_cfmgr_prerequisites_exec() { exec /bin/sleep 30; }
+cfmgr_probe_stdout=/dev/null cfmgr_probe_stderr=/dev/null
+_cfmgr_prerequisites_start_locked 9<&0 || exit 2
+printf '%s\n' "$cfmgr_probe_pid"
 """
     result = subprocess.run(
         [
@@ -110,6 +113,7 @@ printf '%s\n' "$!"
             str(mount),
             str(leaf),
             flock,
+            str(ROOT / "modules/lib/execution.sh"),
         ],
         capture_output=True,
         check=False,

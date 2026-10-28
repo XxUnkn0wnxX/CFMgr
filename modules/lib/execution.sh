@@ -396,13 +396,7 @@ _cfmgr_prerequisites_run() {
 		: >"$cfmgr_probe_stdout" && : >"$cfmgr_probe_stderr"
 	) || return 2
 	case $cfmgr_probe_mode:${cfmgr_config_lock_fd0:-0} in
-	diagnostic-*:*)
-		# Async shells otherwise replace stdin with /dev/null. The capture's
-		# independently owned lock description must reach every fixed child.
-		(_cfmgr_prerequisites_exec "$@") 0<&0 >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
-		cfmgr_probe_pid=$!
-		;;
-	*:1)
+	diagnostic-*:* | *:1)
 		if _cfmgr_prerequisites_start_locked "$@" 9<&0; then :; else
 			cfmgr_probe_reason=lock-inheritance
 			return 2
@@ -799,8 +793,9 @@ cfmgr_prerequisites_check() {
 # Pinned ash resets background FD0 before command redirects; 0<&0 is a no-op.
 # Invocation-scoped 9<&0 preserves the lock across that fork. This tiny function
 # performs no attachment checks while parent9 aliases the lock; return restores
-# its support pin before supervision. Child9 closes after duplication to0, and
-# no probe mode consumes9. Independent contention still admits lock semantics.
+# its support pin before supervision. Child9 closes after duplication to0;
+# fixed diagnostic workers may reserve9 again before replacing stdin with data.
+# Independent contention still admits lock semantics.
 _cfmgr_prerequisites_start_locked() {
 	(_cfmgr_prerequisites_exec "$@") 0<&9 9<&- >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
 	cfmgr_probe_pid=$!

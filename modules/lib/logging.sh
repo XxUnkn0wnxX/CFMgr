@@ -12,21 +12,28 @@ cfmgr_logging_awk_log_frame() {
 # the first line is an excerpt fragment. No source text is emitted in errors.
 BEGIN {
 	if (ENVIRON["LC_ALL"] != "C" || expected_bytes !~ /^[0-9]+$/ ||
-		expected_bytes > 24576 || excerpt !~ /^[01]$/ || ARGC != 1) exit 1
+		expected_bytes > 24576 || excerpt !~ /^[01]$/ || ARGC != 1) { bad = 1; exit 1 }
+	# BusyBox splits records at NUL even with a different RS. Admit one exact
+	# bounded record, then split its actual LF bytes ourselves, like json.
+	RS = sprintf("%c", 28)
 	if (excerpt == "1") skip_first = 1
 }
 {
-	bytes += length($0) + 1
-	if (bytes > 24576 || length($0) > 4096 || $0 ~ /[^ -~]/) { bad = 1; exit 1 }
-	if (skip_first) { skip_first = 0; next }
-	if ($0 == "") { bad = 1; exit 1 }
+	if (NR != 1 || length($0) != expected_bytes || substr($0, length($0), 1) != "\n") { bad = 1; exit 1 }
+	lines = split($0, source_lines, "\n")
+	for (line = 1; line < lines; line++) frame_line(source_lines[line])
+}
+function frame_line(row, i, character, quoted) {
+	if (length(row) > 4096 || row ~ /[^ -~]/) { bad = 1; exit 1 }
+	if (skip_first) { skip_first = 0; return }
+	if (row == "") { bad = 1; exit 1 }
 	if (count) framed = framed ",\n"
-	if (substr($0, 1, 1) == "{" && substr($0, length($0), 1) == "}") {
-		framed = framed $0
+	if (substr(row, 1, 1) == "{" && substr(row, length(row), 1) == "}") {
+		framed = framed row
 	} else {
 		quoted = "\""
-		for (i = 1; i <= length($0); i++) {
-			character = substr($0, i, 1)
+		for (i = 1; i <= length(row); i++) {
+			character = substr(row, i, 1)
 			if (character == "\\" || character == "\"") quoted = quoted "\\"
 			quoted = quoted character
 		}
@@ -35,7 +42,7 @@ BEGIN {
 	count++
 }
 END {
-	if (bad || bytes != expected_bytes || count > 4096) exit 1
+	if (bad || (expected_bytes > 0 && NR != 1) || count > 4096) exit 1
 	print "["
 	if (count) printf "%s\n", framed
 	print "]"
