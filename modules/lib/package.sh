@@ -87,7 +87,7 @@ function pk_manifest(path, version,    line, result, header, fields, row, item, 
 	}
 	close(path)
 	if (status<0 || header==0 || count<2) result=0
-	required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
+	required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/logging.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
 	n=split(required,names," ")
 	for (i=1;i<=n;i++) if (!pk_seen[names[i]]) result=0
 	if (!result) {
@@ -737,7 +737,7 @@ EOF_COUNTS
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
+			required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/logging.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
 			if (modern) required=required " modules/backup.sh modules/lib/package.sh"
 			n=split(required,names," "); for (i=1;i<=n;i++) if (!seen[names[i]]) bad=1
 			if (bad || count<2 || bytes!=expected_bytes || NR!=expected_lines) exit 1
@@ -1545,6 +1545,7 @@ cfmgr_bootstrap_normal_dns_query() {
 }
 
 cfmgr_bootstrap_dns_deferred() {
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_event package native-dns deferred 75; fi
 	if [ "${cfmgr_install_dependency_action:-reinstall}" = normal ]; then
 		cfmgr_install_dns_result=deferred
 		if [ "${cfmgr_install_dns_warned:-0}" = 0 ]; then

@@ -5,6 +5,10 @@ CFMGR_REPOSITORY=https://github.com/XxUnkn0wnxX/CFMgr
 CFMGR_BRANCH=develop
 CFMGR_VERSION=0.1.0
 
+# Diagnostic privacy applies before configuration or child data is read.
+set +x
+set +v
+
 # Clear loader/config overrides with shell builtins before invoking native tools.
 # The interpreter's own startup precedes this boundary; children use env -i too.
 unset LD_LIBRARY_PATH LD_PRELOAD LD_AUDIT LD_DEBUG LD_DEBUG_OUTPUT LD_PROFILE \
@@ -235,7 +239,7 @@ cfmgr_entry_health_admit() {
 	# Optional owners are trusted only after this call verifies their exact fixed
 	# records. Never accept inherited shell values as admission evidence.
 	cfmgr_health_backup=missing cfmgr_health_manager=missing
-	cfmgr_health_package=missing cfmgr_health_catalog=missing
+	cfmgr_health_package=missing cfmgr_health_catalog=missing cfmgr_health_logging=missing
 	cfmgr_health_problem='Protected installed diagnostic ancestry is unavailable.'
 	for cfmgr_entry_dir in / "/jffs" "/jffs/addons" "$cfmgr_source" "$cfmgr_source/modules" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers"; do
 		cfmgr_entry_metadata "$cfmgr_entry_dir" directory || return 1
@@ -269,8 +273,9 @@ cfmgr_entry_health_admit() {
 				if($4=="modules/manager.sh")manager=$0
 				if($4=="modules/lib/package.sh")package=$0
 				if($4=="catalog.txt")catalog=$0
+				if($4=="modules/lib/logging.sh")logging=$0
 			}
-			END {for(i=1;i<=n;i++)if(!seen[names[i]])bad=1;if(bad || bytes!=expected)exit 1;for(i=1;i<=n;i++)print records[names[i]];if(backup!="")print backup;if(manager!="")print manager;if(package!="")print package;if(catalog!="")print catalog}'
+			END {for(i=1;i<=n;i++)if(!seen[names[i]])bad=1;if(bad || bytes!=expected)exit 1;for(i=1;i<=n;i++)print records[names[i]];if(backup!="")print backup;if(manager!="")print manager;if(package!="")print package;if(catalog!="")print catalog;if(logging!="")print logging}'
 		} 3>&1
 	) || return 1
 	# shellcheck disable=SC2016
@@ -279,8 +284,8 @@ cfmgr_entry_health_admit() {
 		{if(index($0,"\t")==0)bad=1;records[++count]=$0}
 		END {
 			required="cfmgr.sh modules/status.sh modules/lib/storage.sh modules/lib/execution.sh modules/lib/config.sh modules/lib/network.sh modules/helpers/worker.sh"
-			n=split(required,names," ");optional["modules/backup.sh"]=1;optional["modules/manager.sh"]=2;optional["modules/lib/package.sh"]=3;optional["catalog.txt"]=4
-			if(bad || reader!=1 || count<n || count>n+4)exit 1
+			n=split(required,names," ");optional["modules/backup.sh"]=1;optional["modules/manager.sh"]=2;optional["modules/lib/package.sh"]=3;optional["catalog.txt"]=4;optional["modules/lib/logging.sh"]=5
+			if(bad || reader!=1 || count<n || count>n+5)exit 1
 			for(i=1;i<=n;i++){fields_count=split(records[i],fields,"\t");if(fields_count!=4 || fields[4]!=names[i])exit 1}
 			last=0;for(i=n+1;i<=count;i++){fields_count=split(records[i],fields,"\t");rank=optional[fields[4]];if(fields_count!=4 || !rank || rank<=last)exit 1;last=rank}
 			for(i=1;i<=count;i++)print records[i]
@@ -314,6 +319,11 @@ cfmgr_entry_health_admit() {
 			cfmgr_health_package=untrusted
 			[ "$cfmgr_entry_mode" = 0644 ] || continue
 			;;
+		modules/lib/logging.sh)
+			cfmgr_entry_target=$cfmgr_source/modules/lib/logging.sh
+			cfmgr_health_logging=untrusted
+			[ "$cfmgr_entry_mode" = 0644 ] || continue
+			;;
 		catalog.txt)
 			cfmgr_entry_target=$cfmgr_source/catalog.txt
 			cfmgr_health_catalog=untrusted
@@ -322,7 +332,7 @@ cfmgr_entry_health_admit() {
 		*) return 1 ;;
 		esac
 		if ! cfmgr_entry_file "$cfmgr_entry_target" "$cfmgr_entry_mode" "$cfmgr_entry_bytes" "$cfmgr_entry_sha" 2>/dev/null; then
-			case $cfmgr_entry_path in modules/backup.sh | modules/manager.sh | modules/lib/package.sh | catalog.txt) continue ;; *) return 1 ;; esac
+			case $cfmgr_entry_path in modules/backup.sh | modules/manager.sh | modules/lib/package.sh | catalog.txt | modules/lib/logging.sh) continue ;; *) return 1 ;; esac
 		fi
 		case $cfmgr_entry_path in
 		cfmgr.sh | modules/status.sh | modules/lib/storage.sh | modules/lib/execution.sh | modules/lib/config.sh | modules/lib/network.sh | modules/helpers/worker.sh) cfmgr_health_required_verified=$(($cfmgr_health_required_verified + 1)) ;;
@@ -330,6 +340,7 @@ cfmgr_entry_health_admit() {
 		modules/manager.sh) cfmgr_health_manager=verified ;;
 		modules/lib/package.sh) cfmgr_health_package=verified ;;
 		catalog.txt) cfmgr_health_catalog=verified ;;
+		modules/lib/logging.sh) cfmgr_health_logging=verified ;;
 		esac
 	done <<EOF_HEALTH_RECORDS
 $cfmgr_health_records
@@ -337,6 +348,7 @@ EOF_HEALTH_RECORDS
 	[ "$cfmgr_health_required_verified" -eq 7 ] || return 1
 }
 
+# shellcheck disable=SC2030 # Capture availability intentionally belongs to this Health subshell.
 cfmgr_entry_health() (
 	# Emit useful independent observations before optional, finite native admission.
 	cfmgr_entry_health_native || exit 1
@@ -346,6 +358,7 @@ cfmgr_entry_health() (
 		cfmgr_entry_health_row config.validation SKIP 'Diagnostic extension unavailable; configuration was not read.' unknown 'Resolve package verification first.' package.extension || exit 1
 		cfmgr_entry_health_row network.readiness SKIP 'Trusted local prerequisites unavailable; no network request was made.' unknown 'Resolve package verification first.' package.extension || exit 1
 		cfmgr_entry_health_row features.validation SKIP 'Feature credentials and runtime state were not inspected.' unknown 'Resolve package verification first.' package.extension
+		cfmgr_entry_health_row capture.saved SKIP 'Diagnostic saving unavailable: trusted capture code could not be admitted.' current 'Restore a complete trusted package to enable saving.' package.extension
 		exit $?
 	fi
 	. "$cfmgr_source/modules/lib/storage.sh" || exit 1
@@ -353,6 +366,11 @@ cfmgr_entry_health() (
 	. "$cfmgr_source/modules/lib/network.sh" || exit 1
 	. "$cfmgr_source/modules/lib/config.sh" || exit 1
 	. "$cfmgr_source/modules/status.sh" || exit 1
+	cfmgr_log_available=0
+	if [ "$cfmgr_health_logging" = verified ]; then
+		. "$cfmgr_source/modules/lib/logging.sh" || exit 1
+		cfmgr_log_available=1
+	fi
 	cfmgr_status_health_native
 )
 
@@ -418,13 +436,23 @@ case ${1-} in
 	. "$cfmgr_source/modules/lib/execution.sh" || exit 1
 	. "$cfmgr_source/modules/lib/network.sh" || exit 1
 	. "$cfmgr_source/modules/lib/config.sh" || exit 1
+	. "$cfmgr_source/modules/lib/logging.sh" || exit 1
+	cfmgr_log_available=1
+	cfmgr_log_begin entry "$cfmgr_entry_action"
 	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
 		. "$cfmgr_source/modules/status.sh" || exit 1
 		. "$cfmgr_source/modules/backup.sh" || exit 1
 		. "$cfmgr_source/modules/manager.sh" || exit 1
-		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else exit 0; fi
+		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else
+			cfmgr_log_finish success 0
+			exit 0
+		fi
 	fi
-	if cfmgr_launch_native "$cfmgr_source" "$cfmgr_entry_action"; then exit 0; else cfmgr_entry_status=$?; fi
+	if cfmgr_launch_native "$cfmgr_source" "$cfmgr_entry_action"; then
+		cfmgr_log_finish success 0
+		exit 0
+	else cfmgr_entry_status=$?; fi
+	case $cfmgr_entry_status in 3) cfmgr_log_finish unresolved 3 ;; 4) cfmgr_log_finish skipped 4 ;; *) cfmgr_log_finish failure "$cfmgr_entry_status" ;; esac
 	[ "$cfmgr_entry_status" -ne 4 ] || exit 0
 	printf '[CFMGR] launch: error: retained launch blocked or incomplete\n' >&2
 	exit 1

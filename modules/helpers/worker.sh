@@ -279,7 +279,7 @@ shift 2
 case "$tool:$context" in /*:/*) ;; *) exit 2 ;; esac
 [ -f "$tool" ] && [ -x "$tool" ] && [ -d "$context" ] || exit 2
 cd "$context" || exit 2
-case $mode in health-*)
+case $mode in health-* | diagnostic-*)
 	set +x
 	set +v
 	ulimit -c 0 || exit 2
@@ -330,7 +330,7 @@ cfmgr_worker_program() {
 		. "$1/config.sh" || exit 2
 		. "${1%/lib}/backup.sh" || exit 2
 		;;
-	store-archive-config | store-backup-config | store-settings)
+	diagnostic-config | store-archive-config | store-backup-config | store-settings)
 		. "$1" || exit 2
 		;;
 	launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch)
@@ -343,7 +343,7 @@ cfmgr_worker_program() {
 		. "$1" || exit 2
 		case $mode in status-render | health-render) ;; *) . "$2" || exit 2 ;; esac
 		;;
-	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | status-native | status-fields | status-mount | repair-inventory | health-request-check | health-trace | health-frame)
+	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | diagnostic-mount | status-native | status-fields | status-mount | repair-inventory | health-request-check | health-trace | health-frame)
 		. "$1" || exit 2
 		;;
 	esac
@@ -394,7 +394,7 @@ $cfmgr_awk_program"
 		cfmgr_awk_program="$cfmgr_worker_json
 $cfmgr_awk_program"
 		;;
-	store-archive-config | store-backup-config | store-settings | launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch | install-config-check)
+	diagnostic-config | store-archive-config | store-backup-config | store-settings | launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch | install-config-check)
 		cfmgr_config_awk_json
 		cfmgr_worker_json=$cfmgr_awk_program
 		cfmgr_config_awk_config_schema
@@ -414,7 +414,7 @@ $cfmgr_awk_program"
 	archive-control | archive-browser-review) cfmgr_backup_awk_backup_archive_control ;;
 	history-parse) cfmgr_backup_awk_backup_history ;;
 	history-writer-parse) cfmgr_backup_awk_backup_cloud_writer ;;
-	history-mount | archive-source-mount | store-backup-mounts | store-backup-mount | status-mount | repair-inventory) cfmgr_storage_awk_mountinfo ;;
+	history-mount | archive-source-mount | store-backup-mounts | store-backup-mount | status-mount | diagnostic-mount | repair-inventory) cfmgr_storage_awk_mountinfo ;;
 	archive-payload-yaml) cfmgr_backup_awk_backup_yaml ;;
 	archive-payload-index) cfmgr_backup_awk_backup_payload_index ;;
 	archive-payload-match) cfmgr_backup_awk_backup_payload_match ;;
@@ -445,6 +445,185 @@ cfmgr_worker_health_input() {
 # Acquisition aliases retain the supervisor's distinct native-only admission;
 # their executable/grammar is the same fixed trusted bootstrap implementation.
 case $mode in
+diagnostic-scribe-authority)
+	[ "$#" -eq 5 ] || exit 2
+	for cfmgr_scribe_parser in "$1" "$2" "$3"; do [ -f "$cfmgr_scribe_parser" ] && [ ! -L "$cfmgr_scribe_parser" ] || exit 1; done
+	case $5 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$5" -le 65536 ] && [ -f "$4" ] && [ ! -L "$4" ] || exit 2
+	# shellcheck disable=SC1090 # Fixed package-admitted category operands only.
+	. "$1" || exit 2
+	# shellcheck disable=SC1090 # Fixed package-admitted category operands only.
+	. "$2" || exit 2
+	# shellcheck disable=SC1090 # Fixed package-admitted category operands only.
+	. "$3" || exit 2
+	cfmgr_config_awk_json
+	cfmgr_scribe_program=$cfmgr_awk_program
+	cfmgr_config_awk_config_schema
+	cfmgr_scribe_program="$cfmgr_scribe_program
+$cfmgr_awk_program"
+	cfmgr_config_awk_config_observation
+	cfmgr_scribe_program="$cfmgr_scribe_program
+$cfmgr_awk_program"
+	cfmgr_backup_awk_backup_history_policy
+	cfmgr_scribe_program="$cfmgr_scribe_program
+$cfmgr_awk_program"
+	cfmgr_status_awk_health_logging_authority
+	cfmgr_scribe_program="$cfmgr_scribe_program
+$cfmgr_awk_program"
+	[ "${#cfmgr_scribe_program}" -le 98304 ] || exit 2
+	exec 3<"$4" || exit 1
+	[ "$4" -ef /proc/self/fd/3 ] && [ ! -L "$4" ] || exit 1
+	exec 9<&0 || exit 2
+	exec "$tool" -v cfmgr_json_mode=tree -v cfmgr_json_size="$5" -v cfmgr_config_mode=archive-data "$cfmgr_scribe_program" <&3
+	;;
+diagnostic-list)
+	[ "$#" -eq 0 ] && [ -d /proc/self/fd/3 ] || exit 2
+	exec "$tool" -1A /proc/self/fd/3
+	;;
+diagnostic-digest)
+	[ "$#" -eq 0 ] && [ -f /proc/self/fd/3 ] || exit 2
+	exec 9<&0 || exit 2
+	exec "$tool" dgst -sha256 -r <&3
+	;;
+diagnostic-source)
+	[ "$#" -eq 1 ] && [ -f /proc/self/fd/3 ] || exit 2
+	case $1 in '' | *[!0-9]* | 0[0-9]*) exit 2 ;; esac
+	[ "${#1}" -le 7 ] && [ "$1" -le 2097152 ] || exit 2
+	exec 9<&0 || exit 2
+	exec "$tool" bs=1024 "skip=$1" count=24 <&3 2>/dev/null
+	;;
+diagnostic-count)
+	[ "$#" -eq 0 ] && [ -f /proc/self/fd/3 ] || exit 2
+	exec 9<&0 || exit 2
+	exec "$tool" -c <&3
+	;;
+diagnostic-frame)
+	[ "$#" -eq 3 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f /proc/self/fd/3 ] || exit 2
+	case $2 in '' | *[!0-9]* | 0[0-9]*) exit 2 ;; esac
+	[ "$2" -le 24576 ] || exit 2
+	case $3 in 0 | 1) ;; *) exit 2 ;; esac
+	# shellcheck disable=SC1090 # Fixed package-admitted category operands only.
+	. "$1" || exit 2
+	cfmgr_logging_awk_log_frame
+	exec 9<&0 || exit 2
+	exec "$tool" -v expected_bytes="$2" -v excerpt="$3" "$cfmgr_awk_program" <&3
+	;;
+diagnostic-sanitize)
+	[ "$#" -eq 5 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] && [ -f /proc/self/fd/3 ] || exit 2
+	case $3 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$3" -le 65536 ] || exit 2
+	case $4 in 0 | 1) ;; *) exit 2 ;; esac
+	case $5 in ddns | ip_sync | cloudflared) ;; *) exit 2 ;; esac
+	# shellcheck disable=SC1090 # Fixed package-admitted category operands only.
+	. "$1" || exit 2
+	# shellcheck disable=SC1090 # Fixed package-admitted category operands only.
+	. "$2" || exit 2
+	cfmgr_config_awk_json
+	cfmgr_scribe_program=$cfmgr_awk_program
+	cfmgr_logging_awk_log_sanitize
+	cfmgr_scribe_program="$cfmgr_scribe_program
+$cfmgr_awk_program"
+	[ "${#cfmgr_scribe_program}" -le 98304 ] || exit 2
+	exec 9<&0 || exit 2
+	exec "$tool" -v cfmgr_json_size="$3" -v cfmgr_json_mode=tree -v cfmgr_log_excerpt="$4" -v cfmgr_log_source="$5" "$cfmgr_scribe_program" <&3
+	;;
+diagnostic-compare)
+	[ "$#" -eq 0 ] && [ -f /proc/self/fd/3 ] && [ -f /proc/self/fd/4 ] || exit 2
+	exec "$tool" -s /proc/self/fd/3 /proc/self/fd/4
+	;;
+
+diagnostic-date)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -u '+%Y-%m-%dT%H:%M:%SZ'
+	;;
+
+diagnostic-realpath)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	exec "$tool" -f "$1"
+	;;
+diagnostic-meta)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in /*) ;; *) exit 2 ;; esac
+	exec "$tool" -ildn "$1"
+	;;
+diagnostic-mount)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in /*) ;; *) exit 2 ;; esac
+	# cfmgr_worker_program imports storage.sh and selects mountinfo AWK.
+	cfmgr_worker_program "$@" || exit 2
+	exec "$tool" "$cfmgr_awk_program" "$2" /proc/self/mountinfo
+	;;
+diagnostic-mkdir)
+	[ "$#" -eq 1 ] && [ -d /proc/self/fd/7 ] || exit 2
+	case $1 in '' | . | .. | */* | *[!\ -~]*) exit 2 ;; esac
+	exec "$tool" -m 700 "/proc/self/fd/7/$1"
+	;;
+diagnostic-create)
+	[ "$#" -eq 1 ] && [ -d /proc/self/fd/7 ] || exit 2
+	case $1 in developer.log | health-[0-9]*.log | scribe-[A-Za-z0-9._-]*.log) ;; *) exit 2 ;; esac
+	case $1 in *[!A-Za-z0-9._-]* | *..*) exit 2 ;; esac
+	umask 077
+	set -C
+	: >"/proc/self/fd/7/$1" || exit 1
+	;;
+diagnostic-lock)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -n 0
+	;;
+diagnostic-copy | diagnostic-tail)
+	[ "$#" -eq 1 ] && [ -f /proc/self/fd/3 ] && [ -f /proc/self/fd/4 ] || exit 2
+	case $1 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	case $mode in
+	diagnostic-copy)
+		[ "$1" -le 48 ] || exit 2
+		set -- bs=4096 "count=$1"
+		;;
+	diagnostic-tail)
+		[ "$1" -le 4095 ] || exit 2
+		set -- bs=1 "count=$1"
+		;;
+	esac
+	# Do not cap total retained file size. The input extent is independently
+	# bounded and the direct native writer remains the supervised child.
+	# shellcheck disable=SC3045 # Native BusyBox soft limit; bounded input controls append size.
+	ulimit -S -f unlimited || exit 2
+	# stdin becomes the bounded stage, so the capture lock must first be
+	# duplicated into FD9; the native child then holds it through exec.
+	exec 9<&0 || exit 2
+	exec "$tool" "$@" <&3 >&4 2>/dev/null
+	;;
+diagnostic-convert)
+	[ "$#" -eq 2 ] || exit 2
+	case $1 in encode | decode) ;; *) exit 2 ;; esac
+	# Source value travels as an argv operand, never an awk -v assignment.
+	exec "$tool" 'BEGIN {
+		mode=ARGV[1]; value=ARGV[2]; ARGV[1]=ARGV[2]="";
+		digits="0123456789abcdef"; for (i=32;i<=126;i++) ordinal[sprintf("%c",i)]=i;
+		if (mode=="encode") {
+			if (length(value)<1 || length(value)>1024) exit 1;
+			for (i=1;i<=length(value);i++) {c=substr(value,i,1); if (!(c in ordinal)) exit 1; n=ordinal[c]; out=out sprintf("%02x",n)}
+		} else {
+			if (length(value)<2 || length(value)>2048 || length(value)%2 || value !~ /^[0-9a-f]+$/) exit 1;
+			for (i=1;i<=length(value);i+=2) {n=(index(digits,substr(value,i,1))-1)*16+index(digits,substr(value,i+1,1))-1; if (n<32 || n>126) exit 1; out=out sprintf("%c",n)}
+		}
+		print out
+	}' "$1" "$2"
+	;;
+diagnostic-config)
+	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] && [ -f /proc/self/fd/3 ] || exit 2
+	case $2 in '' | *[!0-9]* | 0*) exit 2 ;; esac
+	[ "$2" -le 65536 ] || exit 2
+	# Preserve the capture lock through exec when redirecting stdin to JSON.
+	exec 9<&0 || exit 2
+	cfmgr_worker_program "$@" || exit 2
+	exec "$tool" -v cfmgr_config_mode=diagnostic-read -v cfmgr_json_mode=tree -v cfmgr_json_size="$2" "$cfmgr_awk_program" <&3
+	;;
+diagnostic-header)
+	[ "$#" -eq 0 ] && [ -f /proc/self/fd/3 ] || exit 2
+	exec 9<&0 || exit 2
+	exec "$tool" bs=1 count=18 <&3 2>/dev/null
+	;;
 acquire-curl-version) mode=native-curl-version ;;
 acquire-curl-offline) mode=native-curl-offline ;;
 acquire-curl-features) mode=native-curl-features ;;
@@ -1490,7 +1669,7 @@ acquire-manifest)
 			print
 		}
 		END {
-			required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
+			required="cfmgr.sh catalog.txt modules/backup.sh modules/helpers/worker.sh modules/lib/config.sh modules/lib/execution.sh modules/lib/logging.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh modules/manager.sh modules/status.sh"
 			n=split(required,names," ");for(i=1;i<=n;i++)if(!seen[names[i]])bad=1
 			if(bad || count<2)exit 1
 		}' "$2" "$1"
@@ -1548,7 +1727,7 @@ store-settings)
 	[ "$#" -eq 8 ] || exit 2
 	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done
 	[ -f "$4" ] && [ ! -L "$4" ] || exit 1
-	case $3 in settings-read | settings-observe | settings-patch) ;; *) exit 2 ;; esac
+	case $3 in settings-read | settings-observe | settings-patch | diagnostic-read | diagnostic-observe | diagnostic-patch) ;; *) exit 2 ;; esac
 	case $5 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
 	export CFMGR_SETTINGS_MASK="$6" CFMGR_SETTINGS_CHECK="$7" CFMGR_SETTINGS_AUTO="$8"

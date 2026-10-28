@@ -822,3 +822,100 @@ printf 'borrowed locks verified\\n'
     )
     assert (ram / "observed").read_text() == "native\nentware\n"
     assert (source / ".config-save").is_dir()
+
+
+def test_diagnostic_store_save_reopen_auto_and_preserve_other_fields(
+    shell, tools, store_fixture
+):
+    source, *_ = store_fixture
+    initial = (
+        (source / "config")
+        .read_bytes()
+        .replace(b'"developer":false', b'"developer":true', 1)
+    )
+    (source / "config").write_bytes(initial)
+    script = ADAPTER.replace(
+        'cfmgr_config_store "$@"', 'cfmgr_diagnostic_settings "$@"'
+    )
+    read = run_store(shell, tools, store_fixture, "read", script=script)
+    assert (read.returncode, read.stdout) == (
+        0,
+        b"CFMGR-DIAGNOSTIC 1 read 1 1 0 - END\n",
+    )
+    encoded = b"/tmp/mnt/My drive/diagnostics".hex()
+    save = run_store(shell, tools, store_fixture, "save", encoded, script=script)
+    assert (save.returncode, save.stdout) == (
+        0,
+        f"CFMGR-DIAGNOSTIC 1 saved 2 1 0 {encoded} END\n".encode(),
+    ), (save.stdout, save.stderr)
+    expected = initial.replace(b'"generation":1', b'"generation":2', 1).replace(
+        b'"developer_log_directory":null',
+        b'"developer_log_directory":"/tmp/mnt/My drive/diagnostics"',
+        1,
+    )
+    assert (source / "config").read_bytes() == expected
+    reopen = run_store(shell, tools, store_fixture, "read", script=script)
+    assert (reopen.returncode, reopen.stdout) == (
+        0,
+        f"CFMGR-DIAGNOSTIC 1 read 2 1 0 {encoded} END\n".encode(),
+    )
+    noop = run_store(shell, tools, store_fixture, "save", encoded, script=script)
+    assert (noop.returncode, noop.stdout) == (
+        0,
+        f"CFMGR-DIAGNOSTIC 1 unchanged 2 1 0 {encoded} END\n".encode(),
+    )
+    assert (source / "config").read_bytes() == expected
+    auto = run_store(shell, tools, store_fixture, "save", "-", script=script)
+    assert (auto.returncode, auto.stdout) == (
+        0,
+        b"CFMGR-DIAGNOSTIC 1 saved 3 1 0 - END\n",
+    )
+    assert (source / "config").read_bytes() == initial.replace(
+        b'"generation":1', b'"generation":3', 1
+    )
+
+
+def test_diagnostic_store_rejects_invalid_path_without_mutating(
+    shell, tools, store_fixture
+):
+    source, *_ = store_fixture
+    before = (source / "config").read_bytes()
+    script = ADAPTER.replace(
+        'cfmgr_config_store "$@"', 'cfmgr_diagnostic_settings "$@"'
+    )
+    result = run_store(
+        shell, tools, store_fixture, "save", b"/tmp/../x".hex(), script=script
+    )
+    assert result.returncode != 0
+    assert (source / "config").read_bytes() == before
+
+
+def test_diagnostic_store_interrupted_save_uses_existing_recovery_guard(
+    shell, tools, store_fixture
+):
+    source, *_ = store_fixture
+    before = (source / "config").read_bytes()
+    script = ADAPTER.replace(
+        'cfmgr_config_store "$@"', 'cfmgr_diagnostic_settings "$@"'
+    )
+    encoded = b"/tmp/mnt/drive/debug".hex()
+    stopped = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        encoded,
+        scenario="publish-stop",
+        script=script,
+    )
+    assert stopped.returncode == 1
+    assert stopped.stdout == b"CFMGR-DIAGNOSTIC 1 recovery 0 0 1 - END\n"
+    assert (source / "config").read_bytes() == before
+    assert (source / ".config-save").is_dir()
+    recovered = run_store(shell, tools, store_fixture, "recover", script=script)
+    assert (recovered.returncode, recovered.stdout) == (
+        0,
+        b"CFMGR-DIAGNOSTIC 1 recovered 1 0 0 - END\n",
+    )
+    assert (source / "config").read_bytes() == before
+    assert not list(source.glob(".config-save*"))

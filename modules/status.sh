@@ -222,7 +222,15 @@ cfmgr_health_finalize() {
 	case $cfmgr_health_render_bytes in '' | *[!0-9]* | 0?*) return 1 ;; esac
 	[ -z "$cfmgr_health_render_extra" ] && [ "$cfmgr_health_render_bytes" -le 196608 ] || return 1
 	cfmgr_status_attachment_ok && [ -f "$cfmgr_health_render_output" ] && [ ! -L "$cfmgr_health_render_output" ] || return 1
-	/bin/cat "$cfmgr_health_render_output"
+	/bin/cat "$cfmgr_health_render_output" || return $?
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then
+		cfmgr_health_capture_result=ok
+		[ "${cfmgr_health_code:-0}:${cfmgr_health_incomplete:-0}" = 0:0 ] || cfmgr_health_capture_result=incomplete
+		cfmgr_log_health "$cfmgr_health_render_output" "$cfmgr_health_render_bytes" "$cfmgr_health_capture_result"
+	else
+		printf '%s\n' '[CFMGR] capture.saved SKIP saving was unavailable; trusted capture prerequisites are missing'
+	fi
+	return 0
 }
 
 cfmgr_health_final_begin() {
@@ -993,8 +1001,15 @@ cfmgr_health_session() {
 
 cfmgr_status_health_native() (
 	set +f
-	cfmgr_health_begin || exit $?
+	cfmgr_health_capture_done=0
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_collect status health; fi
+	if cfmgr_health_begin; then :; else
+		cfmgr_health_code=$?
+		if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_health - 0 failed; fi
+		exit "$cfmgr_health_code"
+	fi
 	if cfmgr_health_session; then cfmgr_health_code=0; else cfmgr_health_code=$?; fi
+	if [ "${cfmgr_log_available:-0}:$cfmgr_health_capture_done" = 1:0 ]; then cfmgr_log_health - 0 failed; fi
 	[ "$cfmgr_health_code" != 3 ] || exit 3
 	exec 3>&- 4>&- 5>&- 6<&- 7<&-
 	cfmgr_status_interrupted=0
@@ -1092,7 +1107,21 @@ EOF_MOUNT
 }
 
 cfmgr_status_native() (
-	ulimit -c 0 || exit 1
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_begin status "status"; fi
+	if _cfmgr_status_native_work "$@"; then cfmgr_log_operation_code=0; else cfmgr_log_operation_code=$?; fi
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then
+		case $cfmgr_log_operation_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_log_operation_code" ;;
+		esac
+	fi
+	exit "$cfmgr_log_operation_code"
+)
+
+# shellcheck disable=SC3045 # Native BusyBox report/core limits are required and tested.
+_cfmgr_status_native_work() {
+	ulimit -c 0 || return 1
 	cfmgr_health_active=0 cfmgr_status_page=basic
 	for cfmgr_status_path in "$cfmgr_source/modules/helpers/worker.sh" "$cfmgr_source/modules/lib/config.sh" \
 		"$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/storage.sh"; do
@@ -1101,12 +1130,12 @@ cfmgr_status_native() (
 $(/bin/ls -ldn "$cfmgr_status_path")
 EOF_STATUS_METADATA
 			printf '[CFMGR] status: warning: required native reporting module unavailable\n'
-			exit 1
+			return 1
 		fi
 	done
 	cfmgr_status_prepare || {
 		printf '[CFMGR] status: warning: native report context unavailable\n'
-		exit 1
+		return 1
 	}
 	cfmgr_status_dashboard=$cfmgr_status_context/dashboard
 	(
@@ -1115,30 +1144,30 @@ EOF_STATUS_METADATA
 		: >"$cfmgr_status_dashboard"
 	) || {
 		printf '[CFMGR] status: warning: local dashboard staging unavailable\n'
-		exit 1
+		return 1
 	}
-	cfmgr_status_saved_limit=$(ulimit -S -f) || exit 1
+	cfmgr_status_saved_limit=$(ulimit -S -f) || return 1
 	cfmgr_status_limit_hit=0
 	trap 'cfmgr_status_limit_hit=1' XFSZ
-	ulimit -S -f 32 || exit 1
+	ulimit -S -f 32 || return 1
 	if cfmgr_status_work >"$cfmgr_status_dashboard"; then cfmgr_status_code=0; else cfmgr_status_code=$?; fi
-	ulimit -S -f "$cfmgr_status_saved_limit" || exit 1
+	ulimit -S -f "$cfmgr_status_saved_limit" || return 1
 	if [ "$cfmgr_status_code" = 3 ]; then
 		printf '[CFMGR] status: error: owned probe unresolved; report cleanup required\n'
-		exit 3
+		return 3
 	fi
 	cfmgr_status_render_ready=0
 	if cfmgr_status_final_begin && [ "$cfmgr_status_limit_hit" = 0 ] && cfmgr_status_count_dashboard "$cfmgr_status_dashboard"; then
 		cfmgr_status_render_ready=1
 	else
 		cfmgr_status_code=$?
-		[ "$cfmgr_status_code" != 3 ] || exit 3
+		[ "$cfmgr_status_code" != 3 ] || return 3
 		cfmgr_status_code=1
 	fi
 	if [ "$cfmgr_status_render_ready" = 1 ]; then
 		if cfmgr_status_render "$cfmgr_status_dashboard" -; then :; else
 			cfmgr_status_code=$?
-			[ "$cfmgr_status_code" != 3 ] || exit 3
+			[ "$cfmgr_status_code" != 3 ] || return 3
 			cfmgr_status_render_unavailable
 			cfmgr_status_code=1
 		fi
@@ -1149,10 +1178,10 @@ EOF_STATUS_METADATA
 	cfmgr_status_interrupted=0
 	cfmgr_status_cleanup || {
 		printf '[CFMGR] status: warning: report cleanup required\n'
-		exit 1
+		return 1
 	}
-	exit "$cfmgr_status_code"
-)
+	return "$cfmgr_status_code"
+}
 
 cfmgr_status_work() {
 	case ${cfmgr_status_page:-basic} in full) ;; *) printf '\nCFMgr %s - local status\n' "$CFMGR_VERSION" ;; esac
@@ -4640,14 +4669,14 @@ function pi_private(name) {
     return context "/" name
 }
 function pi_fixed(    ids,paths,n,i) {
-    n=split("entry catalog backup manager status helpers-empty worker hooks-empty lib-empty config execution network package storage",ids," ")
-    split("cfmgr.sh catalog.txt modules/backup.sh modules/manager.sh modules/status.sh modules/helpers/.gitkeep modules/helpers/worker.sh modules/hooks/.gitkeep modules/lib/.gitkeep modules/lib/config.sh modules/lib/execution.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh",paths," ")
+    n=split("entry catalog backup manager status helpers-empty worker hooks-empty lib-empty config execution logging network package storage",ids," ")
+    split("cfmgr.sh catalog.txt modules/backup.sh modules/manager.sh modules/status.sh modules/helpers/.gitkeep modules/helpers/worker.sh modules/hooks/.gitkeep modules/lib/.gitkeep modules/lib/config.sh modules/lib/execution.sh modules/lib/logging.sh modules/lib/network.sh modules/lib/package.sh modules/lib/storage.sh",paths," ")
     for(i=1;i<=n;i++) {fixed[paths[i]]=ids[i];byrole[ids[i]]=paths[i];order[i]=ids[i]}
     dirs["modules"]="d0";dirs["modules/lib"]="d1";dirs["modules/helpers"]="d2";dirs["modules/hooks"]="d3"
 }
 function pi_metadata(path,side,    raw,lines,n,i,f,c,r) {
     raw=pi_read(path,65536);n=split(raw,lines,"\n")
-    if(n!=20)pi_fail()
+    if(n!=21)pi_fail()
     for(i=1;i<n;i++) {
         c=split(lines[i],f,"\t");r=f[2]
         if(c!=7 || f[1]!="MEMBER" || (!(r in byrole) && r!="manifest" && r!~/^d[0-3]$/) || metaseen[side,r]++ || f[3]!~/^[01]$/)pi_fail()
@@ -4668,7 +4697,7 @@ BEGIN {
     context=ARGV[1];input=ARGV[2];ARGC=1
     pi_fixed();raw=pi_read(input,8192);n=split(raw,lines,"\n")
     if(n>40 || n<20 || lines[n-1]!="END")pi_fail()
-    if(split(lines[1],a,"\t")!=4 || a[1]!="CFMGR-PACKAGE" || a[2]!="1" || a[3]!~/^[0-9A-Za-z._-]+$/ || a[4]!="verified:verified:verified:verified")pi_fail()
+    if(split(lines[1],a,"\t")!=4 || a[1]!="CFMGR-PACKAGE" || a[2]!="1" || a[3]!~/^[0-9A-Za-z._-]+$/ || a[4]!="verified:verified:verified:verified:verified")pi_fail()
     version=a[3]
     for(i=2;i<n-1;i++) {
         c=split(lines[i],a,"\t")
@@ -4683,7 +4712,7 @@ BEGIN {
             receipt[a[1]]=pi_private(a[2]);receipt_count++
         }
     }
-    if(original_count!=11 || source_count!=6 || receipt_count!=4)pi_fail()
+    if(original_count!=12 || source_count!=6 || receipt_count!=4)pi_fail()
     raw=pi_read(receipt["COUNTS"],8192);n=split(raw,lines,"\n")
     if(n!=7)pi_fail()
     for(i=1;i<n;i++) {
@@ -4796,8 +4825,8 @@ cfmgr_health_package_collect() {
 }
 
 _cfmgr_health_package_collect() {
-	[ "${cfmgr_health_package:-missing}:${cfmgr_health_catalog:-missing}:${cfmgr_health_backup:-missing}:${cfmgr_health_manager:-missing}" = verified:verified:verified:verified ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ] || return 1
-	cfmgr_health_package_spec='' cfmgr_health_package_index="CFMGR-PACKAGE	1	$CFMGR_VERSION	verified:verified:verified:verified
+	[ "${cfmgr_health_package:-missing}:${cfmgr_health_catalog:-missing}:${cfmgr_health_backup:-missing}:${cfmgr_health_manager:-missing}:${cfmgr_health_logging:-missing}" = verified:verified:verified:verified:verified ] && [ "${cfmgr_health_native_openssl_ok:-0}" = 1 ] || return 1
+	cfmgr_health_package_spec='' cfmgr_health_package_index="CFMGR-PACKAGE	1	$CFMGR_VERSION	verified:verified:verified:verified:verified
 "
 	while IFS='	' read -r cfmgr_health_package_mode cfmgr_health_package_bytes cfmgr_health_package_sha cfmgr_health_package_path; do
 		cfmgr_health_package_index="$cfmgr_health_package_index""ORIGINAL	$cfmgr_health_package_mode	$cfmgr_health_package_bytes	$cfmgr_health_package_sha	$cfmgr_health_package_path
@@ -4826,6 +4855,7 @@ hooks-empty modules/hooks/.gitkeep
 lib-empty modules/lib/.gitkeep
 config modules/lib/config.sh
 execution modules/lib/execution.sh
+logging modules/lib/logging.sh
 network modules/lib/network.sh
 package modules/lib/package.sh
 storage modules/lib/storage.sh

@@ -1,5 +1,6 @@
 #!/bin/sh
 # shellcheck disable=SC2034,SC2154 # Explicit category inputs and output fields.
+# shellcheck disable=SC2031 # Store helpers intentionally share controller-local subshell state.
 # Category owner: config. Sourcing defines functions only.
 
 # ---- config ----
@@ -224,6 +225,9 @@ cfmgr_config_store() (
 	*) exit 2 ;;
 	esac
 	cfmgr_store_operation=$1 cfmgr_store_mask=${2:-both} cfmgr_store_want_check=${3:-0} cfmgr_store_want_auto=${4:-0}
+	if [ "${cfmgr_log_available:-0}" = 1 ] && [ "$1" != read ]; then
+		cfmgr_log_begin manager "store-settings-$1"
+	else cfmgr_log_recording=0; fi
 	if cfmgr_store_prepare && cfmgr_store_work; then cfmgr_store_code=0; else cfmgr_store_code=$?; fi
 	if [ "$cfmgr_store_code" = 3 ]; then
 		cfmgr_store_result=unresolved cfmgr_store_pending=1
@@ -237,9 +241,41 @@ cfmgr_config_store() (
 	fi
 	[ "$cfmgr_store_code" != 4 ] || cfmgr_store_code=1
 	if [ "$cfmgr_store_code" != 0 ]; then cfmgr_store_generation=0 cfmgr_store_check=0 cfmgr_store_auto=0 cfmgr_store_developer=0; fi
+	if [ "${cfmgr_log_recording:-0}" = 1 ]; then
+		case $cfmgr_store_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_store_code" ;;
+		esac
+	fi
 	printf 'CFMGR-STORE 1 %s %s %s %s %s %s END\n' "$cfmgr_store_result" "$cfmgr_store_generation" "$cfmgr_store_check" "$cfmgr_store_auto" "$cfmgr_store_developer" "$cfmgr_store_pending"
 	exit "$cfmgr_store_code"
 )
+
+cfmgr_store_diagnostic_parse() {
+	cfmgr_store_run store-settings "$cfmgr_store_awk" "$cfmgr_store_source/modules/lib/config.sh" "$cfmgr_store_source/modules/lib/config.sh" \
+		"$1" "$2" "$3" "${cfmgr_diagnostic_want:--}" 0 0
+}
+
+cfmgr_store_diagnostic_read() {
+	cfmgr_store_diagnostic_parse diagnostic-read "$1" "$2" || return $?
+	cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+	IFS=' ' read -r cfmgr_diagnostic_tag cfmgr_diagnostic_version cfmgr_diagnostic_generation cfmgr_diagnostic_dev \
+		cfmgr_diagnostic_value cfmgr_diagnostic_end cfmgr_diagnostic_extra <<EOF_DIAGNOSTIC
+$cfmgr_store_line
+EOF_DIAGNOSTIC
+	[ "$cfmgr_diagnostic_tag:$cfmgr_diagnostic_version:$cfmgr_diagnostic_end:$cfmgr_diagnostic_extra" = CFMGR-DIAGNOSTIC-CONFIG:1:END: ] || return 1
+	case $cfmgr_diagnostic_generation in '' | 0* | *[!0-9]*) return 1 ;; esac
+	[ "${#cfmgr_diagnostic_generation}" -le 20 ] || return 1
+	case $cfmgr_diagnostic_dev in 0 | 1) ;; *) return 1 ;; esac
+	case $cfmgr_diagnostic_value in
+	- | '!') ;;
+	'' | *[!0-9a-f]*) return 1 ;;
+	*) [ "${#cfmgr_diagnostic_value}" -le 2048 ] && [ "$((${#cfmgr_diagnostic_value} % 2))" -eq 0 ] || return 1 ;;
+	esac
+	[ "$cfmgr_store_line" = "CFMGR-DIAGNOSTIC-CONFIG 1 $cfmgr_diagnostic_generation $cfmgr_diagnostic_dev $cfmgr_diagnostic_value END" ] || return 1
+	cfmgr_store_generation=$cfmgr_diagnostic_generation cfmgr_store_developer=$cfmgr_diagnostic_dev
+}
 
 cfmgr_store_prepare() {
 	cfmgr_store_source=/jffs/addons/CFMgr.d cfmgr_store_jffs=/jffs cfmgr_store_ram=/tmp/cfmgr
@@ -398,6 +434,11 @@ cfmgr_store_snapshot() {
 }
 
 cfmgr_store_parse() {
+	if [ "${cfmgr_store_scope:-settings}" = diagnostic ] && [ "$1" != settings-read ]; then
+		case $1 in settings-observe) cfmgr_store_diagnostic_mode=diagnostic-observe ;; settings-patch) cfmgr_store_diagnostic_mode=diagnostic-patch ;; *) return 2 ;; esac
+		cfmgr_store_diagnostic_parse "$cfmgr_store_diagnostic_mode" "$2" "$3"
+		return $?
+	fi
 	if [ "${cfmgr_store_scope:-settings}" = backup ] && [ "$1" != settings-read ]; then
 		case $1 in settings-observe) cfmgr_store_backup_mode=backup-observe ;; settings-patch) cfmgr_store_backup_mode=backup-patch ;; *) return 2 ;; esac
 		cfmgr_store_backup_parse "$cfmgr_store_backup_mode" "$2" "$3"
@@ -531,6 +572,11 @@ cfmgr_store_target_matches() {
 		cfmgr_store_backup_parse backup-observe "$cfmgr_store_snapshot" "$cfmgr_store_target_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
 		[ "$cfmgr_store_line" = "CFMGR-BACKUP-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
+	fi
+	if [ "${cfmgr_store_scope:-settings}" = diagnostic ]; then
+		cfmgr_store_diagnostic_parse diagnostic-observe "$cfmgr_store_snapshot" "$cfmgr_store_target_bytes" || return $?
+		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+		[ "$cfmgr_store_line" = "CFMGR-DIAGNOSTIC-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
 	fi
 	case ${cfmgr_store_scope:-settings} in
 	archive-preferences | archive-history)
@@ -718,7 +764,7 @@ $cfmgr_store_line
 EOF_PATCH
 		cfmgr_store_patch_tag=CFMGR-SETTINGS-PATCH
 		[ "${cfmgr_store_scope:-settings}" != backup ] || cfmgr_store_patch_tag=CFMGR-BACKUP-PATCH
-		case ${cfmgr_store_scope:-settings} in archive-preferences | archive-history) cfmgr_store_patch_tag=CFMGR-ARCHIVE-PATCH ;; esac
+		case ${cfmgr_store_scope:-settings} in archive-preferences | archive-history) cfmgr_store_patch_tag=CFMGR-ARCHIVE-PATCH ;; diagnostic) cfmgr_store_patch_tag=CFMGR-DIAGNOSTIC-PATCH ;; esac
 		[ "$cfmgr_store_tag:$cfmgr_store_schema:$cfmgr_store_end:$cfmgr_store_extra" = "$cfmgr_store_patch_tag:1:END:" ] &&
 			[ "$cfmgr_store_old:$cfmgr_store_input_bytes" = "$cfmgr_store_base_generation:$cfmgr_store_base_bytes" ] || return 1
 		case $cfmgr_store_changed:$cfmgr_store_target_check:$cfmgr_store_target_auto:$cfmgr_store_target_dev in [01]:[01]:[01]:[01]) ;; *) return 1 ;; esac
@@ -1610,11 +1656,39 @@ function co_observation_read() {
         cfmgr_config_mode != "settings-read" && cfmgr_config_mode != "settings-observe" &&
         cfmgr_config_mode != "settings-patch" && cfmgr_config_mode != "backup-read" &&
         cfmgr_config_mode != "backup-observe" && cfmgr_config_mode != "backup-patch" &&
+        cfmgr_config_mode !~ /^diagnostic-(read|observe|patch)$/ &&
         cfmgr_config_mode !~ /^archive-(data|read|preferences-(observe|patch)|history-(observe|patch))$/) reject()
     co_archive_mode = (cfmgr_config_mode ~ /^archive-/ && cfmgr_config_mode != "archive-data")
 
     for (co_i = 2; co_i <= cfmgr_json_tree_count; co_i++)
         co_child[cfmgr_json_tree_parent[co_i], cfmgr_json_tree_location[co_i]] = co_i
+
+    # Health may read this one preference from a private immutable tree even
+    # when unrelated feature settings are damaged or absent. The JSON parser
+    # has already enforced exact byte framing, bounded input and unique keys.
+    # A present invalid custom field is !, never Auto; missing core authority is
+    # an unavailable config, not an assertion that no override was selected.
+    if (cfmgr_config_mode == "diagnostic-read") {
+        co_type(1, "object")
+        co_schema = co_field(1, "schema", "number")
+        if (cfmgr_json_tree_payload[co_schema] != "n1" && cfmgr_json_tree_payload[co_schema] != "n2") reject()
+        co_generation = co_field(1, "generation", "number")
+        co_old = substr(cfmgr_json_tree_payload[co_generation], 2)
+        if (co_old !~ /^[1-9][0-9]*$/ || length(co_old) > 20) reject()
+        co_manager = co_field(1, "manager", "object")
+        co_developer = co_field(co_manager, "developer", "boolean")
+        co_diagnostic_directory = co_child[co_manager, "k" co_hex("developer_log_directory")]
+        if (!co_diagnostic_directory) reject()
+        co_diagnostic_current = "!"
+        if (cfmgr_json_tree_kind[co_diagnostic_directory] == "null") co_diagnostic_current = "-"
+        if (cfmgr_json_tree_kind[co_diagnostic_directory] == "string") {
+            co_diagnostic_current = substr(cfmgr_json_tree_payload[co_diagnostic_directory], 2)
+            if (!co_diagnostic_valid(co_diagnostic_current)) co_diagnostic_current = "!"
+        }
+        printf "CFMGR-DIAGNOSTIC-CONFIG 1 %s %d %s END\n", co_old,
+            (cfmgr_json_tree_kind[co_developer] == "true"), co_diagnostic_current
+        exit 0
+    }
 
     co_type(1, "object")
     co_schema = co_field(1, "schema", "number")
@@ -1629,7 +1703,7 @@ function co_observation_read() {
     co_check = co_field(co_manager, "check_updates", "boolean")
     co_auto = co_field(co_manager, "auto_update", "boolean")
     co_developer = co_field(co_manager, "developer", "boolean")
-    co_field(co_manager, "developer_log_directory", "string|null")
+    co_diagnostic_directory = co_field(co_manager, "developer_log_directory", "string|null")
     co_source = co_field(co_manager, "source", "object")
     co_field(co_source, "repository", "string")
     co_field(co_source, "branch", "string")
@@ -1770,6 +1844,36 @@ function co_observation_read() {
         if (length(co_result) > 65536) reject()
         if (cfmgr_config_mode == "backup-patch") printf "%s", co_result
         else printf "CFMGR-BACKUP-PATCH 1 %s %s %d %d %d %d %d %d END\n", co_old, co_new,
+            co_changed, (cfmgr_json_tree_kind[co_check] == "true"), (cfmgr_json_tree_kind[co_auto] == "true"),
+            (cfmgr_json_tree_kind[co_developer] == "true"), expected_size, length(co_result)
+        exit 0
+    }
+
+    if (cfmgr_config_mode ~ /^diagnostic-/) {
+        co_diagnostic_current = "-"
+        if (cfmgr_json_tree_kind[co_diagnostic_directory] == "string") {
+            co_diagnostic_current = substr(cfmgr_json_tree_payload[co_diagnostic_directory], 2)
+            if (!co_diagnostic_valid(co_diagnostic_current)) co_diagnostic_current = "!"
+        }
+        co_diagnostic_want = ENVIRON["CFMGR_SETTINGS_MASK"]
+        if (co_diagnostic_want != "-" && !co_diagnostic_valid(co_diagnostic_want)) reject()
+        co_changed = ("v" co_diagnostic_current != "v" co_diagnostic_want)
+        co_result = document
+        if (co_changed) {
+            co_new = co_increment(co_old)
+            co_replacement[co_generation] = co_new
+            co_replacement[co_diagnostic_directory] = (co_diagnostic_want == "-" ? "null" : co_quote(co_decode(co_diagnostic_want)))
+            co_result = ""; co_cursor = 1
+            for (co_i = 1; co_i <= cfmgr_json_tree_count; co_i++) {
+                if (!(co_i in co_replacement)) continue
+                co_result = co_result substr(document, co_cursor, cfmgr_json_tree_start[co_i] - co_cursor) co_replacement[co_i]
+                co_cursor = cfmgr_json_tree_end[co_i] + 1
+            }
+            co_result = co_result substr(document, co_cursor)
+        }
+        if (length(co_result) > 65536) reject()
+        if (cfmgr_config_mode == "diagnostic-patch") printf "%s", co_result
+        else printf "CFMGR-DIAGNOSTIC-PATCH 1 %s %s %d %d %d %d %d %d END\n", co_old, co_new,
             co_changed, (cfmgr_json_tree_kind[co_check] == "true"), (cfmgr_json_tree_kind[co_auto] == "true"),
             (cfmgr_json_tree_kind[co_developer] == "true"), expected_size, length(co_result)
         exit 0
@@ -2113,6 +2217,21 @@ function co_decode(value,    i, code, result) {
     return result
 }
 
+# Hex avoids shell word splitting and arbitrary text in typed receipts. This
+# predicate returns false rather than rejecting a known unsafe saved override.
+function co_diagnostic_valid(hex,    i, code, value) {
+    if (length(hex) < 2 || length(hex) > 2048 || length(hex) % 2 || hex !~ /^[0-9a-f]+$/) return 0
+    value = ""
+    for (i = 1; i <= length(hex); i += 2) {
+        code = hex_value["h" substr(hex, i, 1)] * 16 + hex_value["h" substr(hex, i + 1, 1)]
+        if (code < 32 || code > 126) return 0
+        value = value sprintf("%c", code)
+    }
+    if (value == "/" || substr(value, 1, 1) != "/" || value ~ /\/$/ || index(value, "//") ||
+        value ~ /(^|\/)\.\.?\// || value ~ /\/\.\.?$/) return 0
+    return 1
+}
+
 function co_path(value, absolute,    i, code) {
     if (length(value) == 0 || length(value) > 4096) reject()
     for (i = 1; i <= length(value); i++) {
@@ -2181,3 +2300,64 @@ function co_quote(value,    saved_document, saved_position, result, character, s
 '
 	# CFMGR-AWK-END config_observation
 }
+
+# Diagnostic destination settings share the guarded Store transaction. The
+# receipt carries only bounded lowercase hex (or - for Auto, ! for an unsafe
+# saved custom value); paths never become shell source or executable operands.
+# Save changes this field and generation only. Health can independently use
+# diagnostic-read on its own already-admitted immutable config snapshot.
+# shellcheck disable=SC2030,SC2031,SC2034,SC2154,SC3013
+cfmgr_diagnostic_settings() (
+	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
+	cfmgr_store_scope=diagnostic cfmgr_store_backup_gate=0 cfmgr_store_archive_lock_held=0
+	cfmgr_store_result=unavailable cfmgr_store_generation=0 cfmgr_store_check=0 cfmgr_store_auto=0 cfmgr_store_developer=0
+	cfmgr_store_pending=0 cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
+	cfmgr_diagnostic_value=- cfmgr_diagnostic_want=-
+	case ${1:-}:$# in
+	read:1 | recover:1) ;;
+	save:2)
+		case $2 in
+		-) ;;
+		'' | *[!0-9a-f]*) exit 2 ;;
+		*) [ "${#2}" -le 2048 ] && [ "$((${#2} % 2))" -eq 0 ] || exit 2 ;;
+		esac
+		cfmgr_diagnostic_want=$2
+		;;
+	*) exit 2 ;;
+	esac
+	cfmgr_store_operation=$1 cfmgr_store_mask=both cfmgr_store_want_check=0 cfmgr_store_want_auto=0
+	if [ "${cfmgr_log_available:-0}" = 1 ] && [ "$1" != read ]; then
+		cfmgr_log_begin manager "store-diagnostic-$1"
+	else cfmgr_log_recording=0; fi
+	if cfmgr_store_prepare && cfmgr_store_work; then cfmgr_store_code=0; else cfmgr_store_code=$?; fi
+	# The lock (when held) is still retained. Never start a new probe after an
+	# unresolved child; the untouched caller must retain its process evidence.
+	if [ "$cfmgr_store_code" = 0 ]; then
+		if cfmgr_store_snapshot "$cfmgr_store_live" &&
+			cfmgr_store_diagnostic_read "$cfmgr_store_snapshot" "$cfmgr_store_snapshot_bytes"; then :; else
+			cfmgr_store_code=$? cfmgr_store_result=unavailable
+		fi
+	fi
+	if [ "$cfmgr_store_code" = 3 ]; then
+		cfmgr_store_result=unresolved cfmgr_store_pending=1
+	else
+		exec 0<&-
+		cfmgr_config_lock_fd0=0 cfmgr_store_interrupt=0
+		if [ -n "${cfmgr_store_context:-}" ] && ! cfmgr_store_cleanup; then
+			cfmgr_store_result=recovery cfmgr_store_code=1 cfmgr_store_pending=1
+		fi
+	fi
+	[ "$cfmgr_store_code" != 4 ] || cfmgr_store_code=1
+	if [ "$cfmgr_store_code" != 0 ]; then
+		cfmgr_store_generation=0 cfmgr_store_developer=0 cfmgr_diagnostic_value=-
+	fi
+	if [ "${cfmgr_log_recording:-0}" = 1 ]; then
+		case $cfmgr_store_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_store_code" ;;
+		esac
+	fi
+	printf 'CFMGR-DIAGNOSTIC 1 %s %s %s %s %s END\n' "$cfmgr_store_result" "$cfmgr_store_generation" "$cfmgr_store_developer" "$cfmgr_store_pending" "$cfmgr_diagnostic_value"
+	exit "$cfmgr_store_code"
+)

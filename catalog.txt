@@ -6,6 +6,7 @@ modules/hooks/.gitkeep	data
 modules/lib/.gitkeep	library
 modules/lib/config.sh	library
 modules/lib/execution.sh	library
+modules/lib/logging.sh	library
 modules/lib/network.sh	library
 modules/lib/package.sh	library
 modules/lib/storage.sh	library

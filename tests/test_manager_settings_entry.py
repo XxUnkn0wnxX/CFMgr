@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fcntl
+import json
 import os
 import pty
 import select
@@ -66,7 +67,19 @@ def installed_settings_entry(tmp_path: Path, store_fixture, tools, shell):
     adapter_functions = ADAPTER.split('. "$source/modules/lib/config.sh"\n', 1)[1]
     adapter_functions = adapter_functions.rsplit('\ncfmgr_config_store "$@"', 1)[0]
     adapter_path = support / "modules/lib/config_store_test_adapter.sh"
-    adapter_path.write_text("\n".join(assignments) + "\n" + adapter_functions + "\n")
+    diagnostic_preview = r"""
+cfmgr_log_destination() {
+    [ "$1" = preview ] || return 2
+    printf 'log-destination-preview %s\n' "$2" >>"$ram/routes"
+    case $2 in
+    -) printf 'CFMGR-LOG-DEST 1 available 2f746d702f6d6f636b END\n' ;;
+    *) printf 'CFMGR-LOG-DEST 1 available %s END\n' "$2" ;;
+    esac
+}
+"""
+    adapter_path.write_text(
+        "\n".join(assignments) + "\n" + adapter_functions + "\n" + diagnostic_preview
+    )
     adapter_path.chmod(0o600)
 
     original = (ROOT / "cfmgr.sh").read_text()
@@ -210,7 +223,13 @@ def test_installed_menu_saves_reviewed_fields_over_fresh_edits_without_prompt_lo
     routes = (ram / "routes").read_text().splitlines()
     assert "store-lock" in routes
     assert not any("opkg" in route or route.startswith("install-") for route in routes)
-    assert b"[CFMGR]" not in stderr
+    # This fixture has no admitted mounted diagnostic volume. Enabling developer
+    # mode preserves the successful Store operation and reports capture absence.
+    assert all(
+        line
+        == b"[CFMGR] diagnostics: warning: developer capture unavailable or incomplete; operation result is unchanged"
+        for line in stderr.splitlines()
+    )
     reopened = run_entry(shell, entry, b"ao\n2\ne\ne\ne\n")
     assert reopened.returncode == 0, reopened.stderr
     assert b"Saved: Check for updates=Off; Auto-update CFMgr=Off" in reopened.stdout
@@ -250,6 +269,51 @@ def test_installed_menu_recovers_actual_pending_save_only_after_confirmation(
     assert b"Previous Save recovered; no settings were replayed." in result.stdout
     assert not list(source.glob(".config-save*"))
     assert b'"generation":1' in (source / "config").read_bytes()
+
+
+def test_installed_advanced_menu_saves_diagnostic_destination_and_reopens(
+    shell, installed_settings_entry
+):
+    entry, support, ram, _ = installed_settings_entry
+    before = json.loads((support / "config").read_text())
+    custom_path = str(ram / "diagnostic-copy")
+    encoded = custom_path.encode().hex()
+    result = run_entry(
+        shell,
+        entry,
+        f"ao\n3\n1\n{custom_path}\ny\ne\ne\ne\n".encode(),
+    )
+    assert result.returncode == 0, result.stderr
+    after = json.loads((support / "config").read_text())
+    assert after["generation"] == before["generation"] + 1
+    assert after["manager"]["developer_log_directory"] == custom_path
+    assert after["manager"]["developer"] == before["manager"]["developer"]
+    for key in before:
+        if key == "generation":
+            continue
+        if key == "manager":
+            for manager_key in before[key]:
+                if manager_key == "developer_log_directory":
+                    continue
+                assert after[key][manager_key] == before[key][manager_key]
+        else:
+            assert after[key] == before[key]
+    routes = (ram / "routes").read_text().splitlines()
+    assert "log-destination-preview -" in routes
+    assert f"log-destination-preview {encoded}" in routes
+    assert "store-lock" in routes
+    assert not Path(custom_path).exists()
+    assert b"Diagnostic destination preference saved." in result.stdout
+
+    route_count = len(routes)
+    reopened = run_entry(shell, entry, b"ao\n3\ne\ne\ne\n")
+    assert reopened.returncode == 0, reopened.stderr
+    assert (
+        b"Saved diagnostic preference: Custom " + custom_path.encode()
+        in reopened.stdout
+    )
+    assert json.loads((support / "config").read_text()) == after
+    assert len((ram / "routes").read_text().splitlines()) > route_count
 
 
 def run_store_for_recovery(shell, tools, fixture):

@@ -56,6 +56,9 @@ CORE_BATCHES: dict[str, tuple[str, tuple[str, ...]]] = {
         "manager",
         (
             "config",
+            "logging",
+            "logging_storage",
+            "logging_scribe",
             "config_schema2",
             "config_store",
             "config_observation",
@@ -81,7 +84,7 @@ CORE_BATCHES: dict[str, tuple[str, tuple[str, ...]]] = {
             "mount_keeper",
         ),
     ),
-    "status": ("status", ("status",)),
+    "status": ("status", ("status", "logging_native")),
     "tooling": ("tooling", ("dev_runners", "platforms", "router_probe")),
 }
 

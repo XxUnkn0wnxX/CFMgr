@@ -44,6 +44,280 @@ ACCOUNT = "b" * 32
 LIST = "c" * 32
 
 
+HEALTH_CAPTURE_SCRIPT = r"""
+status_module=$1 logging_module=$2 enable_logging=$3 report=$4 rows=$5 count_file=$6
+stderr_file=$7 terminal=$8 trace=$9 captured_report=${10} capture_scenario=${11}
+health_code=${12} render_bytes=${13} child_unresolved=${14} cfmgr_health_incomplete=${15}
+. "$status_module"
+if [ "$enable_logging" = 1 ]; then
+    . "$logging_module"
+    cfmgr_log_available=1
+    cfmgr_log_config_dev=0
+    if [ "$child_unresolved" = 1 ]; then
+        # Keep the real public capture guard. Any attempted native preparation
+        # would leave evidence and fail this consumer assertion.
+        cfmgr_log_prepare() { printf 'capture-io forbidden\n' >>"$trace"; return 1; }
+    else
+    cfmgr_log_capture() {
+        printf 'capture-io kind=%s path=%s bytes=%s result=%s dev=%s\n' \
+            "$1" "$3" "$4" "$5" "$cfmgr_log_config_dev" >>"$trace"
+        if [ "$3" != - ]; then
+            /bin/cat "$3" >"$captured_report" || return 1
+            if /usr/bin/cmp -s "$terminal" "$3"; then
+                printf 'terminal-report-visible-before-capture\n' >>"$trace"
+            fi
+        elif case $(/bin/cat "$terminal") in *Report*not*available*Check*local*status*) true ;; *) false ;; esac; then
+            printf 'bounded-summary-visible-before-capture\n' >>"$trace"
+        fi
+        if [ "$3" = - ]; then
+            printf 'CFMGR-LOG-CAPTURE 1 unavailable unavailable - END\n'
+            return 0
+        fi
+        case $capture_scenario in
+        saved | config-unreadable)
+            if [ "$capture_scenario" = config-unreadable ]; then config_status=unavailable
+            else config_status=read; fi
+            printf 'CFMGR-LOG-CAPTURE 1 saved %s 2f746d702f6d6f636b END\n' "$config_status"
+            ;;
+        incomplete) printf 'CFMGR-LOG-CAPTURE 1 incomplete read - END\n' ;;
+        unavailable) printf 'CFMGR-LOG-CAPTURE 1 unavailable unavailable - END\n' ;;
+        invalid) printf 'HEALTH-CAPTURE-RECEIPT-CANARY\n' ;;
+        nonzero-saved) printf 'CFMGR-LOG-CAPTURE 1 saved read - END\n'; return 9 ;;
+        *) printf 'CFMGR-LOG-CAPTURE 1 unavailable unavailable - END\n' ;;
+        esac
+    }
+    fi
+else
+    cfmgr_log_available=0
+fi
+cfmgr_status_attachment_ok() { return 0; }
+cfmgr_health_final_begin() {
+    [ -z "${cfmgr_probe_pid:-}" ] || [ "${cfmgr_probe_status:-}" = reaped ] || return 3
+    return 0
+}
+cfmgr_health_render_width() { cfmgr_status_width=80; }
+cfmgr_health_run() {
+    [ "$1" = health-render-count ] || return 2
+    printf '%s\n' "$render_bytes" >"$count_file"
+    cfmgr_probe_exit=0 cfmgr_probe_stderr=$stderr_file cfmgr_probe_stdout=$count_file
+}
+cfmgr_status_run() {
+    cfmgr_probe_exit=0 cfmgr_probe_stderr=$stderr_file
+    case $1 in
+    status-render) cfmgr_probe_stdout=$report ;;
+    health-render-count)
+        printf '%s\n' "$render_bytes" >"$count_file"
+        cfmgr_probe_stdout=$count_file
+        ;;
+    *) return 2 ;;
+    esac
+}
+cfmgr_health_begin() { return 0; }
+cfmgr_health_session() {
+    cfmgr_health_code=$health_code
+    if [ "$child_unresolved" = 1 ]; then
+        cfmgr_probe_pid=999 cfmgr_probe_status=running
+        return 3
+    fi
+    if cfmgr_health_finalize "$report" "$rows"; then return "$health_code"; else
+        cfmgr_health_finalize_code=$?
+        [ "$cfmgr_health_finalize_code" != 3 ] || return 3
+        cfmgr_status_render_unavailable
+        cfmgr_health_code=1
+        return 1
+    fi
+}
+cfmgr_health_cleanup() { return 0; }
+cfmgr_status_health_native >"$terminal"
+health_rc=$?
+printf 'health-rc=%s\n' "$health_rc" >>"$trace"
+exit "$health_rc"
+"""
+
+
+def run_health_capture_consumer(
+    commands,
+    tmp_path,
+    *,
+    capture_scenario="saved",
+    health_code=0,
+    log_enabled=True,
+    render_bytes=None,
+    child_unresolved=False,
+    health_incomplete=False,
+):
+    report = tmp_path / "trusted-rendered-report"
+    report_text = (
+        b"Health report\nconfig.authority PASS validated local configuration\n"
+    )
+    report.write_bytes(report_text)
+    rows = tmp_path / "validated-rows"
+    rows.write_text("fixture rows\n")
+    count = tmp_path / "render-count"
+    stderr = tmp_path / "empty-stderr"
+    stderr.write_bytes(b"")
+    terminal = tmp_path / "health-terminal"
+    trace = tmp_path / "health-capture-trace"
+    captured_report = tmp_path / "captured-health-report"
+    render_bytes = len(report_text) if render_bytes is None else render_bytes
+    result = subprocess.run(
+        [
+            *commands[0],
+            "-c",
+            HEALTH_CAPTURE_SCRIPT,
+            "status-health-capture-test",
+            str(ROOT / "modules/status.sh"),
+            str(ROOT / "modules/lib/logging.sh"),
+            str(int(log_enabled)),
+            str(report),
+            str(rows),
+            str(count),
+            str(stderr),
+            str(terminal),
+            str(trace),
+            str(captured_report),
+            capture_scenario,
+            str(health_code),
+            str(render_bytes),
+            str(int(child_unresolved)),
+            str(int(health_incomplete)),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=8,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    return result, terminal, trace, captured_report, report_text
+
+
+def test_health_capture_consumes_report_after_terminal_and_ignores_developer_off(
+    commands, tmp_path
+):
+    result, terminal, trace, captured_report, report_text = run_health_capture_consumer(
+        commands, tmp_path, log_enabled=True
+    )
+
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    assert terminal.read_bytes().startswith(report_text)
+    assert "capture.saved PASS" in terminal.read_text()
+    assert captured_report.read_bytes() == report_text
+    trace_text = trace.read_text()
+    assert "capture-io kind=health" in trace_text
+    assert "dev=0" in trace_text
+    assert "terminal-report-visible-before-capture" in trace_text
+    assert "HEALTH-CAPTURE-RECEIPT-CANARY" not in terminal.read_text()
+
+
+@pytest.mark.parametrize(
+    ("capture_scenario", "health_code", "expected_output"),
+    [
+        ("incomplete", 1, "capture.saved UNKNOWN"),
+        ("unavailable", 0, "capture.saved SKIP"),
+        ("invalid", 0, "capture.saved SKIP"),
+        ("nonzero-saved", 0, "capture.saved UNKNOWN"),
+    ],
+)
+def test_health_capture_failures_keep_original_health_result(
+    commands,
+    tmp_path,
+    capture_scenario,
+    health_code,
+    expected_output,
+):
+    result, terminal, trace, captured_report, report_text = run_health_capture_consumer(
+        commands,
+        tmp_path,
+        capture_scenario=capture_scenario,
+        health_code=health_code,
+    )
+
+    assert result.returncode == health_code, result.stderr.decode(errors="replace")
+    output = terminal.read_text()
+    assert output.startswith(report_text.decode())
+    assert expected_output in output
+    assert "HEALTH-CAPTURE-RECEIPT-CANARY" not in output
+    assert "capture-io kind=health" in trace.read_text()
+    assert captured_report.read_bytes() == report_text
+
+
+def test_health_capture_records_incomplete_report_without_changing_success_status(
+    commands, tmp_path
+):
+    result, terminal, trace, captured_report, report_text = run_health_capture_consumer(
+        commands, tmp_path, capture_scenario="incomplete", health_incomplete=True
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert terminal.read_bytes().startswith(report_text)
+    assert captured_report.read_bytes() == report_text
+    assert "result=incomplete" in trace.read_text()
+    assert "capture.saved UNKNOWN" in terminal.read_text()
+
+
+def test_health_capture_reports_unreadable_config_and_effective_destination(
+    commands, tmp_path
+):
+    result, terminal, trace, captured_report, report_text = run_health_capture_consumer(
+        commands, tmp_path, capture_scenario="config-unreadable"
+    )
+
+    assert result.returncode == 0, result.stderr.decode(errors="replace")
+    output = terminal.read_text()
+    assert output.startswith(report_text.decode())
+    assert "capture.saved PASS" in output
+    assert "capture.config UNKNOWN" in output
+    assert "capture.destination /tmp/mock" in output
+    assert "dev=0" in trace.read_text()
+    assert captured_report.read_bytes() == report_text
+
+
+def test_health_render_failure_captures_only_bounded_unavailable_summary(
+    commands, tmp_path
+):
+    result, terminal, trace, captured_report, _ = run_health_capture_consumer(
+        commands,
+        tmp_path,
+        render_bytes=196609,
+    )
+
+    assert result.returncode == 1
+    output = terminal.read_text()
+    assert "Health report" not in output
+    assert "Report\nnot\navailable\nCheck\nlocal\nstatus\n" in output
+    assert "capture.saved SKIP" in output
+    assert not captured_report.exists()
+    trace_text = trace.read_text()
+    assert "capture-io kind=health path=- bytes=0 result=failed dev=0" in trace_text
+    assert "bounded-summary-visible-before-capture" in trace_text
+
+
+def test_health_report_survives_when_optional_logging_library_is_absent(
+    commands, tmp_path
+):
+    result, terminal, trace, captured_report, report_text = run_health_capture_consumer(
+        commands, tmp_path, log_enabled=False
+    )
+
+    assert result.returncode == 0
+    output = terminal.read_bytes()
+    assert output.startswith(report_text)
+    assert b"capture.saved SKIP" in output
+    assert "capture-io" not in trace.read_text()
+    assert not captured_report.exists()
+
+
+def test_health_unresolved_child_forbids_optional_capture_io(commands, tmp_path):
+    result, terminal, trace, captured_report, _ = run_health_capture_consumer(
+        commands, tmp_path, child_unresolved=True
+    )
+
+    assert result.returncode == 3
+    assert b"Health report" not in terminal.read_bytes()
+    trace_text = trace.read_text()
+    assert "capture-io" not in trace_text
+    assert "health-rc=3" in trace_text
+    assert not captured_report.exists()
+
+
 def test_health_backup_projection_keeps_history_private(commands, schema2_config):
     value = json.loads(schema2_config)
     value["backup"]["destination"] = {
@@ -1805,7 +2079,7 @@ def test_real_status_consumer_native_resources_and_failure_survival(
         warning = (
             "Issue: pending configuration Save/recovery guard; use explicit recovery"
         )
-        assert out.count(warning) == 1
+        assert " ".join(out.split()).count(warning) == 1
         assert (source / ".config-save.preparing").read_text() == "in progress\n"
         assert (source / ".config-save").is_dir()
         assert (source / ".config-save.retired").is_symlink()
@@ -4904,9 +5178,25 @@ def test_linux_full_health_entry_normal_journey(
             "health changed a retained fixture source"
         )
         assert not Path((audit / "context").read_text().strip()).exists()
-        assert list((base / "ram").iterdir()) == [], (
-            "owned health context survived cleanup"
+        # Capture owns a persistent private serialization root. Its resolved
+        # per-run RAM context must be removed, while the fixed lock inode stays.
+        ram = base / "ram"
+        assert {item.name for item in ram.iterdir()} <= {"cfmgr-diagnostics"}, (
+            "owned health or capture context survived cleanup"
         )
+        capture_root = ram / "cfmgr-diagnostics"
+        if capture_root.exists():
+            assert capture_root.is_dir() and not capture_root.is_symlink()
+            assert capture_root.stat().st_mode & 0o777 == 0o700
+            assert {item.name for item in capture_root.iterdir()} <= {"capture.lock"}
+            lock = capture_root / "capture.lock"
+            if lock.exists():
+                assert lock.is_file() and not lock.is_symlink()
+                assert lock.stat().st_mode & 0o777 == 0o600
+                assert lock.stat().st_nlink == 1
+        # This collection fixture uses explicit unmounted device facts. The
+        # separate real-mount journey proves successful independent saving.
+        assert b"capture.saved SKIP" in stdout
         route_rows = [
             row.split() for row in (audit / "routes").read_text().splitlines()
         ]
@@ -5020,6 +5310,7 @@ def test_health_package_complete_binding(commands, tmp_path, damage, expected):
         "lib-empty": "modules/lib/.gitkeep",
         "config": "modules/lib/config.sh",
         "execution": "modules/lib/execution.sh",
+        "logging": "modules/lib/logging.sh",
         "network": "modules/lib/network.sh",
         "package": "modules/lib/package.sh",
         "storage": "modules/lib/storage.sh",
@@ -5094,7 +5385,7 @@ def test_health_package_complete_binding(commands, tmp_path, damage, expected):
         f"HASH\t{r}\t{('f' * 64 if damage == 'installed-entry' and r == 'entry' else records[fixed[r]][2])}\n"
         for r in ("entry", "catalog")
     )
-    index = "CFMGR-PACKAGE\t1\t0.1.0\tverified:verified:verified:verified\n"
+    index = "CFMGR-PACKAGE\t1\t0.1.0\tverified:verified:verified:verified:verified\n"
     for role, p in fixed.items():
         if role.endswith("empty"):
             continue

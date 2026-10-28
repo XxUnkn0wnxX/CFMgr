@@ -110,6 +110,7 @@ cfmgr_prerequisites_pause() {
 _cfmgr_prerequisites_attachment() {
 	case ${cfmgr_config_lock_fd0:-0} in 1) cfmgr_store_fd_is "${cfmgr_store_lock:-}" 0 || return 1 ;; esac
 	case ${cfmgr_probe_mode:-none} in
+	diagnostic-*) cfmgr_log_attached ;;
 	acquire-*) cfmgr_acquire_attached ;;
 	install-report | install-report-ls) cfmgr_bootstrap_native_attached ;;
 	launch-*) cfmgr_launch_attachment_ok ;;
@@ -125,6 +126,19 @@ _cfmgr_prerequisites_attachment() {
 # Exports cfmgr_probe_* results for the admitted controller.
 # shellcheck disable=SC2034
 cfmgr_prerequisites_run() {
+	if _cfmgr_prerequisites_run "$@"; then cfmgr_log_probe_rc=0; else cfmgr_log_probe_rc=$?; fi
+	case ${cfmgr_log_available:-0}:${cfmgr_log_recording:-0}:${cfmgr_log_capturing:-0}:$1 in
+	1:1:0:diagnostic-*) ;;
+	1:1:0:*)
+		cfmgr_log_probe_result=success cfmgr_log_probe_exit=${cfmgr_probe_exit:-$cfmgr_log_probe_rc}
+		case $cfmgr_log_probe_rc:$cfmgr_log_probe_exit in 0:0) ;; 3:*) cfmgr_log_probe_result=unresolved ;; *) cfmgr_log_probe_result=failure ;; esac
+		cfmgr_log_event execution "$1" "$cfmgr_log_probe_result" "$cfmgr_log_probe_exit"
+		;;
+	esac
+	return "$cfmgr_log_probe_rc"
+}
+
+_cfmgr_prerequisites_run() {
 	# MODE CONTEXT SH PROBE ENV AWK SLEEP WC TOOL [FIXED_OPERANDS...]
 	# Fresh private RAM context and tool admission belong to the controller.
 	# Output files are retained; return 3 also retains child identities/guards.
@@ -157,6 +171,11 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_helper=$4 cfmgr_probe_env=$5 cfmgr_probe_awk=$6
 	cfmgr_probe_sleep=$7 cfmgr_probe_wc=$8 cfmgr_probe_tool=$9
 	case "$cfmgr_probe_mode" in
+	diagnostic-lock | diagnostic-header | diagnostic-date | diagnostic-list | diagnostic-digest | diagnostic-count | diagnostic-compare) [ "$#" -eq 9 ] || return 2 ;;
+	diagnostic-realpath | diagnostic-meta | diagnostic-mkdir | diagnostic-create | diagnostic-copy | diagnostic-tail | diagnostic-source) [ "$#" -eq 10 ] || return 2 ;;
+	diagnostic-scribe-authority | diagnostic-sanitize) [ "$#" -eq 14 ] || return 2 ;;
+	diagnostic-frame) [ "$#" -eq 12 ] || return 2 ;;
+	diagnostic-mount | diagnostic-convert | diagnostic-config) [ "$#" -eq 11 ] || return 2 ;;
 	health-flat-list) case $# in 10) ;; *) return 2 ;; esac ;;
 	health-flat-check) case $# in 14) ;; *) return 2 ;; esac ;;
 	health-package-check) case $# in 12) ;; *) return 2 ;; esac ;;
@@ -282,6 +301,12 @@ cfmgr_prerequisites_run() {
 	cfmgr_probe_reason=native-supervisor
 	cfmgr_prerequisites_supervisor || return 2
 	cfmgr_probe_deadline=$((cfmgr_probe_now + 2))
+	case $cfmgr_probe_mode in diagnostic-*)
+		case ${cfmgr_log_deadline:-} in '' | *[!0-9]*) return 2 ;; esac
+		[ "$cfmgr_probe_now" -lt "$cfmgr_log_deadline" ] || return 1
+		[ "$cfmgr_log_deadline" -ge "$cfmgr_probe_deadline" ] || cfmgr_probe_deadline=$cfmgr_log_deadline
+		;;
+	esac
 	case $cfmgr_probe_mode in health-*)
 		case $cfmgr_probe_mode in
 		health-get) cfmgr_probe_deadline=$((cfmgr_probe_now + 4)) ;;
@@ -354,7 +379,7 @@ cfmgr_prerequisites_run() {
 	health-timeout-expiry) set -- "$@" "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_sleep" ;;
 	esac
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-*)
+	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-* | diagnostic-*)
 		cfmgr_probe_serial=${cfmgr_probe_serial:-0}
 		case "$cfmgr_probe_serial" in '' | *[!0-9]*) return 2 ;; esac
 		case $((${#cfmgr_probe_serial} <= 6)) in 1) ;; *) return 2 ;; esac
@@ -370,8 +395,14 @@ cfmgr_prerequisites_run() {
 		set -C
 		: >"$cfmgr_probe_stdout" && : >"$cfmgr_probe_stderr"
 	) || return 2
-	case ${cfmgr_config_lock_fd0:-0} in
-	1)
+	case $cfmgr_probe_mode:${cfmgr_config_lock_fd0:-0} in
+	diagnostic-*:*)
+		# Async shells otherwise replace stdin with /dev/null. The capture's
+		# independently owned lock description must reach every fixed child.
+		(_cfmgr_prerequisites_exec "$@") 0<&0 >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" &
+		cfmgr_probe_pid=$!
+		;;
+	*:1)
 		if _cfmgr_prerequisites_start_locked "$@" 9<&0; then :; else
 			cfmgr_probe_reason=lock-inheritance
 			return 2
@@ -775,6 +806,7 @@ _cfmgr_prerequisites_start_locked() {
 	cfmgr_probe_pid=$!
 }
 
+# shellcheck disable=SC3045 # Fixed native BusyBox workers require supported soft/core limits.
 _cfmgr_prerequisites_exec() {
 	# Clear loader/config input before even execing the env utility. env-i
 	# sanitizes its child, but cannot protect env own dynamic-loader startup.
@@ -784,6 +816,19 @@ _cfmgr_prerequisites_exec() {
 		DYLD_FALLBACK_LIBRARY_PATH DYLD_FALLBACK_FRAMEWORK_PATH \
 		OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES CURL_CA_BUNDLE SSL_CERT_FILE SSL_CERT_DIR
 	case "$cfmgr_probe_mode" in
+	diagnostic-*)
+		set +x
+		set +v
+		ulimit -c 0 || exit 2
+		# Keep the inherited hard limit; fixed bounded append clears only this
+		# soft quota so retained destination length never limits a new batch.
+		case $cfmgr_probe_mode in
+		diagnostic-list) ulimit -S -f 16 || exit 2 ;;
+		diagnostic-source) ulimit -S -f 48 || exit 2 ;;
+		diagnostic-frame | diagnostic-sanitize) ulimit -S -f 128 || exit 2 ;;
+		*) ulimit -S -f 8 || exit 2 ;;
+		esac
+		;;
 	health-*)
 		set +x
 		set +v
@@ -825,7 +870,7 @@ _cfmgr_prerequisites_exec() {
 	*) ulimit -f 8 || exit 2 ;;
 	esac
 	case "$cfmgr_probe_mode" in
-	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-*)
+	install-* | native-* | repair-* | launch-* | status-* | health-* | store-* | acquire-* | archive-* | history-* | diagnostic-*)
 		shift 9
 		exec "$cfmgr_probe_env" -i PATH=/bin:/usr/bin:/sbin:/usr/sbin LC_ALL=C LANGUAGE= OPENSSL_CONF=/dev/null "$cfmgr_probe_shell" "$cfmgr_probe_helper" "$cfmgr_probe_mode" "$cfmgr_probe_tool" "$cfmgr_probe_context" "$@"
 		;;
@@ -2073,6 +2118,18 @@ cfmgr_execution_tasks_receipt() {
 }
 
 cfmgr_execution_tasks_run() {
+	if _cfmgr_execution_tasks_run "$@"; then cfmgr_log_task_rc=0; else cfmgr_log_task_rc=$?; fi
+	case ${cfmgr_log_available:-0}:${cfmgr_log_recording:-0}:${cfmgr_log_capturing:-0} in
+	1:1:0)
+		cfmgr_log_task_result=success
+		case $cfmgr_log_task_rc in 0) ;; 3) cfmgr_log_task_result=unresolved ;; *) cfmgr_log_task_result=failure ;; esac
+		cfmgr_log_event execution dependency-task "$cfmgr_log_task_result" "$cfmgr_log_task_rc"
+		;;
+	esac
+	return "$cfmgr_log_task_rc"
+}
+
+_cfmgr_execution_tasks_run() {
 	[ "$#" -eq 1 ] && [ "$cfmgr_tasks_state" = running ] || return 2
 	if _cfmgr_tasks_action_admit; then :; else
 		cfmgr_tasks_admission_code=$?

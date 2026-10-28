@@ -719,7 +719,10 @@ def test_core_batch_without_reuse_keeps_common_checks_and_syntax(
         ["git", "diff", "--check"],
         [sys.executable, "tools/package.py", "--check"],
     ]
-    assert commands[-1][0][-1] == str(runner.ROOT / "tests/test_status.py")
+    assert commands[-1][0][-2:] == [
+        str(runner.ROOT / "tests/test_status.py"),
+        str(runner.ROOT / "tests/test_logging_native.py"),
+    ]
 
 
 @pytest.mark.parametrize("busybox", [False, True])

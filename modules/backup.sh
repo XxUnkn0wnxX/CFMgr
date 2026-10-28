@@ -57,18 +57,31 @@ cfmgr_backup_hex() {
 }
 
 cfmgr_backup_action() (
-	case ${1:-}:$# in list:1 | check:1 | recover:1 | save:6) ;; *) exit 2 ;; esac
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_begin backup "${1:-check}"; fi
+	if _cfmgr_backup_action_work "$@"; then cfmgr_log_operation_code=0; else cfmgr_log_operation_code=$?; fi
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then
+		case $cfmgr_log_operation_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_log_operation_code" ;;
+		esac
+	fi
+	exit "$cfmgr_log_operation_code"
+)
+
+_cfmgr_backup_action_work() {
+	case ${1:-}:$# in list:1 | check:1 | recover:1 | save:6) ;; *) return 2 ;; esac
 	cfmgr_backup_operation=$1
 	if [ "$1" = save ]; then
-		cfmgr_backup_unhex "$2" text || exit 2
+		cfmgr_backup_unhex "$2" text || return 2
 		cfmgr_backup_want_mount=$cfmgr_backup_decoded
-		cfmgr_backup_unhex "$3" text || exit 2
+		cfmgr_backup_unhex "$3" text || return 2
 		cfmgr_backup_want_uuid=$cfmgr_backup_decoded
-		cfmgr_backup_unhex "$4" text || exit 2
+		cfmgr_backup_unhex "$4" text || return 2
 		cfmgr_backup_want_filesystem=$cfmgr_backup_decoded
-		cfmgr_backup_unhex "$5" text || exit 2
+		cfmgr_backup_unhex "$5" text || return 2
 		cfmgr_backup_want_root=$cfmgr_backup_decoded
-		cfmgr_backup_unhex "$6" snapshot || exit 2
+		cfmgr_backup_unhex "$6" snapshot || return 2
 		cfmgr_backup_want_snapshot=$cfmgr_backup_decoded
 	fi
 	cfmgr_store_result=unavailable cfmgr_store_generation=0 cfmgr_store_check=0 cfmgr_store_auto=0 cfmgr_store_developer=0
@@ -102,8 +115,8 @@ cfmgr_backup_action() (
 	# Context cleanup has already run: completed rows remain only in this bounded
 	# shell variable. Never emit partial list output from a failed action.
 	[ "$cfmgr_backup_count" = 0 ] || printf '%s\n' "$cfmgr_backup_rows"
-	exit "$cfmgr_backup_code"
-)
+	return "$cfmgr_backup_code"
+}
 
 cfmgr_backup_work() {
 	if [ "$cfmgr_backup_operation" = recover ]; then
@@ -554,10 +567,23 @@ cfmgr_backup_menu() {
 # shellcheck disable=SC2034,SC2154,SC2030,SC2031
 
 cfmgr_archive_action() (
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_begin backup "${1:-create}"; fi
+	if _cfmgr_archive_action_work "$@"; then cfmgr_log_operation_code=0; else cfmgr_log_operation_code=$?; fi
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then
+		case $cfmgr_log_operation_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_log_operation_code" ;;
+		esac
+	fi
+	exit "$cfmgr_log_operation_code"
+)
+
+_cfmgr_archive_action_work() {
 	case ${1:-}:$# in read:1 | create:1) ;; preferences:3)
-		case $2:$3 in DMY:[345] | MDY:[345] | YMD:[345]) ;; *) exit 2 ;; esac
+		case $2:$3 in DMY:[345] | MDY:[345] | YMD:[345]) ;; *) return 2 ;; esac
 		;;
-	*) exit 2 ;;
+	*) return 2 ;;
 	esac
 	cfmgr_create_operation=$1 cfmgr_archive_want_format=${2:-} cfmgr_archive_want_keep=${3:-}
 	cfmgr_store_scope=settings cfmgr_store_backup_gate=0 cfmgr_store_archive_lock_held=0
@@ -631,8 +657,8 @@ cfmgr_archive_action() (
 	[ "$cfmgr_archive_saved_set_id" = - ] || cfmgr_create_set_present=1
 	printf 'CFMGR-ARCHIVE-ACTION 1 %s %s %s %s %s %s %s %s %s END\n' "$cfmgr_create_result" "$cfmgr_archive_saved_generation" "$cfmgr_store_pending" \
 		"$cfmgr_archive_saved_format" "$cfmgr_archive_saved_keep" "$cfmgr_create_set_present" "$cfmgr_create_name_hex" "$cfmgr_create_retention" "$cfmgr_create_history"
-	exit "$cfmgr_create_code"
-)
+	return "$cfmgr_create_code"
+}
 
 cfmgr_archive_work() {
 	cfmgr_store_pending
@@ -748,27 +774,40 @@ cfmgr_archive_work() {
 # menu reads input. Five source fields are the exact existing picker receipt.
 # No destination/config Save, archive creation or retention belongs here.
 cfmgr_archive_browser_action() (
-	case ${1:-}:$# in list:6 | inspect:7 | verify:7 | review:7 | delete:10) ;; *) exit 2 ;; esac
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then cfmgr_log_begin backup "${1:-browse}"; fi
+	if _cfmgr_archive_browser_action_work "$@"; then cfmgr_log_operation_code=0; else cfmgr_log_operation_code=$?; fi
+	if [ "${cfmgr_log_available:-0}" = 1 ]; then
+		case $cfmgr_log_operation_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_log_operation_code" ;;
+		esac
+	fi
+	exit "$cfmgr_log_operation_code"
+)
+
+_cfmgr_archive_browser_action_work() {
+	case ${1:-}:$# in list:6 | inspect:7 | verify:7 | review:7 | delete:10) ;; *) return 2 ;; esac
 	cfmgr_browser_operation=$1
-	cfmgr_backup_unhex "$2" text || exit 2
+	cfmgr_backup_unhex "$2" text || return 2
 	cfmgr_backup_want_mount=$cfmgr_backup_decoded
-	cfmgr_backup_unhex "$3" text || exit 2
+	cfmgr_backup_unhex "$3" text || return 2
 	cfmgr_backup_want_uuid=$cfmgr_backup_decoded
-	cfmgr_backup_unhex "$4" text || exit 2
+	cfmgr_backup_unhex "$4" text || return 2
 	cfmgr_backup_want_filesystem=$cfmgr_backup_decoded
-	cfmgr_backup_unhex "$5" text || exit 2
+	cfmgr_backup_unhex "$5" text || return 2
 	cfmgr_backup_want_root=$cfmgr_backup_decoded
-	cfmgr_backup_unhex "$6" snapshot || exit 2
+	cfmgr_backup_unhex "$6" snapshot || return 2
 	cfmgr_backup_want_snapshot=$cfmgr_backup_decoded
 	cfmgr_browser_name=${7:-}
-	if [ "$cfmgr_browser_operation" != list ]; then cfmgr_archive_ui_name "$cfmgr_browser_name" || exit 2; fi
-	case $cfmgr_browser_name in *__* | *--*) exit 2 ;; esac
+	if [ "$cfmgr_browser_operation" != list ]; then cfmgr_archive_ui_name "$cfmgr_browser_name" || return 2; fi
+	case $cfmgr_browser_name in *__* | *--*) return 2 ;; esac
 	cfmgr_browser_expected_inode=${8:-} cfmgr_browser_expected_bytes=${9:-} cfmgr_browser_expected_sha=${10:-}
 	if [ "$cfmgr_browser_operation" = delete ]; then
 		cfmgr_archive_uint "$cfmgr_browser_expected_inode" && [ "$cfmgr_browser_expected_inode" -gt 0 ] &&
-			cfmgr_archive_uint "$cfmgr_browser_expected_bytes" && [ "$cfmgr_browser_expected_bytes" -gt 0 ] || exit 2
-		case $cfmgr_browser_expected_sha in *[!0-9a-f]*) exit 2 ;; esac
-		[ "${#cfmgr_browser_expected_sha}" = 64 ] || exit 2
+			cfmgr_archive_uint "$cfmgr_browser_expected_bytes" && [ "$cfmgr_browser_expected_bytes" -gt 0 ] || return 2
+		case $cfmgr_browser_expected_sha in *[!0-9a-f]*) return 2 ;; esac
+		[ "${#cfmgr_browser_expected_sha}" = 64 ] || return 2
 	fi
 	cfmgr_store_scope=backup cfmgr_store_backup_gate=0 cfmgr_store_archive_lock_held=0
 	cfmgr_store_result=unavailable cfmgr_store_pending=0 cfmgr_store_generation=0
@@ -818,8 +857,8 @@ cfmgr_archive_browser_action() (
 	[ -z "$cfmgr_browser_rows" ] || printf '%s\n' "$cfmgr_browser_rows"
 	[ -z "$cfmgr_browser_receipt" ] || printf '%s\n' "$cfmgr_browser_receipt"
 	[ -z "$cfmgr_browser_effects" ] || printf '%s\n' "$cfmgr_browser_effects"
-	case $cfmgr_browser_code in 0 | 3) exit "$cfmgr_browser_code" ;; *) exit 1 ;; esac
-)
+	case $cfmgr_browser_code in 0 | 3) return "$cfmgr_browser_code" ;; *) return 1 ;; esac
+}
 
 cfmgr_archive_browser_work() {
 	cfmgr_store_pending

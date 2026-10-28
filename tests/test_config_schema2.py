@@ -591,3 +591,103 @@ def test_backup_destination_extensions_survive_known_field_save(
         json.dumps(BACKUP_DESTINATION["mountpoint"]).encode(), b'"/tmp/mnt/New drive"'
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
+
+
+def test_diagnostic_projection_and_scoped_patch_preserve_unrelated_bytes(
+    commands, populated, tmp_path
+):
+    populated["manager"]["developer"] = True
+    original = payload(populated)
+    path = "/tmp/mnt/CFMgr volume/captures"
+    encoded = path.encode().hex()
+    projected = invoke(commands, tmp_path, original, "diagnostic-read")
+    assert (projected.returncode, projected.stdout, projected.stderr) == (
+        0,
+        b"CFMGR-DIAGNOSTIC-CONFIG 1 1 1 - END\n",
+        b"",
+    )
+    result = settings_invoke(
+        commands, tmp_path, original, "diagnostic-patch", mask=encoded
+    )
+    expected = original.replace(b'"generation": 1,', b'"generation": 2,', 1).replace(
+        b'"developer_log_directory": null',
+        b'"developer_log_directory": "/tmp/mnt/CFMgr volume/captures"',
+        1,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
+    read = invoke(commands, tmp_path, expected, "diagnostic-read")
+    assert read.stdout == f"CFMGR-DIAGNOSTIC-CONFIG 1 2 1 {encoded} END\n".encode()
+    unchanged = settings_invoke(
+        commands, tmp_path, expected, "diagnostic-patch", mask=encoded
+    )
+    assert (unchanged.returncode, unchanged.stdout) == (0, expected)
+    restored = settings_invoke(
+        commands, tmp_path, expected, "diagnostic-patch", mask="-"
+    )
+    assert restored.returncode == 0
+    assert restored.stdout == original.replace(
+        b'"generation": 1,', b'"generation": 3,', 1
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", "/", "relative", "/tmp//x", "/tmp/../x", "/tmp/x/", "/tmp/\nfoo", "/tmp/é"],
+)
+def test_diagnostic_patch_rejects_unsafe_lexical_path(
+    commands, schema2_config, tmp_path, value
+):
+    result = settings_invoke(
+        commands,
+        tmp_path,
+        schema2_config,
+        "diagnostic-patch",
+        mask=value.encode().hex(),
+    )
+    assert result.returncode != 0
+    assert result.stdout == b""
+
+
+def test_diagnostic_projection_marks_known_unsafe_saved_override(
+    commands, config, tmp_path
+):
+    # The legacy schema did not validate this field as a pathname. Keep a
+    # distinguishable unsafe selection; a caller must never treat it as Auto.
+    data = config.replace(
+        b'"developer_log_directory":null', b'"developer_log_directory":"relative"'
+    )
+    result = invoke(commands, tmp_path, data, "diagnostic-read")
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"CFMGR-DIAGNOSTIC-CONFIG 1 1 0 ! END\n",
+        b"",
+    )
+
+
+def test_diagnostic_projection_ignores_unrelated_incomplete_settings(
+    commands, tmp_path
+):
+    # The immutable JSON tree and manager fields remain independently checked.
+    data = b'{"schema":2,"generation":7,"manager":{"developer":false,"developer_log_directory":"/tmp/mnt/drive/debug"},"ddns":null}'
+    result = invoke(commands, tmp_path, data, "diagnostic-read")
+    encoded = b"/tmp/mnt/drive/debug".hex().encode()
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"CFMGR-DIAGNOSTIC-CONFIG 1 7 0 " + encoded + b" END\n",
+        b"",
+    )
+    invalid = data.replace(
+        b'"developer_log_directory":"/tmp/mnt/drive/debug"',
+        b'"developer_log_directory":42',
+    )
+    result = invoke(commands, tmp_path, invalid, "diagnostic-read")
+    assert (result.returncode, result.stdout) == (
+        0,
+        b"CFMGR-DIAGNOSTIC-CONFIG 1 7 0 ! END\n",
+    )
+    duplicate = data.replace(
+        b'"developer":false', b'"developer":false,"developer":true'
+    )
+    result = invoke(commands, tmp_path, duplicate, "diagnostic-read")
+    assert result.returncode != 0
+    assert result.stdout == b""

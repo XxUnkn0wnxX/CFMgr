@@ -382,7 +382,7 @@ def health_admit(shell, entry, support):
         prefix
         + r"""
 cfmgr_source=$1
-if cfmgr_entry_health_admit; then printf 'backup=%s manager=%s package=%s catalog=%s\n' "$cfmgr_health_backup" "$cfmgr_health_manager" "$cfmgr_health_package" "$cfmgr_health_catalog"; exit 0; fi
+if cfmgr_entry_health_admit; then printf 'backup=%s manager=%s package=%s catalog=%s logging=%s\n' "$cfmgr_health_backup" "$cfmgr_health_manager" "$cfmgr_health_package" "$cfmgr_health_catalog" "$cfmgr_health_logging"; exit 0; fi
 printf '%s\n' "$cfmgr_health_problem"
 exit 1
 """
@@ -415,7 +415,7 @@ def test_health_closure_admits_without_unrelated_payload_or_installed_entry(
     result = health_admit(shell, standalone, support)
     assert result.returncode == 0, (result.stdout, result.stderr)
     assert result.stdout == (
-        b"backup=missing manager=untrusted package=verified catalog=verified\n"
+        b"backup=missing manager=untrusted package=verified catalog=verified logging=verified\n"
     )
     assert result.stderr == b""
 
@@ -435,6 +435,7 @@ def test_health_closure_admits_without_unrelated_payload_or_installed_entry(
         ("manager", "modules/manager.sh", "modules/manager.sh"),
         ("package", "modules/lib/package.sh", "modules/lib/package.sh"),
         ("catalog", "catalog.txt", "catalog.txt"),
+        ("logging", "modules/lib/logging.sh", "modules/lib/logging.sh"),
     ],
 )
 def test_health_optional_records_are_admitted_independently(
@@ -446,12 +447,13 @@ def test_health_optional_records_are_admitted_independently(
         "manager": "verified",
         "package": "verified",
         "catalog": "verified",
+        "logging": "verified",
     }
     verified = health_admit(shell, entry, support)
     assert verified.returncode == 0, (verified.stdout, verified.stderr)
     assert (
         verified.stdout
-        == b"backup=verified manager=verified package=verified catalog=verified\n"
+        == b"backup=verified manager=verified package=verified catalog=verified logging=verified\n"
     )
 
     member = support / path

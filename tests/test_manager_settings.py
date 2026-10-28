@@ -14,6 +14,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "modules/manager.sh"
+BACKUP = ROOT / "modules/backup.sh"
 
 
 @pytest.fixture(scope="module")
@@ -317,3 +318,228 @@ def test_invalid_read_claiming_busy_uses_fixed_response_error(shell, tmp_path):
     assert b"invalid settings response" in result.stderr
     assert b"settings save busy" not in result.stderr
     assert b"no changes were saved" not in result.stderr
+
+
+DIAGNOSTIC_DRIVER = r"""
+. "$1"
+. "$5"
+state=$2 calls=$3 scenario=$4
+cfmgr_diagnostic_settings() {
+    operation=$1 wanted=${2--}
+    printf 'settings %s %s\n' "$operation" "$wanted" >>"$calls"
+    IFS=' ' read -r generation developer pending saved <"$state"
+    case $operation in
+    read)
+        printf 'CFMGR-DIAGNOSTIC 1 read %s %s %s %s END\n' "$generation" "$developer" "$pending" "$saved"
+        ;;
+    save)
+        if [ "$scenario" = malformed-save ]; then
+            printf 'CFMGR-DIAGNOSTIC 1 saved %s %s %s %s END extra\n' "$generation" "$developer" "$pending" "$wanted"
+            return 0
+        fi
+        if [ "$wanted" = "$saved" ]; then result=unchanged
+        else generation=$((generation + 1)); saved=$wanted; result=saved
+            printf '%s %s %s %s\n' "$generation" "$developer" "$pending" "$saved" >"$state"
+        fi
+        printf 'CFMGR-DIAGNOSTIC 1 %s %s %s %s %s END\n' "$result" "$generation" "$developer" "$pending" "$saved"
+        ;;
+    recover)
+        pending=0
+        printf '%s %s %s %s\n' "$generation" "$developer" "$pending" "$saved" >"$state"
+        printf 'CFMGR-DIAGNOSTIC 1 recovered %s %s 0 %s END\n' "$generation" "$developer" "$saved"
+        ;;
+    *) return 2 ;;
+    esac
+}
+cfmgr_log_destination() {
+    [ "$1" = preview ] || return 2
+    printf 'preview %s\n' "$2" >>"$calls"
+    auto_hex=2f6d6f636b2f6175746f
+    case $scenario:$2 in
+    bad-preview:*) printf 'CFMGR-LOG-DEST 1 maybe - END\n'; return 0 ;;
+    auto-unavailable:-) printf 'CFMGR-LOG-DEST 1 unavailable - END\n'; return 0 ;;
+    unavailable-saved:*) printf 'CFMGR-LOG-DEST 1 unavailable - END\n'; return 0 ;;
+    unavailable-custom:2f6d6f636b2f756e617661696c61626c65) printf 'CFMGR-LOG-DEST 1 unavailable - END\n'; return 0 ;;
+    -:|*:-) printf 'CFMGR-LOG-DEST 1 available %s END\n' "$auto_hex" ;;
+    *) printf 'CFMGR-LOG-DEST 1 available %s END\n' "$2" ;;
+    esac
+}
+cfmgr_launch_menu
+menu_status=$?
+printf 'menu-status=%s\n' "$menu_status"
+exit 0
+"""
+
+
+def run_diagnostic_menu(
+    shell: list[str],
+    tmp_path: Path,
+    data: bytes,
+    *,
+    initial: str = "1 0 0 -\n",
+    scenario: str = "normal",
+) -> tuple[subprocess.CompletedProcess[bytes], list[str], str]:
+    state = tmp_path / "diagnostic-state"
+    calls = tmp_path / "diagnostic-calls"
+    state.write_text(initial)
+    calls.write_text("")
+    master, slave = pty.openpty()
+    try:
+        child = subprocess.Popen(
+            [
+                *shell,
+                "-c",
+                DIAGNOSTIC_DRIVER,
+                "manager-diagnostic-test",
+                str(MODULE),
+                str(state),
+                str(calls),
+                scenario,
+                str(BACKUP),
+            ],
+            stdin=slave,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={**os.environ, "LC_ALL": "C"},
+        )
+        os.write(master, data)
+        stdout, stderr = child.communicate(timeout=8)
+        result = subprocess.CompletedProcess(
+            child.args, child.returncode, stdout, stderr
+        )
+    finally:
+        os.close(master)
+        os.close(slave)
+    return result, calls.read_text().splitlines(), state.read_text()
+
+
+def test_advanced_option_saves_and_reopens_custom_destination_without_developer_toggle(
+    shell, tmp_path
+):
+    custom_path = str(tmp_path / "custom-diagnostics")
+    custom_hex = custom_path.encode().hex()
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        f"ao\n3\n1\n{custom_path}\ny\ne\ne\ne\n".encode(),
+        initial="1 1 0 -\n",
+    )
+    assert result.returncode == 0, result.stderr
+    assert state == f"2 1 0 {custom_hex}\n"
+    assert f"preview {custom_hex}" in calls
+    assert f"settings save {custom_hex}" in calls
+    assert b"Advanced options: other actions unavailable" in result.stdout
+    assert (
+        b"Saved diagnostic preference: Custom " + custom_path.encode() in result.stdout
+    )
+    assert b"Developer mode remains manual-file-only" in result.stdout
+    assert not Path(custom_path).exists()
+
+    reopened, reopened_calls, reopened_state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\ne\ne\ne\n",
+        initial=state,
+    )
+    assert reopened.returncode == 0, reopened.stderr
+    assert reopened_state == state
+    assert "settings read " in reopened_calls[0]
+    assert f"preview {custom_hex}" in reopened_calls
+    assert (
+        b"Saved diagnostic preference: Custom " + custom_path.encode()
+        in reopened.stdout
+    )
+
+
+def test_unavailable_custom_is_rejected_and_auto_can_be_saved_while_unavailable(
+    shell, tmp_path
+):
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\n1\n/mock/unavailable\ne\ne\ne\n",
+        scenario="unavailable-custom",
+    )
+    assert result.returncode == 0, result.stderr
+    assert state == "1 0 0 -\n"
+    assert not any(call.startswith("settings save ") for call in calls)
+    assert b"Custom destination is unavailable" in result.stdout
+    assert b"Saved diagnostic preference: Auto" in result.stdout
+
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\na\ny\ne\ne\ne\n",
+        initial=f"4 0 0 {b'/mock/custom'.hex()}\n",
+        scenario="auto-unavailable",
+    )
+    assert result.returncode == 0, result.stderr
+    assert state == "5 0 0 -\n"
+    assert "settings save -" in calls
+    assert (
+        b"Review diagnostic destination: Auto; effective preview=unavailable"
+        in result.stdout
+    )
+
+    saved_custom = b"/mock/custom".hex()
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\ne\ne\ne\n",
+        initial=f"8 0 0 {saved_custom}\n",
+        scenario="unavailable-saved",
+    )
+    assert result.returncode == 0, result.stderr
+    assert state == f"8 0 0 {saved_custom}\n"
+    assert f"preview {saved_custom}" in calls
+    assert "preview -" not in calls
+    assert (
+        b"Effective diagnostic destination: unavailable; no fallback selected"
+        in result.stdout
+    )
+
+
+def test_navigation_and_bad_preview_never_save_or_create_destination(shell, tmp_path):
+    result, calls, state = run_diagnostic_menu(shell, tmp_path, b"ao\n3\ne\ne\ne\n")
+    assert result.returncode == 0, result.stderr
+    assert calls == ["settings read -", "preview -"]
+    assert state == "1 0 0 -\n"
+
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\n1\n/mock/custom\ny\ne\ne\ne\n",
+        scenario="bad-preview",
+    )
+    assert result.returncode == 0
+    assert state == "1 0 0 -\n"
+    assert not any(call.startswith("settings save ") for call in calls)
+    assert b"invalid diagnostic destination preview" in result.stderr
+
+
+def test_malformed_store_save_receipt_never_claims_success(shell, tmp_path):
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\n1\n/mock/custom\ny\ne\ne\ne\n",
+        scenario="malformed-save",
+    )
+    assert result.returncode == 0
+    assert state == "1 0 0 -\n"
+    assert "settings save " in "\n".join(calls)
+    assert b"Diagnostic destination preference saved." not in result.stdout
+    assert b"invalid diagnostic destination response" in result.stderr
+
+
+def test_pending_diagnostic_save_recovery_requires_confirmation(shell, tmp_path):
+    result, calls, state = run_diagnostic_menu(
+        shell,
+        tmp_path,
+        b"ao\n3\nr\ny\ne\ne\ne\n",
+        initial="7 0 1 -\n",
+    )
+    assert result.returncode == 0, result.stderr
+    assert state == "7 0 0 -\n"
+    assert "settings recover -" in calls
+    assert b"Recover previous diagnostic destination Save?" in result.stdout
+    assert b"Previous diagnostic destination Save recovered" in result.stdout
