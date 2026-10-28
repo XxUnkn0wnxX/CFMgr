@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -117,6 +119,18 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
 
 
 def build_fixture(test_shell, tmp_path):
+    host_tools = {}
+    for default, name in TOOLS.items():
+        path = default if name in ("sh", "printf") else shutil.which(name) or default
+        if sys.platform == "linux":
+            assert os.path.isfile(path) and os.access(path, os.X_OK), (
+                f"Required Linux native fixture tool is missing: {name}"
+            )
+        host_tools[name] = path
+    host_links = "\n".join(
+        f'        ln -s {shlex.quote(path)} "$fixture/bin/{name}"'
+        for name, path in host_tools.items()
+    )
     templates = tmp_path / "templates"
     templates.mkdir()
     source_files = {
@@ -159,15 +173,10 @@ diagnostic_health)
     case $view_busybox in
     */busybox)
         for applet in sh awk dd date cmp ls readlink wc env sleep flock mkdir rmdir rm cat printf; do ln -s "$view_busybox" "$fixture/bin/$applet"; done
-        ln -s "$(command -v openssl)" "$fixture/bin/openssl"
+        ln -s OPENSSL_PATH "$fixture/bin/openssl"
         ;;
     *)
-        for applet in sh awk dd date cmp openssl ls readlink wc env sleep flock mkdir rmdir rm cat printf; do
-            command_path=$(command -v "$applet") || fail "host applet $applet unavailable"
-            case $applet in sh) command_path=/bin/sh ;; printf) command_path=/usr/bin/printf ;; esac
-            case $command_path in /*) ;; *) fail "host applet $applet is not an executable" ;; esac
-            ln -s "$command_path" "$fixture/bin/$applet"
-        done
+HOST_LINKS
         ;;
     esac
     render_template() {
@@ -207,6 +216,17 @@ diagnostic_health)
     . "$cfmgr_source/modules/lib/logging.sh"
     . "$cfmgr_source/modules/status.sh"
     PAUSE_DEFINITION
+    assert_diagnostic_cleanup() {
+        diagnostic_root=$fixture/ram/cfmgr-diagnostics
+        [ -e "$diagnostic_root" ] || [ -L "$diagnostic_root" ] || return 0
+        [ -d "$diagnostic_root" ] && [ ! -L "$diagnostic_root" ] &&
+            [ "$(stat -c '%u:%a' "$diagnostic_root")" = '0:700' ] || fail 'unsafe diagnostic RAM root'
+        for retained in "$diagnostic_root"/* "$diagnostic_root"/.[!.]* "$diagnostic_root"/..?*; do
+            [ -e "$retained" ] || [ -L "$retained" ] || continue
+            [ "$retained" = "$diagnostic_root/capture.lock" ] && [ -f "$retained" ] && [ ! -L "$retained" ] &&
+                [ "$(stat -c '%u:%a:%h' "$retained")" = '0:600:1' ] || fail 'unexpected diagnostic RAM artifact'
+        done
+    }
     cfmgr_status_work() { printf 'fixture-router-ready\nResources: isolated fixture\n'; }
     cfmgr_health_collect() { cfmgr_health_row fixture.capture PASS 'isolated native capture' current None report; }
     mkdir -m 755 "$mount_dir/CFMgr"
@@ -250,15 +270,18 @@ diagnostic_health)
     [ "$(cat "$mount_dir/CFMgr/foreign/keep")" = 'foreign sentinel' ] || fail 'foreign sibling changed'
     cmp -s "$fixture/config-unsafe" "$cfmgr_source/config" || fail 'second Health changed config'
     [ "$(stat -c '%i %a %u %g %h %s' "$cfmgr_source/config")" = "$config_metadata" ] || fail 'second Health changed config metadata'
-    for retained in "$fixture"/ram/cfmgr-status.* "$fixture"/ram/cfmgr-diagnostics/capture.*; do
+    for retained in "$fixture"/ram/cfmgr-status.*; do
         [ ! -e "$retained" ] && [ ! -L "$retained" ] || fail 'owned RAM context was retained'
     done
+    assert_diagnostic_cleanup
     fixture_children=''
     IFS= read -r fixture_children <"/proc/$$/task/$$/children" || :
     [ -z "$fixture_children" ] || fail 'owned child still active after Health'
     printf 'PASS: native Health capture, report ordering, developer-Off and unsafe destination\n'
     ;;
 """
+    branch = branch.replace("OPENSSL_PATH", shlex.quote(host_tools["openssl"]))
+    branch = branch.replace("HOST_LINKS", host_links)
     branch = branch.replace("TEMPLATE_DIR", str(templates))
     branch = branch.replace("PAUSE_DEFINITION", pause_definition(test_shell))
     marker = "\nbackup_folder | backup_replacement | archive_source)"
@@ -272,6 +295,11 @@ diagnostic_health)
 
 def test_native_fixture_shell_syntax(selected_shell, tmp_path):
     fixture = build_fixture(selected_shell, tmp_path)
+    source = fixture.read_text()
+    assert "command -v" not in source
+    assert 'ln -s "$view_busybox" "$fixture/bin/$applet"' in source
+    for name in TOOLS.values():
+        assert f'"$fixture/bin/{name}"' in source
     result = subprocess.run(
         [*selected_shell, "-n", str(fixture)],
         capture_output=True,
@@ -452,9 +480,7 @@ COMMON_SETUP
     cmp -s "$fixture/config-before" "$cfmgr_source/config" || fail 'developer capture changed config'
     [ "$(stat -c '%i %a %u %g %h %s' "$cfmgr_source/config")" = "$config_metadata" ] || fail 'developer capture changed config metadata'
     [ "$(cat "$mount_dir/CFMgr/backup/keep")" = 'backup sentinel' ] || fail 'backup sibling changed'
-    for retained in "$fixture"/ram/cfmgr-diagnostics/capture.*; do
-        [ ! -e "$retained" ] && [ ! -L "$retained" ] || fail 'owned Scribe RAM context retained'
-    done
+    assert_diagnostic_cleanup
     fixture_children=''
     IFS= read -r fixture_children <"/proc/$$/task/$$/children" || :
     [ -z "$fixture_children" ] || fail 'owned child still active after Scribe capture'
