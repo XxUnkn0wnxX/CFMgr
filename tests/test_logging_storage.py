@@ -565,3 +565,48 @@ cfmgr_log_capture developer 'CFMGR-EVENT 1 1 manager save started 0'
         expected += b"partial sanitized batch\n"
     assert prior.read_bytes() == expected
     assert (tmp_path / "cleaned").exists() is cleaned
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "developer.log",
+        "health-01234567-89ab-cdef-0123-456789abcdef-10-20-1.log",
+        "health-abcdef01-2345-6789-abcd-ef0123456789-10-20-1.log",
+        "scribe-abcdef01-2345-6789-abcd-ef0123456789-10-20-ddns-0-1.log",
+    ],
+)
+def test_native_fixed_creation_returns_success_and_preserves_collisions(
+    shell, tmp_path, name
+):
+    import sys
+
+    if sys.platform != "linux":
+        pytest.skip("Linux directory descriptor paths are required")
+    script = r"""
+exec 7<"$1" || exit 90
+shift
+exec "$@"
+"""
+    command = [
+        *shell,
+        "-c",
+        script,
+        "fixed-create",
+        str(tmp_path),
+        *shell,
+        str(ROOT / "modules/helpers/worker.sh"),
+        "diagnostic-create",
+        "/bin/sh",
+        str(tmp_path),
+        name,
+    ]
+    created = subprocess.run(command, capture_output=True, check=False, timeout=5)
+    assert (created.returncode, created.stdout, created.stderr) == (0, b"", b"")
+    target = tmp_path / name
+    assert target.is_file() and not target.is_symlink()
+    assert target.stat().st_mode & 0o777 == 0o600
+    target.write_bytes(b"retained diagnostic history\n")
+    collision = subprocess.run(command, capture_output=True, check=False, timeout=5)
+    assert collision.returncode != 0
+    assert target.read_bytes() == b"retained diagnostic history\n"
