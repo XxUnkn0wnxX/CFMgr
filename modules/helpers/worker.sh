@@ -561,7 +561,7 @@ diagnostic-mkdir)
 	;;
 diagnostic-create)
 	[ "$#" -eq 1 ] && [ -d /proc/self/fd/7 ] || exit 2
-	case $1 in developer.log | health-[0-9a-f]*.log | scribe-[A-Za-z0-9._-]*.log) ;; *) exit 2 ;; esac
+	case $1 in developer.log | health-[0-9a-fA-F]*.log | scribe-[A-Za-z0-9._-]*.log) ;; *) exit 2 ;; esac
 	case $1 in *[!A-Za-z0-9._-]* | *..*) exit 2 ;; esac
 	umask 077
 	set -C

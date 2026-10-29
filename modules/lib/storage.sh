@@ -216,9 +216,10 @@ cfmgr_storage_awk_mountinfo() {
 # Read-only parser for /proc/self/mountinfo.
 # Invocation: cfmgr_storage_mountinfo "$native_awk" "$canonical_target" /proc/self/mountinfo
 # Subtree: cfmgr_storage_mountinfo "$native_awk" subtree-v1 "$canonical_target" INPUT
+# Batch: cfmgr_storage_mountinfo "$native_awk" targets-v1 TARGET... INPUT
 # inventory-v1 uses the same operands/output but retains stacked mountpoints.
 # Subtree output adds propagation as field 10 and preserves input order. All
-# records must validate before either interface emits output.
+# records must validate before any interface emits output.
 # The target is a literal ARGV operand so backslashes are not reinterpreted by awk.
 # Input is bounded to 4096 records of at most 8192 bytes each. Escapes are decoded
 # only in root, mountpoint, and source; tabs, newlines, controls, and unknown
@@ -228,7 +229,21 @@ cfmgr_storage_awk_mountinfo() {
 BEGIN {
 	MAX_RECORDS = 4096
 	MAX_LINE = 8192
-	if (ARGV[1] == "subtree-v1" || ARGV[1] == "inventory-v1") {
+	if (ARGV[1] == "targets-v1") {
+		target_mode = 1
+		target_count = ARGC - 3
+		if (target_count < 1 || target_count > 6) {
+			fail("invalid target count")
+		}
+		ARGV[1] = ""
+		for (target_index = 1; target_index <= target_count; target_index++) {
+			targets[target_index] = ARGV[target_index + 1]
+			ARGV[target_index + 1] = ""
+			if (!canonical_path(targets[target_index])) {
+				fail("invalid target")
+			}
+		}
+	} else if (ARGV[1] == "subtree-v1" || ARGV[1] == "inventory-v1") {
 		stack_inventory = (ARGV[1] == "inventory-v1")
 		subtree = 1
 		target = ARGV[2]
@@ -237,7 +252,7 @@ BEGIN {
 		target = ARGV[1]
 		ARGV[1] = ""
 	}
-	if (!canonical_path(target)) {
+	if (!target_mode && !canonical_path(target)) {
 		fail("invalid target")
 	}
 }
@@ -439,6 +454,21 @@ function path_contains(path, point) {
 		subtree_records[++subtree_count] = record "\t" propagation
 		next
 	}
+	if (target_mode) {
+		for (target_index = 1; target_index <= target_count; target_index++) {
+			if (!path_contains(targets[target_index], mountpoint)) {
+				continue
+			}
+			if (length(mountpoint) > target_best_length[target_index]) {
+				target_best_length[target_index] = length(mountpoint)
+				target_best_count[target_index] = 1
+				target_best_record[target_index] = record
+			} else if (length(mountpoint) == target_best_length[target_index]) {
+				target_best_count[target_index]++
+			}
+		}
+		next
+	}
 
 	if (!path_contains(target, mountpoint)) {
 		next
@@ -459,6 +489,20 @@ END {
 	if (subtree) {
 		for (record_index = 1; record_index <= subtree_count; record_index++) {
 			print subtree_records[record_index]
+		}
+		exit 0
+	}
+	if (target_mode) {
+		for (target_index = 1; target_index <= target_count; target_index++) {
+			if (target_best_count[target_index] == 0) {
+				fail("target not found")
+			}
+			if (target_best_count[target_index] != 1) {
+				fail("ambiguous mount")
+			}
+		}
+		for (target_index = 1; target_index <= target_count; target_index++) {
+			print target_best_record[target_index]
 		}
 		exit 0
 	}

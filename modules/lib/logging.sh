@@ -525,31 +525,60 @@ EOF_LOG_META
 # Backup. It never starts another cfmgr_prerequisites_run while one is active.
 # shellcheck disable=SC3013
 cfmgr_log_attached() {
+	case $#:${1:-} in 0: | 1:source) ;; *) return 2 ;; esac
+	cfmgr_log_attachment_scope=${1:-destination}
 	[ "${cfmgr_log_interrupt:-0}" = 0 ] || return 1
 	[ -d "${cfmgr_log_context:-}" ] && [ ! -L "$cfmgr_log_context" ] &&
 		[ "$cfmgr_log_context" -ef /proc/self/fd/5 ] || return 1
-	[ "$(cfmgr_storage_mountinfo /usr/bin/awk /tmp /proc/self/mountinfo)" = "$cfmgr_log_tmp_mount" ] &&
-		[ "$(cfmgr_storage_mountinfo /usr/bin/awk "$cfmgr_log_context" /proc/self/mountinfo)" = "$cfmgr_log_tmp_mount" ] || return 1
+	set -- /tmp "$cfmgr_log_context"
+	cfmgr_log_attachment_expected="$cfmgr_log_tmp_mount
+$cfmgr_log_tmp_mount"
+	cfmgr_log_attachment_opt=''
 	if [ "${cfmgr_log_lock_held:-0}" = 1 ]; then
 		[ -f "$cfmgr_log_lock" ] && [ ! -L "$cfmgr_log_lock" ] &&
 			[ "$cfmgr_log_lock" -ef /proc/self/fd/0 ] || return 1
 	fi
-	[ "${cfmgr_log_mount_pinned:-0}" = 1 ] || return 0
-	if [ -n "${cfmgr_log_auto_target:-}" ]; then
-		[ "$(/usr/bin/readlink -f /opt)" = "$cfmgr_log_auto_target" ] || return 1
+	if [ "${cfmgr_log_mount_pinned:-0}" = 1 ]; then
+		if [ -n "${cfmgr_log_auto_target:-}" ]; then
+			cfmgr_log_attachment_opt=$(/usr/bin/readlink -f /opt) || return 1
+			[ "$cfmgr_log_attachment_opt" = "$cfmgr_log_auto_target" ] || return 1
+		fi
+		[ -d "$cfmgr_log_mount_path" ] && [ ! -L "$cfmgr_log_mount_path" ] &&
+			[ "$cfmgr_log_mount_path" -ef /proc/self/fd/6 ] || return 1
+		[ "$(/usr/bin/readlink -f "$cfmgr_log_mount_path")" = "$cfmgr_log_mount_path" ] || return 1
+		cfmgr_log_fd_mount_ok 6 "$cfmgr_log_mount_id" || return 1
+		set -- "$@" "$cfmgr_log_mount_path"
+		cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
+$cfmgr_log_mount_snapshot"
+		if [ "${cfmgr_log_walk_pinned:-0}" = 1 ]; then
+			[ -d "$cfmgr_log_walk" ] && [ ! -L "$cfmgr_log_walk" ] &&
+				[ "$cfmgr_log_walk" -ef /proc/self/fd/7 ] || return 1
+			[ "$(/usr/bin/readlink -f "$cfmgr_log_walk")" = "$cfmgr_log_walk" ] || return 1
+			cfmgr_log_fd_mount_ok 7 "$cfmgr_log_mount_id" || return 1
+			set -- "$@" "$cfmgr_log_walk"
+			cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
+$cfmgr_log_mount_snapshot"
+		fi
 	fi
-	[ -d "$cfmgr_log_mount_path" ] && [ ! -L "$cfmgr_log_mount_path" ] &&
-		[ "$cfmgr_log_mount_path" -ef /proc/self/fd/6 ] || return 1
-	[ "$(/usr/bin/readlink -f "$cfmgr_log_mount_path")" = "$cfmgr_log_mount_path" ] || return 1
-	[ "$(cfmgr_storage_mountinfo /usr/bin/awk "$cfmgr_log_mount_path" /proc/self/mountinfo)" = "$cfmgr_log_mount_snapshot" ] || return 1
-	cfmgr_log_fd_mount_ok 6 "$cfmgr_log_mount_id" || return 1
-	if [ "${cfmgr_log_walk_pinned:-0}" = 1 ]; then
-		[ -d "$cfmgr_log_walk" ] && [ ! -L "$cfmgr_log_walk" ] &&
-			[ "$cfmgr_log_walk" -ef /proc/self/fd/7 ] || return 1
-		[ "$(/usr/bin/readlink -f "$cfmgr_log_walk")" = "$cfmgr_log_walk" ] || return 1
-		[ "$(cfmgr_storage_mountinfo /usr/bin/awk "$cfmgr_log_walk" /proc/self/mountinfo)" = "$cfmgr_log_mount_snapshot" ] || return 1
-		cfmgr_log_fd_mount_ok 7 "$cfmgr_log_mount_id" || return 1
+	if [ "$cfmgr_log_attachment_scope" = source ]; then
+		[ "${cfmgr_scribe_pinned:-0}" = 1 ] && [ -d "$cfmgr_scribe_mount" ] &&
+			[ ! -L "$cfmgr_scribe_mount" ] && [ "$cfmgr_scribe_mount" -ef /proc/self/fd/8 ] || return 1
+		if [ -z "$cfmgr_log_attachment_opt" ]; then
+			cfmgr_log_attachment_opt=$(/usr/bin/readlink -f /opt) || return 1
+		fi
+		[ "$cfmgr_log_attachment_opt" = "$cfmgr_scribe_opt" ] || return 1
+		if [ "${cfmgr_log_mount_pinned:-0}:$cfmgr_scribe_mount" != "1:${cfmgr_log_mount_path:-}" ]; then
+			[ "$(/usr/bin/readlink -f "$cfmgr_scribe_mount")" = "$cfmgr_scribe_mount" ] || return 1
+		fi
+		cfmgr_log_fd_mount_ok 8 "$cfmgr_scribe_mount_id" || return 1
+		set -- "$@" "$cfmgr_scribe_mount" "$cfmgr_scribe_opt"
+		cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
+$cfmgr_scribe_mount_snapshot
+$cfmgr_scribe_mount_snapshot"
 	fi
+	# One validated snapshot, with every original path observation retained.
+	cfmgr_log_attachment_records=$(cfmgr_storage_mountinfo /usr/bin/awk targets-v1 "$@" /proc/self/mountinfo) || return 1
+	[ "$cfmgr_log_attachment_records" = "$cfmgr_log_attachment_expected" ]
 }
 
 # Start with an observed mounted volume, then keep a directory FD anchored to
@@ -1296,14 +1325,7 @@ cfmgr_scribe_source_size_valid() {
 # recursively invoke the single-child supervisor.
 # shellcheck disable=SC3013
 cfmgr_scribe_source_attached() {
-	[ "${cfmgr_scribe_pinned:-0}" = 1 ] && cfmgr_log_attached || return 1
-	[ -d "$cfmgr_scribe_mount" ] && [ ! -L "$cfmgr_scribe_mount" ] &&
-		[ "$cfmgr_scribe_mount" -ef /proc/self/fd/8 ] || return 1
-	[ "$(/usr/bin/readlink -f /opt)" = "$cfmgr_scribe_opt" ] || return 1
-	[ "$(/usr/bin/readlink -f "$cfmgr_scribe_mount")" = "$cfmgr_scribe_mount" ] || return 1
-	[ "$(cfmgr_storage_mountinfo /usr/bin/awk "$cfmgr_scribe_mount" /proc/self/mountinfo)" = "$cfmgr_scribe_mount_snapshot" ] || return 1
-	[ "$(cfmgr_storage_mountinfo /usr/bin/awk "$cfmgr_scribe_opt" /proc/self/mountinfo)" = "$cfmgr_scribe_mount_snapshot" ] || return 1
-	cfmgr_log_fd_mount_ok 8 "$cfmgr_scribe_mount_id"
+	cfmgr_log_attached source
 }
 
 cfmgr_scribe_run() {
@@ -1365,6 +1387,7 @@ cfmgr_scribe_admit_directory() {
 cfmgr_scribe_authority() {
 	[ -f "${cfmgr_log_config_stage:-}" ] && [ ! -L "$cfmgr_log_config_stage" ] || return 1
 	cfmgr_scribe_authority_config=$cfmgr_log_config_stage
+	cfmgr_scribe_authority_bytes=$cfmgr_log_config_bytes
 	cfmgr_log_metadata "$cfmgr_log_config_stage" file || return $?
 	case $cfmgr_log_meta_size in '' | *[!0-9]* | 0*) return 1 ;; esac
 	[ "$cfmgr_log_meta_size" -le 65536 ] || return 1
@@ -1485,26 +1508,32 @@ cfmgr_scribe_output_open() {
 # both held files and keeps lock FD0; no configuration bytes are emitted.
 # shellcheck disable=SC3013
 cfmgr_scribe_authority_unchanged() {
+	cfmgr_scribe_live_config=$cfmgr_source/config
 	[ -f "$cfmgr_scribe_authority_config" ] && [ ! -L "$cfmgr_scribe_authority_config" ] &&
-		[ -f "$cfmgr_log_config_stage" ] && [ ! -L "$cfmgr_log_config_stage" ] || return 1
-	exec 3<"$cfmgr_scribe_authority_config" 4<"$cfmgr_log_config_stage" || return 1
-	[ "$cfmgr_scribe_authority_config" -ef /proc/self/fd/3 ] && [ "$cfmgr_log_config_stage" -ef /proc/self/fd/4 ] || return 1
+		[ -f "$cfmgr_scribe_live_config" ] && [ ! -L "$cfmgr_scribe_live_config" ] || return 1
+	cfmgr_log_metadata "$cfmgr_scribe_live_config" file || return $?
+	[ "$cfmgr_log_meta_mode" = -rw------- ] &&
+		[ "$cfmgr_log_meta_size" = "$cfmgr_scribe_authority_bytes" ] || return 1
+	cfmgr_scribe_fresh_inode=$cfmgr_log_meta_inode
+	exec 3<"$cfmgr_scribe_authority_config" 4<"$cfmgr_scribe_live_config" || return 1
+	[ "$cfmgr_scribe_authority_config" -ef /proc/self/fd/3 ] &&
+		[ "$cfmgr_scribe_live_config" -ef /proc/self/fd/4 ] || return 1
 	if cfmgr_scribe_run diagnostic-compare /usr/bin/cmp; then cfmgr_scribe_compare_code=0; else cfmgr_scribe_compare_code=$?; fi
 	[ "$cfmgr_scribe_compare_code" != 3 ] || return 3
+	if [ "$cfmgr_scribe_compare_code" = 0 ]; then
+		cfmgr_log_metadata "$cfmgr_scribe_live_config" file || return $?
+		[ "$cfmgr_log_meta_mode:$cfmgr_log_meta_inode:$cfmgr_log_meta_size" = "-rw-------:$cfmgr_scribe_fresh_inode:$cfmgr_scribe_authority_bytes" ] &&
+			[ "$cfmgr_scribe_live_config" -ef /proc/self/fd/4 ] && cfmgr_log_attached || return 1
+	fi
 	exec 3<&- 4<&-
 	return "$cfmgr_scribe_compare_code"
 }
 
 # shellcheck disable=SC2031 # This helper runs inside the same isolated capture controller.
 cfmgr_scribe_save_stage() {
-	cfmgr_scribe_original_log_result=${cfmgr_log_result:-saved}
-	if cfmgr_log_still_enabled; then cfmgr_scribe_enable_code=0; else cfmgr_scribe_enable_code=$?; fi
-	cfmgr_log_result=$cfmgr_scribe_original_log_result
-	[ "$cfmgr_scribe_enable_code" != 3 ] || return 3
-	if [ "$cfmgr_scribe_enable_code" != 0 ]; then
-		cfmgr_scribe_stop=1
-		return 1
-	fi
+	# Exact equality to the admitted developer-On authority proves the same
+	# destination and ownership. Any change stops publication without guessing
+	# whether it was an Off edit; the final summary reads its own fresh state.
 	if cfmgr_scribe_authority_unchanged; then :; else
 		cfmgr_scribe_compare_code=$?
 		[ "$cfmgr_scribe_compare_code" != 3 ] || return 3

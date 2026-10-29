@@ -98,10 +98,33 @@ def run_parser(
     )
 
 
+def run_targets_parser(
+    awk: list[str], targets: list[str], records: str
+) -> subprocess.CompletedProcess[bytes]:
+    environment = os.environ.copy()
+    environment["LC_ALL"] = "C"
+    return subprocess.run(
+        awk_arguments([*awk, "-f", PARSER, "targets-v1", *targets, "-"]),
+        input=records.encode("utf-8"),
+        capture_output=True,
+        check=False,
+        env=environment,
+        timeout=5,
+    )
+
+
 def assert_rejected(
     awk: list[str], target: str, records: str, *, subtree: bool = False
 ) -> None:
     result = run_parser(awk, target, records, subtree=subtree)
+    assert result.returncode != 0
+    assert result.stdout == b""
+    assert result.stderr.startswith(b"mountinfo: ")
+    assert len(result.stderr) < 80
+
+
+def assert_targets_rejected(awk: list[str], targets: list[str], records: str) -> None:
+    result = run_targets_parser(awk, targets, records)
     assert result.returncode != 0
     assert result.stdout == b""
     assert result.stderr.startswith(b"mountinfo: ")
@@ -450,3 +473,57 @@ def test_inventory_preserves_validated_stacks_and_parent_identity(
         assert_rejected(awk, "/owned", records, subtree=True)
         bad = run_parser(awk, "/owned", records + "bad tail\n", inventory=True)
         assert bad.returncode != 0 and bad.stdout == b""
+
+
+def test_targets_batch_matches_scalar_selection_in_operand_order(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    records = (
+        mount_record(1, 1)
+        + "\n"
+        + mount_record(2, 1, mountpoint="/opt")
+        + "\n"
+        + mount_record(3, 2, mountpoint="/opt/app")
+        + "\n"
+        + mount_record(4, 1, mountpoint="/var")
+        + "\n"
+    )
+    targets = ["/opt/app", "/opt/app/data/file", "/var/log", "/", "/opt", "/opt/app"]
+    for name, awk in awk_programs:
+        batched = run_targets_parser(awk, targets, records)
+        expected = b"".join(
+            run_parser(awk, target, records).stdout for target in targets
+        )
+        assert (batched.returncode, batched.stdout, batched.stderr) == (
+            0,
+            expected,
+            b"",
+        ), name
+        rows = [line.split(b"\t") for line in batched.stdout.splitlines()]
+        assert [row[0] for row in rows] == [b"3", b"3", b"4", b"1", b"2", b"3"]
+        assert all(len(row) == 9 for row in rows)
+
+
+def test_targets_batch_fails_closed_before_output_for_bad_selection_or_input(
+    awk_programs: list[tuple[str, list[str]]],
+) -> None:
+    good = mount_record(1, 1) + "\n" + mount_record(2, 1, mountpoint="/opt") + "\n"
+    ambiguous = good + mount_record(3, 1, mountpoint="/opt") + "\n"
+    invalid_tail = good + "3 1 8:1 / /bad rw - ext4\n"
+    for name, awk in awk_programs:
+        assert_targets_rejected(awk, ["/opt", "/bad/../path"], good)
+        assert_targets_rejected(
+            awk,
+            ["/opt", "/missing"],
+            mount_record(1, 1, mountpoint="/opt") + "\n",
+        )
+        assert_targets_rejected(awk, ["/opt/app"], ambiguous)
+        assert_targets_rejected(awk, ["/", "/opt"], invalid_tail)
+        assert_targets_rejected(awk, [], good)
+        assert_targets_rejected(awk, ["/opt"] * 7, good)
+        assert_targets_rejected(awk, ["/opt", "/"], good + "\n")
+        # The 1-target lower bound is valid, and six ordered operands are accepted.
+        one = run_targets_parser(awk, ["/opt"], good)
+        six = run_targets_parser(awk, ["/opt"] * 6, good)
+        assert one.returncode == 0 and one.stdout.count(b"\n") == 1, name
+        assert six.returncode == 0 and six.stdout.count(b"\n") == 6, name

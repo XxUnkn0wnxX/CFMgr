@@ -5,17 +5,19 @@ These host adapters do not prove native BusyBox/mount or provider behavior.
 
 from __future__ import annotations
 
+import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
-from test_config_observation import commands
+from test_config_observation import commands, schema2_config
 from test_install import shell
 from test_logging import frame, sanitize
 
 ROOT = Path(__file__).resolve().parents[1]
 DRAFT = ROOT / "modules/lib/logging.sh"
-__all__ = ["commands", "shell"]
+__all__ = ["commands", "schema2_config", "shell"]
 
 
 def invoke(shell, script: str, *arguments: Path | str):
@@ -163,19 +165,6 @@ cfmgr_log_scribe_capture
     ]
 
 
-def test_developer_off_stops_snapshot_without_overwriting_prior_result(shell):
-    script = r"""
-cfmgr_log_result=saved cfmgr_scribe_stop=0
-cfmgr_log_still_enabled() { cfmgr_log_result=disabled; return 4; }
-cfmgr_scribe_source_attached() { return 0; }
-cfmgr_scribe_output_open() { printf 'unexpected write\n'; return 1; }
-if cfmgr_scribe_save_stage; then code=0; else code=$?; fi
-printf '%s %s %s\n' "$code" "$cfmgr_scribe_stop" "$cfmgr_log_result"
-"""
-    result = invoke(shell, script)
-    assert (result.returncode, result.stdout, result.stderr) == (0, b"1 1 saved\n", b"")
-
-
 def test_unowned_sources_are_not_claimed_missing_without_opening_opt(shell):
     script = r"""
 cfmgr_scribe_authority() {
@@ -242,7 +231,6 @@ def test_sanitized_receipt_requires_exact_footer(
 def test_changed_authority_stops_before_snapshot_write(shell):
     script = r"""
 cfmgr_log_result=saved cfmgr_scribe_stop=0
-cfmgr_log_still_enabled() { return 0; }
 cfmgr_scribe_authority_unchanged() { return 1; }
 cfmgr_scribe_source_attached() { return 0; }
 cfmgr_scribe_output_open() { printf 'unexpected write\n'; return 1; }
@@ -256,7 +244,6 @@ printf '%s %s %s\n' "$code" "$cfmgr_scribe_stop" "$cfmgr_log_result"
 def test_unresolved_authority_compare_propagates_without_new_write(shell):
     script = r"""
 cfmgr_log_result=saved cfmgr_scribe_stop=0
-cfmgr_log_still_enabled() { return 0; }
 cfmgr_scribe_authority_unchanged() { return 3; }
 cfmgr_scribe_source_attached() { return 0; }
 cfmgr_scribe_output_open() { printf 'unexpected write\n'; return 1; }
@@ -339,7 +326,6 @@ def test_changed_rule_defers_role_before_snapshot_publication(shell):
     script = r"""
 cfmgr_log_result=saved cfmgr_scribe_stop=0 cfmgr_scribe_snapshot_role=ddns
 cfmgr_scribe_have_ddns=1 cfmgr_scribe_sha_ddns=original cfmgr_scribe_ready_ddns=1
-cfmgr_log_still_enabled() { return 0; }
 cfmgr_scribe_authority_unchanged() { return 0; }
 cfmgr_scribe_source_attached() { return 0; }
 cfmgr_scribe_rule_owned() { [ "$1:$2" = ddns:original ] || exit 20; return 1; }
@@ -369,3 +355,68 @@ printf '%s %s %s\n' "$cfmgr_scribe_missing" "$cfmgr_scribe_incomplete" "$cfmgr_s
     script = script.replace("cfmgr_scribe_opt=$1", f'cfmgr_scribe_opt="{opt}"')
     result = invoke(shell, script)
     assert (result.returncode, result.stdout, result.stderr) == (0, b"0 1 2\n", b"")
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "unchanged",
+        "off",
+        "same-generation",
+        "replace-after-compare",
+        "mode-after-compare",
+    ],
+)
+def test_fresh_config_descriptor_comparison_stops_changed_authority(
+    shell, schema2_config, tmp_path, change
+):
+    """Real bytes/FDs; stat and compare adapters isolate freshness from supervision."""
+    if sys.platform != "linux":
+        pytest.skip("Linux file descriptor identity is required")
+    value = json.loads(schema2_config)
+    value["manager"]["developer"] = True
+    value["manager"]["source"]["branch"] = "develop"
+    original = json.dumps(value, separators=(",", ":")).encode()
+    authority = tmp_path / "authority"
+    authority.write_bytes(original)
+    authority.chmod(0o600)
+    if change == "off":
+        value["manager"]["developer"] = False
+    elif change == "same-generation":
+        value["manager"]["source"]["branch"] = "feature"
+    config = tmp_path / "config"
+    config.write_text(json.dumps(value, separators=(",", ":")))
+    config.chmod(0o600)
+    if change == "same-generation":
+        assert config.stat().st_size == len(original)
+    replacement = tmp_path / "replacement"
+    replacement.write_bytes(original)
+    replacement.chmod(0o600)
+    script = r"""
+cfmgr_source=$1 cfmgr_scribe_authority_config=$2 cfmgr_scribe_authority_bytes=$3 cfmgr_test_change=$4
+cfmgr_log_read_config() { printf 'unexpected reparsing\n'; exit 90; }
+cfmgr_log_metadata() {
+    IFS=' ' read -r cfmgr_log_meta_mode cfmgr_log_meta_inode cfmgr_log_meta_size cfmgr_test_links <<EOF_META
+$(stat -c '%A %i %s %h' "$1")
+EOF_META
+    [ "$cfmgr_test_links" = 1 ]
+}
+cfmgr_scribe_run() {
+    [ "$1" = diagnostic-compare ] || exit 91
+    cmp -s /proc/self/fd/3 /proc/self/fd/4 || return 1
+    case $cfmgr_test_change in
+    replace-after-compare) mv "$cfmgr_source/replacement" "$cfmgr_source/config" ;;
+    mode-after-compare) chmod 644 "$cfmgr_source/config" ;;
+    esac
+    return 0
+}
+cfmgr_log_attached() { return 0; }
+cfmgr_scribe_authority_unchanged
+"""
+    result = invoke(shell, script, tmp_path, authority, str(len(original)), change)
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0 if change == "unchanged" else 1,
+        b"",
+        b"",
+    )
+    assert authority.read_bytes() == original
