@@ -441,8 +441,33 @@ def test_linux_health_capture_on_private_noexec_data_mount(
     native_mount_tools, tmp_path, monkeypatch, destination
 ):
     fixture = build_fixture(native_mount_tools[0], tmp_path)
+    # Exercise both boot-UUID alphabets deterministically at the filename
+    # boundary; the supervisor still uses the real kernel boot identity.
+    name_boot = (
+        "01234567-89ab-cdef-0123-456789abcdef"
+        if destination == "auto"
+        else "abcdef01-2345-6789-abcd-ef0123456789"
+    )
+    logging_template = tmp_path / "templates/logging"
+    template = logging_template.read_text()
+    opener = "cfmgr_test_original_health_open() {\n"
+    assert template.count(opener) == 1
+    logging_template.write_text(
+        template.replace(opener, opener + f"    cfmgr_log_boot={name_boot}\n", 1)
+    )
+    script = fixture.read_text()
+    saved_check = (
+        '[ "$#" -eq 1 ] && [ -f "$1" ] || fail \'expected one saved health report\''
+    )
+    assert script.count(saved_check) == 1
+    script = script.replace(
+        saved_check,
+        saved_check
+        + f'\n    case "${{1##*/}}" in health-{name_boot}-*) ;; '
+        + "*) fail 'saved health UUID prefix changed' ;; esac",
+        1,
+    )
     if destination == "auto":
-        script = fixture.read_text()
         preference = '"developer":false,"developer_log_directory":"%s"'
         assert script.count(preference) == 2
         script = script.replace(
@@ -453,7 +478,7 @@ def test_linux_health_capture_on_private_noexec_data_mount(
             '        >"$cfmgr_source/config"',
             1,
         )
-        fixture.write_text(script)
+    fixture.write_text(script)
     workdir = tmp_path / "work"
     workdir.mkdir(mode=0o700)
     monkeypatch.setattr(storage, "FIXTURE", fixture)

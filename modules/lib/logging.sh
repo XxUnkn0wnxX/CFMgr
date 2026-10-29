@@ -624,7 +624,7 @@ cfmgr_log_walk_destination() {
 # shellcheck disable=SC3013
 cfmgr_log_open_output() {
 	[ "$#" -eq 2 ] || return 2
-	case $1 in developer.log | health-[0-9]*.log | scribe-[A-Za-z0-9._-]*.log) ;; *) return 2 ;; esac
+	case $1 in developer.log | health-[0-9a-fA-F]*.log | scribe-[A-Za-z0-9._-]*.log) ;; *) return 2 ;; esac
 	case $1 in *[!A-Za-z0-9._-]* | *..*) return 2 ;; esac
 	case $2 in append | exclusive) ;; *) return 2 ;; esac
 	cfmgr_log_output=$cfmgr_log_walk/$1 cfmgr_log_output_created=0

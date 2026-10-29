@@ -425,7 +425,11 @@ def test_advanced_option_saves_and_reopens_custom_destination_without_developer_
         initial="1 1 0 -\n",
     )
     assert result.returncode == 0, result.stderr
-    assert state == f"2 1 0 {custom_hex}\n"
+    assert state == f"2 1 0 {custom_hex}\n", (
+        f"diagnostic destination Save did not persist; calls={calls!r}; "
+        f"state={state!r}; stdout={result.stdout[:4096]!r}; "
+        f"stderr={result.stderr[:4096]!r}"
+    )
     assert f"preview {custom_hex}" in calls
     assert f"settings save {custom_hex}" in calls
     assert b"Advanced options: other actions unavailable" in result.stdout
