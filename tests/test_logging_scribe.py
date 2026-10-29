@@ -393,7 +393,7 @@ def test_fresh_config_descriptor_comparison_stops_changed_authority(
     replacement.write_bytes(original)
     replacement.chmod(0o600)
     script = r"""
-cfmgr_source=$1 cfmgr_scribe_authority_config=$2 cfmgr_scribe_authority_bytes=$3 cfmgr_test_change=$4
+cfmgr_source=$1 cfmgr_scribe_authority_config=$2 cfmgr_scribe_authority_config_bytes=$3 cfmgr_test_change=$4
 cfmgr_log_read_config() { printf 'unexpected reparsing\n'; exit 90; }
 cfmgr_log_metadata() {
     IFS=' ' read -r cfmgr_log_meta_mode cfmgr_log_meta_inode cfmgr_log_meta_size cfmgr_test_links <<EOF_META

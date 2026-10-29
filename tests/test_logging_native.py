@@ -564,5 +564,9 @@ COMMON_SETUP
     workdir = tmp_path / "work"
     workdir.mkdir(mode=0o700)
     monkeypatch.setattr(storage, "FIXTURE", fixture)
-    result = storage.run_fixture(native_mount_tools, "diagnostic_scribe", workdir)
+    # Two independent captures retain their 20-second product deadlines.
+    # The combined rotation journey needs both budgets plus fixture cleanup.
+    result = storage.run_fixture(
+        native_mount_tools, "diagnostic_scribe", workdir, timeout_seconds=45
+    )
     storage.assert_fixture_passed(result, "diagnostic_scribe")

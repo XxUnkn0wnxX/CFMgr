@@ -1387,7 +1387,7 @@ cfmgr_scribe_admit_directory() {
 cfmgr_scribe_authority() {
 	[ -f "${cfmgr_log_config_stage:-}" ] && [ ! -L "$cfmgr_log_config_stage" ] || return 1
 	cfmgr_scribe_authority_config=$cfmgr_log_config_stage
-	cfmgr_scribe_authority_bytes=$cfmgr_log_config_bytes
+	cfmgr_scribe_authority_config_bytes=$cfmgr_log_config_bytes
 	cfmgr_log_metadata "$cfmgr_log_config_stage" file || return $?
 	case $cfmgr_log_meta_size in '' | *[!0-9]* | 0*) return 1 ;; esac
 	[ "$cfmgr_log_meta_size" -le 65536 ] || return 1
@@ -1513,7 +1513,7 @@ cfmgr_scribe_authority_unchanged() {
 		[ -f "$cfmgr_scribe_live_config" ] && [ ! -L "$cfmgr_scribe_live_config" ] || return 1
 	cfmgr_log_metadata "$cfmgr_scribe_live_config" file || return $?
 	[ "$cfmgr_log_meta_mode" = -rw------- ] &&
-		[ "$cfmgr_log_meta_size" = "$cfmgr_scribe_authority_bytes" ] || return 1
+		[ "$cfmgr_log_meta_size" = "$cfmgr_scribe_authority_config_bytes" ] || return 1
 	cfmgr_scribe_fresh_inode=$cfmgr_log_meta_inode
 	exec 3<"$cfmgr_scribe_authority_config" 4<"$cfmgr_scribe_live_config" || return 1
 	[ "$cfmgr_scribe_authority_config" -ef /proc/self/fd/3 ] &&
@@ -1522,7 +1522,7 @@ cfmgr_scribe_authority_unchanged() {
 	[ "$cfmgr_scribe_compare_code" != 3 ] || return 3
 	if [ "$cfmgr_scribe_compare_code" = 0 ]; then
 		cfmgr_log_metadata "$cfmgr_scribe_live_config" file || return $?
-		[ "$cfmgr_log_meta_mode:$cfmgr_log_meta_inode:$cfmgr_log_meta_size" = "-rw-------:$cfmgr_scribe_fresh_inode:$cfmgr_scribe_authority_bytes" ] &&
+		[ "$cfmgr_log_meta_mode:$cfmgr_log_meta_inode:$cfmgr_log_meta_size" = "-rw-------:$cfmgr_scribe_fresh_inode:$cfmgr_scribe_authority_config_bytes" ] &&
 			[ "$cfmgr_scribe_live_config" -ef /proc/self/fd/4 ] && cfmgr_log_attached || return 1
 	fi
 	exec 3<&- 4<&-

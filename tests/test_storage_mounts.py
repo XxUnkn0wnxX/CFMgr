@@ -79,8 +79,13 @@ def fixture_tools(selected_shell: list[str]) -> tuple[list[str], str, str, str]:
 
 
 def run_fixture(
-    fixture_tools: tuple[list[str], str, str, str], case: str, workdir: Path
+    fixture_tools: tuple[list[str], str, str, str],
+    case: str,
+    workdir: Path,
+    *,
+    timeout_seconds: int = 25,
 ) -> subprocess.CompletedProcess[bytes]:
+    assert 1 <= timeout_seconds <= 60
     shell, readlink, awk, timeout = fixture_tools
     os.chmod(workdir, 0o700)
     parent_namespace = os.readlink("/proc/self/ns/mnt")
@@ -96,7 +101,7 @@ def run_fixture(
         timeout,
         "--signal=TERM",
         "--kill-after=2",
-        "25",
+        str(timeout_seconds),
         *shell,
         str(FIXTURE),
         str(ROOT),
@@ -113,7 +118,7 @@ def run_fixture(
         env=environment,
         check=False,
         capture_output=True,
-        timeout=30,
+        timeout=timeout_seconds + 5,
     )
     # The fixture owns this exact child path and removes it in its EXIT trap.
     # Preserve its diagnostics if uncertain cleanup deliberately retained data.
