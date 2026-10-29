@@ -547,15 +547,24 @@ $cfmgr_log_tmp_mount"
 		fi
 		[ -d "$cfmgr_log_mount_path" ] && [ ! -L "$cfmgr_log_mount_path" ] &&
 			[ "$cfmgr_log_mount_path" -ef /proc/self/fd/6 ] || return 1
-		[ "$(/usr/bin/readlink -f "$cfmgr_log_mount_path")" = "$cfmgr_log_mount_path" ] || return 1
+		if [ "${cfmgr_log_walk_pinned:-0}" = 1 ]; then
+			[ -d "$cfmgr_log_walk" ] && [ ! -L "$cfmgr_log_walk" ] &&
+				[ "$cfmgr_log_walk" -ef /proc/self/fd/7 ] || return 1
+			cfmgr_log_path_on_mount "$cfmgr_log_walk" "$cfmgr_log_mount_path" || return 1
+			# A fresh canonical walk also proves its admitted mount-path prefix.
+			cfmgr_log_attachment_canonical=$(CDPATH= cd -P "$cfmgr_log_walk" 2>/dev/null && pwd -P && printf '.') || return 1
+			[ "$cfmgr_log_attachment_canonical" = "$cfmgr_log_walk
+." ] || return 1
+		else
+			cfmgr_log_attachment_canonical=$(CDPATH= cd -P "$cfmgr_log_mount_path" 2>/dev/null && pwd -P && printf '.') || return 1
+			[ "$cfmgr_log_attachment_canonical" = "$cfmgr_log_mount_path
+." ] || return 1
+		fi
 		cfmgr_log_fd_mount_ok 6 "$cfmgr_log_mount_id" || return 1
 		set -- "$@" "$cfmgr_log_mount_path"
 		cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
 $cfmgr_log_mount_snapshot"
 		if [ "${cfmgr_log_walk_pinned:-0}" = 1 ]; then
-			[ -d "$cfmgr_log_walk" ] && [ ! -L "$cfmgr_log_walk" ] &&
-				[ "$cfmgr_log_walk" -ef /proc/self/fd/7 ] || return 1
-			[ "$(/usr/bin/readlink -f "$cfmgr_log_walk")" = "$cfmgr_log_walk" ] || return 1
 			cfmgr_log_fd_mount_ok 7 "$cfmgr_log_mount_id" || return 1
 			set -- "$@" "$cfmgr_log_walk"
 			cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
@@ -570,7 +579,9 @@ $cfmgr_log_mount_snapshot"
 		fi
 		[ "$cfmgr_log_attachment_opt" = "$cfmgr_scribe_opt" ] || return 1
 		if [ "${cfmgr_log_mount_pinned:-0}:$cfmgr_scribe_mount" != "1:${cfmgr_log_mount_path:-}" ]; then
-			[ "$(/usr/bin/readlink -f "$cfmgr_scribe_mount")" = "$cfmgr_scribe_mount" ] || return 1
+			cfmgr_log_attachment_canonical=$(CDPATH= cd -P "$cfmgr_scribe_mount" 2>/dev/null && pwd -P && printf '.') || return 1
+			[ "$cfmgr_log_attachment_canonical" = "$cfmgr_scribe_mount
+." ] || return 1
 		fi
 		cfmgr_log_fd_mount_ok 8 "$cfmgr_scribe_mount_id" || return 1
 		set -- "$@" "$cfmgr_scribe_mount" "$cfmgr_scribe_opt"

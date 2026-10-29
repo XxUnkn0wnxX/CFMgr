@@ -73,6 +73,54 @@ def test_diagnostic_mount_ancestry_has_a_component_boundary(shell, path, mount, 
     assert result.stderr == b""
 
 
+def test_shell_builtin_physical_directory_checks_preserve_paths_and_cwd(
+    selected_shell, tmp_path
+):
+    ordinary = tmp_path / "ordinary"
+    unusual = tmp_path / "space and \\ backslash"
+    target = tmp_path / "physical-target"
+    alias = tmp_path / "ancestor-link"
+    for path in (ordinary, unusual, target):
+        path.mkdir()
+    alias.symlink_to(target, target_is_directory=True)
+    missing = tmp_path / "missing"
+    script = r"""
+start_pwd=$PWD
+start_physical=$(pwd -P) || exit 1
+physical=$(CDPATH= cd -P "$1" && pwd -P && printf '.') || exit 2
+[ "$physical" = "$1
+." ] || exit 3
+physical=$(CDPATH= cd -P "$2" && pwd -P && printf '.') || exit 4
+[ "$physical" = "$2
+." ] || exit 5
+physical=$(CDPATH= cd -P "$3" && pwd -P && printf '.') || exit 6
+[ "$physical" = "$4
+." ] && [ "$physical" != "$3
+." ] || exit 7
+if physical=$(CDPATH= cd -P "$5" 2>/dev/null && pwd -P && printf '.'); then exit 8; fi
+[ -z "$physical" ] || exit 9
+[ "$PWD" = "$start_pwd" ] && [ "$(pwd -P)" = "$start_physical" ] || exit 10
+"""
+    result = subprocess.run(
+        [
+            *selected_shell,
+            "-c",
+            script,
+            "physical-path-test",
+            str(ordinary),
+            str(unusual),
+            str(alias),
+            str(target),
+            str(missing),
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        check=False,
+        timeout=5,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
 def test_linux_owned_child_retains_capture_lock_and_descriptors(shell, tmp_path):
     """Kernel lock and mount pins survive the isolated controller's exit."""
     import fcntl
