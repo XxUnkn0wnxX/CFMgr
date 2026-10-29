@@ -450,6 +450,7 @@ def test_native_fixture_shell_syntax(selected_shell, tmp_path):
             assert f'"$fixture/bin/{name}"' in driver_source
         assert ("cfmgr_test_original_attached() {" in logging_source) is trace_phases
         assert "cfmgr_test_clock() {" in logging_source
+        assert logging_source.count("cfmgr_log_health_open() {\n") == 1
         assert "cfmgr_test_report_copy" in logging_source
         assert "cfmgr_test_observation" in logging_source
         for source_path in (fixture, fixture_dir / "templates/logging"):
@@ -488,7 +489,7 @@ def test_linux_health_capture_on_private_noexec_data_mount(
     )
     logging_template = tmp_path / "templates/logging"
     template = logging_template.read_text()
-    opener = "cfmgr_test_original_health_open() {\n"
+    opener = "cfmgr_log_health_open() {\n"
     assert template.count(opener) == 1
     logging_template.write_text(
         template.replace(opener, opener + f"    cfmgr_log_boot={name_boot}\n", 1)
