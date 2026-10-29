@@ -321,6 +321,7 @@ def test_invalid_read_claiming_busy_uses_fixed_response_error(shell, tmp_path):
 
 
 DIAGNOSTIC_DRIVER = r"""
+command() { return 127; }
 . "$1"
 . "$5"
 state=$2 calls=$3 scenario=$4

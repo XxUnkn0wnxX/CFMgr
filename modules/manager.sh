@@ -311,9 +311,8 @@ EOF_DIAGNOSTIC
 cfmgr_md_preview() {
 	[ "$#" -eq 1 ] || return 1
 	case $1 in -) ;; *) cfmgr_md_decode_path "$1" || return 1 ;; esac
-	command -v cfmgr_log_destination >/dev/null 2>&1 || return 1
 	cfmgr_md_preview_capture=$(
-		cfmgr_log_destination preview "$1"
+		cfmgr_log_destination preview "$1" 2>/dev/null
 		cfmgr_md_preview_status=$?
 		printf 'CFMGR-PREVIEW-STATUS:%s' "$cfmgr_md_preview_status"
 	)
