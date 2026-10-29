@@ -322,19 +322,22 @@ printf '%s %s\n' "$cfmgr_scribe_missing" "$cfmgr_scribe_incomplete"
     assert (result.returncode, result.stdout, result.stderr) == (0, b"0 1\n", b"")
 
 
-def test_changed_rule_defers_role_before_snapshot_publication(shell):
+@pytest.mark.parametrize("loss", ["source", "rule"])
+def test_lost_source_or_changed_rule_defers_snapshot_publication(shell, loss):
     script = r"""
+cfmgr_test_loss=$1
 cfmgr_log_result=saved cfmgr_scribe_stop=0 cfmgr_scribe_snapshot_role=ddns
 cfmgr_scribe_have_ddns=1 cfmgr_scribe_sha_ddns=original cfmgr_scribe_ready_ddns=1
 cfmgr_scribe_authority_unchanged() { return 0; }
-cfmgr_scribe_source_attached() { return 0; }
+cfmgr_scribe_source_attached() { [ "$cfmgr_test_loss" != source ]; }
 cfmgr_scribe_rule_owned() { [ "$1:$2" = ddns:original ] || exit 20; return 1; }
 cfmgr_scribe_output_open() { printf 'unexpected write\n'; return 1; }
 if cfmgr_scribe_save_stage; then code=0; else code=$?; fi
 printf '%s %s %s\n' "$code" "$cfmgr_scribe_ready_ddns" "$cfmgr_log_result"
 """
-    result = invoke(shell, script)
-    assert (result.returncode, result.stdout, result.stderr) == (0, b"1 0 saved\n", b"")
+    result = invoke(shell, script, loss)
+    expected = b"1 1 saved\n" if loss == "source" else b"1 0 saved\n"
+    assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
 
 
 def test_absent_log_directory_after_source_loss_is_incomplete(shell, tmp_path):
@@ -401,7 +404,7 @@ $(stat -c '%A %i %s %h' "$1")
 EOF_META
     [ "$cfmgr_test_links" = 1 ]
 }
-cfmgr_scribe_run() {
+cfmgr_log_run() {
     [ "$1" = diagnostic-compare ] || exit 91
     cmp -s /proc/self/fd/3 /proc/self/fd/4 || return 1
     case $cfmgr_test_change in

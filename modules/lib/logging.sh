@@ -1441,7 +1441,9 @@ cfmgr_scribe_count_file() {
 	[ "$#" -eq 2 ] && [ -f "$1" ] && [ ! -L "$1" ] || return 1
 	case $2 in 24576 | 65536) ;; *) return 2 ;; esac
 	exec 3<"$1" || return 1
-	cfmgr_scribe_run diagnostic-count /usr/bin/wc || return $?
+	# This stage is already in the private RAM context. Its supervisor checks
+	# that context and destination; source authority is rechecked at publication.
+	cfmgr_log_run diagnostic-count /usr/bin/wc || return $?
 	cfmgr_log_line "$cfmgr_probe_stdout" || return 1
 	IFS=' ' read -r cfmgr_scribe_count cfmgr_scribe_count_extra <<EOF_SCRIBE_COUNT
 $cfmgr_log_line_value
@@ -1518,7 +1520,7 @@ cfmgr_scribe_authority_unchanged() {
 	exec 3<"$cfmgr_scribe_authority_config" 4<"$cfmgr_scribe_live_config" || return 1
 	[ "$cfmgr_scribe_authority_config" -ef /proc/self/fd/3 ] &&
 		[ "$cfmgr_scribe_live_config" -ef /proc/self/fd/4 ] || return 1
-	if cfmgr_scribe_run diagnostic-compare /usr/bin/cmp; then cfmgr_scribe_compare_code=0; else cfmgr_scribe_compare_code=$?; fi
+	if cfmgr_log_run diagnostic-compare /usr/bin/cmp; then cfmgr_scribe_compare_code=0; else cfmgr_scribe_compare_code=$?; fi
 	[ "$cfmgr_scribe_compare_code" != 3 ] || return 3
 	if [ "$cfmgr_scribe_compare_code" = 0 ]; then
 		cfmgr_log_metadata "$cfmgr_scribe_live_config" file || return $?
@@ -1601,13 +1603,13 @@ cfmgr_scribe_snapshot() {
 	cfmgr_scribe_raw_bytes=$cfmgr_scribe_count
 	[ "$cfmgr_scribe_raw_bytes" = "$((cfmgr_scribe_original_bytes - cfmgr_scribe_skip * 1024))" ] || return 1
 	exec 3<"$cfmgr_scribe_raw" || return 1
-	cfmgr_scribe_run diagnostic-frame /usr/bin/awk "$cfmgr_source/modules/lib/logging.sh" "$cfmgr_scribe_raw_bytes" "$cfmgr_scribe_excerpt" || return $?
+	cfmgr_log_run diagnostic-frame /usr/bin/awk "$cfmgr_source/modules/lib/logging.sh" "$cfmgr_scribe_raw_bytes" "$cfmgr_scribe_excerpt" || return $?
 	cfmgr_scribe_frame=$cfmgr_probe_stdout
 	cfmgr_scribe_count_file "$cfmgr_scribe_frame" 65536 || return $?
 	cfmgr_scribe_frame_bytes=$cfmgr_scribe_count
 	[ "$cfmgr_scribe_frame_bytes" -gt 0 ] || return 1
 	exec 3<"$cfmgr_scribe_frame" || return 1
-	cfmgr_scribe_run diagnostic-sanitize /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" \
+	cfmgr_log_run diagnostic-sanitize /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" \
 		"$cfmgr_source/modules/lib/logging.sh" "$cfmgr_scribe_frame_bytes" "$cfmgr_scribe_excerpt" "$cfmgr_scribe_snapshot_role" || return $?
 	cfmgr_scribe_sanitized=$cfmgr_probe_stdout
 	cfmgr_scribe_count_file "$cfmgr_scribe_sanitized" 65536 || return $?
