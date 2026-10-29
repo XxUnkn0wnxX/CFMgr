@@ -2789,7 +2789,11 @@ storage/developer/standalone-Health requirements are recorded in the specificati
 but diagnostic capture remains unimplemented. Ubuntu/vendor BusyBox is
 representative development evidence, not Merlin/ARM or live-router qualification.
 
-## S13.14 diagnostics integration review — in progress (2026-10-29)
+## S13.14 diagnostics integration review — accepted (2026-10-29)
+
+S13.14 is accepted at the exact code revision and complete core gate recorded in
+the final receipt below. Earlier review observations and failed candidates are
+retained to explain the repairs; that final receipt resolves their pending status.
 
 The authorized checkpoint adds developer-gated typed operation events and independent
 explicit Health capture. Parent adopted the separate Astra design review: recording
@@ -2989,7 +2993,6 @@ Scribe and storage modules passed106 cases with14 Linux skips in3.93s; statics p
 The bounded host comparison measured100 lookups at0.8997s wall/0.6727s CPU for
 readlink versus0.3248s/0.1941s for physical pwd; this is not native performance proof.
 
-
 Native parser diagnosis at `0fb809e` (Dev40807897728) measured ten actual
 mountinfo parses at 4 centiseconds for both two and six targets, against 26 rows.
 The first capture still failed at 19.94s, including 11.42s/505 attachment calls.
@@ -3007,7 +3010,6 @@ second near the unchanged deadline at19.40s. Attachment cost remained11.07s/509 
 has not established the complete two-capture native requirement. No runtime guard,
 vendor build setting, timeout or behavioral assertion changed in this repair.
 
-
 At `9c99710c6a2aca189b4c5364412027a5fa37bb3c`, phase profiling is opt-in.
 Routine native captures execute the production functions directly; the mandatory
 Health report observer remains, and the bounded profiler source is retained.
@@ -3022,3 +3024,103 @@ content and preservation assertions. This disproves profiler overhead as the sol
 cause of the common rotation-capture failure. The required native outcome and
 complete exact-candidate core remain unproved; no acceptance or timeout waiver
 was applied. Runtime storage guards remain unchanged.
+
+The remaining repair is an ordinary performance/compatibility change: equivalent
+scalar predicates in the attachment callback, held-FD mount parser, bounded path
+validator and mount-ancestry helper now use shell case/arithmetic. No identified
+vulnerability or security-policy change is involved. Expanded literal patterns are
+quoted; exact newline/dot markers, malformed flags, argument/mismatch statuses and
+the 1024-character limit remain unchanged. Every filesystem predicate remains
+separate and in its original order, with the same fresh observations and deadline.
+Independent Astra review returned PASS WITH NOTES. Complete local logging,
+storage, Scribe and native modules passed 112 cases with 17 Linux skips in 4.11s;
+package generation/check, planning, Ruff/format/compile, shell syntax and shfmt
+passed. Native performance remained pending at that stage.
+
+The first scalar-repair publication, `6554d89`, omitted the regenerated module
+manifest. [Dev 40862366494](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40862366494)
+therefore failed package admission before native runtime proof. Follow-up
+`f59304c` restored the generated logging size/hash entry; subsequent exact-candidate
+package and platform gates passed. This intermediate failure is retained and earns
+no acceptance credit.
+
+### Complete affected groups at the final candidate
+
+The direct native Scribe journey passed at f59304c in 23.37s (23.68s measured
+wall, 10.97s user, 11.53s system). A broader run found a stale test-only Health
+injection anchor left by optional profiling; it targeted the renamed profiler
+function instead of the public opener. The anchor now uses the public function,
+and the generated-source test checks its presence in both modes. Two local fixture
+checks passed in 0.20s, with light statics passing. No product behavior changed.
+
+All 33 complete affected pytest modules passed at
+`3df15d4939ed5f767aebb7812715ffefabbbb5bb`. Names below denote `tests/test_<name>.py`.
+Each module appears exactly once across the selections; the union is 1096 passes,
+one expected Linux skip of the workstation-without-proc boundary, and four
+explicitly excluded optional Diagnostics cases. No required case was deselected.
+
+| Selection / run | Complete modules | Result | Test wall / user / system (s) | Job including setup (s) |
+| --- | --- | --- | --- | --- |
+| [A1 / 40863778395](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40863778395) | `logging_native`, `logging_scribe`, `mountinfo` | 59 passed | 42.78 / 18.46 / 23.26 | 59 |
+| [A2 / 40863982398](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40863982398) | `logging`, `logging_storage`, `config_store`, `config_schema2`, `manager_settings`, `manager_settings_entry` | 220 passed | 72.67 / 41.02 / 30.41 | 88 |
+| [B / 40863986576](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40863986576) | `status`, `entry_package`, `package`, `prerequisites`, `execution_tasks`, `config`, `config_observation`, `native` | 457 passed, 1 expected skip | 89.81 / 40.43 / 29.62 | 103 |
+| [C / 40863991372](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40863991372) | `backup_storage`, `backup_menu`, `archive_menu`, `archive_create`, `archive_control` | 77 passed | 134.40 / 63.54 / 73.15 | 149 |
+| [D / 40863995807](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40863995807) | `acquire`, `acquire_install`, `install`, `install_reporting`, `retained_launch`, `dependencies`, `dependency_consumer`, `dependency_reinstall` | 218 passed, 4 optional cases deselected | 376.19 / 197.11 / 175.53 | 391 |
+| [E / 40863999550](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40863999550) | `storage`, `storage_mounts`, `mount_keeper` | 65 passed | 28.68 / 12.98 / 11.25 | 42 |
+
+In the complete A1 selection, the two-capture Scribe case passed in 30.20s;
+Health custom/Auto passed in 5.12s/5.10s. The runtime deadline remains 20s per
+capture. All affected jobs stayed below ten minutes including setup. These Dev
+results establish focused platform proof; the complete core gate is separate.
+
+Supplemental logging-owner ShellCheck completed with three SC1007 warnings for
+intentional empty `CDPATH= cd -P` assignments, unchanged by the scalar refactor.
+The empty environment assignment is deliberate and exercised by native canonical
+path checks. These are nonblocking style diagnostics, not a lint pass; the broader
+extended ShellCheck limitation recorded above is unchanged. Required light
+statics, including shell syntax and shfmt, passed without weakening their inputs.
+
+### Final core and acceptance receipt
+
+The complete final core gate passed at
+`3df15d4939ed5f767aebb7812715ffefabbbb5bb`:
+[Checks 40865036365](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865036365)
+completed common preflight, dispatch and strict exact-candidate collection.
+Every required host/vendor BusyBox job passed. The conditional cancellation-only
+job was correctly skipped after success.
+
+| Complete module | Host pytest result | Vendor BusyBox pytest result | Whole-job elapsed, host / native |
+| --- | --- | --- | --- |
+| [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865091838) | 416 passed, 1 native-capability skip; 135.18s | 417 passed; 346.60s | 2m29s / 6m02s |
+| [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865094281) | 756 passed, 30 platform skips, 4 optional cases deselected; 111.45s | 785 passed, 1 workstation-only skip, 4 optional cases deselected; 401.64s | 2m04s / 6m58s |
+| [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865098212) | 269 passed; 51.55s | 269 passed; 132.90s | 1m04s / 2m33s |
+
+Measured test wall/user/system seconds were Backup host 135.54/50.89/46.58,
+native 346.86/187.26/148.97; Manager host 111.80/48.93/46.30,
+native 401.91/210.90/165.55; Status host 51.90/19.17/13.49,
+native 133.27/58.22/59.59. The longest complete module job was 6m58s including
+setup, within the ten-minute budget. Host-only skips for native capabilities,
+real mounts, descriptors and fsync were covered by the vendor jobs; the remaining
+native skip specifically tests a workstation without `/proc`. Four unchanged
+optional Diagnostics cases were excluded per Manager platform and are not claimed
+passed. All required behavior/platform coverage is complete.
+
+Parent acceptance review and the independent record-consistency review support
+both S13.14 boxes: the final local runtime repair had 112 behavioral passes with
+17 explicit Linux skips, followed by two local fixture checks for the final
+test-only anchor correction. These are substantive local checks; the separate
+exact-candidate CI receipts supply the unavailable platform evidence. No full
+local suite was due at this subgoal checkpoint. Earlier source-only Health
+checkpoints retain their original local-box status.
+
+S13.14 is accepted: developer-gated bounded sanitized event capture, independently
+requested sanitized Health saving, Auto/custom mounted storage and positively
+owned Scribe-history copies are integrated with their actual consumers. The native
+capture regression is resolved without changing the 20s deadline, filesystem
+predicates, fresh observations, callback scopes or retention behavior. The
+profiling mode remains optional and syntax-checked; the default native proof runs
+production functions directly. Earlier failed/cancelled candidates remain
+historical evidence, not acceptance receipts. Required gates passed; optional
+ShellCheck limitations above remain visible. Representative Ubuntu/vendor BusyBox
+development proof establishes no live Merlin/ARM, flash, hook, TLS or provider
+qualification, and grants no deployment or release authority.

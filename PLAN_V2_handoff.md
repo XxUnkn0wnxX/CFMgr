@@ -39,56 +39,55 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current resume summary — S13.14 paused pending routing decision
+## Current checkpoint — S13.14 accepted; paused
 
-Unknown resumed only S13.14 through its agreed checkpoint, then pause. The package
-is incomplete and remains unchecked:25/157 accepted subgoals (15.9%),0/16 main
-goals;132 subgoals remain. No later package has been reviewed or selected.
+Unknown authorized completion of S13.14 through its required checkpoint only.
+That checkpoint is complete and paused. No later package has been reviewed,
+selected or started; wait for fresh user direction. Accepted progress is 26/157
+subgoals (16.6%), with 131 remaining; 0/16 main goals are complete. Goal 13 has 1/14
+accepted subgoals (7.1%); its other 13 remain. This checkpoint adds one product ID,
+about 0.64 percentage points overall, and no main-goal tick.
 
-Current published candidate: `9c99710c6a2aca189b4c5364412027a5fa37bb3c`.
-Runtime remains unchanged from `52f7f6250996427726b8c1158bc71c4033f549b3`;
-subsequent changes are native test instrumentation only. Dev40859973789 failed
-capture after rotation on the unprofiled production path (40.33s case); the first
-capture passed. Log: `.tmp/s13-diagnostics/production-9c-failed.log`.
-Premature core40859914112 was cancelled. All known CI jobs are terminal.
+Tested code: `3df15d4939ed5f767aebb7812715ffefabbbb5bb`, published on `develop`.
+The documentation-only acceptance receipt follows that tested code; its own commit
+is not a runtime-tested revision. No full local suite was due at this subgoal
+boundary. The [S13.14 audit](PLAN_V2_audit.md#s1314-diagnostics-integration-review--accepted-2026-10-29)
+records implementation reviews, repairs, limitations and exact measured evidence.
 
-Removing external scalar tests from the fixture clock helped but did not resolve
-both captures. The profiler is now opt-in and preserved; the default behavior
-gate runs production functions directly while keeping all assertions and the20s
-capture deadline/45s combined watchdog. Local generated-source/driver syntax in
-both modes and light statics passed. The two bounded plans received independent
-Astra PASS WITH NOTES reviews. No mountinfo cache was selected or implemented.
+All 33 complete affected Dev modules passed on that code SHA (1096 passes, one
+expected workstation-only skip, four optional Diagnostics deselections). Final
+[core Checks 40865036365](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865036365)
+and all six required platform jobs passed:
+[Backup 40865091838](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865091838),
+[Manager 40865094281](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865094281),
+[Status 40865098212](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865098212).
+The longest whole core job was 6m58s including setup. Final local runtime proof was
+112 passes with 17 Linux skips, followed by two final fixture checks; required
+light statics passed. Optional logger ShellCheck reported three nonblocking style
+warnings, and broader extended lint is not claimed passed.
 
-**Pending user decision:** the next proposed repair replaces avoidable external
-value comparisons in existing production storage guards, preserving every storage
-predicate and observation. The user's updated AGENTS.md routes security-sensitive
-patches through a Blue-verified worker. The designated worker returned
-`ACCESS_UNVERIFIED`: effective Blue metadata was not exposed. The worker only checked eligibility; no proposed guard
-refactor began. The parent asked whether to wait for verified Blue access or authorize
-Standard for this bounded performance refactor. Do not infer approval, change
-profiles or use an external fallback. Do not edit those guards while unanswered.
+The native capture failure is resolved. Equivalent scalar comparisons remove
+external-test process overhead while preserving each filesystem predicate, fresh
+observation, callback scope and 20s deadline. Profiling remains optional; normal
+native validation executes production functions directly. Developer capture,
+independent one-shot Health saving, Auto/custom destinations, masking and owned
+Scribe snapshots passed their required consumers. Existing captured history is
+retained. Representative Ubuntu/vendor BusyBox evidence is not live Merlin/ARM
+beta qualification. No router deployment, service/provider mutation or release
+was authorized or performed.
 
-Parent owns all records/integration/publication. All delegated packages have
-finished and released their files. The complete33-module map is retained at
-`.tmp/s13-diagnostics/final-dev-groups.json` and below. After an authorized repair,
-first verify the failing native case, then every complete affected module and the
-exact full core collector plus all six platform jobs; review measured cost.
-Only after those gates may S13.14 be accepted, the receipt published and the
-checkpoint closed. No full local suite is due at this subgoal checkpoint.
+All workers/reviewers and required CI jobs have finished; none remains active.
+The parent owns records and final integration. The earlier Blue-access question
+was withdrawn after correcting an ordinary-performance-work misclassification;
+there was no access exception or unresolved security blocker.
 
-Complete affected Dev scope (whole modules, no overlap):
-
-- A1: `tests/test_logging_native.py`, `tests/test_logging_scribe.py`, `tests/test_mountinfo.py`.
-- A2: `tests/test_logging.py`, `tests/test_logging_storage.py`, `tests/test_config_store.py`, `tests/test_config_schema2.py`, `tests/test_manager_settings.py`, `tests/test_manager_settings_entry.py`.
-- B: `tests/test_status.py`, `tests/test_entry_package.py`, `tests/test_package.py`, `tests/test_prerequisites.py`, `tests/test_execution_tasks.py`, `tests/test_config.py`, `tests/test_config_observation.py`, `tests/test_native.py`.
-- C: `tests/test_backup_storage.py`, `tests/test_backup_menu.py`, `tests/test_archive_menu.py`, `tests/test_archive_create.py`, `tests/test_archive_control.py`.
-- D: `tests/test_acquire.py`, `tests/test_acquire_install.py`, `tests/test_install.py`, `tests/test_install_reporting.py`, `tests/test_retained_launch.py`, `tests/test_dependencies.py`, `tests/test_dependency_consumer.py`, `tests/test_dependency_reinstall.py`.
-- E: `tests/test_storage.py`, `tests/test_storage_mounts.py`, `tests/test_mount_keeper.py`.
-
-The original four future-planning drafts were reconstructed from the saved patch
-and verified preserved. Future WAN/hook changes remain outside this package's
-publication; retain working copies and use staged document projections. The
-following detailed implementation receipts are historical where superseded.
+The original four future WAN/hook planning drafts remain preserved and uncommitted.
+Only the S13.14 acceptance receipt is included in this checkpoint publication.
+Private recovery/evidence lives under `.tmp/s13-diagnostics/`, including
+`pre-start-planning.patch`, `pre-start-view/`, `pre-acceptance-docs/`, the complete
+Dev map/runs, final core logs/metadata and the superseded S13 handoff. Preserve
+these records and existing worktree registrations. The sections below are
+historical context, not authorization to resume or choose another package.
 
 ## Finished re-work checkpoint — shared drive layout; paused before diagnostics
 

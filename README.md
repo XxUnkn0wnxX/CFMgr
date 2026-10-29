@@ -10,7 +10,7 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 25 of 157 subgoals accepted (15.9%).**
+**0 of 16 main goals complete (0%); 26 of 157 subgoals accepted (16.6%).**
 The development code provides trusted-local fresh installation, private passive
 defaults, scoped checks for shared tools and tunnel DNS, normal dependency repair,
 confirmed selected dependency reinstall, Entware storage-loss handling and a
@@ -19,6 +19,12 @@ Health diagnostics add bounded configuration, storage, integration and eligible
 provider checks, with grouped reports for plain text and narrow terminals.
 `--health`, `--doctor` and `--diagnostic` share this read-only report and retain
 native fallback when optional modules or operational tools are unavailable.
+Explicit Health runs independently save a sanitized report when safe mounted
+storage is available, preserving the terminal report when saving is unavailable.
+Developer mode adds bounded sanitized CFMgr activity capture and copies of
+positively owned existing feature logs. Diagnostics use the Entware drive's
+`CFMgr/diagnostics` directory by default, with an optional destination in Advanced
+options; retained captures remain under user control.
 Typed configuration separates saved settings, credentials and observations while
 preserving legacy configurations and unrelated values during scoped Saves.
 CFMgr update preferences can be reviewed and saved through Advanced options,
@@ -54,7 +60,7 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | [IP-Sync](PLAN_V2.md#10-ip-sync) | IPv4/IPv6 list reconciliation while preserving list identity and handling inactive families. | Planned |
 | [Credential recovery](PLAN_V2.md#11-provider-failures-and-credential-repair) | Scoped authorization failure handling and credential repair without unintended reactivation. | Planned |
 | [Hooks and schedules](PLAN_V2.md#12-hooks-schedules-and-boot-safety) | Identifiable owned hook blocks, safe repair, shared scheduling and bounded outage recovery. | Planned |
-| [Logging](PLAN_V2.md#13-logging-and-rotation) | System messages plus optional per-feature Scribe logs and owned logrotate rules. | Planned |
+| [Logging](PLAN_V2.md#13-logging-and-rotation) | System messages, optional per-feature Scribe logs, owned logrotate rules and sanitized diagnostic capture. | 1/14 accepted |
 | [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 8/11 accepted |
 | [Uninstall and reset](PLAN_V2.md#15-uninstall-retained-installation-and-reset) | Retained-config uninstall, full wipe and scoped resets that preserve unrelated data. | Planned |
 | [Compatibility and guidance](PLAN_V2.md#16-product-readiness-and-documentation) | Evidence-based support, usable operating guides and validated release readiness. | Planned |

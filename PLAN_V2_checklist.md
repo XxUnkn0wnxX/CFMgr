@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**25 of 157 product subgoals accepted — 15.9% overall subgoal completion.**
+**26 of 157 product subgoals accepted — 16.6% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -620,7 +620,7 @@ auth guards and provider cooldowns still gate provider operations.
 | [ ] | [ ] | S13.11 | **Optional external viewing:** Supported bounded owned-path registry only if selected; no fake routing/private patches or CFMgr WebUI requirement. |
 | [ ] | [ ] | S13.12 | **Explicit all-service re-detect:** Ready Scribe enables logging for every configured On service, overriding prior logging Off only for this explicit action; reuse policies or initialize defaults. |
 | [ ] | [ ] | S13.13 | **Prominent concise event format:** Single-line [CFMGR] component: Info/Warning/Error messages with matching syslog severity, verified outcomes/IPs, actionable failures/repair notices, eligible feature-file plus syslog delivery and duplicate suppression; normal/developer credential references identify type/purpose and mask any displayed value. |
-| [ ] | [ ] | S13.14 | **Developer diagnostic capture:** Developer-gated main-process/all-module tracing and dedicated Scribe-log copies, plus independently requested one-shot Health capture; automatic mounted-drive destination with optional CLI-configured override, redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
+| [x] | [x] | S13.14 | **Developer diagnostic capture:** Developer-gated main-process/all-module tracing and dedicated Scribe-log copies, plus independently requested one-shot Health capture; automatic mounted-drive destination with optional CLI-configured override, redaction and safe storage handling; no destination rotation, pruning or automatic cleanup. |
 
 Cloudflared tuning acceptance (S13.04): use conservative fresh defaults and allow
 positive user-selected file sizes and total-file counts without a fixed CFMgr
@@ -663,13 +663,31 @@ Automated fixtures supply development acceptance; prolonged actual-router captur
 is beta evidence and is not claimed before it runs. The accepted S03.09/S03.10
 report/presentation receipts do not establish this separately gated saving extension.
 
-S13.14 implementation evidence remains **unaccepted**. Runtime and focused host
-work are recorded in the [integration audit](PLAN_V2_audit.md#s1314-diagnostics-integration-review--in-progress-2026-10-29).
-Published candidate `9c99710c6a2aca189b4c5364412027a5fa37bb3c` passes the changed
-fixture's host syntax/static checks, but [Dev40859973789](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40859973789)
-fails the native Scribe capture after rotation with phase profiling disabled.
-Both S13.14 boxes remain unchecked; the complete affected-platform and exact core
-gates are outstanding. Prior failed/cancelled runs do not establish acceptance.
+S13.14 accepted at `3df15d4939ed5f767aebb7812715ffefabbbb5bb` after parent and
+independent reviews; [integration audit and final receipt](PLAN_V2_audit.md#s1314-diagnostics-integration-review--accepted-2026-10-29).
+Final local logging/storage/Scribe/native selection: **112 passed, 17 Linux skips,
+4.11s**; final test-only Health fixture correction: **2 passed, 0.20s**. Required
+light statics passed. The local skips are unavailable platform proof, supplied
+separately by CI rather than claimed as local passes. Supplemental logger
+ShellCheck reports three nonblocking style warnings; full lint is not claimed.
+
+All **33 complete affected Dev modules** passed at that exact SHA: **1096 passed,
+one expected workstation-only skip**, with four optional Diagnostics cases
+deselected. Every job stayed within ten minutes including setup (longest 6m31s).
+[Final core Checks 40865036365](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40865036365)
+and all six required Backup/Manager/Status host/vendor BusyBox jobs passed:
+host **1441 passed, 31 platform skips**; vendor **1471 passed, one workstation-only
+skip**; four optional Diagnostics cases excluded per Manager platform. The longest
+complete core job was **6m58s including setup**. Exact module results, skip reasons
+and wall/CPU costs are retained in the audit.
+
+Accepted behavior includes developer On/Off capture, independent explicit Health
+saving, Auto/custom destination Save/reopen, failure-tolerant terminal reporting,
+sanitized positively owned Scribe copies and retained history across rotation.
+Required native ownership, descriptor, mount-loss and storage-refusal cases passed;
+the unchanged 20s capture deadline passed without profiling wrappers. No main-goal
+full local suite was due. Representative Ubuntu/vendor BusyBox evidence does not
+establish actual Merlin/ARM/router-beta qualification.
 
 Credential logging acceptance (S13.13/S13.14): normal and developer terminal,
 syslog, feature-file, trace/child-output and Scribe-copy paths identify the real
