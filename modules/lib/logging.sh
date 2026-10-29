@@ -362,7 +362,8 @@ cfmgr_log_finish() {
 }
 
 cfmgr_log_path_valid() {
-	[ "$#" -eq 1 ] && [ "${#1}" -le 1024 ] || return 1
+	case $# in 1) ;; *) return 1 ;; esac
+	case $((${#1} <= 1024)) in 1) ;; *) return 1 ;; esac
 	case $1 in
 	/*) ;;
 	*) return 1 ;;
@@ -411,7 +412,7 @@ cfmgr_log_alias_matches() {
 }
 
 cfmgr_log_path_on_mount() {
-	[ "$#" -eq 2 ] || return 2
+	case $# in 2) ;; *) return 2 ;; esac
 	cfmgr_log_path_valid "$1" && cfmgr_log_path_valid "$2" || return 1
 	case $1 in "$2" | "$2"/*) return 0 ;; *) return 1 ;; esac
 }
@@ -419,7 +420,7 @@ cfmgr_log_path_on_mount() {
 # Native shell builtins avoid starting an untracked helper when an attachment
 # callback needs to verify the held file descriptor mount identity.
 cfmgr_log_fd_mount_ok() {
-	[ "$#" -eq 2 ] || return 2
+	case $# in 2) ;; *) return 2 ;; esac
 	case $1 in 3 | 4 | 5 | 6 | 7 | 8 | 9) ;; *) return 2 ;; esac
 	case $2 in '' | *[!0-9]* | 0*) return 2 ;; esac
 	cfmgr_log_fd_count=0 cfmgr_log_fd_seen=''
@@ -427,12 +428,12 @@ cfmgr_log_fd_mount_ok() {
 		case $cfmgr_log_fd_key in
 		mnt_id:)
 			cfmgr_log_fd_count=$((cfmgr_log_fd_count + 1))
-			[ -z "$cfmgr_log_fd_extra" ] || return 1
+			case $cfmgr_log_fd_extra in '') ;; *) return 1 ;; esac
 			cfmgr_log_fd_seen=$cfmgr_log_fd_value
 			;;
 		esac
 	done <"/proc/self/fdinfo/$1" || return 1
-	[ "$cfmgr_log_fd_count:$cfmgr_log_fd_seen" = "1:$2" ]
+	case $cfmgr_log_fd_count:$cfmgr_log_fd_seen in "1:$2") return 0 ;; *) return 1 ;; esac
 }
 
 # Exact basenames owned by this capture. Unknown same-prefix objects never
@@ -527,71 +528,91 @@ EOF_LOG_META
 cfmgr_log_attached() {
 	case $#:${1:-} in 0: | 1:source | 1:context) ;; *) return 2 ;; esac
 	cfmgr_log_attachment_scope=${1:-destination}
-	[ "${cfmgr_log_interrupt:-0}" = 0 ] || return 1
+	case ${cfmgr_log_interrupt:-0} in 0) ;; *) return 1 ;; esac
 	[ -d "${cfmgr_log_context:-}" ] && [ ! -L "$cfmgr_log_context" ] &&
 		[ "$cfmgr_log_context" -ef /proc/self/fd/5 ] || return 1
 	set -- /tmp "$cfmgr_log_context"
 	cfmgr_log_attachment_expected="$cfmgr_log_tmp_mount
 $cfmgr_log_tmp_mount"
 	cfmgr_log_attachment_opt=''
-	if [ "${cfmgr_log_lock_held:-0}" = 1 ]; then
+	case ${cfmgr_log_lock_held:-0} in
+	1)
 		[ -f "$cfmgr_log_lock" ] && [ ! -L "$cfmgr_log_lock" ] &&
 			[ "$cfmgr_log_lock" -ef /proc/self/fd/0 ] || return 1
-	fi
+		;;
+	esac
 	# Explicit context-only callbacks supervise read-only metadata and private
 	# processing. Direct owner checks and all destination writers stay full.
-	if [ "$cfmgr_log_attachment_scope" != context ] && [ "${cfmgr_log_mount_pinned:-0}" = 1 ]; then
-		if [ -n "${cfmgr_log_auto_target:-}" ]; then
+	case $cfmgr_log_attachment_scope:${cfmgr_log_mount_pinned:-0} in
+	destination:1 | source:1)
+		case ${cfmgr_log_auto_target:-} in
+		'') ;;
+		*)
 			cfmgr_log_attachment_opt=$(/usr/bin/readlink -f /opt) || return 1
-			[ "$cfmgr_log_attachment_opt" = "$cfmgr_log_auto_target" ] || return 1
-		fi
+			case $cfmgr_log_attachment_opt in "$cfmgr_log_auto_target") ;; *) return 1 ;; esac
+			;;
+		esac
 		[ -d "$cfmgr_log_mount_path" ] && [ ! -L "$cfmgr_log_mount_path" ] &&
 			[ "$cfmgr_log_mount_path" -ef /proc/self/fd/6 ] || return 1
-		if [ "${cfmgr_log_walk_pinned:-0}" = 1 ]; then
+		case ${cfmgr_log_walk_pinned:-0} in
+		1)
 			[ -d "$cfmgr_log_walk" ] && [ ! -L "$cfmgr_log_walk" ] &&
 				[ "$cfmgr_log_walk" -ef /proc/self/fd/7 ] || return 1
 			cfmgr_log_path_on_mount "$cfmgr_log_walk" "$cfmgr_log_mount_path" || return 1
 			# A fresh canonical walk also proves its admitted mount-path prefix.
 			cfmgr_log_attachment_canonical=$(CDPATH= cd -P "$cfmgr_log_walk" 2>/dev/null && pwd -P && printf '.') || return 1
-			[ "$cfmgr_log_attachment_canonical" = "$cfmgr_log_walk
-." ] || return 1
-		else
+			case $cfmgr_log_attachment_canonical in "$cfmgr_log_walk
+.") ;; *) return 1 ;; esac
+			;;
+		*)
 			cfmgr_log_attachment_canonical=$(CDPATH= cd -P "$cfmgr_log_mount_path" 2>/dev/null && pwd -P && printf '.') || return 1
-			[ "$cfmgr_log_attachment_canonical" = "$cfmgr_log_mount_path
-." ] || return 1
-		fi
+			case $cfmgr_log_attachment_canonical in "$cfmgr_log_mount_path
+.") ;; *) return 1 ;; esac
+			;;
+		esac
 		cfmgr_log_fd_mount_ok 6 "$cfmgr_log_mount_id" || return 1
 		set -- "$@" "$cfmgr_log_mount_path"
 		cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
 $cfmgr_log_mount_snapshot"
-		if [ "${cfmgr_log_walk_pinned:-0}" = 1 ]; then
+		case ${cfmgr_log_walk_pinned:-0} in
+		1)
 			cfmgr_log_fd_mount_ok 7 "$cfmgr_log_mount_id" || return 1
 			set -- "$@" "$cfmgr_log_walk"
 			cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
 $cfmgr_log_mount_snapshot"
-		fi
-	fi
-	if [ "$cfmgr_log_attachment_scope" = source ]; then
-		[ "${cfmgr_scribe_pinned:-0}" = 1 ] && [ -d "$cfmgr_scribe_mount" ] &&
-			[ ! -L "$cfmgr_scribe_mount" ] && [ "$cfmgr_scribe_mount" -ef /proc/self/fd/8 ] || return 1
-		if [ -z "$cfmgr_log_attachment_opt" ]; then
+			;;
+		esac
+		;;
+	esac
+	case $cfmgr_log_attachment_scope in
+	source)
+		case ${cfmgr_scribe_pinned:-0} in 1) ;; *) return 1 ;; esac
+		[ -d "$cfmgr_scribe_mount" ] && [ ! -L "$cfmgr_scribe_mount" ] &&
+			[ "$cfmgr_scribe_mount" -ef /proc/self/fd/8 ] || return 1
+		case $cfmgr_log_attachment_opt in
+		'')
 			cfmgr_log_attachment_opt=$(/usr/bin/readlink -f /opt) || return 1
-		fi
-		[ "$cfmgr_log_attachment_opt" = "$cfmgr_scribe_opt" ] || return 1
-		if [ "${cfmgr_log_mount_pinned:-0}:$cfmgr_scribe_mount" != "1:${cfmgr_log_mount_path:-}" ]; then
+			;;
+		esac
+		case $cfmgr_log_attachment_opt in "$cfmgr_scribe_opt") ;; *) return 1 ;; esac
+		case ${cfmgr_log_mount_pinned:-0}:$cfmgr_scribe_mount in
+		"1:${cfmgr_log_mount_path:-}") ;;
+		*)
 			cfmgr_log_attachment_canonical=$(CDPATH= cd -P "$cfmgr_scribe_mount" 2>/dev/null && pwd -P && printf '.') || return 1
-			[ "$cfmgr_log_attachment_canonical" = "$cfmgr_scribe_mount
-." ] || return 1
-		fi
+			case $cfmgr_log_attachment_canonical in "$cfmgr_scribe_mount
+.") ;; *) return 1 ;; esac
+			;;
+		esac
 		cfmgr_log_fd_mount_ok 8 "$cfmgr_scribe_mount_id" || return 1
 		set -- "$@" "$cfmgr_scribe_mount" "$cfmgr_scribe_opt"
 		cfmgr_log_attachment_expected="$cfmgr_log_attachment_expected
 $cfmgr_scribe_mount_snapshot
 $cfmgr_scribe_mount_snapshot"
-	fi
+		;;
+	esac
 	# One validated snapshot, with every original path observation retained.
 	cfmgr_log_attachment_records=$(cfmgr_storage_mountinfo /usr/bin/awk targets-v1 "$@" /proc/self/mountinfo) || return 1
-	[ "$cfmgr_log_attachment_records" = "$cfmgr_log_attachment_expected" ]
+	case $cfmgr_log_attachment_records in "$cfmgr_log_attachment_expected") return 0 ;; *) return 1 ;; esac
 }
 
 # Start with an observed mounted volume, then keep a directory FD anchored to

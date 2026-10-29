@@ -28,6 +28,8 @@ __all__ = ["fixture_tools", "selected_shell", "shell"]
         ("/tmp/dir/", False),
         ("/tmp/dir\nother", False),
         ("/tmp/é", False),
+        ("/tmp/" + "a" * 1019, True),
+        ("/tmp/" + "a" * 1020, False),
         ("/" + "a" * 1024, False),
     ],
 )
@@ -51,6 +53,16 @@ def test_diagnostic_destination_path_is_strictly_bounded(shell, path, valid):
         ("/tmp/mnt/disk2/CFMgr", "/tmp/mnt/disk", False),
         ("/jffs/CFMgr", "/tmp/mnt/disk", False),
         ("/tmp/mnt/disk/../foreign", "/tmp/mnt/disk", False),
+        (
+            r"/tmp/mnt/Drive[*]?\folder/CFMgr/diagnostics",
+            r"/tmp/mnt/Drive[*]?\folder",
+            True,
+        ),
+        (
+            r"/tmp/mnt/DriveX?\folder/CFMgr/diagnostics",
+            r"/tmp/mnt/Drive[*]?\folder",
+            False,
+        ),
     ],
 )
 def test_diagnostic_mount_ancestry_has_a_component_boundary(shell, path, mount, valid):
