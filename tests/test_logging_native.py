@@ -118,24 +118,60 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
             "write_fd",
             "health_open",
             "lock",
+            "attached",
             "observe_mount",
             "walk_destination",
         )
+        metric_names = phases
         wrappers = []
         for phase in phases:
-            original = f"cfmgr_log_{phase}() {{"
+            function = f"cfmgr_log_{phase}"
+            original = f"{function}() {{"
             assert source.count(original) == 1
             source = source.replace(original, f"cfmgr_test_original_{phase}() {{", 1)
             mode = '"${1:-unknown}"' if phase == "run" else '"-"'
-            wrappers.append(
-                f"cfmgr_log_{phase}() {{\n"
-                f'    if cfmgr_test_original_{phase} "$@"; then cfmgr_test_result=0; '
-                "else cfmgr_test_result=$?; fi\n"
-                f'    cfmgr_test_trace {phase} {mode} "$cfmgr_test_result"\n'
-                '    return "$cfmgr_test_result"\n}'
+            reset = ""
+            if phase == "prepare":
+                reset = "\n".join(
+                    f"    cfmgr_test_elapsed_{tracked}=0 cfmgr_test_calls_{tracked}=0"
+                    for tracked in metric_names
+                )
+                reset += (
+                    '\n    if [ -n "${cfmgr_test_phase_trace:-}" ]; then '
+                    "printf 'capture-start\\n' >>\"$cfmgr_test_phase_trace\" || :; fi\n"
+                )
+            summary = ""
+            if phase == "capture_work":
+                fields = " ".join(
+                    f"{name}=${{cfmgr_test_elapsed_{name}:-0}}/${{cfmgr_test_calls_{name}:-0}}"
+                    for name in metric_names
+                )
+                summary = (
+                    '    if [ -n "${cfmgr_test_phase_trace:-}" ]; then\n'
+                    f'        printf \'%s\\n\' "capture-timing-inclusive cs/calls {fields}" >>"$cfmgr_test_phase_trace" || :\n'
+                    "    fi\n"
+                )
+            trace = (
+                ""
+                if phase == "attached"
+                else f'    cfmgr_test_trace {phase} {mode} "$cfmgr_test_result_{phase}"\n'
             )
-        source += (
-            r"""
+            wrappers.append(
+                f"{function}() {{\n"
+                + reset
+                + "    cfmgr_test_clock || cfmgr_test_clock_value=0\n"
+                + f"    cfmgr_test_started_{phase}=$cfmgr_test_clock_value\n"
+                + f'    if cfmgr_test_original_{phase} "$@"; then cfmgr_test_result_{phase}=0; '
+                + f"else cfmgr_test_result_{phase}=$?; fi\n"
+                + "    cfmgr_test_clock || cfmgr_test_clock_value=0\n"
+                + f"    cfmgr_test_ended_{phase}=$cfmgr_test_clock_value\n"
+                + f"    cfmgr_test_elapsed_{phase}=$((cfmgr_test_elapsed_{phase} + cfmgr_test_ended_{phase} - cfmgr_test_started_{phase}))\n"
+                + f"    cfmgr_test_calls_{phase}=$((cfmgr_test_calls_{phase} + 1))\n"
+                + trace
+                + summary
+                + f'    return "$cfmgr_test_result_{phase}"\n}}'
+            )
+        source += r"""
 cfmgr_test_trace() {
     [ "${cfmgr_test_trace_count:-0}" -lt 512 ] || return 0
     cfmgr_test_trace_count=$((${cfmgr_test_trace_count:-0} + 1))
@@ -151,9 +187,24 @@ cfmgr_test_trace() {
     printf '%s mode=%s code=%s probe=%s reason=%s exit=%s\n' "$1" "$cfmgr_test_mode" "$3" "$cfmgr_test_status" "$cfmgr_test_reason" "$cfmgr_test_exit" >>"$cfmgr_test_phase_trace" || :
 }
 """
-            + "\n".join(wrappers)
-            + "\n"
-        )
+        source += r"""
+cfmgr_test_clock() {
+    cfmgr_test_clock_seconds= cfmgr_test_clock_fraction= cfmgr_test_clock_idle=
+    IFS='. ' read -r cfmgr_test_clock_seconds cfmgr_test_clock_fraction cfmgr_test_clock_idle </proc/uptime || return 1
+    case $cfmgr_test_clock_seconds in ''|*[!0-9]*) return 1 ;; esac
+    while [ "${#cfmgr_test_clock_seconds}" -gt 1 ] && [ "${cfmgr_test_clock_seconds#0}" != "$cfmgr_test_clock_seconds" ]; do
+        cfmgr_test_clock_seconds=${cfmgr_test_clock_seconds#0}
+    done
+    case $cfmgr_test_clock_fraction in [0-9]) cfmgr_test_clock_fraction=0$cfmgr_test_clock_fraction ;;
+        [0-9][0-9]) ;; *) return 1 ;;
+    esac
+    case $cfmgr_test_clock_fraction in 0[0-9]) cfmgr_test_clock_fraction=${cfmgr_test_clock_fraction#0} ;;
+        [1-9][0-9]) ;; *) return 1 ;;
+    esac
+    cfmgr_test_clock_value=$((cfmgr_test_clock_seconds * 100 + cfmgr_test_clock_fraction))
+}
+"""
+        source += "\n".join(wrappers) + "\n"
     source = source.replace("/tmp/mnt/?* | /mnt/?*", "CFMGR_FIXTURE_MOUNT_MARKER")
     source = source.replace("/tmp", "CFMGR_FIXTURE_RAM_MARKER")
     source = source.replace("/opt", "CFMGR_FIXTURE_OPT_MARKER")
