@@ -137,8 +137,8 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
                     for tracked in metric_names
                 )
                 reset += (
-                    '\n    if [ -n "${cfmgr_test_phase_trace:-}" ]; then '
-                    "printf 'capture-start\\n' >>\"$cfmgr_test_phase_trace\" || :; fi\n"
+                    '\n    case ${cfmgr_test_phase_trace:-} in "") ;; *) '
+                    "printf 'capture-start\\n' >>\"$cfmgr_test_phase_trace\" || : ;; esac\n"
                 )
             summary = ""
             if phase == "capture_work":
@@ -147,9 +147,9 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
                     for name in metric_names
                 )
                 summary = (
-                    '    if [ -n "${cfmgr_test_phase_trace:-}" ]; then\n'
+                    '    case ${cfmgr_test_phase_trace:-} in "") ;; *)\n'
                     f'        printf \'%s\\n\' "capture-timing-inclusive cs/calls {fields}" >>"$cfmgr_test_phase_trace" || :\n'
-                    "    fi\n"
+                    "    ;; esac\n"
                 )
             trace = (
                 ""
@@ -173,8 +173,19 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
             )
         source += r"""
 cfmgr_test_trace() {
-    [ "${cfmgr_test_trace_count:-0}" -lt 512 ] || return 0
-    cfmgr_test_trace_count=$((${cfmgr_test_trace_count:-0} + 1))
+    cfmgr_test_trace_count_value=${cfmgr_test_trace_count:-0}
+    case $cfmgr_test_trace_count_value in ''|*[!0-9]*) return 0 ;; esac
+    while :; do
+        case $cfmgr_test_trace_count_value in
+            0?*) cfmgr_test_trace_count_value=${cfmgr_test_trace_count_value#0} ;;
+            *) break ;;
+        esac
+    done
+    case $cfmgr_test_trace_count_value in
+        [0-9]|[1-9][0-9]|[1-4][0-9][0-9]|50[0-9]|51[01]) ;;
+        *) return 0 ;;
+    esac
+    cfmgr_test_trace_count=$((cfmgr_test_trace_count_value + 1))
     case $2 in -) cfmgr_test_mode=- ;; diagnostic-*)
         case $2 in *[!a-z0-9._-]*) cfmgr_test_mode=unknown ;; *) cfmgr_test_mode=$2 ;; esac ;;
         *) cfmgr_test_mode=unknown ;;
@@ -182,7 +193,7 @@ cfmgr_test_trace() {
     case ${cfmgr_probe_status:-} in invalid|reaped|unresolved) cfmgr_test_status=$cfmgr_probe_status ;; *) cfmgr_test_status=- ;; esac
     case ${cfmgr_probe_reason:-} in arguments|native-supervisor|attachment|lock-inheritance|clock|deadline|child-signal) cfmgr_test_reason=$cfmgr_probe_reason ;; *) cfmgr_test_reason=- ;; esac
     case ${cfmgr_probe_exit:-} in ''|*[!0-9]*) cfmgr_test_exit=- ;; *)
-        if [ "${#cfmgr_probe_exit}" -le 3 ]; then cfmgr_test_exit=$cfmgr_probe_exit; else cfmgr_test_exit=-; fi ;;
+        case ${#cfmgr_probe_exit} in 1|2|3) cfmgr_test_exit=$cfmgr_probe_exit ;; *) cfmgr_test_exit=- ;; esac ;;
     esac
     printf '%s mode=%s code=%s probe=%s reason=%s exit=%s\n' "$1" "$cfmgr_test_mode" "$3" "$cfmgr_test_status" "$cfmgr_test_reason" "$cfmgr_test_exit" >>"$cfmgr_test_phase_trace" || :
 }
@@ -192,8 +203,11 @@ cfmgr_test_clock() {
     cfmgr_test_clock_seconds= cfmgr_test_clock_fraction= cfmgr_test_clock_idle=
     IFS='. ' read -r cfmgr_test_clock_seconds cfmgr_test_clock_fraction cfmgr_test_clock_idle </proc/uptime || return 1
     case $cfmgr_test_clock_seconds in ''|*[!0-9]*) return 1 ;; esac
-    while [ "${#cfmgr_test_clock_seconds}" -gt 1 ] && [ "${cfmgr_test_clock_seconds#0}" != "$cfmgr_test_clock_seconds" ]; do
-        cfmgr_test_clock_seconds=${cfmgr_test_clock_seconds#0}
+    while :; do
+        case $cfmgr_test_clock_seconds in
+            0?*) cfmgr_test_clock_seconds=${cfmgr_test_clock_seconds#0} ;;
+            *) break ;;
+        esac
     done
     case $cfmgr_test_clock_fraction in [0-9]) cfmgr_test_clock_fraction=0$cfmgr_test_clock_fraction ;;
         [0-9][0-9]) ;; *) return 1 ;;
