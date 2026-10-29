@@ -644,6 +644,25 @@ cfmgr_log_open_output() {
 	[ "$cfmgr_log_output" -ef /proc/self/fd/4 ] && cfmgr_log_fd_mount_ok 4 "$cfmgr_log_mount_id" && cfmgr_log_attached
 }
 
+# Verify the current position of the held regular input on FD3. Zero is valid
+# for an admitted empty source; duplicate, malformed or extended pos rows fail.
+cfmgr_log_fd3_position() {
+	[ "$#" -eq 1 ] || return 2
+	case $1 in '' | *[!0-9]* | 0[0-9]*) return 2 ;; esac
+	[ "${#1}" -le 10 ] || return 2
+	cfmgr_log_pos_count=0 cfmgr_log_pos_value=''
+	while IFS=' 	' read -r cfmgr_log_pos_key cfmgr_log_pos_item cfmgr_log_pos_extra; do
+		case $cfmgr_log_pos_key in
+		pos:)
+			cfmgr_log_pos_count=$((cfmgr_log_pos_count + 1))
+			cfmgr_log_pos_value=$cfmgr_log_pos_item
+			[ -z "$cfmgr_log_pos_extra" ] || return 1
+			;;
+		esac
+	done </proc/self/fdinfo/3 || return 1
+	[ "$cfmgr_log_pos_count:$cfmgr_log_pos_value" = "1:$1" ]
+}
+
 # Consume exactly a pinned regular input's admitted byte count without a global
 # file-size cap on retained developer.log. The block and tail modes each exec
 # one native dd and inherit lock0, RAM5, mount6, destination7 and output4.
@@ -661,17 +680,7 @@ cfmgr_log_write_fd() {
 	cfmgr_log_run diagnostic-copy /bin/dd "$cfmgr_log_write_blocks" || return $?
 	# Input identity remains held while checking the exact consumed offset. A
 	# short successful read is incomplete, never reported as saved.
-	cfmgr_log_pos_count=0 cfmgr_log_pos_value=''
-	while IFS=' 	' read -r cfmgr_log_pos_key cfmgr_log_pos_item cfmgr_log_pos_extra; do
-		case $cfmgr_log_pos_key in
-		pos:)
-			cfmgr_log_pos_count=$((cfmgr_log_pos_count + 1))
-			cfmgr_log_pos_value=$cfmgr_log_pos_item
-			[ -z "$cfmgr_log_pos_extra" ] || return 1
-			;;
-		esac
-	done </proc/self/fdinfo/3 || return 1
-	[ "$cfmgr_log_pos_count:$cfmgr_log_pos_value" = "1:$cfmgr_log_write_size" ] &&
+	cfmgr_log_fd3_position "$cfmgr_log_write_size" &&
 		[ "$cfmgr_log_output" -ef /proc/self/fd/4 ] && cfmgr_log_attached
 }
 
@@ -1460,14 +1469,21 @@ cfmgr_scribe_sanitized_status() {
 	cfmgr_scribe_uint "$2" 5 && [ "$2" -le 65536 ] || return 1
 	cfmgr_scribe_expected_bytes=$2 cfmgr_scribe_seen_bytes=0
 	cfmgr_scribe_row_count=0 cfmgr_scribe_last=''
+	cfmgr_scribe_sanitized_buffer=''
+	cfmgr_scribe_sanitized_lf='
+'
 	{
 		IFS= read -r cfmgr_scribe_line && [ "$cfmgr_scribe_line" = 'CFMGR-SANITIZED-LOG 1' ] || return 1
 		cfmgr_scribe_seen_bytes=$((${#cfmgr_scribe_line} + 1))
+		[ "$cfmgr_scribe_seen_bytes" -le "$cfmgr_scribe_expected_bytes" ] || return 1
+		cfmgr_scribe_sanitized_buffer="${cfmgr_scribe_line}${cfmgr_scribe_sanitized_lf}"
 		while IFS= read -r cfmgr_scribe_line; do
-			cfmgr_scribe_seen_bytes=$((cfmgr_scribe_seen_bytes + ${#cfmgr_scribe_line} + 1))
 			cfmgr_scribe_row_count=$((cfmgr_scribe_row_count + 1))
 			[ "$cfmgr_scribe_row_count" -le 4097 ] && [ "${#cfmgr_scribe_line}" -le 4096 ] || return 1
 			case $cfmgr_scribe_line in *[!\ -~]*) return 1 ;; esac
+			cfmgr_scribe_seen_bytes=$((cfmgr_scribe_seen_bytes + ${#cfmgr_scribe_line} + 1))
+			[ "$cfmgr_scribe_seen_bytes" -le "$cfmgr_scribe_expected_bytes" ] || return 1
+			cfmgr_scribe_sanitized_buffer="${cfmgr_scribe_sanitized_buffer}${cfmgr_scribe_line}${cfmgr_scribe_sanitized_lf}"
 			cfmgr_scribe_last=$cfmgr_scribe_line
 		done
 		[ -z "$cfmgr_scribe_line" ] || return 1
@@ -1480,6 +1496,7 @@ EOF_SCRIBE_END
 	case $cfmgr_scribe_was_incomplete in 0 | 1) ;; *) return 1 ;; esac
 	[ "$cfmgr_scribe_last" = "END $cfmgr_scribe_known $cfmgr_scribe_redacted $cfmgr_scribe_was_incomplete" ] &&
 		[ "$cfmgr_scribe_seen_bytes" = "$cfmgr_scribe_expected_bytes" ] &&
+		[ "${#cfmgr_scribe_sanitized_buffer}" = "$cfmgr_scribe_expected_bytes" ] &&
 		[ "$cfmgr_scribe_row_count" -eq "$((cfmgr_scribe_known + cfmgr_scribe_redacted + 1))" ]
 }
 
@@ -1597,13 +1614,13 @@ cfmgr_scribe_snapshot() {
 	fi
 	cfmgr_scribe_run diagnostic-source /bin/dd "$cfmgr_scribe_skip" || return $?
 	cfmgr_scribe_raw=$cfmgr_probe_stdout
+	cfmgr_log_fd3_position "$cfmgr_scribe_original_bytes" || return 1
 	[ "$cfmgr_scribe_file" -ef /proc/self/fd/3 ] || return 1
 	cfmgr_log_metadata "$cfmgr_scribe_file" file || return $?
 	[ "$cfmgr_log_meta_inode:$cfmgr_log_meta_size" = "$cfmgr_scribe_original_inode:$cfmgr_scribe_original_bytes" ] || return 1
 	cfmgr_scribe_source_attached || return 1
-	cfmgr_scribe_count_file "$cfmgr_scribe_raw" 24576 || return $?
-	cfmgr_scribe_raw_bytes=$cfmgr_scribe_count
-	[ "$cfmgr_scribe_raw_bytes" = "$((cfmgr_scribe_original_bytes - cfmgr_scribe_skip * 1024))" ] || return 1
+	cfmgr_scribe_raw_bytes=$((cfmgr_scribe_original_bytes - cfmgr_scribe_skip * 1024))
+	cfmgr_scribe_uint "$cfmgr_scribe_raw_bytes" 5 && [ "$cfmgr_scribe_raw_bytes" -le 24576 ] || return 1
 	exec 3<"$cfmgr_scribe_raw" || return 1
 	cfmgr_log_run diagnostic-frame /usr/bin/awk "$cfmgr_source/modules/lib/logging.sh" "$cfmgr_scribe_raw_bytes" "$cfmgr_scribe_excerpt" || return $?
 	cfmgr_scribe_frame=$cfmgr_probe_stdout
@@ -1619,6 +1636,11 @@ cfmgr_scribe_snapshot() {
 	[ "$cfmgr_scribe_sanitized_bytes" -gt 0 ] && cfmgr_scribe_sanitized_status "$cfmgr_scribe_sanitized" "$cfmgr_scribe_sanitized_bytes" || return 1
 	# Write only the already sanitized result into an owned staging file, then
 	# make one bounded destination append after fresh developer confirmation.
+	cfmgr_scribe_stage_header="CFMGR-SCRIBE 1 $cfmgr_scribe_snapshot_role $cfmgr_scribe_snapshot_index $cfmgr_scribe_excerpt $cfmgr_scribe_was_incomplete END
+"
+	cfmgr_scribe_stage_bytes=$((${#cfmgr_scribe_stage_header} + cfmgr_scribe_sanitized_bytes))
+	cfmgr_scribe_uint "$cfmgr_scribe_stage_bytes" 5 && [ "$cfmgr_scribe_stage_bytes" -le 65792 ] &&
+		[ "${#cfmgr_scribe_sanitized_buffer}" -eq "$cfmgr_scribe_sanitized_bytes" ] || return 1
 	cfmgr_scribe_stage=$cfmgr_log_context/scribe.$cfmgr_scribe_attempted.stage
 	(
 		umask 077
@@ -1626,14 +1648,7 @@ cfmgr_scribe_snapshot() {
 		: >"$cfmgr_scribe_stage"
 	) || return 1
 	cfmgr_log_register "${cfmgr_scribe_stage##*/}" || return 1
-	printf 'CFMGR-SCRIBE 1 %s %s %s %s END\n' "$cfmgr_scribe_snapshot_role" "$cfmgr_scribe_snapshot_index" "$cfmgr_scribe_excerpt" "$cfmgr_scribe_was_incomplete" >"$cfmgr_scribe_stage" || return 1
-	exec 3<"$cfmgr_scribe_sanitized" 4>>"$cfmgr_scribe_stage" || return 1
-	cfmgr_log_output=$cfmgr_scribe_stage
-	cfmgr_log_write_fd "$cfmgr_scribe_sanitized_bytes" || return $?
-	exec 3<&- 4>&-
-	cfmgr_log_metadata "$cfmgr_scribe_stage" file || return $?
-	cfmgr_scribe_stage_bytes=$cfmgr_log_meta_size
-	cfmgr_scribe_uint "$cfmgr_scribe_stage_bytes" 5 && [ "$cfmgr_scribe_stage_bytes" -le 65792 ] || return 1
+	printf '%s%s' "$cfmgr_scribe_stage_header" "$cfmgr_scribe_sanitized_buffer" >"$cfmgr_scribe_stage" || return 1
 	cfmgr_scribe_source_attached || return 1
 	cfmgr_scribe_save_stage || return $?
 	cfmgr_scribe_saved=$((cfmgr_scribe_saved + 1))

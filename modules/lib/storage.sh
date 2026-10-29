@@ -276,19 +276,13 @@ function decimal(value, allow_zero) {
 	return 1
 }
 
-function canonical_path(value, parts, count, i) {
+function canonical_path(value) {
 	if (value == "" || substr(value, 1, 1) != "/" || value ~ /\/\// ||
 	    value ~ /[[:cntrl:]]/ || (length(value) > 1 && substr(value, length(value), 1) == "/")) {
 		return 0
 	}
-	if (value == "/") {
-		return 1
-	}
-	count = split(substr(value, 2), parts, "/")
-	for (i = 1; i <= count; i++) {
-		if (parts[i] == "" || parts[i] == "." || parts[i] == "..") {
-			return 0
-		}
+	if (value ~ /(^|\/)\.\.?($|\/)/) {
+		return 0
 	}
 	return 1
 }

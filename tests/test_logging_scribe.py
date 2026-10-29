@@ -112,6 +112,64 @@ def test_source_extent_is_safe_for_32_bit_arithmetic(shell, size, valid):
     assert result.stdout == b""
 
 
+def test_fd3_position_counts_exact_bytes_including_empty_and_control_tail(
+    shell, tmp_path
+):
+    if not sys.platform.startswith("linux"):
+        pytest.skip("/proc/self/fdinfo position proof requires Linux")
+    exact = tmp_path / "exact"
+    exact.write_bytes(b"abcd")
+    empty = tmp_path / "empty"
+    empty.write_bytes(b"")
+    binary = tmp_path / "binary"
+    binary.write_bytes(b"ok\n\x1c")
+    script = r"""
+exec 3<"$1"
+cfmgr_log_fd3_position 0 || exit 1
+exec 3<&-
+exec 3<"$2"
+/bin/dd bs=1 count=4 <&3 >/dev/null 2>/dev/null || exit 1
+cfmgr_log_fd3_position 4 || exit 1
+exec 3<&-
+exec 3<"$2"
+/bin/dd bs=1 count=3 <&3 >/dev/null 2>/dev/null || exit 1
+if cfmgr_log_fd3_position 4; then exit 2; fi
+exec 3<&-
+exec 3<"$3"
+/bin/dd bs=1 count=3 <&3 >/dev/null 2>/dev/null || exit 1
+cfmgr_log_fd3_position 3 || exit 1
+exec 3<&-
+exec 3<"$3"
+/bin/dd bs=1 count=4 <&3 >/dev/null 2>/dev/null || exit 1
+if cfmgr_log_fd3_position 3; then exit 3; fi
+"""
+    result = invoke(shell, script, empty, exact, binary)
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
+def test_source_shortening_fails_exact_offset_and_unresolved_code_stays_three(
+    shell, tmp_path
+):
+    if not sys.platform.startswith("linux"):
+        pytest.skip("/proc/self/fdinfo position proof requires Linux")
+    source = tmp_path / "source"
+    source.write_bytes(b"abcdef")
+    script = r"""
+cfmgr_scribe_source_attached() { cfmgr_test_attached=$((cfmgr_test_attached + 1)); return 0; }
+cfmgr_test_attached=0
+exec 3<"$1"
+: >"$1"
+/bin/dd bs=1 count=3 <&3 >/dev/null 2>/dev/null || exit 1
+if cfmgr_log_fd3_position 6; then exit 2; fi
+cfmgr_test_attached=0
+cfmgr_log_run() { return 3; }
+if cfmgr_scribe_run diagnostic-source /bin/dd 0; then code=0; else code=$?; fi
+[ "$code:$cfmgr_test_attached" = 3:1 ] || exit 3
+"""
+    result = invoke(shell, script, source)
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+
+
 def test_current_logs_are_prioritized_before_retained_siblings(shell, tmp_path):
     opt = tmp_path / "opt"
     (opt / "var/log").mkdir(parents=True)
@@ -226,6 +284,47 @@ def test_sanitized_receipt_requires_exact_footer(
     )
     assert (result.returncode == 0) is valid
     assert result.stdout == incomplete
+
+
+def test_sanitized_status_reconstructs_receipt_bytes_without_reinterpretation(
+    shell, tmp_path
+):
+    payload = (
+        b"CFMGR-SANITIZED-LOG 1\nevent value with spaces and \\backslash\nEND 1 0 0\n"
+    )
+    receipt = tmp_path / "sanitized"
+    receipt.write_bytes(payload)
+    result = invoke(
+        shell,
+        'cfmgr_scribe_sanitized_status "$1" "$2" || exit $?; printf "%s" "$cfmgr_scribe_sanitized_buffer"',
+        receipt,
+        str(len(payload)),
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, payload, b"")
+
+
+def test_sanitized_status_bounds_large_receipt_before_each_append(shell, tmp_path):
+    header = b"CFMGR-SANITIZED-LOG 1\n"
+    footer = b"END 16 0 0\n"
+    payload = header + b"".join((b"x" * 4060) + b"\n" for _ in range(16)) + footer
+    assert 64000 < len(payload) <= 65536
+    receipt = tmp_path / "sanitized-large"
+    receipt.write_bytes(payload)
+    success = invoke(
+        shell,
+        'cfmgr_scribe_sanitized_status "$1" "$2" || exit $?; printf "%s" "$cfmgr_scribe_sanitized_buffer"',
+        receipt,
+        str(len(payload)),
+    )
+    assert (success.returncode, success.stdout, success.stderr) == (0, payload, b"")
+    short = invoke(
+        shell,
+        'cfmgr_scribe_sanitized_status "$1" "$2"',
+        receipt,
+        str(len(payload) - 1),
+    )
+    assert short.returncode != 0
+    assert short.stdout == b""
 
 
 def test_changed_authority_stops_before_snapshot_write(shell):
