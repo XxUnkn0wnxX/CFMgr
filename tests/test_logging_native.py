@@ -93,7 +93,9 @@ TOOLS = {
 }
 
 
-def native_template(path: Path, *, observe_report: bool = False) -> str:
+def native_template(
+    path: Path, *, observe_report: bool = False, trace_phases: bool = False
+) -> str:
     source = path.read_text()
     if observe_report:
         entry = "cfmgr_log_health() {\n"
@@ -106,21 +108,26 @@ def native_template(path: Path, *, observe_report: bool = False) -> str:
             + '    printf "observed\\n" >>"$cfmgr_test_observation"\n',
             1,
         )
+    if observe_report or trace_phases:
         phases = (
-            "run",
-            "prepare",
-            "capture_work",
-            "read_config",
-            "select_destination",
-            "stage_events",
-            "stage_report",
-            "open_output",
-            "write_fd",
-            "health_open",
-            "lock",
-            "attached",
-            "observe_mount",
-            "walk_destination",
+            (
+                "run",
+                "prepare",
+                "capture_work",
+                "read_config",
+                "select_destination",
+                "stage_events",
+                "stage_report",
+                "open_output",
+                "write_fd",
+                "health_open",
+                "lock",
+                "attached",
+                "observe_mount",
+                "walk_destination",
+            )
+            if trace_phases
+            else ()
         )
         metric_names = phases
         wrappers = []
@@ -231,7 +238,7 @@ cfmgr_test_clock() {
     return source
 
 
-def build_fixture(test_shell, tmp_path):
+def build_fixture(test_shell, tmp_path, *, trace_phases: bool = False):
     host_tools = {}
     for default, name in TOOLS.items():
         path = default if name in ("sh", "printf") else shutil.which(name) or default
@@ -257,7 +264,11 @@ def build_fixture(test_shell, tmp_path):
     }
     for name, path in source_files.items():
         (templates / name).write_text(
-            native_template(path, observe_report=name == "logging")
+            native_template(
+                path,
+                observe_report=name == "logging",
+                trace_phases=trace_phases and name == "logging",
+            )
         )
 
     fixture_text = storage.FIXTURE.read_text()
@@ -427,19 +438,32 @@ HOST_LINKS
 
 
 def test_native_fixture_shell_syntax(selected_shell, tmp_path):
-    fixture = build_fixture(selected_shell, tmp_path)
-    source = fixture.read_text()
-    assert "command -v" not in source
-    assert 'ln -s "$view_busybox" "$fixture/bin/$applet"' in source
-    for name in TOOLS.values():
-        assert f'"$fixture/bin/{name}"' in source
-    result = subprocess.run(
-        [*selected_shell, "-n", str(fixture)],
-        capture_output=True,
-        check=False,
-        timeout=5,
-    )
-    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
+    for trace_phases in (False, True):
+        fixture_dir = tmp_path / ("profiled" if trace_phases else "unprofiled")
+        fixture_dir.mkdir()
+        fixture = build_fixture(selected_shell, fixture_dir, trace_phases=trace_phases)
+        driver_source = fixture.read_text()
+        logging_source = (fixture_dir / "templates/logging").read_text()
+        assert "command -v" not in driver_source
+        assert 'ln -s "$view_busybox" "$fixture/bin/$applet"' in driver_source
+        for name in TOOLS.values():
+            assert f'"$fixture/bin/{name}"' in driver_source
+        assert ("cfmgr_test_original_attached() {" in logging_source) is trace_phases
+        assert "cfmgr_test_clock() {" in logging_source
+        assert "cfmgr_test_report_copy" in logging_source
+        assert "cfmgr_test_observation" in logging_source
+        for source_path in (fixture, fixture_dir / "templates/logging"):
+            result = subprocess.run(
+                [*selected_shell, "-n", str(source_path)],
+                capture_output=True,
+                check=False,
+                timeout=5,
+            )
+            assert (result.returncode, result.stdout, result.stderr) == (
+                0,
+                b"",
+                b"",
+            )
 
 
 def test_template_does_not_translate_shell_prefix_inside_other_tool(tmp_path):
