@@ -110,6 +110,9 @@ cfmgr_prerequisites_pause() {
 _cfmgr_prerequisites_attachment() {
 	case ${cfmgr_config_lock_fd0:-0} in 1) cfmgr_store_fd_is "${cfmgr_store_lock:-}" 0 || return 1 ;; esac
 	case ${cfmgr_probe_mode:-none} in
+	diagnostic-meta | diagnostic-count | diagnostic-frame | diagnostic-sanitize | diagnostic-compare)
+		cfmgr_log_attached context
+		;;
 	diagnostic-*) cfmgr_log_attached ;;
 	acquire-*) cfmgr_acquire_attached ;;
 	install-report | install-report-ls) cfmgr_bootstrap_native_attached ;;

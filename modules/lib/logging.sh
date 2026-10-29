@@ -525,7 +525,7 @@ EOF_LOG_META
 # Backup. It never starts another cfmgr_prerequisites_run while one is active.
 # shellcheck disable=SC3013
 cfmgr_log_attached() {
-	case $#:${1:-} in 0: | 1:source) ;; *) return 2 ;; esac
+	case $#:${1:-} in 0: | 1:source | 1:context) ;; *) return 2 ;; esac
 	cfmgr_log_attachment_scope=${1:-destination}
 	[ "${cfmgr_log_interrupt:-0}" = 0 ] || return 1
 	[ -d "${cfmgr_log_context:-}" ] && [ ! -L "$cfmgr_log_context" ] &&
@@ -538,7 +538,9 @@ $cfmgr_log_tmp_mount"
 		[ -f "$cfmgr_log_lock" ] && [ ! -L "$cfmgr_log_lock" ] &&
 			[ "$cfmgr_log_lock" -ef /proc/self/fd/0 ] || return 1
 	fi
-	if [ "${cfmgr_log_mount_pinned:-0}" = 1 ]; then
+	# Explicit context-only callbacks supervise read-only metadata and private
+	# processing. Direct owner checks and all destination writers stay full.
+	if [ "$cfmgr_log_attachment_scope" != context ] && [ "${cfmgr_log_mount_pinned:-0}" = 1 ]; then
 		if [ -n "${cfmgr_log_auto_target:-}" ]; then
 			cfmgr_log_attachment_opt=$(/usr/bin/readlink -f /opt) || return 1
 			[ "$cfmgr_log_attachment_opt" = "$cfmgr_log_auto_target" ] || return 1

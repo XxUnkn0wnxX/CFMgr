@@ -164,16 +164,32 @@ diagnostic_folder)
     . "$fixture/logging-fixture.sh" || fail 'diagnostic controller not loaded'
     mkdir -m 700 "$fixture/log-probes"
     cfmgr_log_context=$fixture/log-probes
+    cfmgr_log_lock=$cfmgr_log_context/capture.lock
+    : >"$cfmgr_log_lock"
+    chmod 600 "$cfmgr_log_lock"
+    exec 0<"$cfmgr_log_lock"
+    flock -n 0 || fail 'diagnostic callback lock unavailable'
     exec 5<"$cfmgr_log_context"
     cfmgr_log_tmp_mount=$(cfmgr_storage_mountinfo /usr/bin/awk /tmp /proc/self/mountinfo)
-    cfmgr_log_interrupt=0 cfmgr_log_mount_pinned=0 cfmgr_log_walk_pinned=0 cfmgr_log_lock_held=0
+    cfmgr_log_interrupt=0 cfmgr_log_mount_pinned=0 cfmgr_log_walk_pinned=0 cfmgr_log_lock_held=1
+    cfmgr_config_lock_fd0=0
     cfmgr_log_run() {
         mode=$1; tool=$2; shift 2
         cfmgr_probe_stdout=$fixture/log-probes/probe.out
         cfmgr_probe_stderr=$fixture/log-probes/probe.err
         : >"$cfmgr_probe_stdout"; : >"$cfmgr_probe_stderr"
+        cfmgr_probe_mode=$mode
+        _cfmgr_prerequisites_attachment || return $?
         case $mode in
-        diagnostic-meta) "$tool" -ildn "$1" >"$cfmgr_probe_stdout" ;;
+        diagnostic-meta)
+            "$tool" -ildn "$1" >"$cfmgr_probe_stdout" || return $?
+            cfmgr_probe_exit=0
+            if [ "${cfmgr_test_detach_after_metadata:-0}" = 1 ]; then
+                cfmgr_test_detach_after_metadata=0
+                umount -l "$mount_dir" || fail 'one-shot metadata detach failed'
+            fi
+            _cfmgr_prerequisites_attachment
+            ;;
         diagnostic-mkdir) "$tool" -m 700 "/proc/self/fd/7/$1" ;;
         diagnostic-create) (umask 077; set -C; : >"/proc/self/fd/7/$1") ;;
         diagnostic-copy) "$tool" bs=4096 "count=$1" <&3 >&4 2>/dev/null ;;
@@ -219,11 +235,37 @@ diagnostic_folder)
     rm "$mount_dir/CFMgr/diagnostics"
     mv "$mount_dir/CFMgr/diagnostics-owned" "$mount_dir/CFMgr/diagnostics"
     cfmgr_log_attached || fail 'restored attachment rejected'
-    umount -l "$mount_dir" || fail 'lazy detach failed'
-    if cfmgr_log_attached; then fail 'detached mount accepted'; fi
+    cfmgr_log_open_output developer.log append || fail 'reopened held output rejected'
+    cfmgr_log_developer_admit || fail 'reopened held output header rejected'
+    exec 3<"$cfmgr_log_context/input"
+    cfmgr_test_detach_after_metadata=1
+    cfmgr_log_metadata /proc/self/fd/7/developer.log file || fail 'read-only metadata failed across detach'
+    [ "$cfmgr_test_detach_after_metadata" = 0 ] || fail 'one-shot detach did not run'
+    [ "$cfmgr_probe_exit:$cfmgr_log_meta_size" = 0:12310 ] || fail 'detached metadata receipt changed'
+    for cfmgr_test_mode in diagnostic-meta diagnostic-count diagnostic-frame diagnostic-sanitize diagnostic-compare; do
+        cfmgr_probe_mode=$cfmgr_test_mode
+        _cfmgr_prerequisites_attachment || fail "context-only callback rejected $cfmgr_test_mode"
+    done
+    for cfmgr_test_mode in diagnostic-create diagnostic-mkdir diagnostic-copy diagnostic-source diagnostic-list diagnostic-digest; do
+        cfmgr_probe_mode=$cfmgr_test_mode
+        if _cfmgr_prerequisites_attachment; then fail "detached callback admitted $cfmgr_test_mode"; fi
+    done
+    if cfmgr_log_attached; then fail 'destination scope leaked after context callback'; fi
+    cfmgr_test_held_output=$cfmgr_log_output
+    if cfmgr_log_open_output health-1.log exclusive; then fail 'detached health file creation admitted'; fi
+    [ ! -e /proc/self/fd/7/health-1.log ] && [ ! -L /proc/self/fd/7/health-1.log ] || fail 'detached health file appeared on held destination'
+    [ ! -e "$mount_dir/CFMgr/diagnostics/health-1.log" ] && [ ! -L "$mount_dir/CFMgr/diagnostics/health-1.log" ] || fail 'detached health file appeared at stale mountpoint'
+    cfmgr_log_output=$cfmgr_test_held_output
+    if cfmgr_log_write_fd 4; then fail 'detached writable FD appended'; fi
+    [ -f /proc/self/fd/3 ] && [ -f /proc/self/fd/4 ] || fail 'append rejection lacked held input or output descriptors'
+    [ "$(wc -c </proc/self/fd/7/developer.log)" -eq 12310 ] || fail 'detached held output changed size'
+    [ "$(tail -c 4 /proc/self/fd/7/developer.log)" = tail ] || fail 'detached held output tail changed'
     [ "$(cat /proc/self/fd/6/CFMgr/backup/keep)" = 'backup intact' ] || fail 'detached data changed'
+    [ -f /proc/self/fd/0 ] || fail 'held capture lock lost after detach'
+    exec 3<&- 4>&-
     exec 5<&- 6<&- 7<&-
-    printf 'PASS: diagnostic noexec mount, large append, sibling, symlink and detach\n'
+    exec 0</dev/null
+    printf 'PASS: diagnostic noexec mount, large append, context-only detached metadata and writer rejection\n'
     ;;
 """
     marker = "\nbackup_folder | backup_replacement | archive_source)"
