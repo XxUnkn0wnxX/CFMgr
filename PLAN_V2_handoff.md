@@ -32,9 +32,63 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a16765-b366-7071-8c80-8f4770f6036c
 Eleventh ID verified 2026-10-23 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a1848b-c9de-7121-b7c2-6611f14d8aea
+Twelfth ID verified 2026-10-29 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
+
+## Current resume summary — S13.14 paused pending routing decision
+
+Unknown resumed only S13.14 through its agreed checkpoint, then pause. The package
+is incomplete and remains unchecked:25/157 accepted subgoals (15.9%),0/16 main
+goals;132 subgoals remain. No later package has been reviewed or selected.
+
+Current published candidate: `9c99710c6a2aca189b4c5364412027a5fa37bb3c`.
+Runtime remains unchanged from `52f7f6250996427726b8c1158bc71c4033f549b3`;
+subsequent changes are native test instrumentation only. Dev40859973789 failed
+capture after rotation on the unprofiled production path (40.33s case); the first
+capture passed. Log: `.tmp/s13-diagnostics/production-9c-failed.log`.
+Premature core40859914112 was cancelled. All known CI jobs are terminal.
+
+Removing external scalar tests from the fixture clock helped but did not resolve
+both captures. The profiler is now opt-in and preserved; the default behavior
+gate runs production functions directly while keeping all assertions and the20s
+capture deadline/45s combined watchdog. Local generated-source/driver syntax in
+both modes and light statics passed. The two bounded plans received independent
+Astra PASS WITH NOTES reviews. No mountinfo cache was selected or implemented.
+
+**Pending user decision:** the next proposed repair replaces avoidable external
+value comparisons in existing production storage guards, preserving every storage
+predicate and observation. The user's updated AGENTS.md routes security-sensitive
+patches through a Blue-verified worker. The designated worker returned
+`ACCESS_UNVERIFIED`: effective Blue metadata was not exposed. The worker only checked eligibility; no proposed guard
+refactor began. The parent asked whether to wait for verified Blue access or authorize
+Standard for this bounded performance refactor. Do not infer approval, change
+profiles or use an external fallback. Do not edit those guards while unanswered.
+
+Parent owns all records/integration/publication. All delegated packages have
+finished and released their files. The complete33-module map is retained at
+`.tmp/s13-diagnostics/final-dev-groups.json` and below. After an authorized repair,
+first verify the failing native case, then every complete affected module and the
+exact full core collector plus all six platform jobs; review measured cost.
+Only after those gates may S13.14 be accepted, the receipt published and the
+checkpoint closed. No full local suite is due at this subgoal checkpoint.
+
+Complete affected Dev scope (whole modules, no overlap):
+
+- A1: `tests/test_logging_native.py`, `tests/test_logging_scribe.py`, `tests/test_mountinfo.py`.
+- A2: `tests/test_logging.py`, `tests/test_logging_storage.py`, `tests/test_config_store.py`, `tests/test_config_schema2.py`, `tests/test_manager_settings.py`, `tests/test_manager_settings_entry.py`.
+- B: `tests/test_status.py`, `tests/test_entry_package.py`, `tests/test_package.py`, `tests/test_prerequisites.py`, `tests/test_execution_tasks.py`, `tests/test_config.py`, `tests/test_config_observation.py`, `tests/test_native.py`.
+- C: `tests/test_backup_storage.py`, `tests/test_backup_menu.py`, `tests/test_archive_menu.py`, `tests/test_archive_create.py`, `tests/test_archive_control.py`.
+- D: `tests/test_acquire.py`, `tests/test_acquire_install.py`, `tests/test_install.py`, `tests/test_install_reporting.py`, `tests/test_retained_launch.py`, `tests/test_dependencies.py`, `tests/test_dependency_consumer.py`, `tests/test_dependency_reinstall.py`.
+- E: `tests/test_storage.py`, `tests/test_storage_mounts.py`, `tests/test_mount_keeper.py`.
+
+The original four future-planning drafts were reconstructed from the saved patch
+and verified preserved. Future WAN/hook changes remain outside this package's
+publication; retain working copies and use staged document projections. The
+following detailed implementation receipts are historical where superseded.
 
 ## Finished re-work checkpoint — shared drive layout; paused before diagnostics
 

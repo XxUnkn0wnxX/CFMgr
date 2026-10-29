@@ -2788,3 +2788,237 @@ Parent accepts the reviewed repair with these exact gates. Confirmed diagnostic
 storage/developer/standalone-Health requirements are recorded in the specification
 but diagnostic capture remains unimplemented. Ubuntu/vendor BusyBox is
 representative development evidence, not Merlin/ARM or live-router qualification.
+
+## S13.14 diagnostics integration review — in progress (2026-10-29)
+
+The authorized checkpoint adds developer-gated typed operation events and independent
+explicit Health capture. Parent adopted the separate Astra design review: recording
+stays bounded in operation-local memory, native capture owns an isolated controller,
+and an unresolved existing child forbids additional capture. Optional separately
+verified capture code cannot become a prerequisite for the terminal Health report.
+No accepted ID or prior test result establishes this new behavior.
+
+The independent controller review confirmed the mounted-data/descriptor approach
+and required these repairs before integration:
+
+- PID-only Health names could collide with retained captures after reuse. Names
+  now include validated boot/process identity and bounded exclusive collision
+  handling; the host collision case preserves the existing artifact.
+- Root metadata alone could adopt a foreign `developer.log`. Appends now require
+  the exact bounded CFMgr owner header; foreign bytes are preserved unchanged.
+  Existing retained bytes after that marker are not scanned or rewritten.
+- Broad RAM filename matching could delete an unexpected same-prefix file.
+  Cleanup now requires exact generated artifact membership and preserves a
+  context containing unexpected objects.
+
+The fixed copy child retains the capture lock on FD9 before stdin changes.
+Independent Scribe review additionally found that detached source paths could be
+misreported as ordinary absence, and that a rule-only ownership edit could occur
+after initial hashing. Attachment is now checked before absence classification,
+and the actual saved rule SHA is revalidated before each snapshot publication.
+Known incomplete counters propagate to the capture result. Feature/logging flags
+do not suppress copying positively owned pre-existing history.
+
+The final Astra integration audit returned PASS WITH NOTES. It found an accidental
+`return` inside the basic Status AWK guard during shell-wrapper conversion; this
+was restored to AWK `exit`, then the actual Status and installed-menu consumers
+passed. The nonblocking Health report-completeness note was implemented using the
+existing incomplete flag while preserving its operation status. Start/finish
+capture cost remains to be measured in the existing native fixtures, without a
+new stress or benchmark gate.
+
+Dirty-tree focused evidence includes 196 passes / 5 Linux skips across six complete
+config/settings/package/entry modules (199.30s wall), 100 passes / 3 skips across
+logging/storage/Scribe (4.55s pytest), then 37 passes / 3 skips for the storage module
+with additive public failure receipts (1.29s), 18 Status/menu/masking cases after
+repair (19.64s wall), 6 optional Health-library admission cases (9.16s), and 135
+developer-runner contract cases (4.25s). Full light statics passed. Extended
+ShellCheck was stopped after expensive analysis with existing diagnostics; limited
+analysis returned 88 diagnostics on unchanged source lines in 32.59s wall and is
+supplemental, not a lint pass. Native Linux/vendor fixtures remain pending.
+
+The real mounted-data tests cover independent Health saving with developer Off,
+Auto/custom destination and unsafe-custom refusal, immutable config/backup sibling,
+actual supervised source/copy descriptors, sanitized current and retained Scribe
+snapshots, rotation/history preservation and appending beyond 4 KiB. Existing
+source-fault/controller tests cover loss, rule changes and unresolved ownership.
+These intended checks are not reported as executed locally. Complete affected Dev
+groups, exact core CI, native cost review and acceptance/publication remain open.
+No scope or acceptance gate has been relaxed and no router execution is implied.
+
+The first vendor Dev run at `c804179` exposed raw-NUL record splitting in BusyBox
+AWK. The framer now reuses the shared JSON parser's exact-length single-record
+admission before splitting actual LF bytes; host logging/Scribe tests passed.
+Premature Manager host execution also exposed FD0 loss during asynchronous spawn:
+`0<&0` duplicated the reset stdin. Independent review identified the existing
+Store spawn helper as the correct reuse. Diagnostics now use its invocation-scoped
+FD9 bridge; fixed workers retain their separate FD9 preservation before reading
+source data. Host storage tests passed with Linux descriptor cases still pending.
+These are repaired implementation defects requiring native confirmation, not
+accepted limitations or changes to requirements.
+
+Native Health Auto/custom and fixed creation/collision now pass at `d77808c`
+(Dev40790461966:48 passes before Scribe failure). The actual creation worker had
+fallen through into a later dispatcher after successfully creating its file;
+it now exits success explicitly. Its name guard also admits the validated boot
+UUID alphabet. Health journeys measured 5.79s/5.93s.
+
+The normal four-file Scribe capture then reached its unchanged20s deadline after
+two snapshots. Astra independently audited the parent cost repair and returned
+PASS WITH NOTES: batch the six existing mount observations in the shared parser,
+retain every canonical/alias/FD/mount check, keep explicit source scope separate
+from the destination-only incomplete summary, and compare fresh protected config
+FDs directly with the immutable full-schema authority snapshot. Exact equality
+already rejects every config change, so repeated snapshot/JSON parsing added no
+assurance. Parent integrated that design and reviewed the shared parser delta.
+Local focused proof:117 passes/12 Linux skips in4.07s, plus light statics. Native
+performance and all remaining gates remain open; no timeout or acceptance was
+relaxed. The combined two-capture fixture watchdog may require measurement-based
+adjustment independently of the unchanged product deadline.
+
+The batched parser/fresh-config revision exposed a shell-variable collision:
+parsing the authority receipt replaced the saved config length. Distinct
+`cfmgr_scribe_authority_config_bytes` and receipt-length fields repair this.
+At92b6839, Dev40793434955 passed38 tests and both Health captures (5.33s/5.17s),
+but four completed Scribe copies still exhausted the20s limit at final summary.
+This remains a failed common capture, not accepted partial behavior.
+
+A second focused cost review found six per-file steps read only private RAM or
+held config FDs. Astra independently verified switching count/frame/sanitize and
+config compare to the ordinary supervised runner: twelve redundant source checks
+per copied file are removed, while RAM/destination/lock supervision, raw-source
+pre/post checks, live rule verification and source/config publication guards stay.
+Parent retained the source runner and supervisor unchanged, extended the existing
+publication test to reject a lost source before destination creation, and retained
+all config-freshness cases. The complete affected local logging selection passed
+105 cases with15 Linux skips in3.44s; light statics passed. Native timing and full
+checkpoint gates remain pending. The45s fixture watchdog covers two independent
+20s captures and does not change the product limit.
+
+Native f32102b and instrumented a4cfed3 still failed the normal first Scribe
+capture at the unchanged deadline. Dev40795756498 measured19.23s in capture work,
+including11.80s across415 attachment checks;106 worker calls consumed13.99s
+inclusive. The whole native selection used14.98s user/20.17s system over35.37s
+wall. This evidence identifies repeated attachment work, not an arbitrary timeout.
+
+Independent Sol and Astra audits verified an explicit context callback for exactly
+read-only metadata, private count/frame/sanitize and held-config compare. RAM mount,
+context and lock checks remain fresh; default/source checks and every destination
+create/mkdir/copy remain full. The existing full guard after read-only output FD
+admission and before writable reopen closes the metadata-to-write boundary; another
+identical guard would be redundant. The extended real mount fixture explicitly
+uses production callback dispatch around a metadata-time detach, keeps writable
+FDs held, rejects later create/append and checks preserved bytes/no stale files.
+Native savings and this fault proof remain pending; no timeout/gate was relaxed.
+
+At bafe13d, complete native logging storage/Scribe/capture Dev40797172833 passed
+84 cases without skips in44.75s pytest/44.90s wall (25.91s user,17.31s system).
+The two-capture Scribe rotation journey completed in33.61s under the unchanged
+per-capture20s limit; Health Auto/custom took4.45s/4.68s, real metadata-time detach
+and write rejection0.91s. B/C/D/E complete affected selections also passed; D was
+longest at408.81s pytest/409.06s wall (218 passes,4 optional deselections), so the
+final complete Manager group still needs its measured10-minute budget review.
+
+Parent final review caught inconsistent Health name admission: the fixed worker
+accepted letter-leading boot UUIDs, but the controller still required a digit.
+Both now accept the validated hexadecimal alphabet. Existing Auto/custom native
+Health cases force numeric/letter-leading name inputs while retaining real kernel
+supervision identity; both passed at d2fc729 in Dev40798742829.
+
+Settings Dev A failed after162 passes because the pinned vendor ash lacks the
+optional `command` builtin. Bounded synthetic UI evidence at d2fc729 showed only
+`settings read -`, followed by invalid destination preview, proving Save was
+never reached. The sole runtime `command -v` precheck has been removed; direct
+package-admitted preview remains inside its existing strict status/receipt check,
+with raw stderr suppressed. The complete local settings module passes26 cases
+with `command` explicitly unavailable in the adapter. Fresh native/full gates
+remain required before acceptance.
+
+The b4f51f8 complete A run (40799613991) reached 119 passing cases before the
+second native Scribe capture hit the unchanged 20-second budget. Its inclusive
+attachment cost was 10.45s/605 calls. The small measured repair skips escape-decoding
+character loops only when the field contains no backslash; all record/path checks
+and escaped decoding remain identical. A representative 200-row/four-target host
+benchmark reduced median wall from 0.067001s to 0.051206s and child CPU from
+0.059180s to 0.043954s. All 15 mountinfo tests passed (0.81s); syntax/shfmt passed.
+Parent reviewed the equivalent three-line change. Native improvement and final
+exact-candidate gates remain pending; no deadline or safety proof was relaxed.
+
+The native settings compatibility repair is confirmed at f00b221 by Dev40801290671:
+30 passes across both complete settings modules in13.82s pytest/14.00s wall
+(7.54s user/6.70s system). Complete A40800592445 still failed native Scribe after
+119 passes; the first capture used20.05s, including13.57s/129 native operations
+and11.17s/516 attachment calls. The host decoder benchmark did not establish
+adequate native headroom. A further equivalent canonical-path ERE refinement
+matches24 old/new predicate cases, passes all15 mountinfo tests, and saves~6% in
+the same host benchmark; native proof remains pending. Parent requested a narrow
+Astra audit before eliminating redundant per-source RAM work. Actual raw-stage
+byte evidence must remain: AWK consumes its record separator, so metadata alone
+cannot replace the raw wc in an append/read/truncate-back race.
+
+Astra returned PASS WITH NOTES for the revised per-source repair. The implementation
+extracts the existing exact FD3-position validator and applies it after successful
+source dd, before replacing the held input. Thus actual read length remains
+independent of framing; empty, short and excess reads have Linux-specific tests.
+The sanitized receipt retains independent wc, ASCII/line/footer/count checks and
+now builds a buffer capped at 65,536 bytes before each append. The existing owned
+stage is created and registered before fixed-format printf; final publication,
+fresh config/rule/source/destination guards and final consumed-length proof remain.
+Three supervised phases per copied file are removed without new worker modes or
+callback exemptions. Parent tightened the helper's numeric grammar during review.
+Complete local logging/Scribe/storage/mountinfo modules passed 120 cases with
+14 honest Linux skips in3.51s; light statics passed. Native completion is pending.
+
+The a2582a3 final core attempt (Checks40804084069) did not pass. Backup host/vendor
+completed successfully in137s/498s including setup; Manager host/vendor in123s/561s.
+Status host passed in64s, but Status vendor (40804135009) failed the same native
+Scribe journey after268 passes. All four source copies completed; the final summary
+write reached the unchanged deadline. Attachment work remained dominant at11.09s
+across505 calls. No acceptance was awarded and all runs reached terminal state.
+
+Astra approved a narrow equivalent canonical-directory repair. With a pinned walk,
+fresh component-boundary ancestry plus canonical walk equality also proves the
+mount-path prefix canonical, so its duplicate lookup is removed. Unpinned mounts
+retain a separate lookup. Existing directories use fresh command-substitution
+cd -P/pwd -P observations; exit status and exact path plus a suffix marker are
+checked, preserving trailing-LF distinction. All inode/descriptor/mountinfo checks
+remain. The /opt readlink behavior is deliberately unchanged because it also
+supports a missing final component. A selected-shell test covers spaces/backslashes,
+ancestor symlinks, failed resolution and unchanged controller cwd. Local logging,
+Scribe and storage modules passed106 cases with14 Linux skips in3.93s; statics passed.
+The bounded host comparison measured100 lookups at0.8997s wall/0.6727s CPU for
+readlink versus0.3248s/0.1941s for physical pwd; this is not native performance proof.
+
+
+Native parser diagnosis at `0fb809e` (Dev40807897728) measured ten actual
+mountinfo parses at 4 centiseconds for both two and six targets, against 26 rows.
+The first capture still failed at 19.94s, including 11.42s/505 attachment calls.
+The pinned vendor build disables ash builtin test/printf, standalone dispatch and
+no-fork mode; prior assumptions that printf was builtin in this fixture were
+incorrect. The test clock itself launched two external tests per call, twice per
+phase, including every attachment callback.
+
+At `2b045b0bf595d79eac251fdf829d3459f990f629`, the test-only timing predicates
+use equivalent shell case operations. Independent Astra review returned PASS WITH
+NOTES; generated shell syntax, controlled clock/512-trace-bound probes and light
+statics passed. Dev40858385970 completed the first capture in18.37s but failed the
+second near the unchanged deadline at19.40s. Attachment cost remained11.07s/509 and
+11.78s/540 calls respectively. Removing measurement forks therefore helped but
+has not established the complete two-capture native requirement. No runtime guard,
+vendor build setting, timeout or behavioral assertion changed in this repair.
+
+
+At `9c99710c6a2aca189b4c5364412027a5fa37bb3c`, phase profiling is opt-in.
+Routine native captures execute the production functions directly; the mandatory
+Health report observer remains, and the bounded profiler source is retained.
+The existing syntax case now checks both generated drivers and separately sourced
+logging templates in both modes, including wrapper/observer presence. That case
+passed in0.37s; Ruff/format/compile and light statics passed. Independent Astra
+review returned PASS WITH NOTES for the measurement correction.
+
+Dev40859973789 still failed capture after source rotation without the profiler
+(40.33s case,40.61s pytest). The first capture passed its saved receipt, source
+content and preservation assertions. This disproves profiler overhead as the sole
+cause of the common rotation-capture failure. The required native outcome and
+complete exact-candidate core remain unproved; no acceptance or timeout waiver
+was applied. Runtime storage guards remain unchanged.

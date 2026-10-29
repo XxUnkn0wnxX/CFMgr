@@ -661,7 +661,15 @@ below. The destination has no CFMgr rotation/pruning/truncation/automatic cleanu
 retention is user-managed, while records, buffering and copy work remain bounded.
 Automated fixtures supply development acceptance; prolonged actual-router capture
 is beta evidence and is not claimed before it runs. The accepted S03.09/S03.10
-report/presentation receipts do not establish this unimplemented saving extension.
+report/presentation receipts do not establish this separately gated saving extension.
+
+S13.14 implementation evidence remains **unaccepted**. Runtime and focused host
+work are recorded in the [integration audit](PLAN_V2_audit.md#s1314-diagnostics-integration-review--in-progress-2026-10-29).
+Published candidate `9c99710c6a2aca189b4c5364412027a5fa37bb3c` passes the changed
+fixture's host syntax/static checks, but [Dev40859973789](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/40859973789)
+fails the native Scribe capture after rotation with phase profiling disabled.
+Both S13.14 boxes remain unchecked; the complete affected-platform and exact core
+gates are outstanding. Prior failed/cancelled runs do not establish acceptance.
 
 Credential logging acceptance (S13.13/S13.14): normal and developer terminal,
 syslog, feature-file, trace/child-output and Scribe-copy paths identify the real
