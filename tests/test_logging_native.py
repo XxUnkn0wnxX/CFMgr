@@ -591,6 +591,39 @@ COMMON_SETUP
     [ "$history_bytes" -gt 4096 ] || fail 'existing history fixture is too small'
     cp "$cfmgr_source/config" "$fixture/config-before"
     config_metadata=$(stat -c '%i %a %u %g %h %s' "$cfmgr_source/config")
+    cfmgr_test_mountinfo_rows_raw=$("$fixture/bin/wc" -l </proc/self/mountinfo) || fail 'mountinfo row count failed'
+    IFS=' ' read -r cfmgr_test_mountinfo_rows cfmgr_test_mountinfo_rows_extra <<EOF_MOUNTINFO_ROWS
+$cfmgr_test_mountinfo_rows_raw
+EOF_MOUNTINFO_ROWS
+    case $cfmgr_test_mountinfo_rows in ''|*[!0-9]*) fail 'mountinfo row count invalid' ;; esac
+    [ -z "$cfmgr_test_mountinfo_rows_extra" ] || fail 'mountinfo row count extended'
+    cfmgr_test_clock || fail 'mountinfo benchmark clock unavailable'
+    cfmgr_test_mountinfo_two_started=$cfmgr_test_clock_value
+    cfmgr_test_mountinfo_two_calls=0
+    while [ "$cfmgr_test_mountinfo_two_calls" -lt 10 ]; do
+        cfmgr_storage_mountinfo "$fixture/bin/awk" targets-v1 \
+            "$fixture/ram" "$mount_dir" /proc/self/mountinfo >/dev/null || fail 'two-target mountinfo parse failed'
+        cfmgr_test_mountinfo_two_calls=$((cfmgr_test_mountinfo_two_calls + 1))
+    done
+    cfmgr_test_clock || fail 'mountinfo benchmark clock unavailable'
+    cfmgr_test_mountinfo_two_elapsed=$((cfmgr_test_clock_value - cfmgr_test_mountinfo_two_started))
+    printf 'mountinfo-bench targets=2 calls=%s elapsed_cs=%s rows=%s\n' \
+        "$cfmgr_test_mountinfo_two_calls" "$cfmgr_test_mountinfo_two_elapsed" "$cfmgr_test_mountinfo_rows" \
+        >>"$cfmgr_test_phase_trace" || :
+    cfmgr_test_clock || fail 'mountinfo benchmark clock unavailable'
+    cfmgr_test_mountinfo_six_started=$cfmgr_test_clock_value
+    cfmgr_test_mountinfo_six_calls=0
+    while [ "$cfmgr_test_mountinfo_six_calls" -lt 10 ]; do
+        cfmgr_storage_mountinfo "$fixture/bin/awk" targets-v1 \
+            "$fixture/ram" "$cfmgr_source" "$cfmgr_source/modules/lib" "$cfmgr_source/modules/helpers" \
+            "$mount_dir" "$mount_dir/entware" /proc/self/mountinfo >/dev/null || fail 'six-target mountinfo parse failed'
+        cfmgr_test_mountinfo_six_calls=$((cfmgr_test_mountinfo_six_calls + 1))
+    done
+    cfmgr_test_clock || fail 'mountinfo benchmark clock unavailable'
+    cfmgr_test_mountinfo_six_elapsed=$((cfmgr_test_clock_value - cfmgr_test_mountinfo_six_started))
+    printf 'mountinfo-bench targets=6 calls=%s elapsed_cs=%s rows=%s\n' \
+        "$cfmgr_test_mountinfo_six_calls" "$cfmgr_test_mountinfo_six_elapsed" "$cfmgr_test_mountinfo_rows" \
+        >>"$cfmgr_test_phase_trace" || :
     event='CFMGR-EVENT 1 unknown manager startup success 0'
     if capture_result=$(cfmgr_log_capture developer "$event"); then :; else fail 'first developer capture failed'; fi
     case $capture_result in 'CFMGR-LOG-CAPTURE 1 saved read '*) ;; *) fail "first capture incomplete: $capture_result" ;; esac
