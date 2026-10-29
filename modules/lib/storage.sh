@@ -296,6 +296,9 @@ function canonical_path(value, parts, count, i) {
 function decode(value, result, i, character, escaped) {
 	result = ""
 	decode_ok = 1
+	if (index(value, "\\") == 0) {
+		return value
+	}
 	for (i = 1; i <= length(value); i++) {
 		character = substr(value, i, 1)
 		if (character != "\\") {
