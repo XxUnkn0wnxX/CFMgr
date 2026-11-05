@@ -95,7 +95,9 @@ cfmgr_test_cost retained-repair-begin
 # The installed entry and its fresh admission child use this exact namespace,
 # mounted ext4 volume and opkg fixture. The private Python bridge restores only
 # the finite OS/tool callbacks after entry verification; launch/repair stay real.
-if "$retained_entry_python" "$retained_entry_driver" "$fixture" "$dependency_install_adapter" "$retained_storage_alias"; then
+# FD0 holds a pinned directory here. Python needs stream input during startup;
+# its driver separately assigns a real PTY to the installed manager child.
+if "$retained_entry_python" "$retained_entry_driver" "$fixture" "$dependency_install_adapter" "$retained_storage_alias" </dev/null; then
 	retained_cost_status=0
 else retained_cost_status=$?; fi
 cfmgr_test_cost retained-repair-end
@@ -115,7 +117,7 @@ retained_absent=0
 # no-op dependency path and defers only the tunnel DNS check.
 : >"$view_ram/retained-dns-outage"
 cfmgr_test_cost retained-return-dns-begin
-if "$retained_entry_python" "$retained_entry_driver" "$fixture" "$dependency_install_adapter" "$retained_storage_alias" healthy; then
+if "$retained_entry_python" "$retained_entry_driver" "$fixture" "$dependency_install_adapter" "$retained_storage_alias" healthy </dev/null; then
 	retained_cost_status=0
 else retained_cost_status=$?; fi
 cfmgr_test_cost retained-return-dns-end

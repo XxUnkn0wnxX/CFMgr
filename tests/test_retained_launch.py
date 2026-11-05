@@ -773,6 +773,56 @@ def test_retained_entry_bridge_syntax_and_real_consumer_boundary(
         assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
 
 
+def test_retained_entry_carrier_does_not_inherit_directory_stdin(
+    shell: list[str], tmp_path: Path
+) -> None:
+    # Native setup pins a directory on FD0. Exercise both actual carrier commands
+    # without repeating mount/repair setup; the journey assigns its child a PTY.
+    source = (ROOT / "tests/fixtures/retained_launch.sh").read_text()
+    invocations = re.findall(r'(?m)^if "\$retained_entry_python" .*; then$', source)
+    assert len(invocations) == 2
+    driver = tmp_path / "carrier.py"
+    driver.write_text(
+        "import os, stat, sys\n"
+        "assert stat.S_ISCHR(os.fstat(0).st_mode)\n"
+        "assert os.fstat(0).st_rdev == os.stat('/dev/null').st_rdev\n"
+        "assert sys.stdin.buffer.read() == b''\n"
+        "print('carrier stdin is /dev/null')\n"
+    )
+    commands = "\n".join(
+        line.removeprefix("if ").removesuffix("; then") for line in invocations
+    )
+    script = (
+        "set -eu\n"
+        "retained_entry_python=$1 retained_entry_driver=$2 fixture=$3\n"
+        "dependency_install_adapter=$3 retained_storage_alias=$3\n"
+        + commands
+        + "\n[ -d /dev/fd/0 ]\n"
+    )
+    descriptor = os.open(tmp_path, os.O_RDONLY)
+    try:
+        result = subprocess.run(
+            [
+                *shell,
+                "-c",
+                script,
+                "carrier-probe",
+                sys.executable,
+                str(driver),
+                "fixture with spaces",
+            ],
+            stdin=descriptor,
+            capture_output=True,
+            check=False,
+            timeout=5,
+        )
+    finally:
+        os.close(descriptor)
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert result.stdout == b"carrier stdin is /dev/null\n" * 2
+    assert not result.stderr
+
+
 def test_real_retained_repair_and_later_return(
     fixture_tools: tuple[list[str], str, str, str],
     dependency_process: Path,
