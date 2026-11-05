@@ -889,7 +889,8 @@ def test_main_module_sidebar_workflow_pins_its_batch_and_manual_preflight(
     assert "  pull_request:\n    branches: [develop]\n" in workflow
     assert "      candidate_sha:\n" in workflow
     assert "          ref: ${{ github.sha }}\n" in workflow
-    assert "    timeout-minutes: 10\n" in workflow
+    expected_timeout = 12 if owner == "manager" else 10
+    assert f"    timeout-minutes: {expected_timeout}\n" in workflow
     assert (
         f"    name: {owner.title()} Checks (${{{{ matrix.platform }}}})\n" in workflow
     )
