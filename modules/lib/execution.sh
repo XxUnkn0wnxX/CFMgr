@@ -207,6 +207,10 @@ _cfmgr_prerequisites_run() {
 	health-response) case $# in 16) ;; *) return 2 ;; esac ;;
 	health-metadata-check | health-protected | health-current | health-storage | health-uuid | health-request-check | health-trace | health-frame | health-render) case $# in 13) ;; *) return 2 ;; esac ;;
 	health-config) case $# in 20) ;; *) return 2 ;; esac ;;
+	health-wan-config) [ "$#" -eq 12 ] || return 2 ;;
+	health-wan-nvram) [ "$#" -eq 10 ] || return 2 ;;
+	health-wan-interfaces | health-wan-routes) [ "$#" -eq 9 ] || return 2 ;;
+	health-wan-project) [ "$#" -eq 17 ] || return 2 ;;
 	health-native-metadata | health-snapshot | health-nvram | health-space | health-realpath | health-metadata | health-count | health-render-count | health-curl-features | health-ca-pem | health-ca-decode) case $# in 10) ;; *) return 2 ;; esac ;;
 	health-fields) case $# in 13) ;; *) return 2 ;; esac ;;
 	health-native | health-mount | health-curl-offline) case $# in 11) ;; *) return 2 ;; esac ;;
@@ -260,6 +264,10 @@ _cfmgr_prerequisites_run() {
 	store-lock | store-flush) [ "$#" -eq 9 ] || return 2 ;;
 	store-count | store-meta | store-meta-frame | store-snapshot | store-digest | store-digest-frame | store-lock-create | store-lock-test | store-mkdir | store-remove | store-rmdir | store-space) [ "$#" -eq 10 ] || return 2 ;;
 	status-config) [ "$#" -eq 20 ] || return 2 ;;
+	status-wan-config) [ "$#" -eq 12 ] || return 2 ;;
+	status-wan-nvram) [ "$#" -eq 10 ] || return 2 ;;
+	status-wan-interfaces | status-wan-routes) [ "$#" -eq 9 ] || return 2 ;;
+	status-wan-project) [ "$#" -eq 17 ] || return 2 ;;
 	status-snapshot | status-nvram | status-space | status-realpath | status-metadata | status-count | status-render-count) [ "$#" -eq 10 ] || return 2 ;;
 	status-fields) [ "$#" -eq 13 ] || return 2 ;;
 	status-native | status-mount) [ "$#" -eq 11 ] || return 2 ;;
@@ -864,6 +872,8 @@ _cfmgr_prerequisites_exec() {
 	status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-archive-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;;
 	install-copy | launch-copy) ulimit -f 2048 || exit 2 ;;
 	status-render) ulimit -f 64 || exit 2 ;;
+	status-wan-interfaces | status-wan-routes) ulimit -f 128 || exit 2 ;;
+	status-wan-project) ulimit -f 32 || exit 2 ;;
 	launch-config-patch) ulimit -f 128 || exit 2 ;;
 	*) ulimit -f 8 || exit 2 ;;
 	esac

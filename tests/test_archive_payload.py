@@ -7,6 +7,7 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
 from runtime_awk import awk_arguments
 from test_config_observation import commands, config, schema2_config
 
@@ -69,6 +70,32 @@ def plan_rows(result: subprocess.CompletedProcess[bytes]) -> list[str]:
     assert lines[-1].startswith("END ")
     assert lines[-1] == f"END {len(lines) - 1}"
     return lines
+
+
+def review_plan(commands, tmp_path, plan: bytes) -> subprocess.CompletedProcess[bytes]:
+    plan_path = tmp_path / "private review plan"
+    external = tmp_path / "private external references"
+    notes = tmp_path / "private archive notes"
+    plan_path.write_bytes(plan)
+    external.write_bytes(b"")
+    notes.write_bytes(b"")
+    environment = {**os.environ, "CFMGR_ARCHIVE_CONTROL_MODE": "review"}
+    return subprocess.run(
+        awk_arguments(
+            [
+                *commands[1],
+                "-f",
+                "cfmgr-parser:backup_archive_control",
+                str(plan_path),
+                str(external),
+                str(notes),
+            ]
+        ),
+        env=environment,
+        capture_output=True,
+        check=False,
+        timeout=5,
+    )
 
 
 def assert_refused(result: subprocess.CompletedProcess[bytes]) -> None:
@@ -304,6 +331,7 @@ def test_plan_includes_fresh_native_config_without_live_file_dependencies(
         ),
         "STATE ddns 0 0",
     ]
+    assert "WAN absent unconfirmed - 0" in lines
     assert "STATE ip_sync 0 0" in lines
     assert "STATE cloudflared 0 0" in lines
     assert not any(
@@ -320,6 +348,70 @@ def test_plan_rejects_configured_legacy_but_preserves_unconfigured_legacy(
     legacy = json.loads(config)
     legacy["ddns"]["configured"] = True
     assert_refused(invoke_payload(commands, tmp_path, serialize(legacy), "plan"))
+
+
+@pytest.mark.parametrize(
+    ("state", "primary", "sources", "expected"),
+    [
+        (
+            "confirmed",
+            "wan:50",
+            [{"id": "wan:50", "kind": "firmware", "unit": 50}],
+            "WAN inventory confirmed wan:50 1",
+        ),
+        ("deferred", None, [], "WAN inventory deferred - 0"),
+        (
+            "deferred",
+            None,
+            [{"id": "wan:50", "kind": "firmware", "unit": 50}],
+            "WAN inventory deferred - 1",
+        ),
+        (
+            "deferred",
+            "wan:50",
+            [{"id": "wan:50", "kind": "firmware", "unit": 50}],
+            "WAN inventory deferred wan:50 1",
+        ),
+        (
+            "confirmed",
+            "manual:1",
+            [{"id": "manual:1", "kind": "interface", "interface": "wan-private"}],
+            "WAN inventory confirmed manual:1 1",
+        ),
+    ],
+)
+def test_plan_receipt_summarizes_wan_preferences_without_manual_interface_name(
+    commands, schema2_config, tmp_path, state, primary, sources, expected
+) -> None:
+    value = json.loads(schema2_config)
+    value["network"]["wan_inventory"] = {
+        "schema": 1,
+        "state": state,
+        "primary": primary,
+        "sources": sources,
+    }
+    result = invoke_payload(commands, tmp_path, serialize(value), "plan")
+    lines = plan_rows(result)
+    assert expected in lines
+    reviewed = review_plan(commands, tmp_path, result.stdout)
+    assert reviewed.returncode == 0, reviewed.stderr
+    assert f"CFMGR-ARCHIVE-EFFECT 1 {expected} END\n".encode() in reviewed.stdout
+    assert "wan-private" not in result.stdout.decode()
+
+
+def test_schema1_plan_receipt_retains_legacy_string_preference(
+    commands, config, tmp_path
+) -> None:
+    value = json.loads(config)
+    value["network"]["selected_wan"] = "wan1"
+    result = invoke_payload(commands, tmp_path, serialize(value), "plan")
+    lines = plan_rows(result)
+    assert "WAN legacy retained wan:1 0" in lines
+    reviewed = review_plan(commands, tmp_path, result.stdout)
+    assert reviewed.returncode == 0, reviewed.stderr
+    assert (
+        b"CFMGR-ARCHIVE-EFFECT 1 WAN legacy retained wan:1 0 END\n" in reviewed.stdout
+    )
 
 
 def test_token_mode_needs_no_yaml_or_certificate_and_keeps_token_opaque(

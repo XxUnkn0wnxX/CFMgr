@@ -25,7 +25,7 @@ def browser_item(index=1, name=BROWSER_NAME):
     )
 
 
-def browser_effects():
+def browser_effects(wan_effect="WAN inventory confirmed manual:1 1"):
     rows = [
         "SCHEMA 2 current",
         "STATE ddns 1 0",
@@ -41,19 +41,28 @@ def browser_effects():
         "DRAFT ip_sync incomplete",
         f"EXTERNAL data.cloudflared.yaml {b'/opt/external-ca.pem'.hex()} input-reference",
         "NOTE history.ddns unavailable - entware-unavailable",
+        wan_effect,
         "CURRENT readiness-unknown auth-unknown",
         "RESTORE current-components fresh-admission path-remapping history-may-defer",
     ]
     return "".join(f"CFMGR-ARCHIVE-EFFECT 1 {row} END\n" for row in rows)
 
 
-def run_browser_menu(shell, tmp_path, answers, *, scenario="normal", selected=None):
+def run_browser_menu(
+    shell,
+    tmp_path,
+    answers,
+    *,
+    scenario="normal",
+    selected=None,
+    wan_effect="WAN inventory confirmed manual:1 1",
+):
     log = tmp_path / "browser-actions.log"
     frame = (
         "CFMGR-ARCHIVE-BROWSER 1 verified 0 1 END\n"
         + browser_item()
         + f"CFMGR-ARCHIVE-RECEIPT 1 123 456 {'a' * 64} END\n"
-        + browser_effects()
+        + browser_effects(wan_effect)
     )
     drives = []
     for index, mount in enumerate(("/tmp/mnt/Drive one", "/tmp/mnt/Drive two"), 1):
@@ -129,6 +138,33 @@ cfmgr_backup_menu
     return result
 
 
+@pytest.mark.parametrize(
+    ("wan_effect", "visible"),
+    [
+        (
+            "WAN inventory confirmed wan:50 1",
+            b"confirmed inventory retained (1 selector(s))",
+        ),
+        ("WAN inventory deferred - 0", b"deferred inventory retained (0 selector(s))"),
+        ("WAN inventory deferred - 1", b"deferred inventory retained (1 selector(s))"),
+        ("WAN inventory deferred wan:50 1", b"primary selector wan:50"),
+        ("WAN legacy retained wan:1 0", b"legacy WAN preference retained"),
+    ],
+)
+def test_browser_review_projects_valid_wan_receipts(
+    shell, tmp_path, wan_effect, visible
+):
+    result = run_browser_menu(
+        shell,
+        tmp_path,
+        b"4\n1\n1\n1\n3\nd\n\ne\ne\n",
+        wan_effect=wan_effect,
+    )
+    assert result.returncode == 0, result.stderr
+    assert visible in result.stdout
+    assert b"invalid archive browser result" not in result.stderr
+
+
 def test_browser_uses_alternate_source_and_reuses_verified_details_effects(
     shell, tmp_path
 ):
@@ -145,6 +181,12 @@ def test_browser_uses_alternate_source_and_reuses_verified_details_effects(
     assert b"External dependency: /opt/external-ca.pem" in result.stdout
     assert b"history.ddns: unavailable" in result.stdout
     assert b"Current readiness and provider authentication are unknown" in result.stdout
+    assert (
+        b"WAN: confirmed inventory retained (1 selector(s)); primary selector manual:1"
+        in result.stdout
+    )
+    assert b"Current mappings must be re-observed" in result.stdout
+    assert b"does not enroll IP-Sync or activate a feature" in result.stdout
     assert b"Executable restore and activation are not available yet" in result.stdout
     assert b"Deletion cancelled; archive preserved" in result.stdout
     assert [line.split()[0] for line in result.actions] == ["list", "inspect"]
@@ -180,7 +222,9 @@ def test_browser_delete_passes_exact_receipt_and_reports_actual_outcome(
         )
 
 
-@pytest.mark.parametrize("corruption", ["secret", "name", "missing-state", "bad-hex"])
+@pytest.mark.parametrize(
+    "corruption", ["secret", "name", "missing-state", "bad-hex", "bad-wan"]
+)
 def test_browser_rejects_entire_selected_frame_before_display(
     shell, tmp_path, corruption
 ):
@@ -196,6 +240,10 @@ def test_browser_rejects_entire_selected_frame_before_display(
         frame = frame.replace(BROWSER_NAME, "CFbackup-111.tar.gz")
     elif corruption == "missing-state":
         frame = frame.replace("CFMGR-ARCHIVE-EFFECT 1 STATE ddns 1 0 END\n", "")
+    elif corruption == "bad-wan":
+        frame = frame.replace(
+            "CFMGR-ARCHIVE-EFFECT 1 WAN inventory confirmed manual:1 1 END\n", ""
+        )
     else:
         frame = frame.replace(b"/opt/external-ca.pem".hex(), b"secret-sentinel\n".hex())
     result = run_browser_menu(shell, tmp_path, b"4\n1\n1\n3\ne\n", selected=frame)

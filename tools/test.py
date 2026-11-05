@@ -60,6 +60,8 @@ CORE_BATCHES: dict[str, tuple[str, tuple[str, ...]]] = {
             "logging_storage",
             "logging_scribe",
             "config_schema2",
+            "wan_config",
+            "wan_network",
             "config_store",
             "config_observation",
             "manager_settings",

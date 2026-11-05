@@ -112,7 +112,8 @@ def test_browser_review_projects_actual_states_paths_and_history_without_secrets
         "LOG ddns 1 0 1 deadbeef\nLOG ip_sync 0 0 0 -\nLOG cloudflared 0 0 0 -\n"
         f"AUTH private json account tunnel {secret.encode().hex()}\n"
         f"STORAGE source-uuid ext4 {b'/'.hex()} {b'etc/cloudflared'.hex()}\n"
-        "END 12\n"
+        "WAN absent unconfirmed - 0\n"
+        "END 11\n"
     )
     capture.write_text(
         "CFMGR-CAPTURE-PLAN 1 2 7\n"

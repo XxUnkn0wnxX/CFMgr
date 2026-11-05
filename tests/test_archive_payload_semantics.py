@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -219,7 +220,18 @@ def _inventory_for(plan: bytes, *, extra=False) -> bytes:
 def test_semantic_join_accepts_exact_capture_and_refuses_unplanned_file(
     commands, schema2_config, tmp_path
 ):
-    plan = make_plan(commands, tmp_path, serialize(advanced_config(schema2_config)))
+    config = advanced_config(schema2_config)
+    config["network"]["wan_inventory"] = {
+        "schema": 1,
+        "state": "confirmed",
+        "primary": "manual:1",
+        "sources": [
+            {"id": "manual:1", "kind": "interface", "interface": "wan-private"}
+        ],
+    }
+    plan = make_plan(commands, tmp_path, serialize(config))
+    assert b"WAN inventory confirmed manual:1 1\n" in plan
+    assert b"wan-private" not in plan
     yaml = yaml_receipt(
         "/opt/etc/cloudflared/credentials.json",
         TUNNEL,
@@ -249,15 +261,24 @@ def test_semantic_join_accepts_exact_capture_and_refuses_unplanned_file(
 @pytest.fixture
 def archive(archive_io):
     support, ram, mount, _stage, _environment = archive_io
+    aliases = Path(tempfile.mkdtemp(prefix="cfmgr-test-", dir="/tmp"))
+    assert not any(char.isspace() for char in str(aliases))
+    ram_alias = aliases / "ram"
+    backup_alias = aliases / "backup"
+    ram_alias.symlink_to(ram, target_is_directory=True)
+    backup_alias.symlink_to(mount / "CFMgr/backup", target_is_directory=True)
     names = ("../backup.sh", "config.sh")
     for name in names:
         body = (ROOT / "modules/lib" / name).read_text()
         if sys.platform == "darwin" and name.endswith(".sh"):
-            body = body.replace("/proc/self/fd/5", str(ram)).replace(
-                "/proc/self/fd/7", str(mount / "CFMgr/backup")
+            body = body.replace("/proc/self/fd/5", str(ram_alias)).replace(
+                "/proc/self/fd/7", str(backup_alias)
             )
         (support / "modules/lib" / name).write_text(body)
-    return archive_io
+    try:
+        yield archive_io
+    finally:
+        shutil.rmtree(aliases)
 
 
 def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
@@ -265,6 +286,14 @@ def test_real_archive_verifier_runs_payload_callbacks_with_native_tools(
 ):
     _support, _ram, mount, stage, _environment = archive
     config = advanced_config(schema2_config)
+    config["network"]["wan_inventory"] = {
+        "schema": 1,
+        "state": "confirmed",
+        "primary": "manual:1",
+        "sources": [
+            {"id": "manual:1", "kind": "interface", "interface": "wan-private"}
+        ],
+    }
     config["ownership"]["components"] = [
         row
         for row in config["ownership"]["components"]
@@ -416,6 +445,11 @@ printf '%s\\n' "$cfmgr_browser_effects"
     assert b"CFMGR-ARCHIVE-EFFECT 1 STATE cloudflared 1 0 END\n" in result.stdout
     assert b"CFMGR-ARCHIVE-EFFECT 1 CLOUD advanced 1 0 1 1 END\n" in result.stdout
     assert b"CFMGR-ARCHIVE-EFFECT 1 SCHEMA 2 current END\n" in result.stdout
+    assert (
+        b"CFMGR-ARCHIVE-EFFECT 1 WAN inventory confirmed manual:1 1 END\n"
+        in result.stdout
+    )
+    assert b"wan-private" not in result.stdout
     assert sibling.read_bytes() == b"preserve unrelated data\n"
     assert not selected.exists()
     assert (stage / "p00000001").read_bytes() == serialize(config)

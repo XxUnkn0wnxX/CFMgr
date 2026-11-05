@@ -37,7 +37,7 @@ cfmgr_health_begin() {
 cfmgr_health_mode() {
 	cfmgr_health_mode_files=2 cfmgr_health_mode_limit=8 cfmgr_health_mode_get=0
 	case $1 in
-	health-snapshot | health-cloud-pem | health-cloud-decode) cfmgr_health_mode_limit=128 ;;
+	health-snapshot | health-cloud-pem | health-cloud-decode | health-wan-interfaces | health-wan-routes) cfmgr_health_mode_limit=128 ;;
 	health-entware-metadata)
 		cfmgr_health_mode_limit=${cfmgr_health_entware_limit:-128}
 		case $cfmgr_health_mode_limit in '' | *[!0-9]* | 0*) return 2 ;; esac
@@ -49,6 +49,7 @@ cfmgr_health_mode() {
 		;;
 	health-get) cfmgr_health_mode_limit=64 cfmgr_health_mode_files=4 cfmgr_health_mode_get=1 ;;
 	health-render) cfmgr_health_mode_limit=384 ;;
+	health-wan-project) cfmgr_health_mode_limit=32 ;;
 	health-flat-list) cfmgr_health_mode_limit=64 ;;
 	health-log-debug | health-log-hex | health-log-pids) cfmgr_health_mode_limit=128 ;;
 	health-log-process | health-log-argv) cfmgr_health_mode_limit=64 ;;
@@ -66,7 +67,7 @@ cfmgr_health_mode() {
 	# Only finite typed receipts/empty successful probes use the tiny tier.
 	# Native ash:1024 bytes/file; supported host reservation:2048 bytes/file.
 	health-protected | health-metadata-check | health-flat-check | health-package-check | health-hooks-cron | health-hooks-frame | health-backup-observe | health-backup-uuid | health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
-		health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
+		health-wan-config | health-wan-nvram | health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
 		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | \
 		health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | \
 		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | \
@@ -193,7 +194,7 @@ cfmgr_health_stage_reserve() {
 		*) case $2 in 32768 | 65536) ;; *) return 2 ;; esac ;;
 		esac
 		;;
-	*) case $1:$2 in comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
+	*) case $1:$2 in wan.raw:196608 | comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
 		[ "$cfmgr_health_files" -ge 1264 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
@@ -946,7 +947,7 @@ cfmgr_health_collect() {
 	# Storage observation descriptors must never alias the private curl request.
 	exec 6<&- 7<&-
 	cfmgr_health_ipv6_ready=0
-	if cfmgr_health_run health-current /usr/bin/awk "$cfmgr_source/modules/status.sh" /proc/net/if_inet6 "${cfmgr_status_interface:-unknown}" - &&
+	if [ "${cfmgr_status_interface_ready:-0}" = 1 ] && cfmgr_health_run health-current /usr/bin/awk "$cfmgr_source/modules/status.sh" /proc/net/if_inet6 "$cfmgr_status_interface" - &&
 		[ "$cfmgr_probe_exit" = 0 ] && [ ! -s "$cfmgr_probe_stderr" ]; then cfmgr_health_ipv6_ready=1; else [ "$?" != 3 ] || return 3; fi
 	if [ -n "$cfmgr_health_inventory" ] && [ "$cfmgr_health_transport" = ready ] && [ "$cfmgr_health_clock_ready" = 1 ]; then
 		cfmgr_health_provider_collect || return $?
@@ -1076,7 +1077,7 @@ cfmgr_status_cleanup() {
 		[ -e "$cfmgr_status_file" ] || continue
 		[ -f "$cfmgr_status_file" ] && [ ! -L "$cfmgr_status_file" ] || return 1
 		cfmgr_status_count=$((cfmgr_status_count + 1))
-		[ "$cfmgr_status_count" -le 104 ] || return 1
+		[ "$cfmgr_status_count" -le "${cfmgr_status_cleanup_limit:-168}" ] || return 1
 	done
 	for cfmgr_status_file in "$cfmgr_status_context"/*; do
 		[ -f "$cfmgr_status_file" ] || continue
@@ -1124,7 +1125,7 @@ _cfmgr_status_native_work() {
 	ulimit -c 0 || return 1
 	cfmgr_health_active=0 cfmgr_status_page=basic
 	for cfmgr_status_path in "$cfmgr_source/modules/helpers/worker.sh" "$cfmgr_source/modules/lib/config.sh" \
-		"$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/storage.sh"; do
+		"$cfmgr_source/modules/status.sh" "$cfmgr_source/modules/lib/storage.sh" "$cfmgr_source/modules/lib/network.sh"; do
 		if [ ! -f "$cfmgr_status_path" ] || [ -L "$cfmgr_status_path" ] ||
 			! /usr/bin/awk 'NR!=1 || $3!=0 || $1!~/^-/ || substr($1,6,1)=="w" || substr($1,9,1)=="w" { bad=1 } END { exit NR!=1 || bad }' <<EOF_STATUS_METADATA; then
 $(/bin/ls -ldn "$cfmgr_status_path")
@@ -1186,7 +1187,7 @@ EOF_STATUS_METADATA
 cfmgr_status_work() {
 	case ${cfmgr_status_page:-basic} in full) ;; *) printf '\nCFMgr %s - local status\n' "$CFMGR_VERSION" ;; esac
 	# Each independent failure retains the remaining native/local report.
-	cfmgr_status_now=0 cfmgr_status_boot=unknown cfmgr_status_wan=auto cfmgr_status_clock=0 cfmgr_status_interface=unknown
+	cfmgr_status_now=0 cfmgr_status_boot=unknown cfmgr_status_wan=unknown cfmgr_status_clock=0 cfmgr_status_interface=unknown cfmgr_status_interface_ready=0
 	if cfmgr_status_run status-date /bin/date; then
 		IFS= read -r cfmgr_status_now <"$cfmgr_probe_stdout"
 		case $cfmgr_status_now in '' | *[!0-9]* | 0*) cfmgr_status_now=0 ;; esac
@@ -1208,12 +1209,6 @@ cfmgr_status_work() {
 	if cfmgr_status_snapshot "$cfmgr_source/config"; then
 		cfmgr_status_config=$cfmgr_status_snapshot_file
 		cfmgr_status_config_bytes=$cfmgr_status_snapshot_bytes
-		if cfmgr_status_project select; then
-			IFS= read -r cfmgr_status_wan <"$cfmgr_probe_stdout"
-		else
-			[ "$?" != 3 ] || return 3
-			cfmgr_status_config=unavailable
-		fi
 	else
 		[ "$?" != 3 ] || return 3
 	fi
@@ -1221,24 +1216,12 @@ cfmgr_status_work() {
 	for cfmgr_status_key in productid firmver buildno extendno ntp_ready; do
 		cfmgr_status_nvram "$cfmgr_status_key" || return $?
 	done
-	if [ "$cfmgr_status_wan" = auto ]; then
-		cfmgr_status_nvram wan0_primary || return $?
-		cfmgr_status_primary0=$cfmgr_status_value
-		cfmgr_status_nvram wan1_primary || return $?
-		case $cfmgr_status_primary0:$cfmgr_status_value in 1:0) cfmgr_status_wan=0 ;; 0:1) cfmgr_status_wan=1 ;; *) cfmgr_status_wan=unknown ;; esac
-	fi
-	printf 'Selected WAN: %s\n' "$cfmgr_status_wan"
-	case $cfmgr_status_wan in 0 | 1)
-		cfmgr_status_nvram "wan${cfmgr_status_wan}_proto" || return $?
-		case $cfmgr_status_value in
-		dhcp | static) cfmgr_status_nvram "wan${cfmgr_status_wan}_ifname" || return $? ;;
-		pppoe | pptp | l2tp) cfmgr_status_nvram "wan${cfmgr_status_wan}_pppoe_ifname" || return $? ;;
-		*) printf 'WAN interface: Unknown (unsupported protocol)\n' ;;
-		esac
-		cfmgr_status_nvram "wan${cfmgr_status_wan}_ipaddr" || return $?
-		;;
-	*) printf 'WAN interface/address: Unknown\n' ;;
-	esac
+	if [ "$cfmgr_status_config" != unavailable ]; then
+		if cfmgr_status_wan_config && cfmgr_status_wan_selected; then :; else
+			[ "$?" != 3 ] || return 3
+			printf 'Selected WAN: Unknown\nWAN interface/address: Unknown\n'
+		fi
+	else printf 'Selected WAN: Unknown\nWAN interface/address: Unknown\n'; fi
 	for cfmgr_status_target in /jffs /opt; do
 		if cfmgr_status_mount "$cfmgr_status_target"; then
 			printf '%s mount: ' "$cfmgr_status_target"
@@ -1330,15 +1313,104 @@ cfmgr_status_project() {
 		"$CFMGR_REPOSITORY" "$CFMGR_BRANCH" "$cfmgr_status_wan" "$cfmgr_status_clock" "$cfmgr_status_config_bytes"
 }
 
+# The callback owns every child in the existing Status/Health context. A
+# nonzero child is missing evidence; unresolved ownership stops immediately.
+cfmgr_wan_action() {
+	cfmgr_wan_action_kind=$1
+	shift
+	case $cfmgr_wan_action_kind in
+	nvram) set -- status-wan-nvram /bin/nvram "$@" ;;
+	interfaces) set -- status-wan-interfaces /sbin/ifconfig ;;
+	routes) set -- status-wan-routes /sbin/route ;;
+	project) set -- status-wan-project /usr/bin/awk "$cfmgr_source/modules/lib/network.sh" "$@" ;;
+	*) return 2 ;;
+	esac
+	if cfmgr_status_run "$@"; then cfmgr_wan_action_code=0; else cfmgr_wan_action_code=$?; fi
+	[ "$cfmgr_wan_action_code" != 3 ] || return 3
+	[ "$cfmgr_wan_action_code" = 0 ] || return 1
+	cfmgr_wan_probe_output=$cfmgr_probe_stdout cfmgr_wan_probe_error=$cfmgr_probe_stderr cfmgr_wan_probe_exit=$cfmgr_probe_exit
+}
+
+cfmgr_status_wan_config() {
+	cfmgr_status_run status-wan-config /usr/bin/awk "$cfmgr_source/modules/lib/config.sh" "$cfmgr_status_config" "$cfmgr_status_config_bytes" || return $?
+	IFS=' ' read -r cfmgr_status_wan_tag cfmgr_status_wan_version cfmgr_status_wan_generation cfmgr_status_wan_origin cfmgr_status_wan_state cfmgr_status_wan_primary cfmgr_status_wan_selectors cfmgr_status_wan_end cfmgr_status_wan_extra <"$cfmgr_probe_stdout" || return 1
+	[ "$cfmgr_status_wan_tag:$cfmgr_status_wan_version:$cfmgr_status_wan_end:$cfmgr_status_wan_extra" = CFMGR-WAN-CONFIG:1:END: ] || return 1
+	{
+		IFS= read -r cfmgr_status_wan_line || return 1
+		[ "$cfmgr_status_wan_line" = "CFMGR-WAN-CONFIG 1 $cfmgr_status_wan_generation $cfmgr_status_wan_origin $cfmgr_status_wan_state $cfmgr_status_wan_primary $cfmgr_status_wan_selectors END" ] || return 1
+		IFS= read -r cfmgr_status_wan_extra_line && return 1
+		[ -z "$cfmgr_status_wan_extra_line" ]
+	} <"$cfmgr_probe_stdout"
+}
+
+# Decode only the trusted bounded printable-ASCII interface token. No result is
+# interpreted by a shell or used as a command operand.
+cfmgr_status_wan_decode() {
+	cfmgr_status_wan_hex=$1 cfmgr_status_wan_decoded=''
+	case $cfmgr_status_wan_hex in '' | - | *[!0-9a-f]*) return 1 ;; esac
+	[ "${#cfmgr_status_wan_hex}" -le 30 ] && [ "$((${#cfmgr_status_wan_hex} % 2))" = 0 ] || return 1
+	while [ -n "$cfmgr_status_wan_hex" ]; do
+		cfmgr_status_wan_tail=${cfmgr_status_wan_hex#??}
+		cfmgr_status_wan_byte=${cfmgr_status_wan_hex%"$cfmgr_status_wan_tail"}
+		case $cfmgr_status_wan_byte in 2[1-9a-e] | 3[0-9b-f] | [4-6][0-9a-f] | 7[0-9a-e]) ;; *) return 1 ;; esac
+		cfmgr_status_wan_octal=$(printf '%03o' "$((0x$cfmgr_status_wan_byte))") || return 1
+		cfmgr_status_wan_char=$(printf '%b' "\\$cfmgr_status_wan_octal") || return 1
+		cfmgr_status_wan_decoded=$cfmgr_status_wan_decoded$cfmgr_status_wan_char
+		cfmgr_status_wan_hex=$cfmgr_status_wan_tail
+	done
+	case $cfmgr_status_wan_decoded in . | ..) return 1 ;; esac
+}
+
+cfmgr_status_wan_selected() {
+	cfmgr_wan_context=$cfmgr_status_context
+	if [ "${cfmgr_health_active:-0}" = 1 ]; then
+		cfmgr_health_stage_reserve wan.raw 196608 || return $?
+		cfmgr_wan_deadline=$((cfmgr_health_collect_deadline - 1))
+	else cfmgr_wan_deadline=$((cfmgr_status_deadline - 1)); fi
+	cfmgr_wan_collect selected "$cfmgr_status_wan_generation" "$cfmgr_status_wan_origin" "$cfmgr_status_wan_state" "$cfmgr_status_wan_primary" "$cfmgr_status_wan_selectors" || return $?
+	cfmgr_status_wan_effective=- cfmgr_status_wan_map=unknown cfmgr_status_wan_ifhex=- cfmgr_status_wan_ip=- cfmgr_status_wan_class=unknown
+	while IFS=' ' read -r cfmgr_status_wan_type cfmgr_status_wan_a cfmgr_status_wan_b cfmgr_status_wan_c cfmgr_status_wan_d cfmgr_status_wan_e cfmgr_status_wan_f cfmgr_status_wan_g cfmgr_status_wan_h cfmgr_status_wan_i cfmgr_status_wan_j cfmgr_status_wan_k cfmgr_status_wan_l; do
+		case $cfmgr_status_wan_type in
+		PRIMARY) cfmgr_status_wan_effective=$cfmgr_status_wan_b cfmgr_status_wan_map=$cfmgr_status_wan_c cfmgr_status_wan_ifhex=$cfmgr_status_wan_d ;;
+		SOURCE) if [ "$cfmgr_status_wan_a" = "$cfmgr_status_wan_effective" ]; then cfmgr_status_wan_ip=$cfmgr_status_wan_i cfmgr_status_wan_class=$cfmgr_status_wan_k; fi ;;
+		esac
+	done <"$cfmgr_wan_output"
+	printf 'Selected WAN: %s (saved %s; mapping %s)\n' "$cfmgr_status_wan_effective" "$cfmgr_status_wan_primary" "$cfmgr_status_wan_map"
+	if [ "$cfmgr_status_wan_map" = coherent ] && cfmgr_status_wan_decode "$cfmgr_status_wan_ifhex"; then
+		cfmgr_status_interface=$cfmgr_status_wan_decoded cfmgr_status_interface_ready=1
+		case $cfmgr_status_wan_effective in wan:0) cfmgr_status_wan=0 ;; wan:1) cfmgr_status_wan=1 ;; esac
+		printf 'WAN interface: %s\n' "$cfmgr_status_interface"
+		printf 'WAN address: %s (%s)\n' "$cfmgr_status_wan_ip" "$cfmgr_status_wan_class"
+	else printf 'WAN interface/address: Unknown\n'; fi
+}
+
+# Manager receives an owned immutable report on stdout, never its temporary path.
+cfmgr_status_wan_inventory() (
+	[ "$#" = 5 ] || exit 2
+	case $1 in '' | *[!0-9]* | 0[0-9]*) exit 2 ;; esac
+	[ "${#1}" -le 20 ] && [ "${#4}" -le 16 ] && [ "${#5}" -le 1024 ] || exit 2
+	case $2 in absent | legacy | inventory | unresolved) ;; *) exit 2 ;; esac
+	case $3 in unconfirmed | retained | confirmed | deferred | unknown) ;; *) exit 2 ;; esac
+	cfmgr_wan_selectors "$4" "$5" || exit 2
+	cfmgr_health_active=0 cfmgr_status_cleanup_limit=104
+	cfmgr_status_prepare || exit 1
+	cfmgr_wan_context=$cfmgr_status_context cfmgr_wan_deadline=$((cfmgr_status_deadline - 1))
+	if cfmgr_wan_collect inventory "$@"; then cfmgr_status_wan_code=0; else cfmgr_status_wan_code=$?; fi
+	[ "$cfmgr_status_wan_code" != 3 ] || exit 3
+	if [ "$cfmgr_status_wan_code" = 0 ]; then /bin/cat "$cfmgr_wan_output" || cfmgr_status_wan_code=1; fi
+	cfmgr_status_interrupted=0
+	cfmgr_status_cleanup || exit 1
+	exit "$cfmgr_status_wan_code"
+)
+
 cfmgr_status_nvram() {
 	cfmgr_status_value=unknown
 	if cfmgr_status_run status-nvram /bin/nvram "$1" && cfmgr_status_fields nvram "$cfmgr_probe_stdout" "$1"; then
 		IFS= read -r cfmgr_status_value <"$cfmgr_probe_stdout"
-		case $1 in wan0_ifname | wan1_ifname | wan0_pppoe_ifname | wan1_pppoe_ifname) cfmgr_status_interface=$cfmgr_status_value ;; wan0_primary | wan1_primary) return 0 ;; ntp_ready) [ "$cfmgr_status_value" != Ready ] || cfmgr_status_clock=1 ;; esac
+		case $1 in ntp_ready) [ "$cfmgr_status_value" != Ready ] || cfmgr_status_clock=1 ;; esac
 		printf '%s: %s\n' "$1" "$cfmgr_status_value"
 	else
 		[ "$?" != 3 ] || return 3
-		case $1 in wan0_primary | wan1_primary) return 0 ;; esac
 		printf '%s: Unavailable\n' "$1"
 	fi
 }
@@ -1490,7 +1562,7 @@ BEGIN {
         printf "%s\t%s\t%s\t%s\n",s[2],a[6],a[7],a[5]; exit
     }
     if(mode=="health-current") {
-        if(key!~/^[A-Za-z0-9_.:-]+$/ || length(key)>32) exit 1
+        if(key=="" || length(key)>15 || key=="." || key==".." || key~/[^!-~]|[\/:]/) exit 1
         while((getline line < path)==1) {
             if(++n>256 || length(line)>256) exit 1
             if(split(line,a," ")!=6 || a[2]!~/^[0-9a-f]+$/ || length(a[2])>8 || a[3]!~/^[0-9a-f]+$/ || length(a[3])>2 || hl_number(a[3])>128) continue
@@ -1613,26 +1685,14 @@ function projection(mode,path,key,    line,n,a,i,value,bad,count,out) {
             out="complete"
         } else if(mode=="nvram") {
             if(count!=1 || length(line)>128 || line=="" || line~/[^ -~]/) { bad=1; break }
-            if(key~/_ipaddr$/) { if(!native_ipv4(line)) { bad=1; break }; out=line " (" native_class(line) ")" }
-            else if(key=="ntp_ready") { if(line=="1") out="Ready"; else if(line=="0") out="Not ready"; else bad=1 }
-            else if(key~/_primary$/) { if(line!~/^[01]$/) bad=1; else out=line }
-            else { if(line!~/^[A-Za-z0-9_.:-]+$/) bad=1; else out=line }
+            if(key=="ntp_ready") { if(line=="1") out="Ready"; else if(line=="0") out="Not ready"; else bad=1 }
+            else if(key~/^(productid|firmver|buildno|extendno)$/) { if(line!~/^[A-Za-z0-9_.:-]+$/) bad=1; else out=line }
+            else bad=1
         } else { bad=1; break }
     }
     close(path)
     if(bad || !count || out=="" || (mode=="space" && count!=2)) exit 1
     print out
-}
-function native_ipv4(s,    n,a,i) { n=split(s,a,"."); if(n!=4) return 0; for(i=1;i<=4;i++) if(a[i]!~/^(0|[1-9][0-9]*)$/ || length(a[i])>3 || a[i]>255) return 0; return 1 }
-function native_class(s,    a) {
-    split(s,a,".")
-    if(a[1]==100 && a[2]>=64 && a[2]<=127) return "Shared-CGNAT"
-    if(a[1]==10 || (a[1]==172 && a[2]>=16 && a[2]<=31) || (a[1]==192 && a[2]==168)) return "Private"
-    if(a[1]==0 || a[1]==127 || a[1]>=224 || (a[1]==169 && a[2]==254) ||
-        (a[1]==192 && a[2]==0 && (a[3]==0 || a[3]==2)) ||
-        (a[1]==198 && (a[2]==18 || a[2]==19 || (a[2]==51 && a[3]==100))) ||
-        (a[1]==203 && a[2]==0 && a[3]==113)) return "Non-public"
-    return "Public"
 }
 '
 	# CFMGR-AWK-END status_native
@@ -1660,14 +1720,7 @@ BEGIN {
     if (config_schema != "1" && config_schema != "2") exit 1
     generation=number(field(1,"generation"))
     if (generation !~ /^[1-9][0-9]*$/ || length(generation)>20) exit 1
-    network=object(field(1,"network")); selected=field(network,"selected_wan")
-    wan="auto"
-    if (selected && cfmgr_json_tree_kind[selected]!="null") {
-        value=number(selected); if(value=="") value=text(selected,8)
-        if(value=="wan0") value="0"; if(value=="wan1") value="1"
-        wan=(value=="0" || value=="1" ? value : "unknown")
-    }
-    if (ENVIRON["CFMGR_STATUS_MODE"]=="select") { print wan; exit }
+    wan=ENVIRON["CFMGR_STATUS_WAN"]
     if (ENVIRON["CFMGR_STATUS_MODE"]!="render") exit 1
     now=ENVIRON["CFMGR_STATUS_NOW"]; clock=(ENVIRON["CFMGR_STATUS_CLOCK"]=="1")
     if (now !~ /^[1-9][0-9]*$/ || length(now)>10) clock=0
@@ -1698,7 +1751,6 @@ BEGIN {
     print "Manager updates: saved Check=" check_updates "; saved Auto=" auto_update "; effective Check=" effective_check "; effective Auto=" effective_auto
     if(developer=="On") print "Note: developer mode suppresses manager updates; saved preferences are retained"
     history=object(field(1,"history")); logging=object(field(1,"logging"))
-    if(wan=="unknown") print "Issue: invalid selected WAN; recover network settings"
     addresses(object(field(object(field(history,"network")),"status")))
     names[1]="ddns"; names[2]="ip_sync"; names[3]="cloudflared"
     labels[1]="DDNS"; labels[2]="IP-Sync"; labels[3]="Cloudflared"
@@ -2220,7 +2272,7 @@ BEGIN {
             index(clean,"buildno:")==1 || index(clean,"extendno:")==1 || index(clean,"/jffs ")==1 || index(clean,"/opt ")==1) {
             current_group="Router/resources"; current_feature=""
         }
-        else if (index(clean,"Selected WAN:")==1 || index(clean,"WAN interface")==1 || index(clean,"ntp_ready:")==1 ||
+        else if (index(clean,"Selected WAN:")==1 || index(clean,"WAN interface")==1 || index(clean,"WAN address:")==1 || index(clean,"ntp_ready:")==1 ||
             index(clean,"Recorded public IPv4")==1 || index(clean,"Recorded eligible IPv6")==1 ||
             index(clean,"Issue: invalid selected WAN")==1) { current_group="Network"; current_feature="" }
         else if (index(clean,"Configuration:")==1 || index(clean,"Manager ")==1 || index(clean,"Installation:")==1 ||

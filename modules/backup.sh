@@ -2058,6 +2058,11 @@ cfmgr_archive_browser_ui_validate() {
 	CFMGR_BROWSER_UI_ACTION=$cfmgr_browser_ui_action CFMGR_BROWSER_UI_NAME=${cfmgr_browser_ui_name:-} /usr/bin/awk '
 function bad(){failed=1;exit 1}
 function uint(s,n){return s~/^(0|[1-9][0-9]*)$/ && length(s)<=n}
+function wan_id(s,    n){
+    if(s~/^wan:(0|[1-9][0-9]*)$/){n=substr(s,5);return length(n)<=3 && n+0<=255}
+    if(s~/^manual:[1-9][0-9]*$/){n=substr(s,8);return length(n)<=2 && n+0<=32}
+    return 0
+}
 function hex(s,n, i,c){
     if(s=="" || length(s)%2 || length(s)>2*n || s~/[^0-9a-f]/)return 0
     for(i=1;i<=length(s);i+=2){c=(index("0123456789abcdef",substr(s,i,1))-1)*16+index("0123456789abcdef",substr(s,i+1,1))-1;if(c<32 || c>126)return 0}
@@ -2074,6 +2079,16 @@ function effect( tag){
     else if(tag=="CLOUD") {if(NF!=9 || $4!~/^(-|token|advanced)$/ || !flag($5) || !flag($6) || !flag($7) || !flag($8) || cloud++)bad()}
     else if(tag=="LOG") {if(NF!=9 || !feature($4) || !flag($5) || !flag($6) || !flag($7) || !flag($8) || logging[$4]++)bad()}
     else if(tag=="STORAGE") {if(NF!=8 || $4!~/^[A-Za-z0-9_.:-]+$/ || length($4)>256 || $5!~/^[A-Za-z0-9_.-]+$/ || !hex($6,1024) || !hex($7,1024) || storage++)bad()}
+    else if(tag=="WAN") {
+        if(NF!=8 || wan++ || $4!~/^(absent|legacy|inventory|unresolved)$/ || $5!~/^(unconfirmed|retained|confirmed|deferred|unknown)$/ || !($6=="-" || wan_id($6)) || $7!~/^(0|[1-9][0-9]?)$/ || $7+0>16)bad()
+        if($4=="absent" && ($5!="unconfirmed" || $6!="-" || $7!=0))bad()
+        if($4=="legacy" && ($5!="retained" || $6!~/^wan:[01]$/ || $7!=0))bad()
+        if($4=="unresolved" && ($5!="unknown" || $6!="-" || $7!=0))bad()
+        if($4=="inventory" && $5!~/^(confirmed|deferred)$/)bad()
+        if($4=="inventory" && $5=="confirmed" && ($6=="-" || $7==0))bad()
+        if($4=="inventory" && $5=="deferred" && $7==0 && $6!="-")bad()
+        wan_origin=$4;wan_state=$5;wan_primary=$6;wan_count=$7
+    }
     else if(tag=="FILE") {if(NF!=9 || !role($4) || $5!~/^(jffs|entware)$/ || !hex($6,1024) || !uint($7,19) || $8!~/^(whole|prefix|recovered)$/ || files[$4 SUBSEP $6]++)bad();filecount++}
     else if(tag=="EXTERNAL") {if(NF!=7 || $4!="data.cloudflared.yaml" || !hex($5,1024) || $6!="input-reference")bad()}
     else if(tag=="NOTE") {if(NF!=8 || !role($4) || $5!~/^(included|absent|unavailable|external|not_applicable)$/ || ($6!="-" && !hex($6,1024)) || $7!~/^[a-z][a-z0-9-]*$/ || length($7)>64)bad()}
@@ -2105,7 +2120,7 @@ END {
     if(!done || items!=count)exit 1
     action=ENVIRON["CFMGR_BROWSER_UI_ACTION"]
     if(action=="list" && ((code==0 && result=="listed") || (code==1 && result=="incomplete"))) {if(receipt || effects || pending!=0)exit 1;exit 0}
-    if(((action~/^(inspect|verify|review)$/ && code==0 && result=="verified" && pending==0) || (action=="delete" && result=="deleted" && ((code==0 && pending==0) || (code~/^[13]$/ && pending==1)))) && count==1 && receipt==1 && schema==1 && storage==1 && current==1 && restore==1 && state["ddns"]==1 && state["ip_sync"]==1 && state["cloudflared"]==1 && filecount>=2)exit 0
+    if(((action~/^(inspect|verify|review)$/ && code==0 && result=="verified" && pending==0) || (action=="delete" && result=="deleted" && ((code==0 && pending==0) || (code~/^[13]$/ && pending==1)))) && count==1 && receipt==1 && schema==1 && storage==1 && current==1 && restore==1 && wan==1 && state["ddns"]==1 && state["ip_sync"]==1 && state["cloudflared"]==1 && filecount>=2)exit 0
     if(count || receipt || effects)exit 1
     if(code==1 && result~/^(unavailable|recovery)$/)exit 0
     if(code==3 && result=="unresolved" && pending==1)exit 0
@@ -2252,7 +2267,19 @@ cfmgr_archive_browser_ui_review() {
 		NOTE) printf '%s: %s (%s).\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" "$cfmgr_browser_e_d" ;;
 		DRAFT) printf '%s: inert saved draft (%s); resume validation before completing setup.\n' "$cfmgr_browser_e_a" "$cfmgr_browser_e_b" ;;
 		CURRENT) printf '%s\n' 'Current readiness and provider authentication are unknown; archived history grants neither.' ;;
-		RESTORE) printf '%s\n' 'Restore needs current components, fresh local ownership and readiness/auth checks. Configured Off stays Off; never-configured features remain inactive. History may be deferred when Entware/Scribe is unavailable. Remote references cannot recreate deleted provider objects.' ;;
+		RESTORE) printf '%s\n' 'Restore needs current components, fresh local ownership and readiness/auth checks. Configured Off stays Off; never-configured features remain inactive. History may be deferred when Entware/Scribe is unavailable. Remote references cannot recreate deleted provider objects. Current WAN mappings must be re-observed; saved preferences do not enroll IP-Sync or activate a feature.' ;;
+		WAN)
+			case $cfmgr_browser_e_a:$cfmgr_browser_e_b in
+			absent:unconfirmed) cfmgr_browser_wan='no saved WAN inventory' ;;
+			legacy:retained) cfmgr_browser_wan='legacy WAN preference retained' ;;
+			inventory:confirmed) cfmgr_browser_wan="confirmed inventory retained ($cfmgr_browser_e_d selector(s))" ;;
+			inventory:deferred) cfmgr_browser_wan="deferred inventory retained ($cfmgr_browser_e_d selector(s))" ;;
+			unresolved:unknown) cfmgr_browser_wan='unresolved legacy WAN preference retained' ;;
+			*) return 3 ;;
+			esac
+			[ "$cfmgr_browser_e_c" = - ] || cfmgr_browser_wan="$cfmgr_browser_wan; primary selector $cfmgr_browser_e_c"
+			printf 'WAN: %s. Current mappings must be re-observed; this does not enroll IP-Sync or activate a feature.\n' "$cfmgr_browser_wan"
+			;;
 		esac
 	done <<EOF_BROWSER_REVIEW
 $cfmgr_browser_selected_effects
@@ -5383,6 +5410,11 @@ cfmgr_backup_awk_backup_payload_index() {
 # Caller bounds and owns both immutable inputs. No source files are opened here.
 # ARGV: config-plan YAML-receipt-or-dash. Output is private; AUTH contains secrets.
 function bx_fail() { bx_bad=1; exit 1 }
+function bx_wan_id(s,    n){
+    if(s~/^wan:(0|[1-9][0-9]*)$/){n=substr(s,5);return length(n)<=3 && n+0<=255}
+    if(s~/^manual:[1-9][0-9]*$/){n=substr(s,8);return length(n)<=2 && n+0<=32}
+    return 0
+}
 function bx_hex(s,    i,out) {
     out=""; for(i=1;i<=length(s);i++) out=out sprintf("%02x",bx_ord[substr(s,i,1)])
     return out
@@ -5445,6 +5477,18 @@ function bx_read_plan(path,    row,a,n,lines,ended,role) {
         } else if(a[1]=="BACKUP") {
             if(n!=4 || bx_backup++)bx_fail()
             bx_backup_frame=row
+        } else if(a[1]=="WAN") {
+            if(n!=5 || bx_wan++ || a[2]!~/^(absent|legacy|inventory|unresolved)$/ || a[3]!~/^(unconfirmed|retained|confirmed|deferred|unknown)$/ || !(a[4]=="-" || bx_wan_id(a[4])) || a[5]!~/^(0|[1-9][0-9]?)$/ || a[5]+0>16)bx_fail()
+            if(a[2]=="absent" && (a[3]!="unconfirmed" || a[4]!="-" || a[5]!=0))bx_fail()
+            if(a[2]=="legacy" && (a[3]!="retained" || a[4]!~/^wan:[01]$/ || a[5]!=0))bx_fail()
+            if(a[2]=="unresolved" && (a[3]!="unknown" || a[4]!="-" || a[5]!=0))bx_fail()
+            if(a[2]=="inventory" && a[3]!~/^(confirmed|deferred)$/)bx_fail()
+            if(a[2]=="inventory") {
+                if(a[3]=="confirmed" && a[4]!="-" && a[5]>0){}
+                else if(a[3]=="deferred" && (a[5]==0 ? a[4]=="-" : (a[4]=="-" || bx_wan_id(a[4])))){}
+                else bx_fail()
+            }
+            bx_wan_origin=a[2];bx_wan_state=a[3];bx_wan_primary=a[4];bx_wan_count=a[5]
         } else if(a[1]=="STATE") {
             if(n!=4 || bx_state_seen[a[2]]++)bx_fail()
             bx_state_configured[a[2]]=a[3]
@@ -5456,7 +5500,7 @@ function bx_read_plan(path,    row,a,n,lines,ended,role) {
         } else if(a[1]!~/^(STORAGE|LEGACY|WRITER)$/)bx_fail()
     }
     close(path)
-    if(!ended || bx_nfiles<2 || bx_file_role[1]!="manager.config" || bx_file_role[2]!="manager.catalog" || bx_backup!=1)bx_fail()
+    if(!ended || bx_nfiles<2 || bx_file_role[1]!="manager.config" || bx_file_role[2]!="manager.catalog" || bx_backup!=1 || bx_wan!=1)bx_fail()
 }
 function bx_yaml(path,    row,a,n,lines,ended,inputs,controls,ref,identity,key,chosen,value) {
     if(path=="-") { if(bx_files["data.cloudflared.yaml"])bx_fail();return }
@@ -5685,7 +5729,7 @@ function bp_role_path(role,path,    feature) {
         else if(path!="/opt/var/log/" feature ".log") reject()
     }
 }
-function bp_plan(    schema,generation,storage,features,i,name,feature,cloud,refs,paths,identity,registry,record,key,kind,owners,item,role,path,gen,sha,logging,policy,method,configured,runtime,cert,live,recovery,yaml,json) {
+function bp_plan(    schema,generation,storage,features,i,name,feature,cloud,refs,paths,identity,registry,record,key,kind,owners,item,role,path,gen,sha,logging,policy,method,configured,runtime,cert,live,recovery,yaml,json,wan_count) {
     if(!co_observation_ready || cfmgr_config_mode!="archive-data") reject()
     schema=bp_number(1,"schema"); generation=bp_gen(bp_number(1,"generation"))
     bp_emit("CFMGR-PAYLOAD-PLAN 1 " schema " " generation)
@@ -5703,6 +5747,10 @@ function bp_plan(    schema,generation,storage,features,i,name,feature,cloud,ref
     }
     co_archive_saved()
     bp_emit("BACKUP " co_archive_format " " co_archive_keep " " (co_archive_saved_set=="" ? "-" : co_archive_saved_set))
+    # WAN preferences are retained data. Keep this receipt to safe summary
+    # fields; manual interface names never enter the archive review projection.
+    wan_count=(co_wan_origin=="inventory" ? co_wan_count : 0)
+    bp_emit("WAN " co_wan_origin " " co_wan_state " " co_wan_primary " " wan_count)
     if(schema=="1") { bp_emit("LEGACY unconfigured END"); return }
     registry=bp_field(1,"credentials","object")
     for(i=2;i<=cfmgr_json_tree_count;i++) {
@@ -5896,6 +5944,11 @@ cfmgr_backup_awk_backup_archive_control() {
 # no input selects code or a path outside the admitted CFMgr/backup directory.
 function ac_fail() { ac_bad=1; exit 1 }
 function ac_uint(s) { return s ~ /^(0|[1-9][0-9]*)$/ && length(s)<=19 }
+function ac_wan_id(s,    n){
+    if(s~/^wan:(0|[1-9][0-9]*)$/){n=substr(s,5);return length(n)<=3 && n+0<=255}
+    if(s~/^manual:[1-9][0-9]*$/){n=substr(s,8);return length(n)<=2 && n+0<=32}
+    return 0
+}
 function ac_generation(s) { return s~/^[1-9][0-9]*$/ && length(s)<=20 }
 function ac_hex(s,n) { return length(s)==n && s !~ /[^0-9a-f]/ }
 function ac_uuid(s, a) {
@@ -5953,6 +6006,17 @@ function ac_review(    present) {
         } else if($1=="STORAGE") {
             if(NF!=5 || length($2)>256 || $2!~/^[A-Za-z0-9_.:-]+$/ || $3!~/^[A-Za-z0-9_.-]+$/ || $4!~/^[0-9a-f]+$/ || $5!~/^[0-9a-f]+$/)ac_fail()
             ac_effect($0)
+        } else if($1=="WAN") {
+            if(NF!=5 || wan++ || $2!~/^(absent|legacy|inventory|unresolved)$/ ||
+                $3!~/^(unconfirmed|retained|confirmed|deferred|unknown)$/ ||
+                !($4=="-" || ac_wan_id($4)) || !ac_uint($5) || length($5)>2 || $5+0>16)ac_fail()
+            if($2=="absent" && ($3!="unconfirmed" || $4!="-" || $5!=0))ac_fail()
+            if($2=="legacy" && ($3!="retained" || $4!~/^wan:[01]$/ || $5!=0))ac_fail()
+            if($2=="unresolved" && ($3!="unknown" || $4!="-" || $5!=0))ac_fail()
+            if($2=="inventory" && $3!~/^(confirmed|deferred)$/)ac_fail()
+            if($2=="inventory" && $3=="confirmed" && ($4=="-" || $5==0))ac_fail()
+            if($2=="inventory" && $3=="deferred" && $5==0 && $4!="-")ac_fail()
+            ac_effect("WAN " $2 " " $3 " " $4 " " $5)
         }
     } else if(FILENAME==ARGV[2]) {
         if($1=="EXTERNAL") {
@@ -6002,7 +6066,7 @@ BEGIN {
 END {
     if(ac_bad)exit 1
     if(ac_mode=="review") {
-        if(ac_schema=="" || !ac_states["ddns"] || !ac_states["ip_sync"] || !ac_states["cloudflared"])exit 1
+        if(ac_schema=="" || !ac_states["ddns"] || !ac_states["ip_sync"] || !ac_states["cloudflared"] || wan!=1)exit 1
         ac_effect("CURRENT readiness-unknown auth-unknown")
         ac_effect("RESTORE current-components fresh-admission path-remapping history-may-defer")
         for(ac_i=1;ac_i<=ac_effect_count;ac_i++)print ac_effects[ac_i]

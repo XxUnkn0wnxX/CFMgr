@@ -1835,39 +1835,18 @@ def test_health_terminal_renderer_bounds_maximum_narrow_report_and_rejects_bad_r
     assert oversized.returncode != 0 and oversized.stdout == b""
 
 
-@pytest.mark.parametrize(
-    ("ip", "classification"),
-    [
-        ("10.0.0.1", "Private"),
-        ("172.20.0.1", "Private"),
-        ("100.64.0.1", "Shared-CGNAT"),
-        ("100.128.0.1", "Public"),
-        ("192.0.2.1", "Non-public"),
-        ("192.0.3.1", "Public"),
-        ("198.51.101.1", "Public"),
-        ("203.0.114.1", "Public"),
-    ],
-)
-def test_native_wan_ipv4_classification(commands, tmp_path, ip, classification):
+def test_status_native_nvram_projection_rejects_obsolete_wan_keys(commands, tmp_path):
     raw = tmp_path / "native.out"
-    raw.write_text(ip + "\n")
-    result = subprocess.run(
-        awk_arguments(
-            [
-                *commands[1],
-                "-f",
-                "cfmgr-parser:status_native",
-                "nvram",
-                str(raw),
-                "wan0_ipaddr",
-            ]
-        ),
-        env={**os.environ, "LC_ALL": "C"},
-        capture_output=True,
-        check=False,
-        timeout=3,
-    )
-    assert result.stdout == f"{ip} ({classification})\n".encode()
+    raw.write_text("1\n")
+    for key in ("wan0_primary", "wan0_ipaddr", "unrelated"):
+        result = subprocess.run(
+            [*commands[1], awk_program("status_native"), "nvram", str(raw), key],
+            env={**os.environ, "LC_ALL": "C"},
+            capture_output=True,
+            timeout=3,
+            check=False,
+        )
+        assert result.returncode != 0 and result.stdout == b""
 
 
 @pytest.mark.parametrize(
@@ -1898,6 +1877,7 @@ def status_fixture(tmp_path, tools, shell):
         "modules/status.sh",
         "modules/lib/config.sh",
         "modules/lib/storage.sh",
+        "modules/lib/network.sh",
         "modules/helpers/worker.sh",
     ):
         original = (ROOT / relative).read_text()
@@ -1931,7 +1911,9 @@ def status_fixture(tmp_path, tools, shell):
     fake = tmp_path / "native"
     fake.mkdir()
     bodies = {
-        "nvram": "case $2 in productid) echo GT-AX11000 ;; firmver) echo 3004 ;; buildno) echo 388 ;; extendno) echo 8_4 ;; ntp_ready | wan0_primary) echo 1 ;; wan1_primary) echo 0 ;; wan0_proto) echo dhcp ;; wan0_ifname) echo eth0 ;; wan0_ipaddr) echo 100.64.1.2 ;; *) exit 1 ;; esac\n",
+        "nvram": "case $2 in productid) echo GT-AX11000 ;; firmver) echo 3004 ;; buildno) echo 388 ;; extendno) echo 8_4 ;; ntp_ready | wan0_primary | wan0_enable | sw_mode) echo 1 ;; wans_dualwan) echo 'wan none' ;; wans_mode) echo fo ;; wan_primary | wan0_sbstate_t | wan0_auxstate_t) echo 0 ;; wan0_state_t) echo 2 ;; lan_ifname) echo br0 ;; lan_ipaddr) echo 192.168.1.1 ;; lan_netmask) echo 255.255.255.0 ;; wan0_proto) echo dhcp ;; wan0_ifname) echo eth0 ;; wan0_ipaddr) echo 100.64.1.2 ;; *) exit 1 ;; esac\n",
+        "ifconfig": "printf '%s\\n' 'eth0 Link encap:Ethernet' '          inet addr:100.64.1.2 Bcast:100.64.1.255 Mask:255.255.255.0' '          UP BROADCAST RUNNING MULTICAST MTU:1500'\n",
+        "route": "printf '%s\\n' 'Kernel IP routing table' 'Destination Gateway Genmask Flags Metric Ref Use Iface' '0.0.0.0 100.64.1.1 0.0.0.0 UG 0 0 0 eth0'\n",
         "date": f"echo {NOW}\n",
         "df": "printf '%s\\n' 'Filesystem 1K-blocks Used Available Use% Mounted on' '/dev/fixture 1024 100 924 10% /opt'\n",
         "readlink": "case $2 in /jffs) echo /jffs ;; /opt) echo /mnt/usb/entware ;; *) exit 1 ;; esac\n",
@@ -1951,6 +1933,7 @@ def status_fixture(tmp_path, tools, shell):
 
 STATUS_CONSUMER = r"""
 . "$1/modules/status.sh"
+. "$1/modules/lib/network.sh"
 base=$2 cfmgr_source=$1 scenario=$3
 cfmgr_status_sh=$4 cfmgr_status_awk=$5
 CFMGR_VERSION=0.1.0 CFMGR_REPOSITORY=https://github.com/example/CFMgr CFMGR_BRANCH=develop
@@ -1969,6 +1952,7 @@ cfmgr_prerequisites_run() {
     case $1 in health-*) cfmgr_health_reserve "$1" || return $? ;; status-render | status-render-count) cfmgr_status_final_reserve || return $? ;; esac
     mode=$1 context=$2 helper=$4 selected_tool=$9
     shift 9
+    [ "$mode" != health-current ] || printf '%s\n' "$3" >"$base/current-interface"
     cfmgr_probe_serial=$((${cfmgr_probe_serial:-0}+1))
     cfmgr_probe_stdout=$context/$mode.$cfmgr_probe_serial.out
     cfmgr_probe_stderr=$context/$mode.$cfmgr_probe_serial.err
@@ -1977,10 +1961,14 @@ cfmgr_prerequisites_run() {
     case ${mode#health-} in
     date | status-date) selected_tool=$base/native/date ;;
     native | status-native) selected_tool=$cfmgr_status_awk; set -- "$1" "$base/proc" ;;
-    metadata-check | render | status-render | protected | current | storage | uuid | inventory | fields | config | mount | status-fields | status-config | status-mount) selected_tool=$cfmgr_status_awk ;;
+    metadata-check | render | status-render | protected | current | storage | uuid | inventory | fields | config | mount | wan-config | wan-project | status-wan-config | status-wan-project | status-fields | status-config | status-mount) selected_tool=$cfmgr_status_awk ;;
     realpath | status-realpath) selected_tool=$base/native/readlink ;;
     space | status-space) selected_tool=$base/native/df ;;
-    nvram | status-nvram)
+    wan-interfaces | status-wan-interfaces)
+        [ "$scenario" != unresolved-wan ] || { cfmgr_probe_status=unresolved cfmgr_probe_pid=fixture; return 3; }
+        selected_tool=$base/native/ifconfig ;;
+    wan-routes | status-wan-routes) selected_tool=$base/native/route ;;
+    wan-nvram | status-wan-nvram | nvram | status-nvram)
         selected_tool=$base/native/nvram
         if [ "$scenario" = unresolved ]; then cfmgr_probe_status=unresolved cfmgr_probe_pid=fixture; return 3; fi
         [ "$scenario" != budget ] || fake_now=111
@@ -2006,6 +1994,8 @@ printf 'status-code=%s\n' "$code"
         "budget",
         "unresolved",
         "save-guards",
+        "damaged-unrelated",
+        "inventory-invalid",
     ],
 )
 def test_real_status_consumer_native_resources_and_failure_survival(
@@ -2019,6 +2009,13 @@ def test_real_status_consumer_native_resources_and_failure_survival(
     (source / "setup-state").chmod(0o600)
     if scenario == "corrupt":
         candidate.write_bytes(b"{broken\n")
+    if scenario in {"damaged-unrelated", "inventory-invalid"}:
+        value = json.loads(config)
+        if scenario == "damaged-unrelated":
+            value["ip_sync"] = "damaged"
+        else:
+            value["network"]["wan_inventory"] = {"schema": 2}
+        candidate.write_text(json.dumps(value))
     if scenario == "oversized":
         candidate.write_bytes(b" " * 65537)
     if scenario in {"symlink", "fifo"}:
@@ -2063,9 +2060,9 @@ def test_real_status_consumer_native_resources_and_failure_survival(
         assert "uptime: 1234s" in out and "384/1024 KiB used" in out
     if scenario == "normal":
         assert (
-            "Selected WAN: 0" in out
+            "Selected WAN: wan:0" in out
             and "eth0" in out
-            and "100.64.1.2 (Shared-CGNAT)" in out
+            and "100.64.1.2 (shared)" in out
         )
         assert "/opt mount: ext4 mounted" in out and "924 KiB available" in out
         assert (
@@ -2073,6 +2070,10 @@ def test_real_status_consumer_native_resources_and_failure_survival(
         )
     if scenario in {"corrupt", "symlink", "fifo", "oversized"}:
         assert "Configuration: Unavailable" in out
+    if scenario == "damaged-unrelated":
+        assert "Selected WAN: wan:0" in out and "Manager source:" in out
+    if scenario == "inventory-invalid":
+        assert "Selected WAN: Unknown" in out and "Manager source:" in out
     if scenario == "budget":
         assert "probe budget exhausted" in out
     if scenario == "save-guards":
@@ -2146,7 +2147,11 @@ def test_verified_health_extension_uses_local_consumer_and_preserves_owned_clean
     else:
         assert b"status-code=0" in out
         assert not (tmp_path / "ram").exists()
-        assert b"Selected WAN: 0" in out
+        assert (b"Selected WAN: wan:0" in out) == (scenario == "normal")
+        if scenario == "normal":
+            assert (tmp_path / "current-interface").read_text().strip() == "eth0"
+        else:
+            assert not (tmp_path / "current-interface").exists()
         assert (b"Configuration: Unavailable" in out) == (scenario == "corrupt")
 
 
@@ -5509,3 +5514,233 @@ printf 'RESULT %s\n' "$rc"
         b"recovery.guards WARN\nRESULT 0\n" if late_result == 1 else b"RESULT 3\n"
     )
     assert (result.returncode, result.stdout, result.stderr) == (0, expected, b"")
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "coherent",
+        "ppp",
+        "failover",
+        "offline",
+        "no-route",
+        "ambiguous",
+        "unresolved",
+        "legacy-unknown",
+        "deadline",
+    ],
+)
+def test_shared_wan_selected_drives_only_coherent_health_interface(
+    shell, tools, tmp_path, scenario
+):
+    from test_wan_network import interface, routes, unit, values
+
+    context = tmp_path / "context"
+    context.mkdir()
+    data = tmp_path / "inputs"
+    data.mkdir()
+    current = values()
+    if scenario == "ppp":
+        current.update(unit(0, name="ppp3", protocol="pppoe"))
+    elif scenario == "offline":
+        current["wan0_state_t"] = "0"
+    elif scenario == "failover":
+        current.update(unit(0, primary="0"))
+        current.update(unit(1, name="eth1"))
+        current["wans_dualwan"] = "wan lan"
+        current["wan_primary"] = "1"
+    elif scenario == "ambiguous":
+        current.update(unit(1, name="eth1"))
+        current["wans_dualwan"] = "wan lan"
+        current["wans_mode"] = "lb"
+    for key, value in current.items():
+        (data / key).write_text(value + "\n")
+    name = "ppp3" if scenario == "ppp" else "eth0"
+    (data / "interfaces").write_text(
+        interface(name)
+        + (interface("eth1") if scenario in {"ambiguous", "failover"} else "")
+    )
+    (data / "routes").write_text(
+        routes("eth0", "eth1")
+        if scenario == "ambiguous"
+        else routes("eth1")
+        if scenario == "failover"
+        else routes()
+        if scenario == "no-route"
+        else routes(name)
+    )
+    script = r"""
+root=$1 context=$2 data=$3 sh=$4 awk=$5 scenario=$6
+. "$root/modules/status.sh"
+. "$root/modules/lib/network.sh"
+cfmgr_source=$root cfmgr_status_context=$context cfmgr_status_deadline=110
+cfmgr_health_active=0 cfmgr_status_interface=unknown cfmgr_status_wan=unknown
+cfmgr_status_wan_generation=1 cfmgr_status_wan_origin=legacy cfmgr_status_wan_state=retained
+cfmgr_status_wan_primary=wan:0 cfmgr_status_wan_selectors=wan:0
+if [ "$scenario" = legacy-unknown ]; then cfmgr_status_wan_origin=unresolved cfmgr_status_wan_state=unknown cfmgr_status_wan_primary=- cfmgr_status_wan_selectors=-; fi
+cfmgr_prerequisites_now() { if [ "$scenario" = deadline ]; then cfmgr_probe_now=110; else cfmgr_probe_now=100; fi; }
+cfmgr_status_run() {
+    mode=$1; shift 2
+    serial=$((${serial:-0}+1)); cfmgr_probe_stdout=$context/probe.$serial.out
+    cfmgr_probe_stderr=$context/probe.$serial.err; : >"$cfmgr_probe_stderr"; cfmgr_probe_exit=0
+    case $mode in
+    status-wan-nvram) [ -f "$data/$1" ] && cat "$data/$1" >"$cfmgr_probe_stdout" || : >"$cfmgr_probe_stdout" ;;
+    status-wan-interfaces) [ "$scenario" != unresolved ] || return 3; cp "$data/interfaces" "$cfmgr_probe_stdout" ;;
+    status-wan-routes) cp "$data/routes" "$cfmgr_probe_stdout" ;;
+    status-wan-project) "$sh" "$root/modules/helpers/worker.sh" "$mode" "$awk" "$context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr" || cfmgr_probe_exit=$? ;;
+    *) return 2 ;;
+    esac
+    [ "$cfmgr_probe_exit" = 0 ]
+}
+if cfmgr_status_wan_selected; then code=0; else code=$?; fi
+printf 'RESULT %s %s\n' "$code" "$cfmgr_status_interface"
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "wan-consumer",
+            str(ROOT),
+            str(context),
+            str(data),
+            tools["sh"],
+            tools["awk"],
+            scenario,
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=8,
+        env={**os.environ, "LC_ALL": "C"},
+    )
+    assert result.returncode == 0, result.stderr
+    expected = {
+        "coherent": "eth0",
+        "ppp": "ppp3",
+        "failover": "eth1",
+        "offline": "unknown",
+        "no-route": "unknown",
+        "ambiguous": "unknown",
+        "unresolved": "unknown",
+        "legacy-unknown": "unknown",
+        "deadline": "unknown",
+    }[scenario]
+    code = 3 if scenario == "unresolved" else 1 if scenario == "deadline" else 0
+    assert f"RESULT {code} {expected}" in result.stdout
+    if scenario == "deadline":
+        assert not list(context.glob("probe.*"))
+
+
+def test_manager_inventory_wrapper_is_local_and_cleans_owned_context(
+    status_fixture, tools, shell, tmp_path
+):
+    source, _, _ = status_fixture
+    script = STATUS_CONSUMER[: STATUS_CONSUMER.index("if cfmgr_status_native;")]
+    script += "\ncfmgr_status_wan_inventory 1 legacy retained wan:0 wan:0\n"
+    result = subprocess.run(
+        awk_arguments(
+            [
+                *shell,
+                "-c",
+                script,
+                "wan-inventory",
+                str(source),
+                str(tmp_path),
+                "normal",
+                tools["sh"],
+                tools["awk"],
+            ]
+        ),
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert result.stdout.startswith(b"CFMGR-WAN 1 1 ")
+    assert result.stdout.endswith(b"END\n")
+    assert b"PRIMARY wan:0 wan:0 coherent 65746830" in result.stdout
+    modes = (tmp_path / "routes").read_text().splitlines()
+    assert len(modes) <= 48 and all(mode.startswith("status-wan-") for mode in modes)
+    assert not (tmp_path / "ram").exists()
+    assert not (source / "config").exists()
+
+
+def test_wan_health_reservations_and_hard_deadline(shell, tmp_path):
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_health_active=1 cfmgr_health_operations=0 cfmgr_health_files=0 cfmgr_health_bytes=0
+cfmgr_health_requests=0 cfmgr_health_owned='' cfmgr_health_final_deadline=''
+cfmgr_health_collect_deadline=105 cfmgr_status_context=$2 cfmgr_probe_pid=''
+cfmgr_status_attachment_ok() { return 0; }
+cfmgr_prerequisites_now() { cfmgr_probe_now=100; }
+cfmgr_health_stage_reserve wan.raw 196608 || exit 10
+for mode in health-wan-config health-wan-nvram health-wan-interfaces health-wan-routes health-wan-project; do
+    cfmgr_health_reserve "$mode" || exit 11
+    printf '%s:%s\n' "$mode" "$cfmgr_health_mode_limit"
+done
+[ "$cfmgr_health_files:$cfmgr_health_bytes" = 11:794624 ] || exit 12
+cfmgr_prerequisites_now() { cfmgr_probe_now=105; }
+if cfmgr_health_reserve health-wan-project; then exit 13; fi
+[ "$cfmgr_health_incomplete:$cfmgr_health_reason" = 1:budget ] || exit 14
+"""
+    result = subprocess.run(
+        [*shell, "-c", script, "wan-budget", str(ROOT), str(tmp_path)],
+        capture_output=True,
+        check=False,
+        timeout=3,
+    )
+    assert result.returncode == 0, (result.stdout, result.stderr)
+    assert result.stdout.splitlines() == [
+        b"health-wan-config:2",
+        b"health-wan-nvram:2",
+        b"health-wan-interfaces:128",
+        b"health-wan-routes:128",
+        b"health-wan-project:32",
+    ]
+
+
+def test_manager_inventory_preserves_unresolved_child(
+    status_fixture, tools, shell, tmp_path
+):
+    source, _, _ = status_fixture
+    script = STATUS_CONSUMER[: STATUS_CONSUMER.index("if cfmgr_status_native;")]
+    script += "\ncfmgr_status_wan_inventory 1 legacy retained wan:0 wan:0\n"
+    result = subprocess.run(
+        awk_arguments(
+            [
+                *shell,
+                "-c",
+                script,
+                "wan-inventory",
+                str(source),
+                str(tmp_path),
+                "unresolved-wan",
+                tools["sh"],
+                tools["awk"],
+            ]
+        ),
+        capture_output=True,
+        check=False,
+        timeout=8,
+    )
+    assert result.returncode == 3 and result.stdout == b""
+    assert (tmp_path / "ram" / "wan.raw").is_file()
+    assert not (source / "config").exists()
+
+
+def test_health_current_uses_literal_interface_name(commands, tmp_path):
+    source = tmp_path / "if_inet6"
+    source.write_text("26064700000000000000000000001111 02 40 00 00 eth$1;z\n")
+    result = subprocess.run(
+        [*commands[1], awk_program("health_local"), str(source), "eth$1;z", "-"],
+        env={**os.environ, "CFMGR_HEALTH_LOCAL": "health-current"},
+        capture_output=True,
+        timeout=3,
+        check=False,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (
+        0,
+        b"current-global-ipv6\n",
+        b"",
+    )

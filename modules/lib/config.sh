@@ -252,6 +252,59 @@ cfmgr_config_store() (
 	exit "$cfmgr_store_code"
 )
 
+# WAN preferences share the guarded Store and never imply feature activation.
+cfmgr_config_wan_store() (
+	cfmgr_store_context='' cfmgr_probe_pid='' cfmgr_probe_status=invalid
+	cfmgr_store_scope=wan cfmgr_store_backup_gate=0 cfmgr_store_archive_lock_held=0
+	cfmgr_store_result=unavailable cfmgr_store_generation=0 cfmgr_store_check=0 cfmgr_store_auto=0 cfmgr_store_developer=0
+	cfmgr_store_pending=0 cfmgr_config_lock_fd0=0 cfmgr_store_guard_owned=0 cfmgr_store_interrupt=0 cfmgr_store_flock_entware=0
+	cfmgr_wan_packet=- cfmgr_wan_expected=0 cfmgr_wan_origin=absent cfmgr_wan_state=unconfirmed cfmgr_wan_primary=- cfmgr_wan_selectors=-
+	case ${1:-}:$# in
+	read:1 | recover:1) ;;
+	save:5)
+		case $2 in '' | 0* | *[!0-9]*) exit 2 ;; esac
+		[ "${#2}" -le 20 ] || exit 2
+		case $3 in confirmed | deferred) ;; *) exit 2 ;; esac
+		case $4:$5 in *[!a-z0-9,:=.-]*) exit 2 ;; esac
+		[ "${#4}" -le 9 ] && [ "${#5}" -le 687 ] || exit 2
+		cfmgr_wan_expected=$2 cfmgr_wan_packet=$3'|'$4'|'$5
+		;;
+	*) exit 2 ;;
+	esac
+	cfmgr_store_operation=$1 cfmgr_store_mask=both cfmgr_store_want_check=0 cfmgr_store_want_auto=0
+	if [ "${cfmgr_log_available:-0}" = 1 ] && [ "$1" != read ]; then
+		cfmgr_log_begin manager "store-wan-$1"
+	else cfmgr_log_recording=0; fi
+	if cfmgr_store_prepare && cfmgr_store_work; then cfmgr_store_code=0; else cfmgr_store_code=$?; fi
+	if [ "$cfmgr_store_code" = 0 ]; then
+		if cfmgr_store_snapshot "$cfmgr_store_live" && cfmgr_store_wan_parse wan-read "$cfmgr_store_snapshot" "$cfmgr_store_snapshot_bytes" && cfmgr_store_read_line "$cfmgr_probe_stdout"; then
+			IFS=' ' read -r cfmgr_wan_tag cfmgr_wan_version cfmgr_store_generation cfmgr_wan_origin cfmgr_wan_state cfmgr_wan_primary cfmgr_wan_selectors cfmgr_wan_end cfmgr_wan_extra <<EOF_WAN
+$cfmgr_store_line
+EOF_WAN
+			[ "$cfmgr_wan_tag:$cfmgr_wan_version:$cfmgr_wan_end:$cfmgr_wan_extra" = CFMGR-WAN-CONFIG:1:END: ] || cfmgr_store_code=1
+		else cfmgr_store_code=$?; fi
+		[ "$cfmgr_store_code" = 0 ] || cfmgr_store_result=unavailable
+	fi
+	if [ "$cfmgr_store_code" = 3 ]; then
+		cfmgr_store_result=unresolved cfmgr_store_pending=1
+	else
+		exec 0<&-
+		cfmgr_config_lock_fd0=0 cfmgr_store_interrupt=0
+		if [ -n "${cfmgr_store_context:-}" ] && ! cfmgr_store_cleanup; then cfmgr_store_result=recovery cfmgr_store_code=1 cfmgr_store_pending=1; fi
+	fi
+	[ "$cfmgr_store_code" != 4 ] || cfmgr_store_code=1
+	if [ "$cfmgr_store_code" != 0 ]; then cfmgr_store_generation=0 cfmgr_wan_origin=absent cfmgr_wan_state=unconfirmed cfmgr_wan_primary=- cfmgr_wan_selectors=-; fi
+	if [ "${cfmgr_log_recording:-0}" = 1 ]; then
+		case $cfmgr_store_code in
+		0) cfmgr_log_finish success 0 ;;
+		3) cfmgr_log_finish unresolved 3 ;;
+		*) cfmgr_log_finish failure "$cfmgr_store_code" ;;
+		esac
+	fi
+	printf 'CFMGR-WAN-STORE 1 %s %s %s %s %s %s %s END\n' "$cfmgr_store_result" "$cfmgr_store_generation" "$cfmgr_store_pending" "$cfmgr_wan_origin" "$cfmgr_wan_state" "$cfmgr_wan_primary" "$cfmgr_wan_selectors"
+	exit "$cfmgr_store_code"
+)
+
 cfmgr_store_diagnostic_parse() {
 	cfmgr_store_run store-settings "$cfmgr_store_awk" "$cfmgr_store_source/modules/lib/config.sh" "$cfmgr_store_source/modules/lib/config.sh" \
 		"$1" "$2" "$3" "${cfmgr_diagnostic_want:--}" 0 0
@@ -433,7 +486,17 @@ cfmgr_store_snapshot() {
 	[ "$cfmgr_store_snapshot_meta" = "$cfmgr_store_meta" ]
 }
 
+cfmgr_store_wan_parse() {
+	cfmgr_store_run store-settings "$cfmgr_store_awk" "$cfmgr_store_source/modules/lib/config.sh" "$cfmgr_store_source/modules/lib/config.sh" \
+		"$1" "$2" "$3" "$cfmgr_wan_packet" "$cfmgr_wan_expected" 0
+}
+
 cfmgr_store_parse() {
+	if [ "${cfmgr_store_scope:-settings}" = wan ] && [ "$1" != settings-read ]; then
+		case $1 in settings-observe) cfmgr_wan_mode=wan-observe ;; settings-patch) cfmgr_wan_mode=wan-patch ;; *) return 2 ;; esac
+		cfmgr_store_wan_parse "$cfmgr_wan_mode" "$2" "$3"
+		return $?
+	fi
 	if [ "${cfmgr_store_scope:-settings}" = diagnostic ] && [ "$1" != settings-read ]; then
 		case $1 in settings-observe) cfmgr_store_diagnostic_mode=diagnostic-observe ;; settings-patch) cfmgr_store_diagnostic_mode=diagnostic-patch ;; *) return 2 ;; esac
 		cfmgr_store_diagnostic_parse "$cfmgr_store_diagnostic_mode" "$2" "$3"
@@ -577,6 +640,13 @@ cfmgr_store_target_matches() {
 		cfmgr_store_diagnostic_parse diagnostic-observe "$cfmgr_store_snapshot" "$cfmgr_store_target_bytes" || return $?
 		cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
 		[ "$cfmgr_store_line" = "CFMGR-DIAGNOSTIC-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
+	fi
+	if [ "${cfmgr_store_scope:-settings}" = wan ]; then
+		cfmgr_wan_original_expected=$cfmgr_wan_expected cfmgr_wan_expected=$cfmgr_store_new
+		if cfmgr_store_wan_parse wan-observe "$cfmgr_store_snapshot" "$cfmgr_store_target_bytes"; then cfmgr_wan_code=0; else cfmgr_wan_code=$?; fi
+		cfmgr_wan_expected=$cfmgr_wan_original_expected
+		[ "$cfmgr_wan_code" = 0 ] && cfmgr_store_read_line "$cfmgr_probe_stdout" || return 1
+		[ "$cfmgr_store_line" = "CFMGR-WAN-PATCH 1 $cfmgr_store_new $cfmgr_store_new 0 $cfmgr_store_target_check $cfmgr_store_target_auto $cfmgr_store_target_dev $cfmgr_store_target_bytes $cfmgr_store_target_bytes END" ] || return 1
 	fi
 	case ${cfmgr_store_scope:-settings} in
 	archive-preferences | archive-history)
@@ -755,6 +825,10 @@ cfmgr_store_work() {
 		cfmgr_store_base=$cfmgr_store_snapshot cfmgr_store_base_bytes=$cfmgr_store_snapshot_bytes
 		cfmgr_store_flags "$cfmgr_store_base" "$cfmgr_store_base_bytes" || return $?
 		cfmgr_store_base_generation=$cfmgr_store_generation
+		if [ "${cfmgr_store_scope:-settings}" = wan ] && [ "$cfmgr_wan_expected" != "$cfmgr_store_base_generation" ]; then
+			cfmgr_store_result=stale
+			return 1
+		fi
 		cfmgr_store_digest "$cfmgr_store_base" || return $?
 		cfmgr_store_base_sha=$cfmgr_store_digest_value
 		cfmgr_store_parse settings-observe "$cfmgr_store_base" "$cfmgr_store_base_bytes" || return $?
@@ -764,7 +838,7 @@ $cfmgr_store_line
 EOF_PATCH
 		cfmgr_store_patch_tag=CFMGR-SETTINGS-PATCH
 		[ "${cfmgr_store_scope:-settings}" != backup ] || cfmgr_store_patch_tag=CFMGR-BACKUP-PATCH
-		case ${cfmgr_store_scope:-settings} in archive-preferences | archive-history) cfmgr_store_patch_tag=CFMGR-ARCHIVE-PATCH ;; diagnostic) cfmgr_store_patch_tag=CFMGR-DIAGNOSTIC-PATCH ;; esac
+		case ${cfmgr_store_scope:-settings} in archive-preferences | archive-history) cfmgr_store_patch_tag=CFMGR-ARCHIVE-PATCH ;; diagnostic) cfmgr_store_patch_tag=CFMGR-DIAGNOSTIC-PATCH ;; wan) cfmgr_store_patch_tag=CFMGR-WAN-PATCH ;; esac
 		[ "$cfmgr_store_tag:$cfmgr_store_schema:$cfmgr_store_end:$cfmgr_store_extra" = "$cfmgr_store_patch_tag:1:END:" ] &&
 			[ "$cfmgr_store_old:$cfmgr_store_input_bytes" = "$cfmgr_store_base_generation:$cfmgr_store_base_bytes" ] || return 1
 		case $cfmgr_store_changed:$cfmgr_store_target_check:$cfmgr_store_target_auto:$cfmgr_store_target_dev in [01]:[01]:[01]:[01]) ;; *) return 1 ;; esac
@@ -1603,7 +1677,7 @@ function cs_validate(    id,value,policy,request,record,source,branch,commit) {
 }
 function cs_null(parent,key) { if(cfmgr_json_tree_kind[cs_id(parent,key)]!="null") reject() }
 function cs_empty(id,    i) { for(i=2;i<=cfmgr_json_tree_count;i++) if(cfmgr_json_tree_parent[i]==id) reject() }
-function cs_fresh(    i,key,id,cloud,refs,paths,identity,backup,ownership) {
+function cs_fresh(    i,key,id,cloud,refs,paths,identity,backup,ownership,value) {
     if(co_old!="1" || !cs_bool(co_manager,"check_updates") || cs_bool(co_manager,"auto_update") || cs_bool(co_manager,"developer")) reject()
     cs_null(co_manager,"developer_log_directory"); if(cs_text(cs_id(co_source,"commit"))!="") reject()
     for(i=1;i<=3;i++) {
@@ -1626,6 +1700,7 @@ function cs_fresh(    i,key,id,cloud,refs,paths,identity,backup,ownership) {
     paths=cs_id(cloud,"paths"); cs_null(paths,"yaml"); cs_null(paths,"json"); cs_null(paths,"certificate")
     identity=cs_id(cloud,"expected_identity"); cs_null(identity,"account_id"); cs_null(identity,"tunnel_id")
     id=cs_id(1,"network"); cs_null(id,"selected_wan"); cs_null(id,"discovery"); if(cs_string(id,"address_family",0)!="auto") reject()
+    value=cs_id(id,"wan_inventory"); if(value && cfmgr_json_tree_kind[value]!="null") reject()
     backup=cs_id(1,"backup"); cs_null(backup,"destination"); cs_null(backup,"date_format"); cs_null(backup,"retention"); cs_null(backup,"last_backup")
     id=cs_id(backup,"set_id"); if(id && cfmgr_json_tree_kind[id]!="null") reject()
     ownership=cs_id(1,"ownership"); cs_empty(cs_id(ownership,"components")); cs_null(ownership,"migration")
@@ -1657,11 +1732,23 @@ function co_observation_read() {
         cfmgr_config_mode != "settings-patch" && cfmgr_config_mode != "backup-read" &&
         cfmgr_config_mode != "backup-observe" && cfmgr_config_mode != "backup-patch" &&
         cfmgr_config_mode !~ /^diagnostic-(read|observe|patch)$/ &&
+        cfmgr_config_mode !~ /^wan-(read|observe|patch)$/ &&
         cfmgr_config_mode !~ /^archive-(data|read|preferences-(observe|patch)|history-(observe|patch))$/) reject()
     co_archive_mode = (cfmgr_config_mode ~ /^archive-/ && cfmgr_config_mode != "archive-data")
 
     for (co_i = 2; co_i <= cfmgr_json_tree_count; co_i++)
         co_child[cfmgr_json_tree_parent[co_i], cfmgr_json_tree_location[co_i]] = co_i
+
+    # Status reads only the bounded network preference, independently of
+    # unrelated damaged features. Full Store admission still validates all fields.
+    if (cfmgr_config_mode == "wan-read") {
+        co_type(1, "object")
+        co_schema=co_field(1,"schema","number"); co_version=cfmgr_json_tree_payload[co_schema]
+        if(co_version!="n1" && co_version!="n2") reject()
+        co_generation=co_field(1,"generation","number"); co_old=substr(cfmgr_json_tree_payload[co_generation],2)
+        if(co_old!~/^[1-9][0-9]*$/ || length(co_old)>20) reject()
+        co_network=co_field(1,"network","object"); co_wan_read(); co_wan_dispatch(); exit 0
+    }
 
     # Health may read this one preference from a private immutable tree even
     # when unrelated feature settings are damaged or absent. The JSON parser
@@ -1759,6 +1846,8 @@ function co_observation_read() {
     co_field(co_network, "address_family", "string")
     co_field(co_network, "selected_wan", "string|number|null")
     }
+    co_network = co_field(1, "network", "object")
+    co_wan_read()
     co_backup = co_field(1, "backup", "object")
     if (co_archive_mode) co_archive_saved()
     co_destination = co_field(co_backup, "destination", "object|null")
@@ -1792,6 +1881,8 @@ function co_observation_read() {
         cs_fresh()
         exit 0
     }
+
+    if (cfmgr_config_mode ~ /^wan-/) { co_wan_dispatch(); exit 0 }
 
     if (co_archive_mode) {
         co_archive_dispatch()
@@ -1967,6 +2058,105 @@ function co_observation_read() {
     else printf "CFMGR-CONFIG 1 %s %s %d %d %d END\n", co_old, co_new,
         co_changed, expected_size, length(co_result)
     exit 0
+}
+
+# Bounded preference inventory; selectors are data, never shell or AWK source.
+function co_wan_selector(id, kind, value,    n) {
+    if (kind == "firmware") {
+        if (id !~ /^wan:(0|[1-9][0-9]*)$/) reject()
+        n=substr(id,5); if(length(n)>3 || n+0>255 || value!=n) reject()
+        return id
+    }
+    if (kind != "interface" || id !~ /^manual:[1-9][0-9]*$/) reject()
+    n=substr(id,8); if(length(n)>2 || n+0>32) reject()
+    if(length(value)<1 || length(value)>15 || value=="." || value==".." || value ~ /[^!-~]/ || value ~ /[\/:]/) reject()
+    if (value in co_wan_names) reject()
+    co_wan_names[value]=1
+    return id "=" co_hex(value)
+}
+function co_wan_read(    inv,sel,kind,id,value,primary,arr,i,item,unit,projection,legacy) {
+    sel=co_field(co_network,"selected_wan","number|string|null")
+    legacy=""; if(cfmgr_json_tree_kind[sel]=="number") legacy=substr(cfmgr_json_tree_payload[sel],2)
+    else if(cfmgr_json_tree_kind[sel]=="string") legacy=co_decode(substr(cfmgr_json_tree_payload[sel],2))
+    inv=cs_id(co_network,"wan_inventory"); co_wan_inv=inv
+    co_wan_origin="absent"; co_wan_state="unconfirmed"; co_wan_primary="-"; co_wan_selectors="-"
+    if(!inv || cfmgr_json_tree_kind[inv]=="null") {
+        if((cfmgr_json_tree_kind[sel]=="number" && (legacy=="0" || legacy=="1")) || (co_version=="n1" && cfmgr_json_tree_kind[sel]=="string" && (legacy=="0" || legacy=="1" || legacy=="wan0" || legacy=="wan1"))) {
+            if(legacy ~ /^wan/) legacy=substr(legacy,4)
+            co_wan_origin="legacy"; co_wan_state="retained"; co_wan_primary="wan:" legacy; co_wan_selectors=co_wan_primary
+        } else if(cfmgr_json_tree_kind[sel]!="null") { co_wan_origin="unresolved"; co_wan_state="unknown" }
+        return
+    }
+    co_type(inv,"object"); if(cs_int(inv,"schema","1","1")!="1") reject()
+    co_wan_origin="inventory"; co_wan_state=cs_enum(inv,"state","confirmed|deferred",0)
+    primary=cs_string(inv,"primary",1); if(cfmgr_json_tree_kind[cs_id(inv,"primary")]=="string" && primary=="") reject()
+    co_wan_primary=(primary=="" ? "-" : primary)
+    arr=co_field(inv,"sources","array"); co_wan_sources=arr; co_wan_selectors=""; co_wan_count=0
+    for(i=2;i<=cfmgr_json_tree_count;i++) if(cfmgr_json_tree_parent[i]==arr) {
+        item=i; co_type(item,"object"); id=cs_string(item,"id",0); kind=cs_enum(item,"kind","firmware|interface",0)
+        if(id in co_wan_ids) reject()
+        if(kind=="firmware") { unit=co_field(item,"unit","number"); value=cs_integer(unit,"0","255") }
+        else value=cs_string(item,"interface",0)
+        value=co_wan_selector(id,kind,value); co_wan_ids[id]=item
+        co_wan_count++; if(co_wan_count>16) reject()
+        co_wan_selectors=co_wan_selectors (co_wan_count==1 ? "" : ",") value
+    }
+    if(!co_wan_count) co_wan_selectors="-"
+    if(co_wan_primary!="-" && !(co_wan_primary in co_wan_ids)) reject()
+    if(co_wan_state=="confirmed" && (!co_wan_count || co_wan_primary=="-")) reject()
+    projection=(co_wan_primary=="wan:0" ? "0" : co_wan_primary=="wan:1" ? "1" : "")
+    if(projection=="") { if(cfmgr_json_tree_kind[sel]!="null") reject() }
+    else if(cfmgr_json_tree_kind[sel]!="number" || legacy!=projection) reject()
+}
+function co_wan_dispatch(    packet,n,parts,state,primary,selectors,count,items,i,kv,id,hex,value,kind,json,source,old,field,start,finish,projection) {
+    if(cfmgr_config_mode=="wan-read") {
+        printf "CFMGR-WAN-CONFIG 1 %s %s %s %s %s END\n",co_old,co_wan_origin,co_wan_state,co_wan_primary,co_wan_selectors; return
+    }
+    packet=ENVIRON["CFMGR_SETTINGS_MASK"]; n=split(packet,parts,"|")
+    if(n!=3 || ENVIRON["CFMGR_SETTINGS_CHECK"]!=co_old || ENVIRON["CFMGR_SETTINGS_AUTO"]!="0") reject()
+    state=parts[1]; primary=parts[2]; selectors=parts[3]
+    if(state!~/^(confirmed|deferred)$/) reject()
+    if(state=="deferred" && co_wan_origin=="unresolved") reject()
+    for(i in co_wan_names) delete co_wan_names[i]
+    for(i in co_wan_seen) delete co_wan_seen[i]
+    count=(selectors=="-" ? 0 : split(selectors,items,",")); if(count>16) reject()
+    json="["
+    for(i=1;i<=count;i++) {
+        n=split(items[i],kv,"="); id=kv[1]; if(id in co_wan_seen) reject(); co_wan_seen[id]=1
+        if(id ~ /^wan:/) { if(n!=1) reject(); kind="firmware"; value=substr(id,5); co_wan_selector(id,kind,value) }
+        else { if(n!=2) reject(); kind="interface"; hex=kv[2]; if(hex=="" || hex~/[^0-9a-f]/ || length(hex)%2 || length(hex)>30) reject(); value=co_decode(hex); if(co_wan_selector(id,kind,value)!=items[i]) reject() }
+        source=co_wan_ids[id]
+        if(source) {
+            old=substr(document,cfmgr_json_tree_start[source],cfmgr_json_tree_end[source]-cfmgr_json_tree_start[source]+1)
+            if(kind=="interface" && cs_string(source,"interface",0)!=value) {
+                field=cs_id(source,"interface"); start=cfmgr_json_tree_start[field]-cfmgr_json_tree_start[source]+1; finish=cfmgr_json_tree_end[field]-cfmgr_json_tree_start[source]+1
+                old=substr(old,1,start-1) co_quote(value) substr(old,finish+1)
+            }
+        } else if(kind=="firmware") old="{\"id\":" co_quote(id) ",\"kind\":\"firmware\",\"unit\":" value "}"
+        else old="{\"id\":" co_quote(id) ",\"kind\":\"interface\",\"interface\":" co_quote(value) "}"
+        json=json (i==1 ? "" : ",") old
+    }
+    json=json "]"
+    if(primary!="-" && !(primary in co_wan_seen)) reject()
+    if(state=="confirmed" && (!count || primary=="-")) reject()
+    projection=(primary=="wan:0" ? "0" : primary=="wan:1" ? "1" : "null")
+    co_changed=(co_wan_origin!="inventory" || co_wan_state!=state || co_wan_primary!=primary || co_wan_selectors!=selectors)
+    co_result=document
+    if(co_changed) {
+        co_new=co_increment(co_old); co_replacement[co_generation]=co_new
+        co_replacement[cs_id(co_network,"selected_wan")]=projection
+        if(co_wan_origin=="inventory") {
+            co_replacement[cs_id(co_wan_inv,"state")]=co_quote(state)
+            co_replacement[cs_id(co_wan_inv,"primary")]=(primary=="-" ? "null" : co_quote(primary))
+            co_replacement[co_wan_sources]=json
+        } else {
+            value="{\"schema\":1,\"state\":" co_quote(state) ",\"primary\":" (primary=="-" ? "null" : co_quote(primary)) ",\"sources\":" json "}"
+            co_archive_missing=0; co_archive_queue(co_network,"wan_inventory",value); co_archive_insert_missing(co_network)
+        }
+        co_result=co_archive_rebuild()
+    }
+    if(cfmgr_config_mode=="wan-patch") printf "%s",co_result
+    else printf "CFMGR-WAN-PATCH 1 %s %s %d %d %d %d %d %d END\n",co_old,co_new,co_changed,(cfmgr_json_tree_kind[co_check]=="true"),(cfmgr_json_tree_kind[co_auto]=="true"),(cfmgr_json_tree_kind[co_developer]=="true"),expected_size,length(co_result)
 }
 
 function co_archive_saved(    id,value) {

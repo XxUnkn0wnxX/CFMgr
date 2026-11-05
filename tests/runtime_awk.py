@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OWNERS = {
+    "wan": "modules/lib/network.sh",
     "log_frame": "modules/lib/logging.sh",
     "log_sanitize": "modules/lib/logging.sh",
     "backup_yaml": "modules/backup.sh",

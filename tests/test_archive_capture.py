@@ -132,6 +132,14 @@ def populate(
     ram = archive[1]
     source, jffs = ram.parent / "source", ram.parent / "jffs"
     config = advanced_config(schema2_config)
+    config["network"]["wan_inventory"] = {
+        "schema": 1,
+        "state": "confirmed",
+        "primary": "manual:1",
+        "sources": [
+            {"id": "manual:1", "kind": "interface", "interface": "wan-private"}
+        ],
+    }
     drafts = serialize(
         {
             "schema": 1,

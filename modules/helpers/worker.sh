@@ -296,6 +296,11 @@ health-metadata) mode=status-metadata ;;
 health-count) mode=status-count ;;
 health-date) mode=status-date ;;
 health-nvram) mode=status-nvram ;;
+health-wan-config) mode=status-wan-config ;;
+health-wan-nvram) mode=status-wan-nvram ;;
+health-wan-interfaces) mode=status-wan-interfaces ;;
+health-wan-routes) mode=status-wan-routes ;;
+health-wan-project) mode=status-wan-project ;;
 health-space) mode=status-space ;;
 health-mount) mode=status-mount ;;
 health-render-count) mode=status-count ;;
@@ -330,7 +335,7 @@ cfmgr_worker_program() {
 		. "$1/config.sh" || exit 2
 		. "${1%/lib}/backup.sh" || exit 2
 		;;
-	diagnostic-config | store-archive-config | store-backup-config | store-settings)
+	diagnostic-config | store-archive-config | store-backup-config | store-settings | status-wan-config)
 		. "$1" || exit 2
 		;;
 	launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch)
@@ -343,7 +348,7 @@ cfmgr_worker_program() {
 		. "$1" || exit 2
 		case $mode in status-render | health-render) ;; *) . "$2" || exit 2 ;; esac
 		;;
-	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | diagnostic-mount | status-native | status-fields | status-mount | repair-inventory | health-request-check | health-trace | health-frame)
+	archive-control | archive-browser-review | archive-browser-manifest | history-writer-parse | history-parse | history-mount | archive-payload-yaml | archive-payload-index | archive-payload-match | archive-payload-pem | archive-tar-header | archive-format-manifest | archive-format-inventory | archive-source-mount | store-backup-mounts | store-backup-mount | diagnostic-mount | status-native | status-fields | status-mount | status-wan-project | repair-inventory | health-request-check | health-trace | health-frame)
 		. "$1" || exit 2
 		;;
 	esac
@@ -394,7 +399,7 @@ $cfmgr_awk_program"
 		cfmgr_awk_program="$cfmgr_worker_json
 $cfmgr_awk_program"
 		;;
-	diagnostic-config | store-archive-config | store-backup-config | store-settings | launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch | install-config-check)
+	diagnostic-config | store-archive-config | store-backup-config | store-settings | status-wan-config | launch-config-check | launch-config-scope | launch-config-observe | launch-config-patch | install-config-check)
 		cfmgr_config_awk_json
 		cfmgr_worker_json=$cfmgr_awk_program
 		cfmgr_config_awk_config_schema
@@ -429,6 +434,7 @@ $cfmgr_awk_program"
 $cfmgr_awk_program"
 		;;
 	status-native | status-fields) cfmgr_status_awk_status_native ;;
+	status-wan-project) cfmgr_network_awk_wan ;;
 	status-render | health-render) cfmgr_status_awk_health_render ;;
 	esac
 	# Merlin MAX_ARG_STRLEN is 32 4K pages. Keep a conservative 96KiB program
@@ -1728,7 +1734,7 @@ store-settings)
 	[ "$#" -eq 8 ] || exit 2
 	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done
 	[ -f "$4" ] && [ ! -L "$4" ] || exit 1
-	case $3 in settings-read | settings-observe | settings-patch | diagnostic-read | diagnostic-observe | diagnostic-patch) ;; *) exit 2 ;; esac
+	case $3 in settings-read | settings-observe | settings-patch | diagnostic-read | diagnostic-observe | diagnostic-patch | wan-read | wan-observe | wan-patch) ;; *) exit 2 ;; esac
 	case $5 in '' | *[!0-9]*) exit 2 ;; esac
 	[ "$5" -gt 0 ] && [ "$5" -le 65536 ] || exit 1
 	export CFMGR_SETTINGS_MASK="$6" CFMGR_SETTINGS_CHECK="$7" CFMGR_SETTINGS_AUTO="$8"
@@ -1822,6 +1828,47 @@ status-date)
 	case $# in 0) ;; *) exit 2 ;; esac
 	exec "$tool" +%s
 	;;
+status-wan-config)
+	[ "$#" -eq 3 ] || exit 2
+	[ -f "$1" ] && [ ! -L "$1" ] && [ -f "$2" ] && [ ! -L "$2" ] || exit 2
+	case $3 in '' | *[!0-9]*) exit 2 ;; esac
+	[ "$3" -gt 0 ] && [ "$3" -le 65536 ] || exit 2
+	cfmgr_worker_program "$@"
+	exec "$tool" -v cfmgr_config_mode=wan-read -v cfmgr_json_mode=tree -v cfmgr_json_size="$3" "$cfmgr_awk_program" <"$2"
+	;;
+status-wan-nvram)
+	[ "$#" -eq 1 ] || exit 2
+	case $1 in
+	sw_mode | wans_dualwan | wans_mode | wan_primary | lan_ifname | lan_ipaddr | lan_netmask) ;;
+	wan[0-9]*_*)
+		unit=${1#wan}
+		unit=${unit%%_*}
+		field=${1#*_}
+		case $unit in '' | *[!0-9]* | 0[0-9]*) exit 2 ;; esac
+		[ "${#unit}" -le 3 ] && [ "$unit" -le 255 ] || exit 2
+		case $field in enable | proto | ifname | pppoe_ifname | primary | ipaddr | gateway | state_t | sbstate_t | auxstate_t | type) ;; *) exit 2 ;; esac
+		;;
+	*) exit 2 ;;
+	esac
+	exec "$tool" get "$1"
+	;;
+status-wan-interfaces)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -a
+	;;
+status-wan-routes)
+	[ "$#" -eq 0 ] || exit 2
+	exec "$tool" -n
+	;;
+status-wan-project)
+	[ "$#" -eq 8 ] || exit 2
+	[ -f "$1" ] && [ ! -L "$1" ] || exit 2
+	case $2 in "$context"/wan.raw) [ -f "$2" ] && [ ! -L "$2" ] || exit 2 ;; *) exit 2 ;; esac
+	cfmgr_worker_program "$@"
+	# ENVIRON preserves literal data; AWK -v decodes backslash sequences.
+	export CFMGR_WAN_PURPOSE="$3" CFMGR_WAN_GENERATION="$4" CFMGR_WAN_ORIGIN="$5" CFMGR_WAN_STATE="$6" CFMGR_WAN_PRIMARY="$7" CFMGR_WAN_SELECTORS="$8"
+	exec "$tool" "$cfmgr_awk_program" "$2"
+	;;
 status-native)
 	case $# in 2) ;; *) exit 2 ;; esac
 	[ -f "$1" ] && [ ! -L "$1" ] || exit 2
@@ -1857,7 +1904,7 @@ status-snapshot)
 	;;
 status-config)
 	case $# in 11) ;; *) exit 2 ;; esac
-	case $4 in select | render) ;; *) exit 2 ;; esac
+	[ "$4" = render ] || exit 2
 	for parser in "$1" "$2"; do [ -f "$parser" ] && [ ! -L "$parser" ] || exit 1; done
 	[ -f "$3" ] && [ ! -L "$3" ] || exit 1
 	case ${11} in '' | *[!0-9]*) exit 1 ;; esac
@@ -1877,7 +1924,7 @@ status-render | health-render)
 	;;
 status-nvram)
 	case $# in 1) ;; *) exit 2 ;; esac
-	case $1 in productid | firmver | buildno | extendno | ntp_ready | wan0_primary | wan1_primary | wan0_proto | wan1_proto | wan0_ifname | wan1_ifname | wan0_pppoe_ifname | wan1_pppoe_ifname | wan0_ipaddr | wan1_ipaddr) ;; *) exit 2 ;; esac
+	case $1 in productid | firmver | buildno | extendno | ntp_ready) ;; *) exit 2 ;; esac
 	exec "$tool" get "$1"
 	;;
 status-realpath)
