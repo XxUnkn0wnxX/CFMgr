@@ -276,26 +276,20 @@ def test_installed_menu_saves_reviewed_fields_over_fresh_edits_without_prompt_lo
         }
         for line in stderr.splitlines()
     )
-    reopened = run_entry(shell, entry, b"ao\n2\ne\ne\ne\n")
+    route_count = len(routes)
+    reopened = run_entry(shell, entry, b"ao\n2\n1\ns\nn\ne\ne\ne\n")
     assert reopened.returncode == 0, reopened.stderr
     assert b"Saved: Check for updates=Off; Auto-update CFMgr=Off" in reopened.stdout
-
-
-def test_installed_menu_cancel_preserves_config_without_network_or_repair(
-    shell, installed_settings_entry
-):
-    entry, support, ram, _ = installed_settings_entry
-    before = (support / "config").read_bytes()
-    result = run_entry(shell, entry, b"ao\n2\n1\ns\nn\ne\ne\ne\n")
-    assert result.returncode == 0, result.stderr
-    assert (support / "config").read_bytes() == before
-    routes = (ram / "routes").read_text().splitlines()
-    assert "store-settings" in routes
-    assert "store-lock" not in routes
-    assert not any("opkg" in route or route.startswith("install-") for route in routes)
-    assert b"Save cancelled; no changes were written." in result.stdout
-    assert b"Preferences saved." not in result.stdout
-    assert b"opkg" not in result.stdout + result.stderr
+    assert (support / "config").read_bytes() == saved
+    new_routes = (ram / "routes").read_text().splitlines()[route_count:]
+    assert "store-settings" in new_routes
+    assert "store-lock" not in new_routes
+    assert not any(
+        "opkg" in route or route.startswith("install-") for route in new_routes
+    )
+    assert b"Save cancelled; no changes were written." in reopened.stdout
+    assert b"Preferences saved." not in reopened.stdout
+    assert b"opkg" not in reopened.stdout + reopened.stderr
 
 
 def test_installed_menu_recovers_actual_pending_save_only_after_confirmation(
@@ -533,9 +527,19 @@ def test_installed_removal_is_explicit_and_reselects_primary(
     shell, installed_settings_entry
 ):
     entry, support, _, _ = installed_settings_entry
-    _clear_wan_intent(support / "config")
-    confirmed = run_entry(shell, entry, b"y\nwan:0\ny\ne\n")
-    assert confirmed.returncode == 0, confirmed.stderr
+    config_path = support / "config"
+    value = json.loads(config_path.read_text())
+    value["network"]["selected_wan"] = 0
+    value["network"]["wan_inventory"] = {
+        "schema": 1,
+        "state": "confirmed",
+        "primary": "wan:0",
+        "sources": [
+            {"id": "wan:0", "kind": "firmware", "unit": 0},
+            {"id": "wan:1", "kind": "firmware", "unit": 1},
+        ],
+    }
+    config_path.write_text(json.dumps(value, separators=(",", ":")))
     result = run_entry(shell, entry, b"ao\n4\n3\nwan:0\nwan:1\ny\ny\ne\ne\ne\n")
     assert result.returncode == 0, result.stderr
     inventory = json.loads((support / "config").read_text())["network"]["wan_inventory"]

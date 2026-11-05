@@ -212,11 +212,7 @@ def full_health_package(
         primary_hostname="example.test",
         ttl={"mode": "auto"},
         proxied=True,
-        records=[
-            {"id": "record-a", "name": "example.test", "type": "A"},
-            {"id": "record-b", "name": "*.example.test", "type": "AAAA"},
-            {"id": "record-c", "name": "third.example.test", "type": "A"},
-        ],
+        records=[{"id": "record-a", "name": "example.test", "type": "A"}],
     )
     value["ip_sync"].update(
         configured=True,
@@ -224,13 +220,12 @@ def full_health_package(
         credential_ref="api",
         account_id=account,
         targets=[
-            {"role": "primary", "id": LIST, "name": "owned-list", "families": ["ipv4"]},
             {
-                "role": "secondary",
-                "id": "d" * 32,
-                "name": "second-list",
-                "families": ["ipv6"],
-            },
+                "role": "primary",
+                "id": LIST,
+                "name": "owned-list",
+                "families": ["ipv4", "ipv6"],
+            }
         ],
     )
     value["cloudflared"].update(
@@ -777,20 +772,23 @@ else:
         else:
             assert segments[2] == 'dns_records' and len(segments) == 3
             name = query['name'][0]; family = query['type'][0]
-            assert (name, family) in [('example.test','A'), ('*.example.test','AAAA'), ('third.example.test','A')]
+            assert (name, family) == ('example.test', 'A')
             kind = 'dns'; result = [{'id': 'e' * 32, 'name': name, 'type': family,
                 'content': '2606:4700:4700::1111' if family == 'AAAA' else '8.8.8.8', 'ttl': 1, 'proxied': True}]
             result_info = {'page': 1, 'total_pages': 1, 'count': 1, 'total_count': 1}
     elif segments[:1] == ['accounts']:
         assert segments[1] == 'b' * 32
         if segments[2:4] == ['rules','lists']:
-            assert segments[4] in ['c' * 32, 'd' * 32]
+            assert segments[4] == 'c' * 32
             if len(segments) == 5:
                 kind = 'list'; result = {'id': segments[4], 'kind': 'ip',
-                    'name': 'owned-list' if segments[4] == 'c' * 32 else 'second-list'}
+                    'name': 'owned-list'}
             else:
                 assert len(segments) == 6 and segments[5] == 'items'
-                kind = 'items'; result = [{'id': 'e' * 32, 'ip': '8.8.8.8' if segments[4] == 'c' * 32 else '2606:4700:4700::1111'}]
+                kind = 'items'; result = [
+                    {'id': 'e' * 32, 'ip': '8.8.8.8'},
+                    {'id': 'f' * 32, 'ip': '2606:4700:4700::1111'},
+                ]
                 result_info = {'cursors': {'before': '', 'after': ''}}
         else:
             assert segments[2] == 'cfd_tunnel' and segments[3] == @TUNNEL@

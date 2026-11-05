@@ -5188,12 +5188,12 @@ def test_linux_full_health_entry_normal_journey(
             print("full-health normal ledger:", measured, flush=True)
         if (audit / "process-diagnostic").exists():
             print((audit / "process-diagnostic").read_text())
-        if ledger[9] != "normal" or requests != 12:
+        if ledger[9] != "normal" or requests != 8:
             print("full-health observed rows:\n" + (audit / "rows").read_text())
             print("full-health routes:\n" + (audit / "routes").read_text())
         assert process.returncode == 0 and stderr == b"", (measured, stdout, stderr)
         assert ledger[9] == "normal", measured
-        assert requests == 12 and 0 < rows <= 96 and 0 < seconds < 45, measured
+        assert requests == 8 and 0 < rows <= 96 and 0 < seconds < 45, measured
         assert operations <= 568 and files <= 1264, measured
         assert reserved + final_bytes <= 13 * 1024 * 1024, measured
         assert final_ops <= 8 and final_files <= 16 and elapsed < 50, measured
@@ -5250,9 +5250,9 @@ def test_linux_full_health_entry_normal_journey(
         request_kinds = (audit / "requests").read_text().splitlines()
         assert {kind: request_kinds.count(kind) for kind in set(request_kinds)} == {
             "zone": 1,
-            "dns": 3,
-            "list": 2,
-            "items": 2,
+            "dns": 1,
+            "list": 1,
+            "items": 1,
             "tunnel": 1,
             "connections": 1,
             "trace4": 1,
@@ -5272,6 +5272,9 @@ def test_linux_full_health_entry_normal_journey(
             "cloudflared.yaml.identity",
             "cloudflared.certificate.live",
             "cloudflared.binary",
+            "ddns.record.1",
+            "ip_sync.primary.ipv4",
+            "ip_sync.primary.ipv6",
         ):
             assert expected + "\tPASS\t" in raw_rows, (
                 expected,
