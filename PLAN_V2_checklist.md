@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**21 of 157 product subgoals accepted — 13.4% overall subgoal completion.**
+**25 of 157 product subgoals accepted — 15.9% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -76,34 +76,48 @@ denominator.
 | 15 — Uninstall and reset | [ ] | [ ] | [ ] | [ ] | [ ] |
 | 16 — Product readiness | [ ] | [ ] | [ ] | [ ] | [ ] |
 
-## Current acceptance audit — 2026-11-05
+## Current acceptance audit — 2026-11-06
 
 Checkpoint and periodic review follow the user-requested
 [acceptance audit cadence](AGENTS.md#checkpoint-acceptance-audits-and-unfinished-work).
 Current review state and the cadence counter belong in the handoff.
 
-At runtime `7ea47342b6c92883ca92f66c60802a4f43f3f4ec`, parent and independent
-reviewers confirmed three contract gaps reopening four previously accepted rows,
-and one missing central written-test gate:
+The five rows reopened by the 2026-11-05 broad audit are now accepted after their
+repairs, written focused tests, independent review, parent reconciliation and
+complete exact-candidate core gate. Product requirements remain unchanged.
 
-| IDs | Current disposition and missing proof |
+| IDs | Verified repair and final disposition |
 | --- | --- |
-| S02.04, S02.05 | Repair implemented: normal interactive entry performs admission once; real retained-launch/repair fixture bridge is written. Host retained/reinstall checks passed 47 with one native skip. Actual installed-entry Linux repair/no-op and final exact core remain pending. |
-| S04.02 | Repair implemented and independently reviewed: reviewed WAN intent merges with newer authority, preserving unrelated/unknown values; shared no-op drift retries within the existing bound. Focused precision/drift/later-Off and actual concurrent Store journeys pass. Final exact native/core gates remain pending. |
-| S07.08 | Repair implemented and independently reviewed: all forty current parser combinations are admitted with a corrected bounded aggregate output quota. Production execution-wrapper regular-file extraction passes locally. Full supervised native acquisition/malformed-parser rejection and final exact core remain pending. |
-| S14.04 | Production naming and real created-filename assertions now pass locally, including regional order, same-day suffixes and collision refusal (2/2 final focused cases). macOS path adaptation was corrected in the fixture only. Final exact native/core gates remain pending. |
+| S02.04, S02.05 | Accepted: normal interactive entry performs admission once; actual retained-entry Linux repair/no-op, fresh post-probes, returned storage, DNS deferral and selected reinstall pass. Package-verification failures retain the reviewed fatal boundary. |
+| S04.02 | Accepted: reviewed WAN intent merges with newer authority, preserving unrelated/unknown values; shared no-op drift retries within the existing bound. Precision, content-drift, later-Off and actual concurrent Store journeys pass. |
+| S07.08 | Accepted: all forty current parser combinations are admitted with the corrected bounded output quota. Actual extraction and supervised native acquisition/malformed-parser rejection pass. |
+| S14.04 | Accepted: production regional naming, same-day suffix/collision refusal and actual created-filename versus manifest chronology assertions pass. |
 
-Both boxes remain clear while these five rows complete their coordinated gates;
-focused-complete means implementation
-and written focused proof, not source presence alone. Their earlier acceptance receipts
-below are historical evidence and are superseded by this disposition; requirements
-remain unchanged. Current repair evidence is in the
-[repair review](PLAN_V2_audit.md#five-row-repair-review--2026-11-05). See the [audit findings](PLAN_V2_audit.md#accepted-subgoals-and-partial-work-audit--2026-11-05).
-All other previously accepted rows retain their existing justified acceptance,
-including the explicit recorded CI/local exceptions. No new acceptance follows
-from this source review. The audit provides a one-to-one disposition index for
-every approved ID and distinguishes supporting foundations from absent operational
-workflows.
+Tested code: **`9c3c58732f803f649d7c021568bbedb69d14b49d`**;
+[complete Checks 42032878335](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42032878335).
+All required parent and host/BusyBox module jobs passed. Complete native module
+results: Backup **430 passed**; Manager **908 passed, 1 workstation-only skip**;
+Status **279 passed**. Four existing optional Manager stress diagnostics remained
+excluded. The corresponding host jobs also passed, with platform skips kept
+explicit in their logs. Small error gates and complete affected Dev groups passed
+before this final core gate; it was not rerun after success.
+
+Both boxes are restored for these five rows. Earlier receipts below remain
+historical and must be read with this repair disposition. Independent review also
+reconciled affected retained acceptance, including S03.07 startup/report behavior
+and S03.09's user-directed core-only Health fixture. S03.09/S03.10 retain their
+previously documented local/CI exceptions; no local pass is invented.
+See the [repair review](PLAN_V2_audit.md#five-row-repair-review--2026-11-05),
+[final closure evidence](PLAN_V2_audit.md#five-row-closure-and-final-core--2026-11-06)
+and [full audit inventory](PLAN_V2_audit.md#accepted-subgoals-and-partial-work-audit--2026-11-05).
+
+A subsequent independent source/API review reopened **S03.09**: eligible IP-Sync
+Health reads implement account Rules Lists, contrary to the approved Zero Trust
+Gateway contract. Its previous green fixtures assert the wrong endpoint/shape;
+they do not establish this required consumer. The five repairs above remain
+accepted. See the [Gateway finding](PLAN_V2_audit.md#gateway-health-contract-finding--2026-11-06).
+S03.09 requires corrected Gateway identity, requests, response/completeness parsing,
+focused proof, independent review and final exact core before reacceptance.
 
 ### Incomplete current consumers
 
@@ -181,8 +195,8 @@ justify a focused-complete checkbox for an otherwise unfinished subgoal.
 | [x] | [x] | S02.01 | **Modular distribution:** One verified package with extensible feature modules, shared libraries grouped by reused responsibility and thin entry/hooks. |
 | [ ] | [ ] | S02.02 | **Private storage layout:** JFFS authority/recovery, RAM frequent state, verified Entware tunnel/log data, independent backup mount. |
 | [x] | [x] | S02.03 | **Generated defaults:** Private extensionless config generated only for genuinely fresh setup; no shipped config/template. |
-| [ ] | [ ] | S02.04 | **Shared operational prerequisites:** Verified jq, timeout and SHA-256; native-first flock and tunnel-only DNS additions. |
-| [ ] | [ ] | S02.05 | **Normal dependency repair:** Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
+| [x] | [x] | S02.04 | **Shared operational prerequisites:** Verified jq, timeout and SHA-256; native-first flock and tunnel-only DNS additions. |
+| [x] | [x] | S02.05 | **Normal dependency repair:** Installed opkg, healthy no-op, missing/unusable-only repair, post-probes and bounded later retry. |
 | [x] | [x] | S02.06 | **Selected dependency reinstall:** Explicit force action for mapped requirements, separate from tunnel maintenance and configuration. |
 | [ ] | [ ] | S02.07 | **Native recovery access:** Status/doctor/recovery/safe Off remain usable without operational Entware tools. |
 | [x] | [x] | S02.08 | **Storage identity and loss:** Resolve current `/opt`, verify its backing mount and required-data reads, revalidate saved observations, guard CFMgr write paths, pin each action and stop/report owned work on loss. |
@@ -244,7 +258,7 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | [ ] | [ ] | S03.06 | **Manager/diagnostic commands:** Update/force aliases, help/version and identical standalone health/doctor/diagnostic reports without implicit repair consent. |
 | [x] | [x] | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
 | [ ] | [ ] | S03.08 | **Bounded history and privacy:** Small recorded observations, accurate Unknown/Never/stale labels, no basic-status network calls or secret/raw-data dumps. |
-| [x] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
+| [ ] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
 | [x] | [ ] | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
 
 S03.02 native-setting boundary: represent saved DDNS choices and their mapping to
@@ -396,7 +410,7 @@ Goal 3 is now 5/10 accepted; this checkpoint awards only S03.09 and S03.10.
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
 | [x] | [x] | S04.01 | **Safe data parsing:** Bounded schema/JSON/certificate/YAML/catalog inputs treated as data, never sourced/evaluated. |
-| [ ] | [ ] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
+| [x] | [x] | S04.02 | **Scoped concurrent Save:** Accepted fields overwrite same-field edits, preserve unrelated guards/settings, detect content changes and respect later Off. |
 | [x] | [x] | S04.03 | **Durable staged commit:** Pre-change intent/recovery, verified coherent publication and honest flush/write/rollback failure handling within documented firmware limits. |
 | [ ] | [ ] | S04.04 | **Native resumable drafts:** Completed private DDNS/IP-Sync inputs survive exit/signals without touching active config or enabling work. |
 | [ ] | [ ] | S04.05 | **Cloudflared Save boundary:** Pre-Save cancellation; mutation-time e disabled; signals honored with bounded cleanup and guarded recovery. |
@@ -513,7 +527,7 @@ remains beta-only. No other Goal 4 subgoal or main-goal gate receives credit.
 | [ ] | [ ] | S07.05 | **Developer suppression:** Manual-only flag suppresses checks/auto/external callbacks; confirmed force retains normal verification. |
 | [ ] | [ ] | S07.06 | **Source selection and catalog:** One code-defined repository/branch default serves install and self-update; only developer mode permits config source overrides; catalog maps one immutable package. |
 | [ ] | [ ] | S07.07 | **Developer source retention:** Developer retains configured source; normal operations use the shared code defaults (temporarily develop, later main); successful replacement resets source fields and replaces its catalog. |
-| [ ] | [ ] | S07.08 | **Trusted complete package:** Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
+| [x] | [x] | S07.08 | **Trusted complete package:** Manifest/hash/version/schema/path/syntax checks before execution, one pinned compatible generation. |
 | [ ] | [ ] | S07.09 | **State-preserving update:** No healthy feature reinstall/restart/provider call or config loss; guarded actual owned drift only. |
 | [ ] | [ ] | S07.10 | **Self-update failure recovery:** Distinct transfer/storage/switch/hook-reinjection/overlap/opt-out/rollback boundaries preserve last trusted complete package and report incomplete integration honestly. |
 | [ ] | [ ] | S07.11 | **Optional amtm:** User-chosen personal launcher; official updater conditional with separate opt-in, no private registry hacks. |
@@ -798,7 +812,7 @@ Developer mode cannot bypass masking; irrelevant events contain no credential va
 | [x] | [x] | S14.01 | **Manual CFMgr-only archives:** Native unencrypted data-only tar.gz, privacy notice/best-effort modes, no router/add-on/code backup or schedule. |
 | [x] | [x] | S14.02 | **Mounted-drive picker:** Explicit numbered exact mount identity including one drive, CFMgr/backup directory, no stale/fallback destination. |
 | [x] | [x] | S14.03 | **Archive selection/actions:** Numbered newest list, inspect/verify/review restore and confirmed deletion; alternate source does not reset destination. |
-| [ ] | [ ] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
+| [x] | [x] | S14.04 | **Local date naming:** Regional date choice, same-day time suffix/collision refusal and manifest chronology across format/DST changes. |
 | [x] | [x] | S14.05 | **Verified-new-first retention:** Keep 3–5 same-set completed archives; prune only after verified commit and report purge failure separately. |
 | [x] | [x] | S14.06 | **Coherent data allowlist:** Config/catalog/typed authority/drafts/full YAML/JSON/both cert copies/.bak/preferences/eligible history; no live controls/executables. |
 | [x] | [x] | S14.07 | **Required versus optional payload:** Required authority/YAML cannot be omitted; external dependencies inventoried, optional cert/binary absence handled honestly. |

@@ -123,7 +123,10 @@ End-user journeys use `zr0-interactive-testing` and its scoped permissions; it a
 no product acceptance gate or router authority.
 
 Preserve plan-required behavior/edges, especially boot loops, router hangs,
-unbounded work, unsafe writes and serious corruption. Rare synthetic process/thread
+unbounded work, unsafe writes and serious corruption. Routine integration fixtures
+cover a representative core journey, not a full-project/router simulation. Ask
+whether each costly test proves a necessary normal outcome or critical boundary;
+merge duplicate setup and use focused tests for other subsystem details. Rare synthetic process/thread
 stress is optional Diagnostics work. Relax incidental output/timing assertions or
 defer rare low-risk cases with a review note, without approval. After two failed
 focused fixes or roughly 20 minutes on one CI issue, reassess evidence/criticality.

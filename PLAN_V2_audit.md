@@ -3749,7 +3749,7 @@ requirement. No code was deleted or rewritten to produce these labels.
 | Goal6 | Typed lifecycle/binary preferences, native prerequisites, version/readiness observations and bounded execution | Shared tunnel lifecycle, actual official binary acquisition/adoption/maintenance, connected-state/outage/retry and owned stop/recovery. |
 | Goal7 outside current accepted/reopened/partial rows | Preference/schema, fresh package acquisition and generic guarded publication | Launch/daily offer, explicit/unattended retained replacement, developer suppression/retention during those operations, state-preserving switch and rollback. |
 | Goal8 outside S08.01/.03 | Read-only IPv6 filtering, finite Health transport/GET and local WAN observations | Routed resolver/lifetime/translation authority, shared freshness, desired-state publisher, coalesced events/queue/retry and durable explicit-Off cleanup. |
-| Goals9–10 | Typed DNS/list identities and Health-only provider GET/report validation | Setup/pickers/search, mutation/publication/clear/migration, firmware handoff/owned cleanup/completion and feature-specific read-only check. |
+| Goals9–10 | Typed DNS/list identities and Health GET infrastructure; IP-Sync Health uses the wrong list product, as documented in the 2026-11-06 finding | Setup/pickers/search, mutation/publication/clear/migration, firmware handoff/owned cleanup/completion and feature-specific read-only check. |
 | Goal11 | Isolated finite Health GET, typed credential scope and report-local rejection/throttle holds | Operational queue/retry/transport consumers, durable throttle/auth-Off, containment and credential repair. A report-local hold is not a persistent operational fault controller. |
 | Goal12 | Real dependency supervision/cleanup/storage admission plus hook/job observations | Hook writers/repair/dispatch, boot/WAN/IPv6/mount/shutdown integration, schedules/watchdog and detached feature lifecycle. No hidden live controller was found. |
 | S13.01–S13.12 | Schema/policy/readiness/archive readers and diagnostic Scribe copies | Feature log installation/rotation/repair/transaction/uninstall/resume/re-detect. Optional external viewing remains unselected. |
@@ -3774,8 +3774,8 @@ explain the labels; the original requirements remain in the plan.
 | S02.01 | Accepted — retained proof reviewed |
 | S02.02 | Partial runtime — see explicit missing outcomes |
 | S02.03 | Accepted — retained proof reviewed |
-| S02.04 | Reopened — confirmed contract gap |
-| S02.05 | Reopened — confirmed contract gap |
+| S02.04 | Accepted — repaired, independently reviewed and final exact core passed |
+| S02.05 | Accepted — repaired, independently reviewed and final exact core passed |
 | S02.06 | Accepted — retained proof reviewed |
 | S02.07 | Partial runtime — see explicit missing outcomes |
 | S02.08 | Accepted — retained proof reviewed |
@@ -3788,10 +3788,10 @@ explain the labels; the original requirements remain in the plan.
 | S03.06 | Partial runtime — see explicit missing outcomes |
 | S03.07 | Accepted — retained proof reviewed |
 | S03.08 | Partial runtime — see explicit missing outcomes |
-| S03.09 | Accepted — retained proof reviewed |
+| S03.09 | Reopened — Gateway Health API contract mismatch; see 2026-11-06 finding |
 | S03.10 | Accepted — retained proof reviewed |
 | S04.01 | Accepted — retained proof reviewed |
-| S04.02 | Reopened — confirmed contract gap |
+| S04.02 | Accepted — repaired, independently reviewed and final exact core passed |
 | S04.03 | Accepted — retained proof reviewed |
 | S04.04 | Foundation only — operational consumer absent |
 | S04.05 | Foundation only — operational consumer absent |
@@ -3830,7 +3830,7 @@ explain the labels; the original requirements remain in the plan.
 | S07.05 | Foundation only — operational consumer absent |
 | S07.06 | Partial runtime — see explicit missing outcomes |
 | S07.07 | Foundation only — operational consumer absent |
-| S07.08 | Reopened — confirmed contract gap |
+| S07.08 | Accepted — repaired, independently reviewed and final exact core passed |
 | S07.09 | Foundation only — operational consumer absent |
 | S07.10 | Foundation only — operational consumer absent |
 | S07.11 | Optional/conditional — not selected |
@@ -3900,7 +3900,7 @@ explain the labels; the original requirements remain in the plan.
 | S14.01 | Accepted — retained proof reviewed |
 | S14.02 | Accepted — retained proof reviewed |
 | S14.03 | Accepted — retained proof reviewed |
-| S14.04 | Implementation present — written proof pending |
+| S14.04 | Accepted — repaired, independently reviewed and final exact core passed |
 | S14.05 | Accepted — retained proof reviewed |
 | S14.06 | Accepted — retained proof reviewed |
 | S14.07 | Accepted — retained proof reviewed |
@@ -4040,3 +4040,292 @@ several cases, not a demonstrated hang. The isolated actual-installer diagnostic
 full checks 0.73/1.13s and transaction 29.45s. No coverage, timeout or runtime change
 was justified by that evidence alone. Raw logs and failed-run receipts are retained
 privately; complete-module cost and final acceptance still require closure.
+
+## Measured Manager CI cap — 2026-11-05
+
+The complete Manager native gate first exceeded its ten-minute execution cap.
+Subsequent disjoint complete-module Dev selections at
+`25dc0e3e71de6bfd79333f640026f518fde55194` passed all 910 selected cases: 909 passes
+and one workstation-without-proc boundary skip. Four optional Diagnostics remained
+excluded. The 29 Manager modules were covered exactly once across acquisition,
+Store/WAN and two temporary remainder groups. Their pytest times were
+199.87s, 174.80s, 23.39s and 205.76s, totaling 603.82s before workflow setup;
+reported aggregate user/system CPU totaled about 589.4s. Separate runs repeat some
+fixture preparation, so this sum estimates combined cost rather than proving a
+whole-module duration. The isolated installer also passed with about 102 CPU
+seconds in 104.6s elapsed. These observations support active accumulated work,
+not a demonstrated stall.
+
+Independent Astra audit returned **PASS WITH NOTES** for the narrowly scoped
+12-minute Manager execution cap permitted by the existing measured-growth rule.
+The approximately ten-minute optimization target remains; the cap is not a claimed
+speed improvement. Review found no demonstrated minute-scale equivalent fixture
+saving. The repair, fresh post-probes, publication and retained-entry journeys
+retain distinct required evidence. No assertions, cases, runtime behavior or
+permanent module ownership were removed or relaxed. Backup and Status caps remain
+ten minutes; collector compatibility was checked against its existing 15-minute
+allowance and 17-minute job cap. No collector change was needed.
+
+Commit `965c8bbadd08536f0a638fded68e5712735bc236` changes only the Manager cap and
+its exact existing tooling assertion. Three focused host tooling cases passed
+in 0.97s and common statics passed; complete Tools Checks `42022067276` passed
+214 tests in 1.26s (28s workflow). The full Manager result and wall/CPU cost must
+still be recorded at the final complete core gate; diagnostic aggregation does
+not establish acceptance, and this review authorizes no repeated timeout increase.
+
+
+## Health deadline sensitivity during final core — 2026-11-05
+
+At unchanged `965c8bbadd08536f0a638fded68e5712735bc236`, native Status in core
+`42022749501` failed its normal full-Health journey after 240 other passes.
+The report reached the real 40-second collection deadline, reserving five seconds
+for final work. Its ledger recorded 553 operations, 1192 files, 12 requests and
+60 rows, with 45.19s wall time and reason `budget`; some address comparisons stayed
+UNKNOWN. Operation/file/byte caps were not exhausted. The test correctly rejected
+an incomplete normal journey, and later mutation/cleanup assertions were not
+reached in that invocation. No hang or product defect is established by this alone.
+
+The prescribed single-error Dev gate `42023587830` then passed at that SAME SHA
+in 32.78s: 555 operations, 1197 files, 12 requests, 59 rows, 28 collection seconds and
+32.23s wall; all detailed normal-output, immutability and cleanup assertions passed.
+The earlier complete Status Dev gate had also passed at that SHA. The cause of the
+variation remains unknown; these passes do not establish a fix or prove contention.
+A suggested Python startup optimization was unmeasured and was not applied.
+
+Independent Astra review confirmed that bounded truthful UNKNOWN reporting matches
+the existing Health contract, while the normal-journey oracle must remain unchanged.
+It permits one bounded complete-context recovery at the unchanged candidate after
+the focused pass, with this failure preserved and no retry-until-green loop.
+A repeat of this failure requires concrete cost/context reassessment. No deadline,
+assertion, selection or required platform is relaxed. This disposition grants no
+acceptance before the complete aggregate passes.
+
+The same review found that selective Status-plus-collector recovery is unsupported:
+the collector pins child attempt numbers, while current dispatch reruns every
+matching child. Existing parent dispatch/dependents must therefore be retried as
+a set; manually combining newer children with the old dispatch map is rejected.
+Successful Backup/Manager receipts remain evidence, but cannot replace the required
+passing aggregate under that existing mechanism.
+
+### CI recovery dispatch contract — 2026-11-05
+
+The bounded recovery of Checks `42022749501` failed in dispatch attempt 2 job
+`127237376612`, before Status/Health reran. The helper expected 202 for rerun,
+whereas GitHub documents 201 for that endpoint; the test fixture repeated the same
+incorrect 202 assumption. The old error omitted the actual numeric response, so
+201 is the documented contract and reproduced mismatch, not a captured numeric
+live receipt. Backup rerun `42022795707` attempt 2 had been submitted and was
+subsequently cancelled; Manager/Status did not receive a second attempt.
+
+The ordinary coordinator repair retains strict GET/dispatch 200, rerun 201 and
+cancel 202 expectations, reporting only actual/expected status on mismatch. All
+existing same-repository/workflow/parent/SHA/completion checks remain before the
+mutation phase. Successful completed children retain their exact run/attempt;
+unsuccessful children rerun at the next attempt. Dispatch-exception cleanup covers only newly
+started/retried runs. The unchanged parent-cancellation job still iterates the
+complete mapped set, including already completed successes. The collector still independently requires every platform,
+job and exact attempt; no product requirement, deadline, permissions or provenance
+checks were relaxed. Unknown outcomes remain failures. The transport fixture was
+first corrected to 201 and reproduced the prior failure before the helper fix.
+
+The focused dispatch/collector/workflow selection passed 33 in 0.58s. The parent ran
+complete optional tooling plus common planning/package/shell/Python/format gates:
+217 passed in 5.87s; 8.47s wall, 4.62s user, 2.70s system. Local ShellCheck was skipped
+explicitly; shell sources were unchanged. Independent Astra review returned PASS WITH NOTES: no blocking defect; preserve
+the cancellation-path qualification above. Complete Tools CI, then the active
+Health/Status small gates and final exact-candidate core remain pending. No new product acceptance is awarded by this CI repair.
+
+### Dedicated test necessity and cost audit — 2026-11-05
+
+The user requested lower-cost normal/core-critical coverage and an independent
+review asking whether each expensive or repeated test is necessary. The read-only
+review used candidate `81bb49b`, test contracts and recorded wall/CPU costs.
+
+| Decision | Is this needed? | Evidence and preserved assurance |
+| --- | --- | --- |
+| Simplify full Health targets | All three features and both IP families are needed; three DNS records and two lists are redundant here. | One A record plus one dual-family list removes four supervised HTTP pipelines (12→8). Multi-target scheduling, comparison, shared-list families, pagination and malformed/family variants remain in focused Status tests. Keep genuine entry, parsers, clocks/deadlines, descriptors, package PASS, no-write/canary/reap/cleanup assertions. Wall improvement remains to be measured. |
+| Merge installed Settings cancellation | Cancellation is required; a separate installed launch duplicates setup. | Move unchanged-config/no-lock/no-install/cancelled-output checks into the existing Save/reopen journey. Cheap cancellation/EOF variants remain. No loss of concurrent Save or real Store proof. |
+| Simplify WAN-removal setup | Real removal and reselection are required; repeating first-use setup is not. | Seed valid confirmed inventory; keep actual installed removal/Save and confirmation assertions. The separate first-use test retains persistence and reopening. |
+| Keep acquisition, retained entry and fresh installer | Yes; each is a distinct consumer. | Pinned acquisition→verify→install, retained admission/repair/returned storage/force and fresh repair→publication are different integration claims. Roughly108s/100s/104s costs do not justify replacing them with helpers. |
+| Keep Store failure/recovery boundaries | Yes; authoritative states and corruption/overlap risks differ. | Arm/publish/retire interruption, failed flush, corruption, concurrent intent, unresolved children and inherited-lock cases retain required safeguards. |
+| Keep actual archive creation | Yes; it uniquely connects the complete publication path. | Preserve Store→capture→tar/gzip→verify→publish→history; regional naming variants stay in the cheap production-function table. Deadlines, collision preservation and cleanup remain core. |
+| Existing stress remains optional | Routine execution is unnecessary. | Four marked dependency diagnostics already stay outside core. No additional wholesale deletion is supported by this audit. |
+
+Installer timing showed69.50s repair,29.45s transaction and only1.86s combined
+post-probes, with about102s CPU/104.60s wall. Removing post-probes would sacrifice
+central proof for little gain. The audit authorizes no product requirement changes
+or weaker oracles. Parent reviewed all three bounded fixture reductions; independent reconciliation
+returned PASS. Health retained-coverage tests passed20 with1 Linux skip in2.63s.
+The two changed actual Manager host journeys passed in32.00s pytest/33.01s wall
+(14.27s user,15.10s system). Scoped statics passed. Native outcomes and measured
+final module cost remain pending.
+
+### Core-only Health coverage refinement — 2026-11-06
+
+The user explicitly clarified that routine tests should cover core/critical areas,
+not simulate the entire project. The first reduction at `adff466` passed its small
+gates but left Health at42.91s (37 collection seconds,519 operations,8 requests),
+so no substantial cost improvement was established. Installed Settings passed23
+in51.78s. No full core was started for that candidate.
+
+Following a second dedicated necessity review, the existing Health fixture now
+models one valid DDNS-only installed entry: one A record/token/IPv4 WAN and three
+strict executable-boundary GETs. Entware is unavailable, other features are
+unconfigured, and logging/Backup are unrequested. Simulated tunnel files/owners,
+Scribe/logging installation/rules/daemons, seven hooks/jobs and Backup drive were
+removed from this journey. Production collectors still execute their ordinary
+absent paths; no successful collector stubs, deadlines or runtime guards changed.
+
+Critical integration remains: actual entry and verified imports; package.inventory
+PASS; real supervisor, clock, reservations, directory/request/body/header FDs;
+positive zone/DNS/public-IPv4 observations; unchanged retained sources; secret
+canary exclusion; no operational preparation; child reaping and owned cleanup.
+Other configured subsystem proof remains in existing focused actual collector and
+worker tests: Cloud projections/collector, logging workers/cron/process boundaries,
+hook getters/cron identity, Backup projection/worker, provider scheduling/comparison,
+real native curl GET/FD/limit/stall, package binding and recovery-listing cases.
+
+Independent final reconciliation returned PASS, explicitly covering retention of
+S03.09 under this user-directed test scope, pending final candidate/platform gates.
+The removed assurance is simultaneous end-to-end validation of all configured
+subsystems in one synthetic router. This does not change product requirements.
+The earlier package UNKNOWN and deadline observations remain unexplained history,
+not claimed production fixes. See the matching S03.09 review note.
+
+Eight retained focused tests passed in1.89s; exact new config/inventory/scope/request
+projection and fixture compilation/statics passed. Actual native core journey,
+complete Status and final core results remain pending. Before the reduction, both
+affected source files and parent records were copied and hash-verified in
+`.tmp/five-row-resume/core-health-before/`; committed `adff466` retains the prior
+fixtures. No unrelated source, records or evidence was deleted.
+
+The core-only candidate `9c3c58732f803f649d7c021568bbedb69d14b49d` passed the
+single native Health error gate `42032230564` (job `127261295721`):1 passed15.87s;
+167 operations,363 files,5175314 bytes,3 requests,39 rows,13 collection seconds and
+15.016s observed wall, normal completion. CPU7.00s user+6.84s system. Against the
+prior small run42.91s/519 operations, measured test wall fell about63% and operations
+about68%; runners were different, so this is observed cost rather than a controlled
+hardware benchmark. Complete Status and final core remain pending.
+
+## Five-row closure and final core — 2026-11-06
+
+Parent reconciliation accepts S02.04, S02.05, S04.02, S07.08 and S14.04 at
+`9c3c58732f803f649d7c021568bbedb69d14b49d`. Their actual consumers, written tests
+and independent repair reviews are recorded above. The final gate supersedes
+pending-gate statements in the dated repair sequence; it does not erase earlier
+failures or convert host skips into passes. Runtime/package bytes are unchanged
+from `9890cb2142cf7c71bb3e06c1807fb3099ad2d659`.
+
+[Checks 42032878335](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42032878335)
+and all three exact-candidate module workflows passed. Parent independently
+verified terminal conclusions, every required job, unchanged local source and
+remote develop SHA. The conditional parent-cancellation cleanup correctly skipped.
+
+| Complete module | Host result; job including setup | BusyBox result; job including setup |
+| --- | --- | --- |
+| [Backup 42032946203](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42032946203) | 429 passed, 1 platform skip; 124.91s pytest, 2m21s job | 430 passed; 398.58s pytest, 6m53s job |
+| [Manager 42032952395](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42032952395) | 879 passed, 30 platform skips; 179.67s pytest, 3m15s job | 908 passed, 1 workstation-only skip; 568.74s pytest, 9m43s job |
+| [Status 42032956561](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42032956561) | 279 passed; 43.68s pytest, 58s job | 279 passed; 119.91s pytest, 2m15s job |
+
+Four existing optional Manager stress diagnostics remained excluded per platform.
+All complete module jobs met the approximately ten-minute optimization target.
+Manager's reviewed 12-minute cap remains a measured-growth allowance, not a speed
+claim or permission for another increase. Its native CPU was 297.61s user plus
+243.12s system. Full core ran only after the small error gates and affected
+complete groups passed; no repeat was performed after success. No full local
+suite was due because this checkpoint completes no main goal.
+
+The final Health small gate passed 1 in 15.87s, and complete Status Dev
+`42032428431` passed 274 in 62.06s at this same candidate. Installed Settings Dev
+`42030529709` passed 23 in 51.78s at `adff466`, with those source files unchanged
+afterward. Complete optional Tools `42026818970` passed 217 in each host/native
+batch at `ca850c0`, with its workflow/tooling sources unchanged afterward.
+Earlier complete acquisition/startup, Store/WAN and archive Dev groups passed at
+`965c8bb`; the final core supplies fresh combined proof for all required modules.
+
+Independent affected-row review retained S03.07's distinction between normal
+startup admission and read-only report work. The dedicated necessity auditor
+retained S03.09 after the user explicitly replaced full-project simulation with
+core/critical integration plus focused subsystem proof. The assurance removed is
+simultaneous configured-subsystem end-to-end coverage in one synthetic router;
+see the S03.09 review note. The earlier unexplained package.inventory UNKNOWN is
+not claimed fixed, and the earlier deadline failures remain preserved evidence.
+No production deadline or product acceptance requirement changed.
+
+This is representative Ubuntu/vendor BusyBox development proof. Real Merlin/ARM,
+flash, TLS and provider qualification remain separately authorized beta work.
+Raw historical logs and final run/job metadata remain in ignored
+`.tmp/five-row-resume/ci/`; all original fixtures and parent records were preserved
+before the user-approved test simplification and handoff consolidation.
+
+## Gateway Health contract finding — 2026-11-06
+
+During next-checkpoint dependency review, the Astra planner found a committed
+product/API mismatch. A separate acceptance reviewer confirmed it and corrected
+its earlier S03.09 tick-retention conclusion. Parent reconciled both findings:
+**reopen S03.09**, while retaining the five completed repair rows and every other
+previously accepted row. Passing tests for an incorrect provider contract cannot
+supply the missing consumer proof. No requirement has been changed.
+
+At tested code `9c3c58732f803f649d7c021568bbedb69d14b49d`, committed PLAN section 10
+explicitly requires Zero Trust Gateway IP lists, not account Rules Lists (line
+998). S03.09 requires eligible configured read-only provider probes (row 205 and
+provider contract at lines 379–397). Health schedules IP-Sync targets in
+`modules/status.sh:779–812`, but its request builder at 1985–1994 requires a 32-hex
+list ID and constructs `/accounts/{account}/rules/lists/{id}`. The private wire
+validator and response parser similarly select Rules Lists: `kind: ip`, item
+`id`/`ip` fields and cursor pagination. Positive assertions at
+`tests/test_status.py:629–634` explicitly expect these incorrect URLs.
+
+Cloudflare's official [Gateway list metadata](https://developers.cloudflare.com/api/resources/zero_trust/subresources/gateway/subresources/lists/methods/get/)
+and [Gateway list items](https://developers.cloudflare.com/api/resources/zero_trust/subresources/gateway/subresources/lists/subresources/items/methods/list/)
+contracts use `/accounts/{account}/gateway/lists/{UUID}`, `type: IP`, item `value`
+and page pagination. A valid saved Gateway UUID currently becomes
+`resource-local-only`, so the required supported-target observation is missing.
+Safe UNKNOWN fallback does not satisfy that outcome. This is source/API evidence;
+no live provider request, mutation, exposure or exploit was established.
+
+The immediate broad acceptance/incomplete-work review retained all other accepted
+rows and all 13 existing partial-runtime labels. In particular, S03.02's shared
+schema stores target IDs as opaque nonempty strings (`config.sh:1516–1535`), so it
+does not impose this Health-only 32-hex restriction. Archive validation consumes
+that shared schema (`backup.sh:5733`) and preserves original configuration bytes;
+it does not select a provider endpoint. No corresponding archive, presentation,
+dependency, Save or package-admission failure was found. Syntax admission does not
+establish API correctness. The complete five-row repair receipt above remains valid.
+
+The bounded repair is the existing S03.09 configured-target Health consumer:
+Gateway request/identity framing, metadata/item parsing, bounded page completeness
+and truthful report comparisons, preserving read-only/privacy/hold/fallback and
+cleanup behavior. No setup, operational checker, publication, discovery, auth-Off
+or scheduling implementation is included. The planner withdrew S10.10 as an
+independently ready new checkpoint because its real setup and operational
+cooldown/auth-containment dependencies are absent.
+
+Implementation review identified that the repair also changes the private request
+allowlist and authorization-scope validation boundary. The ordinary worker stopped
+before edits under the active security-routing rule. A user-requested native
+security-worker access probe launched but returned ACCESS_UNVERIFIED: no
+authoritative effective Blue access signal was exposed. No security implementation
+was assigned, and no source/test files changed. This is a routing limitation,
+not a finding of credential exposure or an independently established vulnerability.
+The current task, scoped Daybreak transfer and resumption boundary are in the handoff.
+
+### Routing reconciliation for Gateway compatibility
+
+The parent and independent Astra reviewer compared the actual semantic change:
+configured role/account/resource/credential association in `status.sh:1985`, fixed
+HTTPS destination/request grammar at `status.sh:2036`, GET/private descriptors/TLS/
+no redirects or retries in `worker.sh:1055`, and eligibility/report-local holds
+at `status.sh:393` can all remain unchanged. The Gateway endpoint and UUID grammar
+correct the representation of an already-approved target; they do not require
+another principal, credential, host, method or authorization decision.
+
+The ordinary worker acknowledged that its quoted role rule was conditional and
+its earlier categorical classification was too strong. No changed security
+property beyond the provider representation had been identified; this was workflow
+routing, not a platform safety refusal. Parent accepted **ordinary compatibility
+with constraints**, and the user approved a global AGENTS clarification reflecting
+that distinction. No profile or worker-role file changed, and no security-control
+waiver or unverified-Blue implementation was authorized. A concrete new change to
+security controls still requires the prescribed security lane.

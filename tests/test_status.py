@@ -41,7 +41,7 @@ __all__ = ["commands", "config", "installed_entry", "schema2_config", "shell", "
 HEALTH_SECRET = "cfut_fixture-secret_CANARY-123"
 ZONE = "a" * 32
 ACCOUNT = "b" * 32
-LIST = "c" * 32
+LIST = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 
 
 HEALTH_CAPTURE_SCRIPT = r"""
@@ -626,12 +626,12 @@ def health_projection(
             "local-record-6",
             f"zones/{ZONE}/dns_records?name=%2A.example.test&type=AAAA&per_page=50",
         ),
-        ("ip_sync", "list", "primary", f"accounts/{ACCOUNT}/rules/lists/{LIST}"),
+        ("ip_sync", "list", "primary", f"accounts/{ACCOUNT}/gateway/lists/{LIST}"),
         (
             "ip_sync",
             "items",
             "primary",
-            f"accounts/{ACCOUNT}/rules/lists/{LIST}/items?per_page=50",
+            f"accounts/{ACCOUNT}/gateway/lists/{LIST}/items?page=1&per_page=50",
         ),
         ("cloudflared", "tunnel", "-", f"accounts/{ACCOUNT}/cfd_tunnel/{BOOT}"),
         (
@@ -914,6 +914,127 @@ def test_health_wire_admits_exact_generated_curl_grammar(
     assert result.stdout == result.stderr == b""
 
 
+def test_health_gateway_list_identity_and_request_are_exact(
+    commands, health_config, tmp_path
+):
+    selected = {"feature": "ip_sync", "kind": "list", "selector": "primary"}
+    scope = health_projection(commands, health_config, **selected)
+    request = health_projection(commands, health_config, "health-request", **selected)
+    assert b" eligible " in scope.stdout
+    assert f"/gateway/lists/{LIST}".encode() in request.stdout
+    for bad in ("c" * 32, "cccccccc-cccc-4ccc-8ccc-cccccccccccz"):
+        value = json.loads(json.dumps(health_config))
+        value["ip_sync"]["targets"][0]["id"] = bad
+        rejected = health_projection(commands, value, **selected)
+        assert rejected.returncode == 0 and b" resource-local-only " in rejected.stdout
+    wrong = request.stdout.replace(b"/gateway/lists/", b"/rules/lists/")
+    rejected = health_wire(
+        commands, tmp_path, "list", wrong, mode="health-request-check", size=len(wrong)
+    )
+    assert rejected.returncode != 0 and rejected.stdout == rejected.stderr == b""
+
+
+@pytest.mark.parametrize(
+    "damage", ["none", "wrong-type", "wrong-id", "wrong-name", "rules-shape"]
+)
+def test_health_gateway_list_metadata_uses_saved_identity(
+    commands, health_config, tmp_path, damage
+):
+    selected = {"feature": "ip_sync", "kind": "list", "selector": "primary"}
+    scope = health_projection(commands, health_config, **selected)
+    request = health_projection(commands, health_config, "health-request", **selected)
+    scope_file, request_file = tmp_path / "scope", tmp_path / "request"
+    scope_file.write_bytes(scope.stdout)
+    request_file.write_bytes(request.stdout)
+    item = {"id": LIST, "name": "owned-list", "type": "IP", "count": 1}
+    if damage == "wrong-type":
+        item["type"] = "DOMAIN"
+    elif damage == "wrong-id":
+        item["id"] = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+    elif damage == "wrong-name":
+        item["name"] = "other"
+    elif damage == "rules-shape":
+        item.pop("type")
+        item["kind"] = "ip"
+    payload = json.dumps({"success": True, "errors": [], "result": item}).encode()
+    result = health_response_run(commands, scope_file, request_file, payload)
+    assert (result.returncode == 0) == (damage == "none")
+    assert result.stderr == b""
+    if damage == "none":
+        assert result.stdout == b"CFMGR-HEALTH-RESPONSE 1 verified 1 api-read END\n"
+    else:
+        assert result.stdout == b""
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="actual worker requires Linux FD semantics"
+)
+def test_linux_gateway_get_uses_actual_workers_and_http_boundary(
+    shell, tools, health_config, tmp_path
+):
+    config_path = tmp_path / "config"
+    config_path.write_text(json.dumps(health_config, separators=(",", ":")))
+    curl = tmp_path / "curl"
+    curl.write_text(
+        "#!/bin/sh\n"
+        "request=$(cat <&6) || exit 1\n"
+        "case $request in\n"
+        f"*'/gateway/lists/{LIST}/items?page=1&per_page=50'*) "
+        'printf \'%s\' \'{"success":true,"errors":[],"result":[{"value":"8.8.8.8"}],"result_info":{"page":1,"per_page":50,"count":1,"total_count":1,"total_pages":1}}\' >&8 ;;\n'
+        f"*'/gateway/lists/{LIST}'*) "
+        f'printf \'%s\' \'{{"success":true,"errors":[],"result":{{"id":"{LIST}","name":"owned-list","type":"IP"}}}}\' >&8 ;;\n'
+        "*) exit 1 ;; esac\n"
+        "printf 'HTTP/1.1 200 OK\\r\\n\\r\\n' >&7\n"
+        "printf '200\\n'\n"
+    )
+    curl.chmod(0o700)
+    ca = tmp_path / "ca"
+    ca.write_text("fixture\n")
+    script = r"""
+. "$1/modules/status.sh"
+cfmgr_source=$1 cfmgr_status_context=$2 cfmgr_health_config=$3 cfmgr_health_config_bytes=$4
+cfmgr_health_curl=$5 cfmgr_health_ca=$6 cfmgr_health_transport=ready cfmgr_health_clock_ready=1
+cfmgr_health_provider_stop=0 cfmgr_health_scope_holds='' cfmgr_health_public_eligible=0 cfmgr_health_ipv6_ready=0
+cfmgr_probe_serial=0 test_shell=$7
+cfmgr_health_run() {
+    mode=$1 tool=$2; shift 2
+    cfmgr_probe_serial=$((cfmgr_probe_serial + 1))
+    cfmgr_probe_stdout=$cfmgr_status_context/$mode.$cfmgr_probe_serial.out
+    cfmgr_probe_stderr=$cfmgr_status_context/$mode.$cfmgr_probe_serial.err
+    if "$test_shell" "$cfmgr_source/modules/helpers/worker.sh" "$mode" "$tool" "$cfmgr_status_context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
+    return 0
+}
+cfmgr_health_get ip_sync list primary 4 || exit 10
+cat "$cfmgr_health_result_file"
+cfmgr_health_get ip_sync items primary 4 || exit 11
+cat "$cfmgr_health_result_file"
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            script,
+            "gateway-get",
+            str(ROOT),
+            str(tmp_path),
+            str(config_path),
+            str(config_path.stat().st_size),
+            str(curl),
+            str(ca),
+            tools["sh"],
+        ],
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert (result.returncode, result.stderr) == (0, b"")
+    assert result.stdout == (
+        b"CFMGR-HEALTH-RESPONSE 1 verified 1 api-read END\n"
+        + health_v2_receipt("items", "verified", "mixed", ["8.8.8.8"])
+    )
+    assert HEALTH_SECRET.encode() not in result.stdout + result.stderr
+
+
 @pytest.mark.parametrize(
     "case",
     [
@@ -1069,11 +1190,14 @@ def test_health_v2_receipts_bound_values_and_round_trip_complete_frames(
         ]
         info = {"page": 1, "total_pages": 1, "total_count": count, "count": count}
     else:
-        records = [
-            {"id": f"{index:032x}", "ip": f"10.0.0.{index + 1}"}
-            for index in range(count)
-        ]
-        info = {"cursors": {}}
+        records = [{"value": f"10.0.0.{index + 1}"} for index in range(count)]
+        info = {
+            "page": 1,
+            "per_page": 50,
+            "total_pages": 1,
+            "total_count": count,
+            "count": count,
+        }
     body = {"success": True, "errors": [], "result": records, "result_info": info}
     result = health_response_run(
         commands, scope_file, request_file, json.dumps(body).encode()
@@ -1357,19 +1481,37 @@ cfmgr_health_transport_exit 28
 
 
 @pytest.mark.parametrize(
-    "ip,after,expected",
+    "ip,info,expected",
     [
-        ("10.0.0.1", None, "verified"),
-        ("10.0.0.0/8", "next-page", "partial"),
-        ("2001:db8::/32", "", "verified"),
-        ("::ffff:192.0.2.1", None, "verified"),
-        ("10.0.0.0/7", None, None),
-        ("2001:db8::/11", None, None),
-        ("not-an-ip", None, None),
+        (
+            "10.0.0.1",
+            {"page": 1, "per_page": 50, "total_pages": 1, "total_count": 1, "count": 1},
+            "verified",
+        ),
+        (
+            "10.0.0.0/8",
+            {
+                "page": 1,
+                "per_page": 50,
+                "total_pages": 2,
+                "total_count": 51,
+                "count": 1,
+            },
+            "partial",
+        ),
+        ("2001:db8::/32", {}, "partial"),
+        (
+            "::ffff:192.0.2.1",
+            {"page": 2, "per_page": 50, "total_pages": 1, "total_count": 1, "count": 1},
+            "partial",
+        ),
+        ("10.0.0.0/7", {}, None),
+        ("2001:db8::/11", {}, None),
+        ("not-an-ip", {}, None),
     ],
 )
-def test_health_list_items_use_typed_cursor_pagination_and_provider_ip_semantics(
-    commands, health_config, tmp_path, ip, after, expected
+def test_health_gateway_items_use_numbered_pages_and_provider_ip_semantics(
+    commands, health_config, tmp_path, ip, info, expected
 ):
     scope = health_projection(
         commands, health_config, feature="ip_sync", kind="items", selector="primary"
@@ -1385,29 +1527,72 @@ def test_health_list_items_use_typed_cursor_pagination_and_provider_ip_semantics
     scope_file, request_file = tmp_path / "scope", tmp_path / "request"
     scope_file.write_bytes(scope.stdout)
     request_file.write_bytes(request.stdout)
-    cursors = {} if after is None else {"after": after}
     body = {
         "success": True,
         "errors": [],
-        "result": [{"id": "d" * 32, "ip": ip}],
-        "result_info": {"cursors": cursors},
+        "result": [{"value": ip}],
+        "result_info": info,
     }
-    payload = json.dumps(body).encode()
-    result = health_response_run(commands, scope_file, request_file, payload)
+    result = health_response_run(
+        commands, scope_file, request_file, json.dumps(body).encode()
+    )
     assert result.stderr == b""
     if expected is None:
         assert result.returncode != 0 and result.stdout == b""
     else:
-        state = "partial" if expected == "partial" else "verified"
-        receipt = (
-            f"CFMGR-HEALTH-RESPONSE 2 {state} 1 items mixed\n"
-            f"{health_v2_value(ip)}\nEND 1\n"
-        )
+        receipt = f"CFMGR-HEALTH-RESPONSE 2 {expected} 1 items mixed\n{health_v2_value(ip)}\nEND 1\n"
         assert result.returncode == 0 and result.stdout == receipt.encode()
         framed = health_wire(
             commands, tmp_path, "response", result.stdout, mode="health-frame"
         )
         assert framed.returncode == 0 and framed.stdout == framed.stderr == b""
+
+
+@pytest.mark.parametrize(
+    "records,info,state",
+    [
+        (
+            [],
+            {"page": 1, "per_page": 50, "total_pages": 0, "total_count": 0, "count": 0},
+            "verified",
+        ),
+        (
+            [],
+            {"page": 1, "per_page": 50, "total_pages": 1, "total_count": 0, "count": 0},
+            "verified",
+        ),
+        ([], {}, "partial"),
+        (
+            [{"value": "8.8.8.8"}],
+            {"page": 1, "per_page": 50, "total_pages": 1, "total_count": 1, "count": 0},
+            "partial",
+        ),
+        (
+            [{"value": "8.8.8.8"}],
+            {"page": 1, "per_page": 20, "total_pages": 1, "total_count": 1, "count": 1},
+            "partial",
+        ),
+    ],
+)
+def test_health_gateway_first_page_completeness_requires_coherent_metadata(
+    commands, health_config, tmp_path, records, info, state
+):
+    selected = {"feature": "ip_sync", "kind": "items", "selector": "primary"}
+    scope_file, request_file = tmp_path / "scope", tmp_path / "request"
+    scope_file.write_bytes(
+        health_projection(commands, health_config, **selected).stdout
+    )
+    request_file.write_bytes(
+        health_projection(commands, health_config, "health-request", **selected).stdout
+    )
+    body = {"success": True, "errors": [], "result": records, "result_info": info}
+    result = health_response_run(
+        commands, scope_file, request_file, json.dumps(body).encode()
+    )
+    assert result.returncode == 0 and result.stderr == b""
+    assert result.stdout == health_v2_receipt(
+        "items", state, "mixed", [record["value"] for record in records]
+    )
 
 
 def test_health_limits_and_explicit_clock_gate_fail_before_collection(shell, tmp_path):

@@ -10,13 +10,14 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 
 ## Implementation status
 
-**0 of 16 main goals complete (0%); 21 of 157 subgoals accepted (13.4%).**
+**0 of 16 main goals complete (0%); 25 of 157 subgoals accepted (15.9%).**
 The development code provides trusted-local fresh installation, private passive
-defaults, fresh-install preparation of shared tools and tunnel DNS,
+defaults, fresh and retained-launch preparation of shared tools and tunnel DNS,
 confirmed selected dependency reinstall, Entware storage-loss handling and a
 native read-only status dashboard.
 Health diagnostics add bounded configuration, storage, integration and eligible
 provider checks, with grouped reports for plain text and narrow terminals.
+Gateway IP-list diagnostics are not yet supported correctly.
 `--health`, `--doctor` and `--diagnostic` share this read-only report and retain
 native fallback when optional modules or operational tools are unavailable.
 Explicit Health runs independently save a sanitized report when safe mounted
@@ -52,19 +53,19 @@ and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
 | Area | Intended implementation | Status |
 | --- | --- | --- |
 | [Product scope](PLAN_V2.md#1-product-scope-and-boundaries) | Independent DDNS, one Cloudflared tunnel and IP-Sync in a native shell CLI. | Planned |
-| [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | 5/9 accepted |
-| [Menus, settings and status](PLAN_V2.md#3-configuration-menus-and-status) | Separate setup and On/Off controls, a compact dashboard and full health diagnostics. | 5/10 accepted |
-| [Settings and recovery](PLAN_V2.md#4-save-cancellation-and-recovery) | Reviewed saves, resumable drafts, cancellation and safe interruption recovery. | 2/9 accepted |
+| [Installation and dependencies](PLAN_V2.md#2-installation-storage-and-dependencies) | Verified modular packages, private defaults, selected Entware tools and native recovery. | 7/9 accepted |
+| [Menus, settings and status](PLAN_V2.md#3-configuration-menus-and-status) | Separate setup and On/Off controls, a compact dashboard and full health diagnostics. | 4/10 accepted |
+| [Settings and recovery](PLAN_V2.md#4-save-cancellation-and-recovery) | Reviewed saves, resumable drafts, cancellation and safe interruption recovery. | 3/9 accepted |
 | [Cloudflared setup](PLAN_V2.md#5-cloudflared-setup-and-credentials) | Token, guided and advanced credential/configuration paths with reviewed hostname routing. | Planned |
 | [Tunnel lifecycle](PLAN_V2.md#6-tunnel-lifecycle-and-binary-maintenance) | Guarded Start/Stop/Restart, readiness, watchdog recovery and verified binary maintenance. | Planned |
-| [CFMgr updates](PLAN_V2.md#7-cfmgr-updates-source-selection-and-developer-mode) | Verified updates/reinstall, configurable sources and preserved settings across replacement. | 1/11 accepted |
+| [CFMgr updates](PLAN_V2.md#7-cfmgr-updates-source-selection-and-developer-mode) | Verified updates/reinstall, configurable sources and preserved settings across replacement. | 2/11 accepted |
 | [Shared address discovery](PLAN_V2.md#8-shared-address-discovery-and-reconciliation) | Current IPv4/IPv6 evidence, selected-WAN verification and shared discovery/reconciliation. | Planned |
 | [DDNS](PLAN_V2.md#9-ddns) | A/AAAA reconciliation, remote drift repair and Merlin hostname/refresh integration. | Planned |
 | [IP-Sync](PLAN_V2.md#10-ip-sync) | IPv4/IPv6 list reconciliation while preserving list identity and handling inactive families. | Planned |
 | [Credential recovery](PLAN_V2.md#11-provider-failures-and-credential-repair) | Scoped authorization failure handling and credential repair without unintended reactivation. | Planned |
 | [Hooks and schedules](PLAN_V2.md#12-hooks-schedules-and-boot-safety) | Identifiable owned hook blocks, safe repair, shared scheduling and bounded outage recovery. | Planned |
 | [Logging](PLAN_V2.md#13-logging-and-rotation) | System messages, optional per-feature Scribe logs, owned logrotate rules and sanitized diagnostic capture. | 1/14 accepted |
-| [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 7/11 accepted |
+| [Backup and restore](PLAN_V2.md#14-backup-and-restore) | Manual data-only archives, guarded restoration and independently selected backup storage. | 8/11 accepted |
 | [Uninstall and reset](PLAN_V2.md#15-uninstall-retained-installation-and-reset) | Retained-config uninstall, full wipe and scoped resets that preserve unrelated data. | Planned |
 | [Compatibility and guidance](PLAN_V2.md#16-product-readiness-and-documentation) | Evidence-based support, usable operating guides and validated release readiness. | Planned |
 

@@ -1959,6 +1959,10 @@ function hp_inventory(    f,id,names,i,j,k,array,item,count,s,families,family) {
     print "END"
 }
 function hp_provider_id(value) { return length(value)==32 && value~/^[0-9a-fA-F]+$/ }
+function hp_gateway_id(value,    a,n,i) {
+    n=split(value,a,"-"); if(n!=5 || length(a[1])!=8 || length(a[2])!=4 || length(a[3])!=4 || length(a[4])!=4 || length(a[5])!=12) return 0
+    for(i=1;i<=5;i++) if(a[i]!~/^[0-9a-fA-F]+$/) return 0; return 1
+}
 function hp_dns(value,    a,n,i) {
     if(length(value)>253 || value=="") return 0
     n=split(value,a,"."); for(i=1;i<=n;i++) if(a[i]!~/^[A-Za-z0-9_-]+$/ || length(a[i])>63) { if(i!=1 || a[i]!="*" || n<2) return 0 }
@@ -1988,10 +1992,10 @@ function hp_resource_request(    ref,credential,account,resource,records,item,i,
         for(i=0;(item=co_child[records,"i" i]);i++) if(cs_string(item,"role",0)==hp_selector) { found=item; break }
         if(!found) { hp_state="resource-local-only"; return }
         resource=cs_string(found,"id",0); name=cs_string(found,"name",0)
-        if(!hp_provider_id(account) || !hp_provider_id(resource) || length(name)>128 || name~/[^ -~]/) { hp_state="resource-local-only"; return }
+        if(!hp_provider_id(account) || !hp_gateway_id(resource) || length(name)>128 || name~/[^ -~]/) { hp_state="resource-local-only"; return }
         account=tolower(account); resource=tolower(resource); hp_resource=resource; hp_name=co_hex(name)
         hp_scope=ref ".list." account "." resource
-        hp_url="https://api.cloudflare.com/client/v4/accounts/" account "/rules/lists/" resource (hp_kind=="items" ? "/items?per_page=50" : "")
+        hp_url="https://api.cloudflare.com/client/v4/accounts/" account "/gateway/lists/" resource (hp_kind=="items" ? "/items?page=1&per_page=50" : "")
     } else if(hp_feature=="cloudflared" && hp_kind~/^(tunnel|connections)$/) {
         refs=cs_id(hp_id,"credential_refs"); identity=cs_id(hp_id,"expected_identity")
         ref=cs_string(refs,"management",1); account=cs_string(identity,"account_id",1); resource=cs_string(identity,"tunnel_id",1)
@@ -2051,9 +2055,9 @@ function hw_request(path,bytes,    raw,a,n,url,header,p,count,q) {
             hw_kind="dns"; split(p[3],q,"&"); hw_name=substr(q[1],18); hw_type=substr(q[2],6)
             if(hw_name~/%/ && hw_name!~/^%2A\.[A-Za-z0-9._-]+$/) exit 1
         } else exit 1
-    } else if(p[1]=="accounts" && hw_id(p[2]) && p[3]=="rules" && p[4]=="lists" && hw_id(p[5])) {
+    } else if(p[1]=="accounts" && hw_id(p[2]) && p[3]=="gateway" && p[4]=="lists" && hw_uuid(p[5])) {
         hw_resource=p[5]
-        if(count==5) hw_kind="list"; else if(count==6 && p[6]=="items?per_page=50") hw_kind="items"; else exit 1
+        if(count==5) hw_kind="list"; else if(count==6 && p[6]=="items?page=1&per_page=50") hw_kind="items"; else exit 1
     } else if(p[1]=="accounts" && hw_id(p[2]) && p[3]=="cfd_tunnel" && hw_uuid(p[4])) {
         hw_resource=p[4]
         if(count==4) hw_kind="tunnel"; else if(count==5 && p[5]=="connections") hw_kind="connections"; else exit 1
@@ -2179,14 +2183,16 @@ BEGIN {
     hr_result=hr_field(1,"result"); hr_count=0; hr_state="verified"
     if(hw_kind~/^(zone|list|tunnel)$/) {
         if(cfmgr_json_tree_kind[hr_result]!="object" || hr_text(hr_field(hr_result,"id"),64)!=hw_resource) reject()
-        if(hw_kind=="list" && (hr_hex(hr_text(hr_field(hr_result,"name"),128))!=hr_saved[8] || hr_text(hr_field(hr_result,"kind"),16)!="ip")) reject()
+        if(hw_kind=="list" && (hr_hex(hr_text(hr_field(hr_result,"name"),128))!=hr_saved[8] || hr_text(hr_field(hr_result,"type"),16)!="IP")) reject()
         hr_count=1
     } else {
         if(cfmgr_json_tree_kind[hr_result]!="array") reject()
         for(hr_j=0;(hr_item=hr_child[hr_result,"i" hr_j]);hr_j++) {
             if(cfmgr_json_tree_kind[hr_item]!="object") reject()
-            hr_value=hr_text(hr_field(hr_item,"id"),64)
-            if(hw_kind=="connections" ? !hw_uuid(hr_value) : !hw_id(hr_value)) reject()
+            if(hw_kind!="items") {
+                hr_value=hr_text(hr_field(hr_item,"id"),64)
+                if(hw_kind=="connections" ? !hw_uuid(hr_value) : !hw_id(hr_value)) reject()
+            }
             if(hw_kind=="dns" && (hr_hex(tolower(hr_text(hr_field(hr_item,"name"),253)))!=hr_saved[8] || hr_text(hr_field(hr_item,"type"),8)!=hr_saved[9])) reject()
             if(hw_kind=="dns") {
                 hr_content=hr_text(hr_field(hr_item,"content"),45)
@@ -2196,7 +2202,7 @@ BEGIN {
                 if(hr_proxy!~/^(true|false)$/ || (hr_ttl!=1 && (hr_ttl<30 || hr_ttl>86400))) reject()
             }
             if(hw_kind=="items") {
-                hr_content=hr_text(hr_field(hr_item,"ip"),64);if(!hw_list_ip(hr_content))reject()
+                hr_content=hr_text(hr_field(hr_item,"value"),64);if(!hw_list_ip(hr_content))reject()
             }
             if(hw_kind=="dns" || hw_kind=="items") {
                 hr_family=(index(hr_content,":") ? "6" : "4");hr_width=(hr_family=="4" ? 32 : 128)
@@ -2207,13 +2213,10 @@ BEGIN {
             if((hw_kind=="dns" || hw_kind=="items") && hr_count>50)reject()
         }
         if(hw_kind=="items") {
-            hr_info=hr_field(1,"result_info"); hr_cursors=hr_field(hr_info,"cursors")
-            if(cfmgr_json_tree_kind[hr_info]!="object" || cfmgr_json_tree_kind[hr_cursors]!="object") hr_state="partial"
-            else {
-                hr_after=hr_field(hr_cursors,"after"); hr_before=hr_field(hr_cursors,"before")
-                if((hr_after && cfmgr_json_tree_kind[hr_after]!="string") || (hr_before && cfmgr_json_tree_kind[hr_before]!="string")) hr_state="partial"
-                else if((hr_after && hr_text(hr_after,2048)!="") || (hr_before && length(hr_text(hr_before,2048))>2048)) hr_state="partial"
-            }
+            hr_info=hr_field(1,"result_info")
+            hr_page=hr_uint(hr_field(hr_info,"page")); hr_pages=hr_uint(hr_field(hr_info,"total_pages"))
+            hr_per_page=hr_uint(hr_field(hr_info,"per_page")); hr_total=hr_uint(hr_field(hr_info,"total_count")); hr_seen=hr_uint(hr_field(hr_info,"count"))
+            if(cfmgr_json_tree_kind[hr_info]!="object" || hr_page!=1 || hr_per_page!=50 || hr_total!=hr_count || hr_seen!=hr_count || (hr_count==0 ? (hr_pages!=0 && hr_pages!=1) : hr_pages!=1)) hr_state="partial"
         } else if(hw_kind=="dns") {
             hr_info=hr_field(1,"result_info")
             hr_page=hr_uint(hr_field(hr_info,"page")); hr_pages=hr_uint(hr_field(hr_info,"total_pages"))

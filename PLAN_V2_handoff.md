@@ -45,6 +45,84 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
+## Current task — finish old accepted-subgoal repairs, then scope/trim/pause
+
+The five original reopened rows are fully repaired and accepted: S02.04, S02.05,
+S04.02, S07.08 and S14.04. Final complete Checks `42032878335` and all six module
+platform jobs passed at `9c3c58732f803f649d7c021568bbedb69d14b49d`; Manager native
+finished in 9m43s including setup. Detailed final proof is in the audit. Do not
+rerun that unchanged passing suite.
+
+Next-scope review found a separate old acceptance error: S03.09 Health uses Rules
+Lists where the committed plan requires Zero Trust Gateway lists. Parent and two
+independent reviewers reopened S03.09; all other accepted rows and the 13 existing
+partial-runtime labels remain justified. Current acceptance is **25/157 (15.9%),
+0/16 main goals**. The user then explicitly extended this checkpoint to finish
+all old accepted-subgoal repairs, including S03.09, before saving a new whole-row
+scope, trimming this handoff and pausing. No unrelated implementation is authorized.
+
+S03.09's complete repair scope is the existing configured Gateway Health consumer:
+correct UUID/request framing, metadata/items response shape, bounded page
+completeness and truthful comparisons; preserve the trusted API destination,
+configured account/resource/credential association, GET-only behavior, privacy,
+existing guards/holds, limits, native fallback and cleanup. No setup, publication,
+operational auth-Off/cooldown state, S10.10, discovery, hooks or updater work.
+Generic config/archive consumers already preserve UUID strings; no changes there
+are justified by current evidence. Keep the DDNS-only installed entry fixture and
+focused configured Gateway collector/worker proof; do not restore full-project
+simulation. S03.09 behavior/AWK testing retains its recorded CI placement: local
+source/statics, smallest native Dev checks, complete affected Status Dev and one
+passing final exact core after the changed candidate is ready. No full local suite
+is due. The earlier local-behavior exception is not a fabricated pass.
+
+Routing reconciliation is complete: parent and independent Astra review classify
+this as ordinary API compatibility within the already-approved Gateway policy.
+The same saved account/role/credential, trusted host, GET/TLS/private descriptor,
+privacy and eligibility/hold restrictions remain unchanged. Terra confirmed its
+initial categorical stop was a scope-classification disagreement, not a platform
+safety refusal, and identified no changed security property. The user explicitly
+approved the matching global AGENTS clarification; its verified snapshot/receipt
+is private under `.tmp/global-agent-routing-2026-11-06/`. No profile or role file
+changed. The access-only Daybreak probe remains ACCESS_UNVERIFIED and receives no
+implementation work; its unavailable access is not needed for this ordinary scope.
+Any concrete expansion of a security control still requires normal security routing.
+
+The S03.09 patch is implemented in `modules/status.sh` and `tests/test_status.py`;
+its owner has released both files. Independent review and parent reconciliation
+passed; the duplicated new response-worker test was removed before publication.
+Package metadata and local source/planning/syntax/format/compile checks passed;
+no Mac behavior/AWK execution was performed. Actual execution remains pending.
+The first native Dev gate is seven focused Gateway/current-request nodes, followed
+by complete Status Dev and final exact core. Parent owns publication and these
+remaining gates. No worker ABI or new aggregation framework was introduced.
+Complete first-page observations require coherent pagination metadata; larger or
+incomplete evidence remains partial/UNKNOWN under existing Health limits. No new
+CI job is running yet. The old Daybreak admission task/report remains completed
+and integrated; no new Daybreak handoff task was created.
+
+The immediate broad review completed on 2026-11-06 at the final five-row candidate,
+including the new Gateway finding and all other accepted/partial dispositions.
+Counter since that broad review: **0 completed runtime checkpoints**. S03.09 closure
+will count one; the next broad audit is due after two, or immediately on new drift.
+Independent affected-row review is still required at every runtime checkpoint.
+
+Preservation before receipt/trim: `.tmp/five-row-resume/pre-final-receipt/` contains
+record working/HEAD bases; `.tmp/five-row-resume/pre-trim-2026-11-06/` contains the
+verified full 462509-byte handoff and seven record/rule files plus inventory/hash
+and diff. The global clarification's verified original/receipt is private under
+`.tmp/global-agent-routing-2026-11-06/`. All prior source/log snapshots remain.
+Final core job logs and exact metadata are in `.tmp/five-row-resume/ci/9c3c587/`.
+Avoid printing or chunk-copying raw logs through the visible tool feed again.
+
+Unrelated approved hook/VPN/source-check planning drafts remain uncommitted in
+PLAN, checklist and audit. Preserve all three original audit insertions (75-line
+Merlin reference, 91-line fresh-hook review and 73-line old manager-check scope).
+Parent stages only owned status/evidence hunks; do not whole-stage these records.
+The complete 14-parent session ledger above must survive the eventual trim verbatim.
+The following large sections are historical and superseded by this current state.
+
+## Prior checkpoint records
+
 ## Current task — five-row candidate entering platform gates
 
 The user authorized finishing all five reopened rows (S02.04, S02.05, S04.02,
