@@ -5273,7 +5273,12 @@ def test_linux_full_health_entry_normal_journey(
             "cloudflared.certificate.live",
             "cloudflared.binary",
         ):
-            assert expected + "\tPASS\t" in raw_rows, (expected, measured, raw_rows)
+            assert expected + "\tPASS\t" in raw_rows, (
+                expected,
+                measured,
+                raw_rows,
+                route_rows,
+            )
         for expected in (
             "backup.destination\tPASS\t",
             "backup.access\tUNKNOWN\t",
@@ -5290,7 +5295,7 @@ def test_linux_full_health_entry_normal_journey(
             "package.inventory\tPASS\t",
             "recovery.guards\tPASS\t",
         ):
-            assert expected in raw_rows, (expected, measured, raw_rows)
+            assert expected in raw_rows, (expected, measured, raw_rows, route_rows)
         for canary in package["canaries"]:
             assert canary.encode() not in stdout + stderr
             assert canary not in (audit / "network-environment").read_text()
