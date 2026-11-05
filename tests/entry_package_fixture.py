@@ -117,6 +117,34 @@ def health_path_adapter(text: str, paths: dict[str, str]) -> str:
     return re.sub(pattern, lambda match: replacements[match.group()], text)
 
 
+def health_wan_fixture_commands() -> dict[str, str]:
+    """Finite read-only firmware evidence for the full Health journey."""
+    return {
+        "nvram": (
+            '#!/bin/sh\n[ "$1" = get ] || exit 2\ncase $2 in\n'
+            "http_username) echo root ;; ntp_ready|sw_mode|wan0_primary|wan0_enable) echo 1 ;; "
+            "wan1_primary|wan_primary|wan0_sbstate_t|wan0_auxstate_t) echo 0 ;; "
+            "wans_dualwan) echo 'wan none' ;; wans_mode) echo fo ;; wan0_state_t) echo 2 ;; "
+            "lan_ifname) echo br0 ;; lan_ipaddr) echo 192.168.1.1 ;; lan_netmask) echo 255.255.255.0 ;; "
+            "wan0_proto) echo dhcp ;; wan0_ifname) echo eth0 ;; wan0_ipaddr) echo 8.8.8.8 ;; "
+            "productid) echo GT-AX11000 ;; firmver) echo 3004 ;; buildno) echo 388 ;; "
+            "extendno) echo fixture ;; *) exit 1 ;; esac\n"
+        ),
+        "ifconfig": (
+            '#!/bin/sh\n[ "$1" = -a ] && [ "$#" = 1 ] || exit 2\n'
+            "printf '%s\\n' 'eth0 Link encap:Ethernet' "
+            "'          inet addr:8.8.8.8 Bcast:8.8.8.255 Mask:255.255.255.0' "
+            "'          UP BROADCAST RUNNING MULTICAST MTU:1500'\n"
+        ),
+        "route": (
+            '#!/bin/sh\n[ "$1" = -n ] && [ "$#" = 1 ] || exit 2\n'
+            "printf '%s\\n' 'Kernel IP routing table' "
+            "'Destination Gateway Genmask Flags Metric Ref Use Iface' "
+            "'0.0.0.0 8.8.8.1 0.0.0.0 UG 0 0 0 eth0'\n"
+        ),
+    }
+
+
 def full_health_package(
     entry: Path,
     support: Path,
@@ -222,6 +250,8 @@ def full_health_package(
         "/usr/bin/hexdump": str(base / "usr/bin/hexdump"),
         "/bin/busybox": str(base / "bin/busybox"),
         "/bin/nvram": str(firmware / "nvram"),
+        "/sbin/ifconfig": str(firmware / "ifconfig"),
+        "/sbin/route": str(firmware / "route"),
         "/sbin/blkid": str(firmware / "blkid"),
     }
 
@@ -270,15 +300,8 @@ def full_health_package(
     ca = Path("/etc/ssl/certs/ca-certificates.crt")
     assert ca.is_file(), "Linux CI native CA bundle is required"
     write("/rom/etc/ssl/certs/ca-certificates.crt", ca.read_bytes(), 0o644)
-    write(
-        "/bin/nvram",
-        '#!/bin/sh\n[ "$1" = get ] || exit 2\ncase $2 in\n'
-        "http_username) echo root ;; ntp_ready|wan0_primary) echo 1 ;; wan1_primary) echo 0 ;; "
-        "wan0_proto) echo dhcp ;; wan0_ifname) echo eth0 ;; wan0_ipaddr) echo 8.8.8.8 ;; "
-        "productid) echo GT-AX11000 ;; firmver) echo 3004 ;; buildno) echo 388 ;; "
-        "extendno) echo fixture ;; *) exit 1 ;; esac\n",
-        0o755,
-    )
+    for name, body in health_wan_fixture_commands().items():
+        write(("/bin/" if name == "nvram" else "/sbin/") + name, body, 0o755)
     uuid = value["storage"]["entware"]["uuid"]
     write(
         "/sbin/blkid",

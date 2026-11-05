@@ -67,14 +67,14 @@ cfmgr_health_mode() {
 	# Only finite typed receipts/empty successful probes use the tiny tier.
 	# Native ash:1024 bytes/file; supported host reservation:2048 bytes/file.
 	health-protected | health-metadata-check | health-flat-check | health-package-check | health-hooks-cron | health-hooks-frame | health-backup-observe | health-backup-uuid | health-cloud-frame | health-selected-check | health-selected-hash | health-cloud-json | health-scope | health-frame | health-request-check | health-trace | health-count | health-render-count | \
-		health-wan-config | health-wan-nvram | health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
+		health-wan-config | health-wan-nvram | health-fields | health-nvram | health-wc-jq | health-wc-sha | health-count-get | health-current | health-uuid | health-date | health-native | \
 		health-jq-good | health-jq-bad | health-sha-bytes | health-sha-good | health-sha-bad | \
 		health-timeout-exit | health-timeout-expiry | health-flock-first | health-flock-compete | health-flock-after | health-flock-release | health-flock-finish | \
 		health-flock-entware-first | health-flock-entware-compete | health-flock-entware-after | health-flock-entware-release | health-flock-entware-finish | \
 		health-curl-features | health-ca-pem | health-ca-decode | health-curl-offline | health-log-account | health-log-link | health-log-proc-meta | health-log-base | health-log-assess | health-log-path) cfmgr_health_mode_limit=2 ;;
 	health-inventory | health-storage | health-uname | health-blkid | health-native-metadata | \
-		health-hooks-authority | health-backup-plan | health-log-authority | health-log-version | health-log-syntax | health-log-includes | health-dig-version | health-request | health-config | health-fields | health-metadata | \
-		health-nvram | health-space | health-curl-version | health-response | health-compare) ;;
+		health-hooks-authority | health-backup-plan | health-log-authority | health-log-version | health-log-syntax | health-log-includes | health-dig-version | health-request | health-config | health-metadata | \
+		health-space | health-curl-version | health-response | health-compare) ;;
 	*) return 2 ;;
 	esac
 	# Reserve the larger host physical payload for EACH writable file.
@@ -102,7 +102,7 @@ cfmgr_health_reserve() {
 	cfmgr_health_operations >= 568 || \
 	cfmgr_health_requests + cfmgr_health_mode_get > 12 || \
 	cfmgr_health_files + cfmgr_health_mode_files > 1264 || \
-	cfmgr_health_bytes + cfmgr_health_mode_bytes > 11534336)) in
+	cfmgr_health_bytes + cfmgr_health_mode_bytes > 12582912)) in
 	1)
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
@@ -134,7 +134,7 @@ cfmgr_health_final_reserve() {
 		[ "$((cfmgr_health_final_files + cfmgr_health_mode_files))" -le 16 ] &&
 		[ "$((cfmgr_health_final_bytes + cfmgr_health_mode_bytes))" -le 1048576 ] || return 1
 	[ "$cfmgr_health_operations" -le 568 ] && [ "$cfmgr_health_files" -le 1264 ] &&
-		[ "$cfmgr_health_bytes" -le 11534336 ] || return 1
+		[ "$cfmgr_health_bytes" -le 12582912 ] || return 1
 	cfmgr_health_final_operations=$((cfmgr_health_final_operations + 1))
 	cfmgr_health_final_files=$((cfmgr_health_final_files + cfmgr_health_mode_files))
 	cfmgr_health_final_bytes=$((cfmgr_health_final_bytes + cfmgr_health_mode_bytes))
@@ -197,7 +197,7 @@ cfmgr_health_stage_reserve() {
 	*) case $1:$2 in wan.raw:196608 | comparison:2048 | dashboard:32768 | rows:262144 | json.good:8192 | json.bad:8192 | bytes:8192 | checksum.good:8192 | checksum.bad:8192 | lock:8192 | timeout.child:8192) ;; *) return 2 ;; esac ;; esac
 	cfmgr_status_attachment_ok && cfmgr_prerequisites_now || return 1
 	if [ "$cfmgr_probe_now" -ge "$cfmgr_health_collect_deadline" ] ||
-		[ "$cfmgr_health_files" -ge 1264 ] || [ "$((cfmgr_health_bytes + $2))" -gt 11534336 ]; then
+		[ "$cfmgr_health_files" -ge 1264 ] || [ "$((cfmgr_health_bytes + $2))" -gt 12582912 ]; then
 		cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 		return 1
 	fi
@@ -2713,7 +2713,7 @@ cfmgr_health_selected_snapshot() {
 			cfmgr_health_selected_future=$((cfmgr_health_selected_future + cfmgr_health_selected_hex_limit * 2048 + 4096))
 			cfmgr_health_selected_future_ops=$((cfmgr_health_selected_future_ops + 2))
 		fi
-		if [ "$((cfmgr_health_bytes + cfmgr_health_selected_future))" -gt 11534336 ] ||
+		if [ "$((cfmgr_health_bytes + cfmgr_health_selected_future))" -gt 12582912 ] ||
 			[ "$((cfmgr_health_operations + cfmgr_health_selected_future_ops))" -gt 568 ] || [ "$((cfmgr_health_files + cfmgr_health_selected_future_ops * 2))" -gt 1264 ]; then
 			cfmgr_health_incomplete=1 cfmgr_health_reason=budget
 			return 1

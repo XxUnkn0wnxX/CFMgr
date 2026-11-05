@@ -1436,10 +1436,10 @@ cfmgr_health_files=1263
 cfmgr_health_stage_reserve comparison 2048 || exit 23
 cfmgr_health_stage_reserve dashboard 32768
 [ "$?" = 1 ] && [ "$cfmgr_health_files" = 1264 ] || exit 24
-cfmgr_health_operations=0 cfmgr_health_files=0 cfmgr_health_bytes=11272192
+cfmgr_health_operations=0 cfmgr_health_files=0 cfmgr_health_bytes=12320768
 cfmgr_health_reserve health-snapshot || exit 19
 cfmgr_health_reserve health-date
-[ "$?" = 1 ] && [ "$cfmgr_health_bytes" = 11534336 ] || exit 20
+[ "$?" = 1 ] && [ "$cfmgr_health_bytes" = 12582912 ] || exit 20
 cfmgr_health_rows=95 shown=0
 cfmgr_status_row() { shown=$((shown+1)); }
 cfmgr_health_row system.example UNKNOWN details unknown None system.time || exit 21
@@ -3008,11 +3008,11 @@ def test_health_entware_batch_handles_spaces_and_missing_tools_independently(
 def test_health_tiny_allowlist_reserves_native_and_host_units(shell):
     script = r"""
 . "$1/modules/status.sh"
-for mode in health-protected health-metadata-check health-scope health-frame health-request-check health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-get health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
+for mode in health-fields health-nvram health-protected health-metadata-check health-scope health-frame health-request-check health-trace health-count health-render-count health-wc-jq health-wc-sha health-count-get health-current health-uuid health-date health-native health-jq-good health-jq-bad health-sha-bytes health-sha-good health-sha-bad health-timeout-exit health-timeout-expiry health-flock-first health-flock-compete health-flock-after health-flock-release health-flock-finish health-flock-entware-first health-flock-entware-compete health-flock-entware-after health-flock-entware-release health-flock-entware-finish health-curl-features health-ca-pem health-ca-decode health-curl-offline; do
     cfmgr_health_mode "$mode" || exit 10
     [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes:$cfmgr_health_mode_files" = 2:4096:2 ] || exit 11
 done
-for mode in health-request health-response health-compare health-metadata health-native-metadata health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-fields health-config health-nvram health-space health-uname health-blkid; do
+for mode in health-request health-response health-compare health-metadata health-native-metadata health-realpath health-mount health-storage health-inventory health-curl-version health-dig-version health-config health-space health-uname health-blkid; do
     cfmgr_health_mode "$mode" || exit 12
     [ "$cfmgr_health_mode_limit:$cfmgr_health_mode_bytes" = 8:16384 ] || exit 13
 done
@@ -5177,7 +5177,7 @@ def test_linux_full_health_entry_normal_journey(
         assert ledger[9] == "normal", measured
         assert requests == 12 and 0 < rows <= 96 and 0 < seconds < 45, measured
         assert operations <= 568 and files <= 1264, measured
-        assert reserved + final_bytes <= 12 * 1024 * 1024, measured
+        assert reserved + final_bytes <= 13 * 1024 * 1024, measured
         assert final_ops <= 8 and final_files <= 16 and elapsed < 50, measured
         assert immutable_inventory() == before, (
             "health changed a retained fixture source"
@@ -5215,6 +5215,12 @@ def test_linux_full_health_entry_normal_journey(
             "health-cloud-json",
             "health-cloud-pem",
             "health-get",
+            "health-wan-config",
+            "health-wan-nvram",
+            "health-wan-interfaces",
+            "health-wan-routes",
+            "health-wan-project",
+            "health-current",
             "health-render",
         ):
             assert mode in modes, (mode, measured, modes)
@@ -5744,3 +5750,47 @@ def test_health_current_uses_literal_interface_name(commands, tmp_path):
         b"current-global-ipv6\n",
         b"",
     )
+
+
+def test_full_health_wan_fixture_supplies_coherent_current_evidence(tmp_path):
+    from entry_package_fixture import health_wan_fixture_commands
+    from test_wan_network import project, raw, report
+
+    commands = health_wan_fixture_commands()
+    for name, body in commands.items():
+        path = tmp_path / name
+        path.write_text(body)
+        path.chmod(0o700)
+
+    def run(name, *args):
+        return subprocess.run(
+            [str(tmp_path / name), *args],
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=3,
+        ).stdout
+
+    keys = (
+        "sw_mode",
+        "wans_dualwan",
+        "wans_mode",
+        "wan_primary",
+        "lan_ifname",
+        "lan_ipaddr",
+        "lan_netmask",
+        "wan0_enable",
+        "wan0_proto",
+        "wan0_primary",
+        "wan0_ifname",
+        "wan0_ipaddr",
+        "wan0_state_t",
+        "wan0_sbstate_t",
+        "wan0_auxstate_t",
+    )
+    nvram = {key: run("nvram", "get", key).rstrip("\n") for key in keys}
+    lines, sources = report(
+        project(raw(nvram, run("ifconfig", "-a"), run("route", "-n")))
+    )
+    assert lines[1] == ["PRIMARY", "wan:0", "wan:0", "coherent", "65746830"]
+    assert sources["wan:0"][9] == "8.8.8.8"
