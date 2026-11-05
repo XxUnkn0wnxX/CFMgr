@@ -12,7 +12,8 @@ cp -R "$installer_package/modules" "$retained_support/modules"
 cp "$installer_package/catalog.txt" "$installer_package/manifest.txt" "$retained_support/"
 cp "$installer_package/cfmgr.sh" "$fixture/jffs/scripts/cfmgr.sh"
 printf 'CFMGR-SETUP 1 0.1.0 complete\n' >"$retained_support/setup-state"
-# Synthetic retained settings preserve unrelated history/credentials; no feature creation.
+# Synthetic retained settings preserve unrelated history/credentials and a legacy
+# WAN selection, avoiding first-use confirmation; no feature creation.
 # shellcheck disable=SC2016 # Literal jq program, fixed data via --arg.
 "$installer_jq" -n -c --arg uuid "$cfmgr_storage_uuid_value" --arg filesystem "$cfmgr_storage_filesystem" \
 	--arg root "$cfmgr_storage_fsroot" --arg relative "$cfmgr_storage_relative" '
@@ -25,7 +26,7 @@ printf 'CFMGR-SETUP 1 0.1.0 complete\n' >"$retained_support/setup-state"
  credential_refs:{runtime:null,management:null,certificate:null}},
  logging:{ddns:{configured:false,enabled:false,opt_out:false,policy:null},
  ip_sync:{configured:false,enabled:false,opt_out:false,policy:null},cloudflared:{configured:false,enabled:false,opt_out:false,policy:null}},
- history:{ddns:{kept:"history"},ip_sync:null,cloudflared:null},network:{address_family:"auto",selected_wan:null},
+ history:{ddns:{kept:"history"},ip_sync:null,cloudflared:null},network:{address_family:"auto",selected_wan:0},
  backup:{destination:null,retention:null,last_backup:null},credentials:{},ownership:{}}
 ' >"$retained_support/config"
 chmod 600 "$retained_support/setup-state" "$retained_support/config"

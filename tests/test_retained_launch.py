@@ -472,9 +472,11 @@ def retained_adapter(
     driver = folder / "entry.py"
     driver.write_text(
         "import sys\n"
-        f"sys.path.insert(0, {str(ROOT / 'tests')!r})\n"
+        # sudo's environment and the caller's cwd need not expose the checkout.
+        f"sys.path[:0] = [{str(ROOT / 'tests')!r}, {str(ROOT)!r}]\n"
         "from test_retained_launch import retained_entry_journey\n"
-        "retained_entry_journey(*sys.argv[1:])\n"
+        "if __name__ == '__main__':\n"
+        "    retained_entry_journey(*sys.argv[1:])\n"
     )
     adapter.write_text(
         installer_adapter.read_text()
@@ -774,7 +776,7 @@ def test_retained_entry_bridge_syntax_and_real_consumer_boundary(
 
 
 def test_retained_entry_carrier_does_not_inherit_directory_stdin(
-    shell: list[str], tmp_path: Path
+    shell: list[str], retained_adapter: Path, tmp_path: Path
 ) -> None:
     # Native setup pins a directory on FD0. Exercise both actual carrier commands
     # without repeating mount/repair setup; the journey assigns its child a PTY.
@@ -783,10 +785,15 @@ def test_retained_entry_carrier_does_not_inherit_directory_stdin(
     assert len(invocations) == 2
     driver = tmp_path / "carrier.py"
     driver.write_text(
-        "import os, stat, sys\n"
+        "import os, runpy, stat, sys\n"
         "assert stat.S_ISCHR(os.fstat(0).st_mode)\n"
         "assert os.fstat(0).st_rdev == os.stat('/dev/null').st_rdev\n"
         "assert sys.stdin.buffer.read() == b''\n"
+        # Import the actual generated driver and its complete import closure.
+        # Its main guard leaves the Linux-only journey for the native fixture.
+        f"driver = runpy.run_path({str(retained_adapter.parent / 'entry.py')!r})\n"
+        "assert driver['retained_entry_journey'].__module__ == 'test_retained_launch'\n"
+        f"assert sys.modules['tools.package'].__file__ == {str(ROOT / 'tools/package.py')!r}\n"
         "print('carrier stdin is /dev/null')\n"
     )
     commands = "\n".join(
@@ -812,6 +819,8 @@ def test_retained_entry_carrier_does_not_inherit_directory_stdin(
                 "fixture with spaces",
             ],
             stdin=descriptor,
+            cwd=tmp_path,
+            env={"PATH": os.environ.get("PATH", os.defpath), "LC_ALL": "C"},
             capture_output=True,
             check=False,
             timeout=5,
