@@ -1004,9 +1004,15 @@ cfmgr_health_run() {
     if "$test_shell" "$cfmgr_source/modules/helpers/worker.sh" "$mode" "$tool" "$cfmgr_status_context" "$@" >"$cfmgr_probe_stdout" 2>"$cfmgr_probe_stderr"; then cfmgr_probe_exit=0; else cfmgr_probe_exit=$?; fi
     return 0
 }
-cfmgr_health_get ip_sync list primary 4 || exit 10
+cfmgr_health_get ip_sync list primary 4 || {
+    printf 'gateway list: stage=%s exit=%s result=%s\n' "$mode" "$cfmgr_probe_exit" "$cfmgr_health_result" >&2
+    exit 10
+}
 cat "$cfmgr_health_result_file"
-cfmgr_health_get ip_sync items primary 4 || exit 11
+cfmgr_health_get ip_sync items primary 4 || {
+    printf 'gateway items: stage=%s exit=%s result=%s\n' "$mode" "$cfmgr_probe_exit" "$cfmgr_health_result" >&2
+    exit 11
+}
 cat "$cfmgr_health_result_file"
 """
     result = subprocess.run(
