@@ -1032,6 +1032,7 @@ cat "$cfmgr_health_result_file"
         capture_output=True,
         check=False,
         timeout=10,
+        env={**os.environ, "LC_ALL": "C"},
     )
     assert (result.returncode, result.stderr) == (0, b"")
     assert result.stdout == (
