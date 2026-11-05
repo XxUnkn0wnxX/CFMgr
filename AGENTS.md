@@ -18,7 +18,7 @@ Read these at session start/resume; the parent alone edits them:
 | [PLAN_V2_review_notes.md](PLAN_V2_review_notes.md) | Only relaxed acceptance and significant deferred risks; mirror affected goal headings/subgoal descriptions, with notes instead of boxes. |
 | [PLAN_V2_audit.md](PLAN_V2_audit.md) | Substantive findings/evidence, reviewer agreement/user decisions and verified repair dispositions linked to IDs. No requirements, totals, queue or session lineage. |
 
-Use `zr0-multi-session-projects` for paired specification/checklist edits, evidence
+Use `zr0-better-record-handling` for paired specification/checklist edits, evidence
 and continuity. Preserve root-level locations, tracking and Sxx.yy IDs, including
 the audit companion; new-project defaults do not relocate them. Checklist mirrors
 specification tables and links to audit/review notes instead of copying them.
@@ -32,6 +32,11 @@ approved behavior need no repeat approval. Ordinary implementation/test failures
 are autonomous repairs. While a hard-blocker question is pending, do only
 independent authorized work; after 3–5 unanswered minutes preserve WIP, record the
 question/safe restart in handoff and pause. Silence never grants approval.
+
+The user-approved temporary [daybreak_handoff.md](daybreak_handoff.md) may live at
+the repository root and be tracked. It owns only the named Daybreak task/report;
+canonical project state remains in `PLAN_V2_handoff.md`. Tracking permission does
+not by itself authorize staging, commits or publication.
 
 Preserve [.old/PLAN.md](.old/PLAN.md). Keep the complete hidden session-ID HTML
 comment immediately below the handoff title; verified parent lineage belongs only
@@ -231,6 +236,38 @@ selecting or suggesting the next block. A block may span several subgoals withou
 completing a main goal; interim commits/diagnostics/repairs need no pause or repeat
 push approval. After a main-goal checkpoint, do not start another main goal in that
 session.
+
+## Checkpoint acceptance audits and unfinished work
+
+Scope implementation checkpoints to whole product subgoals and their required
+gates. A prerequisite-only checkpoint needs the user's explicit choice after its
+missing consumers/dependencies and lack of acceptance credit are stated. Prefer
+closing reopened and materially partial work before unrelated new scope; include
+necessary prerequisites inside a named completion outcome.
+
+Before **every runtime checkpoint**, including repairs and checkpoints earning no
+new ticks, audit changed outcomes and every previously accepted row affected by
+new consumers, shared code, parsers, packaging or assertions. Start from the full
+current requirement, trace actual entry to observable success/failure, and inspect
+what written tests assert. Old receipts, helper coverage and green CI cannot exempt
+a new consumer or justify tests for contradictory behavior. Require independent
+read-only review with parent reconciliation before awarding or retaining affected
+ticks; use existing evidence and the prescribed gates, not an extra full suite.
+
+Run a broader review of **all accepted rows and all partial work after every two
+runtime checkpoints**, and immediately when a false tick or material acceptance
+drift is found. Repairs and zero-credit checkpoints count toward this cadence;
+documentation receipts do not. Record the last broad audit, checkpoints since it
+and next due audit in the handoff. The main-goal audit below still applies.
+
+Maintain an explicit incomplete-work inventory: distinguish partial runtime,
+implementation awaiting proof, supporting foundations and unstarted outcomes.
+Name existing behavior, missing consumers/gates and dependencies; use percentages
+only as labelled defensible estimates, never acceptance credit. Keep checklist
+status/evidence truthful, substantive findings in audit and closure order in
+handoff. Reopen demonstrated contract failures or missing required central proof
+promptly, correct README totals, preserve existing work/evidence, and reaccept only
+after repair, independent/parent review and all applicable exact-candidate gates.
 
 ## Main-goal audit
 

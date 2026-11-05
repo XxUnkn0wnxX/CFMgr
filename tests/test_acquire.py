@@ -320,6 +320,9 @@ def test_acquire_manifest_and_entry_probes_enforce_exact_version(
 def test_acquire_awk_probe_parses_candidate_without_running_it(
     shell: list[str], native_tools: dict[str, str], tmp_path: Path, package: Path
 ) -> None:
+    candidate_package = tmp_path / "candidate-package"
+    shutil.copytree(package, candidate_package)
+    package = candidate_package
     context = tmp_path / "probe-context"
     context.mkdir(mode=0o700)
     marker = tmp_path / "candidate-ran"
@@ -760,3 +763,167 @@ def test_acquire_get_enforces_tls_headers_status_bounds_and_reaps_children(
     assert deadline.returncode != 0
     assert elapsed < 3
     assert request_paths(state) == [api_path]
+
+
+def test_acquire_batch_covers_all_shipped_getters_and_combinations(
+    shell, native_tools, tmp_path, package
+):
+    from runtime_awk import OWNERS, awk_program
+
+    context = tmp_path / "batch-context"
+    context.mkdir(mode=0o700)
+    trusted = Path(__file__).resolve().parents[1] / "modules/lib/package.sh"
+    result = _probe(
+        shell, native_tools, context, "acquire-extract", package, trusted, "all"
+    )
+    assert (result.returncode, result.stderr) == (0, b"")
+    programs = result.stdout.decode().split("CFMGR-AWK-END-PROGRAM\n")
+    assert programs.pop() == "" and len(programs) == 40
+    # Independent consumer map: include every literal, the alias, and every
+    # composition currently assembled by the runtime worker.
+    combos = [
+        ("json", "config_schema", "config_observation"),
+        ("json", "status"),
+        ("mountinfo",),
+        ("status_native",),
+        ("json", "config_schema", "config_observation", "backup_payload"),
+        ("json", "backup_history"),
+        ("backup_manifest", "backup_inventory"),
+        ("backup_archive_control",),
+        ("backup_cloud_writer",),
+        ("backup_manifest",),
+        ("backup_payload_index",),
+        ("backup_payload_match",),
+        ("backup_pem",),
+        ("backup_tar",),
+        ("backup_yaml",),
+        ("wan",),
+        ("log_frame",),
+        ("json", "log_sanitize"),
+        ("package_records",),
+        ("backup_uuid",),
+        ("json", "config_schema", "config_observation", "health"),
+        ("json", "config_schema", "config_observation", "health_cloud"),
+        ("health_selected",),
+        ("health_local",),
+        ("health_metadata",),
+        ("health_wire",),
+        ("json", "health_wire", "health_response"),
+        ("health_wire", "health_compare"),
+        ("health_render",),
+        ("json", "config_schema", "config_observation", "health_backup_plan"),
+        ("health_backup_observation",),
+        ("health_flat",),
+        ("health_package",),
+        ("health_logging",),
+        (
+            "json",
+            "config_schema",
+            "config_observation",
+            "backup_history_policy",
+            "health_logging_authority",
+        ),
+        ("json", "config_schema", "config_observation", "health_hooks_authority"),
+        ("health_hooks_cron",),
+        ("health_hooks_frame",),
+        ("json", "backup_payload"),
+        ("backup_history",),
+    ]
+    assert set(OWNERS) <= {fragment for combo in combos for fragment in combo} | {
+        "backup_history_body"
+    }
+    assert programs == [awk_program(*combo) for combo in combos]
+    # Exercise the production supervisor quota with a regular-file destination.
+    # A pipe would not demonstrate enforcement of RLIMIT_FSIZE.
+    root = Path(__file__).resolve().parents[1]
+    execution = root / "modules/lib/execution.sh"
+    supervised = context / "supervised-acquire-extract.out"
+    harness = r"""
+. "$1"
+cfmgr_probe_mode=acquire-extract
+cfmgr_probe_tool=$6 cfmgr_probe_context=$5
+cfmgr_probe_shell=$3 cfmgr_probe_helper=$4 cfmgr_probe_env=$2
+_cfmgr_prerequisites_exec acquire-extract "$6" "$5" "$3" "$4" "$2" "$6" "$7" "$8" "${10}" "${11}" all >"$9"
+"""
+    quota_result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            harness,
+            "acquire-quota",
+            str(execution),
+            native_tools["env"],
+            native_tools["sh"],
+            str(root / "modules/helpers/worker.sh"),
+            str(context),
+            native_tools["awk"],
+            native_tools["sleep"],
+            native_tools["wc"],
+            str(supervised),
+            str(package),
+            str(trusted),
+        ],
+        check=False,
+        capture_output=True,
+        timeout=5,
+        env={**os.environ, "LC_ALL": "C", "LANGUAGE": ""},
+    )
+    assert (quota_result.returncode, quota_result.stdout, quota_result.stderr) == (
+        0,
+        b"",
+        b"",
+    )
+    assert supervised.read_bytes() == result.stdout
+    assert supervised.stat().st_size <= 4 * 1024 * 1024
+    prefix = context / "acquire.syntax.awk"
+    prefix.write_text(
+        'BEGIN { print "CFMGR-AWK-PARSED 1"; fflush(); print 1/(NR-NR) }\n'
+    )
+    for combo, program in zip(combos, programs, strict=True):
+        parsed = _probe(shell, native_tools, context, "acquire-awk", prefix, program)
+        assert parsed.returncode != 0 and parsed.stdout.splitlines() == [
+            b"CFMGR-AWK-PARSED 1"
+        ], combo
+        assert b"division by zero" in parsed.stderr.lower(), combo
+
+
+@pytest.mark.parametrize(
+    ("owner", "fragment"),
+    [
+        ("modules/lib/network.sh", "wan"),
+        ("modules/lib/logging.sh", "log_sanitize"),
+        ("modules/status.sh", "health_hooks_authority"),
+        ("modules/lib/package.sh", "package_records"),
+    ],
+)
+def test_acquire_batch_rejects_newer_malformed_parser(
+    shell, native_tools, tmp_path, package, owner, fragment
+):
+    context = tmp_path / "bad-parser-context"
+    context.mkdir(mode=0o700)
+    candidate_package = tmp_path / "candidate-package"
+    shutil.copytree(package, candidate_package)
+    package = candidate_package
+    item = package / owner
+    original = item.read_text()
+    opening = f"# CFMGR-AWK-BEGIN {fragment}\n\tcfmgr_awk_program='\n"
+    assert original.count(opening) == 1
+    item.write_text(original.replace(opening, opening + "this is invalid !!!\n", 1))
+    trusted = Path(__file__).resolve().parents[1] / "modules/lib/package.sh"
+    extracted = _probe(
+        shell, native_tools, context, "acquire-extract", package, trusted, "all"
+    )
+    assert (extracted.returncode, extracted.stderr) == (0, b"")
+    prefix = context / "acquire.syntax.awk"
+    prefix.write_text(
+        'BEGIN { print "CFMGR-AWK-PARSED 1"; fflush(); print 1/(NR-NR) }\n'
+    )
+    affected = [
+        program
+        for program in extracted.stdout.decode().split("CFMGR-AWK-END-PROGRAM\n")
+        if "this is invalid !!!" in program
+    ]
+    assert affected
+    for program in affected:
+        result = _probe(shell, native_tools, context, "acquire-awk", prefix, program)
+        assert result.returncode != 0 and b"CFMGR-AWK-PARSED 1" not in result.stdout

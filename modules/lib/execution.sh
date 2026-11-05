@@ -867,7 +867,11 @@ _cfmgr_prerequisites_exec() {
 		ulimit -f "$(((${14} + 511) / 512))" || exit 2
 		;;
 	repair-*) ulimit -f 8192 || exit 2 ;;
-	acquire-extract) ulimit -f 192 || exit 2 ;;
+	acquire-extract)
+		# Forty complete parser programs, each bounded to 96 KiB, plus framing
+		# fit below a 4 MiB aggregate output cap (8192 native 512-byte blocks).
+		ulimit -f 8192 || exit 2
+		;;
 	acquire-manifest) ulimit -f 512 || exit 2 ;;
 	status-snapshot | store-snapshot | store-settings | store-copy | store-backup-config | store-archive-config | store-backup-mounts | store-backup-mount) ulimit -f 128 || exit 2 ;;
 	install-copy | launch-copy) ulimit -f 2048 || exit 2 ;;

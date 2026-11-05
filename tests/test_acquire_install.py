@@ -81,6 +81,12 @@ def candidate(
             item.write_bytes(
                 data[: data.index(b"\n") + 1] + payload + data[data.index(b"\n") + 1 :]
             )
+    if fault == "awk-wan":
+        script = target / "modules/lib/network.sh"
+        data = script.read_text()
+        anchor = "# CFMGR-AWK-BEGIN wan\n\tcfmgr_awk_program='\n"
+        assert data.count(anchor) == 1
+        script.write_text(data.replace(anchor, anchor + "this is invalid !!!\n", 1))
     if fault == "syntax":
         script = target / "modules/lib/package.sh"
         script.write_bytes(script.read_bytes() + b"\ncase\n")
@@ -299,7 +305,7 @@ def test_pinned_https_snapshot_reaches_real_installer_then_retained_guard_blocks
     assert snapshot(fixture / "jffs") == before
 
 
-@pytest.mark.parametrize("fault", ["abi", "syntax", "hash"])
+@pytest.mark.parametrize("fault", ["abi", "syntax", "hash", "awk-wan"])
 def test_rejected_package_never_executes_candidate_code(
     shell,
     native_tools,

@@ -48,10 +48,15 @@ def installed_entry(tmp_path: Path, tools: dict[str, str], shell) -> tuple[Path,
     (support / "modules/status.sh").write_text((ROOT / "modules/status.sh").read_text())
     (support / "modules/lib/package.sh").write_text(
         (ROOT / "modules/lib/package.sh").read_text()
-        + "\ncfmgr_bootstrap_native_prepare() { printf 'prepare\\n' >"
+        + "\ncfmgr_bootstrap_native_prepare() { printf 'prepare\\n' >>"
         + shlex.quote(str(marker))
         + "; }\ncfmgr_bootstrap_cleanup() { return 0; }\n"
-        + 'cfmgr_launch_work() { cfmgr_install_interrupted=0; printf "action=%s\\n" "$cfmgr_launch_requested_action"; }\n'
+        + 'cfmgr_launch_work() { cfmgr_install_interrupted=0; printf "action=%s\\n" "$cfmgr_launch_requested_action"; '
+        + "if [ -f "
+        + shlex.quote(str(tmp_path / "admission-result"))
+        + " ]; then read -r result < "
+        + shlex.quote(str(tmp_path / "admission-result"))
+        + '; return "$result"; fi; }\n'
     )
     finish_package(entry, support, tools, shell, adapt=True)
     return entry, marker
@@ -108,7 +113,7 @@ def entry_run(
         (["--reinstall-dependencies"], b"yes\n", False, None),
         (["--internal-launch", "reinstall"], b"\n", True, None),
         (["--internal-launch", "reinstall", "yes"], b"y\n", True, None),
-        ([], b"aox\nao\ne\ne\n", True, None),
+        ([], b"aox\nao\ne\ne\n", True, "normal"),
         ([], b"uf\nao\n1\ny\n", True, "reinstall"),
         ([], b"", False, "normal"),
     ],
@@ -119,12 +124,17 @@ def test_actual_entry_confirmation_and_limited_menu(
     entry, marker = installed_entry
     result = entry_run(shell, entry, args, data, terminal=terminal)
     if action:
-        assert (result.returncode, marker.read_text()) == (0, "prepare\n"), (
+        assert (result.returncode, marker.read_text()) == (
+            0,
+            "prepare\n" * (2 if terminal and not args and action == "reinstall" else 1),
+        ), (
             result.stdout,
             result.stderr,
         )
         assert f"action={action}\n".encode() in result.stdout
         assert result.stdout.count(b"[y/N]") == (action == "reinstall")
+        if terminal and not args:
+            assert result.stdout.count(b"action=normal\n") == 1
     else:
         assert not marker.exists(), (result.stdout, result.stderr)
         assert b"action=" not in result.stdout
@@ -965,3 +975,82 @@ def test_normal_retained_scope_inventory_and_real_dns_queries(
         assert "migrate" in trace and trace.count("cleanup-original") == 1
     if scenario == "migration-unresolved":
         assert "migrate" in trace and "cleanup-original" not in trace
+
+
+@pytest.mark.parametrize("status", [1, 3])
+def test_interactive_admission_failure_and_later_retry(shell, installed_entry, status):
+    entry, marker = installed_entry
+    result_file = marker.parent / "admission-result"
+    result_file.write_text(f"{status}\n")
+    first = entry_run(shell, entry, [], b"e\n", terminal=True)
+    assert marker.read_text() == "prepare\n"
+    if status == 1:
+        assert first.returncode == 0
+        assert b"operational admission unavailable" in first.stderr
+        assert b"0 Check status" in first.stdout and b"e Exit" in first.stdout
+    else:
+        assert first.returncode != 0
+        assert b"owned work unresolved" in first.stderr
+        assert b"0 Check status" not in first.stdout
+    result_file.unlink()
+    second = entry_run(shell, entry, [], b"e\n", terminal=True)
+    assert second.returncode == 0, (second.stdout, second.stderr)
+    assert marker.read_text() == "prepare\nprepare\n"
+    assert second.stdout.count(b"action=normal\n") == 1
+    assert b"0 Check status" in second.stdout
+
+
+def test_interactive_child_verification_failure_stops_before_menu(
+    shell, tools, installed_entry
+):
+    entry, marker = installed_entry
+    support = entry.parent.parent / "addons/CFMgr.d"
+    source = entry.read_text()
+    anchor = '\tcfmgr_log_begin entry "$cfmgr_entry_action"\n'
+    assert source.count(anchor) == 1
+    # Change a real packaged module after the parent's first verification.
+    # The admission child must reject it using the real package verifier.
+    entry.write_text(
+        source.replace(
+            anchor,
+            anchor
+            + '\t[ "$cfmgr_entry_action" != normal ] || '
+            + "printf '%s\\n' '# changed' >> \"$cfmgr_source/modules/status.sh\"\n",
+            1,
+        )
+    )
+    finish_package(entry, support, tools, shell)
+    result = entry_run(shell, entry, [], b"e\n", terminal=True)
+    assert result.returncode != 0
+    assert b"installed package verification failed" in result.stderr
+    assert b"operational admission unavailable" not in result.stderr
+    assert b"0 Check status" not in result.stdout
+    assert not marker.exists()
+    child = entry_run(
+        shell, entry, ["--internal-launch", "admission"], b"", terminal=False
+    )
+    assert child.returncode == 5
+    assert b"installed package verification failed" in child.stderr
+
+
+def test_interactive_parent_rechecks_package_after_operational_failure(
+    shell, tools, installed_entry
+):
+    entry, marker = installed_entry
+    support = entry.parent.parent / "addons/CFMgr.d"
+    package_module = support / "modules/lib/package.sh"
+    # The child starts with a valid package, then changes a packaged module
+    # while reporting a resolved operational failure.
+    package_module.write_text(
+        package_module.read_text()
+        + "\ncfmgr_launch_work() { cfmgr_install_interrupted=0; "
+        + "printf '%s\\n' '# changed' >> \"$cfmgr_source/modules/status.sh\"; "
+        + "return 1; }\n"
+    )
+    finish_package(entry, support, tools, shell)
+    result = entry_run(shell, entry, [], b"e\n", terminal=True)
+    assert result.returncode != 0
+    assert b"installed package verification failed" in result.stderr
+    assert b"operational admission unavailable" not in result.stderr
+    assert b"0 Check status" not in result.stdout
+    assert marker.read_text() == "prepare\n"

@@ -38,11 +38,334 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a1aa23-d93d-7883-a4ea-5c956b11b24c
 Thirteenth ID verified 2026-11-05 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a1ab24-f6a2-7762-a94f-84e2d211d566
+Fourteenth ID verified 2026-11-05 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — WAN inventory confirmation complete; paused
+## Current task — five-row candidate entering platform gates
+
+The user authorized finishing all five reopened rows (S02.04, S02.05, S04.02,
+S07.08, S14.04), then saving the next whole-subgoal scope, preserving/trimming
+this handoff, and pausing before new implementation. All five remain unchecked;
+accepted progress is 21/157 (13.4%), 0/16 main goals. No router/provider/release
+or deployment actions are authorized by this checkpoint.
+
+Implementation owners have finished and released their files. Daybreak's one-task
+repair is complete and integrated; its scoped report remains in
+[daybreak_handoff.md](daybreak_handoff.md#daybreak-report). No new security task
+or access hold is pending. Parent owns all remaining integration, publication,
+CI and records. See the [repair review](PLAN_V2_audit.md#five-row-repair-review--2026-11-05)
+for independent findings, fixes and local proof/limits.
+
+Current source includes normal interactive admission, complete parser inventory
+with a corrected bounded aggregate output quota, fresh scoped Save remerge and
+central archive-naming assertions. Final archive creation/naming passed 2/2 in
+79.72s. Retained/reinstall host proof passed 47 with one Linux skip in 147.69s;
+final entry-bridge check passed in 1.08s. Manager-entry behavior passed 22 with two
+initial eight-second prompt timeouts; both passed after a twenty-second harness
+wait (55.57s). Production deadlines are unchanged. Final static/format/package
+checks and exact platform/core gates must be recorded before acceptance.
+
+### Remaining gate order and ownership
+
+1. Parent reviews the finished diffs and final statics, selectively commits owned
+   repairs/records and pushes the candidate. The existing hook/VPN drafts in
+   PLAN/checklist/audit/handoff must remain unstaged; do not whole-stage them.
+2. Cancel any premature owned automatic core run while affected Dev is pending.
+   Dispatch the complete affected test modules mapped in
+   `.tmp/five-row-resume/dev-map.json`, all at the exact candidate SHA. Required
+   Linux acquisition/installed-entry and archive journeys must actually run.
+3. After focused Dev passes, run final complete Backup, Manager and Status through
+   Checks at that exact SHA. Run each full core module first; only a measured
+   module above ten minutes including setup permits diagnostic splitting.
+4. Resolve failures within this checkpoint. After all gates/review pass, reaccept
+   the five rows, update README/records, save the next complete-subgoal scope,
+   preserve and trim this handoff, publish the documentation receipt and pause.
+   No full local suite is due because no main goal reaches completion.
+
+Baseline local/remote develop was reverified at
+`7444c82b95249c14a54fa8e1d154551fc76dfcd3`; prior tested runtime is
+`7ea47342b6c92883ca92f66c60802a4f43f3f4ec`. Candidate commits and new CI receipts
+will be recorded here when created. Recover original drafts and older details
+from `.tmp/acceptance-audit-2026-11-05/`, `.tmp/s04-02-repair/`,
+`.tmp/daybreak-pause-2026-11-05/` and `.tmp/five-row-resume/`. Final local logs are
+under `.tmp/five-row-resume/local/`. Last broad audit: 2026-11-05; zero completed
+runtime checkpoints since it. This combined repair counts as one when closed;
+next broad audit is due after the following runtime checkpoint, or immediately
+on new false acceptance/material drift.
+
+### Approved five-row scope and completion boundary
+
+
+
+The user explicitly selected **all five reopened subgoals** before the next pause:
+S02.04, S02.05, S04.02, S07.08 and S14.04. Complete the coordinated repair option B
+from the audit below; finish all required gates, save the next whole-subgoal
+checkpoint scope, then trim this handoff and pause. The user explicitly authorizes
+trimming at that point even below the usual size threshold. Preserve the complete
+verified session ledger, current state, permissions, unresolved work and evidence
+links; preserve the complete old handoff privately before shortening it. Historical
+receipts must remain recoverable. No new feature implementation is included.
+
+Current accepted progress remains 21/157 (13.4%), 0/16 main goals. The broad workload
+estimate requested by the user is roughly 80% of these five implemented and 20%
+remaining in repairs/integration/tests/review/CI; it is not acceptance credit or a
+measured time forecast. All five remain unchecked until their complete gates pass.
+If all five close, acceptance returns to 26/157 (16.6%), still 0/16 main goals.
+
+Baseline local/remote develop is `7444c82b95249c14a54fa8e1d154551fc76dfcd3`; prior
+tested runtime is `7ea47342b6c92883ca92f66c60802a4f43f3f4ec`. Existing audit and
+hook/VPN drafts are preserved in `.tmp/s04-02-repair/before-*` and binary diff
+snapshots; index was empty. Only the parent edits V2 records/AGENTS, generates
+package metadata and commits/pushes/dispatches CI. Preserve unrelated draft hunks.
+
+### Active work and ownership
+
+The Daybreak failure-classification repair has returned and is under parent
+integration; the old access hold no longer blocks this candidate. The outstanding
+actual-entry/native and archive creation proof is assigned above.
+
+- **S04.02 implementation complete, focused proof/review pending integration:**
+  the configuration owner changed `modules/lib/config.sh`,
+  `tests/test_wan_config.py`, `tests/test_manager_settings_entry.py` and
+  `tests/test_config_store.py`. Reviewed older foreground intent merges into
+  current valid authority; future-generation claims remain rejected with exact
+  decimal comparison. Shared no-op raw drift now uses the existing two-attempt
+  remerge bound for all foreground scopes. Source ownership is released.
+  Parent and original reviewer agreed the generic no-op correction is needed by
+  the full S04.02 contract, not just WAN. Independent final diff review follows.
+- **Package/entry owner:** S02.04/.05 normal interactive operational admission and
+  S07.08 complete embedded-parser syntax admission, serially within the overlapping
+  `cfmgr.sh`/`modules/lib/package.sh` package and related tests. Preserve FD0/traps,
+  native recovery access and unresolved-child semantics; run admission once, not
+  on menu redraw. Audit all current getter owners/fragments/aliases/combinations.
+- **Archive proof owner:** S14.04 deterministic production-generated date/name/
+  same-day/collision assertions and an expected name in the existing real creation
+  journey; preserve metadata chronology/DST proof. Tests only unless a real naming
+  bug is demonstrated. No restore implementation.
+- At most two implementation packages are active simultaneously. Read-only reviews
+  may proceed independently; shared fixtures/worker registrations/metadata have
+  explicit single ownership. Integrate all source before final package fixture
+  generation or complete-candidate gates.
+
+The full unchanged contracts, test details and dependency limits are in the audit
+receipt and option B below. Focused local proof/statics/cost review -> independent
+and parent review -> candidate commit/push -> affected complete Dev modules ->
+exact final complete core -> justified checkboxes/README/records -> documentation
+receipt. Full local suites remain reserved for main-goal 100%. Prior complete
+module cost is Backup 7m00, Manager 8m45, Status 2m03 including setup; diagnose only
+measured over-budget growth and never pre-split a complete core module.
+
+### User-requested prevention and audit cadence
+
+The user explicitly requested updating project instructions to prevent recurrence
+and increasing re-audit frequency. `AGENTS.md` now requires affected acceptance
+review at every runtime checkpoint, including zero-credit prerequisites/repairs;
+independent review of actual consumers and assertions against unchanged full
+contracts; a visible partial-work inventory; explicit user choice for prerequisite-
+only checkpoints; and a broad all-accepted/partial audit every two runtime
+checkpoints or immediately on false acceptance/drift. Existing prescribed tests
+are reused, with no additional full-suite cadence. The stale record-skill pointer
+now names the active `zr0-better-record-handling`. These are project-local workflow
+changes under the user's direct request, not changes to product requirements or
+global instructions. Checklist/handoff links are synchronized.
+
+Last broad audit: requested accepted/partial audit dated 2026-11-05, recorded below
+and in `PLAN_V2_audit.md`. Runtime checkpoints completed since it: 0; the current
+five-row coordinated repair will count as 1 on successful closure. Next broad audit
+is due after the following runtime checkpoint, or immediately if new false ticks
+or material drift appear. This checkpoint still needs its affected-row audit.
+
+After all five are accepted, scope the next whole outcome from the unfinished
+inventory, record dependencies/gates/return route, preserve and trim the handoff,
+then pause with no required worker or job active. Do not start the next scope.
+
+## Previous checkpoint — acceptance audit complete
+
+The audit pause was superseded by the active S04.02 repair above. Its findings,
+corrected counts and remaining completion options below remain the audit receipt.
+
+The user required whole-subgoal checkpoints, retired the checker-only proposal,
+and requested a parallel re-audit of every accepted row and all materially partial
+work before unrelated scope. The audit is complete. No implementation repair or
+new feature checkpoint has started. Resume from this section, not the historical
+WAN-complete or checker-only sections below.
+
+**Current accepted progress:** 21/157 product subgoals (13.4%); 0/16 main goals
+(0%). 136 product rows remain unaccepted. Starting acceptance was 26/157; source and
+assertion review removed five unsupported ticks without changing requirements:
+
+| IDs | Agreed disposition |
+| --- | --- |
+| S02.04, S02.05 | Reopened: normal interactive launch bypasses the operational admission/dependency-repair consumer (A-01). |
+| S04.02 | Reopened: reviewed WAN Save rejects an unrelated manager edit via global-generation refusal (B-04). |
+| S07.08 | Reopened: acquisition omits current embedded-parser syntax checks (A-02). |
+| S14.04 | Implementation present, verification pending: central produced-name/date/same-day assertions missing (D-01); no naming bug alleged. |
+
+Both completion boxes were cleared for these rows; original focused/core receipts
+are preserved as historical evidence. S02.08 retains acceptance after a bounded
+reachable-consumer recheck. The other accepted rows retain their existing gates
+and explicit CI/local/platform exceptions. See the
+[audit report](PLAN_V2_audit.md#accepted-subgoals-and-partial-work-audit--2026-11-05)
+and [current checklist evidence](PLAN_V2_checklist.md#current-acceptance-audit--2026-11-05).
+
+### Checkpoint and preservation state
+
+- Branch `develop`; local/published documentation head
+  `7444c82b95249c14a54fa8e1d154551fc76dfcd3`.
+- Runtime/test/tool/workflow bytes remain at tested candidate
+  `7ea47342b6c92883ca92f66c60802a4f43f3f4ec`. Successful exact core receipts remain
+  applicable to unchanged behavior; they do not establish the missing contracts.
+- Existing complete core module cost: Backup about 7m00, Manager 8m45, Status 2m03
+  including setup. Manager has limited spare budget; inspect measured changes.
+- Local audit edits: checklist/status evidence, README accepted totals/available
+  behavior, appended audit evidence and this handoff. Existing approved hook/VPN
+  planning drafts remain preserved. `PLAN_V2.md` is untouched by this audit.
+- Private audit preservation and complete per-ID inventory:
+  `.tmp/acceptance-audit-2026-11-05/` (`before-*`, `before.patch`,
+  `row-inventory.json`, `audited-row-inventory.json`). Existing WAN and earlier
+  scope snapshots remain intact. No files/evidence were removed.
+- Audit performed no runtime tests, CI dispatch, commit/push, router/provider
+  action or requirement changes. Proportionate documentation validation is the
+  final closure gate; its result is recorded below. Index remains empty.
+
+### Partial-work closure inventory
+
+Previously unchecked **partial runtime** exists in 13 rows:
+S02.02/.07; S03.03/.06/.08; S04.06/.07/.08/.09; S07.06;
+S08.01/.03; S13.13. The checklist now exposes their incomplete-consumer state,
+and the audit names existing behavior, missing outcomes and evidence. Defensible
+broad contract estimates are S03.08 at 40–60%, S08.01 at 25–40%, S08.03 at 15–30%
+and S13.13 at 10–25%. Other partials have no honest numerical estimate.
+
+The remaining inventory separately records 42 foundation-only rows, 63 operational
+outcomes not started, 10 final integration/documentation rows and 3 unselected
+optional/conditional rows. Those categories plus 13 partials, the five reopened
+acceptance/proof rows and 21 accepted rows cover all 157 IDs exactly once. They are
+implementation classifications, not additional product percentages.
+
+Restore S14.09/.10/.11 have approximately 20–40%, 5–20%, 10–25% **foundation coverage**
+respectively: archive validation/state/guard code exists, but executable restore,
+reconstruction and runtime commit do not. Typed feature data, archive readers and
+Health GETs are visible groundwork for later features; they are not hidden
+half-working setup/publication/lifecycle controllers.
+
+Complete unfinished outcomes before unrelated new scope. Necessary new code in
+another goal must be named as a dependency of that completion, consumed and
+validated within its agreed closure programme. Do not resume the retired checker
+prerequisite or scatter additional helper-only checkpoints.
+
+### Next complete-subgoal checkpoint options — neither started
+
+**A — smallest independently ready repair (recommended): complete S04.02.**
+Fix reviewed WAN Save through the existing actual Manager/Store consumer and prove
+the whole scoped-concurrent-Save contract. No new updater/provider/restore feature
+is required. This directly repairs the regression introduced by the WAN work and
+can restore one full accepted row after all required gates.
+
+**B — coordinated repair of all five reopened rows:** S02.04, S02.05, S04.02,
+S07.08 and S14.04. An independent Astra scope audit returned PASS: existing entry,
+dependency, Store and archive consumers support full completion without another
+feature prerequisite. This is the larger alternative, not an automatically selected
+batch. It restores all five unsupported acceptances if and only if all gates pass;
+it does not claim to finish the 13 other partial runtime rows or any main goal.
+
+Within B use at most two implementation owners simultaneously. One owns
+`cfmgr.sh`, `modules/lib/package.sh` and related dependency/acquisition tests,
+closing S02.04/.05 and S07.08 serially within that overlapping package. A second
+owns `modules/lib/config.sh`, WAN parts of `modules/manager.sh` and their Store/
+installed-entry assertions for S04.02. Archive naming proof follows after an owner
+is released. Shared installed-entry fixture changes, worker registrations and
+package metadata must have one explicit owner; the parent integrates and generates
+metadata after source integration. Workers never edit V2 records or publish.
+
+Required implementation details and acceptance outcomes:
+
+1. **S04.02:** apply the explicitly reviewed foreground scope to freshly validated
+   authority, preserving unrelated/unknown/unmodified fields. Prove both an
+   unrelated manager change and a same-field manual edit: the plan explicitly says
+   accepted fields overwrite same-field manual edits. A blanket WAN-scope mismatch
+   rejection would retain the contract error. Preserve bounded raw-content checks,
+   current guards/ownership and genuine stale-background/later-Off exclusion.
+2. **S02.04/.05:** actual installed normal interactive launch must reach bounded
+   mapped admission/repair once, preserve healthy tools and later retry, and retain
+   native reporting/recovery when operational dependencies are unavailable. The
+   existing native preparation replaces FD0 and installs traps (`package.sh:1104`);
+   simply moving it before the menu can break input. Isolate or explicitly restore
+   terminal/descriptor/trap state. Preserve unresolved-child ownership semantics;
+   do not swallow them to continue mutations or repeat repair on redraw.
+3. **S07.08:** reconcile the complete current shipped embedded-program inventory,
+   owners, aliases and combinations with acquisition syntax admission. Check more
+   than the initially reported WAN fragment. Preserve data-only extraction and
+   existing bounded work; do not silently enlarge deadlines for repeated scans.
+4. **S14.04:** deterministic production-function assertions for DMY/MDY/YMD,
+   first/later same-day suffixes, format changes and collision refusal, plus an
+   expected-name assertion in the existing real creation journey. Reuse current
+   chronology/DST/publication proof; do not duplicate full archive creation for
+   every date variant.
+
+Gates for either selected option: lean focused written tests of actual consumers,
+required statics/planning checks, parent review and measured test-cost review;
+authorized candidate commit/push when platform proof is needed; complete affected
+Dev modules; exact final complete core Checks; only then justified acceptance,
+README/records and documentation receipt; pause. Full local suites remain reserved
+for main-goal 100%. Relevant old proof cannot substitute for changed runtime gates.
+The audit itself grants no new push, implementation or router authority.
+
+Affected goal acceptance is currently Goal 2 at 5/9 (55.6%), Goal 4 at 2/9 (22.2%),
+Goal 7 at 1/11 (9.1%) and Goal 14 at 7/11 (63.6%). These rows have no additional local
+completion credit awaiting CI. Option A targets Goal 4 at 3/9 (33.3%) and overall
+22/157 (14.0%) only after its complete gates; option B targets 26/157 (16.6%) after
+all five close. Main goals remain 0/16 for either option.
+
+### Dependency-aware return route after acceptance repairs
+
+No later batch is selected here. Use this inventory to plan complete outcomes,
+including only necessary prerequisites:
+
+- S07.06/S03.06 need actual retained updater/source consumers. A checker alone
+  cannot close them or S07.02; daily/offer/replacement/recovery integration must be
+  included where the chosen whole row requires it.
+- S08.01/S08.03 need routed per-source/family discovery and operational consumers.
+  Required transport/readiness, event/queue and source-authority pieces from
+  Goals 8/11/12 must be named in the same completion plan.
+- S03.08 needs actual DDNS/IP-Sync verified outcome writers; current readers and
+  Health GETs cannot close it. S13.13 needs real feature events/delivery. Complete
+  the needed native feature/controller/logging outcomes before accepting those
+  reporting rows.
+- S02.02/.07 and S04.06–.09 close across actual setup/lifecycle/update/restore
+  consumers. Track each missing binding explicitly rather than implementing
+  additional unconsumed interfaces. S03.03 closes only when its full required
+  dispatch targets exist.
+- Restore S14.09–.11 needs current component/state/lifecycle/logging reconstruction
+  and guarded commit. Another archive parser/review helper cannot close restore.
+  Goal 15 removal/rebuild and final Goals 1/16 integration remain later dependent
+  outcomes; optional work stays unselected.
+
+### Review and stop state
+
+Four independent audit lanes are complete; parent/material reviewers agree on all
+five corrections and retained S02.08. The independent completion-scope audit passed
+with the implementation details above. No required worker/job remains active.
+The complete session ledger above is unchanged. Stop after recording the final
+proportionate documentation checks; await the user's checkpoint choice/start
+instruction before implementation. Final validation: `python tools/check.py` passed (157 aligned product IDs,
+16 README goal links and active document links/privacy); `git diff --check` passed
+after removing an audit-owned trailing blank line. Per-ID audit/checklist counts
+and README totals agree. Snapshot checks preserve the original PLAN/checklist
+drafts, prior audit prefix and full session ledger. Complete WAN receipts and all
+following history remain byte-identical. Local and remote develop still resolve to
+`7444c82b95249c14a54fa8e1d154551fc76dfcd3`; only documentation differs from runtime
+`7ea47342b6c92883ca92f66c60802a4f43f3f4ec`. No index entries or required jobs remain.
+Final record-only edits received the same proportionate checks again.
+
+The superseded helper-only source-check proposal remains preserved in the
+original private snapshot and unstaged working handoff; it is not an active scope.
+
+## Previous checkpoint — WAN inventory confirmation complete; paused
 
 Unknown authorized this selected S03.03/S08.01 prerequisite through its required
 gates, followed by a pause. It is complete. **Do not review, select, suggest or

@@ -400,19 +400,26 @@ cfmgr_acquire_verify() {
 		*) [ "$cfmgr_acquire_file_mode" != 0755 ] || cfmgr_acquire_zero shell "$cfmgr_acquire_stage/$cfmgr_acquire_file" || return $? ;;
 		esac
 	done 4<"$cfmgr_acquire_records"
-	for cfmgr_acquire_parser in config status status_native mountinfo backup_payload backup_history backup_inventory backup_archive_control backup_cloud_writer backup_manifest backup_payload_index backup_payload_match backup_pem backup_tar backup_yaml; do
-		cfmgr_acquire_run extract "$cfmgr_acquire_stage" "$cfmgr_install_source/modules/lib/package.sh" "$cfmgr_acquire_parser" || return $?
-		[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
-		cfmgr_acquire_program=''
-		while IFS= read -r cfmgr_acquire_program_line; do
+	# Extract all fixed programs in one scan. Framing is supplied by the
+	# trusted extractor and forbidden inside candidate fragments.
+	cfmgr_acquire_run extract "$cfmgr_acquire_stage" "$cfmgr_install_source/modules/lib/package.sh" all || return $?
+	[ "$cfmgr_native_exit" = 0 ] && [ ! -s "$cfmgr_native_error" ] || return 1
+	cfmgr_acquire_program=''
+	cfmgr_acquire_count=0
+	while IFS= read -r cfmgr_acquire_program_line <&4; do
+		if [ "$cfmgr_acquire_program_line" = CFMGR-AWK-END-PROGRAM ]; then
+			[ -n "$cfmgr_acquire_program" ] || return 1
+			cfmgr_acquire_run awk "$cfmgr_install_context/acquire.syntax.awk" "$cfmgr_acquire_program" || return $?
+			cfmgr_acquire_awk_receipt || return 1
+			cfmgr_acquire_count=$((cfmgr_acquire_count + 1))
+			cfmgr_acquire_program=''
+		else
 			cfmgr_acquire_program="$cfmgr_acquire_program$cfmgr_acquire_program_line
 "
 			case $((${#cfmgr_acquire_program} <= 98304)) in 1) ;; *) return 1 ;; esac
-		done <"$cfmgr_native_output"
-		[ -n "$cfmgr_acquire_program" ] || return 1
-		cfmgr_acquire_run awk "$cfmgr_install_context/acquire.syntax.awk" "$cfmgr_acquire_program" || return $?
-		cfmgr_acquire_awk_receipt || return 1
-	done
+		fi
+	done 4<"$cfmgr_native_output"
+	[ -z "$cfmgr_acquire_program" ] && [ "$cfmgr_acquire_count" -eq 40 ] || return 1
 
 	cfmgr_acquire_digest "$cfmgr_acquire_stage/manifest.txt" || return $?
 	cfmgr_acquire_manifest_digest=$cfmgr_acquire_digest
@@ -2339,39 +2346,54 @@ cfmgr_package_awk_extract_exec() {
 	[ "$#" -eq 3 ] || exit 2
 	cfmgr_candidate_tool=$1 cfmgr_candidate_root=$2
 	case $3 in
+	all) cfmgr_candidate_parts=all ;;
 	config) cfmgr_candidate_parts="json config_schema config_observation" ;;
 	status) cfmgr_candidate_parts="json status" ;;
 	backup_payload) cfmgr_candidate_parts="json config_schema config_observation backup_payload" ;;
 	backup_history) cfmgr_candidate_parts="json backup_history_policy backup_history_body" ;;
 	backup_inventory) cfmgr_candidate_parts="backup_manifest backup_inventory" ;;
+	wan | log_frame | log_sanitize | package_records | backup_uuid | health | health_cloud | health_selected | health_local | health_metadata | health_wire | health_response | health_compare | health_render | health_backup_plan | health_backup_observation | health_flat | health_package | health_logging | health_logging_authority | health_hooks_authority | health_hooks_cron | health_hooks_frame) cfmgr_candidate_parts=$3 ;;
 	mountinfo | status_native | backup_archive_control | backup_cloud_writer | backup_manifest | backup_payload_index | backup_payload_match | backup_pem | backup_tar | backup_yaml) cfmgr_candidate_parts=$3 ;;
 	*) exit 2 ;;
 	esac
-	# Four fixed owner files are already byte/mode admitted. No candidate shell
+	# Fixed owner files are already byte/mode admitted. No candidate shell
 	# executes, even when a malicious file supplies syntactically valid commands.
 	exec "$cfmgr_candidate_tool" -v root="$cfmgr_candidate_root" -v parts="$cfmgr_candidate_parts" '
  function owner(f) {
   if(f=="json" || f=="config_schema" || f=="config_observation")return "config"
   if(f=="mountinfo")return "storage"
-  if(f=="status" || f=="status_native")return "status"
+  if(f=="wan")return "network"
+  if(f=="log_frame" || f=="log_sanitize")return "logging"
+  if(f=="package_records")return "package"
+  if(f=="status" || f=="status_native" || f ~ /^health/)return "status"
   return "backup"
  }
- BEGIN {quote=sprintf("%c",39);count=split(parts,order," ");for(i=1;i<=count;i++)wanted[order[i]]=1}
+ BEGIN {
+  quote=sprintf("%c",39);batch=(parts=="all")
+  if(batch) {
+   specs="json config_schema config_observation|json status|mountinfo|status_native|json config_schema config_observation backup_payload|json backup_history_policy backup_history_body|backup_manifest backup_inventory|backup_archive_control|backup_cloud_writer|backup_manifest|backup_payload_index|backup_payload_match|backup_pem|backup_tar|backup_yaml|wan|log_frame|json log_sanitize|package_records|backup_uuid|json config_schema config_observation health|json config_schema config_observation health_cloud|health_selected|health_local|health_metadata|health_wire|json health_wire health_response|health_wire health_compare|health_render|json config_schema config_observation health_backup_plan|health_backup_observation|health_flat|health_package|health_logging|json config_schema config_observation backup_history_policy health_logging_authority|json config_schema config_observation health_hooks_authority|health_hooks_cron|health_hooks_frame|json backup_payload|backup_history_policy backup_history_body"
+   groups=split(specs,group,"|");count=0
+   for(g=1;g<=groups;g++){n=split(group[g],tmp," ");for(j=1;j<=n;j++)if(!wanted[tmp[j]]++){order[++count]=tmp[j]}}
+  } else {count=split(parts,order," ");for(i=1;i<=count;i++)wanted[order[i]]=1}
+ }
  FNR==1 {if(state)bad=1;previous="";bytes=0}
  {bytes+=length($0)+1;if(bytes>1048576 || length($0)>65536)bad=1}
  /^\t# CFMGR-AWK-BEGIN / {
   f=substr($0,20)
-  if(wanted[f]) {expected=root "/modules/" ((owner(f)=="config" || owner(f)=="storage")?"lib/":"") owner(f) ".sh";if(FILENAME!=expected || seen[f]++ || state || previous!="cfmgr_" owner(f) "_awk_" f "() {")bad=1;state=1;fragment=f;next}
+  if(wanted[f]) {expected=root "/modules/" ((owner(f)=="config" || owner(f)=="storage" || owner(f)=="network" || owner(f)=="logging" || owner(f)=="package")?"lib/":"") owner(f) ".sh";if(FILENAME!=expected || seen[f]++ || state || previous!="cfmgr_" owner(f) "_awk_" f "() {")bad=1;state=1;fragment=f;next}
  }
  state==1 {if($0!="\tcfmgr_awk_program=" quote)bad=1;state=2;program[fragment]="\n";next}
- state==2 {if($0==quote){state=3;next};if(index($0,quote))bad=1;program[fragment]=program[fragment] $0 "\n";if(length(program[fragment])>98304)bad=1;next}
+ state==2 {if($0==quote){state=3;next};if(index($0,quote) || $0=="CFMGR-AWK-END-PROGRAM")bad=1;program[fragment]=program[fragment] $0 "\n";if(length(program[fragment])>98304)bad=1;next}
  state==3 {if($0!="\t# CFMGR-AWK-END " fragment)bad=1;state=4;next}
  state==4 {if($0!="}")bad=1;state=0;done[fragment]++;next}
  {previous=$0}
  END {
-  for(i=1;i<=count;i++){f=order[i];if(seen[f]!=1 || done[f]!=1)bad=1;if(f=="backup_history_body")output=output "\n";output=output program[f]}
-  if(bad || state || length(output)>98304)exit 1
-  printf "%s",output
+  for(i=1;i<=count;i++){f=order[i];if(seen[f]!=1 || done[f]!=1)bad=1}
+  if(bad || state)exit 1
+  if(batch) {
+   for(g=1;g<=groups;g++){output="";n=split(group[g],tmp," ");for(j=1;j<=n;j++){f=tmp[j];if(f=="backup_history_body")output=output "\n";output=output program[f]}if(length(output)>98304)exit 1}
+   for(g=1;g<=groups;g++){output="";n=split(group[g],tmp," ");for(j=1;j<=n;j++){f=tmp[j];if(f=="backup_history_body")output=output "\n";output=output program[f]}printf "%sCFMGR-AWK-END-PROGRAM\n",output}
+  } else {for(i=1;i<=count;i++){f=order[i];if(f=="backup_history_body")output=output "\n";output=output program[f]}if(length(output)>98304)exit 1;printf "%s",output}
  }
- ' "$cfmgr_candidate_root/modules/lib/config.sh" "$cfmgr_candidate_root/modules/lib/storage.sh" "$cfmgr_candidate_root/modules/status.sh" "$cfmgr_candidate_root/modules/backup.sh"
+ ' "$cfmgr_candidate_root/modules/lib/config.sh" "$cfmgr_candidate_root/modules/lib/storage.sh" "$cfmgr_candidate_root/modules/lib/network.sh" "$cfmgr_candidate_root/modules/lib/logging.sh" "$cfmgr_candidate_root/modules/lib/package.sh" "$cfmgr_candidate_root/modules/status.sh" "$cfmgr_candidate_root/modules/backup.sh"
 }

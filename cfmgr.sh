@@ -419,16 +419,19 @@ case ${1-} in
 --internal-launch)
 	[ "$#" -ge 1 ] && [ "$#" -le 2 ] && [ "${CFMGR_INTERNAL_LAUNCH-}" = 1 ] && [ "$0" = "/jffs/scripts/cfmgr.sh" ] || exit 2
 	cfmgr_entry_action=${2:-normal}
-	case $cfmgr_entry_action in normal | reinstall) ;; *) exit 2 ;; esac
+	case $cfmgr_entry_action in normal | reinstall | admission) ;; *) exit 2 ;; esac
+	# The admission child gives an installed-package failure its own fatal status.
+	cfmgr_entry_verify_failure=1
+	[ "$cfmgr_entry_action" != admission ] || cfmgr_entry_verify_failure=5
 	cfmgr_source="/jffs/addons/CFMgr.d"
 	if ! cfmgr_entry_admit; then
 		printf '[CFMGR] launch: error: installed package verification failed\n' >&2
-		exit 1
+		exit "$cfmgr_entry_verify_failure"
 	fi
-	. "$cfmgr_source/modules/lib/package.sh" || exit 1
+	. "$cfmgr_source/modules/lib/package.sh" || exit "$cfmgr_entry_verify_failure"
 	if ! cfmgr_package_verify; then
 		printf '[CFMGR] launch: error: installed package verification failed\n' >&2
-		exit 1
+		exit "$cfmgr_entry_verify_failure"
 	fi
 	# Explicit category imports define functions only.
 	# shellcheck disable=SC1091
@@ -440,12 +443,44 @@ case ${1-} in
 	cfmgr_log_available=1
 	cfmgr_log_begin entry "$cfmgr_entry_action"
 	if [ "$cfmgr_entry_action" = normal ] && [ -t 0 ]; then
+		# A fresh shell keeps terminal input and traps in the menu process and
+		# gives native child supervision its own real process identity.
+		if /bin/sh "$0" --internal-launch admission; then cfmgr_entry_admission_status=0; else cfmgr_entry_admission_status=$?; fi
+		case $cfmgr_entry_admission_status in
+		3)
+			cfmgr_log_finish unresolved 3
+			exit 1
+			;;
+		5)
+			printf '[CFMGR] launch: error: installed package verification failed\n' >&2
+			exit 1
+			;;
+		*) ;;
+		esac
+		# The child may have observed a changed package, including after its
+		# initial verification. Recheck current bytes before any menu import.
+		if ! cfmgr_entry_admit || ! cfmgr_package_verify; then
+			printf '[CFMGR] launch: error: installed package verification failed\n' >&2
+			exit 1
+		fi
+		[ "$cfmgr_entry_admission_status" -eq 0 ] || printf '[CFMGR] launch: warning: operational admission unavailable; reporting and recovery remain available\n' >&2
 		. "$cfmgr_source/modules/status.sh" || exit 1
 		. "$cfmgr_source/modules/backup.sh" || exit 1
 		. "$cfmgr_source/modules/manager.sh" || exit 1
 		if cfmgr_launch_menu; then cfmgr_entry_action=reinstall; else
 			cfmgr_log_finish success 0
 			exit 0
+		fi
+	fi
+	if [ "$cfmgr_entry_action" = admission ]; then
+		if cfmgr_launch_native "$cfmgr_source" normal; then
+			cfmgr_log_finish success 0
+			exit 0
+		else
+			cfmgr_entry_status=$?
+			[ "${cfmgr_launch_recovery:-0}" != 1 ] || cfmgr_entry_status=3
+			case $cfmgr_entry_status in 3) cfmgr_log_finish unresolved 3 ;; *) cfmgr_log_finish failure "$cfmgr_entry_status" ;; esac
+			exit "$cfmgr_entry_status"
 		fi
 	fi
 	if cfmgr_launch_native "$cfmgr_source" "$cfmgr_entry_action"; then

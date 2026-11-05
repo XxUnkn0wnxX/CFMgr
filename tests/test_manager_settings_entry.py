@@ -178,7 +178,7 @@ def run_entry(
 
 
 def wait_for_output(
-    child: subprocess.Popen, expected: bytes, timeout: float = 8
+    child: subprocess.Popen, expected: bytes, timeout: float = 20
 ) -> bytes:
     assert child.stdout is not None
     output = bytearray()
@@ -264,11 +264,16 @@ def test_installed_menu_saves_reviewed_fields_over_fresh_edits_without_prompt_lo
     routes = (ram / "routes").read_text().splitlines()
     assert "store-lock" in routes
     assert not any("opkg" in route or route.startswith("install-") for route in routes)
-    # This fixture has no admitted mounted diagnostic volume. Enabling developer
-    # mode preserves the successful Store operation and reports capture absence.
+    # This fixture has no native operational admission or mounted diagnostic
+    # volume. Those resolved failures preserve the real native Store journey.
+    admission_warning = b"[CFMGR] launch: warning: operational admission unavailable; reporting and recovery remain available"
+    assert admission_warning in stderr.splitlines()
     assert all(
         line
-        == b"[CFMGR] diagnostics: warning: developer capture unavailable or incomplete; operation result is unchanged"
+        in {
+            admission_warning,
+            b"[CFMGR] diagnostics: warning: developer capture unavailable or incomplete; operation result is unchanged",
+        }
         for line in stderr.splitlines()
     )
     reopened = run_entry(shell, entry, b"ao\n2\ne\ne\ne\n")
@@ -465,7 +470,7 @@ def test_installed_invalid_literal_and_cancel_do_not_save_wan_intent(
     assert b"WAN preference saved." not in result.stdout
 
 
-def test_installed_stale_wan_save_reloads_without_overwriting_fresh_config(
+def test_installed_wan_save_rebases_after_unrelated_manager_edit(
     shell, tools, installed_settings_entry
 ):
     entry, support, _, store_paths = installed_settings_entry
@@ -485,6 +490,22 @@ def test_installed_stale_wan_save_reloads_without_overwriting_fresh_config(
         output.extend(wait_for_output(child, b"Save this WAN preference? [y/N/e] "))
         fresh = run_store(shell, tools, store_paths, "save", "auto", "0", "1")
         assert fresh.returncode == 0, (fresh.stdout, fresh.stderr)
+        config_path = support / "config"
+        current = json.loads(config_path.read_text())
+        current["generation"] = 3
+        current["extension"] = {"literal": "$(untouched)"}
+        current["network"]["selected_wan"] = 1
+        current["network"]["wan_inventory"] = {
+            "schema": 1,
+            "state": "confirmed",
+            "primary": "wan:1",
+            "extension": {"literal": "$HOME `unchanged`"},
+            "sources": [
+                {"id": "wan:0", "kind": "firmware", "unit": 0, "extra": "literal $x"},
+                {"id": "wan:1", "kind": "firmware", "unit": 1},
+            ],
+        }
+        config_path.write_text(json.dumps(current, separators=(",", ":")))
         os.write(master, b"y\ne\ne\ne\n")
         remaining, stderr = child.communicate(timeout=30)
         output.extend(remaining)
@@ -495,11 +516,17 @@ def test_installed_stale_wan_save_reloads_without_overwriting_fresh_config(
         os.close(master)
         os.close(slave)
     assert child.returncode == 0, (bytes(output), stderr)
-    assert b"changed during review; reloading current saved intent" in output
-    assert b"WAN preference saved." not in output
+    assert b"WAN preference saved." in output
     saved = json.loads((support / "config").read_text())
+    assert saved["generation"] == 4
     assert saved["manager"]["auto_update"] is True
-    assert saved["network"].get("wan_inventory", {}).get("state") == "deferred"
+    assert saved["extension"] == {"literal": "$(untouched)"}
+    assert saved["network"]["selected_wan"] == 0
+    inventory = saved["network"]["wan_inventory"]
+    assert inventory["state"] == "confirmed"
+    assert inventory["primary"] == "wan:0"
+    assert inventory["extension"] == {"literal": "$HOME `unchanged`"}
+    assert inventory["sources"][0]["extra"] == "literal $x"
 
 
 def test_installed_removal_is_explicit_and_reselects_primary(

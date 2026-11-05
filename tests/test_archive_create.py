@@ -113,7 +113,28 @@ def creation(base_archive, legacy_fsync, schema2_config):
             f":{os.geteuid()} | file:-rw-------:{os.geteuid()}",
         )
         if sys.platform == "darwin":
+            # This literal production path becomes a host path that may contain
+            # spaces; preserve it as one operand when adapting descriptor 8.
+            text = text.replace(
+                "/proc/self/fd/8/addons/CFMgr.d/config",
+                '"${cfmgr_test_jffs}/addons/CFMgr.d/config"',
+            )
             text = text.replace("/proc/self/fd/8", "${cfmgr_test_jffs}")
+            text = text.replace(
+                "cfmgr_archive_flush_owned ${cfmgr_test_backup}/.",
+                'cfmgr_archive_flush_owned "${cfmgr_test_backup}/."',
+            )
+            text = text.replace(
+                "-ef ${cfmgr_test_backup}/..", '-ef "${cfmgr_test_backup}/.."'
+            )
+            for operator in ("-e", "-L", "-d"):
+                text = text.replace(
+                    f"{operator} ${{cfmgr_test_backup}}/backup",
+                    f'{operator} "${{cfmgr_test_backup}}/backup"',
+                )
+            text = text.replace(
+                "3<${cfmgr_test_backup}/backup", '3<"${cfmgr_test_backup}/backup"'
+            )
             for variable in ("ram", "backup", "jffs"):
                 text = text.replace(
                     f"cd ${{cfmgr_test_{variable}}}", f'cd "${{cfmgr_test_{variable}}}"'
@@ -446,6 +467,14 @@ def test_manual_create_real_store_capture_verify_publish_and_history(creation, s
         )
     ) as archive:
         assert archive.getnames() == ["manifest", "inventory", "p00000001", "p00000002"]
+        manifest = archive.extractfile("manifest").read().decode().splitlines()
+        created = next(line for line in manifest if line.startswith("CREATED ")).split()
+        _, _epoch, day, clock, _zone, _offset, order = created
+        assert order == "YMD"
+        expected_name = f"CFbackup-{day}"
+        if day == "2023-11-14":
+            expected_name += f"_{clock}"
+        assert name == expected_name + ".tar.gz"
         captured_config = archive.extractfile("p00000001").read()
         assert json.loads(captured_config) == before
         assert (
@@ -489,6 +518,69 @@ def controller_boundary(shell, tmp_path, script):
         check=False,
         timeout=10,
     )
+
+
+def test_archive_generated_names_follow_saved_region_and_refuse_collisions(
+    shell, tmp_path
+):
+    backup = tmp_path / "backup"
+    backup.mkdir()
+    source = tmp_path / "backup.sh"
+    text = (ROOT / "modules/backup.sh").read_text()
+    if sys.platform == "darwin":
+        text = text.replace("/proc/self/fd/7", "${cfmgr_test_backup}")
+    source.write_text(text)
+    script = r"""
+fixture=$1
+cfmgr_test_backup=$fixture/backup
+cfmgr_create_ledger=$fixture/ledger
+cfmgr_archive_output=$fixture/io.out
+cfmgr_archive_saved_format=YMD
+cfmgr_probe_status=reaped
+cfmgr_archive_attachment_ok() { :; }
+cfmgr_store_read_line() { cfmgr_store_line=$(cat "$1"); }
+cfmgr_archive_io() {
+    case $1 in
+    timezone) printf 'UTC0\n' >"$cfmgr_archive_output" ;;
+    date) printf '%s\n' "$TEST_ARCHIVE_CLOCK" >"$cfmgr_archive_output" ;;
+    *) return 90 ;;
+    esac
+}
+cfmgr_archive_format_retire() { :; }
+: >"$cfmgr_create_ledger"
+exec 7<"$cfmgr_test_backup"
+expect_name() {
+    cfmgr_archive_saved_format=$1 TEST_ARCHIVE_CLOCK='1794740096|2026-11-15|13-34-56|+1100'
+    cfmgr_archive_choose_name || exit 80
+    [ "$cfmgr_create_name" = "$2" ] || exit 81
+}
+expect_name DMY CFbackup-15-11-2026.tar.gz
+expect_name MDY CFbackup-11-15-2026.tar.gz
+expect_name YMD CFbackup-2026-11-15.tar.gz
+printf 'ARCHIVE CFbackup-2026-11-15.tar.gz 1 10 deadbeef 1700000000 2026-11-15 abcdefab-1234-4abc-8abc-123456789abc END\n' >"$cfmgr_create_ledger"
+expect_name DMY CFbackup-15-11-2026_13-34-56.tar.gz
+expect_name MDY CFbackup-11-15-2026_13-34-56.tar.gz
+expect_name YMD CFbackup-2026-11-15_13-34-56.tar.gz
+: >"$cfmgr_create_ledger"
+TEST_ARCHIVE_CLOCK='1794740096|2026-11-15|13-34-56|+1100'
+: >"$cfmgr_test_backup/CFbackup-2026-11-15.tar.gz"
+if cfmgr_archive_choose_name; then exit 82; else code=$?; fi
+[ "$code" = 1 ] && [ "$cfmgr_create_result" = collision ]
+"""
+    result = subprocess.run(
+        [
+            *shell,
+            "-c",
+            '. "$1"\nshift\n' + script,
+            "archive-names",
+            str(source),
+            str(tmp_path),
+        ],
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert (result.returncode, result.stdout, result.stderr) == (0, b"", b""), result
 
 
 def test_definitive_foreign_set_parser_rejection_is_excluded(

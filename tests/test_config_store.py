@@ -919,3 +919,38 @@ def test_diagnostic_store_interrupted_save_uses_existing_recovery_guard(
     )
     assert (source / "config").read_bytes() == before
     assert not list(source.glob(".config-save*"))
+
+
+@pytest.mark.parametrize("churn", [False, True])
+def test_noop_drift_retries_scoped_settings_or_refuses_continuing_changes(
+    shell, tools, store_fixture, churn
+):
+    source, *_ = store_fixture
+    config_script = source / "modules/lib/config.sh"
+    config_script.write_text(
+        config_script.read_text().replace(
+            "cfmgr_store_live_matches() {", "cfmgr_store_live_matches_original() {"
+        )
+    )
+    inject = (
+        "cfmgr_store_live_matches() {\n"
+        "    match_calls=$((${match_calls:-0}+1))\n"
+        '    case $match_calls in 1) printf " " >>"$source/config" ;; '
+        + ('2) printf " " >>"$source/config" ;; ' if churn else "")
+        + "esac\n"
+        '    cfmgr_store_live_matches_original "$@"\n'
+        "}\n"
+    )
+    script = ADAPTER.replace(
+        'cfmgr_config_store "$@"', inject + 'cfmgr_config_store "$@"'
+    )
+    before = (source / "config").read_bytes()
+    result = run_store(
+        shell, tools, store_fixture, "save", "auto", "0", "0", script=script
+    )
+    if churn:
+        assert result.returncode == 1 and b" stale " in result.stdout
+    else:
+        assert result.returncode == 0 and b" unchanged " in result.stdout
+    assert (source / "config").read_bytes() == before + (b"  " if churn else b" ")
+    assert not list(source.glob(".config-save*"))

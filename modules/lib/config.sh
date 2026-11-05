@@ -825,10 +825,6 @@ cfmgr_store_work() {
 		cfmgr_store_base=$cfmgr_store_snapshot cfmgr_store_base_bytes=$cfmgr_store_snapshot_bytes
 		cfmgr_store_flags "$cfmgr_store_base" "$cfmgr_store_base_bytes" || return $?
 		cfmgr_store_base_generation=$cfmgr_store_generation
-		if [ "${cfmgr_store_scope:-settings}" = wan ] && [ "$cfmgr_wan_expected" != "$cfmgr_store_base_generation" ]; then
-			cfmgr_store_result=stale
-			return 1
-		fi
 		cfmgr_store_digest "$cfmgr_store_base" || return $?
 		cfmgr_store_base_sha=$cfmgr_store_digest_value
 		cfmgr_store_parse settings-observe "$cfmgr_store_base" "$cfmgr_store_base_bytes" || return $?
@@ -849,7 +845,8 @@ EOF_PATCH
 				cfmgr_store_match_code=$?
 				[ "$cfmgr_store_match_code" = 4 ] || return "$cfmgr_store_match_code"
 				cfmgr_store_result=stale
-				return 1
+				# A reviewed no-op can become a change on the next snapshot.
+				continue
 			fi
 			cfmgr_store_result=unchanged
 			return 0
@@ -2113,7 +2110,11 @@ function co_wan_dispatch(    packet,n,parts,state,primary,selectors,count,items,
         printf "CFMGR-WAN-CONFIG 1 %s %s %s %s %s END\n",co_old,co_wan_origin,co_wan_state,co_wan_primary,co_wan_selectors; return
     }
     packet=ENVIRON["CFMGR_SETTINGS_MASK"]; n=split(packet,parts,"|")
-    if(n!=3 || ENVIRON["CFMGR_SETTINGS_CHECK"]!=co_old || ENVIRON["CFMGR_SETTINGS_AUTO"]!="0") reject()
+    # The reviewed foreground intent may predate this valid snapshot, but may
+    # never claim authority from a generation that has not yet existed. Compare
+    # decimal strings without lossy AWK numeric conversion for large values.
+    old=ENVIRON["CFMGR_SETTINGS_CHECK"]
+    if(n!=3 || old!~/^[1-9][0-9]*$/ || length(old)>20 || length(old)>length(co_old) || (length(old)==length(co_old) && ("x" old)>("x" co_old)) || ENVIRON["CFMGR_SETTINGS_AUTO"]!="0") reject()
     state=parts[1]; primary=parts[2]; selectors=parts[3]
     if(state!~/^(confirmed|deferred)$/) reject()
     if(state=="deferred" && co_wan_origin=="unresolved") reject()

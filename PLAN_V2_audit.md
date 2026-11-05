@@ -3548,3 +3548,457 @@ The working specification is byte-identical to the preserved approved pre-start
 draft; implementation did not alter requirements to fit its results. Publication
 includes selected WAN planning/evidence and this checkpoint receipt. Unrelated
 fresh-hook and VPN reference-review drafts remain preserved outside the receipt.
+
+## Accepted subgoals and partial-work audit — 2026-11-05
+
+User-requested independent parallel review covered every previously accepted row
+and materially partial unticked work at runtime
+`7ea47342b6c92883ca92f66c60802a4f43f3f4ec`, published beneath documentation receipt
+`7444c82b95249c14a54fa8e1d154551fc76dfcd3`. Runtime remains unchanged; the four
+pre-existing planning drafts were preserved. Current exact core/Dev logs confirm
+successful checks, but their assertions and actual consumers must satisfy the full
+approved contracts. Required development proof remains representative host/vendor
+BusyBox, with the existing explicit local-placement and real-router-beta limits.
+
+### A-01 — normal interactive launch omits operational admission
+
+**Confirmed; S02.04 and S02.05 reopened.** Section 2 requires missing/unusable
+mapped dependencies to be repaired at launch/install/update/reinstall. The actual
+interactive entry calls `cfmgr_launch_menu` before `cfmgr_launch_native` in
+[cfmgr.sh](cfmgr.sh); ordinary menu exit returns from the entry without reaching
+the retained normal-operation consumer. Native prerequisite selection, opkg repair,
+post-probes and later-retry behavior exist in [package.sh](modules/lib/package.sh),
+but normal interactive launch does not consume them. Noninteractive launch,
+fresh installation and explicit dependency reinstall do.
+
+[test_dependency_reinstall.py](tests/test_dependency_reinstall.py)'s actual-entry
+navigation case expects no preparation/action; retained tests exercise the library
+consumer directly. This explains green CI without the required normal-entry result.
+Repair must prove the actual installed interactive journey while preserving native
+Status/Health and recovery access when operational admission is unavailable. It
+must not turn every menu redraw into dependency repair.
+
+Parent and installation reviewer agree on reopening both accepted/focused-complete
+flags. S02.06 stays accepted because its explicit CLI and Advanced reinstall paths
+reach the confirmed consumer. The proposed related S02.08 reopening was withdrawn
+after a bounded joint recheck: reachable Status, Store, archive and explicit
+reinstall consumers retain independent path/attachment protections. Skipping the
+normal dependency operation does not demonstrate an additional storage-safety
+failure during passive menu navigation. S02.08 stays accepted.
+
+### A-02 — acquisition omits current embedded parser syntax
+
+**Confirmed; S07.08 reopened.** `cfmgr_acquire_verify` in
+[package.sh](modules/lib/package.sh) validates a fixed embedded-parser list. Its
+extractor accepts only its fixed selectors/owners/files; the current WAN parser
+and further Health/logging fragments are absent. Shell syntax checking treats
+quoted AWK programs as data, so it cannot establish their AWK syntax. Complete
+file hashes/tree/version checks remain real, but do not close this syntax gap.
+
+[The developer parser registry](tests/runtime_awk.py) includes newer fragments;
+its tests do not repair the shipped acquisition path. Existing invalid-syntax
+acquisition tests target covered fragments. The explicit development-layout note
+does not waive admission of newly shipped executable parsers. Parent inspected
+both enumerations and agrees with the independent review; no runtime diagnostic
+was needed to establish the omission. Required repair evidence must show that a
+hash-correct package containing malformed currently shipped embedded AWK is rejected
+before installer entry, with complete supported-parser coverage and bounded cost.
+
+### B-04 — reviewed WAN Save rejects an unrelated concurrent change
+
+**Confirmed; S04.02 reopened.** Section 4 requires reviewed fields to be applied
+to freshly reread valid authority while preserving unrelated changes through
+bounded scoped merging. The WAN Store in [config.sh](modules/lib/config.sh)
+rejects any changed global generation before its digest/merge path; its WAN parser
+also requires that same expected generation. The Manager then reloads saved intent.
+
+The existing real installed test
+`test_installed_stale_wan_save_reloads_without_overwriting_fresh_config` in
+[test_manager_settings_entry.py](tests/test_manager_settings_entry.py) changes
+only manager Auto-update while the user is at WAN Save confirmation. After explicit
+yes, it asserts WAN Save rejection and retention of the old deferred preference.
+The unrelated change and reviewed WAN choice could both survive. This is not stale
+background-worker authorization or a conflicting later Off: it contradicts the
+current reviewed-Save contract, and green CI presently asserts the contradiction.
+
+The configuration reviewer initially treated the earlier acceptance scope as
+excluding this later consumer. Parent requested a bounded contract recheck; both
+now agree that a real new consumer cannot be exempted by the older receipt. No
+user-approved exception was found. Both completion flags are cleared. Repair must
+preserve true later-Off/relevant-authority checks and bounded merge refusal without
+rejecting a solely unrelated manager edit or losing the reviewed WAN fields.
+
+### D-01 — generated archive names lack central focused assertions
+
+**S14.04 implementation present; verification pending, acceptance removed.**
+`cfmgr_archive_clock` and `cfmgr_archive_choose_name` in
+[backup.sh](modules/backup.sh) implement regional date order, first versus later
+same-day names and collision refusal. No incorrect produced filename was observed
+or demonstrated. However, [test_archive_create.py](tests/test_archive_create.py)'s
+real creation test only verifies the returned filename identifies the file; it
+does not assert the generated date order/name/suffix. Menu tests assert names from
+stubbed backends; chronology/DST/publication tests use supplied names. The sole
+test mention of `cfmgr_archive_choose_name` overrides it.
+
+These are central outcomes of the filename subgoal, not incidental branch coverage.
+A temporary audit diagnostic would not supply the missing durable regression
+assertions. Parent and archive reviewer agree after a bounded evidence recheck:
+clear accepted and focused-complete flags, retain implementation evidence, and
+require a small production-function/real-create regression covering regional
+names, first/later same-day suffixes and collision refusal plus existing applicable
+gates. No runtime bug or requirement change is inferred.
+
+### Disposition of every previously accepted row
+
+The following is a source/consumer/assertion review, not a new runtime test run.
+Each retained row has its existing focused evidence plus complete exact-runtime
+core proof. Blank local boxes for S03.09/S03.10 reflect the approved CI placement
+in review notes, not a newly waived gate. S14.03's recorded local exception and
+S04.03's flush/platform evidence limit are likewise retained explicitly. No live
+Merlin/ARM/provider qualification is inferred from host/vendor BusyBox results.
+
+| ID | Audit disposition | Actual consumer and assertion basis |
+| --- | --- | --- |
+| S02.01 | Keep accepted | Explicit inventory/hash/catalog admission before fixed imports (`cfmgr.sh:424–439`, `package.sh:136–165`); entry/package tests exercise installed imports and rejection. |
+| S02.03 | Keep accepted | Retained-state refusal and guarded fresh-install staging (`package.sh:619,857–907`); install/retained integration assertions preserve prior setup. |
+| S02.04 | Reopened | REOPEN A-01: ordinary interactive entry does not consume normal prerequisite admission. |
+| S02.05 | Reopened | REOPEN A-01: ordinary interactive entry does not consume mapped normal dependency repair/retry. |
+| S02.06 | Keep accepted | Explicit CLI/Advanced confirmed reinstall reaches selected-set native consumer; `test_dependency_reinstall.py` covers confirmation, preservation and post-probes. |
+| S02.08 | Keep accepted | Operation-specific storage pins/rechecks remain on Store, archive and explicit reinstall; `test_retained_launch.py:344` plus storage/transaction assertions. A-01 does not demonstrate a separate storage bypass. |
+| S02.09 | Keep accepted | Native capability/TLS refusal paths (`package.sh:1247–1274,2565`, `network.sh:477–504`) have host/vendor tests. Real firmware profiles remain explicitly provisional in compatibility notes. |
+| S03.01 | Keep accepted | Private generated defaults after retained checks (`package.sh:857–907`, `config.sh:181`); install tests cover private authority and refusal to overwrite retained setup. |
+| S03.02 | Keep accepted | Typed canonical state (`config.sh:37–195,1400–1710,1781–1808`); `test_config_schema.py` and real Store/menu/retained consumers cover compatibility and preservation. Future controllers are not asserted implemented. |
+| S03.07 | Keep accepted | Actual menu0 -> native local projection (`manager.sh:1012`, `status.sh:1110,1187`); Status tests cover failure-safe local rendering, privacy and no network. |
+| S03.09 | Keep accepted | Early aliases/fallback plus actual Health collector (`cfmgr.sh:352–381`, `status.sh:853,1003`); standalone, malformed-state and full 12-GET Health journey assertions. |
+| S03.10 | Keep accepted | Shared Basic/Health rendering (`status.sh:962,1167,1280`); grouping/severity/bounded width tests and complete Status core. Existing CI-instead-of-local note retained. |
+| S04.01 | Keep accepted | Native JSON/YAML readers (`config.sh:1110–1399`, `backup.sh:5022`) consumed by Store/archive/Health; parser, full-byte YAML preservation and install semantic tests. |
+| S04.02 | Reopened | REOPEN B-04: existing installed WAN concurrent-Save test asserts unrelated-generation rejection, contrary to reviewed scoped merge. |
+| S04.03 | Keep accepted | Durable Store guards/flush/publish/recovery (`config.sh:901–1033`); actual Store and installer double-fault assertions. Existing JFFS flush evidence limit retained. |
+| S07.01 | Keep accepted | Actual ao2 preferences/default-no Save and reopen (`manager.sh:112–135,188–249`); installed/settings tests. Preference-only capability is explicit and matches this row. |
+| S07.08 | Reopened | REOPEN A-02: acquisition parser enumeration/extractor omits current shipped embedded programs. |
+| S13.14 | Keep accepted | Actual entry/developer capture and explicit Health destination (`cfmgr.sh:439–440`, `logging.sh:273–364,1103–1248`, `manager.sh:462`); real Auto/custom/Scribe and omission/privacy assertions. |
+| S14.01 | Keep accepted | Actual menu -> archive create/build (`backup.sh:494,2592,2876`); `test_archive_create.py:419` verifies produced archive content and owned cleanup. |
+| S14.02 | Keep accepted | Real picker/admission (`backup.sh:164,4883`); menu reopen/concurrent Save and creation/transaction tests verify selected mount and unrelated path preservation. |
+| S14.03 | Keep accepted | Actual browser validation/review/delete (`backup.sh:1017,2221,2290`); real-tool menu/archive IO assertions. Restore execution is separately unticked; explicit macOS validation exception retained. |
+| S14.04 | Implementation present; proof pending | VERIFICATION PENDING D-01: production naming logic exists but central generated-name/same-day assertions are absent. |
+| S14.05 | Keep accepted | Retention and publication (`backup.sh:2776,2835,2989`); control/transaction tests cover chronology, newest preservation, prune ordering and incomplete-state refusal. |
+| S14.06 | Keep accepted | Allowlisted capture (`backup.sh:1248,6979`); capture tests verify whole YAML/JSON/cert bytes and owned-log history. |
+| S14.07 | Keep accepted | Required payload roles (`backup.sh:1101,1156`); payload/capture tests exercise missing required data, refusal and certificate alternatives. |
+| S14.08 | Keep accepted | Archive transaction (`backup.sh:690,2942`); real create/IO/transaction/history tests verify locks, writer exclusion, bounded cancellation and cleanup. |
+
+The reviewed exact-runtime receipts are Checks `41987620252`, Backup
+`41987672144`, Manager `41987675231` and Status `41987677930`, all successful at
+`7ea47342b6c92883ca92f66c60802a4f43f3f4ec`. Required host and vendor BusyBox jobs
+passed. Complete module elapsed times including setup were approximately 7m00,
+8m45 and 2m03 respectively. Existing platform skips and optional Diagnostics
+exclusions remain disclosed in the checkpoint receipts. No re-run was needed for
+this unchanged-runtime audit. Passing those suites does not cure the three
+identified contract contradictions or missing naming assertions.
+
+### Partial runtime coverage
+
+These rows have real incomplete production consumers. They must not disappear
+behind bare unchecked boxes. Estimates describe broad portions of the approved
+contract represented by current behavior, not acceptance, elapsed work or remaining
+effort. No percentage is assigned where clauses have substantially unequal weight.
+The reopened rows above are additional unfinished work and take priority in the
+handoff; the table below lists previously unticked partial runtime only.
+
+| ID | Existing behavior and missing completion | Estimate |
+| --- | --- | --- |
+| S02.02 | JFFS authority, private RAM and separate backup storage are real; tunnel-data and feature-log lifecycle consumers are absent. | No defensible percentage |
+| S02.07 | Native diagnostics and explicit Store recovery exist; feature Safe-Off and general recovery controllers are absent. | No defensible percentage |
+| S03.03 | Main 0/4/ao/e and WAN confirmation/correction work;1/2/3/fx/u/uf dispatch and operational nesting are missing. | No defensible percentage |
+| S03.06 | Help/version/Health/doctor/diagnostic work; update and force aliases/transactions are missing. | No defensible percentage |
+| S03.08 | History schema/readers, privacy and Unknown/Never/stale display work; verified publication/removal/partial-failure and runtime-event producers are absent. | 40–60% contract coverage |
+| S04.06 | Existing menus handle EOF/non-TTY, literal bounded WAN input and default-no; secret-entry masking, echo recovery and future wizard literal-input consumers are absent. | No defensible percentage |
+| S04.07 | Fresh/retained/Store guards and explicit recovery work; feature/update/restore/auth/create restart consumers are absent. | No defensible percentage |
+| S04.08 | Config/archive locks, process/boot identity and supervised child exclusion work; provider-versus-connector descriptor lifetimes are unimplemented. | No defensible percentage |
+| S04.09 | Per-invocation package checks and bounded existing workers are real; updater/provider/connector overlap, late-result and whole-action cleanup consumers are absent. | No defensible percentage |
+| S07.06 | One code default, pinned fresh acquisition and catalog exist; developer-effective-source and retained self-update source consumers are missing. | No defensible percentage |
+| S08.01 | Confirmed/manual/deferred WAN preferences and local observations work; operational per-source/family active/inactive/Unknown and background rediscovery are missing. | 25–40% contract coverage |
+| S08.03 | Local selected-WAN address classification works; correctly routed public discovery for every selected WAN and authoritative mismatch/NAT reporting are absent. | 15–30% contract coverage |
+| S13.13 | Limited package/dependency syslog and credential-safe diagnostic formatting work; full feature events, severities, eligible file delivery and deduplication are absent. | 10–25% contract coverage |
+
+Key evidence anchors: actual available dispatch is `manager.sh:1012–1046`;
+Store guards/locks are `config.sh:334–422,784–1033`; retained observation is
+`package.sh:2152–2222`; WAN collection/projection is in `network.sh` and its
+Manager/Status consumers; history admission is `config.sh:1611–1651`, and its
+five-event/privacy/current-versus-history consumer is `status.sh:1700–1875`.
+Status tests inject operational histories; no DDNS/IP-Sync producer currently
+records verified published/removed/partial results. Health GET observations stay
+report-local. Limited native notices are in `package.sh:1184,1818,2249`; diagnostic
+formatters do not implement feature event delivery or deduplication.
+
+### Supporting work without the required operational consumer
+
+Shared typed data, validators, supervisors and diagnostic readers are useful
+existing work, and are recorded here. They do not establish that a future feature
+controller is half built. **Foundation only** means identifiable reusable code is
+present but the row's required production workflow is absent. **Not started** means
+no implementation of that row's operational outcome was found, even where broad
+shared infrastructure is reusable. **Integration pending** identifies final product
+or documentation contracts that depend on the unfinished feature set. Optional
+unselected rows remain unchecked; their classification changes no denominator or
+requirement. No code was deleted or rewritten to produce these labels.
+
+| Area | Existing groundwork | Missing operational outcomes |
+| --- | --- | --- |
+| S04.04–S04.05 | Archive draft envelopes and generic Store guard/recovery | Native resumable draft writers and the Cloudflared Save/create/login controller. |
+| Goal5 | Typed method/credential state, archive preservation/JSON/YAML/PEM validation and Health observations | A1/A2/B setup/import/create/login/mode-switch, full runtime ingress validation, identity repair, certificate recovery and hostname mapping. Data/validation is strongest in S05.01/.02/.04–.08; none is an operational setup controller. |
+| Goal6 | Typed lifecycle/binary preferences, native prerequisites, version/readiness observations and bounded execution | Shared tunnel lifecycle, actual official binary acquisition/adoption/maintenance, connected-state/outage/retry and owned stop/recovery. |
+| Goal7 outside current accepted/reopened/partial rows | Preference/schema, fresh package acquisition and generic guarded publication | Launch/daily offer, explicit/unattended retained replacement, developer suppression/retention during those operations, state-preserving switch and rollback. |
+| Goal8 outside S08.01/.03 | Read-only IPv6 filtering, finite Health transport/GET and local WAN observations | Routed resolver/lifetime/translation authority, shared freshness, desired-state publisher, coalesced events/queue/retry and durable explicit-Off cleanup. |
+| Goals9–10 | Typed DNS/list identities and Health-only provider GET/report validation | Setup/pickers/search, mutation/publication/clear/migration, firmware handoff/owned cleanup/completion and feature-specific read-only check. |
+| Goal11 | Isolated finite Health GET, typed credential scope and report-local rejection/throttle holds | Operational queue/retry/transport consumers, durable throttle/auth-Off, containment and credential repair. A report-local hold is not a persistent operational fault controller. |
+| Goal12 | Real dependency supervision/cleanup/storage admission plus hook/job observations | Hook writers/repair/dispatch, boot/WAN/IPv6/mount/shutdown integration, schedules/watchdog and detached feature lifecycle. No hidden live controller was found. |
+| S13.01–S13.12 | Schema/policy/readiness/archive readers and diagnostic Scribe copies | Feature log installation/rotation/repair/transaction/uninstall/resume/re-detect. Optional external viewing remains unselected. |
+| S14.09 | Immutable input/tar/schema/hash/effects validation | Actual current-code restore, supported migration/remapping, component acquisition and commit. Approximately 20–40% **foundation coverage**, with restore unavailable. |
+| S14.10 | Typed state, archive capture/review | State-aware reconstruction and optional-history decision/application. Approximately 5–20% **foundation coverage**, with reconstruction unavailable. |
+| S14.11 | Generic Store guards, snapshots/generation and rollback | Restore-specific durable intent, current auth/source handling and multi-root runtime commit/rollback. Approximately 10–25% **foundation coverage**, with restore commit unavailable. |
+| Goal15 | Retained guards/data preservation and generic transaction primitives | Legacy migration, KEEP/WIPE/reset, owned cleanup and retained reconstruction. Retained launch checks already-installed files; fresh install refuses retained directories. Neither is the required rebuild controller. |
+| Goals1 and16 | Native CLI, current developer/compatibility docs and automated infrastructure | Integrated three-feature product/parity/isolation, final practical guides and beta/stable readiness. Existing documentation is not proof of future operations. |
+
+The full inventory below assigns each approved ID exactly one current disposition.
+It is a coverage index, not another acceptance checklist or a new scope. Detailed
+accepted evidence, current partial consumers and area-specific groundwork above
+explain the labels; the original requirements remain in the plan.
+
+| ID | Current audit disposition |
+| --- | --- |
+| S01.01 | Product/documentation integration pending |
+| S01.02 | Product/documentation integration pending |
+| S01.03 | Product/documentation integration pending |
+| S01.04 | Product/documentation integration pending |
+| S01.05 | Optional/conditional — not selected |
+| S02.01 | Accepted — retained proof reviewed |
+| S02.02 | Partial runtime — see explicit missing outcomes |
+| S02.03 | Accepted — retained proof reviewed |
+| S02.04 | Reopened — confirmed contract gap |
+| S02.05 | Reopened — confirmed contract gap |
+| S02.06 | Accepted — retained proof reviewed |
+| S02.07 | Partial runtime — see explicit missing outcomes |
+| S02.08 | Accepted — retained proof reviewed |
+| S02.09 | Accepted — retained proof reviewed |
+| S03.01 | Accepted — retained proof reviewed |
+| S03.02 | Accepted — retained proof reviewed |
+| S03.03 | Partial runtime — see explicit missing outcomes |
+| S03.04 | Operational outcome not started |
+| S03.05 | Operational outcome not started |
+| S03.06 | Partial runtime — see explicit missing outcomes |
+| S03.07 | Accepted — retained proof reviewed |
+| S03.08 | Partial runtime — see explicit missing outcomes |
+| S03.09 | Accepted — retained proof reviewed |
+| S03.10 | Accepted — retained proof reviewed |
+| S04.01 | Accepted — retained proof reviewed |
+| S04.02 | Reopened — confirmed contract gap |
+| S04.03 | Accepted — retained proof reviewed |
+| S04.04 | Foundation only — operational consumer absent |
+| S04.05 | Foundation only — operational consumer absent |
+| S04.06 | Partial runtime — see explicit missing outcomes |
+| S04.07 | Partial runtime — see explicit missing outcomes |
+| S04.08 | Partial runtime — see explicit missing outcomes |
+| S04.09 | Partial runtime — see explicit missing outcomes |
+| S05.01 | Foundation only — operational consumer absent |
+| S05.02 | Foundation only — operational consumer absent |
+| S05.03 | Operational outcome not started |
+| S05.04 | Foundation only — operational consumer absent |
+| S05.05 | Foundation only — operational consumer absent |
+| S05.06 | Foundation only — operational consumer absent |
+| S05.07 | Foundation only — operational consumer absent |
+| S05.08 | Foundation only — operational consumer absent |
+| S05.09 | Operational outcome not started |
+| S05.10 | Operational outcome not started |
+| S05.11 | Operational outcome not started |
+| S05.12 | Operational outcome not started |
+| S05.13 | Operational outcome not started |
+| S05.14 | Operational outcome not started |
+| S06.01 | Foundation only — operational consumer absent |
+| S06.02 | Operational outcome not started |
+| S06.03 | Foundation only — operational consumer absent |
+| S06.04 | Operational outcome not started |
+| S06.05 | Operational outcome not started |
+| S06.06 | Operational outcome not started |
+| S06.07 | Foundation only — operational consumer absent |
+| S06.08 | Operational outcome not started |
+| S06.09 | Foundation only — operational consumer absent |
+| S06.10 | Foundation only — operational consumer absent |
+| S07.01 | Accepted — retained proof reviewed |
+| S07.02 | Operational outcome not started |
+| S07.03 | Operational outcome not started |
+| S07.04 | Operational outcome not started |
+| S07.05 | Foundation only — operational consumer absent |
+| S07.06 | Partial runtime — see explicit missing outcomes |
+| S07.07 | Foundation only — operational consumer absent |
+| S07.08 | Reopened — confirmed contract gap |
+| S07.09 | Foundation only — operational consumer absent |
+| S07.10 | Foundation only — operational consumer absent |
+| S07.11 | Optional/conditional — not selected |
+| S08.01 | Partial runtime — see explicit missing outcomes |
+| S08.02 | Operational outcome not started |
+| S08.03 | Partial runtime — see explicit missing outcomes |
+| S08.04 | Foundation only — operational consumer absent |
+| S08.05 | Foundation only — operational consumer absent |
+| S08.06 | Foundation only — operational consumer absent |
+| S08.07 | Operational outcome not started |
+| S08.08 | Operational outcome not started |
+| S08.09 | Foundation only — operational consumer absent |
+| S08.10 | Operational outcome not started |
+| S08.11 | Operational outcome not started |
+| S09.01 | Operational outcome not started |
+| S09.02 | Operational outcome not started |
+| S09.03 | Operational outcome not started |
+| S09.04 | Operational outcome not started |
+| S09.05 | Operational outcome not started |
+| S09.06 | Operational outcome not started |
+| S09.07 | Operational outcome not started |
+| S09.08 | Operational outcome not started |
+| S09.09 | Operational outcome not started |
+| S10.01 | Operational outcome not started |
+| S10.02 | Operational outcome not started |
+| S10.03 | Operational outcome not started |
+| S10.04 | Operational outcome not started |
+| S10.05 | Operational outcome not started |
+| S10.06 | Operational outcome not started |
+| S10.07 | Operational outcome not started |
+| S10.08 | Operational outcome not started |
+| S10.09 | Operational outcome not started |
+| S10.10 | Operational outcome not started |
+| S11.01 | Foundation only — operational consumer absent |
+| S11.02 | Operational outcome not started |
+| S11.03 | Foundation only — operational consumer absent |
+| S11.04 | Foundation only — operational consumer absent |
+| S11.05 | Operational outcome not started |
+| S11.06 | Foundation only — operational consumer absent |
+| S11.07 | Operational outcome not started |
+| S11.08 | Foundation only — operational consumer absent |
+| S12.01 | Operational outcome not started |
+| S12.02 | Foundation only — operational consumer absent |
+| S12.03 | Operational outcome not started |
+| S12.04 | Operational outcome not started |
+| S12.05 | Foundation only — operational consumer absent |
+| S12.06 | Operational outcome not started |
+| S12.07 | Operational outcome not started |
+| S12.08 | Foundation only — operational consumer absent |
+| S12.09 | Foundation only — operational consumer absent |
+| S12.10 | Foundation only — operational consumer absent |
+| S12.11 | Operational outcome not started |
+| S13.01 | Foundation only — operational consumer absent |
+| S13.02 | Operational outcome not started |
+| S13.03 | Foundation only — operational consumer absent |
+| S13.04 | Foundation only — operational consumer absent |
+| S13.05 | Foundation only — operational consumer absent |
+| S13.06 | Foundation only — operational consumer absent |
+| S13.07 | Operational outcome not started |
+| S13.08 | Operational outcome not started |
+| S13.09 | Operational outcome not started |
+| S13.10 | Operational outcome not started |
+| S13.11 | Optional/conditional — not selected |
+| S13.12 | Operational outcome not started |
+| S13.13 | Partial runtime — see explicit missing outcomes |
+| S13.14 | Accepted — retained proof reviewed |
+| S14.01 | Accepted — retained proof reviewed |
+| S14.02 | Accepted — retained proof reviewed |
+| S14.03 | Accepted — retained proof reviewed |
+| S14.04 | Implementation present — written proof pending |
+| S14.05 | Accepted — retained proof reviewed |
+| S14.06 | Accepted — retained proof reviewed |
+| S14.07 | Accepted — retained proof reviewed |
+| S14.08 | Accepted — retained proof reviewed |
+| S14.09 | Foundation only — operational consumer absent |
+| S14.10 | Foundation only — operational consumer absent |
+| S14.11 | Foundation only — operational consumer absent |
+| S15.01 | Operational outcome not started |
+| S15.02 | Operational outcome not started |
+| S15.03 | Operational outcome not started |
+| S15.04 | Operational outcome not started |
+| S15.05 | Operational outcome not started |
+| S15.06 | Operational outcome not started |
+| S15.07 | Foundation only — operational consumer absent |
+| S15.08 | Foundation only — operational consumer absent |
+| S15.09 | Operational outcome not started |
+| S16.01 | Product/documentation integration pending |
+| S16.02 | Product/documentation integration pending |
+| S16.03 | Product/documentation integration pending |
+| S16.04 | Product/documentation integration pending |
+| S16.05 | Product/documentation integration pending |
+| S16.06 | Product/documentation integration pending |
+
+### Review agreement and audit limits
+
+Installation/acquisition, configuration/Save, Status/diagnostics and archive lanes
+reviewed independently without editing runtime or running duplicate suites. Parent
+verified the material call paths and assertions, reconciled each disposition and
+made the evidence-backed status corrections. Bounded rechecks resolved three
+initial classifications: S02.08 retains acceptance because no separate unsafe
+consumer was found; S04.02 loses acceptance because current WAN Save cannot be
+excluded by an older receipt; S14.04 loses acceptance because central written proof
+is missing. No unresolved reviewer disagreement remains.
+
+The parent also inspected actual Manager dispatch, module inventory and final-doc
+surface for the integrated product, tunnel lifecycle, DNS/IP-Sync and delivery
+contracts. There are no hidden operational feature controllers behind the native
+Status/Health/archive paths. This is evidence-backed implementation/acceptance
+classification, not a guarantee of defect-free code. Runtime repair, new provider
+work, router execution, CI dispatch and publication were outside this audit.
+
+An independent scope review confirms the five reopened rows can be completed
+against existing consumers without inventing a new operational updater/provider
+prerequisite. Concrete execution ownership, dependency closure and the pause
+boundary are recorded only in the handoff.
+
+
+## Five-row repair review — 2026-11-05
+
+The user selected completion of S02.04, S02.05, S04.02, S07.08 and S14.04 together
+before another scope. Requirements were retained. This disposition records
+implementation and focused host evidence; exact-candidate Linux/core gates remain
+pending and no reacceptance is awarded here.
+
+- **A-01 / S02.04–S02.05:** Interactive entry now runs normal operational admission
+  once in a fresh child, preserving terminal input and parent traps. The installed
+  PTY fixture uses real launch/shared requirements/repair/post-probes/supervision;
+  only the existing private OS/tool adapters cross the fresh-shell boundary.
+  Host retained/reinstall coverage passed 47 cases with one Linux/ext4 skip in
+  147.69s; the final generated-entry syntax/consumer-boundary case passed in 1.08s.
+  Full native entry/repair/no-op proof remains pending. The separately scoped
+  [Daybreak report](daybreak_handoff.md#daybreak-report) records the fatal package
+  failure classification and re-verification repair, with 14 host cases passed
+  in 50.67s. Parent integration applied shell formatting only afterwards.
+- **B-04 / S04.02:** Reviewed canonical generations up to the current generation
+  remerge into fresh authority, preserving unrelated/unknown fields while the
+  reviewed accepted fields win. Future claims are rejected with exact decimal
+  comparison. Shared no-op content drift uses the existing two-attempt remerge
+  bound; later-Off/background and publication guards remain unchanged. Independent
+  review passed. The real menu test covers both newer manager settings and a
+  same-field manual WAN edit. The manager-entry module initially passed 22 cases
+  and hit two eight-second pre-prompt harness timeouts (216.57s); with a bounded
+  twenty-second test-only wait, both affected real Store journeys passed (55.57s).
+  This changes no production deadline. Earlier focused precision/drift/churn and
+  later-Off receipts remain in the preserved handoff.
+- **A-02 / S07.08:** Acquisition now extracts all forty current embedded-parser
+  combinations from the fixed owners, including aliases, then checks each syntax
+  under the existing aggregate deadline. Independent review found that the batch
+  exceeded the old single-program output quota. The production extraction quota
+  now allows 4 MiB: forty 98,304-byte programs plus 22-byte framing total at most
+  3,933,040 bytes. A regular-file test invokes the actual production execution
+  wrapper and compares its complete output with direct extraction (1 passed in
+  4.22s). Independent review confirmed the correction and unchanged deadlines.
+  Full supervised acquisition and hash-correct malformed-parser rejection remain
+  required native gates.
+- **D-01 / S14.04:** Written assertions now call production naming for DMY/MDY/YMD,
+  first/later same-day names and collision refusal, and compare a real created
+  archive filename with its manifest metadata. Host fixture diagnosis identified
+  unquoted descriptor-path adaptations when temporary paths contain spaces;
+  precise fixture-only quoting fixed them. No archive runtime defect was found.
+  Final real-create plus naming checks passed 2/2 in 79.72s. Two exploratory trace
+  runs contaminated supervised receipts and are excluded from evidence. Native
+  complete-module proof remains pending.
+
+The independent affected-row review confirmed that explicit Health still precedes
+operational admission, native menu Status remains local/read-only and settings
+remain reachable after a resolved operational failure. README's stale claim that
+menu Status preceded preparation was removed. Prior accepted consumers retain
+their requirements and still need the prescribed exact complete core gate for the
+shared candidate. The new per-checkpoint audit and two-runtime-checkpoint broad
+cadence are recorded in the user-approved AGENTS revision.

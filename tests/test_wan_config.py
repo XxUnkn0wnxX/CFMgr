@@ -93,7 +93,9 @@ def test_invalid_intent_rejected(commands, schema2_config, tmp_path, packet):
     )
 
 
-def test_guarded_store_save_stale_and_read(shell, tools, store_fixture):
+def test_guarded_store_save_rebases_and_rejects_future_generation(
+    shell, tools, store_fixture
+):
     script = ADAPTER.replace('cfmgr_config_store "$@"', 'cfmgr_config_wan_store "$@"')
     source, *_ = store_fixture
     before = (source / "config").read_bytes()
@@ -115,11 +117,16 @@ def test_guarded_store_save_stale_and_read(shell, tools, store_fixture):
     assert saved.returncode == 0, (saved.stdout, saved.stderr)
     assert b"saved 2 0 inventory confirmed wan:0 wan:0 END" in saved.stdout
     after = (source / "config").read_bytes()
-    stale = run_store(
+    future = run_store(
+        shell, tools, store_fixture, "save", "3", "deferred", "-", "-", script=script
+    )
+    assert future.returncode != 0
+    assert (source / "config").read_bytes() == after
+    rebased = run_store(
         shell, tools, store_fixture, "save", "1", "deferred", "-", "-", script=script
     )
-    assert stale.returncode != 0 and b" stale " in stale.stdout
-    assert (source / "config").read_bytes() == after
+    assert rebased.returncode == 0, (rebased.stdout, rebased.stderr)
+    assert b"saved 3 0 inventory deferred - - END" in rebased.stdout
 
 
 __all__ += ["legacy_fsync", "shell", "store_fixture", "tools"]
@@ -220,4 +227,117 @@ def test_interrupted_wan_save_recovers_without_replaying_confirmation(
         b"CFMGR-WAN-STORE 1 recovered 1 0 absent unconfirmed - - END\n",
     )
     assert (source / "config").read_bytes() == before
+    assert not list(source.glob(".config-save*"))
+
+
+@pytest.mark.parametrize("scenario", ["semantic-remerge", "semantic-churn"])
+def test_wan_raw_drift_retries_current_generation_or_refuses(
+    shell, tools, store_fixture, scenario
+):
+    source, ram, *_ = store_fixture
+    script = ADAPTER.replace('cfmgr_config_store "$@"', 'cfmgr_config_wan_store "$@"')
+    if scenario == "semantic-remerge":
+        script = script.replace(
+            "'.manager.check_updates=false |",
+            "'.generation=2 | .manager.check_updates=false |",
+        )
+    result = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "1",
+        "confirmed",
+        "wan:0",
+        "wan:0",
+        scenario=scenario,
+        script=script,
+    )
+    latest = (ram / "semantic-live").read_bytes()
+    if scenario == "semantic-remerge":
+        assert result.returncode == 0, (result.stdout, result.stderr)
+        assert b"saved 3 0 inventory confirmed wan:0 wan:0 END" in result.stdout
+        saved = json.loads((source / "config").read_bytes())
+        assert saved["manager"]["developer"] is True
+        assert saved["ownership"]["config_save"]["owner"] == "fixture"
+        assert saved["network"]["wan_inventory"]["primary"] == "wan:0"
+    else:
+        assert result.returncode == 1 and b" stale " in result.stdout
+        assert (source / "config").read_bytes() == latest
+    assert (ram / "routes").read_text().count("store-mkdir\n") == 2
+    assert not list(source.glob(".config-save*"))
+
+
+def test_review_generation_comparison_preserves_full_decimal_precision(
+    commands, schema2_config, tmp_path
+):
+    value = json.loads(schema2_config)
+    value["generation"] = 99999999999999999997
+    raw = encoded(value)
+    packet = "confirmed|wan:0|wan:0"
+    accepted = call(
+        commands, tmp_path, raw, "wan-patch", packet, "99999999999999999996"
+    )
+    assert accepted.returncode == 0, accepted.stderr
+    assert json.loads(accepted.stdout)["generation"] == 99999999999999999998
+    assert (
+        call(
+            commands, tmp_path, raw, "wan-patch", packet, "99999999999999999998"
+        ).returncode
+        != 0
+    )
+
+
+@pytest.mark.parametrize("churn", [False, True])
+def test_wan_noop_raw_drift_retries_and_refuses_continuing_edits(
+    shell, tools, store_fixture, churn
+):
+    source, *_ = store_fixture
+    script = ADAPTER.replace('cfmgr_config_store "$@"', 'cfmgr_config_wan_store "$@"')
+    initial = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "1",
+        "confirmed",
+        "wan:0",
+        "wan:0",
+        script=script,
+    )
+    assert initial.returncode == 0, (initial.stdout, initial.stderr)
+    config_script = source / "modules/lib/config.sh"
+    config_script.write_text(
+        config_script.read_text().replace(
+            "cfmgr_store_live_matches() {", "cfmgr_store_live_matches_original() {"
+        )
+    )
+    inject = (
+        "cfmgr_store_live_matches() {\n"
+        "    match_calls=$((${match_calls:-0}+1))\n"
+        '    case $match_calls in 1) printf " " >>"$source/config" ;; '
+        + ('2) printf " " >>"$source/config" ;; ' if churn else "")
+        + "esac\n"
+        '    cfmgr_store_live_matches_original "$@"\n'
+        "}\n"
+    )
+    script = script.replace(
+        'cfmgr_config_wan_store "$@"', inject + 'cfmgr_config_wan_store "$@"'
+    )
+    result = run_store(
+        shell,
+        tools,
+        store_fixture,
+        "save",
+        "2",
+        "confirmed",
+        "wan:0",
+        "wan:0",
+        script=script,
+    )
+    if churn:
+        assert result.returncode == 1 and b" stale " in result.stdout
+    else:
+        assert result.returncode == 0 and b" unchanged 2 " in result.stdout
+    assert json.loads((source / "config").read_bytes())["generation"] == 2
     assert not list(source.glob(".config-save*"))

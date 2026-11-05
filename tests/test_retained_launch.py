@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import json
 import os
+import pty
+import re
 import shlex
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
+from entry_package_fixture import adapt_native, finish_package
 from test_dependencies import (
     base_tools,
     dependency_process,
@@ -465,6 +469,13 @@ def retained_adapter(
     alias = folder / "storage.sh"
     alias.write_bytes(renamed)
     adapter = folder / "adapter.sh"
+    driver = folder / "entry.py"
+    driver.write_text(
+        "import sys\n"
+        f"sys.path.insert(0, {str(ROOT / 'tests')!r})\n"
+        "from test_retained_launch import retained_entry_journey\n"
+        "retained_entry_journey(*sys.argv[1:])\n"
+    )
     adapter.write_text(
         installer_adapter.read_text()
         + "\n"
@@ -474,8 +485,292 @@ def retained_adapter(
         + "retained_storage_alias="
         + shlex.quote(str(alias))
         + "\n"
+        + "retained_entry_driver="
+        + shlex.quote(str(driver))
+        + "\nretained_entry_python="
+        + shlex.quote(sys.executable)
+        + "\n"
     )
     return adapter
+
+
+def fixture_functions(path: Path, names: tuple[str, ...]) -> str:
+    """Copy an explicit callback list, with no fixture setup or scenario code."""
+    source = path.read_text()
+    definitions = []
+    for name in names:
+        matches = list(re.finditer(rf"(?m)^{name}\(\) \{{", source))
+        assert len(matches) == 1, (path, name)
+        start = matches[0].start()
+        first_end = source.index("\n", start)
+        if source[start:first_end].endswith("}"):
+            end = first_end
+        else:
+            closing = re.search(r"(?m)^}$", source[first_end:])
+            assert closing is not None, (path, name)
+            end = first_end + closing.end()
+        definitions.append(source[start:end] + "\n")
+    return "\n".join(definitions)
+
+
+def retained_entry_bridge(fixture: Path, adapter: Path, storage_alias: Path) -> str:
+    """Replay finite existing OS/tool adapters after a real entry's imports.
+
+    Fresh POSIX shells cannot inherit callbacks. Only the private entry gets
+    this suffix after its imports; admission, launch work, repair, probes,
+    supervisor and cleanup bodies still execute their production implementations.
+    """
+    fixtures = ROOT / "tests/fixtures"
+    callbacks = "".join(
+        fixture_functions(fixtures / file, names)
+        for file, names in (
+            (
+                "storage_mounts.sh",
+                (
+                    "view_action",
+                    "view_native",
+                    "cfmgr_execution_view_keeper",
+                    "cfmgr_execution_view_quiescent",
+                ),
+            ),
+            (
+                "dependencies.sh",
+                (
+                    "dependency_trace",
+                    "dependency_outcome_capture",
+                    "dependency_native",
+                    "dependency_inside_tools",
+                    "dependency_native_tool",
+                ),
+            ),
+            (
+                "dependency_installer.sh",
+                (
+                    "cfmgr_test_cost",
+                    "cfmgr_dependencies_repair",
+                    "cfmgr_dependencies_inside_tools",
+                    "cfmgr_dependencies_native_tool",
+                    "cfmgr_execution_tasks_native",
+                    "cfmgr_mount_keeper_native",
+                    "cfmgr_dependencies_admit",
+                    "cfmgr_bootstrap_native_admission",
+                    "cfmgr_bootstrap_metadata",
+                    "cfmgr_prerequisites_admit_tool",
+                    "cfmgr_prerequisites_check",
+                ),
+            ),
+            (
+                "retained_launch.sh",
+                (
+                    "cfmgr_bootstrap_native_prepare",
+                    "cfmgr_bootstrap_native_attached",
+                    "cfmgr_bootstrap_attached",
+                    "cfmgr_storage_pin",
+                    "cfmgr_execution_view_native",
+                    "cfmgr_prerequisites_pause",
+                    "cfmgr_bootstrap_dns_admit_native",
+                ),
+            ),
+        )
+    )
+    # Observation wrappers preserve the complete selected implementations. Their
+    # sidecars survive child cleanup and contain only synthetic phase/status data.
+    callbacks = callbacks.replace(
+        "cfmgr_prerequisites_check() {", "cfmgr_test_entry_check() {", 1
+    )
+    cleanup = fixture_functions(
+        ROOT / "modules/lib/package.sh", ("cfmgr_bootstrap_cleanup",)
+    ).replace("cfmgr_bootstrap_cleanup() {", "cfmgr_test_entry_cleanup() {", 1)
+    header = (
+        f"\n. {shlex.quote(str(adapter))}\n"
+        '. "$dependency_repair_alias"\n. "$dependency_probe_alias"\n'
+        f". {shlex.quote(str(storage_alias))}\n"
+        f"root={shlex.quote(str(ROOT))}\nfixture={shlex.quote(str(fixture))}\n"
+    )
+    state = r"""
+view_native_root=$fixture/native view_ram=$fixture/native/tmp/private-ram
+view_busybox=$view_native_root/bin/busybox
+retained_support=$fixture/jffs/addons/CFMgr.d installer_package=$fixture/jffs/addons/CFMgr.d
+retained_dns_tool=$view_ram/retained-nslookup
+cfmgr_storage_alias=$fixture/opt
+cfmgr_view_test_quiet=1 cfmgr_view_test_fault=clean
+cfmgr_test_cost_installer=0 installer_probe_count=0 retained_attempt=0
+dependency_trace_count=0 dependency_trace_started=0
+cfmgr_install_sh=$view_ram/ash cfmgr_install_env=$view_ram/env cfmgr_install_awk=$view_ram/awk
+cfmgr_install_readlink=$view_ram/readlink cfmgr_install_sleep=/bin/sleep cfmgr_install_wc=$view_ram/wc
+cfmgr_install_ls=$view_ram/ls cfmgr_install_mkdir=$view_ram/mkdir cfmgr_install_cp=$view_ram/cp
+cfmgr_install_chmod=$view_ram/chmod cfmgr_install_sha=$installer_sha cfmgr_install_jq=$installer_jq
+cfmgr_install_df=$installer_df cfmgr_install_mv=$installer_mv cfmgr_install_fsync=$installer_fsync
+cfmgr_install_nvram=$view_ram/nvram cfmgr_install_interrupted=0
+cfmgr_install_tmp_snapshot=$("$view_ram/awk" "$(cfmgr_storage_awk_mountinfo; printf '%s' "$cfmgr_awk_program")" "$view_ram" /proc/self/mountinfo)
+cfmgr_prerequisites_check() {
+    if cfmgr_test_entry_check "$@"; then cfmgr_test_entry_status=0; else cfmgr_test_entry_status=$?; fi
+    printf 'probe %s %s\n' "$installer_probe_count" "$cfmgr_test_entry_status" >>"$fixture/entry.receipt"
+    return "$cfmgr_test_entry_status"
+}
+cfmgr_bootstrap_cleanup() {
+    if cfmgr_test_entry_cleanup "$@"; then cfmgr_test_entry_status=0; else cfmgr_test_entry_status=$?; fi
+    printf 'cleanup %s %s %s %s\n' "$cfmgr_test_entry_status" "${cfmgr_dependencies_result:-none}" \
+        "${cfmgr_view_state:-none}" "${cfmgr_keeper_state:-none}" >>"$fixture/entry.receipt"
+    return "$cfmgr_test_entry_status"
+}
+"""
+    # Translate the one fixed firmware argument, never variable-based paths such
+    # as $fixture/jffs. The bridge is inserted after native entry translation.
+    firmware_argument = "= /jffs/addons/CFMgr.d:launch"
+    assert callbacks.count(firmware_argument) == 1
+    callbacks = callbacks.replace(
+        firmware_argument,
+        "= " + shlex.quote(str(fixture / "jffs/addons/CFMgr.d") + ":launch"),
+        1,
+    )
+    return header + callbacks + cleanup + state
+
+
+def prepare_retained_entry(fixture: Path, adapter: Path, storage_alias: Path) -> str:
+    """Translate firmware paths once, then inject the already rooted callbacks."""
+    support = fixture / "jffs/addons/CFMgr.d"
+    entry = fixture / "jffs/scripts/cfmgr.sh"
+    ram = fixture / "native/tmp/private-ram"
+    source = adapt_native(
+        entry.read_text(), fixture / "jffs", {"sh": str(ram / "ash")}, []
+    )
+    anchor = '\n\t. "$cfmgr_source/modules/lib/logging.sh" || exit 1\n'
+    assert source.count(anchor) == 1
+    bridge = retained_entry_bridge(fixture, adapter, storage_alias)
+    entry.write_text(source.replace(anchor, anchor + bridge, 1))
+    verifier = support / "modules/lib/package.sh"
+    verifier.write_text(verifier.read_text().replace("/jffs", str(fixture / "jffs")))
+    finish_package(entry, support, {"sh": str(ram / "ash")}, [])
+    return bridge
+
+
+def retained_entry_journey(
+    fixture_arg: str, adapter_arg: str, alias_arg: str, mode: str = "repair"
+) -> None:
+    """Run inside the already admitted private Linux PID/mount namespace."""
+    fixture = Path(fixture_arg)
+    support = fixture / "jffs/addons/CFMgr.d"
+    entry = fixture / "jffs/scripts/cfmgr.sh"
+    ram = fixture / "native/tmp/private-ram"
+    assert mode in {"repair", "healthy"}
+    if mode == "repair":
+        prepare_retained_entry(fixture, Path(adapter_arg), Path(alias_arg))
+    receipt = fixture / "entry.receipt"
+    receipt.write_text("")
+    receipt.chmod(0o600)
+    operations = fixture / "opt/operations"
+    before_operations = operations.read_bytes() if operations.exists() else b""
+    queries = ram / "retained-dns-queries"
+    before_queries = queries.read_bytes() if queries.exists() else b""
+    master, slave = pty.openpty()
+    try:
+        child = subprocess.Popen(
+            [str(ram / "ash"), str(entry)],
+            stdin=slave,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=os.environ.copy(),
+        )
+        # Enter and leave Advanced options twice, proving terminal input survives
+        # native FD0 replacement and redraws do not repeat the admission child.
+        os.write(master, b"ao\ne\nao\ne\ne\n")
+        try:
+            out, err = child.communicate(timeout=190)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.communicate()
+            raise
+    finally:
+        os.close(master)
+        os.close(slave)
+    sys.stdout.buffer.write(out)
+    sys.stderr.buffer.write(err)
+    assert child.returncode == 0, (out, err)
+    assert out.count(b"CFMgr main menu\n") == 3, (out, err)
+    assert out.count(b"Advanced options: other actions unavailable\n") == 2
+    dns = "verified" if mode == "repair" else "deferred"
+    assert out.count(f"shared dependencies verified; tunnel DNS {dns}".encode()) == 1
+    assert b"operational admission unavailable" not in err, err
+    query_log = queries.read_bytes()
+    assert query_log.startswith(before_queries)
+    query_types = [
+        line.split()[1] for line in query_log[len(before_queries) :].splitlines()
+    ]
+    assert b"SRV" in query_types, query_log
+    if mode == "repair":
+        assert b"A" in query_types, query_log
+    rows = receipt.read_text().splitlines()
+    probes = [row for row in rows if row.startswith("probe ")]
+    cleanups = [row for row in rows if row.startswith("cleanup ")]
+    if mode == "repair":
+        assert probes == ["probe 1 1", "probe 2 0"], rows
+        assert cleanups and set(cleanups) == {"cleanup 0 repaired released released"}, (
+            rows
+        )
+        assert operations.read_text() == "update\ninstall flock\n"
+    else:
+        assert probes == ["probe 1 0"], rows
+        assert cleanups == ["cleanup 0 none none none"], rows
+        assert operations.read_bytes() == before_operations
+    assert (fixture / "retained.original").read_bytes() == (
+        support / "config"
+    ).read_bytes()
+    assert not (ram / "dependencies").exists()
+    print(
+        "PASS: installed PTY admission, actual repair/post-probes and reusable menu input"
+    )
+
+
+def test_retained_entry_bridge_syntax_and_real_consumer_boundary(
+    retained_adapter: Path,
+    retained_package: Path,
+    selected_shell: list[str],
+    tmp_path: Path,
+) -> None:
+    # Also assemble the final entry on hosts without Linux mount namespaces: an
+    # otherwise syntax-valid second /jffs translation used to corrupt callbacks.
+    fixture = tmp_path / "fixture with spaces"
+    support = fixture / "jffs/addons/CFMgr.d"
+    entry = fixture / "jffs/scripts/cfmgr.sh"
+    shutil.copytree(retained_package / "modules", support / "modules")
+    entry.parent.mkdir(parents=True)
+    shutil.copy2(retained_package / "cfmgr.sh", entry)
+    bridge = prepare_retained_entry(fixture, retained_adapter, tmp_path / "alias")
+    source = entry.read_text()
+    assert bridge in source
+    assert "cfmgr_install_jffs=$fixture/jffs" in bridge
+    assert '[ "$4:$5:$6" = /:/bin/sh:/usr/bin/env ]' in bridge
+    assert source.count(str(fixture / "jffs/scripts/cfmgr.sh")) >= 1
+    assert str(fixture / "jffs") + str(fixture / "jffs") not in source
+    definitions = set(re.findall(r"(?m)^([a-zA-Z_][a-zA-Z_0-9]*)\(\) \{", bridge))
+    assert not definitions.intersection(
+        {
+            "cfmgr_entry_admit",
+            "cfmgr_package_verify",
+            "cfmgr_launch_native",
+            "cfmgr_launch_work",
+            "cfmgr_launch_package_structure",
+            "cfmgr_launch_package_digests",
+            "cfmgr_bootstrap_shared_requirements",
+            "cfmgr_prerequisites_run",
+            "cfmgr_dependencies_native",
+        }
+    )
+    actual_cleanup = fixture_functions(
+        ROOT / "modules/lib/package.sh", ("cfmgr_bootstrap_cleanup",)
+    ).replace("cfmgr_bootstrap_cleanup() {", "cfmgr_test_entry_cleanup() {", 1)
+    assert actual_cleanup in bridge
+    path = tmp_path / "bridge.sh"
+    path.write_text(bridge)
+    for script in (path, entry, ROOT / "tests/fixtures/retained_launch.sh"):
+        result = subprocess.run(
+            [*selected_shell, "-n", str(script)],
+            capture_output=True,
+            check=False,
+            timeout=3,
+        )
+        assert (result.returncode, result.stdout, result.stderr) == (0, b"", b"")
 
 
 def test_real_retained_repair_and_later_return(
@@ -497,6 +792,12 @@ def test_real_retained_repair_and_later_return(
     assert (
         b"PASS: actual retained repair, immutable migration, missing-message and returned-volume no-op"
         in result.stdout
+    )
+    assert (
+        result.stdout.count(
+            b"PASS: installed PTY admission, actual repair/post-probes and reusable menu input"
+        )
+        == 2
     )
     assert b"Entware attachment unavailable" in result.stderr
     assert b"shared dependencies verified; tunnel DNS verified" in result.stdout

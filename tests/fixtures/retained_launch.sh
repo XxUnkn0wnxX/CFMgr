@@ -92,17 +92,17 @@ EOF_DNS
 chmod 755 "$retained_dns_tool"
 cfmgr_bootstrap_dns_admit_native() { cfmgr_install_dns_tool=$retained_dns_tool; }
 cfmgr_test_cost retained-repair-begin
-if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
+# The installed entry and its fresh admission child use this exact namespace,
+# mounted ext4 volume and opkg fixture. The private Python bridge restores only
+# the finite OS/tool callbacks after entry verification; launch/repair stay real.
+if "$retained_entry_python" "$retained_entry_driver" "$fixture" "$dependency_install_adapter" "$retained_storage_alias"; then
+	retained_cost_status=0
+else retained_cost_status=$?; fi
 cfmgr_test_cost retained-repair-end
 [ "$retained_cost_status" = 0 ] || fail 'actual retained launch repair failed'
-if [ "$installer_probe_count" = 2 ] && [ "$cfmgr_dependencies_result" = repaired ]; then :; else
-	fail 'retained launch did not repair and fully re-probe'
-fi
-[ "$cfmgr_install_dns_result" = verified ] && [ -s "$view_ram/retained-dns-queries" ] || fail 'normal retained launch did not qualify native SRV/A'
+[ -s "$view_ram/retained-dns-queries" ] || fail 'normal installed launch did not qualify native SRV/A'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'retained repair changed passive settings'
-if [ ! -e "$view_ram/dependencies" ] && [ "$cfmgr_view_state:$cfmgr_keeper_state" = released:released ]; then :; else
-	fail 'retained repair did not normally release protection'
-fi
+[ ! -e "$view_ram/dependencies" ] || fail 'retained repair did not normally release protection'
 retained_operations=$(cat "$cfmgr_storage_opt/operations")
 retained_absent=1
 cfmgr_test_cost retained-absent-begin
@@ -115,10 +115,11 @@ retained_absent=0
 # no-op dependency path and defers only the tunnel DNS check.
 : >"$view_ram/retained-dns-outage"
 cfmgr_test_cost retained-return-dns-begin
-if cfmgr_launch_native /jffs/addons/CFMgr.d; then retained_cost_status=0; else retained_cost_status=$?; fi
+if "$retained_entry_python" "$retained_entry_driver" "$fixture" "$dependency_install_adapter" "$retained_storage_alias" healthy; then
+	retained_cost_status=0
+else retained_cost_status=$?; fi
 cfmgr_test_cost retained-return-dns-end
 [ "$retained_cost_status" = 0 ] || fail 'returned volume with DNS outage blocked shared manager admission'
-[ "$cfmgr_install_dns_result" = deferred ] || fail 'DNS outage was reported verified'
 [ "$(cat "$cfmgr_storage_opt/operations")" = "$retained_operations" ] || fail 'returned volume with DNS outage retried opkg'
 cmp "$fixture/retained.original" "$retained_support/config" || fail 'returned volume with DNS outage changed settings'
 [ ! -e "$retained_support/.storage-observation" ] || fail 'returned volume with DNS outage created observation guard'
