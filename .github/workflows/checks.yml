@@ -105,9 +105,16 @@ jobs:
                   data=None if data is None else json.dumps(data).encode(),
                   headers={"Authorization": f"Bearer {os.environ['GH_TOKEN']}", "Accept": "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2026-03-10"})
               with urllib.request.build_opener(NoRedirect).open(request, timeout=20) as response:
-                  expected = 200 if method == "GET" or path.endswith("/dispatches") else 202
+                  if method == "GET" or path.endswith("/dispatches"):
+                      expected = 200
+                  elif path.endswith("/rerun"):
+                      expected = 201
+                  elif path.endswith("/cancel"):
+                      expected = 202
+                  else:
+                      raise RuntimeError("Unexpected API operation")
                   if response.status != expected:
-                      raise RuntimeError("Unexpected API response status")
+                      raise RuntimeError(f"Unexpected API response status: got {response.status}, expected {expected}")
                   body = response.read(4 * 1024 * 1024 + 1)
               if len(body) > 4 * 1024 * 1024:
                   raise RuntimeError("API response exceeds bound")
@@ -115,6 +122,7 @@ jobs:
           def valid_id(value):
               return type(value) is int and value > 0
           known = {}
+          owned = []
           def interrupted(*args):
               raise InterruptedError("Parent dispatch cancelled")
           signal.signal(signal.SIGTERM, interrupted)
@@ -147,14 +155,19 @@ jobs:
               for owner, previous in plans:
                   if previous:
                       run_id = previous["id"]
-                      known[owner] = {"id": run_id, "attempt": previous["run_attempt"] + 1}
-                      api("POST", f"/actions/runs/{run_id}/rerun")
+                      if previous.get("conclusion") == "success":
+                          known[owner] = {"id": run_id, "attempt": previous["run_attempt"]}
+                      else:
+                          known[owner] = {"id": run_id, "attempt": previous["run_attempt"] + 1}
+                          owned.append(known[owner])
+                          api("POST", f"/actions/runs/{run_id}/rerun")
                   else:
                       result = api("POST", f"/actions/workflows/{owner}-checks.yml/dispatches", {"ref": "develop", "inputs": {"candidate_sha": sha, "parent_run_id": parent}})
                       if not isinstance(result, dict) or not valid_id(result.get("workflow_run_id")):
                           raise RuntimeError("Dispatch did not return an exact run ID")
                       run_id = result["workflow_run_id"]
                       known[owner] = {"id": run_id, "attempt": 1}
+                      owned.append(known[owner])
                       if result.get("run_url") != f"{base}/actions/runs/{run_id}" or result.get("html_url") != f"https://github.com/{repo}/actions/runs/{run_id}":
                           raise RuntimeError("Dispatch run URLs mismatch")
               with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
@@ -163,11 +176,11 @@ jobs:
                   for owner, run in known.items():
                       summary.write(f"- [{owner.title()} Checks](https://github.com/{repo}/actions/runs/{run['id']})\n")
           except BaseException:
-              for run in known.values():
+              for run in owned:
                   try:
                       api("POST", f"/actions/runs/{run['id']}/cancel")
                   except Exception:
-                      pass  # Best effort; every child also has a ten-minute job bound.
+                      pass  # Best effort; each child job has a finite timeout.
               raise
           PY
 

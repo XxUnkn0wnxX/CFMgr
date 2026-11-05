@@ -1264,7 +1264,14 @@ def dispatch_api(monkeypatch, tmp_path):
         monkeypatch.setenv(key, value)
     monkeypatch.setattr(signal, "signal", lambda *args: None)
     calls = []
-    state = {"current": sha, "prior": False, "fail": None}
+    state = {
+        "current": sha,
+        "prior": False,
+        "fail": None,
+        "rerun_status": 201,
+        "successful_prior": set(),
+        "missing_prior": set(),
+    }
 
     class Response(io.BytesIO):
         status = 200
@@ -1315,6 +1322,9 @@ def dispatch_api(monkeypatch, tmp_path):
                                 "id": 100 + index,
                                 "run_attempt": 1,
                                 "status": "completed",
+                                "conclusion": "success"
+                                if owner in state["successful_prior"]
+                                else "failure",
                                 "repository": {"full_name": repo},
                                 "path": f".github/workflows/{owner}-checks.yml@develop",
                                 "workflow_id": index,
@@ -1323,12 +1333,14 @@ def dispatch_api(monkeypatch, tmp_path):
                                 "display_title": f"{owner.title()} Checks parent=123 sha={sha}",
                             }
                         ]
-                        if state["prior"]
+                        if state["prior"] and owner not in state["missing_prior"]
                         else []
                     }
                 elif request.method == "POST":
                     response = Response(b"")
-                    response.status = 202
+                    response.status = (
+                        state["rerun_status"] if path.endswith("/rerun") else 202
+                    )
                     return response
                 else:
                     data = {
@@ -1384,6 +1396,72 @@ def test_inline_dispatch_reruns_exact_prior_ids_for_advanced_ref(
     with pytest.raises(RuntimeError, match="missing exact child"):
         run_inline_dispatch()
     assert not any(method == "POST" for method, _, _ in calls)
+
+
+def test_inline_dispatch_reuses_successful_prior_children_and_retries_failures(
+    dispatch_api, monkeypatch
+):
+    calls, state, directory = dispatch_api
+    state.update(
+        current="b" * 40,
+        prior=True,
+        successful_prior={"backup", "status"},
+    )
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
+
+    run_inline_dispatch()
+
+    assert [
+        path
+        for method, path, _ in calls
+        if method == "POST" and path.endswith("/rerun")
+    ] == ["/actions/runs/102/rerun"]
+    mapping = json.loads((directory / "output").read_text().split("=", 1)[1])
+    assert mapping == {
+        "backup": {"id": 101, "attempt": 1},
+        "manager": {"id": 102, "attempt": 2},
+        "status": {"id": 103, "attempt": 1},
+    }
+
+
+def test_inline_dispatch_requires_rerun_201_and_rejects_202(dispatch_api, monkeypatch):
+    calls, state, _directory = dispatch_api
+    state.update(current="b" * 40, prior=True, rerun_status=202)
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
+
+    with pytest.raises(RuntimeError, match="got 202, expected 201"):
+        run_inline_dispatch()
+
+    assert [path for method, path, _ in calls if method == "POST"] == [
+        "/actions/runs/101/rerun",
+        "/actions/runs/101/cancel",
+    ]
+
+
+def test_inline_dispatch_cleanup_excludes_reused_passes(dispatch_api, monkeypatch):
+    calls, state, _directory = dispatch_api
+    state.update(
+        current="a" * 40,
+        prior=True,
+        successful_prior={"backup"},
+        missing_prior={"status"},
+        fail="status",
+    )
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
+
+    with pytest.raises(OSError, match="synthetic dispatch failure"):
+        run_inline_dispatch()
+
+    assert [
+        path
+        for method, path, _ in calls
+        if method == "POST" and path.endswith("/rerun")
+    ] == ["/actions/runs/102/rerun"]
+    assert [
+        path
+        for method, path, _ in calls
+        if method == "POST" and path.endswith("/cancel")
+    ] == ["/actions/runs/102/cancel"]
 
 
 def test_inline_dispatch_rejects_fork_pr_before_any_api_call(dispatch_api, monkeypatch):
