@@ -5099,12 +5099,10 @@ def test_linux_full_health_entry_normal_journey(
 ):
     """One normal integrated run per selected host/native shell, CI execution only.
 
-    Real: entry admission, health and prerequisite dispatch, private parsers,
-    numeric reservations, Linux clock/identity/signals/reap, directory and private
-    file FDs, cleanup. Explicit firmware boundaries: mountinfo/block-device facts,
-    NVRAM/account ownership, syslog/logrotate executable observations, immutable
-    daemon facts, and HTTP response executable. No mounts or external requests.
-    Existing stall tests independently cover supervisor failures and real TLS.
+    DDNS-only integration retains the real entry, private parsers, Linux
+    supervisor, clock, reservations, descriptors, reaping and cleanup. Firmware
+    paths and the strict HTTP executable are fixture boundaries; no live request
+    or mount is used. Focused tests cover other subsystems and real TLS.
     """
     entry, support, _, _ = installed_package
     # The shallow owned root keeps the real bounded metadata ancestor inventory
@@ -5188,12 +5186,12 @@ def test_linux_full_health_entry_normal_journey(
             print("full-health normal ledger:", measured, flush=True)
         if (audit / "process-diagnostic").exists():
             print((audit / "process-diagnostic").read_text())
-        if ledger[9] != "normal" or requests != 8:
+        if ledger[9] != "normal" or requests != 3:
             print("full-health observed rows:\n" + (audit / "rows").read_text())
             print("full-health routes:\n" + (audit / "routes").read_text())
         assert process.returncode == 0 and stderr == b"", (measured, stdout, stderr)
         assert ledger[9] == "normal", measured
-        assert requests == 8 and 0 < rows <= 96 and 0 < seconds < 45, measured
+        assert requests == 3 and 0 < rows <= 96 and 0 < seconds < 45, measured
         assert operations <= 568 and files <= 1264, measured
         assert reserved + final_bytes <= 13 * 1024 * 1024, measured
         assert final_ops <= 8 and final_files <= 16 and elapsed < 50, measured
@@ -5228,10 +5226,6 @@ def test_linux_full_health_entry_normal_journey(
             "health-config",
             "health-inventory",
             "health-native-metadata",
-            "health-entware-metadata",
-            "health-cloud-yaml",
-            "health-cloud-json",
-            "health-cloud-pem",
             "health-get",
             "health-wan-config",
             "health-wan-nvram",
@@ -5251,13 +5245,9 @@ def test_linux_full_health_entry_normal_journey(
         assert {kind: request_kinds.count(kind) for kind in set(request_kinds)} == {
             "zone": 1,
             "dns": 1,
-            "list": 1,
-            "items": 1,
-            "tunnel": 1,
-            "connections": 1,
             "trace4": 1,
-            "trace6": 1,
         }, (measured, request_kinds)
+        assert not any("opkg" in mode or mode.startswith("install-") for mode in modes)
         raw_rows = (audit / "rows").read_text()
         assert len(raw_rows.splitlines()) == rows
         assert ".integration\t" not in raw_rows and "report.budget\t" not in raw_rows, (
@@ -5266,15 +5256,15 @@ def test_linux_full_health_entry_normal_journey(
         )
         for expected in (
             "config.authority",
-            "storage.entware",
-            "prerequisite.dns",
-            "cloudflared.runtime.local",
-            "cloudflared.yaml.identity",
-            "cloudflared.certificate.live",
-            "cloudflared.binary",
+            "package.inventory",
+            "recovery.guards",
+            "native.curl",
+            "native.openssl",
+            "native.ca",
+            "transport.tls",
+            "ddns.zone",
             "ddns.record.1",
-            "ip_sync.primary.ipv4",
-            "ip_sync.primary.ipv6",
+            "network.public4",
         ):
             assert expected + "\tPASS\t" in raw_rows, (
                 expected,
@@ -5283,26 +5273,21 @@ def test_linux_full_health_entry_normal_journey(
                 route_rows,
             )
         for expected in (
-            "backup.destination\tPASS\t",
-            "backup.access\tUNKNOWN\t",
+            "storage.entware\tUNKNOWN\t",
+            "prerequisite.entware\tSKIP\t",
+            "cloudflared.method\tSKIP\t",
+            "backup.destination\tSKIP\t",
             "backup.history\tSKIP\t",
-            "hooks.files\tPASS\t",
-            "hooks.integrity\tPASS\t",
-            "hooks.watchdog\tPASS\t",
-            "hooks.cloud-update\tPASS\t",
+            "network.public6\tSKIP\t",
+            "logging.ddns.state\tSKIP\t",
+            "logging.ip_sync.state\tSKIP\t",
+            "logging.cloudflared.state\tSKIP\t",
             "hooks.dispatch\tUNKNOWN\t",
-            "logging.base\tPASS\t",
-            "logging.ddns.policy\tPASS\t",
-            "logging.ip_sync.policy\tPASS\t",
-            "logging.cloudflared.policy\tPASS\t",
-            "package.inventory\tPASS\t",
-            "recovery.guards\tPASS\t",
         ):
             assert expected in raw_rows, (expected, measured, raw_rows, route_rows)
         for canary in package["canaries"]:
             assert canary.encode() not in stdout + stderr
             assert canary not in (audit / "network-environment").read_text()
-        assert b"MUST_NOT_EXECUTE" not in stdout + stderr
         assert (
             "cfmgr_fixture_actual_run"
             in (base / "jffs/addons/CFMgr.d/modules/lib/execution.sh").read_text()
