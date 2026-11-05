@@ -11,43 +11,16 @@ manager for DDNS, one Cloudflared tunnel, and IP-Sync.
 ## Implementation status
 
 **0 of 16 main goals complete (0%); 26 of 157 subgoals accepted (16.6%).**
-The development code provides trusted-local fresh installation, private passive
-defaults, fresh and retained-launch preparation of shared tools and tunnel DNS,
-confirmed selected dependency reinstall, Entware storage-loss handling and a
-native read-only status dashboard.
-Health diagnostics add bounded configuration, storage, integration and eligible
-provider checks, with grouped reports for plain text and narrow terminals.
-Configured Gateway IP-list diagnostics read bounded provider evidence and report
-partial results when a complete list cannot be verified.
-`--health`, `--doctor` and `--diagnostic` share this read-only report and retain
-native fallback when optional modules or operational tools are unavailable.
-Explicit Health runs independently save a sanitized report when safe mounted
-storage is available, preserving the terminal report when saving is unavailable.
-Developer mode adds bounded sanitized CFMgr activity capture and copies of
-positively owned existing feature logs. Diagnostics use the Entware drive's
-`CFMgr/diagnostics` directory by default, with an optional destination in Advanced
-options; retained captures remain under user control.
-Typed configuration separates saved settings, credentials and observations while
-preserving legacy configuration data.
-Interactive launch offers WAN confirmation when no prior selection is retained.
-Advanced options can review or correct the shared inventory and preferred primary.
-WAN review, Status and Health refresh local mappings; these observations do not
-verify Internet egress. Confirmation saves preferences without enabling a feature.
-CFMgr update preferences can be reviewed and saved through Advanced options,
-with coupled Check/Auto settings and saved/effective status. Backup storage can
-be explicitly selected and saved, with exact drive checks and safe
-`CFMgr/backup` creation or reuse beneath the selected drive. Manual unencrypted data-only archives capture CFMgr
-settings and eligible history, verify the complete archive before publication, and
-retain 3–5 verified archives from the same backup set. Archives can be browsed
-newest-first on the saved or another selected drive, fully verified, reviewed for
-restore effects, and individually deleted after confirmation without changing the
-saved destination. An explicitly trusted
-complete bootstrap supports pinned fresh package acquisition and manifest/hash
-checks. Installed launches verify packaged file identities before loading modules.
-Actual restore, standalone bootstrap distribution, the updater and remaining
-feature workflows are unfinished. The [v2 plan](PLAN_V2.md)
-defines the requirements, the [checklist](PLAN_V2_checklist.md) records acceptance,
-and the [handoff](PLAN_V2_handoff.md) records current work and pending proof.
+
+Available in the development code:
+
+- Package verification and dependency repair.
+- Saved settings, WAN selection and read-only status/Health reports.
+- Manual backup creation, browsing, verification and confirmed deletion.
+
+Restore, standalone installer distribution, self-updates and operational feature
+workflows remain unfinished. See the [checklist](PLAN_V2_checklist.md) for accepted
+behavior and the [v2 plan](PLAN_V2.md) for full requirements.
 
 ## 🧭 Planned product goals
 
