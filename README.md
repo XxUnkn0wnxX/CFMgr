@@ -27,6 +27,10 @@ positively owned existing feature logs. Diagnostics use the Entware drive's
 options; retained captures remain under user control.
 Typed configuration separates saved settings, credentials and observations while
 preserving legacy configurations and unrelated values during scoped Saves.
+Interactive launch offers WAN confirmation when no prior selection is retained.
+Advanced options can review or correct the shared inventory and preferred primary.
+WAN review, Status and Health refresh local mappings; these observations do not
+verify Internet egress. Confirmation saves preferences without enabling a feature.
 CFMgr update preferences can be reviewed and saved through Advanced options,
 with coupled Check/Auto settings and saved/effective status. Backup storage can
 be explicitly selected and saved, with exact drive checks and safe

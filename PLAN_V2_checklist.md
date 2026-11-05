@@ -182,7 +182,7 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | --- | --- | --- | --- |
 | [x] | [x] | S03.01 | **Passive fresh state:** All three unconfigured/Off; no tunnel/logging/backup setup; manager check On and auto-install Off. |
 | [x] | [x] | S03.02 | **Distinct state and settings:** Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
-| [ ] | [ ] | S03.03 | **Main menu and navigation:** 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects. |
+| [ ] | [ ] | S03.03 | **Main menu and navigation:** 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects; first interactive WAN-set confirmation with interface-list/manual correction. |
 | [ ] | [ ] | S03.04 | **Feature submenus:** Own setup, On/Off, explicit operation, status and scoped logging/repair; only relevant options. |
 | [ ] | [ ] | S03.05 | **Quick service commands:** Shared case-insensitive start/stop handlers, ipsync alias, configure-first validation and truthful results. |
 | [ ] | [ ] | S03.06 | **Manager/diagnostic commands:** Update/force aliases, help/version and identical standalone health/doctor/diagnostic reports without implicit repair consent. |
@@ -506,17 +506,40 @@ Live Merlin/ARM and flash persistence remain separately authorized beta proof.
 
 | Status | Focused local | ID | Subgoal and required result |
 | --- | --- | --- | --- |
-| [ ] | [ ] | S08.01 | **Independent family states:** Active host, proven inactive or unknown per family; no deletion from missing/failed evidence. |
-| [ ] | [ ] | S08.02 | **Current desired state:** Dual/one/no-family add/remove behavior; manual Off clears managed remote values, auth-Off only contains; IPv6-only remains provisional. |
-| [ ] | [ ] | S08.03 | **Selected-WAN IPv4:** Public/private/shared/mismatch classification with correctly routed external evidence and honest NAT meaning. |
-| [ ] | [ ] | S08.04 | **Global IPv6 host:** Current selected-WAN public host/lifetime/canonical form, verified translation when present; no ULA, delegated-prefix or arbitrary LAN/VPN publishing. |
-| [ ] | [ ] | S08.05 | **Independent transport:** Per-family selected-egress discovery and either-family provider transport, with verified TLS and bounded fallback. |
-| [ ] | [ ] | S08.06 | **Shared cache/freshness:** One coalesced resolver with independent current family identity/generation/time/lifetime records. |
-| [ ] | [ ] | S08.07 | **DDNS and standalone reuse:** Resolve once, forward valid source independently of DNS result; standalone lists require no DNS setup. |
-| [ ] | [ ] | S08.08 | **Events and periodic discovery:** Current enable/boot/WAN/IPv6/manual/periodic requests coalesce; no menu/status network work. |
+| [ ] | [ ] | S08.01 | **Independent family states:** Active host, proven inactive or unknown per selected WAN/family; user-confirmed selection and background re-detection; no deletion from missing/failed evidence. |
+| [ ] | [ ] | S08.02 | **Current desired state:** Per-source family add/remove behavior and complete deduplicated IP-list sets; manual Off clears managed remote values, auth-Off only contains; IPv6-only remains provisional. |
+| [ ] | [ ] | S08.03 | **Selected-WAN IPv4:** Each selected WAN's public/private/shared/mismatch classification with correctly routed external evidence and honest NAT meaning. |
+| [ ] | [ ] | S08.04 | **Global IPv6 host:** Current public host/lifetime/canonical form per selected WAN, verified translation when present; no ULA, delegated-prefix or arbitrary LAN/VPN publishing. |
+| [ ] | [ ] | S08.05 | **Independent transport:** Per-source/family selected-egress discovery and either-family provider transport, with verified TLS and bounded fallback. |
+| [ ] | [ ] | S08.06 | **Shared cache/freshness:** One coalesced resolver with independent current source/family identity/generation/time/lifetime records. |
+| [ ] | [ ] | S08.07 | **DDNS and standalone reuse:** Reuse primary discovery independently of DNS result; additional IP-Sync sources never hold DDNS completion; standalone lists require no DNS setup. |
+| [ ] | [ ] | S08.08 | **Events and periodic discovery:** Current enable/boot/selected-source WAN/IPv6/manual/periodic requests coalesce; no menu/status network work. |
 | [ ] | [ ] | S08.09 | **Fresh remote authority:** Read complete configured remote targets every eligible run, correct managed drift and preserve unrelated metadata. |
-| [ ] | [ ] | S08.10 | **Newest queue/retries:** Explicit add/remove intent per target/family, four-attempt and aggregate bounds, no stale replay or late success. |
+| [ ] | [ ] | S08.10 | **Newest queue/retries:** Explicit add/remove intent per source/family/target, four-attempt and aggregate bounds, no stale replay or late success. |
 | [ ] | [ ] | S08.11 | **Explicit Off cleanup:** Persist scoped cleanup before unhooking, clear list contents/managed A-AAAA while remaining Off, retain offline/auth-blocked intent and never infer cleanup from auth-Off. |
+
+S03.03/S08.01 WAN inventory prerequisite completed its development checkpoint at
+`7ea47342b6c92883ca92f66c60802a4f43f3f4ec`: written focused host tests, 27 complete
+affected Dev modules, Tools Checks and exact complete core Checks all passed.
+The shared selection journey covers first interactive confirmation,
+manual correction, retained/deferred intent, guarded Save/reopen and Advanced
+editing. Configuration, Status/Health and archive capture/review use the compatible
+inventory, with current local mappings observed independently of saved intent.
+The [implementation review](PLAN_V2_audit.md#wan-inventory-prerequisite--implementation-review)
+records the source evidence, repairs, focused tests and platform limits.
+Neither full row is complete: S03.03 still needs remaining menu dispatch, while
+S08.01 still needs operational per-family selected-egress authority. Idle event
+producers, actual restore and IP-Sync source enrollment are not implemented by
+this prerequisite. Both native features must still share the operational resolver
+under S08.07, independently of DDNS success. No new ID or checkbox credit is earned.
+
+Operational multi-source resolution/publication in S08.01–S08.08/S08.10 remains
+unimplemented: state and
+source identity are per selected WAN/family, DDNS consumes only its primary,
+IP-Sync aggregates its confirmed sources, and additional discovery cannot extend
+DDNS completion. Existing focused gates must cover distinct and duplicate public
+IPs, per-source IPv6 loss/return, unknown contributions, remapping and complete
+shared/split target sets. Two IPv4 WANs do not prove two usable IPv6 sources.
 
 ### 9. DDNS
 
@@ -560,12 +583,19 @@ require separate proof. It supplies source evidence only; these IDs remain pendi
 | [ ] | [ ] | S10.02 | **Ten-item display policy:** First ten stay selectable by number at any list count; exact-name search covers every eligible list. |
 | [ ] | [ ] | S10.03 | **Literal exact-name input:** Case/space/numeric/quotes/e/Unicode ambiguity and correct one-time URL/JSON encoding without guessing. |
 | [ ] | [ ] | S10.04 | **Complete lookup and draft retry:** Not-found only after complete lookup, immediate name retry, distinct auth/network/incomplete errors and preserved fields. |
-| [ ] | [ ] | S10.05 | **Shared or separate lists:** Offer IPv4-only or detected usable IPv6 participation; shared list when supported or user-selected distinct family lists, same picker and no list/policy creation. |
+| [ ] | [ ] | S10.05 | **Shared or separate lists:** Default primary-WAN IPv4 with optional usable IPv6; reviewed additional WAN sources; shared or user-selected family lists, same picker and no list/policy creation. |
 | [ ] | [ ] | S10.06 | **Mapping migration:** Quiesce old requests, atomic local mapping and automatic primary/secondary cleanup with independent remote outcomes. |
-| [ ] | [ ] | S10.07 | **Nonempty publication:** Exact current hosts and managed metadata, fresh read/readback, remove extra/wrong-family entries. |
+| [ ] | [ ] | S10.07 | **Nonempty publication:** Exact deduplicated current hosts from all selected WANs and managed metadata, fresh read/readback, remove extra/wrong-family entries. |
 | [ ] | [ ] | S10.08 | **Empty target clearing:** Same-ID supported item removal with exact returned spellings, complete verification and metadata reconciliation. |
-| [ ] | [ ] | S10.09 | **Unknown/missing targets:** Shared unknown defers; known independent target proceeds; missing whole list requires reviewed repair. |
+| [ ] | [ ] | S10.09 | **Unknown/missing targets:** Unknown source/family defers its affected target; complete independent target proceeds; missing whole list requires reviewed repair. |
 | [ ] | [ ] | S10.10 | **Explicit read-only check:** Configured-Off candidate GET/check allowed, no mutation/discovery/queue/success history/enable; cooldown/auth containment retained. |
+
+S10.05/S10.07/S10.09 retain the default of one primary-WAN IPv4 plus optional
+usable IPv6, expandable through reviewed setup to additional verified WANs.
+Source membership feeds one shared list or separate family lists; list count is
+not address/WAN count. User-managed target creation and existing family-loss,
+unknown-state, mapping migration and same-ID clearing contracts remain required.
+All these rows remain unchecked; the source review supplies no runtime acceptance.
 
 ### 11. Provider failures and credential repair
 

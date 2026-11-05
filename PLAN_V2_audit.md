@@ -2789,6 +2789,211 @@ storage/developer/standalone-Health requirements are recorded in the specificati
 but diagnostic capture remains unimplemented. Ubuntu/vendor BusyBox is
 representative development evidence, not Merlin/ARM or live-router qualification.
 
+## 3004 and 3006 firmware interface inventory
+
+The user's 2026-10-24 follow-up asked whether more firmware downloads or Merlin
+documentation were needed before proceeding. Parent compared the current CFMgr
+interface map at `085dbd5554e1bdc1c2fc0c7586d59bdd983e28b3` with pinned Merlin
+`3004.388.12_2` (`433fc608f5fc1689f3d3c3ab5cd2a7d57102260f`) and `3006.102.9`
+(`69838e4a60564e5550e97f11d8a8cf2c6260c4f0`). The read-only reviewer mapped
+CFMgr consumers; parent verified that map and inspected the external source.
+
+**Existing cache revalidation.** Ignored `.tmp/firmware-audit/` already retains
+GT-AX11000 `3004_388.12_2`, RT-AX88U_PRO `3006_102.9_0` and RT-BE96U
+`3006_102.9_0`. Streaming SHA-256/size checks against retained provenance passed
+for all three archive/image pairs and their seven indexed audit artifacts per
+model (27 files). All 58 downloaded pinned source files also matched recorded
+sizes/hashes. Each source ledger retains one unavailable old guessed filename;
+the actual `coreutils/libcoreutils/getopt_mk_fifo_nod.c` is separately present
+and verified. The selected extracted `usr/sbin/cru` file in each model was also
+hash-checked before reading; all three have identical bytes. This revalidates
+those retained objects, not every extracted file or runtime behavior. No new
+firmware image, extraction, emulator or router action was needed.
+
+**Current consumers versus planned integration:**
+
+| Surface | Present CFMgr behavior | Later contract already in the plan |
+| --- | --- | --- |
+| NVRAM identity/readiness | Fixed `get` operands: `productid`, `firmver`, `buildno`, `extendno`, `ntp_ready`, `jffs2_scripts`. Installation requires script support already enabled; it does not enable it. | Preserve capability checks and honest unavailable state under S02.07/S02.09. |
+| NVRAM WAN observations | For WAN 0/1: `primary`, `proto`, `ifname`, `pppoe_ifname`, `ipaddr`. No raw NVRAM dump or guessed primary on inconclusive input. | S08.01's native per-family resolver and S12 event dispatch need matched model/mode semantics. |
+| Other NVRAM reads | `http_username` selects the observed crontab account; `time_zone_x` feeds archive date handling. | Preserve bounded native observations; do not infer live model qualification from source presence. |
+| Hook/cron integration | No producers/installers or scheduler mutations: `modules/hooks/` contains only `.gitkeep`; Health snapshots existing hook files and schedule records and explicitly reports producers unimplemented. | S12 requires `services-start`, `wan-event`, supported `dhcpc-event`, `ddns-start`, `post-mount`, `unmount`, `services-stop` and owned schedules. |
+| DDNS firmware settings | No current NVRAM writer or DDNS service-dispatch entry. | S09.05–S09.09 cover `ddns_enable_x`, `ddns_server_x`, `ddns_hostname_x`, `ddns_refresh_x`, scoped apply and truthful `ddns_custom_updated` completion. |
+
+There are 18 permitted NVRAM keys in current runtime; searches found no `set`,
+`unset`, `commit`, `show` or `getall` execution. Key allowlists and fixed gets are
+in `modules/helpers/worker.sh:1698`, `:2130`, `:974` and `:1312`. Actual Status
+selection is at `modules/status.sh:1191`; its hook-production limitation is
+explicit at `:4602`. This inventory does not credit planned integration.
+
+**Matched source observations:**
+
+| Contract | 3004.388.12_2 / 3006.102.9 evidence | Disposition |
+| --- | --- | --- |
+| Hook loader | `shared/scripts.c:54` in both refs checks `/jffs/scripts`, `jffs2_scripts` and executable mode, forwards up to two arguments and supplies the requested timeout to `_eval`. | Same relevant call contract. 3006 adds conditional suppression of auto-WAN service-event log noise; absence of a firmware log line is not proof that no hook ran. |
+| Service hooks | `rc/services.c:11507,11515` / `:13536,13544` call `services-start` and `services-stop` with timeout 0 and no arguments. | Both are asynchronous at this call site; this does not establish a guaranteed shutdown cleanup window. |
+| WAN events | `rc/wan.c:789–822` / `:816–849` pass unit then state to `wan-event`. | Same argument order and named states in these excerpts. Resolve actual selected unit/mode separately. |
+| Mount hooks | `rc/usb.c:1911,2294` / `:2024,2407` call `unmount` and `post-mount` with the mountpoint and timeout 120. | Both are bounded blocking calls in the inspected source. A generic wiki description alone is insufficient for scheduling assumptions. |
+| DHCP events | `rc/udhcpc.c:781,2191` / `:844,2264` send WAN event plus `4`/`6`; the LAN DHCP path at `:1347` / `:1411` omits the family argument. | An event name alone does not establish a WAN/family observation. Preserve validation and supported-mode fallback. |
+| Custom DDNS | `rc/services.c:5055–5062` / `:5607–5614` use timeout 120 and IPv4 plus conditional IPv6. `ddns_custom_updated_main` at `:21021` / `:24761` has matching success/failure state handling. | Same inspected contracts; callback process exit zero still does not prove successful DNS publication. |
+| DDNS settings | `shared/defaults.c` declares matching enable/server/hostname fields and `ddns_refresh_x` as a three-character setting with firmware default 21. `rc/watchdog.c:10293–10303` / `:11805–11815` interprets nonzero refresh as days and requests `restart_ddns`. | Supports existing units/field mapping. Full apply/persistence/range/side-effect and reentry qualification remains with the unimplemented S09 consumer. CFMgr's chosen 14-day default is separate. |
+| Scheduler observation | The three verified image `cru` scripts select `/var/spool/cron/crontabs/$(nvram get http_username)` and use the existing firmware cron lock. | Matches CFMgr's current observed account/path. It does not prove future job installation/lifecycle. |
+
+Pinned source roots:
+[3004](https://github.com/RMerl/asuswrt-merlin.ng/tree/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router),
+[3006](https://github.com/RMerl/asuswrt-merlin.ng/tree/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/release/src/router).
+These observations concern the selected source branches; compile-time features,
+hardware, runtime state and firmware library behavior still limit applicability.
+
+**Differences and remaining limits.** The
+[3006 changelog](https://github.com/RMerl/asuswrt-merlin.ng/blob/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/Changelog-3006.txt#L52-L59)
+records the additional DDNS IPv6 argument in `102.8_4`; earlier 3006 builds cannot
+be assumed equivalent to `102.9`. The same changelog records the `102.9` OpenSSL
+3.5 migration, so native TLS/options/loader probes remain necessary.
+
+The modern [primary-WAN selector](https://github.com/RMerl/asuswrt-merlin.ng/blob/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/release/src/router/shared/rtstate.c#L579-L599)
+adds an `RTCONFIG_MULTIWAN_PROFILE` search beyond the ordinary WAN-unit range;
+the [3004 selector](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/shared/rtstate.c#L564-L577)
+does not have that branch. CFMgr currently recognizes only WAN 0/1 and reports
+Unknown for an inconclusive primary pair. This is a concrete future resolver/
+model-coverage concern, not evidence that every 3006 router uses extended units
+or that CFMgr currently writes a wrong WAN setting. Its support/admission handling
+belongs with S08.01 and matched model/mode qualification; no compatibility patch
+or new acceptance was inferred here.
+
+**Recommendation:** use official
+[User scripts](https://github.com/RMerl/asuswrt-merlin.ng/wiki/User-scripts),
+[Custom DDNS](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Custom-DDNS),
+[Addons API](https://github.com/RMerl/asuswrt-merlin.ng/wiki/Addons-API) and release
+changelogs as the entry points, backed by exact-source comparisons for consumed
+contracts. The DDNS wiki itself warns about historical guidance; its suggestion
+to report success when uncertain does not override CFMgr's verified-outcome rule.
+Reuse retained images for actual paths/ABI/scripts, and acquire another image only
+for a missing target/build or an unresolved binary-specific question. No such
+download is needed to start the agreed diagnostics work. This review found no
+new immediate firmware blocker for that scope, but does not start it or qualify
+all 3004/3006 models. Full live firmware behavior remains the approved beta gate.
+
+**Follow-up triage of implemented behavior.** The user asked whether current
+code needs a conditional for firmware newer than 3004, then highlighted physical
+WAN alternatives (LAN/2.5G/SFP), dual-WAN load balancing and USB 4G/5G. Parent
+rechecked the actual consumers; the requested independent review could not start
+because the configured model was at capacity. No independent sign-off or new
+runtime proof is claimed for this follow-up.
+
+- `modules/status.sh:1585` accepts dotted/underscored identity strings such as
+  `3.0.0.6`, `102.9` and `0`; it does not compare firmware build numbers to family
+  thresholds. Current tests still use shorthand legacy identifiers.
+- `modules/status.sh:1195` selects only logical WAN 0/1; `:1203` reads that unit's
+  native interface or PPP interface according to its protocol. The parser accepts
+  interface names without an `eth0`/`en0` restriction. Physical connector choice
+  alone therefore does not justify a new firmware branch. Extended units and
+  unrecognized protocols remain an implemented reporting limitation.
+- `modules/status.sh:744` explicitly labels public-IP discovery as current egress
+  observation without proof of the selected WAN. This avoids claiming that a
+  load-balanced/failover/VPN-routed observation establishes the chosen WAN's IP.
+  It is not the future publishable-address resolver.
+- `modules/lib/network.sh:34`, `modules/lib/execution.sh:2500` and
+  `modules/lib/package.sh:1247` test actual native options, trust and usability;
+  they do not select behavior from a 3004/3006 threshold or an OpenSSL major banner.
+
+No confirmed current defect requiring repair before S13.14 was demonstrated.
+Retain targeted modern identifier/mapping coverage as a relevant test improvement,
+without inventing a new gate. Carry the user's WAN examples into existing S08
+selected-native-mapping and verified-egress work and S12 supported event handling;
+do not equate reading primary flags with complete load-balancing or mobile-WAN
+support. No product contract, acceptance box or runtime implementation changed.
+
+## Future WAN confirmation — user-directed planning refinement
+
+Following the compatibility triage, the user explicitly requested first-use WAN
+detection with Yes/No confirmation, an interface list/manual entry after No,
+automatic background re-detection after connection changes, and coverage of
+ordinary private upstream networks. They clarified this belongs to future WAN
+implementation for DDNS/IP-Sync, not the current diagnostics checkpoint. Parent
+updated unchecked S03.03/S08.01 and the shared specification subsection only;
+the approved 157-ID denominator and all acceptance boxes are unchanged.
+
+Astra planner `wan_choice_audit` reviewed the draft and revised adaptive policy,
+returning PASS WITH NOTES. Parent adopted its concrete points: preserve intent,
+confirmation and observation separately; do not repeatedly prompt for unresolved
+defaults; preserve restored/offline choices; offer list/defer when detection is
+unavailable; validate manual data without treating it as route proof; re-detect
+using coherent evidence; and preserve separately authorized S08.11 cleanup.
+The final Yes/No flow supersedes the draft's extra Auto/fixed/manual selection
+modes and permanently pinned literal-interface interpretation.
+
+Current schema limits remain explicit: `modules/lib/config.sh:1543` admits only
+null/0/1 selection and `:1506` limits network observations to 0/1/auto. The future
+workflow therefore requires coordinated typed configuration, observation and
+consumer changes, including compatibility/restore proof; no current schema or
+S03.02 completion claim was silently expanded. Shared S08.07 reuse means IP-Sync
+can consume a DDNS-triggered discovery result independently of DNS success, or
+invoke the same resolver on its own. DNS records are not discovery authority.
+
+The official [IANA registry](https://www.iana.org/assignments/iana-ipv4-special-registry/)
+was checked for RFC1918 private ranges, shared space and IPv4 link-local. The
+specification records all three private ranges, distinct shared `100.64/10`,
+link-local `169.254/16`, actual-mask subnet comparisons, and classification as
+supporting evidence only. Planning and whitespace checks passed; no runtime
+tests, firmware/router execution or implementation acceptance was performed.
+
+## Multi-WAN source mapping and IP-Sync expansion
+
+The user subsequently approved a default contribution of one IPv4 plus one IPv6,
+expandable to additional supported WAN sources while retaining existing list and
+family-availability rules. They requested confirmation of the detected WAN set,
+manual correction of a missed source through CFMgr settings, and evidence of the
+3004/3006 NVRAM mapping. The supplied screenshot establishes available primary-port
+choices and Dual WAN Off at capture time, not several active Internet sources.
+
+Parent fetched `shared/rtstate.c`, `shared/rtstate.h` and `shared/defaults.c` at
+the same immutable release refs recorded above. This is source inspection only;
+no NVRAM writes, router actions, firmware execution or additional image download.
+
+| Contract | 3004.388.12_2 source | 3006.102.9 source | Meaning and limit |
+| --- | --- | --- | --- |
+| Logical WAN slots | `rtstate.h:14–21` | `rtstate.h:14–21` | Ordinary second slot is conditional on dual-WAN/USB-modem build support. A connector count is not a slot count. |
+| Configured source mapping | `rtstate.c:916–955` | `rtstate.c:966–1023` | `wans_dualwan` is parsed positionally into logical units. Types include `wan`, `lan`, `usb`, `wan2`, conditional `usb2`, and `sfp+`; `wan2` as a type is not proof of logical unit 2. Shared-code token recognition does not qualify a model. |
+| Supported alternatives | `rtstate.c:844–865` | `rtstate.c:867–888` | `wans_cap` describes advertised source types, not currently active connections. |
+| Mode | `defaults.c:2249–2274` | `defaults.c:2645–2672` | `wans_mode` includes failover/failback/load-balance semantics; legacy `wans_lb_ratio` comments describe two simultaneous WANs, not a universal modern maximum. |
+| Per-WAN address/gateway | `rtstate.c:1048–1058` | `rtstate.c:1112–1121` | Uses `wan%d_ipaddr`/`wan%d_gateway`; ordinary units yield `wan0_*` and `wan1_*`. Values may be private/shared and need external egress verification. |
+| Protocol/interface | `rtstate.c:294–340` | `rtstate.c:275–350` | Maps native protocol to `wanN_ifname`/`wanN_pppoe_ifname`; physical labels are not reliable shell-interface names. |
+| Per-WAN state | `rtstate.c:108–152` | `rtstate.c:108–152` | Reads `wanN_state_t`, `wanN_sbstate_t`, `wanN_auxstate_t`; link naming distinguishes `link_wan` from `link_wanN`. A flag alone is not public connectivity proof. |
+| Additional modern units | No equivalent branch in the compared selectors | `rtstate.h:494–499`, `rtstate.c:323–350,984–998` | Conditional `RTCONFIG_MULTIWAN_IF` uses units starting at 50, a build-defined count and `wanN_type`. Do not assume sequential 0/1/2 slots, enumerate unlimited keys or include IPTV/other services as Internet sources. |
+| IPv6 interface attribution | `rtstate.c:409–457` | `rtstate.c:423–472` | Both resolve protocol/service per unit, including USB/PPP handling. In 6to4/6in4/6rd cases the older source returns `v6tun0` with an explicit multi-WAN limitation; the newer source builds `v6tunN`. Neither proves a second working IPv6 path. |
+| IPv6 primary | `rtstate.c:591–610` | `rtstate.c:614–633` | Build/mode-dependent IPv6 primary selection can differ from IPv4. DDNS cannot silently borrow the other WAN's IPv6 under primary-only policy. |
+
+Source permalinks:
+[3004 mapping](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/shared/rtstate.c#L916),
+[3006 mapping](https://github.com/RMerl/asuswrt-merlin.ng/blob/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/release/src/router/shared/rtstate.c#L966),
+[3004 IPv6](https://github.com/RMerl/asuswrt-merlin.ng/blob/433fc608f5fc1689f3d3c3ab5cd2a7d57102260f/release/src/router/shared/rtstate.c#L409),
+[3006 IPv6](https://github.com/RMerl/asuswrt-merlin.ng/blob/69838e4a60564e5550e97f11d8a8cf2c6260c4f0/release/src/router/shared/rtstate.c#L423).
+
+`multiwan_scope_audit` (Astra planner) returned PASS WITH NOTES for the user's
+default-plus-expansion and final set-confirmation refinements. Parent incorporated
+separate primary/IP-Sync membership, per-source/family identity, canonical
+deduplication, complete-target unknown rules, no silent enrollment, guarded manual
+correction, existing Off cleanup and bounded independent secondary discovery.
+The planner assessed parent-supplied source findings; it did not independently
+fetch that firmware evidence. A first-use inventory confirmation remains distinct
+from IP-Sync's reviewed participation, and a selected source remains distinct from
+its current interface observation.
+
+The [Cloudflare One list documentation](https://developers.cloudflare.com/cloudflare-one/reusable-components/lists/#limitations)
+describes many-entry Gateway lists, actual plan limits and duplicate-entry rejection;
+it is not the account Rules Lists API. This supports avoiding an invented two-item
+provider limit, not a universal mixed-family/API qualification claim. Actual target
+capability remains required, with existing shared or separate-family targets and
+user-managed list creation. More WANs do not require one list per WAN/address.
+
+Paired rows S03.03, S08.01–S08.08/S08.10 and S10.05/S10.07/S10.09 now carry the
+approved future behavior; associated source-state, aggregation, cache/dispatch,
+setup and event prose is aligned. The current singular config/observation schema
+and its consumers still require later coordinated implementation. No new product
+ID, accepted box or test gate is introduced. Planning/whitespace checks passed;
+runtime, router/beta qualification and S13.14 remain untouched.
+
 ## S13.14 diagnostics integration review — accepted (2026-10-29)
 
 S13.14 is accepted at the exact code revision and complete core gate recorded in
@@ -3124,3 +3329,222 @@ historical evidence, not acceptance receipts. Required gates passed; optional
 ShellCheck limitations above remain visible. Representative Ubuntu/vendor BusyBox
 development proof establishes no live Merlin/ARM, flash, hook, TLS or provider
 qualification, and grants no deployment or release authority.
+
+## Next checkpoint selection — WAN inventory prerequisite (2026-11-05)
+
+Unknown requested a selected checkpoint and an implementation-ready handoff for
+the next session. Parent inspected remaining requirements, the current owner/test
+map and actual consumers at `b53e89a` (runtime unchanged from `3df15d4`). The
+selected prerequisite under S03.03/S08.01 is local WAN inventory confirmation,
+primary/correction Save and shared current mapping on invocation. It adds no
+new product ID and does not change either task's complete acceptance contract.
+
+Source evidence supports a foundation-before-UI sequence: schema-2 admission in
+`modules/lib/config.sh` currently permits only `selected_wan=null|0|1`; existing
+Status primary/interface selection in `modules/status.sh` supports units 0/1;
+`modules/helpers/worker.sh` admits fixed NVRAM observation operands. The current
+Manager already supplies real interactive and Advanced entry paths, and the
+accepted configuration/Store, execution, Status/Health and archive owners provide
+integration consumers. A menu-only change would leave these contracts inconsistent.
+
+A read-only explorer confirmed current input safeguards and the absence of a
+masked-input consumer. Parent and the independent Astra selection audit agree:
+
+| Alternative | Why it is not a smaller complete acceptance outcome now |
+| --- | --- |
+| S04.06 input/terminal handling | Current menus already use literal reads, TTY gates and explicit confirmation; the recorded real masked-credential/name-input journey is still absent. An unused helper or incidental menu polish cannot close it. |
+| S06.07 binary acquisition | Existing package acquisition downloads CFMgr files. A Cloudflared setup/maintenance/recovery consumer and its readiness, ownership/version/publication boundaries are missing; a downloader alone remains a prerequisite. |
+| S13.03 logging readiness | Health/Scribe inspection does not prove operational feature writers' graceful no-file transitions or service-Off rotation behavior. |
+| S11.01 private transport | Current Health GET transport does not establish complete operational endpoint semantics for the full ID. |
+| Update, restore and final product/documentation tasks | They depend on unfinished lifecycle, hook, provider or integrated-product outcomes; adjacent numbering does not make them ready. |
+
+Astra returned **PASS WITH NOTES** for the bounded WAN prerequisite; parent agrees
+and incorporated all material notes. Refresh means new mapping whenever an
+existing inventory/Status/Health consumer invokes the nonprompting shared owner.
+No event/scheduler producer exists yet, so automatic idle reconnect/failover work
+remains under S08.08/S12.03. Archive integration means current capture, validation,
+review and retained-schema compatibility; actual restoration is not included.
+Typed inventory/primary/confirmation/observation compatibility must be reviewed
+before its writer, with IP-Sync membership separate and stale/restored data never
+promoted to live route authority. Reuse of earlier pinned firmware evidence still
+requires relevant source/hash validation; this selection did not revalidate whole
+firmware caches or qualify a model/mode.
+
+The review establishes readiness for that user journey, not implementation design
+approval or runtime proof. The full S03.03 and S08.01 rows remain unchecked: other
+menu actions and operational per-family/egress state remain separate obligations.
+No acceptance relaxation, runtime edit, behavior test, CI, router action, commit or
+push occurred. Existing future-planning drafts and historical receipts are
+preserved. The handoff carries the selected work order, consumer map and unchanged
+focused/complete-Dev/final-core gate policy.
+
+## WAN inventory prerequisite — implementation review
+
+The 2026-11-05 implementation follows the selected S03.03/S08.01 prerequisite.
+Neither complete row is accepted by this work. Parent and the independent planning
+review agree on an additive versioned `network.wan_inventory` within root schemas
+1/2, preserving opaque legacy data. Confirmed inventory, primary preference and
+explicit deferral are distinct from current observations and IP-Sync membership.
+The existing guarded Store performs expected-generation checks and scoped writes;
+ordinary unknown fields, including surviving source extensions, retain their data.
+Firmware selectors store logical units; manual selectors store literal interface
+preferences. No observed route/address is saved as current authority.
+
+Full schema-2 admission still requires the original `selected_wan=null|0|1`
+compatibility projection. An intermediate implementation widened that validation
+and failed the existing invalid-selection case; parent rejected the widening and
+the original expectation now passes. Narrow WAN reads may report unresolved intent
+when unrelated data is damaged, while Save retains full admission. Parent also
+checked legacy string selections, passive-fresh rejection of a populated inventory,
+no-op byte preservation, existing guarded recovery and S13.14 write instrumentation.
+
+Independent foundation review found a replacement-authority defect: a retained
+unsupported selector could be replaced by a coherent active classic WAN under
+`wans_mode=fo|fb`. Parent repaired the condition so this classic dual-WAN policy
+applies only between supported logical units 0/1. Unsupported selections, literal
+manual preferences and unproved modern failover relationships cannot acquire
+replacement authority from that setting. Direct coherent observations remain
+available for their own saved selectors. Inventory/selected regressions cover an
+unsupported unit, unsupported protocol, modern relationship and offline manual
+preference; the supported PPP failover/remapping case is preserved. Final focused
+network proof passed 63 cases with one Linux-only supervision skip (3.52s pytest,
+4.33s wall, 2.29s user + 1.71s system), plus Ruff/shfmt checks. This closes the
+review finding without relaxing the approved Unknown boundary.
+
+Bounded source review revalidated the retained 3004 `wan-evidence-rtstate.c`,
+`rtstate.h` and `defaults.c` against their recorded SHA256 values and immutable
+`433fc608f5fc1689f3d3c3ab5cd2a7d57102260f` sources. Fresh reads of the same 3006
+files at `69838e4a60564e5550e97f11d8a8cf2c6260c4f0` agree with the earlier
+[mapping audit](#multi-wan-source-mapping-and-ip-sync-expansion). The firmware-audit
+index alone is not WAN-source provenance; the retained WAN files have their own
+ignored provenance receipt. Modern `wanN_type` stores textual source types;
+numeric enum return values are not NVRAM encoding. `MAX_MULTI_WAN_NUM` derives
+from the build's `MTWANIF`; the four-profile constant does not define a unit limit.
+The collector's 50–57 discovery window is its finite resource limit, supplemented
+by retained source selectors, not a model-support or firmware-maximum claim.
+Missing enable fields remain unknown. Coherent firmware, interface and route
+evidence is required for current mapping/failover; a route or address class alone
+does not prove WAN ownership, Internet connectivity or publication egress.
+
+The [IANA special-purpose registry](https://www.iana.org/assignments/iana-ipv4-special-registry/)
+was checked for private/shared/link-local ranges and specific globally reachable
+exceptions. Current mask-aware LAN comparison remains required. Source inspection
+does not establish live-router/ARM qualification. No router mutation, firmware
+execution, provider write, deployment or release is included.
+
+Final implementation, consumer review, complete affected Dev groups, measured
+costs and exact final core CI remain pending. This section is a design/ongoing
+review receipt, not an acceptance claim.
+
+Independent menu review identified two common-path defects after the initial
+installed-entry group passed: unresolved or newly pending Save could return to the
+editable loop, and a printable overlength interface name could enter deferral.
+The parent agrees with both findings; the bounded transition repair is verified below.
+A fixture also hardcoded observation generation 1, preventing meaningful
+re-observation after Save. Passing initial journeys does not close these findings.
+The whole shared WAN network module plus changed developer-runner module passed
+206 cases with one Linux-only skip in 5.89s wall / 5.27s CPU; the native hung-child
+case remains for exact-candidate CI.
+
+The menu follow-up review is **PASS** after the repair. Unresolved ownership is
+terminal through Save/editor/first-use/launch; a newly pending Save returns only
+to explicit recovery; overlength names are rejected before deferral. The fixture
+uses the current generation, and a real installed journey reopens/re-observes and
+changes the primary after Save. Three installed journeys passed in 40.35s wall /
+34.91s CPU. Eleven fast transition cases passed in 1.77s wall / 1.69s CPU.
+
+Parent final preservation review additionally found that deferral could replace
+an unsupported legacy selection with an empty inventory. The UI now preserves
+that unresolved intent without a Save, and the typed writer refuses deferred
+replacement of it. Unsupported non-null legacy values, including `auto`, suppress
+first-use prompting. Explicit confirmed correction remains available. The affected
+legacy configuration and direct menu cases passed: 14 passed / 11 deselected,
+3.41s wall / 2.82s CPU. Test fixtures use the canonical report reason and clean up
+their owned child on timeout. Final local statics passed in 1.30s wall / 1.15s CPU,
+including regenerated package metadata; ShellCheck was explicitly excluded.
+These receipts remain host/fixture proof, not native/router acceptance.
+
+The first native candidate `04ed85ebf3f4ee9f88278d7e8fcac19ae6b9a4ea` passed
+configuration, installed-menu, archive-consumer, archive-publication and Tools
+runs. [Observation Dev](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41984869137)
+failed the required full Health normal journey: 533 operations, 1149 files and
+11523635 reserved bytes exhausted the 11534336-byte collection ceiling with ten
+of twelve requests completed. Seven new WAN scalar probes also lacked fixture
+values, so this test did not yet supply coherent current-WAN/IPv6 evidence.
+
+The parent accepts the measured bounded correction: fixed resource scalar and
+field projections use their sufficient 2-block tier (184320 bytes saved on that
+path), while collection grows by 1MiB to 12582912 bytes to fund required WAN work.
+The separate final 1MiB, 568 collection operations, 1264 files, 45-second deadline
+and five-second finalization reserve remain. Distinct individual input/log bounds
+are unchanged. This changes an implementation allowance, not a product contract
+or normal-report assertion. The full Health fixture now supplies finite actual
+NVRAM/interface/route executables and still requires all twelve requests, with
+explicit WAN-mode and current-interface checks. Six targeted host fixture/quota/
+deadline cases passed in 1.81s wall / 1.58s CPU; native full-journey evidence remains
+required before closure.
+
+Repaired candidate `7ea47342b6c92883ca92f66c60802a4f43f3f4ec` passed the
+[four-case native diagnosis](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986660843).
+The real complete Health journey reported normal: 555 operations, 1197 files,
+11957707 collection bytes and 790528 final bytes, twelve requests and 59 report
+rows, with 28 report seconds / 32.10s wall. Collection headroom is 625205 bytes;
+the total charged envelope is 12748235 bytes below 13631488. The four tests took
+32.83s wall / 28.64s CPU; job elapsed including setup was 44s. This closes the
+observed byte-budget/fixture cause, subject to all complete affected groups and
+final core gates at this exact candidate.
+
+Complete affected Dev proof at `7ea47342b6c92883ca92f66c60802a4f43f3f4ec` covers
+27 whole modules across five disjoint selections: **964 passed and one expected
+workstation-without-`/proc` skip**. The skip is a platform-specific boundary test,
+not an omitted Linux supervision case. All native WAN/Health cases passed.
+
+| Exact-candidate run | Selection | Pytest result | Test wall / CPU | Job including setup |
+| --- | --- | --- | --- | --- |
+| [Configuration](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986979144) | config, config_schema2, config_observation, wan_config, config_store | 162 passed | 80.79s / 80.90s | 94s |
+| [Installed menu](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986983098) | manager_settings, manager_settings_entry, entry_package, package, retained_launch, install | 177 passed | 160.28s / 161.85s | 176s |
+| [Observation consumers](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986986834) | wan_network, native, execution_tasks, prerequisites, status, logging_native | 432 passed, one expected skip | 146.85s / 117.78s | 173s |
+| [Archive consumers](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986990448) | archive_config, archive_payload, archive_payload_semantics, archive_capture, archive_verify, archive_menu, backup_menu, archive_control | 169 passed | 246.58s / 245.21s | 260s |
+| [Archive publication](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986994032) | archive_create, archive_store | 24 passed | 73.44s / 68.68s | 90s |
+
+Changed optional [Tools Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986997262)
+passed 214 cases in each execution context (1.60s / 1.47s test wall; 22s complete
+job including setup). ShellCheck and unchanged optional Diagnostics were not run.
+These Dev groups are interim proof; the exact final complete core gate is
+recorded below.
+
+The final aggregate [Checks](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987620252)
+and all required jobs in the three exact child runs passed at
+`7ea47342b6c92883ca92f66c60802a4f43f3f4ec`. Parent independently verified remote
+metadata, exact SHA, required job conclusions and captured logs. The aggregate's
+cancellation-only cleanup job was correctly inapplicable; it is not a product
+validation job. Whole aggregate elapsed was 9m29s including setup and coordination.
+
+| Required module | Host result; test wall / CPU | Vendor BusyBox result; test wall / CPU | Host / native job including setup | Whole module workflow |
+| --- | --- | --- | --- | --- |
+| [Backup](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987672144) | 428 passed, one native-only skip; 125.08s / 84.35s | 429 passed; 397.05s / 389.13s | 141s / 415s | 7m00s |
+| [Manager](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987675231) | 861 passed, 30 platform skips, four optional Diagnostics deselections; 121.89s / 101.43s | 890 passed, one workstation-only skip, four optional Diagnostics deselections; 504.82s / 481.44s | 138s / 521s | 8m45s |
+| [Status](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987677930) | 278 passed; 52.07s / 33.16s | 278 passed; 104.87s / 90.90s | 65s / 119s | 2m03s |
+
+The host skips are explicit native-only or workstation-without-`/proc` boundaries;
+the native run retains only the latter expected skip. Optional Diagnostics are not
+claimed passed. Each complete module remains below ten minutes including setup;
+no diagnostic split or full local suite was needed. The Manager growth comes with
+the new configuration, collector and real confirmation/recovery journeys. No
+further test rewrite is justified for this checkpoint solely to repeat timing.
+
+Parent disposition: the WAN inventory prerequisite is complete through its
+required development gates. S03.03 still lacks remaining menu dispatch and S08.01
+still lacks operational per-family selected-egress authority, so neither receives
+a row tick. Invocation-based observation is implemented; idle event producers,
+IP-Sync source enrollment and executable restore remain outside this prerequisite.
+Ubuntu/host/vendor-BusyBox evidence does not establish Merlin/ARM, flash or live
+provider qualification. The Markdown receipt names this tested code SHA and does
+not claim its later documentation commit was runtime-tested.
+
+The selected documentation receipt passed planning/checklist alignment, repository
+privacy, relative file-link, newly introduced local-anchor and whitespace checks.
+The working specification is byte-identical to the preserved approved pre-start
+draft; implementation did not alter requirements to fit its results. Publication
+includes selected WAN planning/evidence and this checkpoint receipt. Unrelated
+fresh-hook and VPN reference-review drafts remain preserved outside the receipt.

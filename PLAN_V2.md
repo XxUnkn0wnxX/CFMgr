@@ -196,7 +196,7 @@ Record representative firmware, kernel, BusyBox, Entware ABI/feed and dependency
 | --- | --- | --- |
 | S03.01 | Passive fresh state | All three unconfigured/Off; no tunnel/logging/backup setup; manager check On and auto-install Off. |
 | S03.02 | Distinct state and settings | Separate configured/enabled/installed/maintenance, credentials, options, guards and observations. |
-| S03.03 | Main menu and navigation | 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects. |
+| S03.03 | Main menu and navigation | 0/1/2/3/4/fx/ao/u/uf/e with exact dispatch, dedicated nesting and no navigation side effects; first interactive WAN-set confirmation with interface-list/manual correction. |
 | S03.04 | Feature submenus | Own setup, On/Off, explicit operation, status and scoped logging/repair; only relevant options. |
 | S03.05 | Quick service commands | Shared case-insensitive start/stop handlers, ipsync alias, configure-first validation and truthful results. |
 | S03.06 | Manager/diagnostic commands | Update/force aliases, help/version and identical standalone health/doctor/diagnostic reports without implicit repair consent. |
@@ -306,6 +306,10 @@ associations and backup history never authorize live mutation or pruning.
 | `e` Exit / Back | Exit at root, Back in ordinary submenus; setup and commit behavior follows section 4. |
 
 Parse exact complete tokens: `uf` cannot dispatch as `u`. Unknown input has no effect. Selecting a submenu, viewing settings, backing out or opening status never enables a feature. Keep current On/Off values visible beside settings. One feature's wizard never demands setup or credentials for another.
+
+The first interactive WAN confirmation and later shared address-options edit use
+the [WAN selection contract](#wan-detection-and-user-confirmation). Confirmation
+changes only CFMgr's shared selection preference; it does not enable a feature.
 
 Configured feature logging menus offer **Install/enable logging** and **Uninstall logging** for that feature. The visibly shared **Re-detect logging / enable for all enabled services** action also checks Scribe and applies section 13 across enabled CFMgr features. Only Cloudflared offers rotation tuning. No global Scribe daemon control, native-feature rotation tuning or separate temporary Stop logging/Stop rotation UI.
 
@@ -746,31 +750,110 @@ If clean supported official catalog integration is later selected, a separate de
 
 | ID | Subgoal | Required result |
 | --- | --- | --- |
-| S08.01 | Independent family states | Active host, proven inactive or unknown per family; no deletion from missing/failed evidence. |
-| S08.02 | Current desired state | Dual/one/no-family add/remove behavior; manual Off clears managed remote values, auth-Off only contains; IPv6-only remains provisional. |
-| S08.03 | Selected-WAN IPv4 | Public/private/shared/mismatch classification with correctly routed external evidence and honest NAT meaning. |
-| S08.04 | Global IPv6 host | Current selected-WAN public host/lifetime/canonical form, verified translation when present; no ULA, delegated-prefix or arbitrary LAN/VPN publishing. |
-| S08.05 | Independent transport | Per-family selected-egress discovery and either-family provider transport, with verified TLS and bounded fallback. |
-| S08.06 | Shared cache/freshness | One coalesced resolver with independent current family identity/generation/time/lifetime records. |
-| S08.07 | DDNS and standalone reuse | Resolve once, forward valid source independently of DNS result; standalone lists require no DNS setup. |
-| S08.08 | Events and periodic discovery | Current enable/boot/WAN/IPv6/manual/periodic requests coalesce; no menu/status network work. |
+| S08.01 | Independent family states | Active host, proven inactive or unknown per selected WAN/family; user-confirmed selection and background re-detection; no deletion from missing/failed evidence. |
+| S08.02 | Current desired state | Per-source family add/remove behavior and complete deduplicated IP-list sets; manual Off clears managed remote values, auth-Off only contains; IPv6-only remains provisional. |
+| S08.03 | Selected-WAN IPv4 | Each selected WAN's public/private/shared/mismatch classification with correctly routed external evidence and honest NAT meaning. |
+| S08.04 | Global IPv6 host | Current public host/lifetime/canonical form per selected WAN, verified translation when present; no ULA, delegated-prefix or arbitrary LAN/VPN publishing. |
+| S08.05 | Independent transport | Per-source/family selected-egress discovery and either-family provider transport, with verified TLS and bounded fallback. |
+| S08.06 | Shared cache/freshness | One coalesced resolver with independent current source/family identity/generation/time/lifetime records. |
+| S08.07 | DDNS and standalone reuse | Reuse primary discovery independently of DNS result; additional IP-Sync sources never hold DDNS completion; standalone lists require no DNS setup. |
+| S08.08 | Events and periodic discovery | Current enable/boot/selected-source WAN/IPv6/manual/periodic requests coalesce; no menu/status network work. |
 | S08.09 | Fresh remote authority | Read complete configured remote targets every eligible run, correct managed drift and preserve unrelated metadata. |
-| S08.10 | Newest queue/retries | Explicit add/remove intent per target/family, four-attempt and aggregate bounds, no stale replay or late success. |
+| S08.10 | Newest queue/retries | Explicit add/remove intent per source/family/target, four-attempt and aggregate bounds, no stale replay or late success. |
 | S08.11 | Explicit Off cleanup | Persist scoped cleanup before unhooking, clear list contents/managed A-AAAA while remaining Off, retain offline/auth-blocked intent and never infer cleanup from auth-Off. |
+
+### WAN detection and user confirmation
+
+DDNS and IP-Sync share one detected WAN inventory and address resolver. DDNS uses
+its chosen primary; IP-Sync starts with that source and can include additional
+sources through its reviewed setup. On the first normal interactive CFMgr launch
+without a retained selection/confirmation, show one credible candidate or the detected set
+when several are credible, including interfaces, protocols and available local
+addresses/classification/state. Ask whether these are the user's WAN connections
+(Yes/No) and confirm the primary for DDNS. Distinguish configured, connected and
+independently verified Internet egress; local inspection does not prove Internet
+service. Show physical labels only when verified, never treating alternative
+connector choices as active connections.
+
+No offers a bounded local interface list (`ifconfig -a` or an available native
+equivalent) and lets the user select or type a missed interface. If no credible
+candidate exists, explain that and offer the list/manual entry without inventing
+a recommendation. Cancel, EOF or deferral preserves prior settings and leaves
+the menu usable. Shared Advanced address settings can later correct the primary
+or add/correct a missed source. Inventory confirmation does not enroll all sources
+in IP-Sync: its setup separately confirms which WANs feed its configured list or
+family lists. No feature is enabled by inventory confirmation.
+
+Keep confirmed inventory, chosen primary, IP-Sync source membership,
+confirmation/deferred state and current observations distinct, so an unresolved
+value does not cause repeated setup or overwrite imported/restored choices.
+Manual input is bounded literal data, never a command;
+validate it against available local interface evidence and preserve prior settings
+on invalid input. Never derive a logical WAN number from an interface spelling.
+A down/offline retained interface remains a saved preference;
+an unverifiable new entry may be deferred without inventing reachability. No
+public discovery request is made by this menu inspection. Installation, hooks,
+scheduled work and explicit help/version/Health commands never ask this question.
+Save through normal CFMgr configuration handling; do not change router NVRAM,
+port assignments or routing. The later implementation must update the typed
+selection schema and its config/status/Health/backup-restore consumers coherently.
+
+Explain that CFMgr re-detects after connection changes. Keep a confirmed preference
+while it remains valid, but re-resolve actual interface/protocol/route mappings
+after reconnect, remapping or firmware failover; do not permanently freeze an
+old interface name. Adopt an automatic replacement only from coherent current
+firmware WAN, interface/protocol and routing evidence. Refreshing an enrolled
+source or adaptive primary does not silently enroll another source in IP-Sync.
+Address classification or a default route alone cannot override the confirmed
+preference. Ambiguous load balancing or unsupported/unproved mappings remain
+Unknown and can be resolved
+interactively later; background work never prompts. Per-family discovery must
+still prove the selected egress before using addresses for publication. Preserve
+the separate authorized explicit-Off cleanup contract under S08.11.
+
+Use all private IPv4 ranges as classification/candidate evidence:
+
+| Address class | Range | Detection meaning |
+| --- | --- | --- |
+| Private | `10.0.0.0/8` | Possible upstream private network; not proof of carrier NAT. |
+| Private | `172.16.0.0/12` | Covers `172.16.0.0` through `172.31.255.255`, not all `172.*`. |
+| Private | `192.168.0.0/16` | Includes private uplinks behind another router. |
+| Shared address space | `100.64.0.0/10` | Shared/CGNAT evidence, distinct from private-use ranges. |
+| IPv4 link-local | `169.254.0.0/16` | Does not establish usable Internet egress; do not reject all `169.*`. |
+
+Follow the [IANA special-purpose registry](https://www.iana.org/assignments/iana-ipv4-special-registry/)
+for other special-use addresses and exceptions. Compare addresses against the
+actual configured LAN subnets and masks, not the first three octets or an assumed
+`/24`. For example, with `/24` networks, LAN `192.168.1.1` and a local candidate
+interface at `192.168.0.30` suggest an upstream private network; the address alone
+does not prove WAN ownership or double NAT. A public/private/shared address or an
+address outside LAN subnets is only supporting evidence: VPN, guest and other
+interfaces can also match. Reassigned LAN/SFP ports, dual-WAN balancing and USB
+mobile links use their actual firmware mappings; names or connector types alone
+do not establish support. Neither user confirmation nor local address presence
+replaces the selected-egress and per-family checks below.
 
 ### One source of current family state
 
 DDNS and IP-Sync share one native resolver, cache, lock and coalesced dispatcher; neither copies discovery logic. Required shared Entware tools, JFFS/RAM validity, NTP and usable network/HTTPS gates apply. Cloudflared-specific readiness and optional logging do not control native publication.
 
-Represent each family independently as **active with validated current public host**, **confirmed inactive**, or **unknown/unsupported**. Explicit allowed-family disable or successful complete selected-source inspection can prove inactivity. Missing hook input, stale cache, malformed/incomplete output, unavailable tools, failed external observation or unknown egress cannot. Unknown never authorizes deletion.
+DDNS consumes only its chosen primary source; IP-Sync consumes its reviewed source set, initially that primary alone. Represent each selected WAN/source and family independently as **active with validated current public host**, **confirmed inactive**, or **unknown/unsupported**. Explicit allowed-family disable or successful complete selected-source inspection can prove inactivity. Missing hook input, stale cache, malformed/incomplete output, unavailable tools, failed external observation or unknown egress cannot. Unknown never authorizes deletion.
 
-| Current state | DNS desired state | IP-list desired state |
+| State of one selected source | DNS desired state when this is its primary | Contribution to IP-Sync targets |
 | --- | --- | --- |
-| IPv4 + IPv6 active | Current managed A and AAAA. | Exact current IPv4 `/32` and IPv6 `/128`, shared or mapped. |
-| IPv4 active; IPv6 confirmed inactive | Current A; remove managed AAAA. | IPv4 only; clear mapped IPv6-only target. |
-| IPv6 active; IPv4 confirmed inactive | Current AAAA; remove managed A. | IPv6 only; clear mapped IPv4-only target. Provisional support. |
-| Both confirmed inactive | Remove managed A/AAAA where provider transport exists. | Empty selected targets without deleting list identity. Offline cleanup remains pending. |
-| One family unknown | Known independent DNS scope may proceed; overall outcome partial/deferred. | Shared target replacement defers because desired set is incomplete; independent known-family target may proceed. |
+| IPv4 + IPv6 active | Current managed A and AAAA. | Current IPv4 `/32` and IPv6 `/128`, combined with other selected sources. |
+| IPv4 active; IPv6 confirmed inactive | Current A; remove managed AAAA. | Keep this source's IPv4; remove its IPv6 contribution without clearing other sources. |
+| IPv6 active; IPv4 confirmed inactive | Current AAAA; remove managed A. | Keep this source's IPv6; remove its IPv4 contribution without clearing other sources. Provisional IPv6-only support. |
+| Both confirmed inactive | Remove managed A/AAAA where provider transport exists. | No contribution from this source; empty a target only when its complete selected-source set is empty. Preserve identity; offline cleanup remains pending. |
+| One family unknown | Known independent DNS scope may proceed; overall outcome partial/deferred. | Defer replacement of targets needing that unknown contribution; an independent target proceeds only when all its source/family contributions are known. |
+
+Derive each target's canonical deduplicated set from all selected source/family
+contributions. Two WANs with the same public IP produce one entry; losing one
+does not remove an address still supplied by another. A failed source is not an
+empty contribution. Confirmed IPv6 loss on one WAN removes only that contribution
+when the target set is complete; other WAN IPv6 and eligible IPv4 remain. Preserve
+source/family preferences through temporary loss and resume configured participation
+when valid evidence returns. Never silently add a new family or source.
 
 Feature Off stops normal publication and discovery. **Explicit user Off/Stop for DDNS or IP-Sync also clears its managed remote values** under the scoped cleanup contract below. Automatic authentication containment does not authorize remote cleanup. Disabling one family while the feature remains On reconciles that family's removal. IPv4-only and dual-stack transitions are primary; symmetric IPv6-only support remains provisional with honest automated/live labels and no required forced firmware IPv4-disable option. Optional missing live IPv6 coverage cannot excuse automated safety failures.
 
@@ -786,6 +869,25 @@ An automatic auth failure only faults, disables/unhooks and quiesces the affecte
 
 ### IPv4 and IPv6 source policy
 
+Apply the following policy separately to each selected source. The default is at
+most one current public IPv4 and one eligible, selected IPv6 host from the primary
+WAN. IP-Sync may expand through reviewed setup to additional configured WANs that
+the actual firmware can identify and whose egress can be proved. There is no fixed
+two-address limit per family; the supported source set, provider limits and bounded
+aggregate work constrain it. Do not enumerate every interface alias, client/privacy
+IPv6 address or historical CGNAT pool IP. Private/shared local WAN addresses are
+source evidence, never substitutes for the verified external public host.
+
+Read bounded native fields appropriate to the matched model/mode and correlate
+them with actual interfaces/routes; never dump NVRAM or treat every numeric WAN
+slot as an Internet connection. Firmware connector capabilities do not establish
+simultaneously usable WANs. Two IPv4 WANs do not establish two usable IPv6 paths:
+resolve service, interface and host attribution per source. A shared IPv6 tunnel
+name or firmware IPv6 primary cannot silently supply another WAN's address to
+DDNS. Each DDNS family must be valid for its chosen primary; IP-Sync includes
+another source only through confirmed membership. Unsupported or ambiguous
+attribution remains Unknown, not confirmed inactive.
+
 Use the configured/selected WAN's verified native address/interface/protocol mapping, not an assumed WAN0 or a hook argument alone. Classify IPv4 using universal IANA special-use rules and exceptions; never hardcode ISP customer ranges.
 
 - Shared `100.64.0.0/10` indicates likely shared/CGNAT addressing; private RFC1918 indicates upstream/private NAT, not proof a carrier owns it. Both require bounded external public IPv4 discovery.
@@ -800,9 +902,16 @@ Bound ordered per-family external endpoints and total fallback cost. Discovery u
 
 ### Freshness, generations and dispatch
 
+The cache and pending work retain identity per selected WAN/source and family,
+including the selected-source membership generation. Canonical list aggregation
+does not discard this provenance. Native events for any enrolled source invalidate
+only affected evidence and request coalesced work. Adding/removing source membership
+uses reviewed guarded configuration changes, quiesces obsolete publication and
+rebuilds the complete desired set; stale work cannot restore an excluded source.
+
 One bounded private RAM cache stores separate family records keyed by boot, selected WAN, native address/interface/prefix/source identity, relevant config/policy and monotonic freshness. IPv6 evidence cannot outlive its source lifetime. Active and inactive observations need equivalent current identity/time proof. Collection must be complete/coherent; changed or unavailable source evidence is not repaired by a matching fingerprint. Recheck local generation/content/egress before writes; preserve compatible sibling observations and invalidate affected ones on changes.
 
-Enabled DDNS resolves once and forwards immutable valid per-family observations/removals asynchronously to IP-Sync before independent DNS work. DNS failure cannot discard valid source state; list failure cannot hold DNS completion. Standalone IP-Sync calls only the resolver/list path, requiring no DDNS credentials, DNS requests or firmware callback.
+Enabled DDNS resolves its primary once and forwards immutable valid source/family observations/removals asynchronously to IP-Sync before independent DNS work. DNS failure cannot discard valid source state; list failure cannot hold DNS completion. Additional IP-Sync sources use the same resolver in separately scheduled bounded work and cannot extend the firmware DDNS callback. Standalone IP-Sync resolves its selected sources through the resolver/list path, requiring no DDNS credentials, DNS requests or firmware callback. Bound total enumeration, requests, concurrent work and complete-set assembly; never silently truncate or mark unobserved sources inactive to fit a budget.
 
 Explicit first enable, eligible boot/recovery/restore, selected-WAN reconnect, IPv6 renewal and manual publish request coalesced discovery. The shared watchdog dispatches native discovery/reconciliation when due, by default every five minutes, covering missed events and remote drift even when local IP is unchanged. Both native features Off removes normal native discovery/publication work; explicitly pending Off cleanup remains separately eligible; disabling one retains the other's work, and Cloudflared can independently retain the watchdog. Ordinary status/menus and local hook repair do no source/provider calls.
 
@@ -877,11 +986,11 @@ Merlin retains ordinary DDNS event handling and the configured native forced-ref
 | S10.02 | Ten-item display policy | First ten stay selectable by number at any list count; exact-name search covers every eligible list. |
 | S10.03 | Literal exact-name input | Case/space/numeric/quotes/e/Unicode ambiguity and correct one-time URL/JSON encoding without guessing. |
 | S10.04 | Complete lookup and draft retry | Not-found only after complete lookup, immediate name retry, distinct auth/network/incomplete errors and preserved fields. |
-| S10.05 | Shared or separate lists | Offer IPv4-only or detected usable IPv6 participation; shared list when supported or user-selected distinct family lists, same picker and no list/policy creation. |
+| S10.05 | Shared or separate lists | Default primary-WAN IPv4 with optional usable IPv6; reviewed additional WAN sources; shared or user-selected family lists, same picker and no list/policy creation. |
 | S10.06 | Mapping migration | Quiesce old requests, atomic local mapping and automatic primary/secondary cleanup with independent remote outcomes. |
-| S10.07 | Nonempty publication | Exact current hosts and managed metadata, fresh read/readback, remove extra/wrong-family entries. |
+| S10.07 | Nonempty publication | Exact deduplicated current hosts from all selected WANs and managed metadata, fresh read/readback, remove extra/wrong-family entries. |
 | S10.08 | Empty target clearing | Same-ID supported item removal with exact returned spellings, complete verification and metadata reconciliation. |
-| S10.09 | Unknown/missing targets | Shared unknown defers; known independent target proceeds; missing whole list requires reviewed repair. |
+| S10.09 | Unknown/missing targets | Unknown source/family defers its affected target; complete independent target proceeds; missing whole list requires reviewed repair. |
 | S10.10 | Explicit read-only check | Configured-Off candidate GET/check allowed, no mutation/discovery/queue/success history/enable; cooldown/auth containment retained. |
 
 ### Guided setup and exact-name input
@@ -901,7 +1010,9 @@ Checkpoint completed native draft fields; `e`/Ctrl+C retains them and preserves 
 
 ### Shared or separate family lists
 
-For a fresh setup with usable IPv4, offer IPv4-only first; offer adding IPv6 only after detecting a currently usable public IPv6 host through the shared resolver. When IPv6 is usable and the user chooses it, offer one shared list containing at most the current IPv4 `/32` and IPv6 `/128` if the actual target/API supports mixed families, or separate dedicated IPv4 and IPv6 lists by user choice. Separate lists no longer require a provider limitation. Use the same numbered/name picker for each selected target, mapping IPv4 first and then IPv6 when both are selected. A supported IPv6-only setup can select its sole usable family without inventing IPv4.
+For a fresh setup with usable IPv4, offer IPv4-only first; offer adding IPv6 only after detecting a currently usable public IPv6 host through the shared resolver. Default to the primary WAN's one current IPv4 and one eligible selected IPv6 host. If additional configured WANs are detected, show their source/interface/state and let the user confirm which also feed IP-Sync. A missed source can be entered/corrected through CFMgr's built-in shared address settings, with the same validation and reviewed source participation. Background discovery never silently adds a new participant.
+
+Offer one shared list containing the complete deduplicated current IPv4 `/32` and IPv6 `/128` hosts from the selected sources when the actual target/API supports mixed families, or user-selected separate dedicated IPv4 and IPv6 lists. Separate lists need no provider limitation. Each family list combines that family's contributions from the selected WANs; there is no required list per WAN or per address. Show the source-to-list relationship during review. Use the same numbered/name picker, IPv4 first when both families participate. A supported IPv6-only setup can select its sole usable family without inventing IPv4. Guide user list creation/selection as before; CFMgr creates no lists or Access rules.
 
 Do not infer mixed-family support from a different Cloudflare list product, expose an unsupported option as working, or treat a network/auth/throttle error as proof a second list is required. Missing/unknown IPv6 is shown with its reason and a recheck path; it does not block otherwise valid IPv4 setup. An existing saved IPv6 mapping survives temporary loss and follows the active/inactive/unknown reconciliation rules; no automatic configuration erasure or silent addition of a new family. When IPv6 later becomes usable, the user can extend the saved setup through the same reviewed flow.
 
@@ -913,7 +1024,7 @@ Reviewed shared-to-split or split-to-shared migration reconciles each retained d
 
 Read/validate complete current account/list/type/items and managed metadata before no-op. A nonempty desired set replaces differing, extra and wrong-family entries inside that configured list, preserving unmanaged metadata and enforcing saved managed name/attributes. No remote-content conflict prompt. A missing whole list requires reviewed target repair, not guessed ID or recreation.
 
-For an empty desired set, preserve the list's ID/name/policy references. Do not assume PUT with `items: []` clears it: use supported bounded same-ID item removal, preserving provider-returned value spellings for removal, then verify complete emptiness/count. Already-empty needs no removal but may still need managed metadata repair. Unsupported or partial clear is explicit pending/limitation, never successful stale retention. Unknown family state blocks shared-target complete replacement; known separate targets can proceed.
+For an empty desired set, preserve the list's ID/name/policy references. Do not assume PUT with `items: []` clears it: use supported bounded same-ID item removal, preserving provider-returned value spellings for removal, then verify complete emptiness/count. Already-empty needs no removal but may still need managed metadata repair. Unsupported or partial clear is explicit pending/limitation, never successful stale retention. Unknown source/family state blocks replacement of its affected target; separate targets proceed only with complete known contributions from all their selected sources. Losing one source/family never clears valid sibling contributions; deduplication preserves an address still supplied by another selected source.
 
 Provide an explicit provider-read-only target-check equivalent of legacy dry-run, including configured-but-Off state and explicit IPv4 and/or IPv6 candidates. Validate candidates/config and GET configured targets; report unchanged/would-replace only with verified evidence. No PUT/PATCH/DELETE, discovery, queue/success-cache/history writes, enabling or publication. An omitted family is not absence evidence. Shared cooldown recording and definitive saved-credential auth containment still apply; this narrow diagnostic is distinct from ordinary local status.
 

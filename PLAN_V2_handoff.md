@@ -35,15 +35,138 @@ session_meta id/cwd/thread_source=user; no child IDs are included.
 Codex Session: 01a1848b-c9de-7121-b7c2-6611f14d8aea
 Twelfth ID verified 2026-10-29 against parent environment and matching
 session_meta id/cwd/thread_source=user; no child IDs are included.
+Codex Session: 01a1aa23-d93d-7883-a4ea-5c956b11b24c
+Thirteenth ID verified 2026-11-05 against parent environment and matching
+session_meta id/cwd/thread_source=user; no child IDs are included.
 -->
 
 [Specification](PLAN_V2.md) · [Checklist](PLAN_V2_checklist.md) · [Audit record](PLAN_V2_audit.md) · [Review notes](PLAN_V2_review_notes.md) · [Working rules](AGENTS.md)
 
-## Current checkpoint — S13.14 accepted; paused
+## Current checkpoint — WAN inventory confirmation complete; paused
+
+Unknown authorized this selected S03.03/S08.01 prerequisite through its required
+gates, followed by a pause. It is complete. **Do not review, select, suggest or
+start another package without a new user instruction.** No required worker or
+job remains active, and no router deployment, provider operation or release was
+performed or authorized by this checkpoint.
+
+**Published runtime:** `7ea47342b6c92883ca92f66c60802a4f43f3f4ec` on `develop`,
+following implementation `04ed85ebf3f4ee9f88278d7e8fcac19ae6b9a4ea`. This Markdown
+receipt records that tested code SHA; its documentation commit does not claim new
+runtime testing. The starting receipt was
+`b53e89a5154811c716555990af8a3ecbafb6b6ce`, with prior accepted runtime
+`3df15d4939ed5f767aebb7812715ffefabbbb5bb`.
+
+**Completed behavior:** ordinary installed interactive launch offers a credible
+local WAN inventory for confirmation when no retained selection exists. The user
+can correct interfaces, select a primary, Save/reopen and edit later through
+Advanced address settings. Confirmed/deferred/recognized legacy choices suppress
+repeated setup; unsupported legacy intent remains unresolved until explicitly
+replaced. Cancel/EOF/invalid input preserves retained choices. Save has guarded
+generation checks, explicit recovery and terminal unresolved handling. It neither
+enables features nor adds IP-Sync membership.
+
+Status/Health and archive capture, verification and review use the shared
+configuration and mapping contract. Current firmware/interface/route observations
+are refreshed on consumer invocation. An offline preference survives; unsupported,
+contradictory or incomplete mappings remain Unknown. Local addresses, classes and
+routes do not verify Internet egress. Confirmation does not initiate public-IP
+discovery or change NVRAM, routes, physical assignments or hooks. Actual restore
+and idle reconnect/failover event producers remain outside this prerequisite.
+
+**Shared contract:** optional versioned `network.wan_inventory` works within root
+schemas 1/2, with confirmed/deferred state, member primary and at most 16 firmware
+or literal manual selectors. Schema-2 `selected_wan=null|0|1` stays strict as its
+compatibility projection. Logical source identity is separate from observed
+interface/protocol/route. Unknown ordinary fields and surviving source extensions
+are preserved; current observations are not persisted as authority. Unknown legacy
+intent, including `auto`, cannot be overwritten through an empty deferral.
+
+`cfmgr_wan_collect PURPOSE GEN ORIGIN STATE PRIMARY SELECTORS` supplies the shared
+collector; `cfmgr_status_wan_inventory GEN ORIGIN STATE PRIMARY SELECTORS` exposes
+the typed report for Manager before owned cleanup. Narrow WAN reads tolerate
+unrelated damaged feature data; full Save still requires full admission. Inventory
+observes classic 0/1, modern 50–57 and bounded retained selectors. That window is a
+collection limit, not a firmware maximum or model-support claim. Only supported
+classic 0/1 relationships can adopt replacement under proved `fo|fb` policy;
+manual/modern/unsupported relationships cannot inherit that authority.
+
+Bounds remain 48 inventory / 40 selected callbacks including reserved projection,
+196608 raw bytes and a 16KiB report. The temporary 384-block native file allowance
+restores the caller's soft limit. Status keeps its 10-second deadline; Health keeps
+45 seconds including five reserved for finalization. Health retains 568 collection
+operations and 1264 files. Its collection byte budget is 12582912 (12MiB), with the
+unchanged separate 1MiB final allowance; distinct individual input/log limits are
+unchanged. The collector uses collection deadline minus one second. Cleanup bounds
+are 168 Status files / 104 inventory-wrapper files.
+
+**Review and repair evidence:** the independent contract/foundation/menu reviews
+and parent integration are recorded in the
+[implementation audit](PLAN_V2_audit.md#wan-inventory-prerequisite--implementation-review).
+The initial observation Dev run `41984869137` exposed an exhausted Health byte
+budget and incomplete WAN fixture facts. The repaired candidate uses sufficient
+small quotas for fixed scalar projections and funds the added bounded work, while
+preserving all twelve GETs and the normal-report assertion. Native diagnosis
+[41986660843](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986660843)
+passed four cases. Complete Health measured 555 operations, 1197 files, 11957707
+collection bytes, 790528 final bytes, twelve requests and a normal 28-second report
+(32.10s wall). Collection headroom was 625205 bytes. Review also repaired unsupported
+failover replacement, terminal menu/recovery transitions and unknown-legacy deferral.
+
+**Required gates passed at the published runtime:**
+
+| Gate | Exact result |
+| --- | --- |
+| Focused local behavior, component reviews and final statics | Passed; actual overlapping groups and costs are in the audit. Final repair statics: 0.94s wall / 0.87s CPU. ShellCheck explicitly excluded. Package metadata regenerated. |
+| 27 complete affected Dev modules | Five disjoint runs: [configuration](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986979144), [menu](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986983098), [observation](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986986834), [archive](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986990448), [archive publication](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986994032). 964 passed, one expected workstation-without-`/proc` skip. |
+| Changed optional Tools | [41986997262](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41986997262): 214 passed in each execution context; 22s including setup. |
+| Final complete core | [Checks 41987620252](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987620252) passed with all six required host/native child jobs. Aggregate elapsed 9m29s. |
+| Backup complete module | [41987672144](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987672144): host 428 passed / one native-only skip; native 429 passed. Whole workflow 7m00s including setup. |
+| Manager complete module | [41987675231](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987675231): host 861 passed / 30 platform skips; native 890 passed / one workstation-only skip. Four optional Diagnostics cases deselected in each context. Whole workflow 8m45s including setup. |
+| Status complete module | [41987677930](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/41987677930): 278 passed in each context. Whole workflow 2m03s including setup. |
+
+All complete modules remain below ten minutes. Full local is not due because no
+main goal is complete. Unchanged optional Diagnostics and ShellCheck were not run.
+Premature automatic core runs `41984753873` and `41986610907` were cancelled while
+Dev diagnosis was pending; the latter's exact children were also cancelled. They
+are not acceptance evidence. Ubuntu/vendor-BusyBox is representative development
+proof; Merlin/ARM, flash, hooks, TLS and live providers still need router beta
+qualification under separate authority.
+
+**Credit and remaining work:** the finished prerequisite earns no new product ID.
+S03.03 still needs remaining feature/update menu dispatch; S08.01 still needs
+operational per-family selected-egress authority. Both full rows remain unchecked.
+Accepted progress remains **26/157 (16.6%), 131 remaining**, and **0/16 main goals
+(0%), 16 remaining**. Goal 3 remains **5/10 (50%)**; Goal 8 remains **0/11 (0%)**.
+No acceptance exception changed, so review notes remain unchanged. README describes
+the available confirmation/observation behavior without increasing percentages.
+
+**Preservation and restart state:** use this existing `develop` checkout. The
+selected WAN planning/source evidence and completed receipt are published; unrelated
+fresh-hook planning and VPN reference-review drafts remain unstaged in the four
+planning records. Do not discard or wholesale stage them. Original drafts and
+patch are verified under `.tmp/wan-inventory/pre-start/`; pre-receipt documents and
+patch are under `.tmp/wan-inventory/pre-receipt/`, and the replaced current section
+is preserved in `.tmp/wan-inventory/handoff-before-close.md`. Historical handoff
+sections and the complete verified parent-session ledger remain intact.
+
+Exact command/log evidence and dispatch receipts are under `.tmp/wan-inventory/`,
+with final candidate CI in `ci/7ea4734/` and the disjoint selection manifest in
+`dev-groups.json`. Retain firmware/reference evidence and existing S13 recovery
+material. No additional checkout, branch promotion, history rewrite or evidence
+cleanup was performed. Before future authorized work, verify the actual local and
+remote tip, preserved drafts and the scope granted in the new instruction. The
+current checkpoint is paused; no later work is selected.
+
+Instruction note: AGENTS still names unavailable `zr0-multi-session-projects`.
+The installed `zr0-better-record-handling` supplies continuity. Replacing only
+that stale reference is recommended but has not been approved or applied.
+
+## Previous checkpoint — S13.14 accepted; paused
 
 Unknown authorized completion of S13.14 through its required checkpoint only.
-That checkpoint is complete and paused. No later package has been reviewed,
-selected or started; wait for fresh user direction. Accepted progress is 26/157
+That checkpoint is complete. At its close no later package had been reviewed,
+selected or started. Accepted progress is 26/157
 subgoals (16.6%), with 131 remaining; 0/16 main goals are complete. Goal 13 has 1/14
 accepted subgoals (7.1%); its other 13 remain. This checkpoint adds one product ID,
 about 0.64 percentage points overall, and no main-goal tick.
@@ -88,6 +211,111 @@ Private recovery/evidence lives under `.tmp/s13-diagnostics/`, including
 Dev map/runs, final core logs/metadata and the superseded S13 handoff. Preserve
 these records and existing worktree registrations. The sections below are
 historical context, not authorization to resume or choose another package.
+
+### Follow-up — 3004/3006 interface inventory
+
+The user then asked whether firmware downloads or Merlin documentation are needed
+to verify CFMgr hooks/NVRAM across 3004 and 3006 before continuing. This bounded
+read-only inventory/source comparison is complete; the reviewer is terminal.
+The [interface inventory](PLAN_V2_audit.md#3004-and-3006-firmware-interface-inventory)
+records current versus planned consumers and exact source anchors. Parent
+verified the source map and compared matched Merlin 3004.388.12_2/3006.102.9 code.
+
+Retained GT-AX11000, RT-AX88U_PRO and RT-BE96U archive/image pairs plus indexed
+audit artifacts passed size/hash revalidation (27 files), as did 58 retained
+source files and the three selected `cru` scripts. Another full firmware download
+is unnecessary for this scope. Current runtime has 18 fixed NVRAM read keys,
+no NVRAM writers and no hook/cron producers; Health observations do not credit
+the planned S09/S12 integration.
+
+Several exact hook/DDNS contracts match in the inspected releases, but older
+3006 builds differ (DDNS IPv6 argument added in 102.8_4). Modern optional extended
+WAN units are a concrete S08.01/model-coverage concern; current Status recognizes
+WAN 0/1 and reports Unknown when their primary flags are inconclusive. Preserve
+these distinctions in later affected work. No new immediate S13.14 firmware
+blocker, contract change or acceptance is established. There was no firmware
+execution, router action, behavior test, commit or push. Only local audit/handoff
+notes changed; diagnostics remains paused pending a start instruction.
+
+The subsequent existing-code triage is complete. Parent rechecked current native
+admission, firmware parsing, WAN/interface selection and Health egress wording;
+no confirmed existing defect requiring a 3004/3006 branch was found. Requested
+independent reviewer `current_compat_check` failed to start because its model was
+at capacity; this follow-up conclusion is parent source review, not a second
+sign-off or new runtime proof. No worker or CI job remains active.
+
+The user clarified the cases to carry forward: reassigned LAN/2.5G or SFP ports,
+dual-WAN load balancing and USB 4G/5G. Physical ports, logical WAN units and actual
+egress must remain distinct. Existing S08 native-mapping/egress requirements and
+S12 event handling are the relevant consumers; these examples do not establish
+universal model/mode support or authorize a blanket firmware-version branch.
+Current Status reads the selected unit's interface dynamically, supports only
+units 0/1 and its listed protocols, and exposes unavailable mapping honestly.
+Health's public-IP result explicitly does not prove selected-WAN egress. Keep
+the real modern identifier/selection fixture gaps visible when relevant tests
+change. No runtime edit or behavior test was performed; S13.14 remains paused.
+
+### User-requested WAN confirmation — planning only
+
+The user requested best-effort detection on first interactive CFMgr use, a Yes/No
+confirmation of the proposed WAN/interface, and an interface list/manual entry
+after No. They then explicitly requested background re-detection after changes,
+coverage of all ordinary private ranges and upstream private networks, and
+clarified that this is future WAN implementation tied to DDNS/IP-Sync. Parent
+recorded the [shared contract](PLAN_V2.md#wan-detection-and-user-confirmation) and
+mirrored unchecked S03.03/S08.01 rows; S08.03/S08.04/S08.05 egress safety remains.
+
+The final policy is adaptive: retain a still-valid user preference, re-resolve
+changed mapping/failover from coherent evidence, and leave ambiguity Unknown.
+It supersedes the preliminary Auto/fixed/manual mode proposal; no additional
+mode-selection UI or permanent literal-interface pin was adopted. Local IP class
+and outside-LAN-subnet observations are clues, not WAN/Internet proof. No public
+discovery is triggered by the menu; only CFMgr's preference is configured.
+
+DDNS and IP-Sync share one resolver/cache. An eligible DDNS-triggered run can
+forward valid family observations to IP-Sync independently of DNS success;
+standalone IP-Sync invokes the same resolver without DDNS setup. It never learns
+its desired public IP by treating a DNS record as the source of truth.
+
+`wan_choice_audit` (Astra planner) returned PASS WITH NOTES on the revised adaptive
+contract. Parent incorporated unavailable-candidate/defer behavior, separated
+intent/confirmation/observation, guarded manual input, coherent replacement proof
+and the explicit-Off cleanup exception. The reviewer is complete. Schema and
+consumer implementation/test work remain future dependencies under these unchecked
+tasks. Planning/whitespace checks pass; no runtime change, behavior test, new
+acceptance, commit/push or S13.14 start occurred. The diagnostics pause remains.
+
+### Multi-WAN IP-Sync refinement — recorded, planning only
+
+The user asked whether future IP-Sync could include multiple WAN public addresses,
+considering two per family versus a dynamic count; DDNS would keep its primary
+source. Their screenshot shows alternative primary-WAN connectors and Dual WAN
+Off, not multiple verified active connections. Newer connector types likewise do
+not establish active source count. The former one-source specification is now
+refined under the user's following explicit direction; this is future behavior.
+The user subsequently selected one IPv4/one IPv6 as the default, expandable to
+additional verified sources with the existing shared/separate-list rules and
+per-family loss handling. They requested setup confirmation of the detected WAN
+set and later correction through CFMgr's built-in settings, then asked for exact
+3004/3006 NVRAM evidence. `multiwan_scope_audit` returned PASS WITH NOTES on the
+default-plus-expansion and final set-confirmation contracts; the reviewer is done.
+Parent incorporated those notes and completed paired S03.03, S08.01–S08.08/S08.10
+and S10.05/S10.07/S10.09 refinements plus affected event/consumer prose. No IDs or
+accepted boxes changed. DDNS stays primary-only; IP-Sync aggregates its explicitly
+selected sources into the existing shared/family targets, deduplicating addresses
+and retaining per-source family absence/unknown safety. Lists remain user-created.
+
+Parent's [matched-source NVRAM evidence](PLAN_V2_audit.md#multi-wan-source-mapping-and-ip-sync-expansion)
+confirms per-unit fields in both pinned releases, positional `wans_dualwan`
+mapping, mode/capability distinctions, conditional modern units from 50, and
+different IPv6 transition-tunnel naming. The planner reviewed implications from
+parent-supplied excerpts, not an independent firmware-source refetch. Actual model/
+mode execution and multi-source egress remain unverified implementation/beta work.
+
+Planning and whitespace checks pass. All changes remain local documentation;
+there are no runtime edits, behavior tests, router actions, commits/pushes or
+active jobs. S13.14 remains paused. Accepted progress remains 25/157 (15.9%) and
+0/16 goals; 132 subgoals remain unaccepted.
 
 ## Finished re-work checkpoint — shared drive layout; paused before diagnostics
 
