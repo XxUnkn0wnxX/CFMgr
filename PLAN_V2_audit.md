@@ -3701,8 +3701,9 @@ These rows have real incomplete production consumers. They must not disappear
 behind bare unchecked boxes. Estimates describe broad portions of the approved
 contract represented by current behavior, not acceptance, elapsed work or remaining
 effort. No percentage is assigned where clauses have substantially unequal weight.
-The reopened rows above are additional unfinished work and take priority in the
-handoff; the table below lists previously unticked partial runtime only.
+The five rows reopened in this original review have since closed, as has the
+subsequent Gateway finding; see their final repair dispositions below. This table
+continues to identify previously unticked partial runtime.
 
 | ID | Existing behavior and missing completion | Estimate |
 | --- | --- | --- |
@@ -3788,7 +3789,7 @@ explain the labels; the original requirements remain in the plan.
 | S03.06 | Partial runtime — see explicit missing outcomes |
 | S03.07 | Accepted — retained proof reviewed |
 | S03.08 | Partial runtime — see explicit missing outcomes |
-| S03.09 | Reopened — Gateway Health API contract mismatch; see 2026-11-06 finding |
+| S03.09 | Accepted — Gateway contract repaired, independently reviewed and final exact core passed |
 | S03.10 | Accepted — retained proof reviewed |
 | S04.01 | Accepted — retained proof reviewed |
 | S04.02 | Accepted — repaired, independently reviewed and final exact core passed |
@@ -3962,7 +3963,7 @@ pending and no reacceptance is awarded here.
   Host retained/reinstall coverage passed 47 cases with one Linux/ext4 skip in
   147.69s; the final generated-entry syntax/consumer-boundary case passed in 1.08s.
   Full native entry/repair/no-op proof remains pending. The separately scoped
-  [Daybreak report](daybreak_handoff.md#daybreak-report) records the fatal package
+  [archived Daybreak report](https://github.com/XxUnkn0wnxX/CFMgr/blob/8d4cc4fff9d47d63452b4246cfce9b03e9cd9a0c/daybreak_handoff.md#daybreak-report) records the fatal package
   failure classification and re-verification repair, with 14 host cases passed
   in 50.67s. Parent integration applied shell formatting only afterwards.
 - **B-04 / S04.02:** Reviewed canonical generations up to the current generation
@@ -4329,3 +4330,68 @@ with constraints**, and the user approved a global AGENTS clarification reflecti
 that distinction. No profile or worker-role file changed, and no security-control
 waiver or unverified-Blue implementation was authorized. A concrete new change to
 security controls still requires the prescribed security lane.
+
+### Gateway repair and focused verification
+
+Implementation `b7fea0b856bbf7ae182380de5adac0a8b207fb55` corrects only the existing
+Status consumer and its tests, with regenerated package metadata. It admits the
+saved Gateway UUID, selects fixed Gateway metadata/items routes, and parses
+`type: IP` and item `value` fields. It reads only page 1 with a 50-item bound;
+whole-list comparison requires coherent page/count/total evidence covering the
+complete result. Missing/inconsistent metadata or additional pages remain partial.
+Optional count from a separate earlier metadata read is not treated as an atomic
+snapshot authority. No worker ABI, enumeration framework or transport/control
+change was introduced. Independent review and parent reconciliation passed.
+The duplicate newly added response-worker test was removed because the actual
+GET/HTTP-boundary test already executes that worker and checks its success receipt.
+
+Local package/planning/privacy/whitespace, shell syntax, Ruff/format, Python compile
+and shfmt gates passed. Optional ShellCheck was explicitly skipped; no Mac
+behavior/AWK execution was performed under the retained S03.09 validation placement.
+Dev `42040897834` ran no tests because the parent supplied newline-separated selectors
+instead of the required space-separated format. Corrected selection `42041204251`
+reached the actual Gateway GET fixture but failed before HTTP with exit 10.
+Failure-only instrumentation at `bc8f343` exposed `health-scope`, exit 1,
+`config-invalid` in `42041896378`. The fixture omitted the real JSON parser's
+required `LC_ALL=C`. No runtime change was made to bypass that guard.
+
+At final candidate `8d4cc4fff9d47d63452b4246cfce9b03e9cd9a0c`, the one-line fixture
+locale correction passed the failing node in `42042344295`: 1 passed in 1.10s.
+The six remaining focused nodes in `42042561350` passed 29 in 1.60s. Complete
+Status (`test_status` and `test_logging_native`) in `42042832209` passed 291 in
+116.73s, with a 2m13s job including setup. Complete package/parser admission
+`test_acquire` in `42042838620` passed 10 in 4.65s, with a 20s job. No skips were
+reported in these native Dev gates. Parent independently verified the exact
+published candidate and all prerequisite runs before the final complete core.
+These focused results do not independently award S03.09 acceptance.
+
+## Gateway final core and acceptance — 2026-11-06
+
+**S03.09 reaccepted.** Parent independently verified every required job and the
+published SHA `8d4cc4fff9d47d63452b4246cfce9b03e9cd9a0c`; source/tests/workflows
+remained unchanged after the prerequisite gates. [Complete Checks 42043449375](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42043449375)
+passed, including preflight, dispatch and exact-child collector. Conditional
+parent-cancellation cleanup correctly skipped; it is not a required success job.
+The five earlier repair acceptances remain valid. No further accepted-row defect
+was found by the independent affected-outcome review and parent reconciliation.
+
+| Module/platform | Job | Tests | Pytest wall | CPU user/system | Job including setup |
+| --- | --- | --- | --- | --- | --- |
+| Backup host | 127300232891 | 429 passed, 1 native-only skip | 142.50s | 54.88s / 50.97s | 2m40s |
+| Backup BusyBox | 127300233719 | 430 passed | 493.26s | 247.88s / 251.85s | 8m27s |
+| Manager host | 127300248993 | 879 passed, 30 platform skips, 4 diagnostics excluded | 161.56s | 72.97s / 73.61s | 3m00s |
+| Manager BusyBox | 127300248579 | 908 passed, 1 workstation-only skip, 4 diagnostics excluded | 478.73s | 293.22s / 152.22s | 8m40s |
+| Status host | 127300260806 | 291 passed | 39.74s | 14.66s / 11.32s | 1m02s |
+| Status BusyBox | 127300260155 | 291 passed | 118.77s | 54.24s / 53.16s | 2m21s |
+
+Child runs: [Backup 42043514135](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42043514135),
+[Manager 42043518421](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42043518421),
+[Status 42043522866](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42043522866).
+All module jobs met the roughly ten-minute target, with Manager's previously
+reviewed 12-minute runner cap unchanged. Native Status execution remained about
+119s despite the additional focused Gateway cases. No extra full run was added
+for timing or after this pass. Full local was not due at this non-main-goal
+checkpoint; S03.09/S03.10 retain their recorded CI-only behavior/AWK placement.
+Ubuntu/vendor BusyBox remains representative development proof, not live Merlin,
+ARM, flash, TLS or provider qualification. Earlier unexplained installed Health
+failures are not retroactively claimed as diagnosed production fixes.

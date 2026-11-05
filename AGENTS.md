@@ -33,11 +33,6 @@ are autonomous repairs. While a hard-blocker question is pending, do only
 independent authorized work; after 3–5 unanswered minutes preserve WIP, record the
 question/safe restart in handoff and pause. Silence never grants approval.
 
-The user-approved temporary [daybreak_handoff.md](daybreak_handoff.md) may live at
-the repository root and be tracked. It owns only the named Daybreak task/report;
-canonical project state remains in `PLAN_V2_handoff.md`. Tracking permission does
-not by itself authorize staging, commits or publication.
-
 Preserve [.old/PLAN.md](.old/PLAN.md). Keep the complete hidden session-ID HTML
 comment immediately below the handoff title; verified parent lineage belongs only
 there. Consolidate continuity records only at the skill's 500–600 KB or hard-to-follow

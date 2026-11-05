@@ -11,7 +11,7 @@ earn product ticks.
 
 **0 of 16 main goals complete — 0% product completion.**
 
-**25 of 157 product subgoals accepted — 15.9% overall subgoal completion.**
+**26 of 157 product subgoals accepted — 16.6% overall subgoal completion.**
 
 **Subgoal gate:** complete implementation, written focused local tests, relevant
 static checks, parent review and required core CI passing at the exact published
@@ -111,13 +111,18 @@ See the [repair review](PLAN_V2_audit.md#five-row-repair-review--2026-11-05),
 [final closure evidence](PLAN_V2_audit.md#five-row-closure-and-final-core--2026-11-06)
 and [full audit inventory](PLAN_V2_audit.md#accepted-subgoals-and-partial-work-audit--2026-11-05).
 
-A subsequent independent source/API review reopened **S03.09**: eligible IP-Sync
-Health reads implement account Rules Lists, contrary to the approved Zero Trust
-Gateway contract. Its previous green fixtures assert the wrong endpoint/shape;
-they do not establish this required consumer. The five repairs above remain
-accepted. See the [Gateway finding](PLAN_V2_audit.md#gateway-health-contract-finding--2026-11-06).
-S03.09 requires corrected Gateway identity, requests, response/completeness parsing,
-focused proof, independent review and final exact core before reacceptance.
+The subsequent S03.09 Gateway contract failure is now repaired and reaccepted.
+Correct configured UUID/routes, `type: IP`, item `value` parsing and bounded
+first-page completeness passed independent/parent review, focused native checks,
+complete Status and package-parser Dev groups, and
+[complete Checks 42043449375](https://github.com/XxUnkn0wnxX/CFMgr/actions/runs/42043449375)
+at **`8d4cc4fff9d47d63452b4246cfce9b03e9cd9a0c`**. All six module platform jobs
+and required parent jobs passed. Native Backup: **430 passed**; Manager:
+**908 passed, 1 workstation-only skip, 4 optional diagnostics excluded**; Status:
+**291 passed**. Slowest job: Manager native **8m40s including setup**.
+The final Status local box stays blank under its recorded CI placement exception.
+See the [finding and repair evidence](PLAN_V2_audit.md#gateway-health-contract-finding--2026-11-06)
+and [final acceptance](PLAN_V2_audit.md#gateway-final-core-and-acceptance--2026-11-06).
 
 ### Incomplete current consumers
 
@@ -258,7 +263,7 @@ Deferred review: [Goal 2 notes](PLAN_V2_review_notes.md#2-installation-storage-a
 | [ ] | [ ] | S03.06 | **Manager/diagnostic commands:** Update/force aliases, help/version and identical standalone health/doctor/diagnostic reports without implicit repair consent. |
 | [x] | [x] | S03.07 | **Basic status dashboard:** Router/resource/address header and compact feature state, last verified family updates, age and current issue summary from local evidence. |
 | [ ] | [ ] | S03.08 | **Bounded history and privacy:** Small recorded observations, accurate Unknown/Never/stale labels, no basic-status network calls or secret/raw-data dumps. |
-| [ ] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
+| [x] | [ ] | S03.09 | **Full health diagnostics:** Basic dashboard plus failure-tolerant dependency/config/storage/network/auth/integration/recovery checks; eligible read-only probes, local fallback and no repair. |
 | [x] | [ ] | S03.10 | **Terminal presentation:** Clear grouped tables, useful header and issue summary; bounded one-shot output with narrow-terminal/plain-text fallbacks and no UI dependency. |
 
 S03.02 native-setting boundary: represent saved DDNS choices and their mapping to
