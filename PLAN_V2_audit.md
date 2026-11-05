@@ -4002,3 +4002,41 @@ menu Status preceded preparation was removed. Prior accepted consumers retain
 their requirements and still need the prescribed exact complete core gate for the
 shared candidate. The new per-checkpoint audit and two-runtime-checkpoint broad
 cadence are recorded in the user-approved AGENTS revision.
+
+
+## Status startup assertion reconciliation — 2026-11-05
+
+At `ee10998371b58dce33b161ee10ec61025c1044a5`, final core Status failed on both
+platforms after 135 passes because its installed-basic-page test forbade admission
+across the entire normal launch. Independent Astra review returned **PASS WITH
+NOTES** for the parent interpretation: section 2 requires launch admission, while
+section 3 prohibits additional operational work by Status and requires explicit
+Health to bypass startup. Entry, manager and Status source follow those unchanged
+contracts. The old S03.07 receipt is historical; its pre-admission menu wording is
+superseded by this integration. This is an assertion correction, not a relaxed
+product requirement or an additional accepted subgoal.
+
+The corrected journey checks two completed Status visits, one admission before
+the first menu, return after each report, an ordinary admission-failure fallback,
+and zero admission/menu for installed and standalone Health. All variants preserve
+configuration bytes, clean their owned report scratch and require nonempty routes
+with the appropriate Status/Health prefix. Host validation exposed an unquoted
+fake mountinfo path in the fixture worker and an inert installed network module;
+quoting the path and copying the existing actual network fixture corrected both.
+The four host journeys then passed in 26.83s pytest / 27.63s wall (13.30s user,
+11.50s system). Earlier host failures and the one intermediate 10-second timeout
+remain recorded; the test timeout and production behavior were not increased.
+Parent reviewed the final assertions/adapters. Common planning/package/syntax,
+Ruff, format and Python compile checks passed. Complete Status is now included
+in affected Dev coverage; the earlier selector map omitted that untouched but
+affected consumer test module. Final platform/core proof remains pending.
+
+The same first full core attempt passed Backup host/native, with native about
+8m18s including setup. Manager host passed, but its native job hit the ten-minute
+limit at 73%; that cancellation supplies no complete-module pass. Independent
+cost review identified accumulated integration work and slower execution across
+several cases, not a demonstrated hang. The isolated actual-installer diagnostic
+`42018860267` passed at the same SHA: 104.43s pytest, with repair 69.50s, first/second
+full checks 0.73/1.13s and transaction 29.45s. No coverage, timeout or runtime change
+was justified by that evidence alone. Raw logs and failed-run receipts are retained
+privately; complete-module cost and final acceptance still require closure.

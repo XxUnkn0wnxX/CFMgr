@@ -1925,7 +1925,7 @@ def status_fixture(tmp_path, tools, shell):
     probe = (
         (source / "modules/helpers/worker.sh")
         .read_text()
-        .replace("/proc/self/mountinfo", str(proc / "self/mountinfo"))
+        .replace("/proc/self/mountinfo", shlex.quote(str(proc / "self/mountinfo")))
     )
     (source / "modules/helpers/worker.sh").write_text(probe)
     return source, proc, fake
@@ -2155,8 +2155,11 @@ def test_verified_health_extension_uses_local_consumer_and_preserves_owned_clean
         assert (b"Configuration: Unavailable" in out) == (scenario == "corrupt")
 
 
-@pytest.mark.parametrize("page", ["basic", "health", "standalone-health"])
-def test_installed_choice_zero_returns_without_operational_preparation(
+@pytest.mark.parametrize(
+    "page",
+    ["basic-normal", "basic-admission-failure", "health", "standalone-health"],
+)
+def test_installed_basic_status_admits_on_startup_and_health_remains_local(
     installed_entry, status_fixture, config, tools, shell, tmp_path, page
 ):
     entry, marker = installed_entry
@@ -2166,12 +2169,15 @@ def test_installed_choice_zero_returns_without_operational_preparation(
         "modules/status.sh",
         "modules/lib/config.sh",
         "modules/lib/storage.sh",
+        "modules/lib/network.sh",
         "modules/helpers/worker.sh",
     ):
         shutil.copyfile(source / relative, support / relative)
     data = support / "config"
     data.write_bytes(config)
     data.chmod(0o600)
+    if page == "basic-admission-failure":
+        (tmp_path / "admission-result").write_text("1\n")
     (support / "setup-state").write_text("CFMGR-SETUP 1 0.1.0 complete\n")
     (support / "setup-state").chmod(0o600)
     functions = STATUS_CONSUMER[
@@ -2193,6 +2199,7 @@ def test_installed_choice_zero_returns_without_operational_preparation(
     finish_package(entry, support, tools, shell)
     original = data.read_bytes()
     invoked = entry
+    basic = page.startswith("basic-")
     if page == "standalone-health":
         invoked = tmp_path / "trusted-standalone.sh"
         shutil.copy2(entry, invoked)
@@ -2200,32 +2207,43 @@ def test_installed_choice_zero_returns_without_operational_preparation(
     result = entry_run(
         shell,
         invoked,
-        ["--health"] if page != "basic" else [],
-        b"0\nao\ne\ne\n",
+        ["--health"] if not basic else [],
+        b"0\n0\nao\ne\ne\n" if basic else b"0\nao\ne\ne\n",
         terminal=True,
         timeout=10,
     )
     assert result.returncode == 0, result.stderr
-    if page == "basic":
+    if basic:
         assert b"CFMgr 0.1.0 - local status" in result.stdout
-        assert result.stdout.count(b"0 Check status") >= 2
+        assert result.stdout.count(b"CFMgr 0.1.0 - local status") == 2
+        assert result.stdout.count(b"0 Check status") == 4
+        assert result.stdout.count(b"action=normal\n") == 1
+        assert marker.read_text() == "prepare\n"
+        first_admission = result.stdout.index(b"action=normal\n")
+        first_menu = result.stdout.index(b"CFMgr main menu")
+        first_status = result.stdout.index(b"CFMgr 0.1.0 - local status")
+        assert first_admission < first_menu < first_status
+        sections = result.stdout.split(b"CFMgr 0.1.0 - local status")
+        assert len(sections) == 3
+        assert all(b"CFMgr main menu" in section for section in sections[1:])
+        if page == "basic-admission-failure":
+            assert b"operational admission unavailable" in result.stderr
     else:
         assert b"CFMgr 0.1.0 - health diagnostics" in result.stdout
         assert result.stdout.count(b"package.extension [PASS]") == 1
         assert b"package.extension [FAIL]" not in result.stdout
         assert b"0 Check status" not in result.stdout
+        assert b"CFMgr main menu" not in result.stdout
+        assert b"action=normal\n" not in result.stdout
         assert b"configured=Off; enabled=Off" in result.stdout
         assert b"CFMgr 0.1.0 - local status" not in result.stdout
     assert b"shared dependencies verified" not in result.stdout
-    assert (
-        not marker.exists()
-        and data.read_bytes() == original
-        and not (tmp_path / "ram").exists()
-    )
-    assert all(
-        mode.startswith("status-" if page == "basic" else "health-")
-        for mode in (tmp_path / "routes").read_text().splitlines()
-    )
+    assert data.read_bytes() == original
+    assert not (tmp_path / "ram").exists()
+    assert marker.exists() == basic
+    routes = (tmp_path / "routes").read_text().splitlines()
+    assert all(mode.startswith("status-" if basic else "health-") for mode in routes)
+    assert routes
     if page == "standalone-health":
         assert not entry.exists()
 

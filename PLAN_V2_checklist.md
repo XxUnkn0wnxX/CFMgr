@@ -323,6 +323,13 @@ runner limit stayed intact. No full local suite was due. Parent review and test
 cost review passed; native DDNS application, provider/lifecycle operations,
 logging execution and later feature workflows receive no additional credit.
 
+Current S03.07 assertion disposition: the historical receipt below describes the
+older launch ordering. Required normal admission now precedes the menu; choice
+`0` itself remains local/read-only, and explicit Health bypasses startup. The
+[Status boundary audit](PLAN_V2_audit.md#status-startup-assertion-reconciliation--2026-11-05)
+records independent review and the corrected regression proof; exact-candidate
+complete core remains pending for this shared repair.
+
 S03.07 accepted at `d173d691254023a757361996c5b86ff8f8c609bd`: actual installed
 choice `0`, menu return before operational preparation, native resource/WAN/NTP/
 mount readings, separate settings and typed historical outcomes, age/privacy and
